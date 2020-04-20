@@ -1,0 +1,3 @@
+/exports                    *(ro,async,fsid=0,crossmnt,no_subtree_check,no_root_squash)
+/exports/os                 *(ro,async,no_subtree_check,no_root_squash)
+/exports/result             *(rw,async,no_subtree_check,no_root_squash)
