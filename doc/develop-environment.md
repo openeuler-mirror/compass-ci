@@ -1,6 +1,7 @@
 # ssh
 
 ```bash
+# in your local laptop
 cat >> ~/.ssh/config <<EOF
 Host crystal
   Hostname 124.90.34.227
@@ -9,6 +10,21 @@ EOF
 
 [ -f ~/.ssh/id_rsa.pub ] || ssh-keygen
 ssh-copy-id crystal
+```
+
+```bash
+# in crystal server
+cat >> ~/.ssh/config <<EOF
+Host alpine
+  Hostname localhost
+  Port 2200
+  User team
+
+Host debian
+  Hostname localhost
+  Port 2201
+  User team
+EOF
 ```
 
 # vim
