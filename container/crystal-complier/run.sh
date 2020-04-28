@@ -8,7 +8,7 @@ cmd=(
 	-v $PWD:/mnt
 	-w /mnt
 	alpine:crystal-complier
-	crystal build $1 --static
+	crystal build --static "$@"
 )
+
 "${cmd[@]}"
- 
