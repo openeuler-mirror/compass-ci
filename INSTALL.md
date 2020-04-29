@@ -1,17 +1,20 @@
+# system wide setup
 
-# debian packages
+## debian packages
 
 ```bash
 sudo apt-get install docker.io
 ```
 
-# openEuler packages
+## openEuler packages
 
 ```bash
 sudo dnf install docker
 ```
 
-# Common setup (per-user)
+# per-user setup
+
+## git repo
 
 ```bash
 # git clone https://gitee.com/openeuler/crystal-ci.git
@@ -22,4 +25,10 @@ git clone ssh://crystal/c/crystal-ci.git
 
 cd crystal-ci
 echo "export CCI_SRC=$PWD" >> $HOME/.${SHELL##*/}rc
+```
+
+## packages
+
+```bash
+gem install rest-client
 ```
