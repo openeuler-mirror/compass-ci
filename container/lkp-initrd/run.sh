@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LKP_SRC=/c/lkp-tests
+[[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
 DIR=$(dirname $(realpath $0))
 
 cmd=(
