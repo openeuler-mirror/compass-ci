@@ -26,6 +26,16 @@
 	  User team
 	EOF
 
+# git
+
+	git config --global user.name "Your Name"
+	git config --global user.email "youremail@yourdomain.com"
+
+Example:
+
+	git config --global user.name "Wu Fengguang"
+	git config --global user.email "wufengguang@huawei.com"
+
 # crystal compiler
  
 ## local install
