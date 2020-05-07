@@ -5,8 +5,8 @@ cmd=(
 	-u $UID 
 	--rm
 	-it
-	-v $PWD:/mnt
-	-w /mnt
+	-v $LKP_SRC:$LKP_SRC
+	-w $PWD 	 
 	alpine:crystal-complier
 	crystal build --static "$@"
 )
