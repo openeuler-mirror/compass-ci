@@ -1,6 +1,7 @@
 #!/bin/bash
-pj_dir=`git rev-parse --show-toplevel 2>/dev/null`
-if [ $pj_dir ];then
+
+pj_dir=$(git rev-parse --show-toplevel 2>/dev/null)
+if [[ $pj_dir ]]; then
     v_dir=$pj_dir
 else
     v_dir=$PWD
