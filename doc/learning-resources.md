@@ -7,20 +7,27 @@ http://www.cheat-sheets.org/saved-copy/RubyCheat.pdf  # skip the cryptic "Predef
 http://www.testingeducation.org/conference/wtst3_pettichord9.pdf
 
 ## API
-http://overapi.com/ruby
 man ri
 man pry
+http://overapi.com/ruby
 
 ## resources
 https://github.com/markets/awesome-ruby
+
+## debug
+https://github.com/deivid-rodriguez/pry-byebug
+https://github.com/JoshCheek/seeing_is_believing
 
 
 crystal
 =======
 
 https://getgood.at/in-a-day/crystal
-https://crystal-lang.org/docs/
 https://crystal-lang.org/2018/01/08/top-5-reasons-for-ruby-ists-to-use-crystal.htmL
+
+/c/crystal/crystal/src/
+https://crystal-lang.org/api
+https://crystal-lang.org/reference
 
 https://github.com/veelenga/awesome-crystal
 https://github.com/DocSpring/ruby_crystal_codemod
@@ -32,9 +39,6 @@ shell
 man bash
 https://devhints.io/bash
 https://shellmagic.xyz/
-
-https://github.com/alebcay/awesome-shell
-
 
 Vim
 ===
