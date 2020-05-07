@@ -8,5 +8,4 @@ RUN sed -i 's/dl-cdn.alpinelinux.ort/mirror.huaweicloud.com/g' /etc/apk/reposito
 
 RUN apk add gcc g++ make libffi-dev openssl-dev libtool crystal
 
-WORKDIR /mnt
 
