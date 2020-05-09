@@ -33,6 +33,11 @@ lib/elasticsearch-crystal/src/elasticsearch/api/namespace/common.cr
  - ./scheduler
 
 3.how to build docker image <like sch-ruby-a:v0.00d>
+ # copy program
+ - cp ./scheduler ../container/scheduler/
+ - cp ./create-job-cpio.sh ../container/scheduler/
+ - cp ./scheduler.yaml ../container/scheduler/
+
  # go to container
  - cd ../container/scheduer
 
