@@ -2,13 +2,14 @@ ruby
 ====
 
 ## cheat sheet
+man pry  # for trying out code snippets below
+https://github.com/ThibaultJanBeyer/cheatsheets/blob/master/Ruby-Cheatsheet.md
 https://www.vikingcodeschool.com/professional-development-with-ruby/ruby-cheat-sheet
 http://www.cheat-sheets.org/saved-copy/RubyCheat.pdf  # skip the cryptic "Predefined Variables" and "Ruby arguments" tables
 http://www.testingeducation.org/conference/wtst3_pettichord9.pdf
 
 ## API
 man ri
-man pry
 http://overapi.com/ruby
 
 ## resources
