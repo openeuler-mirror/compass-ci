@@ -45,7 +45,8 @@ class Elasticsearch::Client
     def add(documents_path : String, content : Hash, id : String)
         client = Elasticsearch::API::Client.new( { :host => @host, :port => @port } )
         content_hash = Public.hashReplaceWith(content, {"id" => id})
-        
+        content_hash = Public.hashReplaceWith(content_hash, {"result_root" => "#{content["result_root"]}/#{id}"})
+
         dp = documents_path.split("/")
         response = client.create(
             {
