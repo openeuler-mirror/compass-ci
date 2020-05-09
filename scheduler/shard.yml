@@ -15,10 +15,10 @@ license: MIT
 dependencies:
   kemal:
     github: kemalcr/kemal
-  kemal-basic-auth:
-    github: kemalcr/kemal-basic-auth
   redis:
     github: stefanwille/crystal-redis
+    version: ~> 2.5.3
   elasticsearch-crystal:
     github: paktek123/elasticsearch-crystal
+    version: ~> 0.14
     

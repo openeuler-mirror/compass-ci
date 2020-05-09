@@ -11,7 +11,7 @@ cmd=(
 	-v $DIR:/usr/share/code
 	-w /usr/share/code
 	alpine:crystal
-	sh -c "crystal build src/$cDIR.cr --static && chown $USER:$USER ./scheduler"
+	sh -c "shards install && chown -R $USER:$USER lib"
 )
 
 "${cmd[@]}"
