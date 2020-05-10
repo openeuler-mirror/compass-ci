@@ -1,12 +1,15 @@
 ruby
 ====
 
-## cheat sheet
+## introduction
 man pry  # for trying out code snippets below
+https://learnxinyminutes.com/docs/ruby/
 https://github.com/ThibaultJanBeyer/cheatsheets/blob/master/Ruby-Cheatsheet.md
 https://www.vikingcodeschool.com/professional-development-with-ruby/ruby-cheat-sheet
 http://www.cheat-sheets.org/saved-copy/RubyCheat.pdf  # skip the cryptic "Predefined Variables" and "Ruby arguments" tables
 http://www.testingeducation.org/conference/wtst3_pettichord9.pdf
+
+https://www.ruby-lang.org/en/documentation/ruby-from-other-languages/to-ruby-from-python/
 
 ## API
 man ri
@@ -41,6 +44,13 @@ man bash
 https://devhints.io/bash
 https://shellmagic.xyz/
 
+
+python
+======
+
+https://learnxinyminutes.com/docs/python/
+
+
 Vim
 ===
 
@@ -59,5 +69,3 @@ YAML
 
 https://yaml.org/YAML_for_ruby.html
 https://alexharv074.github.io/puppet/2020/03/06/why-erb-should-be-preferred-to-jinja2-for-devops-templating.html
-
-
