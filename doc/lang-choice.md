@@ -25,7 +25,12 @@ ruby
 - google: rich experiences
 
 ## Con
-- slow
+- slow, however:
+  - ruby3 aims 3x faster in 2021
+  - truffleruby demos 16-31x faster ERB benchmark
+    (only has experimental x86_64 support for now)
+    - https://github.com/oracle/truffleruby
+    - https://www.graalvm.org/docs/reference-manual/languages/ruby/
 - bloated for small devices
 
 ## Main scenarios
@@ -46,7 +51,7 @@ crystal
 - suitable for large projects
   - static type
   - compile checked
-- easy to deploy (static linking)
+- easy to deploy (static linking, like golang)
 
 ## Con
 - pre-release
@@ -70,10 +75,15 @@ crystal
 python
 ======
 
+## Pro
+- popular and excellent ecosystem
+## Con
+- slow (and looks hard to improve in generic way)
 ## Main scenarios
 - library that greatly helps
   - fbtftp
   - data analyze and plot?
+  - web?
 
 javascript
 ==========
