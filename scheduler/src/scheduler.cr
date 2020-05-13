@@ -8,7 +8,6 @@ require "./scheduler/boot"
 require "./scheduler/dequeue"
 require "./scheduler/enqueue"
 require "./scheduler/resources"
-require "./scheduler/diagnosis"
 require "./scheduler/monitor"
 
 # -------------------------------------------------------------------------------------------
