@@ -7,11 +7,11 @@ cmd=(
 	docker run
 	--rm
 	-it
-	-e USER=$USER
+        -u $UID	
 	-v $DIR:/usr/share/code
 	-w /usr/share/code
 	alpine:crystal
-	sh -c "shards install && chown -R $USER:$USER lib"
+	sh -c "shards install"
 )
 
 "${cmd[@]}"

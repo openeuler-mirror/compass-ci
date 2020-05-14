@@ -7,11 +7,11 @@ cmd=(
 	docker run
 	--rm
 	-it
-	-e USER=$USER
+	-u $UID
 	-v $DIR:/usr/share/code
 	-w /usr/share/code
 	alpine:crystal
-	sh -c "crystal build src/$cDIR.cr --static && chown $USER:$USER ./scheduler"
+	sh -c "crystal build src/$cDIR.cr --static"
 )
 
 "${cmd[@]}"
