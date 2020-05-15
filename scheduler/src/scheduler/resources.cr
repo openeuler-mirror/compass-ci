@@ -1,4 +1,3 @@
-require "./qos"
 require "../redis_client"
 require "../elasticsearch_client"
 
@@ -15,10 +14,6 @@ module Scheduler
 
         def redis_client(host : String, port : Int32)
             @redis_client = Redis::Client.new(host, port)
-        end
-
-        def qos(queueNum : Int32, promiseRate : Int32)
-            @qos = Scheduler::Qos.new(queueNum, promiseRate)
         end
 
         def fsdir_root(dirname : String)

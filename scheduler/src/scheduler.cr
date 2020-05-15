@@ -39,7 +39,6 @@ module Scheduler
     resources = Scheduler::Resources.new
     resources.es_client(config.elasticSearchHost, config.elasticSearchPort)
     resources.redis_client(config.redisHost, config.redisPort)
-    resources.qos(4, 10000)
     resources.fsdir_root(Kemal.config.public_folder)
     resources.test_params(%w(start_time end_time loadavg job_state))
 
