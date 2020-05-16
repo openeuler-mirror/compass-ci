@@ -43,6 +43,9 @@ shell
 man bash
 https://devhints.io/bash
 https://shellmagic.xyz/
+https://ngte-ac.gitbook.io/i/infrastructure/linux-command-cheatsheet
+https://github.com/jlevy/the-art-of-command-line/blob/master/README-zh.md
+https://github.com/macrozheng/mall/blob/master/document/reference/linux.md
 
 
 python
