@@ -6,8 +6,7 @@ cmd=(
     -p 3080:80
     -v /srv/result:/srv/result
     -d 
-    result:webdav
-
+    result-webdav
 )
 
 "${cmd[@]}"

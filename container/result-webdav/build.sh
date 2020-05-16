@@ -1,1 +1,1 @@
-docker build -t result:webdav .
+docker build -t result-webdav .
