@@ -13,7 +13,7 @@ describe Jobfile::Operate do
             FileUtils.rm(file_path)
         end
 
-        it "When nofind , then append at end" do
+        it "When no find, then append at end" do
             File.open(file_path, "w") do |f|
                 f.close()
             end
@@ -28,7 +28,7 @@ describe Jobfile::Operate do
             FileUtils.rm(file_path)
         end
 
-        it "When find , then replace it" do
+        it "When find, then replace it" do
             File.open(file_path, "w") do |f|
                 f.puts("id: 000000")
             end
@@ -46,7 +46,7 @@ describe Jobfile::Operate do
             FileUtils.rm(file_path)
         end
 
-        it "When nofind, but find section, then append in the section" do
+        it "When no find, but find section, then append in the section" do
             File.open(file_path, "w") do |f|
                 f.puts("#! job/")
                 f.puts("#! other")
@@ -95,11 +95,13 @@ describe Jobfile::Operate do
             job_id = "testjob"
             resources = Scheduler::Resources.new
             resources.es_client("localhost", 9200)
-            resources.fsdir_root("/home/chief/code/crcode/scheduler/public")
+            fs_root = File.real_path(".")
+            resources.fsdir_root("#{fs_root}/public")
             json = JSON.parse(Jobfile::Operate.load_yaml("test/demo_job.yaml").to_json)
             resources.@es_client.not_nil!.add("/jobs/job", json.as_h, job_id)
 
-            FileUtils.rm_r(::File.join [resources.@fsdir_root, job_id])
+            oldfile = ::File.join [resources.@fsdir_root, job_id]
+            FileUtils.rm_r(oldfile) if File.exists?(oldfile)
 
             Jobfile::Operate.createJobPackage(job_id, resources)
             (File.exists?(::File.join [resources.@fsdir_root, job_id, "job.cgz"])).should be_true

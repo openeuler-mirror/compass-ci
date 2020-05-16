@@ -9,15 +9,15 @@ describe Redis::Client do
             id = redis_client.getSN()
 
             before_add_priority = Time.local.to_unix_f
-            redis_client.add2queue(0, id)
+            redis_client.add2queue("test", id)
 
             raw_redis = Redis.new("localhost",  6379)
-            index  = raw_redis.zrank("sorted_job_list_0", id)
+            index  = raw_redis.zrank("test", id)
 
             (index).should_not be_nil
 
             # job priority is more later 
-            respon = raw_redis.zrange("sorted_job_list_0", index, index, true)
+            respon = raw_redis.zrange("test", index, index, true)
             (respon[1].to_s.to_f64).should be_close(before_add_priority, 0.1)
         end
 
