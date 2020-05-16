@@ -6,7 +6,7 @@ LABEL maintainer="jbbodart"
 
 VOLUME /srv
 
-RUN apk -U upgrade && apk add --no-cache apache2-utils && chmod -R 777 /srv 
+RUN apk -U upgrade && apk add --no-cache apache2-utils
 
 COPY webdav.conf /etc/nginx/conf.d/default.conf
 

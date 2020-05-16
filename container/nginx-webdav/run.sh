@@ -2,11 +2,11 @@
 
 cmd=(
     docker run
-    --name results-webdav
+    --name result-webdav
     -p 3080:80
-    -v /srv/webdav:/srv
+    -v /srv/result:/srv/result
     -d 
-    alpine:webdav
+    result:webdav
 
 )
 

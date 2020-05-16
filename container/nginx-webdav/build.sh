@@ -1,1 +1,1 @@
-docker build -t alpine:webdav .
+docker build -t result:webdav .
