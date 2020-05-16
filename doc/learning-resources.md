@@ -64,6 +64,17 @@ ri Regexp
 https://cheatography.com/davechild/cheat-sheets/regular-expressions/
 
 
+Git
+===
+
+http://justinhileman.info/article/git-pretty/git-pretty.png
+https://github.com/k88hudson/git-flight-rules/blob/master/README_zh-CN.md
+https://github.com/521xueweihan/git-tips
+https://github.com/arslanbilal/git-cheat-sheet/blob/master/other-sheets/git-cheat-sheet-zh.md
+http://www.columbia.edu/~zjn2101/intermediate-git/
+https://git-scm.com/book/zh/v2
+
+
 YAML
 ====
 
