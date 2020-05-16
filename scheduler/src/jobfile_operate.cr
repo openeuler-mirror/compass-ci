@@ -49,16 +49,6 @@ module Jobfile::Operate
         end
     end
     
-    def self.save(filePath : String, file : File)
-
-        # FileIO need do in background
-        prepareDir(filePath)
-
-        File.open(filePath, "w") do |f|
-            IO.copy(file, f)
-        end
-    end
-
     def self.save_job_file(object, job_id, base)
         temp_yaml = base + "/" +  job_id + "/job.yaml"
         prepareDir(temp_yaml)

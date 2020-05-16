@@ -18,16 +18,11 @@ module Scheduler
             hostname  = es.get_config("report/hostnames", mac)
 
             job_id, error_code = "0", "0"
-            case hostname
-            when nil  # default testbox
-                job_id, error_code = Scheduler::Dequeue.respon(env, resources, 10)
-            else # special testbox
-                job_id, error_code = Scheduler::Dequeue.responTestbox(hostname, env, resources, 10)
+            job_id, error_code = Scheduler::Dequeue.responTestbox(hostname, env, resources, 10) if hostname
 
-                # update job's  testbox property
-                if job_id != "0"
-                    es.update("jobs/job", { "testbox" => hostname }, job_id)
-                end
+            # update job's  testbox property
+            if job_id != "0"
+                es.update("jobs/job", { "testbox" => hostname }, job_id)
             end
 
             # create job.cgz before respon to ipxe parameter
