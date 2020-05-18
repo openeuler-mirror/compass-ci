@@ -55,6 +55,7 @@ It submits your patch for review. The patch subject and changelog
 should be well written according to suggestions here:
 
 	http://www.ozlabs.org/~akpm/stuff/tpp.txt
+	https://www.kernel.org/doc/html/latest/translations/zh_CN/process/submitting-patches.html#cn-describe-changes
 
 Everyone is encouraged to review others' patches. In particular, these 2 roles
 are obliged to give review comments:
