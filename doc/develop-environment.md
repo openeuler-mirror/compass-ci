@@ -28,6 +28,8 @@
 
 # git
 
+## user setting
+
 	git config --global user.name "Your Name"
 	git config --global user.email "youremail@yourdomain.com"
 
@@ -35,6 +37,21 @@ Example:
 
 	git config --global user.name "Wu Fengguang"
 	git config --global user.email "wufengguang@huawei.com"
+
+## repos
+
+Clone the following git repos to your $HOME
+
+	git clone file:///c/todo.git
+	git clone file:///c/lkp-tests.git
+	git clone file:///c/crystal-ci.git
+
+Then read through documents
+
+	lkp-tests/doc/INSTALL.md
+	crystal-ci/doc/INSTALL.md
+	crystal-ci/doc/develop-flow.md
+	crystal-ci/doc/learning-resources.md
 
 # crystal compiler
  
