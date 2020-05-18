@@ -62,6 +62,30 @@ Vim
 https://devhints.io/vim
 
 
+Mutt
+====
+
+http://www.ctex.org/documents/shredder/mutt_frame.html  # enough to read the 1st section
+
+## mutt keys
+
+Check /etc/mutt/key.muttrc for our customized key bindings.
+Type "?" in mutt will show you the complete key bindings.
+The most used ones are:
+
+	g       	reply to all recipients
+	m       	compose a new mail message
+	j/k		move up/down one line
+	-/<space>	move up/down one page
+	ctrl-u/ctrl-d	move up/down half page
+	9/G		move to bottom
+	0		move to top
+	/		search
+
+	a		apply patch
+	p		apply patch + git push
+
+
 Regular Expression
 ==================
 
