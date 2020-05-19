@@ -106,9 +106,27 @@ http://justinhileman.info/article/git-pretty/git-pretty.png
 https://github.com/k88hudson/git-flight-rules/blob/master/README_zh-CN.md
 https://github.com/521xueweihan/git-tips
 https://github.com/arslanbilal/git-cheat-sheet/blob/master/other-sheets/git-cheat-sheet-zh.md
+https://www.codementor.io/@citizen428/git-tutorial-10-common-git-problems-and-how-to-fix-them-aajv0katd
 http://www.columbia.edu/~zjn2101/intermediate-git/
 https://git-scm.com/book/zh/v2
 
+## resolve conflicts
+
+https://githowto.com/resolving_conflicts
+https://easyengine.io/tutorials/git/git-resolve-merge-conflicts/
+
+## edit emailed patch then apply
+
+in mutt: alt-e to open full email in vim
+
+in vim: modify the raw patch and save it
+        ctrl-g to show the full file name (at bottom line)
+
+in shell: copy & paste the full file name to command
+
+        git am /tmp/FILE
+
+btw, quilt and wiggle are also good patch tools.
 
 Markdown
 ========
