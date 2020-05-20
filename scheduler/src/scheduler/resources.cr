@@ -4,7 +4,7 @@ require "../elasticsearch_client"
 module Scheduler
     class Resources
 
-        class_property :redis_client, :es_client, :qos
+        class_property :redis_client, :es_client
         class_property :fsdir_root
         class_property :test_params
 
