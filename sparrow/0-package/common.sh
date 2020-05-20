@@ -1,3 +1,3 @@
 #!/bin/bash
 
-# download git trees
+gem install git activesupport rest-client
