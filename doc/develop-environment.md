@@ -104,3 +104,17 @@ Install these extensions:
 - Ruby
 
 - Ruby Solargraph
+
+
+# email notification app
+
+Usage:
+
+        ssh -X crystal
+        cd; wmmaiload &
+
+Look and feel:
+
+        http://tnemeth.free.fr/projets/dockapps.html
+
+The docker app will flash when there are new/unread emails.
