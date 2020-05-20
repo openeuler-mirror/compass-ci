@@ -12,7 +12,7 @@ require "./scheduler/monitor"
 
 # -------------------------------------------------------------------------------------------
 # end_user:
-# - restful API [post "/queues"] to submit a job to scheduler
+# - restful API [post "/submit_job"] to submit a job to scheduler
 # -- json formated [job] in the request data
 #  
 # -------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ module Scheduler
     # enqueue
     #  - echo job_id to caller
     #  -- job_id = "0" ? means failed
-    post "/queues" do |env|
+    post "/submit_job" do |env|
         job_id, error_code = Scheduler::Enqueue.respon(env, resources)
 
         job_id

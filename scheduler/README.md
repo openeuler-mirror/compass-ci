@@ -2,9 +2,9 @@
 
 # restful-API
 ## submit a job
-- restAPI: POST "/queues"
+- restAPI: POST "/submit_job"
 ```sequence
-User->Scheduler: POST "/queues" job content
+User->Scheduler: POST "/submit_job" job content
 Note left of User: job content\nin json format
 Scheduler->Redis: <job_id> = getSN
 Redis->Redis: increase global_job_id

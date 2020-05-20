@@ -10,7 +10,7 @@ def createPostContext(hash : Hash)
     response = HTTP::Server::Response.new(io)
     headers = HTTP::Headers { "content" => "application/json" }
     body = hash.to_json
-    request = HTTP::Request.new("POST", "/queues", headers, body)
+    request = HTTP::Request.new("POST", "/submit_job", headers, body)
     context = HTTP::Server::Context.new(request, response)
     return context
 end
