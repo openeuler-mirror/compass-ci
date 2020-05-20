@@ -69,10 +69,10 @@ Scheduler->TestBox: Done
 ```
 
 ## report mac's hostname
-- restAPI: PUT "/report?hostname=[:hostname]&mac=[:mac]"
+- restAPI: PUT "/set_host_mac?hostname=[:hostname]&mac=[:mac]"
 ```sequence
-User->Scheduler: PUT "/report?hostname=<hostname>&\nmac=<52-54-00-12-34-56>"
-Scheduler->ElasticSearch: get_config("report/hostnames",\n<52-54-00-12-34-56> => <hostname>)
+User->Scheduler: PUT "/set_host_mac?hostname=<hostname>&\nmac=<52-54-00-12-34-56>"
+Scheduler->ElasticSearch: get_config("set_host_mac/hostnames",\n<52-54-00-12-34-56> => <hostname>)
 Scheduler->User: Done
 ```
 
