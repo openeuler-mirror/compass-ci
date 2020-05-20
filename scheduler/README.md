@@ -10,7 +10,7 @@
 ```sequence
 User->Scheduler: POST "/submit_job" job content
 Note left of User: job content\nin json format
-Scheduler->Redis: <job_id> = getSN
+Scheduler->Redis: <job_id> = get_new_job_id
 Redis->Redis: increase global_job_id
 Scheduler->Scheduler: <job> = JSON.parse(HTML::body)
 Scheduler->Scheduler: <tbox_group> = determinQueueName
