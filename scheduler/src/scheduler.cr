@@ -91,14 +91,14 @@ module Scheduler
     # add a <ip> => <hostname>
     # add a <ip:port> => <hostname>
     # !!! how to do : two time calls with diffrent port. JUST use ip?
-    # curl -X PUT "http://localhost:3000/report?hostname=wfg&mac=00-01-02-03-04-05"
+    # curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg&mac=00-01-02-03-04-05"
     put "/set_host_mac" do |env|
         client_address = env.request.remote_address
 
         if (client_hostname = env.params.query["hostname"]?)
             client_mac = env.params.query["mac"]?
             data = {:address => client_address, :hostname => client_hostname, :mac => client_mac}
-            respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
+            respon  = resources.@es_client.not_nil!.add_config("set_host_mac/hostnames", data)
 
             "Done"
         else
