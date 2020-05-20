@@ -21,7 +21,7 @@ require "./scheduler/monitor"
 #  -- when find then return <#!ipxe and job.cgz kernal initrd>
 #  -- when no job return <#!ipxe no job messages>
 #
-# - restful API [put "/report?hostname=myhostname&mac=ff-ff-ff-ff-ff-ff"] to report testbox's {mac => hostname}
+# - restful API [put "/set_host_mac?hostname=myhostname&mac=ff-ff-ff-ff-ff-ff"] to report testbox's {mac => hostname}
 # - restful API [get "/tmpfs/11/job.cgz"] to download job(11) job.cgz file
 # - restful API [get "/~lkp/cgi-bin/lkp-jobfile-append-var"] report job var that should be append
 # 
@@ -86,13 +86,13 @@ module Scheduler
 
     # client(runner) report its hostname and mac
     #  - when a runner pull jobs with it's mac infor, scheduler find out what hostname is it
-    # /report?hostname=$hostname&mac=$mac (mac like ef:01:02:03:04:05)
+    # /set_host_mac?hostname=$hostname&mac=$mac (mac like ef:01:02:03:04:05)
     # add a <mac> => <hostname>
     # add a <ip> => <hostname>
     # add a <ip:port> => <hostname>
     # !!! how to do : two time calls with diffrent port. JUST use ip?
     # curl -X PUT "http://localhost:3000/report?hostname=wfg&mac=00-01-02-03-04-05"
-    put "/report" do |env|
+    put "/set_host_mac" do |env|
         client_address = env.request.remote_address
 
         if (client_hostname = env.params.query["hostname"]?)

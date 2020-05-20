@@ -1,6 +1,6 @@
 require "redis"
 require "./tools"
-
+#require "../lib/redis/src/redis"
 # -------------------------------------------------------------------------------------------
 # getSN()
 #  - use redis incr as job_id
