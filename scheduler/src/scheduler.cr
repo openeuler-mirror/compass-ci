@@ -32,13 +32,17 @@ require "./scheduler/monitor"
 #
 module Scheduler
     VERSION = "0.1.0"
+    
+    JOB_REDIS_HOST = "172.17.0.1"
+    JOB_REDIS_PORT = 6379
 
-    # get from local configure yaml file
+    JOB_ES_HOST = "172.17.0.1"
+    JOB_ES_PORT = 9200
 
 
     resources = Scheduler::Resources.new
-    resources.es_client("172.17.0.1", 9200)
-    resources.redis_client("172.17.0.1", 6379)
+    resources.es_client(JOB_ES_HOST, JOB_ES_PORT)
+    resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT)
     resources.fsdir_root(Kemal.config.public_folder)
     resources.test_params(%w(start_time end_time loadavg job_state))
 
