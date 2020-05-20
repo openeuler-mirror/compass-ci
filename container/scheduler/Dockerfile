@@ -18,7 +18,7 @@ RUN mkdir /usr/share/scheduler
 #
 # should build with: crystal build src/scheduler.cr --static 
 COPY scheduler /usr/share/scheduler
-COPY scheduler.yaml /usr/share/scheduler
+
 COPY create-job-cpio.sh /usr/share/scheduler
 
 EXPOSE 3000

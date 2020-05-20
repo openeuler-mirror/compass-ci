@@ -1,6 +1,6 @@
 require "kemal"
 
-require "./configure"
+
 require "./jobfile_operate"
 
 require "./scheduler/utils"
@@ -34,11 +34,11 @@ module Scheduler
     VERSION = "0.1.0"
 
     # get from local configure yaml file
-    config = Configure::YamlFileOperate.new("./scheduler.yaml")
+
 
     resources = Scheduler::Resources.new
-    resources.es_client(config.elasticSearchHost, config.elasticSearchPort)
-    resources.redis_client(config.redisHost, config.redisPort)
+    resources.es_client("localhost", 9200)
+    resources.redis_client("localhost", 6379)
     resources.fsdir_root(Kemal.config.public_folder)
     resources.test_params(%w(start_time end_time loadavg job_state))
 
