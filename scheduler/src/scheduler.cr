@@ -37,8 +37,8 @@ module Scheduler
 
 
     resources = Scheduler::Resources.new
-    resources.es_client("localhost", 9200)
-    resources.redis_client("localhost", 6379)
+    resources.es_client("172.17.0.1", 9200)
+    resources.redis_client("172.17.0.1", 6379)
     resources.fsdir_root(Kemal.config.public_folder)
     resources.test_params(%w(start_time end_time loadavg job_state))
 
