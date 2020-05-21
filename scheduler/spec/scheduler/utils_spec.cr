@@ -6,14 +6,13 @@ describe Scheduler::Utils do
     describe "ipxe boot for special testbox" do
         describe "if the runner has regist hostname then find job in testgroup_[hostname] queue" do
             it "job_id = 0, respon no job", tags: "slow" do
-                io = IO::Memory.new
-                response = HTTP::Server::Response.new(io)
-                request = HTTP::Request.new("GET", "/boot.ipxe/mac/52%3A54%3A00%3A12%3A34%3A56")
-
-                remoteIP = "127.0.0.1"
-                remotePort = 5555
+                mac = "52-54-00-12-34-56"
                 remoteHostname = "testHost"
-                remote_address = "#{remoteIP}:#{remotePort}"
+                remote_address = "127.0.0.1:5555"
+                
+                io = IO::Memory.new
+		response = HTTP::Server::Response.new(io)
+                request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
                 raw_es_client = Elasticsearch::API::Client.new( { :host => "localhost", :port => 9200 } )
                 raw_es_client.indices.delete({:index => "report"})
@@ -32,13 +31,12 @@ describe Scheduler::Utils do
                 resources.redis_client("localhost", 6379)
                 resources.es_client("localhost", 9200)
 
-                # regist runner { ip:port => hostname }
-                # maybe only { ip => hostname } || { mac => hostname } is valid
-                data = {:address => remote_address, :hostname => remoteHostname, :mac => nil}
+                # register {mac => hostname}
+                data = {:hostname => remoteHostname, :mac => mac}
                 respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
     
                 time_start = Time.utc
-                respon = Scheduler::Utils.findJobBoot(remote_address, context, resources)
+                respon = Scheduler::Utils.findJobBoot(mac, context, resources)
                 time_stop = Time.utc
                 timeLen = time_stop - time_start
 
@@ -47,16 +45,14 @@ describe Scheduler::Utils do
             end
     
             it "job_id != 0, respon initrd kernel job in .cgz file with testbox == test-group" do
-                io = IO::Memory.new
-                response = HTTP::Server::Response.new(io)
-                request = HTTP::Request.new("GET", "/boot.ipxe/mac/52%3A54%3A00%3A12%3A34%3A56")
-
-                remoteIP = "127.0.0.1"
-                remotePort = 5555
-                remoteHostname = "wfg-e595"
-                remote_address = "#{remoteIP}:#{remotePort}"
                 job_id = "testjob"
-                mac = "52:54:00:12:34:56"
+                mac = "52-54-00-12-34-56"
+                remoteHostname = "wfg-e595"
+                remote_address = "127.0.0.1:5555"
+                
+		io = IO::Memory.new
+                response = HTTP::Server::Response.new(io)
+                request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
                 raw_es_client = Elasticsearch::API::Client.new( { :host => "localhost", :port => 9200 } )
                 raw_es_client.indices.delete({:index => "report"})
@@ -77,11 +73,11 @@ describe Scheduler::Utils do
                 resources.es_client("localhost", 9200)
 
                 # regist runner hostname
-                data = { :address => remote_address, :hostname => remoteHostname, :mac => mac }
+                data = {:hostname => remoteHostname, :mac => mac }
                 respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
 
                 # client testbox is  wfg-e595
-                # job's testbox is    wfg-e595 
+                # job's testbox is   wfg-e595 
 
                 # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
                 resources.fsdir_root("/home/chief/code/crcode/scheduler/public")
@@ -113,17 +109,15 @@ describe Scheduler::Utils do
             end
 
             it "job_id != 0, respon initrd kernel job in .cgz file with test-group != testbox" do
-                io = IO::Memory.new
-                response = HTTP::Server::Response.new(io)
-                request = HTTP::Request.new("GET", "/boot.ipxe/mac/52%3A54%3A00%3A12%3A34%3A56")
-
-                remoteIP = "127.0.0.1"
-                remotePort = 5555
-                remoteHostname = "wfg-e595-002"
-                testgroup = "wfg-e595"
-                remote_address = "#{remoteIP}:#{remotePort}"
                 job_id = "testjob"
-                mac = "52:54:00:12:34:56"
+                testgroup = "wfg-e595"
+                mac = "52-54-00-12-34-56"
+                remoteHostname = "wfg-e595-002"
+                remote_address = "127.0.0.1:5555"
+                
+		io = IO::Memory.new
+                response = HTTP::Server::Response.new(io)
+                request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
                 raw_es_client = Elasticsearch::API::Client.new( { :host => "localhost", :port => 9200 } )
                 raw_es_client.indices.delete({:index => "report"})
@@ -145,11 +139,11 @@ describe Scheduler::Utils do
                 resources.es_client("localhost", 9200)
 
                 # regist runner hostname
-                data = { :address => remote_address, :hostname => remoteHostname, :mac => mac }
+                data = { :hostname => remoteHostname, :mac => mac }
                 respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
                 
                 # client testbox is  wfg-e595-002
-                # job's testbox is    wfg-e595 
+                # job's testbox is   wfg-e595 
 
                 # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
                 resources.fsdir_root("/home/chief/code/crcode/scheduler/public")
@@ -179,17 +173,15 @@ describe Scheduler::Utils do
             end
 
             it "job_id != 0, respon initrd kernel job in .cgz file with test-group != testbox != client hostname" do
-                io = IO::Memory.new
-                response = HTTP::Server::Response.new(io)
-                request = HTTP::Request.new("GET", "/boot.ipxe/mac/52%3A54%3A00%3A12%3A34%3A56")
-
-                remoteIP = "127.0.0.1"
-                remotePort = 5555
-                remoteHostname = "wfg-e595-001"
-                testgroup = "wfg-e595"
-                remote_address = "#{remoteIP}:#{remotePort}"
                 job_id = "testjob"
-                mac = "52:54:00:12:34:56"
+                testgroup = "wfg-e595"
+                mac = "52-54-00-12-34-56"
+                remoteHostname = "wfg-e595-001"
+                remote_address = "127.0.0.1:5555"
+                
+		io = IO::Memory.new
+                response = HTTP::Server::Response.new(io)
+                request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
                 raw_es_client = Elasticsearch::API::Client.new( { :host => "localhost", :port => 9200 } )
                 raw_es_client.indices.delete({:index => "report"})
@@ -210,7 +202,7 @@ describe Scheduler::Utils do
                 resources.es_client("localhost", 9200)
 
                 # regist runner hostname
-                data = { :address => remote_address, :hostname => remoteHostname, :mac => mac }
+                data = { :hostname => remoteHostname, :mac => mac }
                 respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
                 
                 # client testbox is  wfg-e595-002

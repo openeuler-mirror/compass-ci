@@ -100,7 +100,7 @@ Scheduler->TestBox: Done
 - inner process:
 ```sequence
 User->Scheduler: PUT "/set_host_mac?hostname=<hostname>&\nmac=<mac>"
-Scheduler->ElasticSearch: get_config("report/hostnames",\n<mac> => <hostname>)
+Scheduler->ElasticSearch: add_config("report/hostnames",\n<mac> => <hostname>)
 Scheduler->User: Done
 ```
 
