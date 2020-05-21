@@ -47,7 +47,7 @@ module Scheduler::Enqueue
         error_code = 0
 
         # use redis incr as global job_id
-        job_id = resources.@redis_client.not_nil!.getSN()
+        job_id = resources.@redis_client.not_nil!.get_new_job_id()
 
         if (job_id != "0")
             resources.@es_client.not_nil!.add("/jobs/job", hash, job_id)

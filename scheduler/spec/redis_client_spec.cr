@@ -6,7 +6,7 @@ describe Redis::Client do
         it "enqueue success" do
             redis_client = Redis::Client.new("localhost", 6379)
             time_befor = Time.local.to_unix_f
-            id = redis_client.getSN()
+            id = redis_client.get_new_job_id()
 
             before_add_priority = Time.local.to_unix_f
             redis_client.add2queue("test", id)

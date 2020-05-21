@@ -2,7 +2,7 @@ require "redis"
 require "./tools"
 #require "../lib/redis/src/redis"
 # -------------------------------------------------------------------------------------------
-# getSN()
+# get_new_job_id()
 #  - use redis incr as job_id
 #
 # -------------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ class Redis::Client
     end
 
     # redis incr is a 64bit signed int
-    def getSN()
+    def get_new_job_id()
         sn = @client.incr("global_job_id")
         return "#{sn}"
     end
