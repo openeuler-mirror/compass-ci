@@ -1,3 +1,3 @@
 #!/bin/bash
 
-gem install git activesupport rest-client
+gem install git activesupport rest-client cucumber

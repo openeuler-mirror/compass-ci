@@ -10,4 +10,4 @@ pkgs=(
 	docker-engine
 )
 
-yum install "${pkgs[@]}"
+yum install -y "${pkgs[@]}"
