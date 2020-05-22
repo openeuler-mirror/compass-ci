@@ -5,6 +5,8 @@
 - restAPI: POST "/submit_job"
 - request body: {"#!jobs/iperf.yaml":null,"suite":"iperf","testcase":"iperf"...}
 - response body: "#{job_id}" (job_id is a global unique sequence number, e.g. 6)
+- debug curl cmd:
+	curl -X POST --data '{"testcase": "iperf", "testbox": "myhost", "test-group": "mygroup", "root_result": "/result"}' http://localhost:3000/submit_job
 
 - inner process:
 ```sequence
@@ -20,11 +22,33 @@ Scheduler->ElasticSearch: add("jobs/job", <job>, <job_id>)
 ElasticSearch->ElasticSearch: create jobs/job document
 Scheduler->User: <job_id>
 ```
+- doing what:
+	1. add job_id to pending queue in redis
+	2. add a job document in es
+
+- redis storage: 
+	Key             |Value                                        |Type        |
+	global_job_id   |last_job_id                                  |String      |
+	<tbox_group>    |[{member => job_id, score => enqueue_time},] |Sorted_Set  |
+
+	Notes:
+	last_job_id, job_id: int64
+	enqueue_time: float64, times when the job_id is put to pending queue (testgroup_:tbox_group. e.g. testgroup_wfg-e595)
+	use redis Sorted_Set as a queue.
+
+- es storage:
+	add "jobs/job" document (contents of job)
+	extend set: job["id"]=job_id, job["root_result"]=job["root_result"]/job_id
+
+- class members related:
+	Scheduler::Enqueue.respon
 
 ## qemu-pxe testbox pull a job
 - restAPI: GET "/boot.ipxe/mac/:mac" (e.g. "/boot.ipxe/mac/52-54-00-12-34-56")
 - request body: none
 - response body: "#{ipxe_command}"
+- debug curl cmd:
+	curl http://localhost:3000/boot.ipxe/mac/54-52-00-12-24-46
 
 ### case 1: <ipxe_command> when find a job
 	#!ipxe
@@ -59,6 +83,28 @@ Scheduler->ElasticSearch: job = get("job/job", <job_id>)
 Scheduler->Scheduler: createJobPackage from job to job.cgz
 Scheduler->TestBox: <ipxe_command>
 ```
+- doing what:
+	1. use mac to search hostname in es "report/hostnames" document
+	2. move job_id from pending queue to "running" in redis
+	3. record {job_id => {"testbox":hostname}} to hi_running in redis
+	4. create job.cgz in scheduler
+	5. create ipxe_command
+
+- redis storage:
+	Key          |Value                                        |Type       |
+	<tbox_group> |[{member => job_id, score => enqueue_time},] |Sorted_Set |
+	running      |[{member => job_id, score => dequeue_time},] |Sorted_Set |
+	hi_running   |[{field => job_id, value => help_info},]     |Hash       |
+
+	Notes:
+	dequeue_time: float64, times when the job_id put in running queue
+	help_info: record information about a running job
+
+- es storage:
+	query "report/hostnames" document: index of {mac <=> hostname}
+
+- class members related:
+	Scheduler::Utils.findJobBoot
 
 ## job download
 - restAPI: GET "/tmpfs/:job_id/job.cgz" (e.g. "/tmpfs/6/job.cgz")
@@ -69,6 +115,7 @@ Scheduler->TestBox: <ipxe_command>
 	lkp/scheduled
 	lkp/scheduled/job.yaml
 	lkp/scheduled/job.sh
+- debug curl cmd: no need
 
 - inner process:
 ```sequence
@@ -76,6 +123,12 @@ TestBox->Scheduler: GET "/tmpfs/<job_id>/job.cgz"
 Note right of Scheduler: send fsdir_root/<job_id>/job.cgz\nto testbox
 Scheduler->TestBox: send_file job.cgz
 ```
+- doing what:
+	1. send job.cgz to client
+	2. remove job.cgz in scheduler
+
+- redis storage: no change
+- es storage: no change
 
 ## report job var
 - restAPI: GET "/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_id=:job_id&[:parameter=:value]"
@@ -91,11 +144,23 @@ Scheduler->ElasticSearch: updateJobParameter("job"=><job_id>,\n<parameter> => <v
 Scheduler->Redis: updateJobParameter("job"=><job_id>,\n<parameter> => <value>)
 Scheduler->TestBox: Done
 ```
+- doing what:
+	1. update "jobs/job" document in es
+
+- redis storage: no change
+- es storage:
+	update "jobs/job" document
+	extend set: job[parameter]=value
+
+- class members
+	Scheduler::Monitor.updateJobParameter
 
 ## report mac's hostname
 - restAPI: PUT "/set_host_mac?hostname=:hostname&mac=:mac" (e.g. "/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56")
 - request body: none
 - response body: "Done"
+- debug curl cmd:
+	curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56"
 
 - inner process:
 ```sequence
@@ -103,6 +168,28 @@ User->Scheduler: PUT "/set_host_mac?hostname=<hostname>&\nmac=<mac>"
 Scheduler->ElasticSearch: add_config("report/hostnames",\n<mac> => <hostname>)
 Scheduler->User: Done
 ```
+- doing what:
+	1. create/update "report/hostnames" document in es
+
+- redis storage: no change
+- es storage:
+	create/update "report/hostnames" document: index of {mac <=> hostname}
+
+
+---
+# es storage
+## job saved in "jobs/job" documents
+- debug curl cmd:
+	curl http://localhost:9200/jobs/job/6        # query a job with job_id=6
+	curl http://localhost:9200/jobs/job/_search  # query all jobs
+
+# redis client debug cmd
+## list all keys: keys *
+## get String key value: get global_job_id
+## get Sorted-Set key value: zrange running 0 -1 | zrange running 0 -1 withscores | zrange testgroup_mygroup 0 -1
+## get all Hash keys field: hkeys hi_running
+## get a Hash key value: hget hi_running 6  #->6 is a job_id
+
 
 ---
 # API use scenario
