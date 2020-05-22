@@ -22,7 +22,7 @@ require "./scheduler/monitor"
 #  -- when no job return <#!ipxe no job messages>
 #
 # - restful API [put "/set_host_mac?hostname=myhostname&mac=ff-ff-ff-ff-ff-ff"] to report testbox's {mac => hostname}
-# - restful API [get "/tmpfs/11/job.cgz"] to download job(11) job.cgz file
+# - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
 # - restful API [get "/~lkp/cgi-bin/lkp-jobfile-append-var"] report job var that should be append
 # 
 # -------------------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ module Scheduler
     end
 
     # file down load server
-    get "/tmpfs/:job_id/:job_package" do |env|
+    get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
         job_id = env.params.url["job_id"]
         job_package = env.params.url["job_package"]
         file_path = ::File.join [resources.@fsdir_root, job_id, job_package]

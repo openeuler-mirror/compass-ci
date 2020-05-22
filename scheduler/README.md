@@ -54,7 +54,7 @@ Scheduler->User: <job_id>
 	#!ipxe
 	initrd http://<server>:8000/os/debian/initrd.lkp
 	initrd http://<server>:8800/initrd/lkp/latest/lkp-aarch64.cgz
-	initrd http://<scheduler>:3000/tmpfs/<job_id>/job.cgz
+	initrd http://<scheduler>:3000/job_initrd_tmpfs/<job_id>/job.cgz
 	kernel http://<server>:8000/os/debian/vmlinuz user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job root=<server>:/os/debian rootovl ip=enp0s1:dhcp ro initrd=initrd.lkp initrd=lkp-aarch64.cgz initrd=job.cgz
 	boot
 
@@ -107,7 +107,7 @@ Scheduler->TestBox: <ipxe_command>
 	Scheduler::Utils.findJobBoot
 
 ## job download
-- restAPI: GET "/tmpfs/:job_id/job.cgz" (e.g. "/tmpfs/6/job.cgz")
+- restAPI: GET "/job_initrd_tmpfs/:job_id/job.cgz" (e.g. "/job_initrd_tmpfs/6/job.cgz")
 - request body: none
 - response body:
 	#less job.cgz
@@ -119,7 +119,7 @@ Scheduler->TestBox: <ipxe_command>
 
 - inner process:
 ```sequence
-TestBox->Scheduler: GET "/tmpfs/<job_id>/job.cgz"
+TestBox->Scheduler: GET "/job_initrd_tmpfs/<job_id>/job.cgz"
 Note right of Scheduler: send fsdir_root/<job_id>/job.cgz\nto testbox
 Scheduler->TestBox: send_file job.cgz
 ```
@@ -200,7 +200,7 @@ Scheduler->User: Done
 	debug shell cmd: /0_addjob.sh iperf.yaml # at cci/user-client/helper
 3. runs qemu.sh at cci/providers to get a job and run it
 	qemu.sh will call [GET "/boot.ipxe/mac/:mac"] to get ipxe boot paramater
-	qemu.sh will call [GET "/tmpfs/<job_id>/job.cgz"] go get the job package
+	qemu.sh will call [GET "/job_initrd_tmpfs/<job_id>/job.cgz"] go get the job package
 	qemu.sh start a testbox, and the testbox will call [GET "/~lkp/cgi-bin/..."]
 
 
