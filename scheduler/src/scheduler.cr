@@ -81,12 +81,6 @@ module Scheduler
 
         send_file env,  file_path
     end
-    get "/tmpfs/:job_id" do |env|
-        job_id = env.params.url["job_id"]
-        file_path = ::File.join [resources.@fsdir_root, job_id, "job.cgz"]
-
-        send_file env,  file_path
-    end
 
     # client(runner) report its hostname and mac
     #  - when a runner pull jobs with it's mac infor, scheduler find out what hostname is it
