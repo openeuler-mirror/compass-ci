@@ -96,7 +96,7 @@ module Scheduler
         if (client_hostname = env.params.query["hostname"]?)
             client_mac = env.params.query["mac"]?
             data = {:address => client_address, :hostname => client_hostname, :mac => client_mac}
-            respon  = resources.@es_client.not_nil!.add_config("set_host_mac/hostnames", data)
+            respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
 
             "Done"
         else
