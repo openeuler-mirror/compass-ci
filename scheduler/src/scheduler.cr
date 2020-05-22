@@ -119,11 +119,6 @@ module Scheduler
                 # update in es (job content)
                 if (value = env.params.query[parameter]?)
                     Scheduler::Monitor.updateJobParameter({ "job" => job_id,  parameter => value }, env, resources)
-
-                    # update in redis (job runing status)
-                    if (parameter == "job_state")
-                        Scheduler::Monitor.updateJobParameter({ "job" => job_id,  parameter => value }, env, resources)
-                    end
                 end
             end
         end

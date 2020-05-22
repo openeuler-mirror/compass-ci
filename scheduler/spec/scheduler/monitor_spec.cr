@@ -14,101 +14,6 @@ def gen_put_context(url : String)
 end
 
 describe Scheduler::Monitor do
-    describe "status maintain" do
-        it "recieve running, then update the running job status" do
-            context = gen_put_context("/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_state=running")
-            parameter_key = "job_state"
-
-            # job_id =  context.request.query_params["job"]
-            job_id = "testjob"
-            job_status =  context.request.query_params[parameter_key]
-
-            resources = Scheduler::Resources.new
-            resources.redis_client("localhost", 6379)
-
-            raw_redis = Redis.new("localhost", 6379)
-            job_list = "running"
-            hi_job_list = "hi_running"
-            raw_redis.del(job_list)
-            raw_redis.del(hi_job_list)
-
-            priorityAsScore = Time.local.to_unix_f
-            raw_redis.zadd(job_list, priorityAsScore, job_id)
-            raw_redis.hset(hi_job_list, job_id, %({"testbox":"tcm-001"}))
-
-            hash = { "job" => job_id, parameter_key => job_status }
-            respon = Scheduler::Monitor.updateJobStatus(hash, context, resources)
-
-            respon = raw_redis.hget(hi_job_list, job_id)
-            respon =JSON.parse(respon.not_nil!)
-            (respon["testbox"]).should eq("tcm-001")
-            (respon["process"]).should eq("0%")
-        end
-
-        it "recieve post_run report, then update the running job status" do
-            context = gen_put_context("/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_state=post_run")
-            parameter_key = "job_state"
-
-            # job_id =  context.request.query_params["job"]
-            job_id = "testjob"
-            job_status =  context.request.query_params[parameter_key]
-
-            resources = Scheduler::Resources.new
-            resources.redis_client("localhost", 6379)
-
-            raw_redis = Redis.new("localhost", 6379)
-            job_list = "running"
-            hi_job_list = "hi_running"
-            raw_redis.del(job_list)
-            raw_redis.del(hi_job_list)
-
-            priorityAsScore = Time.local.to_unix_f
-            raw_redis.zadd(job_list, priorityAsScore, job_id)
-            raw_redis.hset(hi_job_list, job_id, %({"testbox":"tcm-001"}))
-
-            hash = { "job" => job_id, parameter_key => job_status }
-            respon = Scheduler::Monitor.updateJobStatus(hash, context, resources)
-
-            respon = raw_redis.hget(hi_job_list, job_id)
-            respon =JSON.parse(respon.not_nil!)
-            (respon["testbox"]).should eq("tcm-001")
-            (respon["process"]).should eq("99%")
-        end
-
-        it "recieve finished, then remove from the running queue" do
-            context = gen_put_context("/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_state=finished")
-            parameter_key = "job_state"
-
-            # job_id =  context.request.query_params["job"]
-            job_id = "testjob"
-            job_status =  context.request.query_params[parameter_key]
-
-            resources = Scheduler::Resources.new
-            resources.redis_client("localhost", 6379)
-
-            raw_redis = Redis.new("localhost", 6379)
-            job_list = "running"
-            hi_job_list = "hi_running"
-            raw_redis.del(job_list)
-            raw_redis.del(hi_job_list)
-
-            priorityAsScore = Time.local.to_unix_f
-            raw_redis.zadd(job_list, priorityAsScore, job_id)
-            raw_redis.hset(hi_job_list, job_id, %({"testbox":"tcm-001"}))
-
-            hash = { "job" => job_id, parameter_key => job_status }
-            respon = Scheduler::Monitor.updateJobStatus(hash, context, resources)
-
-            respon = raw_redis.zrank(job_list, job_id)
-            respon.should be_nil
-            respon = raw_redis.hget(hi_job_list, job_id)
-            respon.should be_nil
-        end
-
-        it "recieve process report, but the not find the job_id in queue..." do
-        end
-    end
-
     describe "job maintain" do
         it "recieve job parameters, then update the job parametre" do
             context = gen_put_context("/~lkp/cgi-bin/lkp-jobfile-append-var??job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698")
@@ -137,25 +42,6 @@ describe Scheduler::Monitor do
 
             respon = resources.@es_client.not_nil!.get("jobs/job", job_id)
             (respon["_source"][parameter_key]).should eq("1587725398")
-        end
-    end
-
-    # merge just like cover
-    describe "learning hash merge" do
-        it "test ", tags: "learning" do
-            json_a = JSON.parse(%({"testbox":"tcm01"}))
-            json_b = JSON.parse(%({"testbox":"tcm02"}))
-            (json_a.as_h.merge(json_b.as_h)["testbox"]).should eq("tcm02")
-
-            json_a = JSON.parse(%({"testbox":"tcm01"}))
-            json_b = JSON.parse(%({"testbox2":"tcm02"}))
-            (json_a.as_h.merge(json_b.as_h)["testbox"]).should eq("tcm01")
-            (json_a.as_h.merge(json_b.as_h)["testbox2"]).should eq("tcm02")
-
-            json_a = JSON.parse(%({"testbox":"tcm01", "testbox2":[{"testname":"testvalue", "testname2":"testvalue2"}]}))
-            json_b = JSON.parse(%({"testbox2":[{"testname":"testvalue2"}]}))
-            (json_a.as_h.merge(json_b.as_h)["testbox"]).should eq("tcm01")
-            (json_a.as_h.merge(json_b.as_h)["testbox2"]).should eq([{"testname" => "testvalue2"}])
         end
     end
 end
