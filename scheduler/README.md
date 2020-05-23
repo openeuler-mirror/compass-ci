@@ -52,10 +52,10 @@ Scheduler->User: <job_id>
 
 ### case 1: <ipxe_command> when find a job
 	#!ipxe
-	initrd http://<server>:8000/os/debian/initrd.lkp
+	initrd http://<server>:8000/os/debian/aarch64/sid/initrd.lkp
 	initrd http://<server>:8800/initrd/lkp/latest/lkp-aarch64.cgz
 	initrd http://<scheduler>:3000/job_initrd_tmpfs/<job_id>/job.cgz
-	kernel http://<server>:8000/os/debian/vmlinuz user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job root=<server>:/os/debian rootovl ip=enp0s1:dhcp ro initrd=initrd.lkp initrd=lkp-aarch64.cgz initrd=job.cgz
+	kernel http://<server>:8000/os/debian/aarch64/sid/vmlinuz user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job root=<server>:/os/debian/aarch64/sid rootovl ip=enp0s1:dhcp ro initrd=initrd.lkp initrd=lkp-aarch64.cgz initrd=job.cgz
 	boot
 
 #### who generate this output
