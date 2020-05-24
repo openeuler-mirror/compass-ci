@@ -6,6 +6,7 @@ cmd=(
 	docker run
 	--name s001-alpine
 	-d
+	-u 1090:1090
 	-p 3000:3000
 	-e LKP_SRC=$LKP_SRC
 	-v $LKP_SRC:$LKP_SRC
