@@ -128,8 +128,7 @@ module Scheduler
     end
 
     # client(runner) report job post_run finished
-    # /~lkp/cgi-bin/lkp-post-run
-    #  ?job_file=/lkp/scheduled/job.yaml&job_id=40
+    # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
     #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
     get "/~lkp/cgi-bin/lkp-post-run" do |env|
 	# get job_id from request
