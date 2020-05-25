@@ -24,6 +24,7 @@ require "./scheduler/monitor"
 # - restful API [put "/set_host_mac?hostname=myhostname&mac=ff-ff-ff-ff-ff-ff"] to report testbox's {mac => hostname}
 # - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
 # - restful API [get "/~lkp/cgi-bin/lkp-jobfile-append-var"] report job var that should be append
+# - restful API [get "/~lkp/cgi-bin/lkp-post-run" ] to remove job from redis queue(running and hi_running)
 # 
 # -------------------------------------------------------------------------------------------
 # scheduler: 
@@ -124,6 +125,21 @@ module Scheduler
         end
 
         "Done"
+    end
+
+    # client(runner) report job post_run finished
+    # /~lkp/cgi-bin/lkp-post-run
+    #  ?job_file=/lkp/scheduled/job.yaml&job_id=40
+    #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
+    get "/~lkp/cgi-bin/lkp-post-run" do |env|
+	# get job_id from request
+	job_id = env.params.query["job_id"]?
+	if job_id
+            # update redis status
+            resources.@redis_client.not_nil!.removeRunning(job_id)
+	end
+	
+	"Done"
     end
     
     Kemal.run(3000)

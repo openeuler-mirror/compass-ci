@@ -155,6 +155,26 @@ Scheduler->TestBox: Done
 - class members
 	Scheduler::Monitor.updateJobParameter
 
+## report job finished
+- restAPI: GET "/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=<job_id>"
+- request body: none
+- response body: "Done"
+- debug curl cmd:
+        curl "/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
+
+- inner process:
+```sequence
+User->Scheduler: GET "/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=<job_id>"
+Scheduler->Redis: removeRunning(job_id)
+Scheduler->User: Done
+```
+- doing what:
+        1. remove job from redis queue(running and hi_running)
+
+- redis storage: 
+        removeRunning(job_id):removejobfromredisqueue(running and hi_running)
+- es storage: no change
+
 ## report mac's hostname
 - restAPI: PUT "/set_host_mac?hostname=:hostname&mac=:mac" (e.g. "/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56")
 - request body: none
