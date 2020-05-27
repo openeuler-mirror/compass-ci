@@ -2,7 +2,7 @@
 # For your reference only.
 # It's better to run the below scripts step by step.
 
-cd /c/crystal-ci/sparrow || exit
+#cd /c/crystal-ci/sparrow || exit一开始不需要指定路径，允许用户在任意路径开始部署系统
 
 0-package/install.sh
 1-storage/tiny.sh
