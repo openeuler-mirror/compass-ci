@@ -2,6 +2,6 @@
 
 source /etc/os-release
 
-./${ID}.sh
+. $(dirname ${BASH_SOURCE[0]})/${ID}.sh
 
-./common.sh
+. $(dirname ${BASH_SOURCE[0]})/common.sh
