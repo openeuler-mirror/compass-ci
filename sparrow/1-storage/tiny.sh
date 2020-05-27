@@ -10,4 +10,4 @@ dirs=(
 	/srv/scheduler
 )
 
-mkdir "${dirs[@]}"
+mkdir -p "${dirs[@]}"
