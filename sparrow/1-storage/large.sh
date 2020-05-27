@@ -86,13 +86,13 @@ cat >> /etc/fstab <<EOF
 EOF
 
 
-mkdir /srv/redis
-mkdir /srv/etcd
-mkdir /srv/es
-mkdir /srv/os
-mkdir /srv/result
-mkdir /srv/initrd
-mkdir /srv/git
+mkdir -p /srv/redis
+mkdir -p /srv/etcd
+mkdir -p /srv/es
+mkdir -p /srv/os
+mkdir -p /srv/result
+mkdir -p /srv/initrd
+mkdir -p /srv/git
 mount /srv/redis
 mount /srv/etcd
 mount /srv/es
@@ -100,11 +100,11 @@ mount /srv/os
 mount /srv/result
 mount /srv/initrd
 mount /srv/git
-mkdir /cci
+mkdir -p /cci
 mount /cci
-mkdir /backup
+mkdir -p /backup
 mount /backup
-mkdir /var/lib/docker
+mkdir -p /var/lib/docker
 mount /var/lib/docker
-mkdir /c
+mkdir -p /c
 mount /c
