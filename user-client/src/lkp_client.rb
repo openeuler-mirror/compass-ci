@@ -48,7 +48,7 @@ class LkpClient
   end
 
   def get_cmd
-    resource = RestClient::Resource.new("http://#{@server.host}:#{@server.port}/submit_job",
+    resource = RestClient::Resource.new("http://#{@server.host}:#{@server.port}/query_job",
                                         { headers: { 'Authorization' => @auth,
                                                      :jobid => '@path' } })
     resource.get
