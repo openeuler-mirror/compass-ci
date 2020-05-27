@@ -6,7 +6,7 @@ cmd=(
 	-v vhome:/home
 	-v vroot:/root
 	-v /c:/c
-	-v /os:/os
+	-v /os:/srv/os
 	-p 2201:2201
 	-p 1301:1301
 	--hostname debian
