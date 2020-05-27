@@ -5,6 +5,8 @@ pkgs=(
 	git
 	ruby
 	rubygems
+	ruby-devel
+	bridge-utils
 	qemu
 	lvm2
 	docker-engine

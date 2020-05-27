@@ -5,6 +5,8 @@ pkgs=(
 	lvm2
 	docker.io
 	ruby-full
+	ruby-dev
+	bridge-utils
 	qemu
 )
 
