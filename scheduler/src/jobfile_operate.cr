@@ -49,8 +49,8 @@ module Jobfile::Operate
         end
     end
     
-    def self.save_job_file(object, job_id, base)
-        temp_yaml = base + "/" +  job_id + "/job.yaml"
+    def self.create_job_cpio(job_content : JSON::Any, base_dir : String)
+	temp_yaml = base_dir + "/" +  job_content["id"].to_s + "/job.yaml"
         prepareDir(temp_yaml)
 
         # no change to <object> content { "#! jobs/pixz.yaml": null }
@@ -58,7 +58,7 @@ module Jobfile::Operate
         #  - but the orange is <#! jobs/pixz.yaml> in the user job.yaml
         # tested : no effect to job.sh
         File.open(temp_yaml, "w") do |file|
-            YAML.dump(object, file)
+            YAML.dump(job_content, file)
         end
 
         cmd = "./create-job-cpio.sh #{temp_yaml}"
@@ -70,14 +70,6 @@ module Jobfile::Operate
         end
     end
       
-    def self.createJobPackage(job_id : String, resources : Scheduler::Resources)
-        if job_id != "0"
-            if resources.@es_client != nil
-                save_job_file(resources.@es_client.not_nil!.get("jobs/job", job_id)["_source"], job_id, resources.@fsdir_root.not_nil!)
-            end
-        end
-    end
-
     def self.load_yaml(filePath : String)
         yaml =  File.open(filePath) do |file|
             YAML.parse(file)
