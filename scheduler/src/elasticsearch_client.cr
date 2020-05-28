@@ -75,24 +75,6 @@ class Elasticsearch::Client
     end
 
     # {"report":{"mappings":{"properties":{"hostname":{"type":"text","fields":{"keyword":{"type":"keyword","ignore_above":256}}}}}
-    def add_config(documents_path : String, hash : Hash)
-        dp = documents_path.split("/")
-
-        hostname  = hash[:hostname]
-        mac       = hash[:mac]
-        if hash[:mac]?
-            response = @client.create(
-                {
-                    :index => dp[dp.size - 2],
-                    :type => dp[dp.size - 1],
-                    :id => "#{mac}",
-                    :body => { :hostname => hostname }
-                }
-            )
-        end
-
-        return response
-    end
 
     def get_config(documents_path : String, id : String)
         dp = documents_path.split("/")
