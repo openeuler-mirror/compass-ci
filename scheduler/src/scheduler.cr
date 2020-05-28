@@ -96,10 +96,11 @@ module Scheduler
 
         if (client_hostname = env.params.query["hostname"]?)
             client_mac = env.params.query["mac"]?
-            data = {:address => client_address, :hostname => client_hostname, :mac => client_mac}
-            respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
+            if client_mac !=nil
+                respon  = resources.@redis_client.not_nil!.@client.hset("mac2host", client_mac, client_hostname)
 
-            "Done"
+                "Done"
+            end
         else
 
             "No yet!"

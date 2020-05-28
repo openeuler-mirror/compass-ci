@@ -15,9 +15,6 @@ require "./tools"
 #  - update hash content to es document
 #
 # -------------------------------------------------------------------------------------------
-# add_config(documents_path : String, hash : Hash)
-#  - add|replace a <mac> => <hostname>, use <mac> as document id
-#  - add|replace a <ip:port> => <hostname>, use <ip:port> as document id
 
 class Elasticsearch::Client
     class_property :client
@@ -72,25 +69,6 @@ class Elasticsearch::Client
             }
         )
         return response
-    end
-
-    # {"report":{"mappings":{"properties":{"hostname":{"type":"text","fields":{"keyword":{"type":"keyword","ignore_above":256}}}}}
-
-    def get_config(documents_path : String, id : String)
-        dp = documents_path.split("/")
-        response = @client.get(
-            {
-                :index => dp[dp.size - 2],
-                :type => dp[dp.size - 1],
-                :id => id
-            }
-        )
-
-        if (response["found"]?) && (response["found"] == true)
-            return response["_source"]["hostname"].to_s
-        else
-            return nil
-        end
     end
 
     # [no use now] add a yaml file to es documents_path
