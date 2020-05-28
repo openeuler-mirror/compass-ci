@@ -5,8 +5,8 @@
 - restAPI: POST "/submit_job"
 - request body: {"#!jobs/iperf.yaml":null,"suite":"iperf","testcase":"iperf"...}
 - response body: "#{job_id}" (job_id is a global unique sequence number, e.g. 6)
-- debug curl cmd:
-	curl -X POST --data '{"testcase": "iperf", "testbox": "myhost", "test-group": "mygroup", "root_result": "/result"}' http://localhost:3000/submit_job
+- debug cmd:
+	curl -X POST --data '{"testcase": "iperf", "testbox": "myhost", "test-group": "mygroup", "result_root": "/result/ipef"}' http://localhost:3000/submit_job
 
 - inner process:
 ```sequence
@@ -28,17 +28,17 @@ Scheduler->User: <job_id>
 
 - redis storage: 
 	Key                   |Value                                        |Type        |
-	sched/seqno2jobid     |last_job_id                                  |String      |
+	sched/seqno2jobid     |last_job_id => 64bit number                  |String      |
 	<tbox_group_queue>    |[{member => job_id, score => enqueue_time},] |Sorted_Set  |
 
 	Notes:
-	last_job_id, job_id: int64
-	enqueue_time: float64, times when the job_id is put to pending queue (sched/jobs_to_run/:tbox_group. e.g. sched/jobs_to_run/twfg-e595)
-	use redis Sorted_Set as a queue.
+	enqueue_time: float64
+	tbox_group_queue: jobs to run queue (e.g. sched/jobs_to_run/wfg-e595)
+	use redis Sorted_Set as a job queue, one per tbox_group.
 
 - es storage:
 	add "jobs/job" document (contents of job)
-	extend set: job["id"]=job_id, job["root_result"]=job["root_result"]/job_id
+	extend set: job["_id"]=job_id, job["result_root"]=job["result_root"] + "/#{job_id}"
 
 - class members related:
 	Scheduler::Enqueue.respon
@@ -47,7 +47,7 @@ Scheduler->User: <job_id>
 - restAPI: GET "/boot.ipxe/mac/:mac" (e.g. "/boot.ipxe/mac/52-54-00-12-34-56")
 - request body: none
 - response body: "#{ipxe_command}"
-- debug curl cmd:
+- debug cmd:
 	curl http://localhost:3000/boot.ipxe/mac/54-52-00-12-24-46
 
 ### case 1: <ipxe_command> when find a job
@@ -87,7 +87,7 @@ Scheduler->TestBox: <ipxe_command>
 	1. use mac to search hostname in es "report/hostnames" document
 	2. move job_id from pending queue to "running" in redis
 	3. record {job_id => {"testbox":hostname}} to hi_running in redis
-	4. create job.cgz in scheduler
+	4. create job.cgz, save it to /job_initrd_tmpfs/<job_id>/
 	5. create ipxe_command
 
 - redis storage:
@@ -115,7 +115,7 @@ Scheduler->TestBox: <ipxe_command>
 	lkp/scheduled
 	lkp/scheduled/job.yaml
 	lkp/scheduled/job.sh
-- debug curl cmd: no need
+- debug cmd: no need
 
 - inner process:
 ```sequence
@@ -125,7 +125,7 @@ Scheduler->TestBox: send_file job.cgz
 ```
 - doing what:
 	1. send job.cgz to client
-	2. remove job.cgz in scheduler
+	2. remove job.cgz
 
 - redis storage: no change
 - es storage: no change
@@ -159,7 +159,7 @@ Scheduler->TestBox: Done
 - restAPI: GET "/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=<job_id>"
 - request body: none
 - response body: "Done"
-- debug curl cmd:
+- debug cmd:
         curl "/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
 
 - inner process:
@@ -179,7 +179,7 @@ Scheduler->User: Done
 - restAPI: PUT "/set_host_mac?hostname=:hostname&mac=:mac" (e.g. "/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56")
 - request body: none
 - response body: "Done"
-- debug curl cmd:
+- debug cmd:
 	curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56"
 
 - inner process:
@@ -199,7 +199,7 @@ Scheduler->User: Done
 ---
 # es storage
 ## job saved in "jobs/job" documents
-- debug curl cmd:
+- debug cmd:
 	curl http://localhost:9200/jobs/job/6        # query a job with job_id=6
 	curl http://localhost:9200/jobs/job/_search  # query all jobs
 
