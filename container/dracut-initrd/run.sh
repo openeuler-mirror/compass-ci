@@ -1,8 +1,13 @@
 #!/bin/bash
+# create initramfs from specified os lib modules
+# input:
+#   specified os lib modules directory
+# output:
+#   initramfs image file of the specified os version
 
 [ -d "$1" ] || {
 	echo "Example usage:
-		./run.sh /os/debian/lib/modules/5.4.0-4-arm64
+		./run.sh /os/debian/aarch64/sid/lib/modules/5.4.0-4-arm64
 "
 	exit
 }
@@ -24,7 +29,7 @@ cmd=(
 	dracut --force --kver $kver -k $kernel_modules $initrd_output
 
 	# example:
-	# dracut --kver 5.4.0-4-arm64 -k /os/debian/lib/modules/5.4.0-4-arm64 /os/debian/boot/initramfs.lkp-5.4.0-4-arm64.img
+	# dracut --kver 5.4.0-4-arm64 -k /os/debian/aarch64/sid/lib/modules/5.4.0-4-arm64 /os/debian/aarch64/sid/boot/initramfs.lkp-5.4.0-4-arm64.img
 )
 
 "${cmd[@]}"
