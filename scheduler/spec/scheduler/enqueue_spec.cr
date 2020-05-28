@@ -29,11 +29,11 @@ describe Scheduler::Enqueue do
             raw_redis = Redis.new("localhost", 6379)
             job_list = "testbox_myhost"
             raw_redis.zremrangebyrank(job_list, 0, -1)
-            job_list = "testgroup_myhost"
+            job_list = "sched/jobs_to_run/myhost"
             raw_redis.zremrangebyrank(job_list, 0, -1)
     
             job_id, error_code = Scheduler::Enqueue.respon(context, resources)
-            job_list = "testgroup_myhost"
+            job_list = "sched/jobs_to_run/myhost"
             job_info = raw_redis.zrange(job_list, 0, -1, true)
             (job_id).should eq(job_info[0])
 
@@ -42,7 +42,7 @@ describe Scheduler::Enqueue do
             (job_info.size).should eq(0)
         end
 
-        it "job has property testbox and test-group, save to testgroup_xxx queue not to testbox_xxx" do
+        it "job has property testbox and test-group, save to sched/jobs_to_run/xxx queue not to testbox_xxx" do
             context = createPostContext({ :testcase => "1234", :testbox => "mygroup-1", "test-group" => "mygroup"})
 
             resources = Scheduler::Resources.new
@@ -50,7 +50,7 @@ describe Scheduler::Enqueue do
             resources.es_client("localhost", 9200)
     
             raw_redis = Redis.new("localhost", 6379)
-            job_list = "testgroup_mygroup"
+            job_list = "sched/jobs_to_run/mygroup"
             raw_redis.zremrangebyrank(job_list, 0, -1)
             job_list = "testbox_myhost"
             raw_redis.zremrangebyrank(job_list, 0, -1)
@@ -58,7 +58,7 @@ describe Scheduler::Enqueue do
             job_id, error_code = Scheduler::Enqueue.respon(context, resources)
             job_list = "testbox_myhost"
             job_info_b = raw_redis.zrange(job_list, 0, -1, true)
-            job_list = "testgroup_mygroup"
+            job_list = "sched/jobs_to_run/mygroup"
             job_info_g = raw_redis.zrange(job_list, 0, -1, true)
 
             (job_id).should eq(job_info_g[0])

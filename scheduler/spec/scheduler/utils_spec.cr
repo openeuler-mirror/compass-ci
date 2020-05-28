@@ -18,7 +18,7 @@ describe Scheduler::Utils do
                 raw_es_client.indices.delete({:index => "report"})
 
                 raw_redis = Redis.new("localhost",  6379)
-                pending_list = "testgroup_#{remoteHostname}"
+                pending_list = "sched/jobs_to_run/#{remoteHostname}"
                 raw_redis.del(pending_list)
                 pending_list = "testbox_#{remoteHostname}"
                 raw_redis.del(pending_list)
@@ -59,7 +59,7 @@ describe Scheduler::Utils do
                 raw_es_client.indices.delete({:index => "jobs"})
 
                 raw_redis = Redis.new("localhost",  6379)
-                pending_list = "testgroup_#{remoteHostname}"
+                pending_list = "sched/jobs_to_run/#{remoteHostname}"
                 raw_redis.del(pending_list)
                 raw_redis.del("running")
                 raw_redis.zadd(pending_list, "1.1", job_id)
@@ -96,7 +96,7 @@ describe Scheduler::Utils do
                 respon_list[2].should start_with("initrd")
                 respon_list[respon_list.size - 2].should eq("boot")
 
-                pending_list = "testgroup_#{remoteHostname}"
+                pending_list = "sched/jobs_to_run/#{remoteHostname}"
                 respon = raw_redis.zrange(pending_list, 0, -1, true)
                 (respon.size).should eq(0)
                 respon = raw_redis.zrange("running", 0, -1, true)
@@ -124,7 +124,7 @@ describe Scheduler::Utils do
                 raw_es_client.indices.delete({:index => "jobs"})
 
                 raw_redis = Redis.new("localhost",  6379)
-                pending_list = "testgroup_#{testgroup}"
+                pending_list = "sched/jobs_to_run/#{testgroup}"
                 raw_redis.del(pending_list)
                 raw_redis.del("running")
                 raw_redis.del("hi_running")
@@ -162,7 +162,7 @@ describe Scheduler::Utils do
                 respon_list[2].should start_with("initrd")
                 respon_list[respon_list.size - 2].should eq("boot")
 
-                pending_list = "testgroup_#{testgroup}"
+                pending_list = "sched/jobs_to_run/#{testgroup}"
                 respon = raw_redis.zrange(pending_list, 0, -1, true)
                 (respon.size).should eq(0)
                 respon = raw_redis.zrange("running", 0, -1, true)
@@ -188,7 +188,7 @@ describe Scheduler::Utils do
                 raw_es_client.indices.delete({:index => "jobs"})
 
                 raw_redis = Redis.new("localhost",  6379)
-                pending_list = "testgroup_#{testgroup}"
+                pending_list = "sched/jobs_to_run/#{testgroup}"
                 raw_redis.del(pending_list)
                 raw_redis.del("running")
                 raw_redis.zadd(pending_list, "1.1", job_id)
@@ -226,7 +226,7 @@ describe Scheduler::Utils do
                 respon_list[2].should start_with("initrd")
                 respon_list[respon_list.size - 2].should eq("boot")
 
-                pending_list = "testgroup_#{testgroup}"
+                pending_list = "sched/jobs_to_run/#{testgroup}"
                 respon = raw_redis.zrange(pending_list, 0, -1, true)
                 (respon.size).should eq(0)
                 respon = raw_redis.zrange("running", 0, -1, true)

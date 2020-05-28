@@ -27,7 +27,7 @@ describe Scheduler::Dequeue do
 
             testbox = "tcm001"
 
-            job_list = "testgroup_#{testbox}"
+            job_list = "sched/jobs_to_run/#{testbox}"
             raw_redis.del(job_list)
 
             # running_list = "running" and running_info_list = "hi_running"
@@ -66,7 +66,7 @@ describe Scheduler::Dequeue do
 
             testbox = "tcm001"
 
-            job_list = "testgroup_#{testbox}"
+            job_list = "sched/jobs_to_run/#{testbox}"
             raw_redis.del(job_list)
             raw_redis.del("running")
 
