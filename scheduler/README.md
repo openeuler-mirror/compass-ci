@@ -13,7 +13,7 @@
 User->Scheduler: POST "/submit_job" job content
 Note left of User: job content\nin json format
 Scheduler->Redis: <job_id> = get_new_job_id
-Redis->Redis: increase global_job_id
+Redis->Redis: increase sched/seqno2jobid
 Scheduler->Scheduler: <job> = JSON.parse(HTML::body)
 Scheduler->Scheduler: <tbox_group> = determinQueueName, <tbox_group_queue> = "sched/jobs_to_run/#{tbox_group}"
 Scheduler->Redis: add2queue(<tbox_group_queue>, <job_id>)
@@ -28,7 +28,7 @@ Scheduler->User: <job_id>
 
 - redis storage: 
 	Key                   |Value                                        |Type        |
-	global_job_id         |last_job_id                                  |String      |
+	sched/seqno2jobid     |last_job_id                                  |String      |
 	<tbox_group_queue>    |[{member => job_id, score => enqueue_time},] |Sorted_Set  |
 
 	Notes:
@@ -205,7 +205,7 @@ Scheduler->User: Done
 
 # redis client debug cmd
 ## list all keys: keys *
-## get String key value: get global_job_id
+## get String key value: get sched/seqno2jobid
 ## get Sorted-Set key value: zrange running 0 -1 | zrange running 0 -1 withscores | zrange sched/jobs_to_run/mygroup 0 -1
 ## get all Hash keys field: hkeys hi_running
 ## get a Hash key value: hget hi_running 6  #->6 is a job_id
