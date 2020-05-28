@@ -15,9 +15,9 @@ Note left of User: job content\nin json format
 Scheduler->Redis: <job_id> = get_new_job_id
 Redis->Redis: increase global_job_id
 Scheduler->Scheduler: <job> = JSON.parse(HTML::body)
-Scheduler->Scheduler: <tbox_group> = determinQueueName
-Scheduler->Redis: add2queue(<tbox_group>, <job_id>)
-Redis->Redis: put <job_id> to pending queue <tbox_group> 
+Scheduler->Scheduler: <tbox_group> = determinQueueName, <tbox_group_queue> = "sched/jobs_to_run/#{tbox_group}"
+Scheduler->Redis: add2queue(<tbox_group_queue>, <job_id>)
+Redis->Redis: put <job_id> to pending queue <tbox_group_queue> 
 Scheduler->ElasticSearch: add("jobs/job", <job>, <job_id>)
 ElasticSearch->ElasticSearch: create jobs/job document
 Scheduler->User: <job_id>
@@ -27,13 +27,13 @@ Scheduler->User: <job_id>
 	2. add a job document in es
 
 - redis storage: 
-	Key             |Value                                        |Type        |
-	global_job_id   |last_job_id                                  |String      |
-	<tbox_group>    |[{member => job_id, score => enqueue_time},] |Sorted_Set  |
+	Key                   |Value                                        |Type        |
+	global_job_id         |last_job_id                                  |String      |
+	<tbox_group_queue>    |[{member => job_id, score => enqueue_time},] |Sorted_Set  |
 
 	Notes:
 	last_job_id, job_id: int64
-	enqueue_time: float64, times when the job_id is put to pending queue (testgroup_:tbox_group. e.g. testgroup_wfg-e595)
+	enqueue_time: float64, times when the job_id is put to pending queue (sched/jobs_to_run/:tbox_group. e.g. sched/jobs_to_run/twfg-e595)
 	use redis Sorted_Set as a queue.
 
 - es storage:
@@ -78,7 +78,7 @@ TestBox->Scheduler: GET "/boot.ipxe/mac/52-54-00-12-34-56"
 Scheduler->ElasticSearch: <hostname> = get_config("report/hostnames", "52-54-00-12-34-56")
 Scheduler->Scheduler: <tbox_group> = getTestgroupName(<hostname>)
 Scheduler->Redis: <job_id> = findAnyJob(<tbox_group>)
-Redis->Redis: moveJob(<tbox_group>, "running", <job_id>)
+Redis->Redis: moveJob("sched/jobs_to_run/#{tbox_group}", "running", <job_id>)
 Scheduler->ElasticSearch: job = get("job/job", <job_id>)
 Scheduler->Scheduler: createJobPackage from job to job.cgz
 Scheduler->TestBox: <ipxe_command>
@@ -92,9 +92,9 @@ Scheduler->TestBox: <ipxe_command>
 
 - redis storage:
 	Key          |Value                                        |Type       |
-	<tbox_group> |[{member => job_id, score => enqueue_time},] |Sorted_Set |
-	running      |[{member => job_id, score => dequeue_time},] |Sorted_Set |
-	hi_running   |[{field => job_id, value => help_info},]     |Hash       |
+	"sched/jobs_to_run/#{tbox_group}" |[{member => job_id, score => enqueue_time},] |Sorted_Set |
+	running                           |[{member => job_id, score => dequeue_time},] |Sorted_Set |
+	hi_running                        |[{field => job_id, value => help_info},]     |Hash       |
 
 	Notes:
 	dequeue_time: float64, times when the job_id put in running queue
@@ -206,7 +206,7 @@ Scheduler->User: Done
 # redis client debug cmd
 ## list all keys: keys *
 ## get String key value: get global_job_id
-## get Sorted-Set key value: zrange running 0 -1 | zrange running 0 -1 withscores | zrange testgroup_mygroup 0 -1
+## get Sorted-Set key value: zrange running 0 -1 | zrange running 0 -1 withscores | zrange sched/jobs_to_run/mygroup 0 -1
 ## get all Hash keys field: hkeys hi_running
 ## get a Hash key value: hget hi_running 6  #->6 is a job_id
 
