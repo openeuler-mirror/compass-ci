@@ -1,15 +1,15 @@
 #!/bin/bash -e
 
-CONTAINER_PATH='/c/cci/container'
-for file in $(ls ${CONTAINER_PATH})
+[[ $CCI_SRC ]] || export CCI_SRC=$(dirname $(dirname $(dirname $(realpath $0))))
+CONTAINER_PATH="$CCI_SRC/container"
+
+for dir in $CONTAINER_PATH/*
 do
-	cd ${CONTAINER_PATH}/${file}
+	cd "$dir"
 	./build.sh
-	[ "$file" == 'crystal-compiler' ] && {
+	[ "${dir##*/}" == 'crystal-compiler' ] && {
 		./install.sh
 		continue
 	}
 	./run.sh
 done
-
-
