@@ -5,7 +5,10 @@ for file in $(ls ${CONTAINER_PATH})
 do
 	cd ${CONTAINER_PATH}/${file}
 	./build.sh
-	[ 'crystal-compiler' == "$file" ] && ./install.sh && next
+	[ "$file" == 'crystal-compiler' ] && {
+		./install.sh
+		continue
+	}
 	./run.sh
 done
 
