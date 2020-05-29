@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+
+#LKP_SRC = ENV['LKP_SRC'] || File.dirname(__dir__)
+LKP_SRC = File.dirname(__dir__)
+
+require "#{LKP_SRC}/lib/matrix2"
+
+File.umask 0o002
+
+def extract_stats(result_root)
+  ENV['RESULT_ROOT']=result_root
+  job_script=result_root + '/job.sh'
+
+  system job_script, 'extract_stats'
+end
+
+result_root = ARGV[0] || ENV['RESULT_ROOT']
+    
+extract_stats result_root  
+create_stats result_root
