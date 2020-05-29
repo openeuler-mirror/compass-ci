@@ -36,7 +36,7 @@ class Elasticsearch::Client
     end
     
     def add(documents_path : String, content : Hash, id : String)
-        content_hash = Public.hashReplaceWith(content, {"id" => id})
+        content_hash = Public.hashReplaceWith(content, {"_id" => id})
         result_root = "/result"
         if content["result_root"]?
             result_root = content["result_root"]
