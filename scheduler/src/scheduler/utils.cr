@@ -15,8 +15,7 @@ module Scheduler
         def self.findJobBoot(mac : String, env : HTTP::Server::Context, resources : Scheduler::Resources)
             # client_address = env.request.remote_address
             es = resources.@es_client.not_nil!
-            hostname  = es.get_config("report/hostnames", mac)
-
+            hostname = resources.@redis_client.not_nil!.@client.hget("mac2host", mac)
             job_id, error_code = "0", "0"
             job_id, error_code = Scheduler::Dequeue.responTestbox(hostname, env, resources, 10) if hostname
 	    if job_id == "0"
