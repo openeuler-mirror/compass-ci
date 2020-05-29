@@ -10,7 +10,7 @@ cmd=(
 	-u $UID
 	-v $DIR:/usr/share/code
 	-w /usr/share/code
-	alpine:crystal
+	alpine:scheduler-dev
 	sh -c "crystal build src/$cDIR.cr --static"
 )
 
