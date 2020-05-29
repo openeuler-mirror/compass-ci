@@ -8,7 +8,7 @@ require "../elasticsearch_client"
 
 # --------------------------------------------------------------------------------
 # 1.save user <job> (json data) to <Elasticsearch> document
-#  - generate a global <job_id> from redis key ("global_job_id") incr
+#  - generate a sequence <job_id> from redis key ("sched/seqno2jobid") incr
 #  - Elasticsearch save job to <jobs/job> (index/document)
 #  - Elasticsearch use <job_id> as document <id>
 #
@@ -46,7 +46,7 @@ module Scheduler::Enqueue
     def self.saveData(queue_name : String, hash : Hash, resources : Scheduler::Resources)
         error_code = 0
 
-        # use redis incr as global job_id
+        # use redis incr as sched/seqno2jobid
         job_id = resources.@redis_client.not_nil!.get_new_job_id()
 
         if (job_id != "0")

@@ -21,7 +21,7 @@ class Redis::Client
 
     # redis incr is a 64bit signed int
     def get_new_job_id()
-        sn = @client.incr("global_job_id")
+        sn = @client.incr("sched/seqno2jobid")
         return "#{sn}"
     end
 
