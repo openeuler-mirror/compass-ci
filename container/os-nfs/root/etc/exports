@@ -1,3 +1,5 @@
 /exports                    *(ro,async,fsid=0,crossmnt,no_subtree_check,no_root_squash)
 /exports/os                 *(ro,async,no_subtree_check,no_root_squash)
+/exports/osimage            *(rw,async,no_subtree_check,insecure,all_squash,anonuid=1090,anongid=1090)
+/exports/initrd             *(rw,async,no_subtree_check,insecure,all_squash,anonuid=1090,anongid=1090)
 /exports/result             *(rw,async,no_subtree_check,insecure,all_squash,anonuid=1090,anongid=1090)

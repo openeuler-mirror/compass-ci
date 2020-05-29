@@ -7,6 +7,8 @@ cmd=(
 	-e NFS_DISABLE_VERSION_3=1
 	-v /srv/os:/exports/os:ro
 	-v /srv/result:/exports/result
+	-v /srv/initrd:/exports/initrd
+	-v /srv/initrd:/exports/osimage  # for lkp compatibility
 	--cap-add SYS_ADMIN
 #	--privileged
 	--net=host # w/o it, docker-proxy only listens on tcp6..
