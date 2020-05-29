@@ -20,24 +20,24 @@ require "../elasticsearch_client"
 #
 # --------------------------------------------------------------------------------
 # 3.user can special which queue to add to
-#  - when assigned testbox | test-group, push to special queue
+#  - when assigned testbox | tbox_group, push to special queue
 #   -- queue name map to redis sorted set keyname
 #    --- :waitting => "waitting" {no used yet}
 #    --- :running => "running"  {scheduler use : when pull to running}
-#    --- :pending[n] => "testgroup_[testgroup_name]"
-#    --- testgroup_name = testbox_name[-n]
+#    --- :pending[n] => "sched/jobs_to_run[tbox_group]"
+#    --- tbox_group = testbox[-n]
 
 module Scheduler::Enqueue
 
-    # testbox is a instance of test-group
+    # testbox is a instance of tbox_group
     def self.determinQueueName(hash : Hash)
         queue_name = ""
-        queue_name_json = hash["test-group"]?
-        if hash["test-group"]?
-            queue_name = hash["test-group"].not_nil!.to_s
+        queue_name_json = hash["tbox_group"]?
+        if hash["tbox_group"]?
+            queue_name = hash["tbox_group"].not_nil!.to_s
         elsif hash["testbox"]?
-            testbox_name = hash["testbox"].not_nil!.to_s
-            queue_name = Public.getTestgroupName(testbox_name)
+            testbox = hash["testbox"].not_nil!.to_s
+            queue_name = Public.getTestgroupName(testbox)
         end
 
         return queue_name.to_s
@@ -65,8 +65,8 @@ module Scheduler::Enqueue
         job_hash = job_content.as_h
 
         queue_name = determinQueueName(job_hash)
-        job_hash = Public.hashReplaceWith(job_hash, { "test-group" =>  queue_name })
+        job_hash = Public.hashReplaceWith(job_hash, { "tbox_group" =>  queue_name })
 
-        return saveData("testgroup_" + queue_name, job_hash, resources)
+        return saveData("sched/jobs_to_run/" + queue_name, job_hash, resources)
     end
 end

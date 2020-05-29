@@ -9,14 +9,14 @@ module Public
         return hashR.merge(hashIn)
     end
 
-    def self.getTestgroupName(testbox_name : String)
-        testgroup_name = testbox_name
+    def self.getTestgroupName(testbox : String)
+        tbox_group = testbox
 
-        find = testbox_name.match(/(.*)(\-\d{1,}$)/)
+        find = testbox.match(/(.*)(\-\d{1,}$)/)
         if find != nil
-            testgroup_name = find.not_nil![1]
+            tbox_group = find.not_nil![1]
         end
 
-        return testgroup_name
+        return tbox_group
     end
 end

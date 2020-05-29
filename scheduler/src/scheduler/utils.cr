@@ -4,7 +4,7 @@ require  "../jobfile_operate"
 
 # respon ipxe boot comand to qemu-runner
 # - find the hostname (testbox) from qemu-runner's mac
-# - find any job <job_id> that suite this testbox (testgroup-n)
+# - find any job <job_id> that suite this testbox (tbox_group-n)
 # - use <job_id> to get <job.yaml> from es
 # - use <lkp create-job-cpio.sh> to create job.cgz
 # - respon ipxe boot comand

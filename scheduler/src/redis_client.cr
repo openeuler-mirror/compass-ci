@@ -9,7 +9,7 @@ require "./tools"
 # moveJob(queue_name_from : String, queue_name_to : String, job_id : String, append = nil)
 #  - move job from queue_name_from to [queue_name_to], data type is a redis sorted set
 #  - record append info in hi_[queue_name_to], data type is redis hash
-#  - example : moveJob("testgroup_myhost", "running", "12", "myhost-001")
+#  - example : moveJob("sched/jobs_to_run/tbox_group", "running", "12", "myhost-001")
 #
 
 class Redis::Client
@@ -36,9 +36,9 @@ class Redis::Client
         return priorityAsScore
     end
 
-    # pending queue name is testgroup_
-    def findAnyJob(testgroup : String)
-        job_list = "testgroup_#{testgroup}"
+    # pending queue name is sched/jobs_to_run/
+    def findAnyJob(tbox_group : String)
+        job_list = "sched/jobs_to_run/#{tbox_group}"
         job_id = findJobInQueue(job_list)
         return job_id, job_list
     end
