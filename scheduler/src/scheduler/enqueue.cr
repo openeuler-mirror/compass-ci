@@ -24,8 +24,8 @@ require "../elasticsearch_client"
 #   -- queue name map to redis sorted set keyname
 #    --- :waitting => "waitting" {no used yet}
 #    --- :running => "running"  {scheduler use : when pull to running}
-#    --- :pending[n] => "sched/jobs_to_run[tbox_group]"
-#    --- tbox_group = testbox[-n]
+#    --- :pending[n] => "sched/jobs_to_run/$tbox_group"
+#    --- tbox_group = ($tbox_group or ${testbox%-NUMBER}) in job.yaml
 
 module Scheduler::Enqueue
 
