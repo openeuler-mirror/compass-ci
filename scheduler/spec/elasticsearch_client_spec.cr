@@ -18,8 +18,8 @@ describe  Elasticsearch::Client do
             # {"_index" => "testjobs", "_type" => "job", "_id" => "1", ..."found" => true, "_source" => {"foo" => "bar"}}
             respon =  raw_es_client.get({:index => "testjobs", :id => "1"})
             (respon["_id"]).should_not  be_nil
-            (respon["_source"]["id"]?).should_not  be_nil
-            (respon["_source"]["id"].to_s).should eq("1")
+            (respon["_source"]["_id"]?).should_not  be_nil
+            (respon["_source"]["_id"].to_s).should eq("1")
 
             raw_es_client.indices.delete({:index => "testjobs"})
         end
@@ -32,8 +32,8 @@ describe  Elasticsearch::Client do
 
             respon =  raw_es_client.get({:index => "testjobs", :id => "2"})
             (respon["_id"]).should_not  be_nil
-            (respon["_source"]["id"]?).should_not  be_nil
-            (respon["_source"]["id"].to_s).should eq("2")
+            (respon["_source"]["_id"]?).should_not  be_nil
+            (respon["_source"]["_id"].to_s).should eq("2")
 
             raw_es_client.indices.delete({:index => "testjobs"})
         end

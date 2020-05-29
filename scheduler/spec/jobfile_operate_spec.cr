@@ -6,7 +6,7 @@ describe Jobfile::Operate do
     describe "update" do
         file_path = "test/update.yaml"
         section = "#! job"
-        kv = {"id" => "123456"}
+        kv = {"_id" => "123456"}
 
         Jobfile::Operate.prepareDir(file_path)
         if File.exists?(file_path)
@@ -36,7 +36,7 @@ describe Jobfile::Operate do
 
             linepre = ""
             File.each_line(file_path) do |line|
-                match_info = line.match(/id: (.*)/)
+                match_info = line.match(/_id: (.*)/)
                 if match_info
                     linepre = "id: #{match_info.[1]}" 
                 end
@@ -55,7 +55,7 @@ describe Jobfile::Operate do
 
             lineIndex = 0
             File.each_line(file_path) do |line|
-                match_info = line.match(/id: (.*)/)
+                match_info = line.match(/_id: (.*)/)
                 lineIndex = lineIndex +1
                 if match_info
                     break
@@ -77,7 +77,7 @@ describe Jobfile::Operate do
 
             lineIndex = 0
             File.each_line(file_path) do |line|
-                match_info = line.match(/id: (.*)/)
+                match_info = line.match(/_id: (.*)/)
                 lineIndex = lineIndex +1
                 if match_info
                     break
@@ -108,4 +108,4 @@ describe Jobfile::Operate do
         end
     end
 end
-  
+ 
