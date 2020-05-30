@@ -30,9 +30,9 @@ describe Scheduler::Dequeue do
             job_list = "sched/jobs_to_run/#{testbox}"
             raw_redis.del(job_list)
 
-            # running_list = "running" and running_info_list = "hi_running"
-            raw_redis.del("running")
-            raw_redis.del("hi_running")
+            # running_list = "sched/jobs_running" and job_info_list = "sched/id2job"
+            raw_redis.del("sched/jobs_running")
+            raw_redis.del("sched/id2job")
 
             raw_redis.zadd(job_list, "1.1", "1")
             raw_redis.zadd(job_list, "1.2", "2")
@@ -46,12 +46,12 @@ describe Scheduler::Dequeue do
             (first_job[0]).should  eq("2")
             
             # check redis data at running queue
-            job_index_in_running = raw_redis.zrank("running", job_id)
-            running_job = raw_redis.zrange("running", job_index_in_running, job_index_in_running, true)
+            job_index_in_running = raw_redis.zrank("sched/jobs_running", job_id)
+            running_job = raw_redis.zrange("sched/jobs_running", job_index_in_running, job_index_in_running, true)
             (running_job[1].to_s.to_f64).should be_close(before_dequeue_time, 0.1)
 
             # check append info
-            append_info = raw_redis.hget("hi_running", job_id)
+            append_info = raw_redis.hget("sched/id2job", job_id)
             respon =JSON.parse(append_info.not_nil!)
             (respon["testbox"]).should eq("tcm001")
         end
@@ -68,14 +68,14 @@ describe Scheduler::Dequeue do
 
             job_list = "sched/jobs_to_run/#{testbox}"
             raw_redis.del(job_list)
-            raw_redis.del("running")
+            raw_redis.del("sched/jobs_running")
 
             before_dequeue_time = Time.local.to_unix_f
             job_id, error_code = Scheduler::Dequeue.responTestbox(testbox, context, resources).not_nil!
             (job_id).should eq("0")
 
             # check redis data at running queue
-            job_index_in_running = raw_redis.zrange("running", 0, -1)
+            job_index_in_running = raw_redis.zrange("sched/jobs_running", 0, -1)
             (job_index_in_running.size).should eq(0) 
         end
     end

@@ -61,7 +61,7 @@ describe Scheduler::Utils do
                 raw_redis = Redis.new("localhost",  6379)
                 pending_list = "sched/jobs_to_run/#{remoteHostname}"
                 raw_redis.del(pending_list)
-                raw_redis.del("running")
+                raw_redis.del("sched/jobs_running")
                 raw_redis.zadd(pending_list, "1.1", job_id)
 
                 # request has remote_address
@@ -99,7 +99,7 @@ describe Scheduler::Utils do
                 pending_list = "sched/jobs_to_run/#{remoteHostname}"
                 respon = raw_redis.zrange(pending_list, 0, -1, true)
                 (respon.size).should eq(0)
-                respon = raw_redis.zrange("running", 0, -1, true)
+                respon = raw_redis.zrange("sched/jobs_running", 0, -1, true)
                 (respon.size).should eq(2)
 
                 # validate the testbox updated
@@ -126,8 +126,8 @@ describe Scheduler::Utils do
                 raw_redis = Redis.new("localhost",  6379)
                 pending_list = "sched/jobs_to_run/#{testgroup}"
                 raw_redis.del(pending_list)
-                raw_redis.del("running")
-                raw_redis.del("hi_running")
+                raw_redis.del("sched/jobs_running")
+                raw_redis.del("sched/id2job")
                 raw_redis.zadd(pending_list, "1.1", job_id)
 
                 # request has remote_address
@@ -165,7 +165,7 @@ describe Scheduler::Utils do
                 pending_list = "sched/jobs_to_run/#{testgroup}"
                 respon = raw_redis.zrange(pending_list, 0, -1, true)
                 (respon.size).should eq(0)
-                respon = raw_redis.zrange("running", 0, -1, true)
+                respon = raw_redis.zrange("sched/jobs_running", 0, -1, true)
                 (respon.size).should eq(2)
 
                 respon = resources.@es_client.not_nil!.get("/jobs/job", job_id)
@@ -190,7 +190,7 @@ describe Scheduler::Utils do
                 raw_redis = Redis.new("localhost",  6379)
                 pending_list = "sched/jobs_to_run/#{testgroup}"
                 raw_redis.del(pending_list)
-                raw_redis.del("running")
+                raw_redis.del("sched/jobs_running")
                 raw_redis.zadd(pending_list, "1.1", job_id)
 
                 # request has remote_address
@@ -229,7 +229,7 @@ describe Scheduler::Utils do
                 pending_list = "sched/jobs_to_run/#{testgroup}"
                 respon = raw_redis.zrange(pending_list, 0, -1, true)
                 (respon.size).should eq(0)
-                respon = raw_redis.zrange("running", 0, -1, true)
+                respon = raw_redis.zrange("sched/jobs_running", 0, -1, true)
                 (respon.size).should eq(2)
 
                 respon = resources.@es_client.not_nil!.get("/jobs/job", job_id)
