@@ -246,9 +246,6 @@ L82 response = HTTP::Client.put(url: endpoint, body: post_data) ->
 ### stop running scheduler server
 	docker stop s001-alpine
 
-### prepare scheduler.yaml, change localhost to docker0's ip (like 172.17.0.1)
-	ifconfig docker0
-
 ### cp (?? share operate)
 	copy /c/lkp-tests/sbin/create-job-cpio.sh .
 	chmod 777 ./create-job-cpio.sh
@@ -264,7 +261,6 @@ L82 response = HTTP::Client.put(url: endpoint, body: post_data) ->
 ### copy program
 	cp ./scheduler ../container/scheduler/
 	cp ./create-job-cpio.sh ../container/scheduler/
-	cp ./scheduler.yaml ../container/scheduler/
 
 ### go to container
 	cd ../container/scheduer

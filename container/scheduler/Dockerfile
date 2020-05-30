@@ -12,10 +12,6 @@ RUN gem install rest-client && \
 
 RUN mkdir /usr/share/scheduler
 
-# run in docker, localhost should set to host docker0 ip
-# run@host: ip addr show docker0
-# and write this ip to scheduler.yaml
-#
 # should build with: crystal build src/scheduler.cr --static 
 COPY scheduler /usr/share/scheduler
 
