@@ -78,27 +78,27 @@ TestBox->Scheduler: GET "/boot.ipxe/mac/52-54-00-12-34-56"
 Scheduler->ElasticSearch: <hostname> = get_config("report/hostnames", "52-54-00-12-34-56")
 Scheduler->Scheduler: <tbox_group> = getTestgroupName(<hostname>)
 Scheduler->Redis: <job_id> = findAnyJob(<tbox_group>)
-Redis->Redis: moveJob("sched/jobs_to_run/#{tbox_group}", "running", <job_id>)
+Redis->Redis: moveJob("sched/jobs_to_run/#{tbox_group}", "sched/jobs_running", <job_id>)
 Scheduler->ElasticSearch: job = get("job/job", <job_id>)
 Scheduler->Scheduler: createJobPackage from job to job.cgz
 Scheduler->TestBox: <ipxe_command>
 ```
 - doing what:
 	1. use mac to search hostname in es "report/hostnames" document
-	2. move job_id from pending queue to "running" in redis
-	3. record {job_id => {"testbox":hostname}} to hi_running in redis
+	2. move job_id from pending queue to "sched/jobs_running" in redis
+	3. record {job_id => {"testbox":hostname}} to sched/id2job in redis
 	4. create job.cgz, save it to /job_initrd_tmpfs/<job_id>/
 	5. create ipxe_command
 
 - redis storage:
 	Key          |Value                                        |Type       |
 	"sched/jobs_to_run/#{tbox_group}" |[{member => job_id, score => enqueue_time},] |Sorted_Set |
-	running                           |[{member => job_id, score => dequeue_time},] |Sorted_Set |
-	hi_running                        |[{field => job_id, value => help_info},]     |Hash       |
+	sched/jobs_running                |[{member => job_id, score => dequeue_time},] |Sorted_Set |
+	sched/id2job                      |[{field => job_id, value => help_info},]     |Hash       |
 
 	Notes:
-	dequeue_time: float64, times when the job_id put in running queue
-	help_info: record information about a running job
+	dequeue_time: float64, times when the job_id put in sched/jobs_running queue
+	job_info: record information about a job
 
 - es storage:
 	query "report/hostnames" document: index of {mac <=> hostname}
@@ -169,10 +169,10 @@ Scheduler->Redis: removeRunning(job_id)
 Scheduler->User: Done
 ```
 - doing what:
-        1. remove job from redis queue(running and hi_running)
+        1. remove job from redis queue(sched/jobs_running and sched/id2job)
 
 - redis storage: 
-        removeRunning(job_id):removejobfromredisqueue(running and hi_running)
+        removeRunning(job_id):removejobfromredisqueue(sched/jobs_running and sched/id2job)
 - es storage: no change
 
 ## report mac's hostname
@@ -206,9 +206,9 @@ Scheduler->User: Done
 # redis client debug cmd
 ## list all keys: keys *
 ## get String key value: get sched/seqno2jobid
-## get Sorted-Set key value: zrange running 0 -1 | zrange running 0 -1 withscores | zrange sched/jobs_to_run/mygroup 0 -1
-## get all Hash keys field: hkeys hi_running
-## get a Hash key value: hget hi_running 6  #->6 is a job_id
+## get Sorted-Set key value: zrange sched/jobs_running 0 -1 | zrange sched/jobs_running 0 -1 withscores | zrange sched/jobs_to_run/mygroup 0 -1
+## get all Hash keys field: hkeys sched/id2job
+## get a Hash key value: hget sched/id2job 6  #->6 is a job_id
 
 
 ---
