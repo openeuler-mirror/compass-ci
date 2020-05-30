@@ -12,7 +12,7 @@ cmd=(
 	-v $LKP_SRC:$LKP_SRC
 	-v /srv/scheduler/alpine:/srv/scheduler
 	-w /usr/share/scheduler
-	sch-ruby-a:v0.00e
+	sch-ruby-a:v0.00d
         ./scheduler
 )
 
