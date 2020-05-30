@@ -4,12 +4,13 @@ require "../tools"
 
 # requirement: find any job at peding queue, and return the job_id to caller
 # - pending job at queue <sched/jobs_to_run/$tbox_group>
-# - running job at queue <running>
-# -- and help infomation abount running job at queue <hi_running>
+# - running job at queue <sched/jobs_running>
+# -- and job info hash at queue <sched/id2job>
 #
 # inner process:
 # 1.use redis client to find any job <job_id> and return the job_id
-# 2.move <job_id> from <sched/jobs_to_run/tbox_group> to <running> and update <hi_running> 
+# 2.move <job_id> from <sched/jobs_to_run/tbox_group> to <sched/jobs_running>
+# 3.update <sched/id2job>
 
 module Scheduler::Dequeue
   def self.responTestbox(testbox : String, env : HTTP::Server::Context, resources : Scheduler::Resources, count = 1)
@@ -20,7 +21,8 @@ module Scheduler::Dequeue
         job_id, queue_name = client.findAnyJob(tbox_group)
 
         if job_id != "0"
-          client.moveJob(queue_name, "running", "#{job_id}", testbox)
+          client.moveJob(queue_name, "sched/jobs_running", "#{job_id}")
+          client.jsonAppend("sched/id2job", "#{job_id}", %({"testbox":"#{testbox}"}))
           return "#{job_id}", queue_name
         end
 

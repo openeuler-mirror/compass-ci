@@ -6,10 +6,9 @@ require "./tools"
 #  - use redis incr as job_id
 #
 # -------------------------------------------------------------------------------------------
-# moveJob(queue_name_from : String, queue_name_to : String, job_id : String, append = nil)
+# moveJob(queue_name_from : String, queue_name_to : String, job_id : String)
 #  - move job from queue_name_from to [queue_name_to], data type is a redis sorted set
-#  - record append info in hi_[queue_name_to], data type is redis hash
-#  - example : moveJob("sched/jobs_to_run/$tbox_group", "running", "12", "myhost-001")
+#  - example : moveJob("sched/jobs_to_run/$tbox_group", "sched/jobs_running", "12")
 #
 
 class Redis::Client
@@ -67,30 +66,27 @@ class Redis::Client
         end
     end
 
-    def moveJob(queue_name_from : String, queue_name_to : String, job_id : String, append = nil)
+    def moveJob(queue_name_from : String, queue_name_to : String, job_id : String)
         @client.zrem(queue_name_from, job_id)
         priorityAsScore = Time.local.to_unix_f
 
-        # queue_name_to: running and helpinfo hi_running
+        # queue_name_to: sched/jobs_running
         @client.zadd(queue_name_to, priorityAsScore, job_id)
-        if (append)
-            jsonAppend("hi_#{queue_name_to}", job_id, %({"testbox":"#{append}"}))
-        end
 
         return priorityAsScore
     end
 
     def updateRunningInfo(job_id : String, infomation)
-        jsonAppend("hi_running", job_id, infomation)
+        jsonAppend("sched/id2job", job_id, infomation)
     end
 
     def removeRunning(job_id : String)
-        @client.zrem("running", job_id)
-        @client.hdel("hi_running", job_id)
+        @client.zrem("sched/jobs_running", job_id)
+        @client.hdel("sched/id2job", job_id)
     end
 
     def findID(hostname : String)
-        respon = @client.hgetall("hi_running")
+        respon = @client.hgetall("sched/id2job")
         len = respon.size / 2
 
         key = nil

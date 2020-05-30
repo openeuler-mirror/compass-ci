@@ -23,7 +23,7 @@ require "../elasticsearch_client"
 #  - when assigned testbox | tbox_group, push to special queue
 #   -- queue name map to redis sorted set keyname
 #    --- :waitting => "waitting" {no used yet}
-#    --- :running => "running"  {scheduler use : when pull to running}
+#    --- :running => "sched/jobs_running"  {scheduler use : when pull to running}
 #    --- :pending[n] => "sched/jobs_to_run/$tbox_group"
 #    --- tbox_group = ($tbox_group or ${testbox%-NUMBER}) in job.yaml
 

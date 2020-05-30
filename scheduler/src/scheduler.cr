@@ -24,7 +24,7 @@ require "./scheduler/monitor"
 # - restful API [put "/set_host_mac?hostname=myhostname&mac=ff-ff-ff-ff-ff-ff"] to report testbox's {mac => hostname}
 # - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
 # - restful API [get "/~lkp/cgi-bin/lkp-jobfile-append-var"] report job var that should be append
-# - restful API [get "/~lkp/cgi-bin/lkp-post-run" ] to remove job from redis queue(running and hi_running)
+# - restful API [get "/~lkp/cgi-bin/lkp-post-run" ] to remove job from redis queue(sched/jobs_running and sched/id2job)
 # 
 # -------------------------------------------------------------------------------------------
 # scheduler: 
