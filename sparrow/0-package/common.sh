@@ -8,3 +8,8 @@ cat >> /etc/sysctl.conf <<EOF
 net.ipv4.ip_forward=1
 vm.max_map_count=655360
 EOF
+
+cat >> /etc/modules-load.d/nfs <<EOF
+nfs
+nfsd
+EOF
