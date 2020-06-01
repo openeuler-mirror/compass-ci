@@ -1,9 +1,9 @@
 #!/bin/bash
 
-$(lsmod |grep -w nfs > /dev/null) || {
+lsmod | grep -q "^nfs\s" || {
 	sudo modprobe nfs
 }
-$(lsmod |grep -w nfsd > /dev/null) || {
+lsmod | grep -q "^nfsd\s" || {
 	sudo modprobe nfsd
 }
 
