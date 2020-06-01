@@ -1,4 +1,4 @@
-FROM alpine:3.11
+FROM alpine:3.11  # 3.12 cannot install crystal
 
 MAINTAINER Wu Fenguang <wufengguang@huawei.com>
 
