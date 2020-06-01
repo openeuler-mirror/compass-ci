@@ -11,6 +11,7 @@ cmd=(
 	-e LKP_SRC=$LKP_SRC
 	-v $LKP_SRC:$LKP_SRC
 	-v /srv/scheduler/alpine:/srv/scheduler
+	-v /etc/localtime:/etc/localtime:ro
 	-w /usr/share/scheduler
 	sch-ruby-a:v0.00d
         ./scheduler
