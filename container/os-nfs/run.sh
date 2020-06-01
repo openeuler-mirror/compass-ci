@@ -1,5 +1,12 @@
 #!/bin/bash
 
+$(lsmod |grep -w nfs > /dev/null) || {
+	sudo modprobe nfs
+}
+$(lsmod |grep -w nfsd > /dev/null) || {
+	sudo modprobe nfsd
+}
+
 cmd=(
 	docker run
 #	-it
