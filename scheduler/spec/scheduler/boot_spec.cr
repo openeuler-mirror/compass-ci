@@ -15,34 +15,30 @@ end
 
 describe Scheduler::Boot do
     describe "ipxe boot for global" do
-        it "job_id = 0, respon no job" do
-            io = IO::Memory.new
-            response = HTTP::Server::Response.new(io)
-            request = HTTP::Request.new("GET", "/boot.ipxe/mac/52%3A54%3A00%3A12%3A34%3A56")
-            context = HTTP::Server::Context.new(request, response)
-            resources = Scheduler::Resources.new
+        io = IO::Memory.new
+        response = HTTP::Server::Response.new(io)
+        request = HTTP::Request.new("GET", "/boot.ipxe/mac/52-54-00-12-34-56")
+        context = HTTP::Server::Context.new(request, response)
 
-            respon = Scheduler::Boot.respon("0", context, resources)
-            respon.should eq("#!ipxe\n\necho ...\necho No job now\necho ...\nreboot\n")
-        end
-
-        it "job_id != 0, respon initrd kernel job in .cgz file" do
-            kemal = Kemal::RouteHandler::INSTANCE
-            kemal.add_route "GET", "/boot.:boot_type/:parameter/:value" do |env|
-            end
-            request = HTTP::Request.new("GET", "/boot.ipxe/mac/52%3A54%3A00%3A12%3A34%3A56")
-
-            context = create_request_and_return_io_and_context(kemal, request)[1]
-            url_params = Kemal::ParamParser.new(request, context.route_lookup.params).url
-            # url_params => {"boot_type" => "ipxe", "parameter" => "mac", "value" => "52:54:00:12:34:56"}
-
-            resources = Scheduler::Resources.new
-
-            respon = Scheduler::Boot.respon("1", context, resources)
+        resources = Scheduler::Resources.new
+        it "job content has no os, respon default debian" do
+            job_content = JSON.parse(%({"test": "test no os","_id": 10}))
+            respon = Scheduler::Boot.respon(job_content, context, resources)
             respon_list = respon.split("\n")
 
             respon_list[0].should eq("#!ipxe")
-            respon_list[2].should start_with("initrd")
+            respon_list[2].should contain("debian/aarch64/sid")
+        end
+
+        it "job content has os, os_arch, os_version, respon the spliced value" do
+            job_content = JSON.parse(%({"_id": 10, "os": "openeuler", "os_arch": "aarch64", "os_version": "current"}))
+            respon = Scheduler::Boot.respon(job_content, context, resources)
+            respon_list = respon.split("\n")
+            os_dir = job_content["os"].to_s.downcase + "/" + job_content["os_arch"].to_s.downcase + "/" + job_content["os_version"].to_s.downcase
+
+            respon_list[0].should eq("#!ipxe")
+            respon_list[2].should contain(os_dir)
+            respon_list[5].should contain(os_dir)
             respon_list[respon_list.size - 2].should eq("boot")
         end
     end
