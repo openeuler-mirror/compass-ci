@@ -1,4 +1,4 @@
-FROM alpine
+FROM alpine:3.11
 
 MAINTAINER Wu Fenguang <wufengguang@huawei.com>
 
@@ -7,11 +7,7 @@ RUN apk add bash zsh git openssh openrc rsync crystal shards tzdata sudo
 
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
-RUN adduser -D team && \
-    adduser -G wheel team
-
-RUN chsh -s /bin/zsh team && \
-    chsh -s /bin/zsh root 
+RUN adduser -D -G wheel -s /bin/zsh team
 
 RUN echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel-nopasswd
 
