@@ -7,7 +7,7 @@
 
 # unicast prefix: x2, x6, xA, xE
 export mac=$(echo $hostname | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/0a-\1-\2-\3-\4-\5/')
-curl -X PUT http://localhost:3000/set_host_mac?hostname=${hostname}&mac=${mac} 
+curl -X PUT "http://localhost:3000/set_host_mac?hostname=${hostname}&mac=${mac}"
 
 (
 	create_yaml_variables "$LKP_SRC/hosts/${hostname%-*}"
