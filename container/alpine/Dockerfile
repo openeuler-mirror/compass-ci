@@ -1,4 +1,5 @@
-FROM alpine:3.11  # 3.12 cannot install crystal
+# 3.12 cannot install crystal
+FROM alpine:3.11
 
 MAINTAINER Wu Fenguang <wufengguang@huawei.com>
 
