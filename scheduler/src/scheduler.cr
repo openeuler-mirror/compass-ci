@@ -24,8 +24,8 @@ require "./scheduler/monitor"
 # - restful API [put "/set_host_mac?hostname=myhostname&mac=ff-ff-ff-ff-ff-ff"] to report testbox's {mac => hostname}
 # - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
 # - restful API [get "/~lkp/cgi-bin/lkp-jobfile-append-var"] report job var that should be append
-# - restful API [get "/~lkp/cgi-bin/lkp-post-run" ] to remove job from redis queue(sched/jobs_running and sched/id2job)
-# 
+# - restful API [get "/~lkp/cgi-bin/lkp-post-run" ] to move job from redis queue "sched/jobs_running" to "sched/extract_stats" and remove job from redis queue "sched/id2job"
+#
 # -------------------------------------------------------------------------------------------
 # scheduler: 
 # - use [redis incr] as job_id, a 64bit int number
@@ -136,7 +136,8 @@ module Scheduler
 	job_id = env.params.query["job_id"]?
 	if job_id
             # update redis status
-            resources.@redis_client.not_nil!.removeRunning(job_id)
+            resources.@redis_client.not_nil!.moveJob("sched/jobs_running", "queue/extract_stats", job_id)
+            resources.@redis_client.not_nil!.@client.hdel("sched/id2job", job_id)
 	end
 	
 	"Done"

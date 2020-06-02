@@ -169,10 +169,12 @@ Scheduler->Redis: removeRunning(job_id)
 Scheduler->User: Done
 ```
 - doing what:
-        1. remove job from redis queue(sched/jobs_running and sched/id2job)
+        1. move job from redis queue "sched/jobs_running" to "sched/extract_stats" 
+        2. remove job from redis queue "sched/id2job"
 
 - redis storage: 
-        removeRunning(job_id):removejobfromredisqueue(sched/jobs_running and sched/id2job)
+        moveJob("sched/jobs_running", "queue/extract_stats", job_id):move job from redis queue "sched/jobs_running" to "sched/extract_stats"
+        hdel("sched/id2job", job_id):remove job from redis queue "sched/id2job"
 - es storage: no change
 
 ## report mac's hostname
