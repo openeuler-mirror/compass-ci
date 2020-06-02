@@ -248,10 +248,6 @@ L82 response = HTTP::Client.put(url: endpoint, body: post_data) ->
 ### stop running scheduler server
 	docker stop s001-alpine
 
-### cp (?? share operate)
-	copy /c/lkp-tests/sbin/create-job-cpio.sh .
-	chmod 777 ./create-job-cpio.sh
-
 ### prepare public directory for program use (?? 777)
 	mkdir public
 	chmod 777 public
@@ -262,7 +258,6 @@ L82 response = HTTP::Client.put(url: endpoint, body: post_data) ->
 ## 3. how to build docker image <like sch-ruby-a:v0.00d>
 ### copy program
 	cp ./scheduler ../container/scheduler/
-	cp ./create-job-cpio.sh ../container/scheduler/
 
 ### go to container
 	cd ../container/scheduer

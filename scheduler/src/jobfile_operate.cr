@@ -50,7 +50,7 @@ module Jobfile::Operate
     end
     
     def self.create_job_cpio(job_content : JSON::Any, base_dir : String)
-	temp_yaml = base_dir + "/" +  job_content["_id"].to_s + "/job.yaml"
+        temp_yaml = base_dir + "/" +  job_content["_id"].to_s + "/job.yaml"
         prepareDir(temp_yaml)
 
         # no change to <object> content { "#! jobs/pixz.yaml": null }
@@ -61,7 +61,7 @@ module Jobfile::Operate
             YAML.dump(job_content, file)
         end
 
-        cmd = "./create-job-cpio.sh #{temp_yaml}"
+        cmd = "#{ENV["LKP_SRC"]}/sbin/create-job-cpio.sh #{temp_yaml}"
         idd = `#{cmd}`
 
         # if the create job cpio failed, what to do?
