@@ -10,7 +10,13 @@ export mac=$(echo $hostname | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$
 curl -X PUT "http://localhost:3000/set_host_mac?hostname=${hostname}&mac=${mac}"
 
 (
-	create_yaml_variables "$LKP_SRC/hosts/${hostname%-*}"
+	if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
+		tbox_group=${BASH_REMATCH[1]}
+	else
+		tbox_group=$hostname
+	fi
+
+	create_yaml_variables "$LKP_SRC/hosts/${tbox_group}"
 
 	source "$CCI_SRC/providers/$provider/${template}.sh"
 )
