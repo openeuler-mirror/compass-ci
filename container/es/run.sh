@@ -4,9 +4,9 @@
 #
 # so, the host need modify
 # -- this set at host, need sudo
-# sudo sysctl -w vm.max_map_count=655360
+sudo sysctl -w vm.max_map_count=655360
 
-# chmod 777 /srv/es
+chmod -R 707 /srv/es/alpine/server01
 docker run -d -p 9200:9200 -p 9300:9300 -v /srv/es/alpine/server01:/srv/es --name es-server01 es643b:alpine311
 
 # test server start?
