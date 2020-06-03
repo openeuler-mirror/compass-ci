@@ -3,6 +3,8 @@
 pkgs=(
 	vim
 	git
+	gcc
+	make
 	ruby
 	rubygems
 	ruby-devel
