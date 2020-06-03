@@ -48,7 +48,7 @@ class Elasticsearch::Client
             testcase = content["testcase"]
             result_root = "#{result_root}/#{testcase}"            
         end
-        content_hash = Public.hashReplaceWith(content_hash, {"result_root" => "#{result_root}/#{id}"})
+        content_hash = Public.hashReplaceWith(content, {"result_root" => "#{result_root}/#{id}"})
 
         dp = documents_path.split("/")
         response = @client.create(
