@@ -6,8 +6,8 @@
 # -- this set at host, need sudo
 sudo sysctl -w vm.max_map_count=655360
 
-chmod -R 707 /srv/es/alpine/server01
-docker run -d -p 9200:9200 -p 9300:9300 -v /srv/es/alpine/server01:/srv/es --name es-server01 es643b:alpine311
+chmod -R 707 /srv/es
+docker run -d -p 9200:9200 -p 9300:9300 -v /srv/es:/srv/es --name es-server01 es643b:alpine311
 
 # test server start?
 echo test es server, this will sleep 10s
