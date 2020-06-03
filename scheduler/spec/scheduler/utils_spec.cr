@@ -33,7 +33,7 @@ describe Scheduler::Utils do
                 resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
                 resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
-                # registerer {mac => hostname}
+                # register {mac => hostname}
                 respon  = resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remoteHostname)
     
                 time_start = Time.utc
