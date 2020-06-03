@@ -6,6 +6,10 @@ if [[ $pj_dir ]]; then
 else
     v_dir=$PWD
 fi
+
+opt_build=build
+[[ "$1" = build ]] && opt_build=
+
 cmd=(
 	docker run
 	-u $UID 
@@ -14,7 +18,7 @@ cmd=(
 	-v $v_dir:$v_dir
 	-w $PWD 	 
 	alpine:crystal-complier
-	crystal build --static "$@"
+	crystal $opt_build --static "$@"
 )
 
 "${cmd[@]}"
