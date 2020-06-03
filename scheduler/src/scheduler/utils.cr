@@ -25,7 +25,7 @@ module Scheduler
             # update job's  testbox property
             es.update("jobs/job", { "testbox" => hostname }, job_id)
 	    # if get respon not a JSON::Any will raise exception
-	    job_content = es.get("jobs/job", job_id)["_source"].as(JSON::Any)
+	    job_content = JSON.parse(es.get("jobs/job", job_id)["_source"])
             # create job.cgz before respon to ipxe parameter
             # should i use spawn { ? }
 	    Jobfile::Operate.create_job_cpio(job_content, resources.@fsdir_root.not_nil!)
