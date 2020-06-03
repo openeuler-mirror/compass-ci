@@ -2,6 +2,13 @@ FROM alpine:crystal-base
 
 MAINTAINER chief <tongqunfeng@huawei.com>
 
+RUN umask 002 && \
+  gem install rest-client && \
+  gem install activesupport && \
+  gem install git && \
+  gem install json && \
+  gem install yaml
+
 copy shard.yml /usr/share/crystal/app/shard.yml
 
 WORKDIR /usr/share/crystal/app
