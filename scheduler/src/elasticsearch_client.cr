@@ -32,11 +32,15 @@ class Elasticsearch::Client
                 :id => id
             }
         )
-        return response
+	case response
+	when JSON::Any
+	    response = response.as_h.merge({"_id" => id}).to_json
+	end
+	return response
     end
     
     def add(documents_path : String, content : Hash, id : String)
-        content_hash = Public.hashReplaceWith(content, {"_id" => id})
+        content.delete("_id")
         result_root = "/result"
         if content["result_root"]?
             result_root = content["result_root"]
