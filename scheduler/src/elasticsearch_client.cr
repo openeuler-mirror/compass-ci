@@ -32,15 +32,11 @@ class Elasticsearch::Client
                 :id => id
             }
         )
-	case response
-	when JSON::Any
-	    response = response.as_h.merge({"_id" => id}).to_json
-	end
 	return response
     end
     
     def add(documents_path : String, content : Hash, id : String)
-        content.delete("_id")
+        content_hash = Public.hashReplaceWith(content, {"id" => id})
         result_root = "/result"
         if content["result_root"]?
             result_root = content["result_root"]
@@ -48,7 +44,7 @@ class Elasticsearch::Client
             testcase = content["testcase"]
             result_root = "#{result_root}/#{testcase}"            
         end
-        content_hash = Public.hashReplaceWith(content, {"result_root" => "#{result_root}/#{id}"})
+        content_hash = Public.hashReplaceWith(content_hash, {"result_root" => "#{result_root}/#{id}"})
 
         dp = documents_path.split("/")
         response = @client.create(

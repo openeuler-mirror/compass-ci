@@ -50,7 +50,7 @@ module Jobfile::Operate
     end
     
     def self.create_job_cpio(job_content : JSON::Any, base_dir : String)
-        temp_yaml = base_dir + "/" +  job_content["_id"].to_s + "/job.yaml"
+        temp_yaml = base_dir + "/" +  job_content["id"].to_s + "/job.yaml"
         prepareDir(temp_yaml)
 
         # no change to <object> content { "#! jobs/pixz.yaml": null }

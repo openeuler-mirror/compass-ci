@@ -37,7 +37,7 @@ module Scheduler
             respon = "#!ipxe\n\n"
             respon = respon + "initrd http://#{server}:8000/os/#{os_dir}/initrd.lkp\n"
             respon = respon + "initrd http://#{server}:8800/initrd/lkp/latest/lkp-aarch64.cgz\n"
-            respon = respon + "initrd http://#{scheduler}:3000/job_initrd_tmpfs/#{job_content["_id"]}/job.cgz\n"
+            respon = respon + "initrd http://#{scheduler}:3000/job_initrd_tmpfs/#{job_content["id"]}/job.cgz\n"
             respon = respon + "kernel http://#{server}:8000/os/#{os_dir}/vmlinuz user=lkp"
             respon = respon + " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
             respon = respon + " root=#{server}:/os/#{os_dir} rootovl ip=enp0s1:dhcp ro"

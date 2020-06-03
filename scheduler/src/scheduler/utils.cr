@@ -24,16 +24,23 @@ module Scheduler
 
             # update job's  testbox property
             es.update("jobs/job", { "testbox" => hostname }, job_id)
-	    # if get respon not a JSON::Any will raise exception
-	    job_content = JSON.parse(es.get("jobs/job", job_id)["_source"])
+
+            data = es.get("jobs/job", job_id)["_source"]?
+            case data
+            when JSON::Any
+                job_content = data
+            when String
+                job_content = JSON.parse(data)
+            else
+                return Scheduler::Boot.ipxe_msg("No job now")
+            end
             # create job.cgz before respon to ipxe parameter
             # should i use spawn { ? }
-	    Jobfile::Operate.create_job_cpio(job_content, resources.@fsdir_root.not_nil!)
+            Jobfile::Operate.create_job_cpio(job_content, resources.@fsdir_root.not_nil!)
     
             # update es job.yaml at {#! queue option}
             # - update testbox: from mac,ip to host? {host-192-168-1-91}
             # - update tbox_group: {host-168-1}
-    
             respon  = Scheduler::Boot.respon(job_content, env, resources)
         end
     end
