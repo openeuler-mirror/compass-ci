@@ -2,10 +2,12 @@ require "spec"
 require "../../src/scheduler/utils"
 require "../../src/tools"
 
+require "../../src/constants"
+
 describe Scheduler::Utils do
     describe "ipxe boot for special testbox" do
-        describe "if the runner has regist hostname then find job in testgroup_[hostname] queue" do
-            it "job_id = 0, respon no job", tags: "slow" do
+        describe "if the runner has register hostname then find job in testgroup_[hostname] queue" do
+            it "job_id = 0, respon no job" do
                 mac = "52-54-00-12-34-56"
                 remoteHostname = "testHost"
                 remote_address = "127.0.0.1:5555"
@@ -14,10 +16,10 @@ describe Scheduler::Utils do
 		response = HTTP::Server::Response.new(io)
                 request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
-                raw_es_client = Elasticsearch::API::Client.new( { :host => "localhost", :port => 9200 } )
+                raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
                 raw_es_client.indices.delete({:index => "report"})
 
-                raw_redis = Redis.new("localhost",  6379)
+                raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
                 pending_list = "sched/jobs_to_run/#{remoteHostname}"
                 raw_redis.del(pending_list)
                 pending_list = "testbox_#{remoteHostname}"
@@ -28,12 +30,11 @@ describe Scheduler::Utils do
                 context = HTTP::Server::Context.new(request, response)
 
                 resources = Scheduler::Resources.new
-                resources.redis_client("localhost", 6379)
-                resources.es_client("localhost", 9200)
+                resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
+                resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
-                # register {mac => hostname}
-                data = {:hostname => remoteHostname, :mac => mac}
-                respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
+                # registerer {mac => hostname}
+                respon  = resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remoteHostname)
     
                 time_start = Time.utc
                 respon = Scheduler::Utils.findJobBoot(mac, context, resources)
@@ -41,7 +42,7 @@ describe Scheduler::Utils do
                 timeLen = time_stop - time_start
 
                 (timeLen.seconds).should eq 10
-                respon.should eq("#!ipxe\n\necho ...\necho No job now\necho ...\nreboot\n")
+                respon.includes?("No job now").should be_true
             end
     
             it "job_id != 0, respon initrd kernel job in .cgz file with testbox == test-group" do
@@ -54,11 +55,11 @@ describe Scheduler::Utils do
                 response = HTTP::Server::Response.new(io)
                 request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
-                raw_es_client = Elasticsearch::API::Client.new( { :host => "localhost", :port => 9200 } )
+                raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
                 raw_es_client.indices.delete({:index => "report"})
                 raw_es_client.indices.delete({:index => "jobs"})
 
-                raw_redis = Redis.new("localhost",  6379)
+                raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
                 pending_list = "sched/jobs_to_run/#{remoteHostname}"
                 raw_redis.del(pending_list)
                 raw_redis.del("sched/jobs_running")
@@ -69,20 +70,18 @@ describe Scheduler::Utils do
                 context = HTTP::Server::Context.new(request, response)
 
                 resources = Scheduler::Resources.new
-                resources.redis_client("localhost", 6379)
-                resources.es_client("localhost", 9200)
+                resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
+                resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
-                # regist runner hostname
-                data = {:hostname => remoteHostname, :mac => mac }
-                respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
+                # register runner hostname
+                respon  = resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remoteHostname)
 
                 # client testbox is  wfg-e595
                 # job's testbox is   wfg-e595 
 
                 # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
-                resources.fsdir_root("/home/chief/code/crcode/scheduler/public")
-                json = JSON.parse(Jobfile::Operate.load_yaml("test/demo_job.yaml").to_json)
-                resources.@es_client.not_nil!.add("/jobs/job", json.as_h, job_id)
+                resources.fsdir_root("./public")
+                resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
 
                 time_start = Time.utc
                 respon = Scheduler::Utils.findJobBoot(mac, context, resources)
@@ -119,11 +118,11 @@ describe Scheduler::Utils do
                 response = HTTP::Server::Response.new(io)
                 request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
-                raw_es_client = Elasticsearch::API::Client.new( { :host => "localhost", :port => 9200 } )
+                raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
                 raw_es_client.indices.delete({:index => "report"})
                 raw_es_client.indices.delete({:index => "jobs"})
 
-                raw_redis = Redis.new("localhost",  6379)
+                raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
                 pending_list = "sched/jobs_to_run/#{testgroup}"
                 raw_redis.del(pending_list)
                 raw_redis.del("sched/jobs_running")
@@ -135,20 +134,18 @@ describe Scheduler::Utils do
                 context = HTTP::Server::Context.new(request, response)
 
                 resources = Scheduler::Resources.new
-                resources.redis_client("localhost", 6379)
-                resources.es_client("localhost", 9200)
+                resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
+                resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
-                # regist runner hostname
-                data = { :hostname => remoteHostname, :mac => mac }
-                respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
+                # register runner hostname
+                respon  = resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remoteHostname)
                 
                 # client testbox is  wfg-e595-002
                 # job's testbox is   wfg-e595 
 
                 # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
-                resources.fsdir_root("/home/chief/code/crcode/scheduler/public")
-                json = JSON.parse(Jobfile::Operate.load_yaml("test/demo_job.yaml").to_json)
-                resources.@es_client.not_nil!.add("/jobs/job", json.as_h, job_id)
+                resources.fsdir_root("./public")
+                resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
 
                 time_start = Time.utc
                 respon = Scheduler::Utils.findJobBoot(mac, context, resources)
@@ -183,11 +180,11 @@ describe Scheduler::Utils do
                 response = HTTP::Server::Response.new(io)
                 request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
-                raw_es_client = Elasticsearch::API::Client.new( { :host => "localhost", :port => 9200 } )
+                raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
                 raw_es_client.indices.delete({:index => "report"})
                 raw_es_client.indices.delete({:index => "jobs"})
 
-                raw_redis = Redis.new("localhost",  6379)
+                raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
                 pending_list = "sched/jobs_to_run/#{testgroup}"
                 raw_redis.del(pending_list)
                 raw_redis.del("sched/jobs_running")
@@ -198,19 +195,18 @@ describe Scheduler::Utils do
                 context = HTTP::Server::Context.new(request, response)
 
                 resources = Scheduler::Resources.new
-                resources.redis_client("localhost", 6379)
-                resources.es_client("localhost", 9200)
+                resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
+                resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
-                # regist runner hostname
-                data = { :hostname => remoteHostname, :mac => mac }
-                respon  = resources.@es_client.not_nil!.add_config("report/hostnames", data)
+                # register runner hostname
+                respon  = resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remoteHostname)
                 
                 # client testbox is  wfg-e595-002
                 # job's testbox is    wfg-e595-001
 
                 # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
-                resources.fsdir_root("/home/chief/code/crcode/scheduler/public")
-                json = JSON.parse(Jobfile::Operate.load_yaml("test/demo_job.yaml").to_json)
+                resources.fsdir_root("./public")
+                json = JSON.parse(DEMO_JOB)
                 json_hash = Public.hashReplaceWith(json.as_h, { "testbox" => "wfg-e595-002" })
                 resources.@es_client.not_nil!.add("/jobs/job", json_hash, job_id)
 
