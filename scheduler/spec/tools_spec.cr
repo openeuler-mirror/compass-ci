@@ -54,6 +54,14 @@ describe Public do
             (result).should eq testgroup_name
         end
 
+        it "instance: vm-pxe-hi1620-1p1g-chief-1338976" do
+            testbox = "vm-pxe-hi1620-1p1g-chief-1338976"
+            tbox_group = "vm-pxe-hi1620-1p1g-chief"
+            result = Public.getTestgroupName(testbox)
+
+            (result).should eq tbox_group
+        end
+
         it "end with 2 -[n]" do
             testbox_name = "hostname-001-001"
             testgroup_name = "hostname-001"
