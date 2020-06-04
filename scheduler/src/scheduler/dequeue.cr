@@ -13,7 +13,7 @@ require "../tools"
 # 3.update <sched/id2job>
 
 module Scheduler::Dequeue
-  def self.responTestbox(testbox : String, env : HTTP::Server::Context, resources : Scheduler::Resources, count = 1)
+  def self.respon_testbox(testbox : String, env : HTTP::Server::Context, resources : Scheduler::Resources, count = 1)
     if resources.@redis_client != nil
       client = resources.@redis_client.not_nil!
       tbox_group = Public.getTestgroupName(testbox)

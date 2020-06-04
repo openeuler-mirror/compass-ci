@@ -39,7 +39,7 @@ describe Scheduler::Dequeue do
             raw_redis.zadd(job_list, "1.2", "2")
 
             before_dequeue_time = Time.local.to_unix_f
-            job_id, error_code = Scheduler::Dequeue.responTestbox(testbox, context, resources).not_nil!
+            job_id, error_code = Scheduler::Dequeue.respon_testbox(testbox, context, resources).not_nil!
             (job_id).should eq("1")
 
             # check redis data at pending queue
@@ -72,7 +72,7 @@ describe Scheduler::Dequeue do
             raw_redis.del("sched/jobs_running")
 
             before_dequeue_time = Time.local.to_unix_f
-            job_id, error_code = Scheduler::Dequeue.responTestbox(testbox, context, resources).not_nil!
+            job_id, error_code = Scheduler::Dequeue.respon_testbox(testbox, context, resources).not_nil!
             (job_id).should eq("0")
 
             # check redis data at running queue

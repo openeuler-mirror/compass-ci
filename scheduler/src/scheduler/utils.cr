@@ -17,7 +17,7 @@ module Scheduler
             es = resources.@es_client.not_nil!
             hostname = resources.@redis_client.not_nil!.@client.hget("mac2host", mac)
             job_id, error_code = "0", "0"
-            job_id, error_code = Scheduler::Dequeue.responTestbox(hostname, env, resources, 10) if hostname
+            job_id, error_code = Scheduler::Dequeue.respon_testbox(hostname, env, resources, 10) if hostname
 	    if job_id == "0"
 		return Scheduler::Boot.ipxe_msg("No job now")
 	    end
