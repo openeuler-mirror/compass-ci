@@ -21,6 +21,8 @@
 	cd crystal-ci
 	echo "export CCI_SRC=$PWD" >> $HOME/.${SHELL##*/}rc
 
+	echo "PATH="$PATH:$PWD/sbin" >> ~/.profile
+
 ## packages
 
 	gem install rest-client
