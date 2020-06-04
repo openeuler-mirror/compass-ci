@@ -4,7 +4,7 @@ FROM alpine:3.11
 MAINTAINER Wu Fenguang <wufengguang@huawei.com>
 
 RUN apk update
-RUN apk add bash zsh git openssh openrc rsync crystal shards make gcc tzdata sudo
+RUN apk add bash zsh git openssh openrc rsync crystal shards make gcc tzdata sudo coreutils util-linux
 
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
