@@ -1,17 +1,18 @@
 require "spec"
 require "../src/redis_client"
+require "../src/constants"
 
 describe Redis::Client do
     describe "enqueue" do
         it "enqueue success" do
-            redis_client = Redis::Client.new("localhost", 6379)
+            redis_client = Redis::Client.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
             time_befor = Time.local.to_unix_f
             id = redis_client.get_new_job_id()
 
             before_add_priority = Time.local.to_unix_f
             redis_client.add2queue("test", id)
 
-            raw_redis = Redis.new("localhost",  6379)
+            raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
             index  = raw_redis.zrank("test", id)
 
             (index).should_not be_nil

@@ -22,7 +22,7 @@ describe Scheduler::Boot do
 
         resources = Scheduler::Resources.new
         it "job content has no os, respon default debian" do
-            job_content = JSON.parse(%({"test": "test no os","_id": 10}))
+            job_content = JSON.parse(%({"test": "test no os","id": 10}))
             respon = Scheduler::Boot.respon(job_content, context, resources)
             respon_list = respon.split("\n")
 
@@ -31,7 +31,7 @@ describe Scheduler::Boot do
         end
 
         it "job content has os, os_arch, os_version, respon the spliced value" do
-            job_content = JSON.parse(%({"_id": 10, "os": "openeuler", "os_arch": "aarch64", "os_version": "current"}))
+            job_content = JSON.parse(%({"id": 10, "os": "openeuler", "os_arch": "aarch64", "os_version": "current"}))
             respon = Scheduler::Boot.respon(job_content, context, resources)
             respon_list = respon.split("\n")
             os_dir = job_content["os"].to_s.downcase + "/" + job_content["os_arch"].to_s.downcase + "/" + job_content["os_version"].to_s.downcase
