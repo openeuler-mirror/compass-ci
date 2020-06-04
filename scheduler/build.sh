@@ -11,7 +11,7 @@ cmd=(
 	-v $DIR:/usr/share/code
 	-w /usr/share/code
 	alpine:scheduler-dev
-	sh -c "crystal build src/$cDIR.cr --static"
+	sh -c "crystal build src/$cDIR.cr"
 )
 
 "${cmd[@]}"
