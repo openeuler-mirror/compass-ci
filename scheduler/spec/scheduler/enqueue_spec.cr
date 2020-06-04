@@ -1,5 +1,6 @@
 require "spec"
 
+require "../../src/constants"
 require "../../src/redis_client"
 require "../../src/scheduler/enqueue"
 require "../../lib/kemal/src/kemal/ext/response"
@@ -22,11 +23,11 @@ describe Scheduler::Enqueue do
             context = createPostContext({ :testcase => "1234", :testbox => "myhost"})
 
             resources = Scheduler::Resources.new
-            resources.redis_client("localhost", 6379)
-            resources.es_client("localhost", 9200)
+            resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
+            resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
     
             # here test for testbox == testgroup
-            raw_redis = Redis.new("localhost", 6379)
+            raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
             job_list = "testbox_myhost"
             raw_redis.zremrangebyrank(job_list, 0, -1)
             job_list = "sched/jobs_to_run/myhost"
@@ -46,10 +47,10 @@ describe Scheduler::Enqueue do
             context = createPostContext({ :testcase => "1234", :testbox => "mygroup-1", "test-group" => "mygroup"})
 
             resources = Scheduler::Resources.new
-            resources.redis_client("localhost", 6379)
-            resources.es_client("localhost", 9200)
+            resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
+            resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
     
-            raw_redis = Redis.new("localhost", 6379)
+            raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
             job_list = "sched/jobs_to_run/mygroup"
             raw_redis.zremrangebyrank(job_list, 0, -1)
             job_list = "testbox_myhost"
