@@ -1,5 +1,6 @@
 require "spec"
 
+require "../../src/constants"
 require "../../src/scheduler/resources"
 require "../../src/scheduler/dequeue"
 require "../../lib/kemal/src/kemal/ext/response"
@@ -21,9 +22,9 @@ describe Scheduler::Dequeue do
             context = gen_context("/boot.ipxe/mac/ef-01-02-03-0f-ee")
 
             resources = Scheduler::Resources.new
-            resources.redis_client("localhost", 6379)
+            resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
 
-            raw_redis = Redis.new("localhost", 6379)
+            raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
 
             testbox = "tcm001"
 
@@ -60,9 +61,9 @@ describe Scheduler::Dequeue do
             context = gen_context("/boot.ipxe/mac/ef-01-02-03-0f-ee")
 
             resources = Scheduler::Resources.new
-            resources.redis_client("localhost", 6379)
+            resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
 
-            raw_redis = Redis.new("localhost", 6379)
+            raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
 
             testbox = "tcm001"
 
