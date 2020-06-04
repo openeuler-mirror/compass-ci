@@ -1,3 +1,4 @@
+require "../src/constants"
 require "spec"
 require "../src/jobfile_operate"
 
@@ -6,7 +7,7 @@ describe Jobfile::Operate do
     describe "update" do
         file_path = "test/update.yaml"
         section = "#! job"
-        kv = {"_id" => "123456"}
+        kv = {"id" => "123456"}
 
         Jobfile::Operate.prepareDir(file_path)
         if File.exists?(file_path)
@@ -36,7 +37,7 @@ describe Jobfile::Operate do
 
             linepre = ""
             File.each_line(file_path) do |line|
-                match_info = line.match(/_id: (.*)/)
+                match_info = line.match(/id: (.*)/)
                 if match_info
                     linepre = "id: #{match_info.[1]}" 
                 end
@@ -55,7 +56,7 @@ describe Jobfile::Operate do
 
             lineIndex = 0
             File.each_line(file_path) do |line|
-                match_info = line.match(/_id: (.*)/)
+                match_info = line.match(/id: (.*)/)
                 lineIndex = lineIndex +1
                 if match_info
                     break
@@ -77,7 +78,7 @@ describe Jobfile::Operate do
 
             lineIndex = 0
             File.each_line(file_path) do |line|
-                match_info = line.match(/_id: (.*)/)
+                match_info = line.match(/id: (.*)/)
                 lineIndex = lineIndex +1
                 if match_info
                     break
@@ -90,20 +91,20 @@ describe Jobfile::Operate do
 
     end
 
-    describe "createJobPackage" do
+    describe "create_job_cpio" do
+        # when debug this,it seems to execute "chmod +x /c/lkp-tests/sbin/create-job-cpio.sh" to get permission
         it "from jobid create job.cgz" do
             job_id = "testjob"
             resources = Scheduler::Resources.new
-            resources.es_client("localhost", 9200)
+            resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
             fs_root = File.real_path(".")
             resources.fsdir_root("#{fs_root}/public")
-            json = JSON.parse(Jobfile::Operate.load_yaml("test/demo_job.yaml").to_json)
-            resources.@es_client.not_nil!.add("/jobs/job", json.as_h, job_id)
-
+            resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
+            
             oldfile = ::File.join [resources.@fsdir_root, job_id]
             FileUtils.rm_r(oldfile) if File.exists?(oldfile)
 
-            Jobfile::Operate.createJobPackage(job_id, resources)
+            Jobfile::Operate.create_job_cpio(JSON.parse(DEMO_JOB), resources.@fsdir_root.not_nil!)
             (File.exists?(::File.join [resources.@fsdir_root, job_id, "job.cgz"])).should be_true
         end
     end
