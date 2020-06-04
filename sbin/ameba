@@ -1,0 +1,4 @@
+#!/bin/sh
+
+exec /c/ameba/bin/ameba -c $CCI_SRC/.ameba.yml
+
