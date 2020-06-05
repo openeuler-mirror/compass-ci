@@ -29,20 +29,20 @@ class Redis::Client
         job_list = queue_name
 
         # priority must be NOT eq
-        priorityAsScore = Time.local.to_unix_f
-        @client.zadd(job_list, priorityAsScore, job_id)
+        priority_as_score = Time.local.to_unix_f
+        @client.zadd(job_list, priority_as_score, job_id)
 
-        return priorityAsScore
+        return priority_as_score
     end
 
     # pending queue name is sched/jobs_to_run/$tbox_group
-    def findAnyJob(tbox_group : String)
+    def find_any_job(tbox_group : String)
         job_list = "sched/jobs_to_run/#{tbox_group}"
-        job_id = findJobInQueue(job_list)
+        job_id = find_job_in_queue(job_list)
         return job_id, job_list
     end
 
-    def findJobInQueue(queue_name : String)
+    def find_job_in_queue(queue_name : String)
         # check the first order job_id
         first_job = @client.zrange(queue_name, 0, 0)
 
@@ -54,7 +54,7 @@ class Redis::Client
         return first_job[0]
     end
 
-    def jsonAppend(key, job_id, append)
+    def json_append(key, job_id, append)
         json_append = JSON.parse(append.not_nil!)
         orange_text = @client.hget(key, job_id)
         if (orange_text != nil)
@@ -66,26 +66,26 @@ class Redis::Client
         end
     end
 
-    def moveJob(queue_name_from : String, queue_name_to : String, job_id : String)
+    def move_job(queue_name_from : String, queue_name_to : String, job_id : String)
         @client.zrem(queue_name_from, job_id)
-        priorityAsScore = Time.local.to_unix_f
+        priority_as_score = Time.local.to_unix_f
 
         # queue_name_to: sched/jobs_running
-        @client.zadd(queue_name_to, priorityAsScore, job_id)
+        @client.zadd(queue_name_to, priority_as_score, job_id)
 
-        return priorityAsScore
+        return priority_as_score
     end
 
-    def updateRunningInfo(job_id : String, infomation)
+    def update_running_info(job_id : String, infomation)
         jsonAppend("sched/id2job", job_id, infomation)
     end
 
-    def removeRunning(job_id : String)
+    def remove_running(job_id : String)
         @client.zrem("sched/jobs_running", job_id)
         @client.hdel("sched/id2job", job_id)
     end
 
-    def findID(hostname : String)
+    def find_id(hostname : String)
         respon = @client.hgetall("sched/id2job")
         len = respon.size / 2
 
