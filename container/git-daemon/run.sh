@@ -1,5 +1,5 @@
 
-docker run -d -p 9418:9418 -v  /srv/git:/git --name git_server apline311:git-server
+docker run -d -p 9418:9418 -v  /srv/git:/git --name git-daemon apline311:git-daemon
 
 
 # test
