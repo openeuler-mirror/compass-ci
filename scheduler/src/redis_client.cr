@@ -54,18 +54,6 @@ class Redis::Client
         return first_job[0]
     end
 
-    def json_append(key, job_id, append)
-        json_append = JSON.parse(append.not_nil!)
-        orange_text = @client.hget(key, job_id)
-        if (orange_text != nil)
-            json_orange = JSON.parse(orange_text.not_nil!)
-            result = json_orange.as_h.merge(json_append.as_h)
-             return @client.hset(key, job_id, result.to_json)
-        else
-            return @client.hset(key, job_id,  append)
-        end
-    end
-
     def move_job(queue_name_from : String, queue_name_to : String, job_id : String)
         @client.zrem(queue_name_from, job_id)
         priority_as_score = Time.local.to_unix_f
@@ -76,8 +64,22 @@ class Redis::Client
         return priority_as_score
     end
 
-    def add_job_content(job_id : String, infomation)
-        json_append("sched/id2job", job_id, infomation)
+    def add_job_content(job_content)
+        job_id = job_content["id"]
+        job_content_o = get_job_content("#{job_id}")
+        job_content_m = job_content_o.merge(job_content)
+
+        @client.hset("sched/id2job", job_id, job_content_m.to_json)
+    end
+
+    def get_job_content(job_id)
+        job_content = @client.hget("sched/id2job", job_id)
+        if job_content.nil?
+            job_content = Hash(String, String).new
+        else
+            job_content = JSON.parse(job_content).as_h
+        end
+        return job_content
     end
 
     def remove_running(job_id : String)

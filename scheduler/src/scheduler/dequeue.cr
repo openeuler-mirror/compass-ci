@@ -22,7 +22,7 @@ module Scheduler::Dequeue
 
         if job_id != "0"
           client.move_job(queue_name, "sched/jobs_running", "#{job_id}")
-          client.json_append("sched/id2job", "#{job_id}", %({"testbox":"#{testbox}"}))
+          client.add_job_content({"id" => "#{job_id}", "testbox" => "#{testbox}"})
           return "#{job_id}", queue_name
         end
 
