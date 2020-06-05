@@ -78,7 +78,7 @@ TestBox->Scheduler: GET "/boot.ipxe/mac/52-54-00-12-34-56"
 Scheduler->ElasticSearch: <hostname> = get_config("report/hostnames", "52-54-00-12-34-56")
 Scheduler->Scheduler: <tbox_group> = getTestgroupName(<hostname>)
 Scheduler->Redis: <job_id> = find_any_job(<tbox_group>)
-Redis->Redis: moveJob("sched/jobs_to_run/#{tbox_group}", "sched/jobs_running", <job_id>)
+Redis->Redis: move_job("sched/jobs_to_run/#{tbox_group}", "sched/jobs_running", <job_id>)
 Scheduler->ElasticSearch: job = get("job/job", <job_id>)
 Scheduler->Scheduler: createJobPackage from job to job.cgz
 Scheduler->TestBox: <ipxe_command>
@@ -165,7 +165,7 @@ Scheduler->TestBox: Done
 - inner process:
 ```sequence
 User->Scheduler: GET "/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=<job_id>"
-Scheduler->Redis: removeRunning(job_id)
+Scheduler->Redis: remove_running(job_id)
 Scheduler->User: Done
 ```
 - doing what:
@@ -173,7 +173,7 @@ Scheduler->User: Done
         2. remove job from redis queue "sched/id2job"
 
 - redis storage: 
-        moveJob("sched/jobs_running", "queue/extract_stats", job_id):move job from redis queue "sched/jobs_running" to "sched/extract_stats"
+        move_job("sched/jobs_running", "queue/extract_stats", job_id):move job from redis queue "sched/jobs_running" to "sched/extract_stats"
         hdel("sched/id2job", job_id):remove job from redis queue "sched/id2job"
 - es storage: no change
 
