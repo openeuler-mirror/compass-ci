@@ -77,7 +77,7 @@ Scheduler->User: <job_id>
 TestBox->Scheduler: GET "/boot.ipxe/mac/52-54-00-12-34-56"
 Scheduler->ElasticSearch: <hostname> = get_config("report/hostnames", "52-54-00-12-34-56")
 Scheduler->Scheduler: <tbox_group> = getTestgroupName(<hostname>)
-Scheduler->Redis: <job_id> = findAnyJob(<tbox_group>)
+Scheduler->Redis: <job_id> = find_any_job(<tbox_group>)
 Redis->Redis: moveJob("sched/jobs_to_run/#{tbox_group}", "sched/jobs_running", <job_id>)
 Scheduler->ElasticSearch: job = get("job/job", <job_id>)
 Scheduler->Scheduler: createJobPackage from job to job.cgz
