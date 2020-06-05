@@ -24,24 +24,24 @@ describe Scheduler::Monitor do
             parameter_value =  context.request.query_params[parameter_key]
 
             resources = Scheduler::Resources.new
-            resources.es_client(JOB_ES_HOST,JOB_ES_PORT_DEBUG)
+            resources.redis_client(JOB_REDIS_HOST,JOB_REDIS_PORT_DEBUG)
 
             # add 100, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
             resources.fsdir_root("/usr/share/code/scheduler/public")
 
-            raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
-            # raw_es_client.indices.delete({:index => "report"})
-            raw_es_client.indices.delete({:index => "jobs"})
-
-           
-
-            resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
-            
-            hash = { "job" => job_id, parameter_key => parameter_value }
+            hash = { "id" => job_id, parameter_key => parameter_value }
             Scheduler::Monitor.update_job_parameter(hash, context, resources)
 
-            respon = resources.@es_client.not_nil!.get("jobs/job", job_id)
-            (respon["_source"][parameter_key]).should eq("1587725398")
+            respon = resources.@redis_client.not_nil!.@client.hget("sched/id2job", job_id).not_nil!
+
+            case respon
+            when JSON::Any
+                respon_hash = respon.as_h
+                
+            else String
+                respon_hash = JSON.parse(respon).as_h
+            end
+            (respon_hash[parameter_key]).should eq("1587725398")
         end
     end
 end
