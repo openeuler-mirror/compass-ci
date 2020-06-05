@@ -140,8 +140,8 @@ Scheduler->TestBox: send_file job.cgz
 - inner process:
 ```sequence
 TestBox->Scheduler: GET "/~lkp/cgi-bin/lkp-jobfile-append-var?\njob_file=/lkp/scheduled/job.yaml&job_id=<job_id>&[<parameter> => <value>]"
-Scheduler->ElasticSearch: updateJobParameter("job"=><job_id>,\n<parameter> => <value>)
-Scheduler->Redis: updateJobParameter("job"=><job_id>,\n<parameter> => <value>)
+Scheduler->ElasticSearch: update_job_parameter("job"=><job_id>,\n<parameter> => <value>)
+Scheduler->Redis: update_job_parameter("job"=><job_id>,\n<parameter> => <value>)
 Scheduler->TestBox: Done
 ```
 - doing what:
@@ -153,7 +153,7 @@ Scheduler->TestBox: Done
 	extend set: job[parameter]=value
 
 - class members
-	Scheduler::Monitor.updateJobParameter
+	Scheduler::Monitor.update_job_parameter
 
 ## report job finished
 - restAPI: GET "/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=<job_id>"

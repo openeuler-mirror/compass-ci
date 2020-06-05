@@ -38,7 +38,7 @@ describe Scheduler::Monitor do
             resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
             
             hash = { "job" => job_id, parameter_key => parameter_value }
-            Scheduler::Monitor.updateJobParameter(hash, context, resources)
+            Scheduler::Monitor.update_job_parameter(hash, context, resources)
 
             respon = resources.@es_client.not_nil!.get("jobs/job", job_id)
             (respon["_source"][parameter_key]).should eq("1587725398")

@@ -120,7 +120,7 @@ module Scheduler
             resources.@test_params.not_nil!.each do |parameter|
                 # update in es (job content)
                 if (value = env.params.query[parameter]?)
-                    Scheduler::Monitor.updateJobParameter({ "job" => job_id,  parameter => value }, env, resources)
+                    Scheduler::Monitor.update_job_parameter({ "job" => job_id,  parameter => value }, env, resources)
                 end
             end
         end
