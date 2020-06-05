@@ -118,7 +118,7 @@ module Scheduler
         if job_id
             # try to get report value and then update it
             job_content = {} of String => String
-            job_content["job_id"] = job_id
+            job_content["id"] = job_id
             resources.@test_params.not_nil!.each do |parameter|
                 # update in es (job content)
                 if (value = env.params.query[parameter]?)
