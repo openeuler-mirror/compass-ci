@@ -31,9 +31,9 @@ do
 			initrds+="$file "
 			;;
 		kernel)
-			file=$(basename "$b")
-			#[[ -f $file ]] ||
-			rm -f $file
+			kernel=$(basename "$b")
+			#[[ -f $kernel ]] ||
+			rm -f $kernel
 			wget $b
 			append=$(echo "$c" | sed -r "s/ initrd=[^ ]+//g")
 			;;
