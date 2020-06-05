@@ -34,7 +34,6 @@ class Elasticsearch::Client
         )
 	return response
     end
-    
     def add(documents_path : String, content : Hash, id : String)
         content_hash = Public.hashReplaceWith(content, {"id" => id})
         result_root = "/result"
@@ -42,7 +41,7 @@ class Elasticsearch::Client
             result_root = content["result_root"]
         elsif content["testcase"]?
             testcase = content["testcase"]
-            result_root = "#{result_root}/#{testcase}"            
+            result_root = "#{result_root}/#{testcase}"
         end
         content_hash = Public.hashReplaceWith(content_hash, {"result_root" => "#{result_root}/#{id}"})
 
