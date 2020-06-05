@@ -46,7 +46,7 @@ describe Scheduler::Utils do
             end
     
             it "job_id != 0, respon initrd kernel job in .cgz file with testbox == test-group" do
-                job_id = "testjob"
+                job_id = "100"
                 mac = "52-54-00-12-34-56"
                 remoteHostname = "wfg-e595"
                 remote_address = "127.0.0.1:5555"
@@ -79,7 +79,7 @@ describe Scheduler::Utils do
                 # client testbox is  wfg-e595
                 # job's testbox is   wfg-e595 
 
-                # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
+                # add 100, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
                 resources.fsdir_root("./public")
                 resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
 
@@ -108,7 +108,7 @@ describe Scheduler::Utils do
             end
 
             it "job_id != 0, respon initrd kernel job in .cgz file with test-group != testbox" do
-                job_id = "testjob"
+                job_id = "100"
                 testgroup = "wfg-e595"
                 mac = "52-54-00-12-34-56"
                 remoteHostname = "wfg-e595-002"
@@ -143,7 +143,7 @@ describe Scheduler::Utils do
                 # client testbox is  wfg-e595-002
                 # job's testbox is   wfg-e595 
 
-                # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
+                # add 100, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
                 resources.fsdir_root("./public")
                 resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
 
@@ -170,7 +170,7 @@ describe Scheduler::Utils do
             end
 
             it "job_id != 0, respon initrd kernel job in .cgz file with test-group != testbox != client hostname" do
-                job_id = "testjob"
+                job_id = "100"
                 testgroup = "wfg-e595"
                 mac = "52-54-00-12-34-56"
                 remoteHostname = "wfg-e595-001"
@@ -204,7 +204,7 @@ describe Scheduler::Utils do
                 # client testbox is  wfg-e595-002
                 # job's testbox is    wfg-e595-001
 
-                # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
+                # add 100, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
                 resources.fsdir_root("./public")
                 json = JSON.parse(DEMO_JOB)
                 json_hash = Public.hashReplaceWith(json.as_h, { "testbox" => "wfg-e595-002" })

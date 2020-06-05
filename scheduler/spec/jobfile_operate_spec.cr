@@ -94,7 +94,7 @@ describe Jobfile::Operate do
     describe "create_job_cpio" do
         # when debug this,it seems to execute "chmod +x /c/lkp-tests/sbin/create-job-cpio.sh" to get permission
         it "from jobid create job.cgz" do
-            job_id = "testjob"
+            job_id = "100"
             resources = Scheduler::Resources.new
             resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
             fs_root = File.real_path(".")

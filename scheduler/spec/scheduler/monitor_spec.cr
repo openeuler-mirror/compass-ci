@@ -16,17 +16,17 @@ end
 describe Scheduler::Monitor do
     describe "job maintain" do
         it "recieve job parameters, then update the job parametre" do
-            context = gen_put_context("/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_id=testjob&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698")
+            context = gen_put_context("/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_id=100&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698")
             parameter_key = "start_time"
 
             # job_id =  context.request.query_params["job"]
-            job_id = "testjob"
+            job_id = "100"
             parameter_value =  context.request.query_params[parameter_key]
 
             resources = Scheduler::Resources.new
             resources.es_client(JOB_ES_HOST,JOB_ES_PORT_DEBUG)
 
-            # add testjob, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
+            # add 100, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
             resources.fsdir_root("/usr/share/code/scheduler/public")
 
             raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
