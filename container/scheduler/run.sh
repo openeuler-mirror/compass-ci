@@ -1,6 +1,9 @@
 #!/bin/bash
 
-LKP_SRC=/c/lkp-tests
+docker stop s001-alpine
+docker rm s001-alpine
+
+[[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
 
 cmd=(
 	docker run
@@ -8,8 +11,8 @@ cmd=(
 	-d
 	-u 1090:1090
 	-p 3000:3000
-	-e LKP_SRC=$LKP_SRC
-	-v $LKP_SRC:$LKP_SRC
+	-e LKP_SRC=/c/lkp-tests
+	-v $LKP_SRC:/c/lkp-tests
 	-v /srv/scheduler/alpine:/srv/scheduler
 	-v /etc/localtime:/etc/localtime:ro
 	-w /usr/share/scheduler
