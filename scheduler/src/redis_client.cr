@@ -76,7 +76,7 @@ class Redis::Client
         return priority_as_score
     end
 
-    def update_running_info(job_id : String, infomation)
+    def add_job_content(job_id : String, infomation)
         json_append("sched/id2job", job_id, infomation)
     end
 

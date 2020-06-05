@@ -117,12 +117,15 @@ module Scheduler
         job_id = env.params.query["job_id"]?
         if job_id
             # try to get report value and then update it
+            job_content = {} of String => String
+            job_content["job_id"] = job_id
             resources.@test_params.not_nil!.each do |parameter|
                 # update in es (job content)
                 if (value = env.params.query[parameter]?)
-                    Scheduler::Monitor.update_job_parameter({ "job" => job_id,  parameter => value }, env, resources)
+                    job_content[parameter] = value
                 end
             end
+            Scheduler::Monitor.update_job_parameter(job_content, env, resources)
         end
 
         "Done"
