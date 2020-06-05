@@ -18,11 +18,11 @@ module Scheduler::Dequeue
       client = resources.@redis_client.not_nil!
       tbox_group = Public.getTestgroupName(testbox)
       count.times do
-        job_id, queue_name = client.findAnyJob(tbox_group)
+        job_id, queue_name = client.find_any_job(tbox_group)
 
         if job_id != "0"
-          client.moveJob(queue_name, "sched/jobs_running", "#{job_id}")
-          client.jsonAppend("sched/id2job", "#{job_id}", %({"testbox":"#{testbox}"}))
+          client.move_job(queue_name, "sched/jobs_running", "#{job_id}")
+          client.json_append("sched/id2job", "#{job_id}", %({"testbox":"#{testbox}"}))
           return "#{job_id}", queue_name
         end
 

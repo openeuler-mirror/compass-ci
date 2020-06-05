@@ -136,7 +136,7 @@ module Scheduler
 	job_id = env.params.query["job_id"]?
 	if job_id
             # update redis status
-            resources.@redis_client.not_nil!.moveJob("sched/jobs_running", "queue/extract_stats", job_id)
+            resources.@redis_client.not_nil!.move_job("sched/jobs_running", "queue/extract_stats", job_id)
             resources.@redis_client.not_nil!.@client.hdel("sched/id2job", job_id)
 	end
 	

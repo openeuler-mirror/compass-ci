@@ -6,9 +6,9 @@ require "./tools"
 #  - use redis incr as job_id
 #
 # -------------------------------------------------------------------------------------------
-# moveJob(queue_name_from : String, queue_name_to : String, job_id : String)
+# move_job(queue_name_from : String, queue_name_to : String, job_id : String)
 #  - move job from queue_name_from to [queue_name_to], data type is a redis sorted set
-#  - example : moveJob("sched/jobs_to_run/$tbox_group", "sched/jobs_running", "12")
+#  - example : move_job("sched/jobs_to_run/$tbox_group", "sched/jobs_running", "12")
 #
 
 class Redis::Client
@@ -77,7 +77,7 @@ class Redis::Client
     end
 
     def update_running_info(job_id : String, infomation)
-        jsonAppend("sched/id2job", job_id, infomation)
+        json_append("sched/id2job", job_id, infomation)
     end
 
     def remove_running(job_id : String)
