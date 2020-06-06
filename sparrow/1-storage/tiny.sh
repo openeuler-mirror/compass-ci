@@ -9,7 +9,7 @@ dirs=(
 	/srv/os
 	/srv/redis
 	/srv/result
-	/srv/scheduler
+	/srv/cci/scheduler
 )
 
 mkdir -p "${dirs[@]}"

@@ -13,7 +13,7 @@ cmd=(
 	-p 3000:3000
 	-e LKP_SRC=/c/lkp-tests
 	-v $LKP_SRC:/c/lkp-tests
-	-v /srv/scheduler/alpine:/srv/scheduler
+	-v /srv/cci/scheduler/alpine:/srv/cci/scheduler
 	-v /etc/localtime:/etc/localtime:ro
 	-w /c/cci/scheduler
 	sch-ruby-a:v0.00d

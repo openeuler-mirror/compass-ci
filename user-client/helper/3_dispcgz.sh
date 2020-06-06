@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-sudo ls /srv/scheduler/alpine/public/$1
+sudo ls /srv/cci/scheduler/alpine/public/$1
