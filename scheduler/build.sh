@@ -1,5 +1,6 @@
 #!/bin/bash
 
+SCHED_DEBUG_DIR=/c/cci/scheduler
 DIR=$(dirname $(realpath $0))
 cDIR=${DIR##*/}
 
@@ -8,8 +9,8 @@ cmd=(
 	--rm
 	-it
 	-u $UID
-	-v $DIR:/usr/share/code
-	-w /usr/share/code
+	-v $DIR:$SCHED_DEBUG_DIR
+	-w $SCHED_DEBUG_DIR
 	alpine:scheduler-dev
 	sh -c "crystal build src/$cDIR.cr"
 )
