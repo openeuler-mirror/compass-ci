@@ -36,15 +36,12 @@ class Elasticsearch::Client
     end
     
     def add(documents_path : String, content : Hash, id : String)
-        content_hash = Public.hashReplaceWith(content, {"id" => id})
-        result_root = "/result"
-        if content["result_root"]?
-            result_root = content["result_root"]
-        elsif content["testcase"]?
-            testcase = content["testcase"]
-            result_root = "#{result_root}/#{testcase}"            
+        if content["suite"]?
+            result_root = "/result/#{content["suite"]}/#{id}" 
+        else
+            result_root = "/result/default/#{id}"
         end
-        content_hash = Public.hashReplaceWith(content_hash, {"result_root" => "#{result_root}/#{id}"})
+        content = content.merge({"result_root" => result_root, "id" => id})
 
         dp = documents_path.split("/")
         response = @client.create(
@@ -52,7 +49,7 @@ class Elasticsearch::Client
                 :index => dp[dp.size - 2],
                 :type => dp[dp.size - 1],
                 :id => id,
-                :body => content_hash
+                :body => content
             }
         )
         return response
