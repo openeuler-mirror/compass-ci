@@ -11,14 +11,14 @@ RUN umask 002 &&\
     gem install yaml
 
 
-RUN mkdir /usr/share/scheduler
+RUN mkdir /c/cci/scheduler
 
-# should build with: crystal build src/scheduler.cr --static 
-COPY scheduler /usr/share/scheduler
+# should build with: crystal build src/scheduler.cr
+COPY scheduler /c/cci/scheduler
 
-RUN chown -R 1090:1090 /usr/share/scheduler
+RUN chown -R 1090:1090 /c/cci/scheduler
 
 EXPOSE 3000
 
-WORKDIR /usr/share/scheduler
+WORKDIR /c/cci/scheduler
 
