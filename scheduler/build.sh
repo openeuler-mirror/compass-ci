@@ -2,7 +2,7 @@
 
 SCHED_DEBUG_DIR=/c/cci/scheduler
 DIR=$(dirname $(realpath $0))
-cDIR=${DIR##*/}
+filename=${DIR##*/}
 
 cmd=(
 	docker run
@@ -12,7 +12,7 @@ cmd=(
 	-v $DIR:$SCHED_DEBUG_DIR
 	-w $SCHED_DEBUG_DIR
 	alpine:scheduler-dev
-	sh -c "crystal build src/$cDIR.cr"
+	sh -c "crystal build src/$filename.cr"
 )
 
 "${cmd[@]}"

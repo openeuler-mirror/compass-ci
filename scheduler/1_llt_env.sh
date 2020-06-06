@@ -2,7 +2,6 @@
 
 SCHED_DEBUG_DIR=/c/cci/scheduler
 DIR=$(dirname $(realpath $0))
-cDIR=${DIR##*/}
 
 cmd=(
 	docker run
