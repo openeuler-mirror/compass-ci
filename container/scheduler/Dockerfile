@@ -11,14 +11,15 @@ RUN umask 002 &&\
     gem install yaml
 
 
-RUN mkdir -p /c/cci/scheduler
+ENV SCHED_RUNTIME_DIR	/c/cci/scheduler
+
+RUN mkdir -p $SCHED_RUNTIME_DIR && \
+    chown -R 1090:1090 /c
+
+WORKDIR $SCHED_RUNTIME_DIR
 
 # should build with: crystal build src/scheduler.cr
-COPY scheduler /c/cci/scheduler
-
-RUN chown -R 1090:1090 /c
+COPY scheduler .
 
 EXPOSE 3000
-
-WORKDIR /c/cci/scheduler
 

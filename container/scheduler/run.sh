@@ -15,7 +15,6 @@ cmd=(
 	-v $LKP_SRC:/c/lkp-tests
 	-v /srv/cci/scheduler/alpine:/srv/cci/scheduler
 	-v /etc/localtime:/etc/localtime:ro
-	-w /c/cci/scheduler
 	sch-ruby-a:v0.00d
         ./scheduler
 )
