@@ -66,3 +66,19 @@ are obliged to give review comments:
 A patch may undergo several rounds of revisions and reviews before being
 considered OK. It's up to the subsystem committer to apply and push code
 to the mainline.
+
+tech discussions
+================
+
+Technical discussions can happen in 2 main ways
+- text messages
+- voice talks
+
+All text based discussions shall happen in mailing list. Prefer mutt email
+client over outlook. Prefer point-to-point bottom-posting. Every point should
+have clear and informative response.
+
+Phone meeting links should better be posted publicly, so that anyone interested
+can take part in. It's good to have text meeting minutes published if important
+decisions are made in the phone call. Meetings should be effective, with
+written minutes and actions.
