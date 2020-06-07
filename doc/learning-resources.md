@@ -61,6 +61,15 @@ Vim
 
 https://devhints.io/vim
 
+Tmux
+====
+
+## tmux keys (customized)
+
+	ctrl-s c	create new window
+	alt-j/k		switch to left/right window
+	alt-1/2/3... 	switch to the 1st, 2nd, 3rd, ... window
+	ctrl-s ctrl-u   page up (press ctrl-u to continue paging up, <Enter> to exit)
 
 Mutt
 ====
