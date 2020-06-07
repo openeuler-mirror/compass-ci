@@ -49,6 +49,21 @@ https://ngte-ac.gitbook.io/i/infrastructure/linux-command-cheatsheet
 https://github.com/jlevy/the-art-of-command-line/blob/master/README-zh.md
 https://github.com/macrozheng/mall/blob/master/document/reference/linux.md
 
+## zsh keys (customized)
+
+	ctrl-p		history-beginning-search-backward
+	ctrl-n		history-beginning-search-forwardd
+	alt-p		history-search-backward
+	alt-n		history-search-forward
+	alt-.		insert-last-word
+	alt-<space>	vi-cmd-mode
+
+	alt-f		forward-word
+	alt-b		backward-word
+	ctrl-a		beginning-of-line
+	ctrl-e		end-of-line
+
+	bindkey		show all key bindings
 
 python
 ======
