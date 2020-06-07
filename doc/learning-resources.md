@@ -61,6 +61,20 @@ Vim
 
 https://devhints.io/vim
 
+## vim keys (customized)
+
+	F2  		toggle number/cursorline
+	F3  		toggle spell check
+	F4  		toggle paste/nowrap
+	F10/F11  	prev/next color scheme
+	g.		search in subdir
+	g/		search whole git repo
+	alt-n/p		next/prev search result
+	ctrl-n/p	next/prev file
+	ctrl-j/k	left/right buffer
+	<Tab>     	next buffer
+	alt-c		toggle comment
+
 Tmux
 ====
 
