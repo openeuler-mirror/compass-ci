@@ -67,7 +67,7 @@ Mutt
 
 http://www.ctex.org/documents/shredder/mutt_frame.html  # enough to read the 1st section
 
-## mutt keys
+## mutt keys (customized)
 
 Check /etc/mutt/key.muttrc for our customized key bindings.
 Type "?" in mutt will show you the complete key bindings.
@@ -80,8 +80,12 @@ The most used ones are:
 	ctrl-u/ctrl-d	move up/down half page
 	9/G		move to bottom
 	0		move to top
+	<Tab>		next-unread
 	/		search
+	l		limit
+	i		limit: toggle to me/all
 
+	# for committer
 	a		apply patch
 	p		apply patch + git push
 
