@@ -3,6 +3,13 @@
 SCHED_DEBUG_DIR=/c/cci/scheduler
 DIR=$(dirname $(realpath $0))
 
+lib_folder="$DIR/lib"
+if [ ! -d "$lib_folder" ] && [ ! -f "$lib_folder" ]; then
+  if [ ! -L "$lib_folder" ]; then
+    ln -s /usr/share/crystal/app/lib $lib_folder
+  fi
+fi
+
 cmd=(
 	docker run
 	--rm
