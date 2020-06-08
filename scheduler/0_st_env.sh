@@ -5,16 +5,14 @@ docker stop s001-alpine
 SCHED_DEBUG_DIR=/c/cci/scheduler
 DIR=$(dirname $(realpath $0))
 
-<<<<<<< HEAD
 [[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
-=======
+
 lib_folder="$DIR/lib"
 if [ ! -d "$lib_folder" ] && [ ! -f "$lib_folder" ]; then
   if [ ! -L "$lib_folder" ]; then
     ln -s /usr/share/crystal/app/lib $lib_folder
   fi
 fi
->>>>>>> fix spec ameba warning and some container fix
 
 cmd=(
 	docker run
