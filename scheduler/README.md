@@ -15,7 +15,7 @@ Note left of User: job content\nin json format
 Scheduler->Redis: <job_id> = get_new_job_id
 Redis->Redis: increase sched/seqno2jobid
 Scheduler->Scheduler: <job> = JSON.parse(HTML::body)
-Scheduler->Scheduler: <tbox_group> = determinQueueName, <tbox_group_queue> = "sched/jobs_to_run/#{tbox_group}"
+Scheduler->Scheduler: <tbox_group> = determin_queue_name, <tbox_group_queue> = "sched/jobs_to_run/#{tbox_group}"
 Scheduler->Redis: add2queue(<tbox_group_queue>, <job_id>)
 Redis->Redis: put <job_id> to pending queue <tbox_group_queue> 
 Scheduler->ElasticSearch: add("jobs/job", <job>, <job_id>)
@@ -76,7 +76,7 @@ Scheduler->User: <job_id>
 ```sequence
 TestBox->Scheduler: GET "/boot.ipxe/mac/52-54-00-12-34-56"
 Scheduler->ElasticSearch: <hostname> = get_config("report/hostnames", "52-54-00-12-34-56")
-Scheduler->Scheduler: <tbox_group> = getTestgroupName(<hostname>)
+Scheduler->Scheduler: <tbox_group> = get_tbox_group_name(<hostname>)
 Scheduler->Redis: <job_id> = find_any_job(<tbox_group>)
 Redis->Redis: move_job("sched/jobs_to_run/#{tbox_group}", "sched/jobs_running", <job_id>)
 Scheduler->ElasticSearch: job = get("job/job", <job_id>)
@@ -104,7 +104,7 @@ Scheduler->TestBox: <ipxe_command>
 	query "report/hostnames" document: index of {mac <=> hostname}
 
 - class members related:
-	Scheduler::Utils.findJobBoot
+	Scheduler::Utils.find_job_boot
 
 ## job download
 - restAPI: GET "/job_initrd_tmpfs/:job_id/job.cgz" (e.g. "/job_initrd_tmpfs/6/job.cgz")

@@ -1,15 +1,15 @@
 module Public
-    def self.hashReplaceWith(hashIn : Hash, hashR : Hash)
-        keyname = hashR.keys[0]
+    def self.hash_replace_with(hash_in : Hash, hash_r : Hash)
+        keyname = hash_r.keys[0]
 
-        if hashIn[keyname]?
-            hashIn.delete(keyname)
+        if hash_in[keyname]?
+            hash_in.delete(keyname)
         end
 
-        return hashR.merge(hashIn)
+        return hash_r.merge(hash_in)
     end
 
-    def self.getTestgroupName(testbox : String)
+    def self.get_tbox_group_name(testbox : String)
         tbox_group = testbox
 
         find = testbox.match(/(.*)(\-\d{1,}$)/)

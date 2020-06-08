@@ -23,7 +23,7 @@ module Scheduler
 	    reboot"
 	end
 
-        def self.respon(job_content : JSON::Any, env, resources : Scheduler::Resources) 
+        def self.respon(job_content : JSON::Any, env, resources : Scheduler::Resources)
             if job_content["os"]?
                 os_dir = job_content["os"].to_s + "/" + job_content["os_arch"].to_s + "/" + job_content["os_version"].to_s
             else

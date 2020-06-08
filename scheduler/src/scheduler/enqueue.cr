@@ -30,20 +30,19 @@ require "../elasticsearch_client"
 module Scheduler::Enqueue
 
     # testbox is a instance of tbox_group
-    def self.determinQueueName(hash : Hash)
+    def self.determin_queue_name(hash : Hash)
         queue_name = ""
-        queue_name_json = hash["tbox_group"]?
         if hash["tbox_group"]?
             queue_name = hash["tbox_group"].not_nil!.to_s
         elsif hash["testbox"]?
             testbox = hash["testbox"].not_nil!.to_s
-            queue_name = Public.getTestgroupName(testbox)
+            queue_name = Public.get_tbox_group_name(testbox)
         end
 
         return queue_name.to_s
     end
 
-    def self.saveData(queue_name : String, hash : Hash, resources : Scheduler::Resources)
+    def self.save_data(queue_name : String, hash : Hash, resources : Scheduler::Resources)
         error_code = 0
 
         # use redis incr as sched/seqno2jobid
@@ -59,14 +58,13 @@ module Scheduler::Enqueue
     end
 
     def self.respon(env : HTTP::Server::Context, resources : Scheduler::Resources)
-        job_id ="0"
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)
         job_hash = job_content.as_h
 
-        queue_name = determinQueueName(job_hash)
-        job_hash = Public.hashReplaceWith(job_hash, { "tbox_group" =>  queue_name })
+        queue_name = determin_queue_name(job_hash)
+        job_hash = Public.hash_replace_with(job_hash, { "tbox_group" =>  queue_name })
 
-        return saveData("sched/jobs_to_run/" + queue_name, job_hash, resources)
+        return save_data("sched/jobs_to_run/" + queue_name, job_hash, resources)
     end
 end

@@ -34,10 +34,10 @@ class Elasticsearch::Client
         )
 	return response
     end
-    
+
     def add(documents_path : String, content : Hash, id : String)
         if content["suite"]?
-            result_root = "/result/#{content["suite"]}/#{id}" 
+            result_root = "/result/#{content["suite"]}/#{id}"
         else
             result_root = "/result/default/#{id}"
         end

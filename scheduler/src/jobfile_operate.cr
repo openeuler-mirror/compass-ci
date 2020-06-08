@@ -7,51 +7,50 @@ require  "./scheduler/resources"
 module Jobfile::Operate
 
     def self.update(filePath : String, section : String, kv : Hash)
-        sectionFind = -1
-        kvFind = false
+        section_find = -1
+        kv_find = false
         kv_key = kv.first_key
 
-        jobArray = File.read_lines(filePath)
-        jobArray.each_index do |index|
+        job_array = File.read_lines(file_path)
+        job_array.each_index do |index|
             line = jobArray[index]
             match_info = line.match(/#{kv_key}: (.*)/)
             if match_info
                 line = line.sub("#{match_info[1]}", kv[kv_key])
-                jobArray[index] = line
-                kvFind = true
+                job_array[index] = line
+                kv_find = true
                 break
             elsif line.match(/#{section}/)
-                sectionFind = index
+                section_find = index
             end
         end
 
         if !kvFind    #append at the end or after the section
-            appendInfo = "#{kv_key}: #{kv[kv_key]}"
+            append_info = "#{kv_key}: #{kv[kv_key]}"
             if sectionFind == -1
-                jobArray << appendInfo
+                job_array << append_info
             else
-                jobArray.insert(sectionFind+1, appendInfo)
+                job_array.insert(sectionFind+1, append_info)
             end
         end
 
-        File.open(filePath, "w") do |f|
-            jobArray.each do |line|
+        File.open(file_path, "w") do |f|
+            job_array.each do |line|
                 f.puts(line)
             end
         end
 
     end
 
-    def self.prepareDir(filePath : String)
-        filePathDir = File.dirname(filePath)
-        if !File.exists?(filePathDir)
-            FileUtils.mkdir_p(filePathDir)
+    def self.prepare_dir(file_path : String)
+        file_path_dir = File.dirname(file_path)
+        if !File.exists?(file_path_dir)
+            FileUtils.mkdir_p(file_path_dir)
         end
     end
-    
     def self.create_job_cpio(job_content : JSON::Any, base_dir : String)
         temp_yaml = base_dir + "/" +  job_content["id"].to_s + "/job.yaml"
-        prepareDir(temp_yaml)
+        prepare_dir(temp_yaml)
 
         # no change to <object> content { "#! jobs/pixz.yaml": null }
         #  - this will create a <'#! jobs/pixz.yaml':> in the yaml file
@@ -69,9 +68,8 @@ module Jobfile::Operate
             puts idd
         end
     end
-      
-    def self.load_yaml(filePath : String)
-        yaml =  File.open(filePath) do |file|
+    def self.load_yaml(file_path : String)
+        File.open(file_path) do |file|
             YAML.parse(file)
         end
     end

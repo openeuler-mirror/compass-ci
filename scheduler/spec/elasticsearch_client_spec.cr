@@ -9,7 +9,7 @@ describe  Elasticsearch::Client do
             raw_es_client.indices.delete({:index => "testjobs"})
 
             es_client = Elasticsearch::Client.new(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
-            respon = es_client.add("/testjobs/job", {"foo" => "bar", "result_root" => "iperf"}, "1")
+            es_client.add("/testjobs/job", {"foo" => "bar", "result_root" => "iperf"}, "1")
 
             # when not find
             # { "error" => {"root_cause" => [{"type" => "index_not_found_exception",..."index" => "testjobs"}],

@@ -5,6 +5,8 @@ docker stop s001-alpine
 SCHED_DEBUG_DIR=/c/cci/scheduler
 DIR=$(dirname $(realpath $0))
 
+[[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
+
 cmd=(
 	docker run
 	--rm
@@ -13,7 +15,7 @@ cmd=(
 	-p 3000:3000
 	-u $UID
 	-v $DIR:$SCHED_DEBUG_DIR
-	-v /c/lkp-tests:/c/lkp-tests
+	-v $LKP_SRC:/c/lkp-tests
 	-w $SCHED_DEBUG_DIR
 	alpine:scheduler-dev
 	sh

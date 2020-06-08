@@ -16,7 +16,7 @@ module Scheduler::Dequeue
   def self.respon_testbox(testbox : String, env : HTTP::Server::Context, resources : Scheduler::Resources, count = 1)
     if resources.@redis_client != nil
       client = resources.@redis_client.not_nil!
-      tbox_group = Public.getTestgroupName(testbox)
+      tbox_group = Public.get_tbox_group_name(testbox)
       count.times do
         job_id, queue_name = client.find_any_job(tbox_group)
 

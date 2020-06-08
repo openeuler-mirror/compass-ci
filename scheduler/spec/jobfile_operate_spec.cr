@@ -9,7 +9,7 @@ describe Jobfile::Operate do
         section = "#! job"
         kv = {"id" => "123456"}
 
-        Jobfile::Operate.prepareDir(file_path)
+        Jobfile::Operate.prepare_dir(file_path)
         if File.exists?(file_path)
             FileUtils.rm(file_path)
         end
@@ -39,7 +39,7 @@ describe Jobfile::Operate do
             File.each_line(file_path) do |line|
                 match_info = line.match(/id: (.*)/)
                 if match_info
-                    linepre = "id: #{match_info.[1]}" 
+                    linepre = "id: #{match_info.[1]}"
                 end
             end
 
@@ -54,16 +54,16 @@ describe Jobfile::Operate do
             end
             Jobfile::Operate.update(file_path, section, kv)
 
-            lineIndex = 0
+            line_index = 0
             File.each_line(file_path) do |line|
                 match_info = line.match(/id: (.*)/)
-                lineIndex = lineIndex +1
+                line_index = line_index +1
                 if match_info
                     break
                 end
             end
 
-            lineIndex.should eq(2)
+            line_index.should eq(2)
             FileUtils.rm(file_path)
         end
 
@@ -76,16 +76,16 @@ describe Jobfile::Operate do
             end
             Jobfile::Operate.update(file_path, section, kv)
 
-            lineIndex = 0
+            line_index = 0
             File.each_line(file_path) do |line|
                 match_info = line.match(/id: (.*)/)
-                lineIndex = lineIndex +1
+                line_index = line_index +1
                 if match_info
                     break
                 end
             end
 
-            lineIndex.should eq(3)
+            line_index.should eq(3)
             FileUtils.rm(file_path)
         end
 
@@ -100,7 +100,7 @@ describe Jobfile::Operate do
             fs_root = File.real_path(".")
             resources.fsdir_root("#{fs_root}/public")
             resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
-            
+
             oldfile = ::File.join [resources.@fsdir_root, job_id]
             FileUtils.rm_r(oldfile) if File.exists?(oldfile)
 
@@ -109,4 +109,3 @@ describe Jobfile::Operate do
         end
     end
 end
- 

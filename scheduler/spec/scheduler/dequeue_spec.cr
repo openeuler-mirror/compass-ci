@@ -39,13 +39,13 @@ describe Scheduler::Dequeue do
             raw_redis.zadd(job_list, "1.2", "2")
 
             before_dequeue_time = Time.local.to_unix_f
-            job_id, error_code = Scheduler::Dequeue.respon_testbox(testbox, context, resources).not_nil!
+            job_id, _ = Scheduler::Dequeue.respon_testbox(testbox, context, resources).not_nil!
             (job_id).should eq("1")
 
             # check redis data at pending queue
             first_job = raw_redis.zrange(job_list, 0, 0)
             (first_job[0]).should  eq("2")
-            
+
             # check redis data at running queue
             job_index_in_running = raw_redis.zrank("sched/jobs_running", job_id)
             running_job = raw_redis.zrange("sched/jobs_running", job_index_in_running, job_index_in_running, true)
@@ -71,14 +71,12 @@ describe Scheduler::Dequeue do
             raw_redis.del(job_list)
             raw_redis.del("sched/jobs_running")
 
-            before_dequeue_time = Time.local.to_unix_f
-            job_id, error_code = Scheduler::Dequeue.respon_testbox(testbox, context, resources).not_nil!
+            job_id, _ = Scheduler::Dequeue.respon_testbox(testbox, context, resources).not_nil!
             (job_id).should eq("0")
 
             # check redis data at running queue
             job_index_in_running = raw_redis.zrange("sched/jobs_running", 0, -1)
-            (job_index_in_running.size).should eq(0) 
+            (job_index_in_running.size).should eq(0)
         end
     end
 end
-

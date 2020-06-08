@@ -14,7 +14,7 @@ require "./scheduler/monitor"
 # end_user:
 # - restful API [post "/submit_job"] to submit a job to scheduler
 # -- json formated [job] in the request data
-#  
+#
 # -------------------------------------------------------------------------------------------
 # runner:
 # - restful API [get "/boot.ipxe/mac/52-54-00-12-34-56"] to get a job for ipxe qemu-runner
@@ -27,19 +27,18 @@ require "./scheduler/monitor"
 # - restful API [get "/~lkp/cgi-bin/lkp-post-run" ] to move job from redis queue "sched/jobs_running" to "sched/extract_stats" and remove job from redis queue "sched/id2job"
 #
 # -------------------------------------------------------------------------------------------
-# scheduler: 
+# scheduler:
 # - use [redis incr] as job_id, a 64bit int number
 # - restful API [get "/"] default echo
 #
 module Scheduler
     VERSION = "0.1.0"
-    
+
     JOB_REDIS_HOST = "172.17.0.1"
     JOB_REDIS_PORT = 6379
 
     JOB_ES_HOST = "172.17.0.1"
     JOB_ES_PORT = 9200
-
 
     resources = Scheduler::Resources.new
     resources.es_client(JOB_ES_HOST, JOB_ES_PORT)
@@ -48,28 +47,28 @@ module Scheduler
     resources.test_params(%w(start_time end_time loadavg job_state))
 
     # echo alive
-    get "/" do |env|
+    get "/" do | _ |
         "LKP Alive! The time is #{Time.local}"
     end
 
     # for XXX_runner get job
     #
-    # /boot.ipxe/mac/${mac} 
+    # /boot.ipxe/mac/${mac}
     # /boot.xxx/host/${hostname}
     # /boot.yyy/mac/${mac}
     get "/boot.:boot_type/:parameter/:value" do |env|
-        bt = env.params.url["boot_type"]
-        pm = env.params.url["parameter"]
         va = env.params.url["value"]
 
-        respon = Scheduler::Utils.findJobBoot(va, env, resources)
+        respon = Scheduler::Utils.find_job_boot(va, env, resources)
+
+        respon
     end
 
     # enqueue
     #  - echo job_id to caller
     #  -- job_id = "0" ? means failed
     post "/submit_job" do |env|
-        job_id, error_code = Scheduler::Enqueue.respon(env, resources)
+        job_id, _ = Scheduler::Enqueue.respon(env, resources)
 
         job_id
     end
@@ -92,12 +91,10 @@ module Scheduler
     # !!! how to do : two time calls with diffrent port. JUST use ip?
     # curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg&mac=00-01-02-03-04-05"
     put "/set_host_mac" do |env|
-        client_address = env.request.remote_address
-
         if (client_hostname = env.params.query["hostname"]?)
             client_mac = env.params.query["mac"]?
             if client_mac !=nil
-                respon  = resources.@redis_client.not_nil!.@client.hset("mac2host", client_mac, client_hostname)
+                resources.@redis_client.not_nil!.@client.hset("mac2host", client_mac, client_hostname)
 
                 "Done"
             end
@@ -135,17 +132,16 @@ module Scheduler
     # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
     #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
     get "/~lkp/cgi-bin/lkp-post-run" do |env|
-	# get job_id from request
-	job_id = env.params.query["job_id"]?
-	if job_id
+        # get job_id from request
+        job_id = env.params.query["job_id"]?
+        if job_id
             # update redis status
             resources.@redis_client.not_nil!.move_job("sched/jobs_running", "queue/extract_stats", job_id)
             resources.@redis_client.not_nil!.@client.hdel("sched/id2job", job_id)
-	end
-	
-	"Done"
+        end
+
+        "Done"
     end
-    
+
     Kemal.run(3000)
 end
-
