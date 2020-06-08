@@ -19,7 +19,7 @@ RUN mkdir -p $SCHED_RUNTIME_DIR && \
 WORKDIR $SCHED_RUNTIME_DIR
 
 # should build with: crystal build src/scheduler.cr
-COPY scheduler .
+COPY --chown=1090:1090 scheduler .
 
 EXPOSE 3000
 
