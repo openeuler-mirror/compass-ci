@@ -6,14 +6,14 @@ require  "./scheduler/resources"
 
 module Jobfile::Operate
 
-    def self.update(filePath : String, section : String, kv : Hash)
+    def self.update(file_path : String, section : String, kv : Hash)
         section_find = -1
         kv_find = false
         kv_key = kv.first_key
 
         job_array = File.read_lines(file_path)
         job_array.each_index do |index|
-            line = jobArray[index]
+            line = job_array[index]
             match_info = line.match(/#{kv_key}: (.*)/)
             if match_info
                 line = line.sub("#{match_info[1]}", kv[kv_key])
@@ -25,12 +25,12 @@ module Jobfile::Operate
             end
         end
 
-        if !kvFind    #append at the end or after the section
+        if !kv_find    #append at the end or after the section
             append_info = "#{kv_key}: #{kv[kv_key]}"
-            if sectionFind == -1
+            if section_find == -1
                 job_array << append_info
             else
-                job_array.insert(sectionFind+1, append_info)
+                job_array.insert(section_find + 1, append_info)
             end
         end
 
