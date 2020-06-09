@@ -139,6 +139,4 @@ module Scheduler
         end
         "Done"
     end
-
-    Kemal.run(3000)
 end

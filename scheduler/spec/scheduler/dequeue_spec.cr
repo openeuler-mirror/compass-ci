@@ -3,7 +3,7 @@ require "spec"
 require "../../src/constants"
 require "../../src/scheduler/resources"
 require "../../src/scheduler/dequeue"
-require "../../lib/kemal/src/kemal/ext/response"
+require "kemal/src/kemal/ext/response"
 
 def gen_context(url : String)
     io = IO::Memory.new

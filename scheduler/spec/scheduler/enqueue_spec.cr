@@ -3,8 +3,8 @@ require "spec"
 require "../../src/constants"
 require "../../src/redis_client"
 require "../../src/scheduler/enqueue"
-require "../../lib/kemal/src/kemal/ext/response"
-require "../../lib/kemal/src/kemal/ext/context"
+require "kemal/src/kemal/ext/response"
+require "kemal/src/kemal/ext/context"
 
 def create_post_context(hash : Hash)
     io = IO::Memory.new
