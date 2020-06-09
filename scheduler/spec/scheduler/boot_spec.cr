@@ -1,7 +1,7 @@
 require "spec"
 
 require "kemal"
-require "../../src/scheduler/boot"
+require "scheduler/scheduler/boot"
 
 def create_request_and_return_io_and_context(handler, request)
     io = IO::Memory.new

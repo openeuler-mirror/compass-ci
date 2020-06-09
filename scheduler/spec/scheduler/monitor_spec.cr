@@ -1,7 +1,7 @@
 require "spec"
-require "../../src/scheduler/monitor"
-require "../../src/jobfile_operate"
-require "../../src/constants"
+require "scheduler/scheduler/monitor"
+require "scheduler/jobfile_operate"
+require "scheduler/constants"
 require "json"
 
 def gen_put_context(url : String)

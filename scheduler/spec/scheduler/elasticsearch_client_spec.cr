@@ -1,6 +1,6 @@
 require "spec"
-require "../../src/elasticsearch_client"
-require "../../src/constants"
+require "scheduler/elasticsearch_client"
+require "scheduler/constants"
 
 describe  Elasticsearch::Client do
     describe "add job" do

@@ -1,8 +1,8 @@
 require "spec"
 
-require "../../src/constants"
-require "../../src/scheduler/resources"
-require "../../src/scheduler/dequeue"
+require "scheduler/constants"
+require "scheduler/scheduler/resources"
+require "scheduler/scheduler/dequeue"
 require "kemal/src/kemal/ext/response"
 
 def gen_context(url : String)

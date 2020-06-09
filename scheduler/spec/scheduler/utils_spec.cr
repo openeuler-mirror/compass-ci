@@ -1,8 +1,8 @@
 require "spec"
-require "../../src/scheduler/utils"
-require "../../src/tools"
+require "scheduler/scheduler/utils"
+require "scheduler/tools"
 
-require "../../src/constants"
+require "scheduler/constants"
 
 describe Scheduler::Utils do
     describe "ipxe boot for special testbox" do

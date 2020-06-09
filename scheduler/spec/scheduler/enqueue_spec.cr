@@ -1,8 +1,8 @@
 require "spec"
 
-require "../../src/constants"
-require "../../src/redis_client"
-require "../../src/scheduler/enqueue"
+require "scheduler/constants"
+require "scheduler/redis_client"
+require "scheduler/scheduler/enqueue"
 require "kemal/src/kemal/ext/response"
 require "kemal/src/kemal/ext/context"
 
