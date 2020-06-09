@@ -3,10 +3,17 @@
 [[ $CCI_SRC ]] || export CCI_SRC=$(dirname $(dirname $(dirname $(realpath $0))))
 CONTAINER_PATH="$CCI_SRC/container"
 
+git checkout 35ecf8b5b1a743aee939c639ac0696fdc87ef9c5
+
 for dir in $CONTAINER_PATH/*
 do
 	cur_dir=${dir##*/}
+	(
 	cd "$dir"
+	[ "$cur_dir" == 'scheduler' ] && {
+		echo "scheduler-dev first"
+		exit
+	}
 	./build.sh
 	[ "$cur_dir" == 'debian' ] || \
 	[ "$cur_dir" == 'lkp-initrd' ] || \
@@ -14,11 +21,15 @@ do
 	[ "$cur_dir" == 'crystal-base' ] || \
 	[ "$cur_dir" == 'scheduler-dev' ] && {
 		echo "$cur_dir just build, skip!"
-		continue
+		cd "scheduler"
+		./build.sh
+		./run.sh
+		exit
 	}
 	[ "$cur_dir" == 'crystal-compiler' ] && {
 		./install.sh
-		continue
+		exit
 	}
 	./run.sh
+	)&
 done
