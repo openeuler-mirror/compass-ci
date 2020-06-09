@@ -8,6 +8,7 @@ cd $CCI_SRC/sparrow || exit
 0-package/install.sh
 1-storage/tiny.sh
 2-network/br0.sh
+2-network/iptables.sh
 3-code/git.sh
 3-code/dev-env.sh
 4-docker/buildall.sh
