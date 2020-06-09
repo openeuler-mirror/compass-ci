@@ -48,7 +48,7 @@ module Scheduler
 
     # echo alive
     get "/" do | _ |
-        "LKP Alive! The time is #{Time.local}"
+        "LKP Alive! The time is #{Time.local}, version = #{VERSION}"
     end
 
     # for XXX_runner get job
