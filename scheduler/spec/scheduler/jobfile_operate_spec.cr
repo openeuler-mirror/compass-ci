@@ -1,6 +1,6 @@
-require "../src/constants"
 require "spec"
-require "../src/jobfile_operate"
+require "../../src/constants"
+require "../../src/jobfile_operate"
 
 describe Jobfile::Operate do
 

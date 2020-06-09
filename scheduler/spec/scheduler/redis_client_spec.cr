@@ -1,6 +1,6 @@
 require "spec"
-require "../src/redis_client"
-require "../src/constants"
+require "../../src/redis_client"
+require "../../src/constants"
 
 describe Redis::Client do
     describe "enqueue" do

@@ -1,5 +1,5 @@
 require "spec"
-require "../src/tools"
+require "../../src/tools"
 
 describe Public do
     describe "hash replace" do
