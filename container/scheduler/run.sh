@@ -15,8 +15,9 @@ cmd=(
 	-v $LKP_SRC:/c/lkp-tests
 	-v /srv/cci/scheduler/alpine:/srv/cci/scheduler
 	-v /etc/localtime:/etc/localtime:ro
+	-v /srv/result:/result
 	sch-ruby-a:v0.00d
-        ./scheduler
+	./scheduler
 )
 
 "${cmd[@]}"
