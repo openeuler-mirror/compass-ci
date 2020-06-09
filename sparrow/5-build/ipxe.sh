@@ -4,7 +4,7 @@ cd /c || exit
 
 git clone -b custom-config  https://gitee.com/wu_fengguang/ipxe.git
 
-cd ipxe || exit
+cd ipxe/src || exit
 
 make ARCH=arm64 bin-arm64-efi/ipxe.efi
 make ARCH=arm64 bin-arm64-efi/snponly.efi
