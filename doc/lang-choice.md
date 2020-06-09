@@ -10,6 +10,8 @@ shell
 
 ## Main scenarios
 - run in test box
+- won't grow large
+- operational (install/config/wrapper), not logical/parsing/API heavy
 
 
 ruby
