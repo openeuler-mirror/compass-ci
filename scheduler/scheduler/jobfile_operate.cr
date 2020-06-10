@@ -67,6 +67,9 @@ module Jobfile::Operate
         if idd.match(/ERROR/)
             puts idd
         end
+        # create result_root and copy job.cgz to result_root
+        FileUtils.mkdir_p("#{job_content["result_root"]}")
+        FileUtils.cp("#{File.dirname(temp_yaml)}/job.cgz", "#{job_content["result_root"]}/job.cgz")
     end
     def self.load_yaml(file_path : String)
         File.open(file_path) do |file|

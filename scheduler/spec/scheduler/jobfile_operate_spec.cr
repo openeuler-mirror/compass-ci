@@ -95,17 +95,18 @@ describe Jobfile::Operate do
         # when debug this,it seems to execute "chmod +x /c/lkp-tests/sbin/create-job-cpio.sh" to get permission
         it "from jobid create job.cgz" do
             job_id = "100"
-            resources = Scheduler::Resources.new
-            resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
-            fs_root = File.real_path(".")
-            resources.fsdir_root("#{fs_root}/public")
-            resources.@es_client.not_nil!.add("/jobs/job", JSON.parse(DEMO_JOB).as_h, job_id)
+            fs_root = "#{File.real_path(".")}/public"
 
-            oldfile = ::File.join [resources.@fsdir_root, job_id]
-            FileUtils.rm_r(oldfile) if File.exists?(oldfile)
+            old_dir = ::File.join [fs_root, job_id]
+            FileUtils.rm_r(old_dir) if File.exists?(old_dir)
 
-            Jobfile::Operate.create_job_cpio(JSON.parse(DEMO_JOB), resources.@fsdir_root.not_nil!)
-            (File.exists?(::File.join [resources.@fsdir_root, job_id, "job.cgz"])).should be_true
+            job_hash = JSON.parse(DEMO_JOB).as_h
+            job_hash = job_hash.merge({"result_root" => fs_root, "id" => job_id})
+            job_content = JSON.parse(job_hash.to_json)
+
+            Jobfile::Operate.create_job_cpio(job_content, fs_root)
+            (File.exists?(::File.join [old_dir, "job.cgz"])).should be_true
+            FileUtils.rm_r(old_dir) if File.exists?(old_dir)
         end
     end
 end
