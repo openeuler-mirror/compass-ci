@@ -7,6 +7,10 @@ DIR=$(dirname $(realpath $0))
 
 [[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
 
+if [ ! -d test ]; then
+  mkdir test
+fi
+
 cmd=(
   docker run
   --rm
@@ -17,6 +21,7 @@ cmd=(
   -u $UID
   -v $DIR:$SCHED_DEBUG_DIR
   -v $LKP_SRC:/c/lkp-tests
+  -v $DIR/test:/result
   -w $SCHED_DEBUG_DIR
   alpine:scheduler-dev
   sh

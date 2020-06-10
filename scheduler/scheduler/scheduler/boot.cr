@@ -15,13 +15,13 @@ require  "./resources"
 
 module Scheduler
     module Boot
-	def self.ipxe_msg(msg)
-	    "#!ipxe
-	    echo ...
-	    echo #{msg}
-	    echo ...
-	    reboot"
-	end
+        def self.ipxe_msg(msg)
+            "#!ipxe
+            echo ...
+            echo #{msg}
+            echo ...
+            reboot"
+        end
 
         def self.respon(job_content : JSON::Any, env, resources : Scheduler::Resources)
             if job_content["os"]?
@@ -29,6 +29,7 @@ module Scheduler
             else
                 os_dir = "debian/aarch64/sid"
             end
+
             if job_content["lkp_initrd_user"]?
                 lkp_initrd_user = job_content["lkp_initrd_user"].to_s
             else

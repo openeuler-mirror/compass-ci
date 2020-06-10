@@ -13,7 +13,7 @@ describe Scheduler::Utils do
                 remote_address = "127.0.0.1:5555"
 
                 io = IO::Memory.new
-		response = HTTP::Server::Response.new(io)
+                response = HTTP::Server::Response.new(io)
                 request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
                 raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
@@ -51,7 +51,7 @@ describe Scheduler::Utils do
                 remote_host_name = "wfg-e595"
                 remote_address = "127.0.0.1:5555"
 
-		io = IO::Memory.new
+                io = IO::Memory.new
                 response = HTTP::Server::Response.new(io)
                 request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
@@ -114,7 +114,7 @@ describe Scheduler::Utils do
                 remote_host_name = "wfg-e595-002"
                 remote_address = "127.0.0.1:5555"
 
-		io = IO::Memory.new
+                io = IO::Memory.new
                 response = HTTP::Server::Response.new(io)
                 request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 
@@ -176,7 +176,7 @@ describe Scheduler::Utils do
                 remote_host_name = "wfg-e595-001"
                 remote_address = "127.0.0.1:5555"
 
-		io = IO::Memory.new
+                io = IO::Memory.new
                 response = HTTP::Server::Response.new(io)
                 request = HTTP::Request.new("GET", "/boot.ipxe/mac/#{mac}")
 

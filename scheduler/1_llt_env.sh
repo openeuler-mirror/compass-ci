@@ -3,6 +3,10 @@
 SCHED_DEBUG_DIR=/c/cci/scheduler
 DIR=$(dirname $(realpath $0))
 
+if [ ! -d test ]; then
+  mkdir test
+fi
+
 cmd=(
   docker run
   --rm
@@ -11,6 +15,7 @@ cmd=(
   -it
   -u $UID
   -v $DIR:$SCHED_DEBUG_DIR
+  -v $DIR/test:/result
   -v $LKP_SRC:/c/lkp-tests
   -w $SCHED_DEBUG_DIR
   alpine:scheduler-dev

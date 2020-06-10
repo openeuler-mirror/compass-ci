@@ -19,7 +19,7 @@ require "./tools"
 class Elasticsearch::Client
     class_property :client
 
-    def initialize(hostname : String, port : Int32)  
+    def initialize(hostname : String, port : Int32)
         @client = Elasticsearch::API::Client.new( { :host => hostname, :port => port } )
     end
 
@@ -32,7 +32,7 @@ class Elasticsearch::Client
                 :id => id
             }
         )
-	return response
+        return response
     end
 
     def add(documents_path : String, content : Hash, id : String)

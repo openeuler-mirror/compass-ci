@@ -32,7 +32,7 @@ require "./scheduler/monitor"
 # - restful API [get "/"] default echo
 #
 module Scheduler
-    VERSION = "0.1.0"
+    VERSION = "0.1.1"
 
     JOB_REDIS_HOST = "172.17.0.1"
     JOB_REDIS_PORT = 6379
@@ -45,6 +45,13 @@ module Scheduler
     resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT)
     resources.fsdir_root(Kemal.config.public_folder)
     resources.test_params(%w(start_time end_time loadavg job_state))
+
+    # for debug (maybe kemal debug|logger does better)
+    def self.debug_message(env, respon)
+        puts ">> #{env.request.remote_address}"
+        puts "<< #{respon}"
+        puts ""
+    end
 
     # echo alive
     get "/" do | _ |
@@ -61,6 +68,8 @@ module Scheduler
 
         respon = Scheduler::Utils.find_job_boot(va, env, resources)
 
+        debug_message(env, respon)
+
         respon
     end
 
@@ -70,6 +79,8 @@ module Scheduler
     post "/submit_job" do |env|
         job_id, _ = Scheduler::Enqueue.respon(env, resources)
 
+        debug_message(env, job_id)
+
         job_id
     end
 
@@ -78,6 +89,8 @@ module Scheduler
         job_id = env.params.url["job_id"]
         job_package = env.params.url["job_package"]
         file_path = ::File.join [resources.@fsdir_root, job_id, job_package]
+
+        debug_message(env, file_path)
 
         send_file env,  file_path
     end
@@ -95,6 +108,8 @@ module Scheduler
             client_mac = env.params.query["mac"]?
             if client_mac !=nil
                 resources.@redis_client.not_nil!.@client.hset("mac2host", client_mac, client_hostname)
+
+                debug_message(env, "Done")
 
                 "Done"
             end
@@ -122,6 +137,9 @@ module Scheduler
                     job_content[parameter] = value
                 end
             end
+
+            debug_message(env, "Done")
+
             Scheduler::Monitor.update_job_parameter(job_content, env, resources)
         end
 
@@ -135,6 +153,8 @@ module Scheduler
         # get job_id from request
         job_id = env.params.query["job_id"]?
         if job_id
+            debug_message(env, "Done")
+
             Scheduler::Monitor.update_job_when_finished(job_id, resources)
         end
         "Done"
