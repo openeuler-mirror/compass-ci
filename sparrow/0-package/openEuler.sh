@@ -4,6 +4,7 @@ pkgs=(
 	vim
 	git
 	gcc
+	gcc-c++
 	make
 	ruby
 	rubygems

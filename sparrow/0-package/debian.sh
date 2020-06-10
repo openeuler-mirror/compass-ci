@@ -4,6 +4,7 @@ pkgs=(
 	vim
 	lvm2
 	gcc
+	g++
 	make
 	docker.io
 	ruby-full
