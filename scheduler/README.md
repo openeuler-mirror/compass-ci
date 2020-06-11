@@ -8,6 +8,8 @@
 - debug cmd:
 	curl -X POST --data '{"testcase": "iperf", "testbox": "myhost", "test-group": "mygroup", "result_root": "/result/ipef"}' http://localhost:3000/submit_job
 
+# the es index is "jobs" and type is "_doc"
+# JOB_INDEX_TYPE = "jobs/_doc"
 - inner process:
 ```sequence
 User->Scheduler: POST "/submit_job" job content
@@ -18,8 +20,8 @@ Scheduler->Scheduler: <job> = JSON.parse(HTML::body)
 Scheduler->Scheduler: <tbox_group> = determin_queue_name, <tbox_group_queue> = "sched/jobs_to_run/#{tbox_group}"
 Scheduler->Redis: add2queue(<tbox_group_queue>, <job_id>)
 Redis->Redis: put <job_id> to pending queue <tbox_group_queue> 
-Scheduler->ElasticSearch: add("#{JOB_INDEX_TYPE}", <job>, <job_id>)
-ElasticSearch->ElasticSearch: create #{JOB_INDEX_TYPE} document
+Scheduler->ElasticSearch: add(${JOB_INDEX_TYPE}, <job>, <job_id>)
+ElasticSearch->ElasticSearch: create "${JOB_INDEX_TYPE}" document
 Scheduler->User: <job_id>
 ```
 - doing what:
@@ -37,7 +39,7 @@ Scheduler->User: <job_id>
 	use redis Sorted_Set as a job queue, one per tbox_group.
 
 - es storage:
-	add "#{JOB_INDEX_TYPE}" document (contents of job)
+	add "${JOB_INDEX_TYPE}" document (contents of job)
 	extend set: job["_id"]=job_id, job["result_root"]=job["result_root"] + "/#{job_id}"
 
 - class members related:
@@ -145,11 +147,11 @@ Scheduler->Redis: update_job_parameter("job"=><job_id>,\n<parameter> => <value>)
 Scheduler->TestBox: Done
 ```
 - doing what:
-	1. update "#{JOB_INDEX_TYPE}" document in es
+	1. update "${JOB_INDEX_TYPE}" document in es
 
 - redis storage: no change
 - es storage:
-	update "#{JOB_INDEX_TYPE}" document
+	update "${JOB_INDEX_TYPE}" document
 	extend set: job[parameter]=value
 
 - class members
@@ -200,10 +202,10 @@ Scheduler->User: Done
 
 ---
 # es storage
-## job saved in "#{JOB_INDEX_TYPE}" documents
+## job saved in "${JOB_INDEX_TYPE}" documents
 - debug cmd:
-	curl http://localhost:9200/#{JOB_INDEX_TYPE}/6        # query a job with job_id=6
-	curl http://localhost:9200/#{JOB_INDEX_TYPE}/_search  # query all jobs
+	curl http://localhost:9200/${JOB_INDEX_TYPE}/6        # query a job with job_id=6
+	curl http://localhost:9200/${JOB_INDEX_TYPE}/_search  # query all jobs
 
 # redis client debug cmd
 ## list all keys: keys *
