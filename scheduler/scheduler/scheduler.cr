@@ -9,6 +9,7 @@ require "./scheduler/dequeue"
 require "./scheduler/enqueue"
 require "./scheduler/resources"
 require "./scheduler/monitor"
+require "./constants.cr"
 
 # -------------------------------------------------------------------------------------------
 # end_user:
@@ -34,15 +35,15 @@ require "./scheduler/monitor"
 module Scheduler
     VERSION = "0.1.1"
 
-    JOB_REDIS_HOST = "172.17.0.1"
-    JOB_REDIS_PORT = 6379
+    redis_host = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
+    redis_port = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
 
-    JOB_ES_HOST = "172.17.0.1"
-    JOB_ES_PORT = 9200
+    es_host = (ENV.has_key?("ES_HOST") ? ENV["ES_HOST"] : JOB_ES_HOST)
+    es_port = (ENV.has_key?("ES_PORT") ? ENV["ES_PORT"] : JOB_ES_PORT).to_i32
 
     resources = Scheduler::Resources.new
-    resources.es_client(JOB_ES_HOST, JOB_ES_PORT)
-    resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT)
+    resources.es_client(es_host, es_port)
+    resources.redis_client(redis_host, redis_port)
     resources.fsdir_root(Kemal.config.public_folder)
     resources.test_params(%w(start_time end_time loadavg job_state))
 
