@@ -17,7 +17,7 @@ cmd=(
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result:/result
 	sch-ruby-a:v0.00d
-	./scheduler
+	sh -c "umask 002 && ./scheduler"
 )
 
 "${cmd[@]}"
