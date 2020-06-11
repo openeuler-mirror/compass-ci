@@ -135,6 +135,9 @@ module Scheduler
             resources.@test_params.not_nil!.each do |parameter|
                 # update in es (job content)
                 if (value = env.params.query[parameter]?)
+                    if parameter == "start_time" || parameter == "end_time"
+                        value = Time.unix(value.to_i).to_s("%Y-%m-%d %H:%M:%S")
+                    end
                     job_content[parameter] = value
                 end
             end
