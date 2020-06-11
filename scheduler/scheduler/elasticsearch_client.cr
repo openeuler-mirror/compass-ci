@@ -6,7 +6,7 @@ require "./tools"
 # -------------------------------------------------------------------------------------------
 # add(documents_path : String, content : Hash, id : String)
 #  - add|replace hash content to es document
-#  - documents_path index/document( default: jobs/job | /jobs/job]
+#  - documents_path index/document( default: #{JOB_INDEX_TYPE} | /#{JOB_INDEX_TYPE}]
 # get(documents_path : String, id : String)
 #  - get content from es documents_path/id
 #

@@ -23,9 +23,9 @@ module Scheduler
             end
 
             # update job's  testbox property
-            es.update("jobs/job", { "testbox" => hostname }, job_id)
+            es.update("#{JOB_INDEX_TYPE}", { "testbox" => hostname }, job_id)
 
-            data = es.get("jobs/job", job_id)["_source"]?
+            data = es.get("#{JOB_INDEX_TYPE}", job_id)["_source"]?
             case data
             when JSON::Any
                 job_content = data

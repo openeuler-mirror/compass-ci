@@ -9,7 +9,7 @@ describe  Elasticsearch::Client do
             raw_es_client.indices.delete({:index => "testjobs"})
 
             es_client = Elasticsearch::Client.new(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
-            es_client.add("/testjobs/job", {"foo" => "bar", "result_root" => "iperf"}, "1")
+            es_client.add("/test#{JOB_INDEX_TYPE}", {"foo" => "bar", "result_root" => "iperf"}, "1")
 
             # when not find
             # { "error" => {"root_cause" => [{"type" => "index_not_found_exception",..."index" => "testjobs"}],
@@ -29,7 +29,7 @@ describe  Elasticsearch::Client do
             es_client = Elasticsearch::Client.new(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
             raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
             raw_es_client.indices.delete({:index => "testjobs"})
-            es_client.add("/testjobs/job", {"foo" => "bar", "id" => "3", "result_root" => nil}, "2")
+            es_client.add("/test#{JOB_INDEX_TYPE}", {"foo" => "bar", "id" => "3", "result_root" => nil}, "2")
 
             respon =  raw_es_client.get({:index => "testjobs", :id => "2"})
             (respon["_id"]).should_not  be_nil
