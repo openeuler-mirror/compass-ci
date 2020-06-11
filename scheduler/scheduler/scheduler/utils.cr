@@ -21,10 +21,8 @@ module Scheduler
             if job_id == "0"
                 return Scheduler::Boot.ipxe_msg("No job now")
             end
-
             # update job's  testbox property
-            es.update("#{JOB_INDEX_TYPE}", { "testbox" => hostname }, job_id)
-
+            es.update("#{JOB_INDEX_TYPE}", { "testbox" => hostname, "id" => job_id })
             data = es.get("#{JOB_INDEX_TYPE}", job_id)["_source"]?
             case data
             when JSON::Any

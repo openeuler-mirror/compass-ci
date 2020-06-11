@@ -55,8 +55,9 @@ class Elasticsearch::Client
         return response
     end
 
-    def update(documents_path : String, content : Hash, id : String)
+    def update(documents_path : String, content : Hash)
         dp = documents_path.split("/")
+        id = content["id"].to_s
         response = @client.update(
             {
                 :index => dp[dp.size - 2],

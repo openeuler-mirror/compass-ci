@@ -14,7 +14,8 @@ module Scheduler
             job_result = redis.@client.hget("sched/id2job", job_id)
             if job_result != nil
                 job_result = JSON.parse(job_result.not_nil!).as_h
-                es.update("#{JOB_INDEX_TYPE}", job_result, job_id)
+                job_result = job_result.merge({"id" => job_id})
+                es.update("#{JOB_INDEX_TYPE}", job_result)
             end
             redis.remove_finished_job(job_id)
         end
