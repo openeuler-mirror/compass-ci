@@ -41,6 +41,19 @@ module Scheduler
             scheduler = "172.17.0.1"
 
             respon = "#!ipxe\n\n"
+
+            #add "initrd $program.cgz_path" in response
+            # some names like "XXXX"  need replace wait a time
+            auto_params = job_content["auto_params"].as_h
+            auto_params.keys.each do |program|
+                if auto_params[program].as_h.has_key?("XXXX")
+                    # check the file exist
+                  if File.file?("/srv/initrd/pkg/#{os_dir}/#{program}.cgz") & File.file?("#{ENV["LKP_SRC"]}/pkg/#{program}")
+                        respon = respon + "initrd http://#{server}:8000/srv/initrd/pkg/#{os_dir}/#{program}.cgz"
+                    end
+                end
+            end
+
             respon = respon + "initrd http://#{server}:8000/os/#{os_dir}/initrd.lkp\n"
             respon = respon + "initrd http://#{server}:8800/initrd/lkp/#{lkp_initrd_user}/lkp-aarch64.cgz\n"
             respon = respon + "initrd http://#{scheduler}:3000/job_initrd_tmpfs/#{job_content["id"]}/job.cgz\n"
