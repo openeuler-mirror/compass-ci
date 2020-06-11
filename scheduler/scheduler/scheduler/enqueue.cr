@@ -9,7 +9,7 @@ require "../elasticsearch_client"
 # --------------------------------------------------------------------------------
 # 1.save user <job> (json data) to <Elasticsearch> document
 #  - generate a sequence <job_id> from redis key ("sched/seqno2jobid") incr
-#  - Elasticsearch save job to <#{JOB_INDEX_TYPE}> (index/document)
+#  - Elasticsearch save job to <JOB_INDEX_TYPE> (index/document)
 #  - Elasticsearch use <job_id> as document <id>
 #
 # --------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ module Scheduler::Enqueue
         job_id = resources.@redis_client.not_nil!.get_new_job_id()
 
         if (job_id != "0")
-            resources.@es_client.not_nil!.add("/#{JOB_INDEX_TYPE}", hash, job_id)
+            resources.@es_client.not_nil!.add(JOB_INDEX_TYPE, hash, job_id)
             resources.@redis_client.not_nil!.add2queue(queue_name, job_id)
         else
             error_code = 1  # failed to connect to redis server (queue)
