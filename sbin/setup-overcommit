@@ -1,0 +1,10 @@
+#!/bin/bash
+
+shopt -s nullglob
+
+git_dirs=($HOME/*/.git/ $HOME/*/*/.git/ $HOME/.*/*/.git/)
+
+for git_dir in "${git_dirs[@]}"
+do
+	cd "$git_dir/.." && overcommit --install --force --sign
+done
