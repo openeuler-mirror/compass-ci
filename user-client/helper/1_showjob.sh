@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-curl http://localhost:9200/jobs/job/$1
+curl http://localhost:9200/jobs/_doc/$1
