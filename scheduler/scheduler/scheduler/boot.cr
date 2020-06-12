@@ -42,16 +42,18 @@ module Scheduler
 
             respon = "#!ipxe\n\n"
 
-            #add "initrd $program.cgz_path" in response
-            # some names like "XXXX"  need replace wait a time
-            auto_params = job_content["auto_params"].as_h
-            auto_params.keys.each do |program|
-                if auto_params[program].as_h.has_key?("XXXX")
-                    # check the file exist
-                  if File.file?("/srv/initrd/pkg/#{os_dir}/#{program}.cgz") & File.file?("#{ENV["LKP_SRC"]}/pkg/#{program}")
-                        respon = respon + "initrd http://#{server}:8000/srv/initrd/pkg/#{os_dir}/#{program}.cgz"
-                    end
-                end
+            if job_content["pp"]?
+              program_params = job_content["pp"].as_h
+              program_params.keys.each do |program|
+                  if  File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
+                      File.exists?("/srv/initrd/deps/#{os_dir}/#{program}.cgz")
+                        respon += "initrd http://#{server}:8000/initrd/deps/#{os_dir}/#{program}.cgz\n"
+                  end
+                  if  File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") &&
+                      File.exists?("/srv/initrd/pkg/#{os_dir}/#{program}.cgz")
+                        respon += "initrd http://#{server}:8000/initrd/pkg/#{os_dir}/#{program}.cgz\n"
+                  end
+              end
             end
 
             respon = respon + "initrd http://#{server}:8000/os/#{os_dir}/initrd.lkp\n"

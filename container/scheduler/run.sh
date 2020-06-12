@@ -16,6 +16,7 @@ cmd=(
 	-v /srv/cci/scheduler/alpine:/srv/cci/scheduler
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result:/result
+	-v /srv/initrd:/srv/initrd
 	sch-ruby-a:v0.00d
 	sh -c "umask 002 && ./scheduler"
 )
