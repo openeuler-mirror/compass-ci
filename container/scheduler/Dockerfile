@@ -20,6 +20,3 @@ WORKDIR $SCHED_RUNTIME_DIR
 
 # should build with: crystal build src/scheduler.cr
 COPY --chown=1090:1090 scheduler .
-
-EXPOSE 3000
-

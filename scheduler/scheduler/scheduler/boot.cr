@@ -1,5 +1,5 @@
 require  "./resources"
-
+require "./../constants.cr"
 # respon ipxe command to qemu-runner
 # - No job now
 #    #!ipxe
@@ -37,9 +37,6 @@ module Scheduler
             end
 
             # the localhost should configure to <os and lkp> hostname
-            server = "172.168.131.113"
-            scheduler = "172.17.0.1"
-
             respon = "#!ipxe\n\n"
 
             if job_content["pp"]?
@@ -47,21 +44,21 @@ module Scheduler
               program_params.keys.each do |program|
                   if  File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
                       File.exists?("/srv/initrd/deps/#{os_dir}/#{program}.cgz")
-                        respon += "initrd http://#{server}:8000/initrd/deps/#{os_dir}/#{program}.cgz\n"
+                        respon += "initrd http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/initrd/deps/#{os_dir}/#{program}.cgz\n"
                   end
                   if  File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") &&
                       File.exists?("/srv/initrd/pkg/#{os_dir}/#{program}.cgz")
-                        respon += "initrd http://#{server}:8000/initrd/pkg/#{os_dir}/#{program}.cgz\n"
+                        respon += "initrd http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/initrd/pkg/#{os_dir}/#{program}.cgz\n"
                   end
               end
             end
 
-            respon = respon + "initrd http://#{server}:8000/os/#{os_dir}/initrd.lkp\n"
-            respon = respon + "initrd http://#{server}:8800/initrd/lkp/#{lkp_initrd_user}/lkp-aarch64.cgz\n"
-            respon = respon + "initrd http://#{scheduler}:3000/job_initrd_tmpfs/#{job_content["id"]}/job.cgz\n"
-            respon = respon + "kernel http://#{server}:8000/os/#{os_dir}/vmlinuz user=lkp"
+            respon = respon + "initrd http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{os_dir}/initrd.lkp\n"
+            respon = respon + "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/lkp/#{lkp_initrd_user}/lkp-aarch64.cgz\n"
+            respon = respon + "initrd http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job_content["id"]}/job.cgz\n"
+            respon = respon + "kernel http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{os_dir}/vmlinuz user=lkp"
             respon = respon + " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
-            respon = respon + " root=#{server}:/os/#{os_dir} rootovl ip=enp0s1:dhcp ro"
+            respon = respon + " root=#{OS_HTTP_HOST}:/os/#{os_dir} rootovl ip=enp0s1:dhcp ro"
             respon = respon + " initrd=initrd.lkp initrd=lkp-aarch64.cgz initrd=job.cgz\n"
             respon = respon + "boot\n"
             return respon

@@ -8,10 +8,9 @@
 qemu=qemu-system-aarch64
 command -v $qemu >/dev/null || qemu=qemu-kvm
 
-scheduler=172.17.0.1
-port=3000
+echo $SCHED_PORT
 ipxe_script=ipxe_script
-curl http://${scheduler}:${port}/boot.ipxe/mac/${mac} > $ipxe_script
+curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
 #echo -----
 #cat $ipxe_script
 #echo -----

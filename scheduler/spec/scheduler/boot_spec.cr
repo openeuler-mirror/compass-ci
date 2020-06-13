@@ -2,7 +2,7 @@ require "spec"
 
 require "kemal"
 require "scheduler/scheduler/boot"
-
+require "scheduler/constants.cr"
 def create_request_and_return_io_and_context(handler, request)
     io = IO::Memory.new
     response = HTTP::Server::Response.new(io)
@@ -40,6 +40,20 @@ describe Scheduler::Boot do
             respon_list[2].should contain(os_dir)
             respon_list[5].should contain(os_dir)
             respon_list[respon_list.size - 2].should eq("boot")
+        end
+
+        it "respon should contain the value of constants.cr" do
+            job_content = JSON.parse(DEMO_JOB)
+            respon = Scheduler::Boot.respon(job_content, context, resources)
+            respon_list = respon.split("\n")
+
+            respon_list[2].should contain(OS_HTTP_HOST)
+            respon_list[2].should contain(OS_HTTP_PORT.to_s)
+            respon_list[3].should contain(INITRD_HTTP_HOST)
+            respon_list[3].should contain(INITRD_HTTP_PORT.to_s)
+            respon_list[4].should contain(SCHED_HOST)
+            respon_list[4].should contain(SCHED_PORT.to_s)
+            respon_list[5].should contain(OS_HTTP_HOST)
         end
     end
 end
