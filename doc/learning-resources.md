@@ -15,6 +15,10 @@ https://www.ruby-lang.org/en/documentation/ruby-from-other-languages/to-ruby-fro
 man ri
 http://overapi.com/ruby
 
+## coding style
+https://rubystyle.guide/
+https://ruby-china.org/wiki/coding-style
+
 ## resources
 https://github.com/markets/awesome-ruby
 
