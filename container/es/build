@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/sh
 
 docker build -t es643b:alpine311 . --network=host
 
