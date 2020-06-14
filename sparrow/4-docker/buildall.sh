@@ -14,7 +14,7 @@ do
 		echo "scheduler-dev first"
 		exit
 	}
-	./build.sh
+	./build
 	[ "$cur_dir" == 'debian' ] || \
 	[ "$cur_dir" == 'lkp-initrd' ] || \
 	[ "$cur_dir" == 'dracut-initrd' ] || \
@@ -22,14 +22,14 @@ do
 	[ "$cur_dir" == 'scheduler-dev' ] && {
 		echo "$cur_dir just build, skip!"
 		cd "scheduler"
-		./build.sh
-		./run.sh
+		./build
+		./run
 		exit
 	}
 	[ "$cur_dir" == 'crystal-compiler' ] && {
-		./install.sh
+		./install
 		exit
 	}
-	./run.sh
+	./run
 	)&
 done
