@@ -7,7 +7,7 @@
 
 [ -d "$1" ] || {
 	echo "Example usage:
-		./run.sh /os/debian/aarch64/sid/lib/modules/5.4.0-4-arm64
+		./run /os/debian/aarch64/sid/lib/modules/5.4.0-4-arm64
 "
 	exit
 }
