@@ -53,6 +53,8 @@ https://ngte-ac.gitbook.io/i/infrastructure/linux-command-cheatsheet
 https://github.com/jlevy/the-art-of-command-line/blob/master/README-zh.md
 https://github.com/macrozheng/mall/blob/master/document/reference/linux.md
 
+https://google.github.io/styleguide/shellguide.html
+
 ## zsh keys (customized)
 
 	ctrl-p		history-beginning-search-backward
