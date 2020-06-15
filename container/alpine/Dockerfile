@@ -22,7 +22,5 @@ RUN ssh-keygen -t rsa -P "" -f /etc/ssh/ssh_host_rsa_key && \
     ssh-keygen -t ed25519 -P "" -f /etc/ssh/ssh_host_ed25519_key && \
     echo "PermitRootLogin without-password" >> /etc/ssh/sshd_config
 
-COPY setup.sh /usr/local/sbin/
-
 EXPOSE 2200
 CMD ["/usr/sbin/sshd", "-D", "-p", "2200"]
