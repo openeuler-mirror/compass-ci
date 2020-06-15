@@ -165,8 +165,10 @@ describe Scheduler::Utils do
                 respon = raw_redis.zrange("sched/jobs_running", 0, -1, true)
                 (respon.size).should eq(2)
 
-                respon = resources.@es_client.not_nil!.get(JOB_INDEX_TYPE, job_id)
-                (respon["_source"]["testbox"]).should eq(remote_host_name)
+                # respon = resources.@es_client.not_nil!.get(JOB_INDEX_TYPE, job_id)
+                # (respon["_source"]["testbox"]).should eq(remote_host_name)
+                respon = resources.@redis_client.not_nil!.get_job_content(job_id)
+                (respon["testbox"]).should eq(remote_host_name)
             end
 
             it "job_id != 0, respon initrd kernel job in .cgz file with test-group != testbox != client hostname" do
@@ -228,8 +230,10 @@ describe Scheduler::Utils do
                 respon = raw_redis.zrange("sched/jobs_running", 0, -1, true)
                 (respon.size).should eq(2)
 
-                respon = resources.@es_client.not_nil!.get(JOB_INDEX_TYPE, job_id)
-                (respon["_source"]["testbox"]).should eq(remote_host_name)
+                # respon = resources.@es_client.not_nil!.get(JOB_INDEX_TYPE, job_id)
+                # (respon["_source"]["testbox"]).should eq(remote_host_name)
+                respon = resources.@redis_client.not_nil!.get_job_content(job_id)
+                (respon["testbox"]).should eq(remote_host_name)
             end
         end
     end

@@ -38,5 +38,38 @@ describe  Elasticsearch::Client do
 
             raw_es_client.indices.delete({:index => "jobs"})
         end
+
+        it "get job content with right job id" do
+            raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
+            raw_es_client.indices.delete({:index => "jobs"})
+
+            es_client = Elasticsearch::Client.new(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
+            test_json = JSON.parse({"foo" => "bar", "id" => "10", "result_root" => nil}.to_json)
+
+            raw_es_client.create(
+                {
+                    :index => "jobs",
+                    :type => "_doc",
+                    :id => "10",
+                    :body => test_json,
+                }
+            )
+
+            respon = es_client.get_job_content("10")
+            (respon).should_not  be_nil
+            (respon.not_nil!["id"]?).should_not  be_nil
+            (respon.not_nil!["id"].to_s).should eq("10")
+
+            raw_es_client.indices.delete({:index => "jobs"})
+        end
+
+        it "get job content with wrong job id" do
+            es_client = Elasticsearch::Client.new(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
+            raw_es_client = Elasticsearch::API::Client.new( { :host => JOB_ES_HOST, :port => JOB_ES_PORT_DEBUG } )
+            raw_es_client.indices.delete({:index => "jobs"})
+
+            respon = es_client.get_job_content("10")
+            (respon).should be_nil
+        end
     end
 end

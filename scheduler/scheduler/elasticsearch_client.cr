@@ -35,6 +35,16 @@ class Elasticsearch::Client
         return response
     end
 
+    def get_job_content(id : String)
+        response = get("jobs/_doc", id)["_source"]?
+        case response
+        when JSON::Any
+            response.not_nil!
+        else
+            nil
+        end
+    end
+
     def add(documents_path : String, content : Hash, id : String)
         if content["suite"]?
             result_root = "/result/#{content["suite"]}/#{id}"

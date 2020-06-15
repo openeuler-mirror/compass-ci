@@ -15,14 +15,22 @@ require "../tools"
 module Scheduler::Dequeue
   def self.respon_testbox(testbox : String, env : HTTP::Server::Context, resources : Scheduler::Resources, count = 1)
     if resources.@redis_client != nil
-      client = resources.@redis_client.not_nil!
+      redis = resources.@redis_client.not_nil!
+      es = resources.@es_client.not_nil!
       tbox_group = Public.get_tbox_group_name(testbox)
       count.times do
-        job_id, queue_name = client.find_any_job(tbox_group)
+        job_id, queue_name = redis.find_any_job(tbox_group)
 
         if job_id != "0"
-          client.move_job(queue_name, "sched/jobs_running", "#{job_id}")
-          client.add_job_content({"id" => "#{job_id}", "testbox" => "#{testbox}"})
+          redis.move_job(queue_name, "sched/jobs_running", "#{job_id}")
+          job_content = es.get_job_content(job_id.to_s)
+          case job_content
+          when JSON::Any
+            job_content = job_content.not_nil!.as_h.merge({"id" => job_id.to_s, "testbox" => "#{testbox}"})
+            redis.add_job_content(job_content)
+          else
+            raise "Invalid job (id=#{job_id}) in es"
+          end
           return "#{job_id}", queue_name
         end
 
