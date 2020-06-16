@@ -64,6 +64,22 @@ class Redis::Client
         return priority_as_score
     end
 
+    # move job atomiclly
+    def move_job(queue_name_from : String, queue_name_to : String)
+        lua_script = "local job =  redis.call('zrange', KEYS[1], 0, 0)
+        if table.getn(job) == 0 then
+            return '0'
+        else
+            redis.call('zadd', KEYS[2], ARGV[1], job[1])
+            redis.call('zrem', KEYS[1], job[1])
+            return job[1]
+        end"
+
+        priority_as_score = Time.local.to_unix_f
+
+        @client.eval(lua_script, [queue_name_from, queue_name_to], [priority_as_score])
+    end
+
     def add_job_content(job_content)
         job_id = job_content["id"]
         job_content_o = get_job_content("#{job_id}")
