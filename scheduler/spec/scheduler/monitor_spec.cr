@@ -55,7 +55,7 @@ describe Scheduler::Monitor do
 
             raw_redis_client.del(running_queue)
             raw_redis_client.del(result_queue)
-            raw_redis_client.hset(job_info_queue, job_id, "{\"testbox\" : \"test\", \"test_id\" : #{job_id}}")
+            raw_redis_client.hset(job_info_queue, job_id, "{\"testbox\" : \"test\", \"id\" : #{job_id}}")
             raw_redis_client.zrem(result_queue, job_id)
             priority_as_score = Time.local.to_unix_f
             raw_redis_client.zadd(running_queue, priority_as_score, job_id)
@@ -66,7 +66,7 @@ describe Scheduler::Monitor do
 
             respon = resources.@es_client.not_nil!.get("#{JOB_INDEX_TYPE}", job_id)
             (respon["_source"]["testbox"]).should eq("test")
-            (respon["_source"]["test_id"]).should eq(job_id.to_i)
+            (respon["_source"]["id"]).should eq(job_id.to_i)
 
             running_job_count = raw_redis_client.zcount(running_queue, 0, -1)
             (running_job_count).should eq 0
