@@ -1,12 +1,13 @@
 [TOC]
 
 # restful-API
+- First of all, you should deploy the lkp-tests and crystal-ci project, and set the environment variables needed for running
 ## submit a job
 - restAPI: POST "/submit_job"
 - request body: {"#!jobs/iperf.yaml":null,"suite":"iperf","testcase":"iperf"...}
 - response body: "#{job_id}" (job_id is a global unique sequence number, e.g. 6)
 - debug cmd:
-	curl -X POST --data '{"testcase": "iperf", "testbox": "myhost", "test-group": "mygroup", "result_root": "/result/ipef"}' http://localhost:3000/submit_job
+	curl -X POST --data '{"testcase": "iperf", "testbox": "myhost", "test-group": "mygroup", "result_root": "/result/ipef"}' http://${SCHED_HOST:-172.168.131.113}:${SCHED_PORT:-3000}/submit_job
 
 # the es index is "jobs" and type is "_doc"
 # JOB_INDEX_TYPE = "jobs/_doc"
@@ -50,14 +51,14 @@ Scheduler->User: <job_id>
 - request body: none
 - response body: "#{ipxe_command}"
 - debug cmd:
-	curl http://localhost:3000/boot.ipxe/mac/54-52-00-12-24-46
+	curl http://${SCHED_HOST:-172.168.131.113}:${SCHED_PORT:-3000}/boot.ipxe/mac/54-52-00-12-24-46
 
 ### case 1: <ipxe_command> when find a job
 	#!ipxe
-	initrd http://<server>:8000/os/debian/aarch64/sid/initrd.lkp
-	initrd http://<server>:8800/initrd/lkp/latest/lkp-aarch64.cgz
-	initrd http://<scheduler>:3000/job_initrd_tmpfs/<job_id>/job.cgz
-	kernel http://<server>:8000/os/debian/aarch64/sid/vmlinuz user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job root=<server>:/os/debian/aarch64/sid rootovl ip=enp0s1:dhcp ro initrd=initrd.lkp initrd=lkp-aarch64.cgz initrd=job.cgz
+	initrd http://${OS_HTTP_HOST:-172.168.131.113}:${OS_HTTP_PORT:-8000}/os/debian/aarch64/sid/initrd.lkp
+	initrd http://${INITRD_HTTP_HOST:-172.168.131.113}:${INITRD_HTTP_PORT:-8800}/initrd/lkp/latest/lkp-aarch64.cgz
+	initrd http://${SCHED_HOST:-172.168.131.113}:${SCHED_PORT:-3000}/job_initrd_tmpfs/<job_id>/job.cgz
+	kernel http://${OS_HTTP_HOST:-172.168.131.113}:${OS_HTTP_PORT:-8000}/os/debian/aarch64/sid/vmlinuz user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job root=${OS_HTTP_HOST:-172.168.131.113}:/os/debian/aarch64/sid rootovl ip=enp0s1:dhcp ro initrd=initrd.lkp initrd=lkp-aarch64.cgz initrd=job.cgz
 	boot
 
 #### who generate this output
@@ -184,7 +185,7 @@ Scheduler->User: Done
 - request body: none
 - response body: "Done"
 - debug cmd:
-	curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56"
+	curl -X PUT "http://${SCHED_HOST:-172.168.131.113}:${SCHED_PORT:-3000}/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56"
 
 - inner process:
 ```sequence
@@ -219,7 +220,7 @@ Scheduler->User: Done
 # API use scenario
 ## scenario 1: developer debug use
 1. use [PUT "/set_host_mac?hostname=:hostname&mac=:mac"] to register a {mac => hostname}
-	debug shell md: curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56"
+	debug shell md: curl -X PUT "http://${SCHED_HOST:-172.168.131.113}:${SCHED_PORT:-3000}/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56"
 2. use [POST "/submit_job"] to submit a job
 	debug shell cmd: /0_addjob.sh iperf.yaml # at cci/user-client/helper
 3. runs qemu.sh at cci/providers to get a job and run it
