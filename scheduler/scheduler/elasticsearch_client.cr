@@ -4,18 +4,28 @@ require "elasticsearch-crystal/elasticsearch/api"
 require "./tools"
 
 # -------------------------------------------------------------------------------------------
+# set_job_content(job_content)
+#  - set job_content to es jobs/_doc/id["_source"]
+#  - return response as JSON::Any
+#
+# get_job_content(id : String)
+#  - get job_content from es jobs/_doc/id["_source"]
+#  - return response as JSON::Any
+#
+# -------------------------------------------------------------------------------------------
+# below function will be Deprecated
+#
 # add(documents_path : String, content : Hash, id : String)
 #  - add|replace hash content to es document
 #  - documents_path index/document (default: JOB_INDEX_TYPE)
+#
 # get(documents_path : String, id : String)
 #  - get content from es documents_path/id
 #
-# -------------------------------------------------------------------------------------------
 # update(documents_path : String, content : Hash)
 #  - update hash content to es document
 #
 # -------------------------------------------------------------------------------------------
-
 class Elasticsearch::Client
     class_property :client
 
@@ -23,6 +33,55 @@ class Elasticsearch::Client
         @client = Elasticsearch::API::Client.new( { :host => hostname, :port => port } )
     end
 
+    # caller should judge response["_id"] != nil
+    def set_job_content(job_content : JSON::Any)
+        if job_content["id"]?
+            job_id = job_content["id"].to_s
+            response = get_job_content(job_id)
+            if response["id"]?
+                response = update(job_content, job_id)
+            else
+                response = create(job_content, job_id)
+            end
+        else
+            response = {"_id" => nil, "job_content" => job_content}
+        end
+
+        return response
+    end
+
+    # caller should judge response["id"]?
+    def get_job_content(job_id : String)
+        if @client.exists({:index => "jobs", :type => "_doc", :id => job_id})
+            response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
+        else
+            response = {"_id" => job_id, "found" => false}
+        end
+
+        return response
+    end
+
+    private def create(job_content : JSON::Any, job_id : String)
+        return @client.create(
+            {
+                :index => "jobs", :type => "_doc",
+                :id => job_id,
+                :body => job_content
+            }
+        )
+    end
+
+    private def update(job_content : JSON::Any, job_id : String)
+        return @client.update(
+            {
+                :index => "jobs", :type => "_doc",
+                :id => job_id,
+                :body => { :doc => job_content }
+            }
+        )
+    end
+
+    @[Deprecated("Use `#get_job_content` instead")]
     def get(documents_path : String, id : String)
         dp = documents_path.split("/")
         response = @client.get(
@@ -35,16 +94,7 @@ class Elasticsearch::Client
         return response
     end
 
-    def get_job_content(id : String)
-        response = get("jobs/_doc", id)["_source"]?
-        case response
-        when JSON::Any
-            response.not_nil!
-        else
-            nil
-        end
-    end
-
+    @[Deprecated("Use `#set_job_content` instead")]
     def add(documents_path : String, content : Hash, id : String)
         if content["suite"]?
             result_root = "/result/#{content["suite"]}/#{id}"
@@ -65,6 +115,7 @@ class Elasticsearch::Client
         return response
     end
 
+    @[Deprecated("Use `#set_job_content` instead")]
     def update(documents_path : String, content : Hash)
         dp = documents_path.split("/")
         id = content["id"].to_s

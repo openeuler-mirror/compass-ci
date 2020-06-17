@@ -69,7 +69,7 @@ describe  Elasticsearch::Client do
             raw_es_client.indices.delete({:index => "jobs"})
 
             respon = es_client.get_job_content("10")
-            (respon).should be_nil
+            (respon.not_nil!["id"]?).should be_nil
         end
     end
 end
