@@ -21,4 +21,8 @@ dependencies:
   elasticsearch-crystal:
     github: paktek123/elasticsearch-crystal
     version: ~> 0.14
-    
+  any_merge:
+    github: icyleaf/any_merge
+    branch: master
+  deep-merge:
+    gitlab: peterhoeg/deep-merge.cr
