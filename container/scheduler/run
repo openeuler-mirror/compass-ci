@@ -25,7 +25,7 @@ cmd=(
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result:/result
 	-v /srv/initrd:/srv/initrd
-	sch-ruby-a:v0.00d-${SCHED_PORT:-300}
+	sch-ruby-a:v0.00d-${SCHED_PORT:-3000}
 	sh -c "umask 002 && ./scheduler"
 )
 
