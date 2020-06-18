@@ -13,8 +13,12 @@ module Scheduler
             redis = resources.@redis_client.not_nil!
             job_result = redis.@client.hget("sched/id2job", job_id)
             if job_result != nil
-                job_result = JSON.parse(job_result.not_nil!).as_h
-                es.update(JOB_INDEX_TYPE, job_result)
+                job_result = JSON.parse(job_result.not_nil!)
+                respon = es.set_job_content(job_result)
+                if respon["_id"] == nil
+                    # es update fail, raise exception
+                    raise "es set job content fail! "
+                end
             end
             redis.remove_finished_job(job_id)
         end

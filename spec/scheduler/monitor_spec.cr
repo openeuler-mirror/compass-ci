@@ -60,13 +60,13 @@ describe Scheduler::Monitor do
             priority_as_score = Time.local.to_unix_f
             raw_redis_client.zadd(running_queue, priority_as_score, job_id)
             raw_es_client.indices.delete({:index => "jobs"})
-            resources.@es_client.not_nil!.add(JOB_INDEX_TYPE, JSON.parse(DEMO_JOB).as_h, job_id)
+            resources.@es_client.not_nil!.set_job_content(JSON.parse(DEMO_JOB))
 
             Scheduler::Monitor.update_job_when_finished(job_id, resources)
 
-            respon = resources.@es_client.not_nil!.get("#{JOB_INDEX_TYPE}", job_id)
-            (respon["_source"]["testbox"]).should eq("test")
-            (respon["_source"]["id"]).should eq(job_id.to_i)
+            respon = resources.@es_client.not_nil!.get_job_content(job_id)
+            (respon["testbox"]).should eq("test")
+            (respon["id"]).should eq(job_id.to_i)
 
             running_job_count = raw_redis_client.zcount(running_queue, 0, -1)
             (running_job_count).should eq 0
