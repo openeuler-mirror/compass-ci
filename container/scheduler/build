@@ -1,8 +1,8 @@
 #!/bin/bash
 . ../lab.sh
 
-bash ../../build
-mv ../../m_scheduler ./scheduler
+bash ../../src/build
+mv ../../src/m_scheduler ./scheduler
 
 docker build -t sch-ruby-a:v0.00d-${SCHED_PORT:-3000} .
 
