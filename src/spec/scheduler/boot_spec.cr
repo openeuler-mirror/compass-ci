@@ -1,4 +1,5 @@
 require "spec"
+require "file_utils"
 
 require "kemal"
 require "scheduler/scheduler/boot"
@@ -54,6 +55,52 @@ describe Scheduler::Boot do
             respon_list[4].should contain(SCHED_HOST)
             respon_list[4].should contain(SCHED_PORT.to_s)
             respon_list[5].should contain(OS_HTTP_HOST)
+        end
+
+        it "job has program dependence, find and return the initrd path to depends program" do
+            job_content = JSON.parse(%({"id": 10, "os": "test", "os_arch": "test", "os_version": "test", "pp": {"want_program": "<want_program> is valid because relate file exist"}}))
+
+            Dir.mkdir_p("/#{ENV["LKP_SRC"]}/distro/depends/")
+            File.touch("/#{ENV["LKP_SRC"]}/distro/depends/want_program")
+            dir_path = "initrd/deps/test/test/test/"
+            Dir.mkdir_p("/srv/#{dir_path}")
+            File.touch("/srv/#{dir_path}want_program.cgz")
+
+            respon = Scheduler::Boot.respon(job_content, context, resources)
+            respon_list = respon.split("\n")
+
+            FileUtils.rm_rf("/#{ENV["LKP_SRC"]}/distro/depends/want_program")
+
+            respon_list[0].should eq("#!ipxe")
+            respon_list[2].should contain("#{dir_path}want_program.cgz")
+        end
+
+        it "job has pkg dependence, find and return the initrd path to depends pkg" do
+            job_content = JSON.parse(%({"id": 10, "os": "test", "os_arch": "test", "os_version": "test", "pp": {"want_program": "<want_program> is valid because relate file exist"}}))
+
+            Dir.mkdir_p("/#{ENV["LKP_SRC"]}/pkg/")
+            File.touch("/#{ENV["LKP_SRC"]}/pkg/want_program")
+            dir_path = "initrd/pkg/test/test/test/"
+            Dir.mkdir_p("/srv/#{dir_path}")
+            File.touch("/srv/#{dir_path}want_program.cgz")
+
+            respon = Scheduler::Boot.respon(job_content, context, resources)
+            respon_list = respon.split("\n")
+
+            FileUtils.rm_rf("/#{ENV["LKP_SRC"]}/pkg/want_program")
+
+            respon_list[0].should eq("#!ipxe")
+            respon_list[2].should contain("#{dir_path}want_program.cgz")
+        end
+
+        it "job has program dependence, but not find relate file, ignore it" do
+            job_content = JSON.parse(%({"id": 10, "pp": {"want_program": "<want_program> is invalid because relate file not exist"}}))
+            respon = Scheduler::Boot.respon(job_content, context, resources)
+            respon_list = respon.split("\n")
+            file_name = "want_program.cgz"
+
+            respon_list[0].should eq("#!ipxe")
+            respon_list[2].should_not contain(file_name)
         end
     end
 end

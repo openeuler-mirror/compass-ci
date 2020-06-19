@@ -15,8 +15,9 @@ cmd=(
   -it
   -u $UID
   -v $DIR:$SCHED_DEBUG_DIR
-  -v $DIR/test:/result
+  --mount type=tmpfs,destination=/result
   -v $LKP_SRC:/c/lkp-tests
+  --mount type=tmpfs,destination=/srv/initrd
   -w $SCHED_DEBUG_DIR
   alpine:scheduler-dev
   sh
