@@ -1,6 +1,6 @@
-require "../../scheduler/scheduler/redis_client"
-require "../../scheduler/scheduler/constants"
-require "./constants"
+require "./scheduler/redis_client"
+require "./scheduler/constants"
+require "./extract-stats/constants"
 
 #results data post processing
 
