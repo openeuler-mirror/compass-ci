@@ -67,8 +67,15 @@ module Jobfile::Operate
         if idd.match(/ERROR/)
             puts idd
         end
-        # create result_root and copy job.cgz to result_root
-        FileUtils.cp_r(File.dirname(temp_yaml), "#{job_content["result_root"]}/")
+        # create result dir and copy job.sh, job.yaml and job.cgz to result dir
+        src_dir = File.dirname(temp_yaml)
+        dst_dir = job_content["result_root"].to_s
+        FileUtils.mkdir_p(dst_dir)
+        # the job.yaml is not final version
+        files = ["#{src_dir}/job.sh",
+                 "#{src_dir}/job.yaml",
+                 "#{src_dir}/job.cgz"]
+        FileUtils.cp(files, dst_dir)
     end
     def self.load_yaml(file_path : String)
         File.open(file_path) do |file|
