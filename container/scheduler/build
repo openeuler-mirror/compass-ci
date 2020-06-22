@@ -1,9 +1,14 @@
-#!/bin/bash
-. ../lab.sh
+#!/usr/bin/ruby
+# frozen_string_literal: true
 
-bash ../../src/build
-mv ../../src/m_scheduler ./scheduler
+require 'set'
+require '../lab.rb'
 
-docker build -t sch-ruby-a:v0.00d-${SCHED_PORT:-3000} .
+cci_src = ENV['CCI_SRC']
+system "bash #{cci_src}/src/build"
+system "mv #{cci_src}/src/m_scheduler ./scheduler"
 
-rm scheduler
+sched_port = relevant_defaults(Set.new %w[SCHED_PORT])['SCHED_PORT']
+system "docker build -t sch-ruby-a:v0.00d-#{sched_port} ."
+
+system 'rm scheduler'
