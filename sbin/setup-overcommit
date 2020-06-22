@@ -6,6 +6,7 @@ git_dirs=($HOME/*/.git/ $HOME/*/*/.git/ $HOME/.*/*/.git/)
 
 for git_dir in "${git_dirs[@]}"
 do
+	[[ $git_dir =~ 'lkp-tests' ]] && continue  # too many old files
 	cd "$git_dir/.." || continue
 	echo $PWD
 	overcommit --install --force --sign
