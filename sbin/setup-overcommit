@@ -2,12 +2,28 @@
 
 shopt -s nullglob
 
+# Should remove personal gem installs, so that the global config take effect:
+# rm -fr /home/*/.gem/ruby/gems/overcommit-*
+# rm -fr /home/*/.gem/ruby/gems/rubocop-0.*
+# rm /home/*/.gem/ruby/specifications/overcommit-*
+# rm /home/*/.gem/ruby/specifications/rubocop-0.*
+
 git_dirs=($HOME/*/.git/ $HOME/*/*/.git/ $HOME/.*/*/.git/)
 
 for git_dir in "${git_dirs[@]}"
 do
-	[[ $git_dir =~ 'lkp-tests' ]] && continue  # too many old files
+	[[ $git_dir =~ 'overcommit' ]]	&& continue
+	[[ $git_dir =~ 'igcommit' ]]	&& continue
+
 	cd "$git_dir/.." || continue
 	echo $PWD
+
+	[[ $git_dir =~ 'lkp-tests' ]] && {	# too many old files
+		echo UNINSTALL overcommit from $git_dir  ......
+		overcommit --uninstall
+		continue
+	}
+
 	overcommit --install --force --sign
+	rm -f .overcommit.yml	# should use global config
 done
