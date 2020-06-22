@@ -4,11 +4,15 @@
 require 'set'
 require '../lab.rb'
 
-cci_src = ENV['CCI_SRC']
-system "bash #{cci_src}/src/build"
-system "mv #{cci_src}/src/m_scheduler ./scheduler"
+names = Set.new ['SCHED_PORT']
+defaults = relevant_defaults(names)
 
-sched_port = relevant_defaults(Set.new %w[SCHED_PORT])['SCHED_PORT']
-system "docker build -t sch-ruby-a:v0.00d-#{sched_port} ."
+SCHED_PORT = (defaults['SCHED_PORT'] || '3000')
+
+CCI_SRC = ENV['CCI_SRC']
+system "bash #{CCI_SRC}/src/build"
+system "mv #{CCI_SRC}/src/m_scheduler ./scheduler"
+
+system "docker build -t sch-ruby-a:v0.00d-#{SCHED_PORT} ."
 
 system 'rm scheduler'
