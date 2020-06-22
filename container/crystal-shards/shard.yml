@@ -26,3 +26,5 @@ dependencies:
     branch: master
   deep-merge:
     gitlab: peterhoeg/deep-merge.cr
+  json_on_steroids:
+    github: anykeyh/json_on_steroids

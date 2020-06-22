@@ -3,17 +3,12 @@ FROM alpine:crystal-base
 MAINTAINER chief <tongqunfeng@huawei.com>
 
 RUN umask 002 && \
-  gem install rest-client && \
-  gem install activesupport && \
-  gem install git && \
-  gem install json && \
-  gem install yaml
-
-copy shard.yml /usr/share/crystal/app/shard.yml
+  gem install rest-client activesupport bigdecimal open3 && \
+  gem install git json yaml && \
+  gem install cucumber
 
 WORKDIR /usr/share/crystal/app
-RUN shards
-RUN sed -i 's:data):data, headers\: HTTP\:\:Headers{"Content-Type" => "application/json"}):' /usr/share/crystal/app/lib/elasticsearch-crystal/src/elasticsearch/api/namespace/common.cr;
+COPY --from=alpine:crystal-shards /usr/share/crystal/app /usr/share/crystal/app
 
 CMD ["bash"]
 
