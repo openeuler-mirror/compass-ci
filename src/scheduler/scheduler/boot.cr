@@ -44,11 +44,11 @@ module Scheduler
               program_params.keys.each do |program|
                   if  File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
                       File.exists?("/srv/initrd/deps/#{os_dir}/#{program}.cgz")
-                        respon += "initrd http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/initrd/deps/#{os_dir}/#{program}.cgz\n"
+                        respon += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/deps/#{os_dir}/#{program}.cgz\n"
                   end
                   if  File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") &&
                       File.exists?("/srv/initrd/pkg/#{os_dir}/#{program}.cgz")
-                        respon += "initrd http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/initrd/pkg/#{os_dir}/#{program}.cgz\n"
+                        respon += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/pkg/#{os_dir}/#{program}.cgz\n"
                   end
               end
             end
