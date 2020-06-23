@@ -1,8 +1,16 @@
+require "shellwords"
 require "file_utils"
 require "json"
 require "yaml"
 
 require  "./scheduler/resources"
+
+if ENV["LKP_SRC"] != "/c/lkp-tests"
+  raise "env variable LKP_SRC=#{ENV["LKP_SRC"]}.It's not '/c/lkp-tests'"
+end
+if ENV["CCI_SRC"] != "/c/crystal-ci"
+  raise "env variable CCI_SRC=#{ENV["CCI_SRC"]}.It's not '/c/crystal-ci'"
+end
 
 module Jobfile::Operate
 
@@ -48,7 +56,85 @@ module Jobfile::Operate
             FileUtils.mkdir_p(file_path_dir)
         end
     end
+
+    def self.valid_shell_variable?(key)
+          key =~ /^[a-zA-Z_]+[a-zA-Z0-9_]*$/
+    end
+
+    def self.create_job_sh(job_sh_content : Array(JSON::Any), path : String)
+      File.open(path, "w") do |file|
+        file.puts "#!/bin/sh\n\n"
+        job_sh_content.each do |line|
+          if line.as_a?
+            line.as_a.each {|val| file.puts val}
+          else
+            file.puts line
+          end
+        end
+        file.puts "\"$@\""
+      end
+    end
+
+    def self.shell_escape(val)
+        val = val.join "\n" if val.is_a?(Array)
+
+        if val.nil? || val.empty?
+          return nil
+        elsif val =~ /^[+-]?([0-9]*\.?[0-9]+|[0-9]+\.?[0-9]*)([eE][+-]?[0-9]+)?$/
+          return val
+        elsif !val.includes?("'") && !val.includes?("$")
+          return "'#{val}'"
+        elsif !val.includes?('"')
+          return "\"#{val}\""
+        else
+          return Shellwords.shellescape(val)
+        end
+    end
+
+    def self.parse_one(script_lines, key, val)
+        if valid_shell_variable?(key)
+            if val.as_h?
+                return false
+            end
+            if val.as_a?
+              value = shell_escape(val.as_a)
+            else
+                value = shell_escape(val.to_s)
+            end
+            script_lines << "\texport #{key}=" + value if value
+        end
+    end
+
+    def self.sh_export_top_env(job_content : Hash)
+        script_lines = ["export_top_env()", "{"] of String
+
+        job_content.each {|key, val| parse_one(script_lines, key, val)}
+
+        script_lines << "\n"
+        script_lines << "\t[ -n \"$LKP_SRC\" ] ||"
+        script_lines << "\texport LKP_SRC=/lkp/${user:-lkp}/src"
+        script_lines << "}\n\n"
+
+        script_lines = "#{script_lines}"
+        script_lines = JSON.parse(script_lines)
+    end
+
     def self.create_job_cpio(job_content : JSON::Any, base_dir : String)
+        job_content = job_content.as_h
+
+        # put job2sh in an array
+        if job_content.has_key?("job2sh")
+            tmp_job_sh_content = job_content["job2sh"]
+
+            job_sh_array = [] of JSON::Any
+            tmp_job_sh_content.as_h.each do |_key, val|
+                job_sh_array += val.as_a
+            end
+        else
+            job_sh_array = [] of JSON::Any
+        end
+
+        # generate job.yaml
         temp_yaml = base_dir + "/" +  job_content["id"].to_s + "/job.yaml"
         prepare_dir(temp_yaml)
 
@@ -60,7 +146,22 @@ module Jobfile::Operate
             YAML.dump(job_content, file)
         end
 
-        cmd = "#{ENV["LKP_SRC"]}/sbin/create-job-cpio.sh #{temp_yaml}"
+        # generate unbroken job shell content
+        sh_export_top_env = sh_export_top_env(job_content)
+        job_sh_content = sh_export_top_env.as_a + job_sh_array
+
+        # generate job.sh
+        job_sh = base_dir + "/" +  job_content["id"].to_s + "/job.sh"
+        create_job_sh(job_sh_content.to_a, job_sh)
+
+        job_dir = base_dir + "/" +  job_content["id"].to_s
+
+        if job_sh_array.empty?
+            cmd ="#{ENV["LKP_SRC"]}/sbin/create-job-cpio.sh #{temp_yaml}"
+        else
+            cmd ="#{ENV["CCI_SRC"]}/sbin/create-job-cpio.sh #{job_dir}"
+        end
+
         idd = `#{cmd}`
 
         # if the create job cpio failed, what to do?
