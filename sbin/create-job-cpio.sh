@@ -1,18 +1,13 @@
 #!/bin/bash -e
+#
+# input files: $1/job.sh $1/job.yaml
+# output file: $1/job.cgz
 
-job_dir=$1
-scheduled_dir=$job_dir/lkp/scheduled
+cd $1
 
-job_sh=$job_dir/job.sh
-job_yaml=$job_dir/job.yaml
+install -m775 -D -t lkp/scheduled job.sh
+install -m664 -D -t lkp/scheduled job.yaml
 
-mkdir -p $scheduled_dir
-cp $job_yaml $scheduled_dir
-
-chmod +x $job_sh
-cp $job_sh $scheduled_dir
-
-cd $job_dir
 find lkp | cpio --quiet -o -H newc | gzip > job.cgz
 
 rm -fr ./lkp
