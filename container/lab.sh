@@ -1,6 +1,10 @@
 #!/bin/bash
-[[ $CCI_LAB ]] || CCI_LAB=sparrow
-[[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
 
 . $LKP_SRC/lib/yaml.sh
-create_yaml_variables "$LKP_SRC/labs/${CCI_LAB}.yaml"
+
+shopt -s nullglob
+
+for i in /etc/crystal-ci/defaults/*.yaml $HOME/.config/crystal-ci/defaults/*.yaml
+do
+	create_yaml_variables "$i"
+done
