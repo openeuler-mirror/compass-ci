@@ -59,7 +59,7 @@ module Jobfile::Operate
     end
 
     def self.create_job_sh(job_sh_content : Array(JSON::Any), path : String)
-      File.open(path, "w") do |file|
+      File.open(path, "w", File::Permissions.new(0o775)) do |file|
         file.puts "#!/bin/sh\n\n"
         job_sh_content.each do |line|
           if line.as_a?
