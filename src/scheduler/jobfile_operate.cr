@@ -1,15 +1,12 @@
-require "shellwords"
 require "file_utils"
 require "json"
 require "yaml"
 
-require  "./scheduler/resources"
+require "./scheduler/resources"
+require "/c/lkp-tests/lib/shellwords"
 
 if ENV["LKP_SRC"] != "/c/lkp-tests"
-  raise "env variable LKP_SRC=#{ENV["LKP_SRC"]}.It's not '/c/lkp-tests'"
-end
-if ENV["CCI_SRC"] != "/c/crystal-ci"
-  raise "env variable CCI_SRC=#{ENV["CCI_SRC"]}.It's not '/c/crystal-ci'"
+  raise "ENV LKP_SRC mismatch: #{ENV["LKP_SRC"]} '/c/lkp-tests'"
 end
 
 module Jobfile::Operate
