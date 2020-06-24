@@ -17,7 +17,7 @@ cmd=(
   --rm
   -e LKP_SRC=/c/lkp-tests
   -e CCI_SRC=/c/crystal-ci
-  -e CRYSTAL_PATH="/usr/share/crystal/app/lib:/usr/lib/crystal/shards:/usr/lib/crystal/core:$SCHED_DEBUG_DIR"
+  -e CRYSTAL_PATH="/usr/share/crystal/app/lib:/usr/lib/crystal/shards:/usr/lib/crystal/core:/c/lkp-tests/lib:$SCHED_DEBUG_DIR"
   -it
   -p 3000:3000
   -u $UID
