@@ -2,8 +2,9 @@ require "file_utils"
 require "json"
 require "yaml"
 
+# require from '/c/lkp-tests/lib/'
+require "shellwords"
 require "./scheduler/resources"
-require "/c/lkp-tests/lib/shellwords"
 
 if ENV["LKP_SRC"] != "/c/lkp-tests"
   raise "ENV LKP_SRC mismatch: #{ENV["LKP_SRC"]} '/c/lkp-tests'"
