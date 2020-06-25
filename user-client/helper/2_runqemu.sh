@@ -3,6 +3,4 @@
 : ${CCI_SRC:=/c/cci}
 : ${LKP_SRC:=/c/lkp-tests}
 
-cd /c/cci/providers
-
-./qemu.sh
+$CCI_SRC/providers/my-qemu.sh
