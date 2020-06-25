@@ -6,10 +6,16 @@ cp -a /lkp 				$NEWROOT/
 
 for i in /lkp/lkp/src/rootfs/addon/*
 do
-	[  -f $i/.keep ] && continue 	# skip empty dir
 	dir=$(basename $i)
+
+	[  -d $NEWROOT/$dir ] ||
+	mkdir $NEWROOT/$dir
+	[ "$i" != "${i%/\*}" ] && continue	# skip empty dir
+
 	for j in $i/*
 	do
+		[ "$j" != "${j%/\*}" ] && continue	# skip empty dir
+
 		[ -f $j ] && {
 			cp -a $j $NEWROOT/$dir/
 			continue
@@ -19,6 +25,9 @@ do
 
 		[  -d $NEWROOT/$dir/$subdir ] ||
 		mkdir $NEWROOT/$dir/$subdir
+
+		k=$j/*
+		[ "$k" != "${k%/\*}" ] && continue	# skip empty dir
 
 		cp -a $j/* 	$NEWROOT/$dir/$subdir/
 	done
