@@ -1,0 +1,37 @@
+---
+
+#! jobs/iperf.yaml
+suite: iperf
+testcase: iperf
+testbox: vm-hi1620-2p8g-chief
+category: benchmark
+runtime: 30
+cluster: cs-localhost
+if role server:
+  iperf-server: 
+if role client:
+  iperf:
+    protocol: tcp
+job_origin: jobs/iperf.yaml
+arch: x86_64
+node_roles: server client
+
+#! include/category/benchmark
+kmsg: 
+boot-time: 
+uptime: 
+iostat: 
+heartbeat: 
+vmstat: 
+numa-numastat: 
+numa-vmstat: 
+numa-meminfo: 
+proc-vmstat: 
+proc-stat: 
+meminfo: 
+
+LKP_SERVER: 172.168.131.113
+LKP_CGI_PORT: 3000
+result_root: /result/iperf 
+LKP_DEBUG_PREFIX: bash -x
+
