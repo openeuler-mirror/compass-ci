@@ -4,7 +4,7 @@
 
 cp -a /lkp 				$NEWROOT/
 
-for i in /lkp/lkp/src/rootfs/addon/*
+for i in /lkp/lkp/src/rootfs/addon/* /usr/local/* /opt/*
 do
 	dir=$(basename $i)
 
