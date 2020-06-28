@@ -33,6 +33,12 @@ end
 def get_http_status_and_content(raw)
   array_size = raw.size
   status_code = raw[0].match(/ (\d+) /)
-  content_json = JSON.parse(raw[array_size - 1])
-  [status_code[1], content_json]
+  status_code = status_code[1].to_i
+
+  content_json = case status_code
+                 when 200
+                   JSON.parse(raw[array_size - 1])
+                 end
+
+  [status_code, content_json]
 end
