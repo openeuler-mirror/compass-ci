@@ -22,3 +22,17 @@ def curl_get_result(port, url, with_head = nil)
   cmd = format(curl_get_format, with_head, port, url)
   Open3.popen3(cmd)
 end
+
+# raw exmples:
+# [
+#  "HTTP/1.1 200 OK\r\n",
+#  "Connection: keep-alive\r\n", "X-Powered-By: Kemal\r\n",
+#  "Content-Type: text/html\r\n", "Content-Length: 10\r\n", "\r\n",
+#  "{\"id\":11}\n"
+# ]
+def get_http_status_and_content(raw)
+  array_size = raw.size
+  status_code = raw[0].match(/ (\d+) /)
+  content_json = JSON.parse(raw[array_size - 1])
+  [status_code[1], content_json]
+end
