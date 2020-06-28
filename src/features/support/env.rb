@@ -11,9 +11,9 @@ def curl_post_result(port, url, data, with_head = nil)
   Open3.popen3(cmd)
 end
 
-def curl_put_result(port, url, data, with_head = nil)
-  curl_put_format = 'curl %s -X PUT http://localhost:%d/%s?%s'
-  cmd = format(curl_put_format, with_head, port, url, data)
+def curl_put_result(port, url, with_head = nil)
+  curl_put_format = 'curl %s -X PUT http://localhost:%d/%s'
+  cmd = format(curl_put_format, with_head, port, url)
   Open3.popen3(cmd)
 end
 

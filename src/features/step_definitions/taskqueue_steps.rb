@@ -6,18 +6,28 @@ Given('has a task') do |doc_string|
   @task = doc_string
 end
 
-When('call with post api {string} task') do |string|
-  _, o = curl_post_result(taskqueue_port, string, @task, '-i')
+When('call with post api {string} task') do |url|
+  _, o = curl_post_result(taskqueue_port, url, @task, '-i')
   @result = get_http_status_and_content(o.readlines)
 end
 
 # @result = [Http_Status_code, Body_Json]
-Then('return with task id > {int}') do |int|
+Then('return with task id > {int}') do |task_id|
   result = @result[1]['id']
-  raise 'failed' unless result.to_i > int
+  raise 'failed' unless result.to_i > task_id
 end
 
-Then('return with task id = {int}') do |int|
+Then('return with task id = {int}') do |task_id|
   result = @result[1]['id']
-  raise 'failed' unless result.to_i == int
+  raise 'failed' unless result.to_i == task_id
+end
+
+When('call with put api {string}') do |url|
+  _, o = curl_put_result(taskqueue_port, url, '-i')
+  @result = get_http_status_and_content(o.readlines)
+end
+
+Then('return with task tbox_group == {string}') do |tbox_group|
+  result = @result[1]['tbox_group']
+  raise 'failed' unless result == tbox_group
 end
