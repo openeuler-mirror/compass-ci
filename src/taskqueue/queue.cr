@@ -8,10 +8,8 @@ class TaskQueue
       return queue_respond_header_set(env, 400, "Missing http body")
     end
 
-    queue_name = env.params.query["queue"]?
-    if queue_name.nil?
-      return queue_respond_header_set(env, 400, "Missing parameter <queue>")
-    end
+    queue_name, ext_set = queue_check_params(env, "queue")
+    return ext_set if queue_name.nil?
 
     queue_name = queue_name + "/ready"
 
@@ -32,5 +30,33 @@ class TaskQueue
   def queue_respond_header_set(env, code, message)
     env.response.status_code = code
     env.response.headers.add("CCI-Error-Description", message)
+  end
+
+  def queue_check_params(env, parameter_name)
+    parameter_value = env.params.query[parameter_name]?
+    ext_set = nil
+    if parameter_value.nil?
+       ext_set = queue_respond_header_set(env, 400, "Missing parameter <#{parameter_name}>")
+    end
+
+    return parameter_value, ext_set
+  end
+
+  def queue_respond_consume(env)
+    queue_name, ext_set = queue_check_params(env, "queue")
+    return ext_set if queue_name.nil?
+
+    queue_name_from = queue_name + "/ready"
+    queue_name_to   = queue_name + "/in_process"
+
+    if id = find_first_task_in_redis(queue_name_from)
+      env.response.status_code = 200
+      task = move_task_in_redis(queue_name_from, queue_name_to, id)
+    else
+      env.response.status_code = 201
+      task = nil
+    end
+
+    return task
   end
 end

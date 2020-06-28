@@ -44,6 +44,20 @@ class TaskQueue
       end
     end
 
+    # -------------------
+    # request: curl -X PUT http://localhost:3060/consume?queue=scheduler/$tbox_group
+    #
+    # response: 200 {"suite":"test01", "tbox_group":"host", "id":1}.to_json
+    #           201 ## when there has no task in queue (scheduler/$tbox_group)
+    #           400 "Missing parameter <queue>"
+    put "/consume" do |env|
+      response = queue_respond_consume(env)
+      debug_message(env, response)
+      if env.response.status_code == 200
+        response
+      end
+    end
+
     @port = (ENV.has_key?("TASKQUEUE_PORT") ? ENV["TASKQUEUE_PORT"].to_i32 : TASKQUEUE_PORT)
     Kemal.run(@port)
   end
