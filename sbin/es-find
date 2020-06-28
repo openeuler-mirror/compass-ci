@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Usage:
+#       es-find key=val ...
+# if given multi keys, they create AND conditions
+# if given val1,val2,... for a key, they create OR conditions
+# Eg: query (testbox is xxx or yyy) and (suite is aaa) and (user is bbb).
+#       es-find testbox=xxx,yyy suite=aaa user=bbb
+
+require 'yaml'
+require '../lib/es-query.rb'
+require '../container/lab.rb'
+
+# get elasticsearch config from lab yaml file or use default.
+config = cci_defaults
+ES_HOST = config['ES_HOST'] || '172.17.0.1'
+ES_PORT = config['ES_PORT'] || 9200
+
+def parse_argv
+  items = {}
+  ARGV.each do |item|
+    key, value = item.split('=')
+    if key && value
+      value_list = value.split(',')
+      items[key] = value_list.length > 1 ? value_list : value
+    end
+  end
+  items
+end
+
+items = parse_argv
+es = ESQuery.new(ES_HOST, ES_PORT)
+p es.multi_field_query items
