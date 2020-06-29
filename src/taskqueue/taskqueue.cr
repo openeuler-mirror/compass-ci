@@ -70,6 +70,18 @@ class TaskQueue
       debug_message(env, response)
     end
 
+    # -------------------
+    # request: curl -X PUT http://localhost:3060/delete?
+    #          from=scheduler/$tbox_group&id=$id
+    #
+    # response: 201 ## when succeed delete
+    #           400 "Missing parameter <queue|id>"
+    #           409 "Can not find id <$id> in queue <scheduler/$tbox_group>"
+    put "/delete" do |env|
+      response = queue_respond_delete(env)
+      debug_message(env, response)
+    end
+
     @port = (ENV.has_key?("TASKQUEUE_PORT") ? ENV["TASKQUEUE_PORT"].to_i32 : TASKQUEUE_PORT)
     Kemal.run(@port)
   end

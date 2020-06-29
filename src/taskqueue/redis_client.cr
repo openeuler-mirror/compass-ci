@@ -85,4 +85,18 @@ class TaskQueue
 
     return content["data"].to_json
   end
+
+  private def delete_task_in_redis(queue : String, id : String)
+    content = find_task(id)
+    return nil if content.nil?
+    return nil if (get_service_name_of_queue(content["queue"].to_s) != queue)
+
+    @redis.multi do |multi|
+      multi.zrem("#{QUEUE_NAME_BASE}/#{content["queue"]}", id)
+      multi.hdel("#{QUEUE_NAME_BASE}/id2content", id)
+    end
+
+    return content["data"].to_json
+  end
+
 end

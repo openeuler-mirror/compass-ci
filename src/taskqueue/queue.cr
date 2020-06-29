@@ -81,4 +81,28 @@ class TaskQueue
 
     return nil
   end
+
+  def get_service_name_of_queue(queue_name : String)
+    find_slash = queue_name.index('/')
+    return find_slash ? queue_name[0, find_slash] : queue_name
+  end
+
+  def queue_respond_delete(env)
+    params, ext_set = queue_check_params(env, ["queue", "id"])
+    return ext_set if ext_set != nil
+
+    # input queue parameter may like "scheduler/$tbox_group/..."
+    #   we just need make sure the "id" blongs to queue "scheduler"
+    #   the (queue "scheduler") is a queue for scheduler-service
+    queue = get_service_name_of_queue(params[0])
+    id    = params[1]
+
+    if delete_task_in_redis(queue, id)
+      env.response.status_code = 201
+    else
+      queue_respond_header_set(env, 409, "Can not find id <#{id}> in queue <#{params[0]}>")
+    end
+
+    return nil
+  end
 end
