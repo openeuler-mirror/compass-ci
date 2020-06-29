@@ -1,5 +1,6 @@
 require "redis"
 require "./tools"
+require "./constants"
 #require "../lib/redis/src/redis"
 # -------------------------------------------------------------------------------------------
 # get_new_job_id()
@@ -13,8 +14,10 @@ require "./tools"
 
 class Redis::Client
     class_property :client
+    HOST = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
+    PORT = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
 
-    def initialize(host : String, port : Int32)
+    def initialize(host = HOST, port = PORT)
         @client = Redis.new(host, port) # if redis-server is not ready? here may need raise error
     end
 
