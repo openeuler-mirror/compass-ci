@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require "#{File.dirname(__FILE__)}/lkp_client"
 require "#{File.dirname(__FILE__)}/lkp_server_info"
 
 if ARGV.size != 2
-  puts "cmd like: lkp queue myjobs.yaml"
+  puts 'cmd like: lkp queue myjobs.yaml'
 else
   server = LkpServerInfo.new
   client = LkpClient.new(server)
