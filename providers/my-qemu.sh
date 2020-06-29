@@ -7,4 +7,4 @@ export hostname=$tbox_group-$USER-$$
 cp $LKP_SRC/hosts/$tbox_group \
    $LKP_SRC/hosts/$tbox_group-$USER
 
-./qemu.sh
+$CCI_SRC/providers/qemu.sh
