@@ -2,6 +2,7 @@ require "yaml"
 require "json"
 require "elasticsearch-crystal/elasticsearch/api"
 require "./tools"
+require "./constants"
 
 # -------------------------------------------------------------------------------------------
 # set_job_content(job_content)
@@ -28,9 +29,11 @@ require "./tools"
 # -------------------------------------------------------------------------------------------
 class Elasticsearch::Client
     class_property :client
+    HOST = (ENV.has_key?("ES_HOST") ? ENV["ES_HOST"] : JOB_ES_HOST)
+    PORT = (ENV.has_key?("ES_PORT") ? ENV["ES_PORT"] : JOB_ES_PORT).to_i32
 
-    def initialize(hostname : String, port : Int32)
-        @client = Elasticsearch::API::Client.new( { :host => hostname, :port => port } )
+    def initialize(host = HOST, port = PORT)
+        @client = Elasticsearch::API::Client.new( { :host => host, :port => port } )
     end
 
     # caller should judge response["_id"] != nil
