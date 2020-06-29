@@ -32,7 +32,7 @@ Then('return with task tbox_group == {string}') do |tbox_group|
   raise 'failed' unless result == tbox_group
 end
 
-When('call with put api {string} and prevoius get id') do |url|
+When('call with put api {string} and previous get id') do |url|
   url += @result[1]['id'].to_s
   _, o = curl_put_result(taskqueue_port, url, '-i')
   @result = get_http_status_and_content(o.readlines)
