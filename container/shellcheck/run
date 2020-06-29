@@ -1,0 +1,13 @@
+#!/bin/bash
+
+cmd=(
+	docker run
+	-it
+	-rm
+	-v $PWD:/shellbox
+	shellcheck
+	shellcheck "$@"
+)
+
+"${cmd[@]}" 
+
