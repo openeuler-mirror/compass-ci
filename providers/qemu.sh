@@ -2,7 +2,7 @@
 # - hostname
 
 . $LKP_SRC/lib/yaml.sh
-. ../container/lab.sh
+. $CCI_SRC/container/lab.sh
 
 : ${hostname:="vm-hi1620-1p1g-1"}
 # unicast prefix: x2, x6, xA, xE
