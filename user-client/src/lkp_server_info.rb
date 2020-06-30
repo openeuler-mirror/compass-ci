@@ -1,6 +1,7 @@
-require 'net/http'
+# frozen_string_literal: true
 
-#
+require 'net/http'
+#:nodoc:
 class LkpServerInfo
   attr_accessor :host, :port
 
