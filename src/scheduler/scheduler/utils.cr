@@ -23,14 +23,15 @@ module Scheduler
             end
             # update job's  testbox property
             job_content = JSON.parse(redis.get_job_content(job_id).not_nil!.to_json)
+            # update es job.yaml at {#! queue option}
+            # - update testbox: from mac,ip to host? {host-192-168-1-91}
+            # - update tbox_group: {host-168-1}
+            boot_respon, job_content = Scheduler::Boot.respon(job_content, env, resources)
             # create job.cgz before respon to ipxe parameter
             # should i use spawn { ? }
             Jobfile::Operate.create_job_cpio(job_content, resources.@fsdir_root.not_nil!)
 
-            # update es job.yaml at {#! queue option}
-            # - update testbox: from mac,ip to host? {host-192-168-1-91}
-            # - update tbox_group: {host-168-1}
-            return Scheduler::Boot.respon(job_content, env, resources)
+            return boot_respon
         end
     end
 end
