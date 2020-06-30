@@ -9,7 +9,7 @@
 #       es-find testbox=xxx,yyy suite=aaa user=bbb
 
 require 'yaml'
-require '../lib/es-query.rb'
+require '../lib/es_query.rb'
 require '../container/lab.rb'
 
 # get elasticsearch config from lab yaml file or use default.
