@@ -14,6 +14,8 @@ cmd=(
   --rm
   -e LKP_SRC=/c/lkp-tests
   -e CCI_SRC=/c/crystal-ci
+  -e REDIS_PORT=6380
+  -e ES_PORT=9201
   -e CRYSTAL_PATH="lib:/usr/share/crystal/app/lib:/usr/lib/crystal/shards:/usr/lib/crystal/core:/c/lkp-tests/lib:$SCHED_DEBUG_DIR"
   -it
   -u $UID
