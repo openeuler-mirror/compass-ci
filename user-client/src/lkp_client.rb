@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 require 'yaml'
 require 'json'
 require 'base64'
 require 'rest-client'
 
-#
+#:nodoc:
 class LkpClient
   attr_accessor :server
 
@@ -37,17 +39,17 @@ class LkpClient
       all_lines = lines.join
     end
 
-    yaml = YAML::parse(all_lines)
+    yaml = YAML.parse(all_lines)
     yaml.to_ruby.to_json
   end
 
-  def post_cmd
+  def http_post_cmd
     resource = RestClient::Resource.new("http://#{@server.host}:#{@server.port}/submit_job",
-                                        { headers: { 'Authorization' => @auth} })
+                                        { headers: { 'Authorization' => @auth } })
     resource.post(trans(@path))
   end
 
-  def get_cmd
+  def http_get_cmd
     resource = RestClient::Resource.new("http://#{@server.host}:#{@server.port}/query_job",
                                         { headers: { 'Authorization' => @auth,
                                                      :jobid => '@path' } })
@@ -57,9 +59,9 @@ class LkpClient
   def run
     case @operate
     when 'queue'
-      post_cmd
+      http_post_cmd
     when 'result'
-      get_cmd
+      http_get_cmd
     else
       raise "No this operate: #{@operate}"
     end
