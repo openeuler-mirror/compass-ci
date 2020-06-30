@@ -8,7 +8,7 @@ apt-get install -y ca-certificates
 mv /etc/apt/sources.list.bak /etc/apt/sources.list
 
 apt-get update
-apt-get install -y apt-utils nfs-common netbase
+apt-get install -y apt-utils nfs-common netbase cifs-utils
 apt-get install -y dracut dracut-network dracut-config-generic
 
 apt-get clean
