@@ -7,11 +7,11 @@ RUN apt-get update && \
     mkdir /app && \
     mkdir /git 
 
-COPY ./myapp.rb /app/
+COPY ./remote-git.rb /app/
 
 
 WORKDIR /app
 
 VOLUME /git
 
-CMD ["ruby", "myapp.rb"]
+CMD ["ruby", "remote-git.rb"]
