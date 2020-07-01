@@ -1,5 +1,6 @@
 require "spec"
 require "scheduler/tools"
+require "file_utils"
 
 describe Public do
     describe "hash replace" do
@@ -68,6 +69,37 @@ describe Public do
             result = Public.get_tbox_group_name(testbox_name)
 
             (result).should eq testgroup_name
+        end
+    end
+
+    describe "unzip cgz" do
+        it "can unzip the cgz completely in the target_path" do
+            test_file_tree = "/c/cci/scheduler/test_dir/test_dir/"
+            FileUtils.mkdir_p(test_file_tree)
+
+            content = "Only if the content of the unzipped file have this content.\nSpec will passed"
+            File.write("#{test_file_tree}check_file.check", content)
+
+            source_path = "/c/cci/scheduler/test.cgz"
+            target_path = "/c/cci/scheduler/expand_cgz/1024/"
+            zip_cmd = "find test_dir | cpio --quiet -o -H newc | gzip > #{source_path}"
+            system zip_cmd
+
+            FileUtils.rm_rf("/c/cci/scheduler/test_dir")
+
+            Public.unzip_cgz(source_path, target_path)
+
+            if File.exists?("#{target_path}test_dir/test_dir/check_file.check")
+              read_content = File.read("#{target_path}test_dir/test_dir/check_file.check")
+            else
+              content = "something was wrong"
+              read_content = "null"
+            end
+
+            read_content.should eq content
+
+            FileUtils.rm_rf("/c/cci/scheduler/expand_cgz")
+            FileUtils.rm("/c/cci/scheduler/test.cgz")
         end
     end
 end
