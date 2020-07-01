@@ -66,7 +66,7 @@ module Scheduler
             respon += "initrd http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job_content["id"]}/job.cgz\n"
             respon += "kernel http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{os_dir}/vmlinuz user=lkp"
             respon += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
-            respon += " root=#{OS_HTTP_HOST}:/os/#{os_dir} rootovl ip=enp0s1:dhcp ro"
+            respon += " root=#{OS_HTTP_HOST}:/os/#{os_dir} rootovl ip=dhcp ro"
             respon += " initrd=initrd.lkp initrd=lkp-aarch64.cgz initrd=job.cgz\n"
             respon += "boot\n"
             return respon, job_content
