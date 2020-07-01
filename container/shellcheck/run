@@ -3,7 +3,7 @@
 cmd=(
 	docker run
 	-it
-	-rm
+	--rm
 	-v $PWD:/shellbox
 	shellcheck
 	shellcheck "$@"
