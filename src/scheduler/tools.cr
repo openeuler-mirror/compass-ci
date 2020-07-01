@@ -19,4 +19,10 @@ module Public
 
         return tbox_group
     end
+
+    def self.unzip_cgz(source_path : String, target_path : String)
+        FileUtils.mkdir_p(target_path)
+        cmd =  "cd #{target_path};gzip -dc #{source_path}|cpio -id"
+        system cmd
+    end
 end
