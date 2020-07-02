@@ -23,20 +23,26 @@ module Scheduler
             reboot"
         end
 
-        def self.respon(job_content : JSON::Any, env, resources : Scheduler::Resources)
+        def self.get_os_dir(job_content : JSON::Any)
             if job_content["os"]?
-                os_dir = job_content["os"].to_s + "/" + job_content["os_arch"].to_s + "/" + job_content["os_version"].to_s
+                job_content["os"].to_s + "/" + job_content["os_arch"].to_s + "/" + job_content["os_version"].to_s
             else
-                os_dir = "debian/aarch64/sid"
+                "debian/aarch64/sid"
             end
+        end
 
+        def self.get_lkp_initrd_user(job_content : JSON::Any)
             if job_content["lkp_initrd_user"]?
-                lkp_initrd_user = job_content["lkp_initrd_user"].to_s
+                job_content["lkp_initrd_user"].to_s
             else
-                lkp_initrd_user = "latest"
+                "latest"
             end
+        end
 
-            # the localhost should configure to <os and lkp> hostname
+        def self.respon(job_content : JSON::Any, env, resources : Scheduler::Resources)
+            os_dir = self.get_os_dir(job_content)
+            lkp_initrd_user = self.get_lkp_initrd_user(job_content)
+
             respon = "#!ipxe\n\n"
             job_hash = job_content.as_h
             initrd_deps_arr = Array(String).new
@@ -54,10 +60,24 @@ module Scheduler
                   end
               end
             end
-            if job_content["os_mount"]? && job_content["os_mount"].to_s == "initramfs"
-                respon += initrd_deps_arr.join(){|item| "initrd #{item}\n"}
-                respon += initrd_pkg_arr.join(){|item| "initrd #{item}\n"}
+
+            # root value need to depend on os_mount field
+            root_value = ""
+            if job_content["os_mount"]?
+                case job_content["os_mount"].to_s
+                when "initramfs"
+                    respon += initrd_deps_arr.join(){|item| "initrd #{item}\n"}
+                    respon += initrd_pkg_arr.join(){|item| "initrd #{item}\n"}
+                    root_value = "/dev/ram0"
+                when "cfis"
+                    root_value = "cifs://#{OS_HTTP_HOST}/os/#{os_dir},guest,ro,hard,vers=1.0,noacl,nouser_xattr"
+                when "nfs"
+                    root_value = "#{OS_HTTP_HOST}:/os/#{os_dir}"
+                end
+            else
+                root_value = "#{OS_HTTP_HOST}:/os/#{os_dir}"
             end
+
             job_hash_merge = job_hash.merge({"initrd_deps" => initrd_deps_arr.join(" "), "initrd_pkg" => initrd_pkg_arr.join(" ")})
             job_content = JSON.parse(job_hash_merge.to_json)
 
@@ -67,7 +87,7 @@ module Scheduler
             respon += "initrd http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job_content["id"]}/job.cgz\n"
             respon += "kernel http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{os_dir}/vmlinuz user=lkp"
             respon += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
-            respon += " root=#{OS_HTTP_HOST}:/os/#{os_dir} rootovl ip=dhcp ro"
+            respon += " root=#{root_value} rootovl ip=dhcp ro"
             respon += " initrd=initrd.lkp initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
             respon += "boot\n"
             return respon, job_content
