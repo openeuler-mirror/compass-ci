@@ -10,6 +10,7 @@ require "./scheduler/enqueue"
 require "./scheduler/resources"
 require "./scheduler/monitor"
 require "./constants.cr"
+require "../lib/sched"
 
 # -------------------------------------------------------------------------------------------
 # end_user:
@@ -34,6 +35,8 @@ require "./constants.cr"
 #
 module Scheduler
     VERSION = "0.1.1"
+
+    sched = Sched.new
 
     redis_host = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
     redis_port = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
@@ -105,17 +108,13 @@ module Scheduler
     # !!! how to do : two time calls with diffrent port. JUST use ip?
     # curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg&mac=00-01-02-03-04-05"
     put "/set_host_mac" do |env|
-        if (client_hostname = env.params.query["hostname"]?)
-            client_mac = env.params.query["mac"]?
-            if client_mac !=nil
-                resources.@redis_client.not_nil!.@client.hset("mac2host", client_mac, client_hostname)
+        if (client_hostname = env.params.query["hostname"]?) && (client_mac = env.params.query["mac"]?)
+            sched.set_host_mac(client_mac, client_hostname)
 
-                debug_message(env, "Done")
+            debug_message(env, "Done")
 
-                "Done"
-            end
+            "Done"
         else
-
             "No yet!"
         end
     end

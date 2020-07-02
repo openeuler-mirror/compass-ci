@@ -10,4 +10,8 @@ class Sched
         @es = Elasticsearch::Client.new
         @redis = Redis::Client.new
     end
+
+    def set_host_mac(mac : String, hostname : String)
+        @redis.set_hash_queue("sched/mac2host", mac, hostname)
+    end
 end

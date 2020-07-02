@@ -34,7 +34,7 @@ describe Scheduler::Utils do
                 resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
                 # register {mac => hostname}
-                resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remote_host_name)
+                resources.@redis_client.not_nil!.@client.hset("sched/mac2host", mac, remote_host_name)
 
                 time_start = Time.utc
                 respon = Scheduler::Utils.find_job_boot(mac, context, resources)
@@ -74,7 +74,7 @@ describe Scheduler::Utils do
                 resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
                 # register runner hostname
-                resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remote_host_name)
+                resources.@redis_client.not_nil!.@client.hset("sched/mac2host", mac, remote_host_name)
 
                 # client testbox is  wfg-e595
                 # job's testbox is   wfg-e595
@@ -138,7 +138,7 @@ describe Scheduler::Utils do
                 resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
                 # register runner hostname
-                resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remote_host_name)
+                resources.@redis_client.not_nil!.@client.hset("sched/mac2host", mac, remote_host_name)
 
                 # client testbox is  wfg-e595-002
                 # job's testbox is   wfg-e595
@@ -201,7 +201,7 @@ describe Scheduler::Utils do
                 resources.es_client(JOB_ES_HOST, JOB_ES_PORT_DEBUG)
 
                 # register runner hostname
-                resources.@redis_client.not_nil!.@client.hset("mac2host", mac, remote_host_name)
+                resources.@redis_client.not_nil!.@client.hset("sched/mac2host", mac, remote_host_name)
 
                 # client testbox is  wfg-e595-002
                 # job's testbox is    wfg-e595-001

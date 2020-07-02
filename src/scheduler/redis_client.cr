@@ -21,6 +21,10 @@ class Redis::Client
         @client = Redis.new(host, port) # if redis-server is not ready? here may need raise error
     end
 
+    def set_hash_queue(queue_name : String, key, value)
+      @client.hset(queue_name, key.to_s, value.to_s)
+    end
+
     # redis incr is a 64bit signed int
     def get_new_job_id()
         sn = @client.incr("sched/seqno2jobid")
@@ -85,10 +89,9 @@ class Redis::Client
 
     def add_job_content(job_content)
         job_id = job_content["id"]
-        job_content_o = get_job_content("#{job_id}")
-        job_content_m = job_content_o.merge(job_content)
+        job_content = get_job_content("#{job_id}").merge(job_content)
 
-        @client.hset("sched/id2job", job_id, job_content_m.to_json)
+        set_hash_queue("sched/id2job", job_id, job_content.to_json)
     end
 
     def get_job_content(job_id)
