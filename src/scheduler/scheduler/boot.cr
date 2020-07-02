@@ -69,7 +69,7 @@ module Scheduler
                     respon += initrd_deps_arr.join(){|item| "initrd #{item}\n"}
                     respon += initrd_pkg_arr.join(){|item| "initrd #{item}\n"}
                     root_value = "/dev/ram0"
-                when "cfis"
+                when "cifs"
                     root_value = "cifs://#{OS_HTTP_HOST}/os/#{os_dir},guest,ro,hard,vers=1.0,noacl,nouser_xattr"
                 when "nfs"
                     root_value = "#{OS_HTTP_HOST}:/os/#{os_dir}"
