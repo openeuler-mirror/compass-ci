@@ -1,5 +1,6 @@
 require "json"
 require "yaml"
+require "any_merge"
 
 class Job
 
@@ -24,5 +25,13 @@ class Job
 
     def dump_to_yaml()
         @job_hash.to_yaml
+    end
+
+    def update(hash : Hash)
+      @job_hash.any_merge!(hash)
+    end
+
+    def update(json : JSON::Any)
+      @job_hash.any_merge!(json.as_h)
     end
 end
