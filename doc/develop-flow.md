@@ -54,8 +54,17 @@ The above "gmail" command is a wrapper for "git send-email".
 It submits your patch for review. The patch subject and changelog
 should be well written according to suggestions here:
 
+	https://github.com/thoughtbot/dotfiles/blob/master/gitmessage
+
 	http://www.ozlabs.org/~akpm/stuff/tpp.txt
+	2: Subject:
+	3: Attribution
+	4: Changelog
+
 	https://www.kernel.org/doc/html/latest/translations/zh_CN/process/submitting-patches.html#cn-describe-changes
+	2) 描述你的改动
+	3) 拆分你的改动
+	8）回复评审意见
 
 Everyone is encouraged to review others' patches. In particular, these 2 roles
 are obliged to give review comments:
