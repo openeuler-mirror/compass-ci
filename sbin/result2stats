@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+# SPDX-License-Identifier: GPL-2.0-only
+
 # frozen_string_literal: true
 
 CCI_SRC = File.dirname(__dir__)
