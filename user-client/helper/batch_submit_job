@@ -31,7 +31,7 @@ first_line=`sed -n '1p' tmp.txt`
 if [ "$1" != "" ]; then
   if [[ $first_line =~ $1 ]]; then
     batch_submit
-  fi  
+  fi
 fi
 
 message_and_exit

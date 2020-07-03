@@ -66,7 +66,7 @@ crystal
   - post processing
     - wrap stats/* in classes in a long run service
   - git service
-    - use libgit2 + git cli wrapper 
+    - use libgit2 + git cli wrapper
     - to deprecate ruby-git
     - ruby-git adds complexity. Either use libgit2 for better performance, or
       wrap plain git cli commands to be reuse knowledge and cli git docs.

@@ -1,6 +1,6 @@
 FROM alpine:3.11
 
-RUN apk add --no-cache 'redis' 
+RUN apk add --no-cache 'redis'
 
 RUN sed -i 's:dir /var/lib/redis:dir /srv/redis:' /etc/redis.conf; \
     sed -i 's:protected-mode yes:protected-mode no:' /etc/redis.conf; \

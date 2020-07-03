@@ -54,7 +54,7 @@ Then read through documents
 	crystal-ci/doc/learning-resources.md
 
 # crystal compiler
- 
+
 ## local install
 
 Follow instructions here:

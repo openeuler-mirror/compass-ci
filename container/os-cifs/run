@@ -1,8 +1,7 @@
 #!/bin/bash
 
-
 cmd=(
- 	docker run -dt 
+	docker run -dt
 	-p 445:445
 	-v $PWD/smb.conf:/etc/samba/smb.conf
 	-v /srv/os:/srv/os:ro

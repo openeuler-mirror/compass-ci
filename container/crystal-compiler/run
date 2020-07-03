@@ -12,11 +12,11 @@ opt_build=build
 
 cmd=(
 	docker run
-	-u $UID 
+	-u $UID
 	--rm
 	-it
 	-v $v_dir:$v_dir
-	-w $PWD 	 
+	-w $PWD
 	alpine:crystal-complier
 	crystal $opt_build --static "$@"
 )

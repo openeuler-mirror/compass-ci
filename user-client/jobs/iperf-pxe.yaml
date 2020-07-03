@@ -11,7 +11,7 @@ category: benchmark
 runtime: 300
 cluster: cs-localhost
 if role server:
-  iperf-server: 
+  iperf-server:
 if role client:
   iperf:
     protocol: tcp
@@ -21,16 +21,16 @@ arch: x86_64
 node_roles: server client
 
 #! include/category/benchmark
-kmsg: 
-boot-time: 
-uptime: 
+kmsg:
+boot-time:
+uptime:
 suite: iperf
 testcase: iperf
 category: benchmark
 runtime: 300
 cluster: cs-localhost
 if role server:
-  iperf-server: 
+  iperf-server:
 if role client:
   iperf:
     protocol: tcp
@@ -40,20 +40,20 @@ arch: x86_64
 node_roles: server client
 
 #! include/category/benchmark
-kmsg: 
-boot-time: 
-uptime: 
-iostat: 
-heartbeat: 
-vmstat: 
-numa-numastat: 
-numa-vmstat: 
-numa-meminfo: 
-proc-vmstat: 
-proc-stat: 
-meminfo: 
+kmsg:
+boot-time:
+uptime:
+iostat:
+heartbeat:
+vmstat:
+numa-numastat:
+numa-vmstat:
+numa-meminfo:
+proc-vmstat:
+proc-stat:
+meminfo:
 
 LKP_SERVER: 172.168.131.113
 LKP_CGI_PORT: 3000
-result_root: /result/iperf 
+result_root: /result/iperf
 LKP_DEBUG_PREFIX: bash -x

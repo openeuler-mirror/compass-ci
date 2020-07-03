@@ -28,6 +28,6 @@ curl -X PUT "http://localhost:3000/report?hostname=wfg-e595&mac=52-54-00-12-34-5
 2_runqemu.sh
 ## rerun qemu got "no job now" : because the only job has been done
 
-## other 
+## other
 1_showjob.sh job_id  # show job_id's content in es
 3_dispcgz.sh job_id  # list job_id's file

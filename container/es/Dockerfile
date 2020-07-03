@@ -21,8 +21,8 @@ RUN rm -rf /etc/init.d/elasticsearch \
     && chown -R elasticsearch:elasticsearch /usr/share/es \
     && chown -R elasticsearch:elasticsearch /srv/es;
 
-RUN sed -i 's:#path.data\: /path/to/data:path.data\: /srv/es:' /usr/share/es/config/elasticsearch.yml; 
-RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/es/config/elasticsearch.yml; 
+RUN sed -i 's:#path.data\: /path/to/data:path.data\: /srv/es:' /usr/share/es/config/elasticsearch.yml;
+RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/es/config/elasticsearch.yml;
 
 WORKDIR /usr/share/es
 

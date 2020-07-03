@@ -26,7 +26,7 @@ todo repo
 The formal TODOs shall be committed to the above "todo" repo.
 Anyone can create TODO items in markdown doc format for review and implement by others.
 
-- top level directory holds TODOs for the whole team 
+- top level directory holds TODOs for the whole team
 - dirs data/ deploy/ lkp/ scheduler/ tests/ hold TODOs for specific areas
 
 - to take a TODO for implementation, one should

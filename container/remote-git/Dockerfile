@@ -5,7 +5,7 @@ RUN apt-get update && \
     apt-get install -y git && \
     gem install sinatra  && \
     mkdir /app && \
-    mkdir /git 
+    mkdir /git
 
 COPY ./remote_git.rb /app/
 

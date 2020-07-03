@@ -74,7 +74,7 @@ else
 		          "testbox": {
 		            "type": "keyword"
 		          },
-		          "tbox_group": { 
+		          "tbox_group": {
 		            "type": "keyword"
 		          },
 		          "submit_id": {

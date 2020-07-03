@@ -9,5 +9,5 @@ cmd=(
 	shellcheck "$@"
 )
 
-"${cmd[@]}" 
+"${cmd[@]}"
 

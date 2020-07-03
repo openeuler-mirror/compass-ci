@@ -2,7 +2,7 @@
 # 2020.3 by wufengguang
 #
 # Example fs/storage configuration.
-# The smaller setup can be standalone partitions for /var/lib/docker and /srv 
+# The smaller setup can be standalone partitions for /var/lib/docker and /srv
 # TODO: images, nfs rootfs, results, git mirror, repo mirror, ES db, redis db
 
 # best SSD: small files; r/w; important data

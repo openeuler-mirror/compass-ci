@@ -20,7 +20,7 @@ Redis->Redis: increase sched/seqno2jobid
 Scheduler->Scheduler: <job> = JSON.parse(HTML::body)
 Scheduler->Scheduler: <tbox_group> = determin_queue_name, <tbox_group_queue> = "sched/jobs_to_run/#{tbox_group}"
 Scheduler->Redis: add2queue(<tbox_group_queue>, <job_id>)
-Redis->Redis: put <job_id> to pending queue <tbox_group_queue> 
+Redis->Redis: put <job_id> to pending queue <tbox_group_queue>
 Scheduler->ElasticSearch: add(${JOB_INDEX_TYPE}, <job>, <job_id>)
 ElasticSearch->ElasticSearch: create "${JOB_INDEX_TYPE}" document
 Scheduler->User: <job_id>
@@ -29,7 +29,7 @@ Scheduler->User: <job_id>
 	1. add job_id to pending queue in redis
 	2. add a job document in es
 
-- redis storage: 
+- redis storage:
 	Key                   |Value                                        |Type        |
 	sched/seqno2jobid     |last_job_id => 64bit number                  |String      |
 	<tbox_group_queue>    |[{member => job_id, score => enqueue_time},] |Sorted_Set  |
@@ -172,10 +172,10 @@ Scheduler->Redis: remove_running(job_id)
 Scheduler->User: Done
 ```
 - doing what:
-        1. move job from redis queue "sched/jobs_running" to "sched/extract_stats" 
+        1. move job from redis queue "sched/jobs_running" to "sched/extract_stats"
         2. remove job from redis queue "sched/id2job"
 
-- redis storage: 
+- redis storage:
         move_job("sched/jobs_running", "queue/extract_stats", job_id):move job from redis queue "sched/jobs_running" to "sched/extract_stats"
         hdel("sched/id2job", job_id):remove job from redis queue "sched/id2job"
 - es storage: no change

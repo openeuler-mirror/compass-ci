@@ -4,7 +4,7 @@ Deploy a mini instance in one single machine.
 
 A reasonble setup is to prepare standalone partitions for
 - /var/lib/docker
-- /srv 
+- /srv
 
 A larger setup example `sbin/llvm.sh `
 
