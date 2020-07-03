@@ -1,0 +1,18 @@
+#!/usr/bin/ruby
+# frozen_string_literal: true
+
+require 'set'
+require '../lab.rb'
+
+names = Set.new ['TASKQUEUE_PORT']
+defaults = relevant_defaults(names)
+
+service_port = (defaults['TASKQUEUE_PORT'] || '3060')
+
+CCI_SRC = ENV['CCI_SRC']
+system "bash #{CCI_SRC}/src/taskqueue_build"
+system "mv #{CCI_SRC}/src/m_taskqueue ./taskqueue"
+
+system "docker build -t taskqueue-alpine:v0.001-#{service_port} ."
+
+system 'rm taskqueue'

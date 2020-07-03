@@ -1,0 +1,36 @@
+#!/usr/bin/ruby
+# frozen_string_literal: true
+
+require 'set'
+require '../lab.rb'
+
+names = Set.new %w[
+  TASKQUEUE_PORT
+  REDIS_HOST
+  REDIS_PORT
+]
+
+defaults = relevant_defaults(names)
+env = docker_env(defaults)
+
+service_port = defaults['TASKQUEUE_PORT'] || '3060'
+service_name = 'taskqueue'
+service_image = "#{service_name}-alpine:v0.001-#{service_port}"
+
+system "docker rm -f #{service_name}-#{service_port}"
+
+cmd = %W[
+  docker run
+  --name #{service_name}-#{service_port}
+  -d
+  -u 1090:1090
+  -p #{service_port}:3060
+]
+cmd += env
+cmd += %W[
+  -v /etc/localtime:/etc/localtime:ro
+  #{service_image}
+  ./#{service_name}
+]
+
+system(*cmd)

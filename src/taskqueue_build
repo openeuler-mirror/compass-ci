@@ -1,0 +1,18 @@
+#!/usr/bin/bash
+
+DEBUG_DIR=/c/cci/taskqueue
+DIR=$(dirname $(realpath $0))
+
+cmd=(
+  docker run
+  --rm
+  -e CRYSTAL_PATH="lib:/usr/share/crystal/app/lib:/usr/lib/crystal/shards:/usr/lib/crystal/core:$DEBUG_DIR"
+  -it
+  -u $UID
+  -v $DIR:$DEBUG_DIR
+  -w $DEBUG_DIR
+  alpine:scheduler-dev
+  sh -c "crystal build taskqueue.cr -o m_taskqueue"
+)
+
+"${cmd[@]}"
