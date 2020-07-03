@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 DEBUG_DIR=/c/cci/taskqueue
 DIR=$(dirname $(realpath $0))
