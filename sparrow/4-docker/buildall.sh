@@ -19,6 +19,7 @@ do
 	[ "$cur_dir" == 'lkp-initrd' ] || \
 	[ "$cur_dir" == 'dracut-initrd' ] || \
 	[ "$cur_dir" == 'crystal-base' ] || \
+	[ "$cur_dir" == 'crystal-shards' ] || \
 	[ "$cur_dir" == 'scheduler-dev' ] && {
 		echo "$cur_dir just build, skip!"
 		cd "scheduler"
