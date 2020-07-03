@@ -55,6 +55,7 @@ It submits your patch for review. The patch subject and changelog
 should be well written according to suggestions here:
 
 	https://github.com/thoughtbot/dotfiles/blob/master/gitmessage
+	https://www.cnblogs.com/cpselvis/p/6423874.html
 
 	http://www.ozlabs.org/~akpm/stuff/tpp.txt
 	2: Subject:
