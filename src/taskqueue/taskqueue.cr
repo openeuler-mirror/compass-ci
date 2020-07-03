@@ -12,8 +12,7 @@ class TaskQueue
     puts ""
   end
 
-  def run()
-
+  def run
     # -------------------
     # request: curl http://localhost:3060
     #
@@ -39,9 +38,7 @@ class TaskQueue
     post "/add" do |env|
       response = queue_respond_add(env)
       debug_message(env, response)
-      if env.response.status_code == 200
-        response
-      end
+      response if env.response.status_code == 200
     end
 
     # -------------------
@@ -53,9 +50,7 @@ class TaskQueue
     put "/consume" do |env|
       response = queue_respond_consume(env)
       debug_message(env, response)
-      if env.response.status_code == 200
-        response
-      end
+      response if env.response.status_code == 200
     end
 
     # -------------------
