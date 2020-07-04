@@ -11,5 +11,5 @@ cd $CCI_SRC/sparrow || exit
 2-network/iptables.sh
 3-code/git.sh
 3-code/dev-env.sh
-4-docker/buildall.sh
+4-docker/buildall
 6-test/docker.sh
