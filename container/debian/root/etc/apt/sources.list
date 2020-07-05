@@ -1,0 +1,7 @@
+deb http://mirrors.163.com/debian/ stable main non-free contrib
+
+deb http://mirrors.163.com/debian/ testing main non-free contrib
+deb-src http://mirrors.163.com/debian/ testing main non-free contrib
+
+deb http://mirrors.163.com/debian/ sid main non-free contrib
+deb-src http://mirrors.163.com/debian/ sid main non-free contrib
