@@ -12,7 +12,7 @@ do
 	gid=$(awk -F: "/^$user:/ { print \$4}" /opt/passwd)
 	if command -v useradd >/dev/null; then
 		# debian
-		addgroup --gid $gid $user
+		groupadd --gid $gid $user
 		useradd --create-home --shell /bin/zsh -u $uid -g $gid $user
 		passwd --lock $user
 	else
