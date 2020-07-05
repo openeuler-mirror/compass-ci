@@ -10,8 +10,17 @@ chown -R team.team /home/team
 # ssh authorized_keys
 [ -n "$SSH_KEYS" ] || exit 0
 
-mkdir -p /root/.ssh /home/team/.ssh
+for user in ${TEAM//,/ }
+do
+	useradd --create-home --shell /bin/zsh $user
+	passwd --lock $user
+	mkdir -p /home/$user/.ssh
+	echo "$SSH_KEYS" | grep " $user@" > /home/$user/.ssh/authorized_keys
+	chown -R $user.$user /home/$user/.ssh
+done
+
+mkdir -p /root/.ssh
 echo "$SSH_KEYS" | grep -E " (${COMMITTERS//,/|})@" > /root/.ssh/authorized_keys
 echo "$SSH_KEYS" > /home/team/.ssh/authorized_keys
-chown -R team.team /home/team/.ssh
-chmod -R go-rwxs /root/.ssh /home/team/.ssh
+
+chmod -R go-rwxs /root/.ssh /home/*/.ssh
