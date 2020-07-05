@@ -1,4 +1,4 @@
 #!/bin/sh
 
-export OS=debian
+export OS=archlinux
 ../first-run.sh

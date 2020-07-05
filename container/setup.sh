@@ -12,6 +12,9 @@ fi
 # dotfiles
 cp -a /mnt/skel/ /etc/
 
+# fix warnings in archlinux
+sed -i '/GROUP=users/d' /etc/default/useradd
+
 # ssh authorized_keys
 [ -n "$SSH_KEYS" ] || exit 0
 
@@ -45,7 +48,7 @@ echo "$SSH_KEYS" | grep -E " (${COMMITTERS//,/|})@" > /root/.ssh/authorized_keys
 echo "$SSH_KEYS" > /home/team/.ssh/authorized_keys
 
 # alpine
-if [ -d /etc/sudoers.d ]; then
+if [ -d /etc/sudoers.d ] && grep -q wheel /etc/group; then
 	adduser team wheel
 	echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel-nopasswd
 fi

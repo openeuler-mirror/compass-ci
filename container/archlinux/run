@@ -1,0 +1,18 @@
+#!/bin/bash
+
+cmd=(
+	docker run
+	-it
+	-v archlinux-home:/home
+	-v archlinux-root:/root
+	-v /c:/c
+	-v /srv/os:/srv/os
+	-p 2202:2202
+	--hostname archlinux
+	--security-opt seccomp=unconfined
+	-d
+	archlinux:testbed
+	/usr/sbin/sshd -D -p 2202
+)
+
+"${cmd[@]}"
