@@ -1,5 +1,14 @@
 #!/bin/bash
 
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+	ssh-keygen -t rsa -P "" -f /etc/ssh/ssh_host_rsa_key
+	ssh-keygen -t dsa -P "" -f /etc/ssh/ssh_host_dsa_key
+	ssh-keygen -t ecdsa -P "" -f /etc/ssh/ssh_host_ecdsa_key
+	ssh-keygen -t ed25519 -P "" -f /etc/ssh/ssh_host_ed25519_key
+fi
+
 # dotfiles
 cp -a /mnt/skel/ /etc/
 
