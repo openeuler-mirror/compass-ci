@@ -4,6 +4,7 @@ cmd=(
 	docker run
 	-it
 	-e SSH_KEYS="$(</etc/ssh/team.pub)"
+	-e COMMITTERS="$(awk -F: '/^committer:/ {print $4}' /etc/group)"
 	-v debian-home:/home
 	-v debian-root:/root
 	-v /etc/skel:/mnt/skel
