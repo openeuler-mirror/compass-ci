@@ -12,8 +12,15 @@ chown -R team.team /home/team
 
 for user in ${TEAM//,/ }
 do
-	useradd --create-home --shell /bin/zsh $user
-	passwd --lock $user
+	if command -v useradd >/dev/null; then
+		# debian
+		useradd --create-home --shell /bin/zsh $user
+		passwd --lock $user
+	else
+		# alpine busybox
+		adduser -D -s /bin/zsh -k /etc/skel $user
+		passwd -u $user
+	fi
 	mkdir -p /home/$user/.ssh
 	echo "$SSH_KEYS" | grep " $user@" > /home/$user/.ssh/authorized_keys
 	chown -R $user.$user /home/$user/.ssh
@@ -23,4 +30,4 @@ mkdir -p /root/.ssh
 echo "$SSH_KEYS" | grep -E " (${COMMITTERS//,/|})@" > /root/.ssh/authorized_keys
 echo "$SSH_KEYS" > /home/team/.ssh/authorized_keys
 
-chmod -R go-rwxs /root/.ssh /home/*/.ssh
+chmod -R go-rwxs /root/.ssh /home/*/
