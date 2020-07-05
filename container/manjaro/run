@@ -1,0 +1,18 @@
+#!/bin/bash
+
+cmd=(
+	docker run
+	-it
+	-v manjaro-home:/home
+	-v manjaro-root:/root
+	-v /c:/c
+	-v /srv/os:/srv/os
+	-p 2203:2203
+	--hostname manjaro
+	--security-opt seccomp=unconfined
+	-d
+	manjaro:testbed
+	/usr/sbin/sshd -D -p 2203
+)
+
+"${cmd[@]}"
