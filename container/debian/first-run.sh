@@ -10,6 +10,7 @@ cmd=(
 	-v debian-home:/home
 	-v debian-root:/root
 	-v /etc/skel:/mnt/skel
+	-v /etc/passwd:/opt/passwd
 	-v $CCI_SRC/container/setup.sh:/usr/local/sbin/setup.sh
 	debian:testbed
 	/usr/local/sbin/setup.sh

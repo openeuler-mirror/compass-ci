@@ -8,14 +8,6 @@ RUN apk add bash zsh git openssh openrc rsync crystal shards make gcc g++ tzdata
 
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
-RUN	adduser -D -s /bin/zsh team && \
-	adduser team wheel && \
-	passwd -d root && \
-	passwd -d team && \
-	sed -i '1s/bin\/.*sh$/bin\/zsh/' /etc/passwd
-
-RUN echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel-nopasswd
-
 RUN ssh-keygen -t rsa -P "" -f /etc/ssh/ssh_host_rsa_key && \
     ssh-keygen -t dsa -P "" -f /etc/ssh/ssh_host_dsa_key && \
     ssh-keygen -t ecdsa -P "" -f /etc/ssh/ssh_host_ecdsa_key && \
