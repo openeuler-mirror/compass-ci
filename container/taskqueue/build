@@ -1,18 +1,11 @@
-#!/usr/bin/env ruby
-# frozen_string_literal: true
+#!/usr/bin/env bash
 
-require 'set'
-require '../lab.rb'
+. ../lab.sh
 
-names = Set.new ['TASKQUEUE_PORT']
-defaults = relevant_defaults(names)
+service_port=${TASKQUEUE_PORT:-3060}
 
-service_port = (defaults['TASKQUEUE_PORT'] || '3060')
+if [[ ! -f "compile/taskqueue" ]]; then
+  bash compile/compile
+fi
 
-CCI_SRC = ENV['CCI_SRC']
-system "bash #{CCI_SRC}/src/taskqueue_build"
-system "mv #{CCI_SRC}/src/m_taskqueue ./taskqueue"
-
-system "docker build -t taskqueue-alpine:v0.001-#{service_port} ."
-
-system 'rm taskqueue'
+docker build -t taskqueue-alpine:v0.001-${service_port} .
