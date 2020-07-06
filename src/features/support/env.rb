@@ -4,6 +4,7 @@ require 'open3'
 require 'json'
 require 'yaml'
 require 'pathname'
+require 'fileutils'
 
 def curl_post_result(port, url, data, with_head = nil)
   curl_post_format = 'curl %s -X POST http://localhost:%d/%s -H "Content-Type: application/json" --data \'%s\''
@@ -41,4 +42,34 @@ def get_http_status_and_content(raw)
                  end
 
   [status_code, content_json]
+end
+
+def test_initrd(initrd)
+  filename_download = %r{.*/(.*)}.match(initrd)[1]
+  saved_filename = "/tmp/#{filename_download}"
+  cmd = "curl -# -o #{saved_filename} #{initrd}"
+  Open3.popen3(cmd)
+
+  return unless File.size(saved_filename) < 1000
+
+  lines = File.readlines(saved_filename)
+  raise "Faile to get initrd #{initrd}" if lines[0].chomp == '<html>'
+end
+
+def test_kernel(kernel_params_list)
+  # need more detail implementation
+  raise 'Too few of kernel parameters' if kernel_params_list.size < 10
+end
+
+def test_initrd_or_kernel(cmd_line)
+  puts "Chech #{cmd_line}"
+  cmd_line_list = cmd_line.split(' ')
+  case cmd_line_list[0]
+  when 'initrd'
+    test_initrd(cmd_line_list[1])
+  when 'kernel'
+    test_kernel(cmd_line_list)
+  else
+    puts "No check to #{cmd_line}"
+  end
 end
