@@ -2,6 +2,17 @@ require "json"
 require "yaml"
 require "any_merge"
 
+struct JSON::Any
+ def []=(key : String, value : String)
+   case object = @raw
+   when Hash(String, JSON::Any)
+     object[key] = JSON::Any.new(value)
+   else
+     raise "Expect Hash for #[](String, JSON::Any), not #{object.class}"
+   end
+ end
+end
+
 class Job
 
     @job_hash : Hash(String, JSON::Any)
