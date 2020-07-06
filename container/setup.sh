@@ -63,6 +63,10 @@ echo "$SSH_KEYS" > /home/team/.ssh/authorized_keys
 
 if [ -d /etc/sudoers.d ]; then
 	echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel-nopasswd
+
+	# https://github.com/sudo-project/sudo/issues/42
+	sudo --version | grep -q -F 1.8 &&
+	echo "Set disable_coredump false" >> /etc/sudo.conf
 fi
 
 chmod -R go-rwxs /root/.ssh /home/*/
