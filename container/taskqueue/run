@@ -30,7 +30,8 @@ cmd += env
 cmd += %W[
   -v /etc/localtime:/etc/localtime:ro
   #{service_image}
-  ./#{service_name}
 ]
+
+cmd += ['sh', '-c', "umask 002 && ./#{service_name}"]
 
 system(*cmd)
