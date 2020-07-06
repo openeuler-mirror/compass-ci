@@ -12,8 +12,21 @@ fi
 # dotfiles
 cp -a /mnt/skel/ /etc/
 
-# fix warnings in archlinux
+if ! grep -q '^wheel:' /etc/group; then
+	if command -v groupadd >/dev/null; then
+		# debian only created sudo group
+		# archlinux has neither sudo no wheel group
+		groupadd --system wheel
+	else
+		# alpine already has wheel group, so won't go here
+		addgroup -S wheel
+	fi
+fi
+
+# fix warnings in archlinux: no users group
 sed -i '/GROUP=users/d' /etc/default/useradd
+# everyone can sudo in docker testbed
+echo 'GROUP=wheel'   >> /etc/default/useradd
 
 # ssh authorized_keys
 [ -n "$SSH_KEYS" ] || exit 0
@@ -31,7 +44,8 @@ do
 		# alpine busybox
 		addgroup -g $gid $user
 		adduser -D -s /bin/zsh -k /etc/skel -u $uid $user
-		passwd -u $user
+		adduser $user wheel
+		passwd -u $user # necessary for ssh login
 	fi
 	mkdir -p /home/$user/.ssh
 	echo "$SSH_KEYS" | grep " $user@" > /home/$user/.ssh/authorized_keys
@@ -47,9 +61,7 @@ echo "$SSH_KEYS" | grep -E " (${COMMITTERS//,/|})@" > /root/.ssh/authorized_keys
 
 echo "$SSH_KEYS" > /home/team/.ssh/authorized_keys
 
-# alpine
-if [ -d /etc/sudoers.d ] && grep -q wheel /etc/group; then
-	adduser team wheel
+if [ -d /etc/sudoers.d ]; then
 	echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel-nopasswd
 fi
 
