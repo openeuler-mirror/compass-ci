@@ -10,8 +10,7 @@ defaults = relevant_defaults(names)
 SCHED_PORT = (defaults['SCHED_PORT'] || '3000')
 
 CCI_SRC = ENV['CCI_SRC']
-system "bash #{CCI_SRC}/src/build"
-system "mv #{CCI_SRC}/src/m_scheduler ./scheduler"
+system "bash #{CCI_SRC}/container/compile_service ."
 
 system "docker build -t sch-ruby-a:v0.00d-#{SCHED_PORT} ."
 
