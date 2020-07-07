@@ -9,4 +9,4 @@ RUN mkdir -p $RUNTIME_DIR && \
 
 WORKDIR $RUNTIME_DIR
 
-COPY --chown=1090:1090 compile/taskqueue .
+COPY --chown=1090:1090 taskqueue .
