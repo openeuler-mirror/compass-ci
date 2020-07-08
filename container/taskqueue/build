@@ -7,9 +7,7 @@
 service_port=${TASKQUEUE_PORT:-3060}
 
 if [[ ! -f "taskqueue" ]]; then
-  DIR=$(realpath $0)
-  service_dir=${DIR%/*}
-  $CCI_SRC/container/compile_service $service_dir
+  $CCI_SRC/container/compile .
 fi
 
 docker build -t taskqueue-alpine:v0.001-${service_port} .
