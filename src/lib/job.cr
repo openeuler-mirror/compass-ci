@@ -15,7 +15,7 @@ end
 
 class Job
 
-    @job_hash : Hash(String, JSON::Any)
+    getter job_hash : Hash(String, JSON::Any)
     ASSIGN_KEY = %w(
       id lkp_initrd_user os os_arch
       os_dir os_version result_root
@@ -37,7 +37,7 @@ class Job
       if ASSIGN_KEY.includes?({{ call.name.stringify }})
         @job_hash[{{ call.name.stringify }}].to_s
       else
-        raise "Unassigned key"
+        raise "Unassigned key or undefined method: #{{{ call.name.stringify }}}"
       end
     end
 
