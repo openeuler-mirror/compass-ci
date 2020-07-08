@@ -6,8 +6,8 @@ Feature: Scheduler
     Given prepared a job "right_iperf.yaml"
     When call with API: post "submit_job" job from add_job.sh
     Then return with job id
-    When call with API: put "set_host_mac" "vm-hi1620-2p8g-chief => ef:01:02:03:04:05"
-    And call with API: get "boot.ipxe/mac/ef:01:02:03:04:05"
+    When call with API: put "set_host_mac" "vm-hi1620-2p8g-chief => ef-01-02-03-04-05"
+    And call with API: get "boot.ipxe/mac/ef-01-02-03-04-05"
     Then return with basic ipxe boot parameter and initrd and kernel
 
   # more API need test (group as a scenario) :

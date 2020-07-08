@@ -101,7 +101,7 @@ module Scheduler
 
     # client(runner) report its hostname and mac
     #  - when a runner pull jobs with it's mac infor, scheduler find out what hostname is it
-    # /set_host_mac?hostname=$hostname&mac=$mac (mac like ef:01:02:03:04:05)
+    # /set_host_mac?hostname=$hostname&mac=$mac (mac like ef-01-02-03-04-05)
     # add a <mac> => <hostname>
     # add a <ip> => <hostname>
     # add a <ip:port> => <hostname>
