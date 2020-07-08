@@ -23,7 +23,7 @@ class Job
     )
     INIT_FIELD = {
       os: "debian",
-      os_arch: "aarch",
+      os_arch: "aarch64",
       os_version: "sid",
       lkp_initrd_user: "latest"
     }
