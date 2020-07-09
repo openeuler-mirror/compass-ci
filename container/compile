@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
-[[ $CCI_SRC ]] || CCI_SRC=/c/cci
-[[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
+DEFAULT_CCI=/c/cci
+DEFAULT_LKP=/c/lkp-tests
 
-CODE_DIR=/c/cci/src
-COMPILE_DIR=/c/cci/compile
+[[ $CCI_SRC ]] || CCI_SRC=$DEFAULT_CCI
+[[ $LKP_SRC ]] || LKP_SRC=$DEFAULT_LKP
 
 if [ ! $1 ]; then
   echo "Usage: $0 [scheduler | taskqueue ...]"
   exit 1
 fi
 
-DIR=$(realpath $1)
-if [ ! -d $DIR ]; then
+DIR=$(realpath "$1")
+if [ ! -d "$DIR" ]; then
   echo "Service dir $DIR not exists"
   exit 1
 fi
@@ -21,16 +21,16 @@ service=${DIR##*/}
 cmd=(
   docker run
   --rm
-  -e LKP_SRC=/c/lkp-tests
-  -e CRYSTAL_PATH="lib:/usr/share/crystal/app/lib:/usr/lib/crystal/shards:/usr/lib/crystal/core:/c/lkp-tests/lib:$CODE_DIR"
+  -e LKP_SRC=$DEFAULT_LKP
+  -e CRYSTAL_PATH="lib:/usr/share/crystal/app/lib:/usr/lib/crystal/shards:/usr/lib/crystal/core:${DEFAULT_LKP}/lib:${DEFAULT_CCI}/src"
   -it
   -u $UID
-  -v $LKP_SRC:/c/lkp-tests
-  -v $CCI_SRC/src:$CODE_DIR
-  -v $DIR:$COMPILE_DIR
-  -w $COMPILE_DIR
+  -v $LKP_SRC:$DEFAULT_LKP
+  -v ${CCI_SRC}/src:${DEFAULT_CCI}/src
+  -v $DIR:${DEFAULT_CCI}/compile
+  -w ${DEFAULT_CCI}/compile
   alpine:scheduler-dev
-  sh -c "crystal build $CODE_DIR/$service.cr"
+  sh -c "crystal build ${DEFAULT_CCI}/src/${service}.cr"
 )
 
 "${cmd[@]}"
