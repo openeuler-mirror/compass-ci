@@ -6,7 +6,6 @@ require "./jobfile_operate"
 require "./scheduler/utils"
 require "./scheduler/boot"
 require "./scheduler/dequeue"
-require "./scheduler/enqueue"
 require "./scheduler/resources"
 require "./scheduler/monitor"
 require "./constants.cr"
@@ -81,7 +80,7 @@ module Scheduler
     #  - echo job_id to caller
     #  -- job_id = "0" ? means failed
     post "/submit_job" do |env|
-        job_id, _ = Scheduler::Enqueue.respon(env, resources)
+        job_id, _ = sched.submit_job(env)
 
         debug_message(env, job_id)
 
