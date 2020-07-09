@@ -21,6 +21,7 @@ do
 	[ "$cur_dir" == 'crystal-base' ] || \
 	[ "$cur_dir" == 'crystal-shards' ] || \
 	[ "$cur_dir" == 'taskqueue' ] || \
+	[ "$cur_dir" == 'shellcheck' ] || \
 	[ "$cur_dir" == 'scheduler-dev' ] && {
 		echo "$cur_dir just build, skip!"
 		cd "scheduler"
