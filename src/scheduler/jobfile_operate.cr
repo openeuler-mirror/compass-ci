@@ -1,6 +1,7 @@
 require "file_utils"
 require "json"
 require "yaml"
+require "./tools"
 
 # require from '/c/lkp-tests/lib/'
 require "shellwords"
@@ -155,12 +156,16 @@ module Jobfile::Operate
         job_dir = base_dir + "/" +  job_content["id"].to_s
 
         if job_sh_array.empty?
-            cmd ="#{ENV["LKP_SRC"]}/sbin/create-job-cpio.sh #{temp_yaml}"
+            target_path = "#{ENV["CCI_SRC"]}/scheduler/expand_cgz/#{job_content["id"]}"
+            lkp_src = prepare_lkp_tests(job_content, target_path)
+
+            cmd = "#{lkp_src}/sbin/create-job-cpio.sh #{temp_yaml}"
+            idd = `#{cmd}`
+            FileUtils.rm_rf(target_path)
         else
             cmd ="./create-job-cpio.sh #{job_dir}"
+            idd = `#{cmd}`
         end
-
-        idd = `#{cmd}`
 
         # if the create job cpio failed, what to do?
         if idd.match(/ERROR/)
@@ -176,6 +181,16 @@ module Jobfile::Operate
                  "#{src_dir}/job.cgz"]
         FileUtils.cp(files, dst_dir)
     end
+
+    def self.prepare_lkp_tests(job_content : Hash, target_path : String)
+        if job_content["lkp_initrd_user"]?
+            source_path = "/srv/initrd/lkp/#{job_content["lkp_initrd_user"]}/lkp-#{job_content["arch"]}.cgz"
+            Public.unzip_cgz(source_path, target_path)
+            return "#{target_path}/lkp/lkp/src"
+        end
+        return ENV["LKP_SRC"]
+    end
+
     def self.load_yaml(file_path : String)
         File.open(file_path) do |file|
             YAML.parse(file)
