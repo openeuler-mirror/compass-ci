@@ -26,6 +26,7 @@ class Job
 
     def initialize(job_content : JSON::Any)
       @hash = job_content.as_h
+      check_required_keys()
       set_defaults()
     end
 
@@ -121,4 +122,19 @@ class Job
         self["os_mount"] = VALID_OS_MOUNTS[0]
       end
     end
+
+    REQUIRED_KEYS = %w[
+      id
+      suite
+      testbox
+    ]
+
+    private def check_required_keys()
+      REQUIRED_KEYS.each do |key|
+        if !@hash[key]?
+          raise "\"#{key}\" is a required key"
+        end
+      end
+    end
+
 end
