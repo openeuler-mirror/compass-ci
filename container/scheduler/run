@@ -20,8 +20,8 @@ names = Set.new %w[
 defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
-LKP_SRC = '/c/lkp-tests'
-CCI_SRC = '/c/crystal-ci'
+DEFAULT_LKP = '/c/lkp-tests'
+DEFAULT_CCI = '/c/cci'
 SCHED_PORT = defaults['SCHED_PORT'] || '3000'
 system "docker rm -f s001-alpine-#{SCHED_PORT}"
 
@@ -32,10 +32,10 @@ cmd = %W[
   -u 1090:1090
   -p #{SCHED_PORT}:#{SCHED_PORT}
 ] + env + %W[
-  -e LKP_SRC=#{LKP_SRC}
-  -e CCI_SRC=#{CCI_SRC}
-  -v #{ENV['LKP_SRC']}:#{LKP_SRC}
-  -v #{ENV['CCI_SRC']}:#{CCI_SRC}
+  -e LKP_SRC=#{DEFAULT_LKP}
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
   -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/result:/result
