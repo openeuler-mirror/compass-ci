@@ -15,7 +15,7 @@ end
 
 class Job
 
-    getter job_hash : Hash(String, JSON::Any)
+    getter hash : Hash(String, JSON::Any)
 
     INIT_FIELD = {
       os: "debian",
@@ -25,7 +25,7 @@ class Job
     }
 
     def initialize(job_content : JSON::Any)
-      @job_hash = job_content.as_h
+      @hash = job_content.as_h
       set_defaults()
     end
 
@@ -43,26 +43,26 @@ class Job
 
     macro method_missing(call)
       if METHOD_KEYS.includes?({{ call.name.stringify }})
-        @job_hash[{{ call.name.stringify }}].to_s
+        @hash[{{ call.name.stringify }}].to_s
       else
         raise "Unassigned key or undefined method: #{{{ call.name.stringify }}}"
       end
     end
 
     def dump_to_json()
-      @job_hash.to_json
+      @hash.to_json
     end
 
     def dump_to_yaml()
-      @job_hash.to_yaml
+      @hash.to_yaml
     end
 
     def update(hash : Hash)
-      @job_hash.any_merge!(hash)
+      @hash.any_merge!(hash)
     end
 
     def update(json : JSON::Any)
-      @job_hash.any_merge!(json.as_h)
+      @hash.any_merge!(json.as_h)
     end
 
     private def set_defaults()
@@ -75,27 +75,27 @@ class Job
     private def append_init_field()
       INIT_FIELD.each do |k, v|
         k = k.to_s
-        if !@job_hash[k]? || @job_hash[k] == nil
-          @job_hash.any_merge!({k => v})
+        if !@hash[k]? || @hash[k] == nil
+          @hash.any_merge!({k => v})
         end
       end
     end
 
     private def set_os_dir()
-      @job_hash.any_merge!({"os_dir" => "#{os}/#{os_arch}/#{os_version}"})
+      @hash.any_merge!({"os_dir" => "#{os}/#{os_arch}/#{os_version}"})
     end
 
     private def set_result_root()
-      @job_hash.any_merge!({"result_root" => "/result/#{suite}/#{id}"})
+      @hash.any_merge!({"result_root" => "/result/#{suite}/#{id}"})
     end
 
     private def set_tbox_group()
-      if !@job_hash["tbox_group"]?
-        find = @job_hash["testbox"].to_s.match(/(.*)(\-\d{1,}$)/)
+      if !@hash["tbox_group"]?
+        find = @hash["testbox"].to_s.match(/(.*)(\-\d{1,}$)/)
         if find != nil
-          @job_hash.any_merge!({"tbox_group" => find.not_nil![1]})
+          @hash.any_merge!({"tbox_group" => find.not_nil![1]})
         else
-          @job_hash.any_merge!({"tbox_group" => @job_hash["testbox"]})
+          @hash.any_merge!({"tbox_group" => @hash["testbox"]})
         end
       end
     end
