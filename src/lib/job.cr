@@ -76,28 +76,32 @@ class Job
       INIT_FIELD.each do |k, v|
         k = k.to_s
         if !@hash[k]? || @hash[k] == nil
-          @hash.any_merge!({k => v})
+          self[k] = v
         end
       end
     end
 
     private def set_os_dir()
-      @hash.any_merge!({"os_dir" => "#{os}/#{os_arch}/#{os_version}"})
+      self["os_dir"] = "#{os}/#{os_arch}/#{os_version}"
     end
 
     private def set_result_root()
-      @hash.any_merge!({"result_root" => "/result/#{suite}/#{id}"})
+      self["result_root"] = "/result/#{suite}/#{id}"
     end
 
     private def set_tbox_group()
       if !@hash["tbox_group"]?
         find = @hash["testbox"].to_s.match(/(.*)(\-\d{1,}$)/)
         if find != nil
-          @hash.any_merge!({"tbox_group" => find.not_nil![1]})
+          self["tbox_group"] = find.not_nil![1]
         else
-          @hash.any_merge!({"tbox_group" => @hash["testbox"]})
+          self["tbox_group"] = @hash["testbox"].to_s
         end
       end
+    end
+
+    private def []=(key : String, value : String)
+      @hash[key] = JSON::Any.new(value)
     end
 
 end
