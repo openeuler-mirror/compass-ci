@@ -7,6 +7,7 @@ git checkout 35ecf8b5b1a743aee939c639ac0696fdc87ef9c5
 
 for dir in $CONTAINER_PATH/*
 do
+	[ -f "$dir"/Dockerfile ] || continue
 	cur_dir=${dir##*/}
 	(
 	cd "$dir"
@@ -21,10 +22,12 @@ do
 	[ "$cur_dir" == 'crystal-base' ] || \
 	[ "$cur_dir" == 'crystal-shards' ] || \
 	[ "$cur_dir" == 'taskqueue' ] || \
-	[ "$cur_dir" == 'shellcheck' ] || \
-	[ "$cur_dir" == 'scheduler-dev' ] && {
+	[ "$cur_dir" == 'shellcheck' ] && {
 		echo "$cur_dir just build, skip!"
-		cd "scheduler"
+		exit
+	}
+	[ "$cur_dir" == 'scheduler-dev' ] && {
+		cd "../scheduler"
 		./build
 		./run
 		exit
