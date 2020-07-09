@@ -3,6 +3,7 @@ require "json"
 require "elasticsearch-crystal/elasticsearch/api"
 require "./tools"
 require "./constants"
+require "../lib/job"
 
 # -------------------------------------------------------------------------------------------
 # set_job_content(job_content)
@@ -48,6 +49,18 @@ class Elasticsearch::Client
             end
         else
             response = {"_id" => nil, "job_content" => job_content}
+        end
+
+        return response
+    end
+
+    # caller should judge response["_id"] != nil
+    def set_job_content(job : Job)
+        response = get_job_content(job.id)
+        if response["id"]?
+            response = update(job.dump_to_json_any, job.id)
+        else
+            response = create(job.dump_to_json_any, job.id)
         end
 
         return response
