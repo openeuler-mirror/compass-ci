@@ -11,7 +11,9 @@ SCHED_PORT = (defaults['SCHED_PORT'] || '3000')
 
 CCI_SRC = ENV['CCI_SRC']
 system "bash #{CCI_SRC}/container/compile ."
+system "cp #{CCI_SRC}/sbin/create-job-cpio.sh ."
 
 system "docker build -t sch-ruby-a:v0.00d-#{SCHED_PORT} ."
 
 system 'rm scheduler'
+system 'rm create-job-cpio.sh'

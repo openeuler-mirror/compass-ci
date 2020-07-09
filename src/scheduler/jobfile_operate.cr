@@ -157,7 +157,7 @@ module Jobfile::Operate
         if job_sh_array.empty?
             cmd ="#{ENV["LKP_SRC"]}/sbin/create-job-cpio.sh #{temp_yaml}"
         else
-            cmd ="#{ENV["CCI_SRC"]}/sbin/create-job-cpio.sh #{job_dir}"
+            cmd ="./create-job-cpio.sh #{job_dir}"
         end
 
         idd = `#{cmd}`
