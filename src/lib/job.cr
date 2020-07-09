@@ -58,6 +58,10 @@ class Job
       @hash.to_yaml
     end
 
+    def dump_to_json_any()
+      JSON.parse(dump_to_json)
+    end
+
     def update(hash : Hash)
       @hash.any_merge!(hash)
     end
