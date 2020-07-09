@@ -36,6 +36,7 @@ class Job
       os_arch
       os_version
       os_dir
+      os_mount
       result_root
       suite
       tbox_group
@@ -70,6 +71,7 @@ class Job
       set_os_dir()
       set_result_root()
       set_tbox_group()
+      set_os_mount()
     end
 
     private def append_init_field()
@@ -104,4 +106,15 @@ class Job
       @hash[key] = JSON::Any.new(value)
     end
 
+    # defaults to the 1st value
+    VALID_OS_MOUNTS = ["nfs", "initramfs", "cifs"]
+    private def set_os_mount()
+      if @hash["os_mount"]?
+        if !VALID_OS_MOUNTS.includes?(@hash["os_mount"].to_s)
+          raise "os_mount : #{@hash["os_mount"]} is not in #{VALID_OS_MOUNTS}"
+        end
+      else
+        self["os_mount"] = VALID_OS_MOUNTS[0]
+      end
+    end
 end
