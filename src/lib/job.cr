@@ -116,7 +116,7 @@ class Job
     private def set_os_mount()
       if @hash["os_mount"]?
         if !VALID_OS_MOUNTS.includes?(@hash["os_mount"].to_s)
-          raise "os_mount : #{@hash["os_mount"]} is not in #{VALID_OS_MOUNTS}"
+          raise "Invalid os_mount: #{@hash["os_mount"]}, should be in #{VALID_OS_MOUNTS}"
         end
       else
         self["os_mount"] = VALID_OS_MOUNTS[0]
@@ -132,7 +132,7 @@ class Job
     private def check_required_keys()
       REQUIRED_KEYS.each do |key|
         if !@hash[key]?
-          raise "\"#{key}\" is a required key"
+          raise "Missing required job key: '#{key}'"
         end
       end
     end
