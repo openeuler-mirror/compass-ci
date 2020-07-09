@@ -2,6 +2,8 @@ require "json"
 require "yaml"
 require "any_merge"
 
+require "scheduler/constants.cr"
+
 struct JSON::Any
  def []=(key : String, value : String)
    case object = @raw
@@ -41,6 +43,7 @@ class Job
       result_root
       suite
       tbox_group
+      kernel_append_root
     )
 
     macro method_missing(call)
@@ -77,6 +80,7 @@ class Job
       set_result_root()
       set_tbox_group()
       set_os_mount()
+      set_kernel_append_root()
     end
 
     private def append_init_field()
@@ -137,4 +141,12 @@ class Job
       end
     end
 
+    private def set_kernel_append_root()
+      fs2root = {
+        "nfs" => "#{OS_HTTP_HOST}:/os/#{os_dir}",
+        "cifs" => "cifs://#{OS_HTTP_HOST}/os/#{os_dir},guest,ro,hard,vers=1.0,noacl,nouser_xattr",
+        "initramfs" => "/dev/ram0"
+      }
+      self["kernel_append_root"] = fs2root[os_mount]
+    end
 end
