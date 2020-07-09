@@ -16,11 +16,7 @@ end
 class Job
 
     getter job_hash : Hash(String, JSON::Any)
-    ASSIGN_KEY = %w(
-      id lkp_initrd_user os os_arch
-      os_dir os_version result_root
-      suite tbox_group
-    )
+
     INIT_FIELD = {
       os: "debian",
       os_arch: "aarch64",
@@ -33,8 +29,20 @@ class Job
       set_defaults()
     end
 
+    METHOD_KEYS = %w(
+      id
+      lkp_initrd_user
+      os
+      os_arch
+      os_version
+      os_dir
+      result_root
+      suite
+      tbox_group
+    )
+
     macro method_missing(call)
-      if ASSIGN_KEY.includes?({{ call.name.stringify }})
+      if METHOD_KEYS.includes?({{ call.name.stringify }})
         @job_hash[{{ call.name.stringify }}].to_s
       else
         raise "Unassigned key or undefined method: #{{{ call.name.stringify }}}"
