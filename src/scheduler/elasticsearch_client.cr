@@ -38,23 +38,6 @@ class Elasticsearch::Client
     end
 
     # caller should judge response["_id"] != nil
-    def set_job_content(job_content : JSON::Any)
-        if job_content["id"]?
-            job_id = job_content["id"].to_s
-            response = get_job_content(job_id)
-            if response["id"]?
-                response = update(job_content, job_id)
-            else
-                response = create(job_content, job_id)
-            end
-        else
-            response = {"_id" => nil, "job_content" => job_content}
-        end
-
-        return response
-    end
-
-    # caller should judge response["_id"] != nil
     def set_job_content(job : Job)
         response = get_job_content(job.id)
         if response["id"]?

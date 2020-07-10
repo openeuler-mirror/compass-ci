@@ -157,7 +157,7 @@ module Scheduler
         if job_id
             debug_message(env, "Done")
 
-            Scheduler::Monitor.update_job_when_finished(job_id, resources)
+            sched.close_job(job_id)
         end
         "Done"
     end

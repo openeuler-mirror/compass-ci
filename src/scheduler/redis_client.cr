@@ -1,6 +1,10 @@
+require "json"
 require "redis"
+
 require "./tools"
 require "./constants"
+require "../lib/job"
+
 #require "../lib/redis/src/redis"
 # -------------------------------------------------------------------------------------------
 # get_new_job_id()
@@ -29,6 +33,14 @@ class Redis::Client
     def get_new_job_id()
         sn = @client.incr("sched/seqno2jobid")
         return "#{sn}"
+    end
+
+    def get_job(job_id : String)
+        job_hash = @client.hget("sched/id2job", job_id)
+        if !job_hash
+            raise "Get job (id = #{job_id}) from redis failed."
+        end
+        Job.new(JSON.parse(job_hash))
     end
 
     def add2queue(queue_name : String, job_id : String)

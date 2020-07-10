@@ -38,4 +38,16 @@ class Sched
 
         return save_job_data(job)
     end
+
+    def close_job(job_id : String)
+        job = @redis.get_job(job_id)
+
+        respon = @es.set_job_content(job)
+        if respon["_id"] == nil
+            # es update fail, raise exception
+            raise "es set job content fail! "
+        end
+
+        @redis.remove_finished_job(job_id)
+    end
 end
