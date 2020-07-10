@@ -34,15 +34,16 @@ class Job
 
     METHOD_KEYS = %w(
       id
-      lkp_initrd_user
       os
       os_arch
       os_version
       os_dir
       os_mount
-      result_root
+      arch
       suite
       tbox_group
+      result_root
+      lkp_initrd_user
       kernel_append_root
     )
 
