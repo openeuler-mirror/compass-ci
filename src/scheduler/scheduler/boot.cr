@@ -39,6 +39,14 @@ module Scheduler
             end
         end
 
+        def self.add_kernel_console_param(arch_tmp)
+            returned = ""
+            if arch_tmp == "x86_64"
+                returned = " console=ttyS0,115200 console=tty0"
+            end
+            return returned
+        end
+
         def self.respon(job_content : JSON::Any, env, resources : Scheduler::Resources)
             os_dir = self.get_os_dir(job_content)
             lkp_initrd_user = self.get_lkp_initrd_user(job_content)
@@ -88,6 +96,7 @@ module Scheduler
             respon += "kernel http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{os_dir}/vmlinuz user=lkp"
             respon += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
             respon += " root=#{root_value} rootovl ip=dhcp ro"
+            respon += self.add_kernel_console_param(job_content["arch"])
             respon += " initrd=initrd.lkp initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
             respon += "boot\n"
             return respon, job_content
