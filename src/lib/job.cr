@@ -42,6 +42,8 @@ class Job
       arch
       suite
       tbox_group
+      initrd_pkg
+      initrd_deps
       result_root
       lkp_initrd_user
       kernel_append_root
@@ -82,6 +84,7 @@ class Job
       set_tbox_group()
       set_os_mount()
       set_kernel_append_root()
+      set_pp_initrd()
     end
 
     private def append_init_field()
@@ -149,5 +152,25 @@ class Job
         "initramfs" => "/dev/ram0"
       }
       self["kernel_append_root"] = fs2root[os_mount]
+    end
+
+    private def set_pp_initrd()
+      initrd_deps_arr = Array(String).new
+      initrd_pkg_arr = Array(String).new
+      if @hash["pp"]?
+        program_params = @hash["pp"].as_h
+        program_params.keys.each do |program|
+          if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
+             File.exists?("/srv/initrd/deps/#{os_dir}/#{program}.cgz")
+            initrd_deps_arr << "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/deps/#{os_dir}/#{program}.cgz"
+          end
+          if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") &&
+             File.exists?("/srv/initrd/pkg/#{os_dir}/#{program}.cgz")
+            initrd_pkg_arr << "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/pkg/#{os_dir}/#{program}.cgz"
+          end
+        end
+      end
+      self["initrd_deps"] = initrd_deps_arr.join(" ")
+      self["initrd_pkg"] = initrd_pkg_arr.join(" ")
     end
 end

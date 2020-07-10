@@ -1,6 +1,7 @@
 require  "./boot"
 require  "./dequeue"
 require  "../jobfile_operate"
+require "./../../lib/job.cr"
 
 # respon ipxe boot comand to qemu-runner
 # - find the hostname (testbox) from qemu-runner's mac
@@ -22,14 +23,14 @@ module Scheduler
                 return Scheduler::Boot.ipxe_msg("No job now")
             end
             # update job's  testbox property
-            job_content = JSON.parse(redis.get_job_content(job_id).not_nil!.to_json)
+            job = Job.new(JSON.parse(redis.get_job_content(job_id).not_nil!.to_json))
             # update es job.yaml at {#! queue option}
             # - update testbox: from mac,ip to host? {host-192-168-1-91}
             # - update tbox_group: {host-168-1}
-            boot_respon, job_content = Scheduler::Boot.respon(job_content, env, resources)
+            boot_respon = Scheduler::Boot.respon(job, env, resources)
             # create job.cgz before respon to ipxe parameter
             # should i use spawn { ? }
-            Jobfile::Operate.create_job_cpio(job_content, resources.@fsdir_root.not_nil!)
+            Jobfile::Operate.create_job_cpio(job.dump_to_json_any, resources.@fsdir_root.not_nil!)
 
             return boot_respon
         end
