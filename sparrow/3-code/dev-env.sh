@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 server_name=$(hostname | cut -f1 -d.)
 server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 
 mkdir -p /etc/crystal-ci/defaults
 cat >    /etc/crystal-ci/defaults/$server_name.yaml <<EOF
-SCHED_IP: $server_ip
+SCHED_HOST: $server_ip
 SCHED_PORT: 3000
 LKP_SERVER: $server_ip
 LKP_CGI_PORT: 3000
