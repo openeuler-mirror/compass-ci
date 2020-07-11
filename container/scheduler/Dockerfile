@@ -1,5 +1,10 @@
 FROM alpine:3.11
 
+# replace the source apk repo to huaweicloud
+RUN sed -i 's|http://dl-cdn.alpinelinux.org|https://mirrors.huaweicloud.com|g' /etc/apk/repositories
+
+RUN apk update
+
 RUN apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
 
