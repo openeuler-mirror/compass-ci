@@ -1,7 +1,6 @@
 require "yaml"
 require "json"
 require "elasticsearch-crystal/elasticsearch/api"
-require "./tools"
 require "./constants"
 require "../lib/job"
 
@@ -91,55 +90,6 @@ class Elasticsearch::Client
                 :body => { :doc => job_content }
             }
         )
-    end
-
-    @[Deprecated("Use `#get_job_content` instead")]
-    def get(documents_path : String, id : String)
-        dp = documents_path.split("/")
-        response = @client.get(
-            {
-                :index => dp[dp.size - 2],
-                :type => dp[dp.size - 1],
-                :id => id
-            }
-        )
-        return response
-    end
-
-    @[Deprecated("Use `#set_job_content` instead")]
-    def add(documents_path : String, content : Hash, id : String)
-        if content["suite"]?
-            result_root = "/result/#{content["suite"]}/#{id}"
-        else
-            result_root = "/result/default/#{id}"
-        end
-        content = content.merge({"result_root" => result_root, "id" => id})
-
-        dp = documents_path.split("/")
-        response = @client.create(
-            {
-                :index => dp[dp.size - 2],
-                :type => dp[dp.size - 1],
-                :id => id,
-                :body => content
-            }
-        )
-        return response
-    end
-
-    @[Deprecated("Use `#set_job_content` instead")]
-    def update(documents_path : String, content : Hash)
-        dp = documents_path.split("/")
-        id = content["id"].to_s
-        response = @client.update(
-            {
-                :index => dp[dp.size - 2],
-                :type => dp[dp.size - 1],
-                :id => id,
-                :body => { :doc => content }
-            }
-        )
-        return response
     end
 
     # [no use now] add a yaml file to es documents_path

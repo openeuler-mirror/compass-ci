@@ -1,9 +1,5 @@
 require "kemal"
 
-
-require "./jobfile_operate"
-
-require "./constants.cr"
 require "../lib/sched"
 
 # -------------------------------------------------------------------------------------------

@@ -1,7 +1,6 @@
 require "json"
 require "redis"
 
-require "./tools"
 require "./constants"
 require "../lib/job"
 
