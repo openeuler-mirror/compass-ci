@@ -3,10 +3,6 @@ require "kemal"
 
 require "./jobfile_operate"
 
-require "./scheduler/utils"
-require "./scheduler/boot"
-require "./scheduler/dequeue"
-require "./scheduler/resources"
 require "./constants.cr"
 require "../lib/sched"
 
@@ -36,18 +32,6 @@ module Scheduler
 
     sched = Sched.new
 
-    redis_host = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
-    redis_port = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
-
-    es_host = (ENV.has_key?("ES_HOST") ? ENV["ES_HOST"] : JOB_ES_HOST)
-    es_port = (ENV.has_key?("ES_PORT") ? ENV["ES_PORT"] : JOB_ES_PORT).to_i32
-
-    resources = Scheduler::Resources.new
-    resources.es_client(es_host, es_port)
-    resources.redis_client(redis_host, redis_port)
-    resources.fsdir_root(Kemal.config.public_folder)
-    resources.test_params(%w(start_time end_time loadavg job_state))
-
     # for debug (maybe kemal debug|logger does better)
     def self.debug_message(env, respon)
         puts ">> #{env.request.remote_address}"
@@ -68,7 +52,7 @@ module Scheduler
     get "/boot.:boot_type/:parameter/:value" do |env|
         va = env.params.url["value"]
 
-        respon = Scheduler::Utils.find_job_boot(va, env, resources)
+        respon = sched.find_job_boot(va)
 
         debug_message(env, respon)
 

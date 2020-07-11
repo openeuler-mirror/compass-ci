@@ -60,6 +60,19 @@ class Elasticsearch::Client
         return response
     end
 
+    def get_job(job_id : String)
+        response = get_job_content(job_id)
+
+        case response
+        when JSON::Any
+            job = Job.new(response)
+        else
+            job = nil
+        end
+
+        return job
+    end
+
     private def create(job_content : JSON::Any, job_id : String)
         return @client.create(
             {

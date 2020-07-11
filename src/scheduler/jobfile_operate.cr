@@ -5,7 +5,6 @@ require "./tools"
 
 # require from '/c/lkp-tests/lib/'
 require "shellwords"
-require "./scheduler/resources"
 
 if ENV["LKP_SRC"] != "/c/lkp-tests"
   raise "ENV LKP_SRC mismatch: #{ENV["LKP_SRC"]} '/c/lkp-tests'"

@@ -52,6 +52,10 @@ class Redis::Client
         set_hash_queue("sched/id2job", job_id, job.dump_to_json)
     end
 
+    def set_job(job : Job)
+        set_hash_queue("sched/id2job", job.id, job.dump_to_json)
+    end
+
     def add2queue(queue_name : String, job_id : String)
         # add job to queue with priority (based on time)
         job_list = queue_name
@@ -106,23 +110,6 @@ class Redis::Client
         priority_as_score = Time.local.to_unix_f
 
         @client.eval(lua_script, [queue_name_from, queue_name_to], [priority_as_score])
-    end
-
-    def add_job_content(job_content)
-        job_id = job_content["id"]
-        job_content = get_job_content("#{job_id}").merge(job_content)
-
-        set_hash_queue("sched/id2job", job_id, job_content.to_json)
-    end
-
-    def get_job_content(job_id)
-        job_content = @client.hget("sched/id2job", job_id)
-        if job_content.nil?
-            job_content = Hash(String, String).new
-        else
-            job_content = JSON.parse(job_content).as_h
-        end
-        return job_content
     end
 
     def remove_running(job_id : String)
