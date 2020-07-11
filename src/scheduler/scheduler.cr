@@ -7,7 +7,6 @@ require "./scheduler/utils"
 require "./scheduler/boot"
 require "./scheduler/dequeue"
 require "./scheduler/resources"
-require "./scheduler/monitor"
 require "./constants.cr"
 require "../lib/sched"
 
@@ -91,7 +90,7 @@ module Scheduler
     get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
         job_id = env.params.url["job_id"]
         job_package = env.params.url["job_package"]
-        file_path = ::File.join [resources.@fsdir_root, job_id, job_package]
+        file_path = ::File.join [Kemal.config.public_folder, job_id, job_package]
 
         debug_message(env, file_path)
 
@@ -124,27 +123,10 @@ module Scheduler
     #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
     #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
     get "/~lkp/cgi-bin/lkp-jobfile-append-var" do |env|
-        # get job_id from the request
-        job_id = env.params.query["job_id"]?
-        if job_id
-            # try to get report value and then update it
-            job_content = {} of String => String
-            job_content["id"] = job_id
-            resources.@test_params.not_nil!.each do |parameter|
-                # update in es (job content)
-                if (value = env.params.query[parameter]?)
-                    if parameter == "start_time" || parameter == "end_time"
-                        value = Time.unix(value.to_i).to_s("%Y-%m-%d %H:%M:%S")
-                    end
-                    job_content[parameter] = value
-                end
-            end
+        # get job_id from request
+        debug_message(env, "Done")
 
-            debug_message(env, "Done")
-
-            Scheduler::Monitor.update_job_parameter(job_content, env, resources)
-        end
-
+        sched.update_job_parameter(env)
         "Done"
     end
 

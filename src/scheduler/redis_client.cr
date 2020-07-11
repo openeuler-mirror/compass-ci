@@ -43,6 +43,15 @@ class Redis::Client
         Job.new(JSON.parse(job_hash))
     end
 
+    def update_job(job_content : JSON::Any | Hash)
+        job_id = job_content["id"].to_s
+
+        job = get_job(job_id)
+        job.update(job_content)
+
+        set_hash_queue("sched/id2job", job_id, job.dump_to_json)
+    end
+
     def add2queue(queue_name : String, job_id : String)
         # add job to queue with priority (based on time)
         job_list = queue_name
