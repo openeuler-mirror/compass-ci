@@ -42,6 +42,7 @@ class TaskQueue
       :data => content
     }
 
+    # no need watch (id must not eq, so zadd | hset will not duplicate)
     @redis.multi do |multi|
       multi.zadd("#{QUEUE_NAME_BASE}/#{queue_name}", operate_time, task_id)
       multi.hset("#{QUEUE_NAME_BASE}/id2content", task_id, data.to_json)
@@ -77,11 +78,16 @@ class TaskQueue
     content = content.merge({"queue" => to})
     content = content.merge({"move_time" => operate_time})
 
-    @redis.multi do |multi|
+    # if another zrem first, then the result will be []
+    #   or result will be [1, 1, 1]
+    @redis.watch("#{QUEUE_NAME_BASE}/#{from}")
+    result = @redis.multi do |multi|
       multi.zadd("#{QUEUE_NAME_BASE}/#{to}", operate_time, id)
       multi.zrem("#{QUEUE_NAME_BASE}/#{from}", id)
       multi.hset("#{QUEUE_NAME_BASE}/id2content", id, content.to_json)
     end
+
+    return nil if result.size < 3
 
     return content["data"].to_json
   end
@@ -91,10 +97,15 @@ class TaskQueue
     return nil if content.nil?
     return nil if (get_service_name_of_queue(content["queue"].to_s) != queue)
 
-    @redis.multi do |multi|
+    # if another hdel first, then the result will be []
+    #   or result will be [1, 1]
+    @redis.watch("#{QUEUE_NAME_BASE}/#{content["queue"]}")
+    result = @redis.multi do |multi|
       multi.zrem("#{QUEUE_NAME_BASE}/#{content["queue"]}", id)
       multi.hdel("#{QUEUE_NAME_BASE}/id2content", id)
     end
+
+    return nil if result.size < 2
 
     return content["data"].to_json
   end
