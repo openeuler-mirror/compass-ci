@@ -1,7 +1,6 @@
 require "kemal"
 
 require "./job"
-require "../scheduler/tools"
 require "../scheduler/jobfile_operate"
 require "../scheduler/redis_client"
 require "../scheduler/elasticsearch_client"
@@ -64,8 +63,19 @@ class Sched
         get_job_boot(job)
     end
 
+    private def get_tbox_group_name(testbox : String)
+        tbox_group = testbox
+
+        find = testbox.match(/(.*)(\-\d{1,}$)/)
+        if find != nil
+            tbox_group = find.not_nil![1]
+        end
+
+        return tbox_group
+    end
+
     private def find_job(testbox : String, count = 1)
-        tbox_group = Public.get_tbox_group_name(testbox)
+        tbox_group = get_tbox_group_name(testbox)
 
         count.times do
             job_id, queue_name = @redis.find_any_job(tbox_group)

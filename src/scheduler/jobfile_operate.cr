@@ -1,7 +1,6 @@
 require "file_utils"
 require "json"
 require "yaml"
-require "./tools"
 
 # require from '/c/lkp-tests/lib/'
 require "shellwords"
@@ -145,10 +144,16 @@ module Jobfile::Operate
         FileUtils.cp(files, dst_dir)
     end
 
+    def self.unzip_cgz(source_path : String, target_path : String)
+        FileUtils.mkdir_p(target_path)
+        cmd =  "cd #{target_path};gzip -dc #{source_path}|cpio -id"
+        system cmd
+    end
+
     def self.prepare_lkp_tests(job_content : Hash, target_path : String)
         if job_content["lkp_initrd_user"]?
             source_path = "/srv/initrd/lkp/#{job_content["lkp_initrd_user"]}/lkp-#{job_content["arch"]}.cgz"
-            Public.unzip_cgz(source_path, target_path)
+            unzip_cgz(source_path, target_path)
             return "#{target_path}/lkp/lkp/src"
         end
         return ENV["LKP_SRC"]
