@@ -41,7 +41,11 @@ class TaskQueueAPI
     when 201
       [status_code, nil]
     else
-      [status_code, response.headers["CCI-error-Description"]]
+      if response.headers["CCI-error-Description"]?
+        [status_code, response.headers["CCI-error-Description"]]
+      else
+        [status_code, response.status_message]
+      end
     end
   end
 
