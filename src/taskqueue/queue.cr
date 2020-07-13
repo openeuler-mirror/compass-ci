@@ -9,7 +9,7 @@ class TaskQueue
     end
 
     queue_name, ext_set = queue_check_params(env, ["queue"])
-    return ext_set if queue_name.nil?
+    return ext_set if ext_set
 
     queue_name = queue_name[0] + "/ready"
 
@@ -35,8 +35,10 @@ class TaskQueue
   def queue_check_params(env, parameter_list)
     params = Array(String).new
     ext_set = nil
+
     parameter_list.each do |parameter_name|
       parameter_value = env.params.query[parameter_name]?
+
       if parameter_value.nil?
          ext_set = queue_respond_header_set(env, 400, "Missing parameter <#{parameter_name}>")
          return params, ext_set
@@ -49,7 +51,7 @@ class TaskQueue
 
   def queue_respond_consume(env)
     queue_name, ext_set = queue_check_params(env, ["queue"])
-    return ext_set if queue_name.nil?
+    return ext_set if ext_set
 
     queue_name_from = queue_name[0] + "/ready"
     queue_name_to   = queue_name[0] + "/in_process"
@@ -67,7 +69,7 @@ class TaskQueue
 
   def queue_respond_hand_over(env)
     params, ext_set = queue_check_params(env, ["from", "to", "id"])
-    return ext_set if ext_set != nil
+    return ext_set if ext_set
 
     from = params[0] + "/in_process"
     to   = params[1] + "/ready"
@@ -89,7 +91,7 @@ class TaskQueue
 
   def queue_respond_delete(env)
     params, ext_set = queue_check_params(env, ["queue", "id"])
-    return ext_set if ext_set != nil
+    return ext_set if ext_set
 
     # input queue parameter may like "scheduler/$tbox_group/..."
     #   we just need make sure the "id" blongs to queue "scheduler"
