@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cmd=(
-	docker run
+	docker run 
 	-it
 	-v debian-home:/home
 	-v debian-root:/root

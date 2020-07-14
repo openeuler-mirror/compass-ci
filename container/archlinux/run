@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cmd=(
-	docker run
+	docker run --restart=always
 	-it
 	-v archlinux-home:/home
 	-v archlinux-root:/root

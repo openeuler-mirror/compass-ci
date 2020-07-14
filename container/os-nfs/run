@@ -8,7 +8,7 @@ lsmod | grep -q "^nfsd\s" || {
 }
 
 cmd=(
-	docker run
+	docker run --restart=always
 #	-it
 #	--name os
 	-e NFS_DISABLE_VERSION_3=1

@@ -3,7 +3,7 @@
 . ../lab.sh
 DIR=$(dirname $(realpath $0))
 cmd=(
-	docker run
+	docker run 
 	--rm
 	-it
 	-e LKP_SRC=$LKP_SRC

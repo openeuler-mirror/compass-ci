@@ -1,6 +1,6 @@
 #!/bin/sh
 
-docker run -d -p 8100:8100 -v /srv/git:/git --name remote-git debian:remote-git
+docker run --restart=always -d -p 8100:8100 -v /srv/git:/git --name remote-git debian:remote-git
 
 # test
 

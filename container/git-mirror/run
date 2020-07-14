@@ -6,7 +6,7 @@ DOCKER_CCI = '/c/crystal-ci'
 system 'docker rm -f git-mirror'
 
 cmd = %W[
-  docker run
+  docker run --restart=always
   --name git-mirror
   -d
   -e LKP_SRC=#{DOCKER_LKP}
