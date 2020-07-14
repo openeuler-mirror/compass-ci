@@ -1,7 +1,8 @@
 #!/bin/bash
 
 cmd=(
-	docker run --restart=always
+	docker run
+	--restart=always
 	-it
 	-d
 	-v alpine-home:/home

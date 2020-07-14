@@ -26,7 +26,8 @@ SCHED_PORT = defaults['SCHED_PORT'] || '3000'
 system "docker rm -f s001-alpine-#{SCHED_PORT}"
 
 cmd = %W[
-  docker run --restart=always
+  docker run
+  --restart=always
   --name s001-alpine-#{SCHED_PORT}
   -d
   -u 1090:1090

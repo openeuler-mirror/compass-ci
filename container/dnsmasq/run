@@ -1,7 +1,8 @@
 #!/bin/bash
 
 cmd=(
-	docker run --restart=always
+	docker run
+	--restart=always
 	--cap-add NET_ADMIN
 	--net=host
 	--publish 67:67/udp
