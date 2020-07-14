@@ -12,9 +12,14 @@ type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 cifs_to_var() {
     local cifsuser; local cifspass
     # Check required arguments
+    # $1 example: "cifs://172.168.x.x/os/xx,vers=1.0,xx,xx"
     server=${1##cifs://}
     cifsuser=${server%@*}
     cifspass=${cifsuser#*:}
+
+    # store cifs custom mount opts
+    initial_options=${server#*,}
+
     if [ "$cifspass" != "$cifsuser" ]; then
 	cifsuser=${cifsuser%:*}
     else
@@ -27,10 +32,16 @@ cifs_to_var() {
     fi
 
     path=${server#*/}
+
+    # remove cifs custom mount opts from ${path}
+    path=${path%%,*}
+
     server=${server%/*}
 
     if [ ! "$cifsuser" -o ! "$cifspass" ]; then
 	die "For CIFS support you need to specify a cifsuser and cifspass either in the cifsuser and cifspass commandline parameters or in the root= CIFS URL."
     fi
-    options="user=$cifsuser,pass=$cifspass"
+
+    # append cifs custom mount opts to ${options}
+    options="user=$cifsuser,pass=$cifspass,${initial_options}"
 }
