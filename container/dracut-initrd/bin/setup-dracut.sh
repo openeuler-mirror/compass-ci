@@ -14,4 +14,7 @@ apt-get install -y dracut dracut-network dracut-config-generic
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 
+# Replace the runtime shell script with a custom shell script
+cp -a /usr/local/bin/cifs-lib.sh /usr/lib/dracut/modules.d/95cifs/
+
 cat overlay-lkp.sh   >> /usr/lib/dracut/modules.d/90overlay-root/overlay-mount.sh
