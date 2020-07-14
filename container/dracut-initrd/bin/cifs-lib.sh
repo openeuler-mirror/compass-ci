@@ -36,7 +36,7 @@ cifs_to_var() {
     # remove cifs custom mount opts from ${path}
     path=${path%%,*}
 
-    server=${server%/*}
+    server=${server%%/*}
 
     if [ ! "$cifsuser" -o ! "$cifspass" ]; then
 	die "For CIFS support you need to specify a cifsuser and cifspass either in the cifsuser and cifspass commandline parameters or in the root= CIFS URL."
