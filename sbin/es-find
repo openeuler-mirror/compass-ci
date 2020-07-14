@@ -9,6 +9,7 @@
 #       es-find testbox=xxx,yyy suite=aaa user=bbb
 
 require 'yaml'
+require 'optparse'
 require_relative '../lib/es_query.rb'
 require_relative '../container/lab.rb'
 
@@ -29,6 +30,29 @@ def parse_argv
   items
 end
 
+options = {}
+options[:nr_jobs] = 10
+opt_parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: es-find [options] search_key1=val1[,val2..] ..'
+
+  opts.separator 'search_key can be id, suite, os, etc.'
+  opts.separator ''
+
+  opts.on('-n', '--nr-jobs NUM', Integer, 'max jobs, default 10.') do |n|
+    if n.to_i <= 0
+      puts 'The value of the -n option must be a positive number.'
+      exit(-1)
+    end
+    options[:nr_jobs] = n.to_i
+  end
+
+  opts.on_tail('-h', '--help', 'show this message') do
+    puts opts
+    exit
+  end
+end
+
+opt_parser.parse!(ARGV)
 items = parse_argv
 es = ESQuery.new(ES_HOST, ES_PORT)
-p es.multi_field_query items
+p es.multi_field_query items, size: options[:nr_jobs]

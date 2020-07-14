@@ -11,27 +11,36 @@ class ESQuery
 
   # Example @items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # means to query: key1 == value1 && (key2 in [value2, value3, ..])
-  def multi_field_query(items)
-    query_fields = []
-    items.each do |key, value|
-      if value.is_a?(Array)
-        inner_query = []
-        value.each do |inner_value|
-          inner_query.push({ term: { key => inner_value } })
-        end
-        query_fields.push({ bool: { should: inner_query } })
-      else
-        query_fields.push({ term: { key => value } })
-      end
-    end
-
+  def multi_field_query(items, size: 10_000)
+    query_fields = build_mutli_field_subquery_body items
     query = {
       query: {
         bool: {
           must: query_fields
         }
-      }
+      }, size: size
     }
     @client.search index: 'jobs', body: query
   end
+end
+
+def build_mutli_field_subquery_body(items)
+  query_fields = []
+  items.each do |key, value|
+    if value.is_a?(Array)
+      inner_query = build_multi_field_or_query_body(key, value)
+      query_fields.push({ bool: { should: inner_query } })
+    else
+      query_fields.push({ term: { key => value } })
+    end
+  end
+  query_fields
+end
+
+def build_multi_field_or_query_body(field, value_list)
+  inner_query = []
+  value_list.each do |inner_value|
+    inner_query.push({ term: { field => inner_value } })
+  end
+  inner_query
 end
