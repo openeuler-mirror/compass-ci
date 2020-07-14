@@ -1,6 +1,7 @@
 require "kemal"
 
 require "./job"
+require "./taskqueue_api"
 require "../scheduler/jobfile_operate"
 require "../scheduler/redis_client"
 require "../scheduler/elasticsearch_client"
@@ -13,6 +14,7 @@ class Sched
     def initialize()
         @es = Elasticsearch::Client.new
         @redis = Redis::Client.new
+        @task_queue = TaskQueueAPI.new
     end
 
     def set_host_mac(mac : String, hostname : String)
@@ -53,7 +55,7 @@ class Sched
     def find_job_boot(mac : String)
         hostname = redis.@client.hget("sched/mac2host", mac)
 
-        job, _ = find_job(hostname, 10) if hostname
+        job = find_job(hostname, 10) if hostname
         if !job
             return ipxe_msg("No job now")
         end
@@ -78,11 +80,10 @@ class Sched
         tbox_group = get_tbox_group_name(testbox)
 
         count.times do
-            job_id, queue_name = @redis.find_any_job(tbox_group)
+            response = @task_queue.consume_task("sched/#{tbox_group}")
+            job_id = JSON.parse(response[1].to_json)["id"] if response[0] == 200
 
-            if job_id != "0"
-                @redis.move_job(queue_name, "sched/jobs_running", "#{job_id}")
-
+            if job_id
                 job = @es.get_job(job_id.to_s)
                 if !job
                     raise "Invalid job (id=#{job_id}) in es"
@@ -90,13 +91,13 @@ class Sched
 
                 @redis.set_job(job)
 
-                return job, queue_name
+                return job
             end
 
             sleep(1)
         end
 
-        return nil, "0"
+        return nil
     end
 
     private def add_kernel_console_param(arch_tmp)
