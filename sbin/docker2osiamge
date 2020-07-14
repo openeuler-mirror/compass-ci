@@ -1,50 +1,54 @@
-#!/bin/bash -e
+#!/bin/bash
 
-# extract rootfs from docker image
-
-# Copyright (C) 2016-2020 Wu Zhangjin <lzufalcon@163.com>
-
-# examples:
-
-# $ tools/rootfs/docker/extract.sh arm64v8/ubuntu aarch64
-# $ tools/rootfs/docker/extract.sh arm32v7/ubuntu arm
- 
-
-TOP_DIR=$(cd $(dirname $0)/../../../ && pwd)
-PREBUILT_FULLROOT=$TOP_DIR/prebuilt/fullroot
+# This script requires root permission to run.
+# Origin script:
+# https://gitee.com/tinylab/linux-lab/blob/master/tools/root/docker/extract.sh
 
 image=$1
-arch=$2
-tmpdir=$(echo $image | tr '/' '-' | tr ':' '-')
-rootdir=$PREBUILT_FULLROOT/tmp/$tmpdir
-qemu_user_static=/usr/bin/qemu-${arch}-static
-user=`whoami`
+arch="$(uname -m)"
+rootdir="./$(echo "$image" | sed 's/[^a-zA-Z0-9_]/-/g')"
+image_name="$(echo "$image" | cut -d '/' -f 2 | cut -d ':' -f 1)-$arch.cgz"
 
-[ -z "$image" -o -z "$arch" ] && echo "Usage: $0 image arch" && exit 1
-
-which $qemu_user_static 2>&1 > /dev/null || (echo "LOG: Install qemu-user-static at first" && exit 1)
-
-[ -z "$PULL" ] && PULL=1
-if [ $PULL -eq 1 ]; then
-   echo "LOG: Pulling $image"
-   docker pull $image
+if [ $UID -ne 0 ];then 
+	 echo "Please run with root user" 
+	 exit 1
 fi
 
+if [ -z "$image" ];then 
+	 echo "Usage: $0 image" 
+	 exit 2
+fi
+
+echo "LOG: Now install docker"
+if [ $(command -v yum) ];then
+	yum -y repolist
+	yum -y install docker
+fi
+
+if [ $(command -v apt-get) ];then
+	apt-get -y update
+	apt-get -y install docker.io
+fi
+
+echo "LOG: Pulling $image"
+docker pull "$image" || exit 3 
+
 echo "LOG: Running $image"
-id=$(docker run -d -v $qemu_user_static:$qemu_user_static $image)
+id=$(docker run -d "$image")
 
 echo "LOG: Creating temporary rootdir: $rootdir"
-mkdir -p $rootdir
+mkdir -p "$rootdir"
 
 echo "LOG: Extract docker image to $rootdir"
-sudo docker cp $id:/ $rootdir/
-sudo chown $user:$user -R $rootdir/
+docker cp -a "$id":/ "$rootdir"/
 
-echo "LOG: Removing docker container"
-docker rm -f $id
+# echo "LOG: Removing docker container"
+# docker rm -f "$id"
 
-#echo "LOG: Removing docker image"
-#docker image rm -f $image
+# echo "LOG: Removing docker image"
+# docker image rm -f "$image"
 
-echo "LOG: Chroot into new rootfs"
-sudo chroot $rootdir /bin/sh -c 'uname -a; [ -f /etc/issue ] && cat /etc/issue; exit'
+echo "LOG: Package rootfs"
+cd "$rootdir" || exit 4 
+find . | cpio -o -Hnewc | gzip -9 > ../"$image_name"
+echo "Package: $(realpath ../"$image_name")"
