@@ -1,6 +1,16 @@
 require "redis"
 require "json"
 
+#  redis key like: queues/service/subkey/ready|in_process
+# queue name like:        service/[.../]subkey
+enum TaskInQueueStatus
+  TooBigID    # 0
+  NotExists   # 1
+  SameQueue   # 2, match with [queues/]service/[.../]queue
+  SameService # 3, match with [queues/]service
+  InTaskQueue # 4, match with [queues/]
+end
+
 class TaskQueue
   def initialize()
     redis_host = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : REDIS_HOST)
@@ -13,20 +23,25 @@ class TaskQueue
     return @redis.incr("#{QUEUE_NAME_BASE}/seqno")
   end
 
-  private def task_in_queue(id : String, queue_name : String)
+  private def task_in_queue_status(id : String, queue_name : String)
+    current_seqno = @redis.get("#{QUEUE_NAME_BASE}/seqno")
+    current_seqno = "0" if current_seqno.nil?
+    current_seqno = current_seqno.to_i64
+    return TaskInQueueStatus::TooBigID  if id.to_i64 > current_seqno
+
     data = @redis.hget("#{QUEUE_NAME_BASE}/id2content", id)
-    if data.nil?
-      return false
+    return TaskInQueueStatus::NotExists if data.nil?
+
+    data_hash = JSON.parse(data)
+    data_queue = data_hash["queue"].to_s
+    return TaskInQueueStatus::SameQueue if data_queue == queue_name
+
+    if get_service_name_of_queue(data_queue) == get_service_name_of_queue(queue_name)
+      return TaskInQueueStatus::SameService
     else
-      data_hash = JSON.parse(data)
-      if (data_hash["queue"].to_s == queue_name)
-        return true
-      else
-        return false
-      end
+      return TaskInQueueStatus::InTaskQueue
     end
   end
-
 
   private def add2redis(queue_name : String, content : Hash)
     if content["id"]?

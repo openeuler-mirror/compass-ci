@@ -11,18 +11,30 @@ class TaskQueue
     queue_name, ext_set = queue_check_params(env, ["queue"])
     return ext_set if ext_set
 
-    queue_name = queue_name[0] + "/ready"
+    param_queue = queue_name[0] + "/ready"
 
     task_content = JSON.parse(body.gets_to_end)
     id = task_content["id"]?
     if id
-      if task_in_queue(id.to_s, queue_name)
-        return queue_respond_header_set(env, 409, \
-                   "Queue <#{queue_name}> already has id <#{id}>")
+      case task_in_queue_status(id.to_s, param_queue)
+      when TaskInQueueStatus::TooBigID
+        return queue_respond_header_set(env, 409,
+          "Add with error id <#{id}>")
+      when TaskInQueueStatus::SameQueue
+        return queue_respond_header_set(env, 409,
+          "Queue <#{queue_name[0]}> already has id <#{id}>")
+      when TaskInQueueStatus::SameService
+        service_name = get_service_name_of_queue(param_queue)
+        return queue_respond_header_set(env, 409,
+          "Service <#{service_name}> still has id <#{id}> in process")
+      when TaskInQueueStatus::InTaskQueue
+        return queue_respond_header_set(env, 409,
+          "TaskQueue still has id <#{id}> in process")
+      when TaskInQueueStatus::NotExists
       end
     end
 
-    task_id = add2redis("#{queue_name}", task_content.as_h)
+    task_id = add2redis("#{param_queue}", task_content.as_h)
     env.response.status_code = 200
     {id: task_id}.to_json
   end
