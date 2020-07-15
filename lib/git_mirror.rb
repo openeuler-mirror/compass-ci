@@ -44,6 +44,7 @@ class MirrorMain
     project_list.each do |project|
       project_dir = "#{repodir}/#{project}"
       fork_list = Dir.entries(project_dir) - Array['.', '..', 'DEFAULTS', '.ignore']
+      fork_list = Array['linus'] if project == 'linux'
       fork_list.each do |fork_name|
         @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open("#{project_dir}/#{fork_name}"))
         @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
