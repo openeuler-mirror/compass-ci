@@ -103,7 +103,7 @@ class Sched
     private def add_kernel_console_param(arch_tmp)
         returned = ""
         if arch_tmp == "x86_64"
-           returned = " console=ttyS0,115200 console=tty0"
+            returned = " console=ttyS0,115200 console=tty0"
         end
         return returned
     end
@@ -142,7 +142,7 @@ class Sched
     def update_job_parameter(env : HTTP::Server::Context)
         job_id = env.params.query["job_id"]?
         if !job_id
-          return false
+            return false
         end
 
         # try to get report value and then update it
