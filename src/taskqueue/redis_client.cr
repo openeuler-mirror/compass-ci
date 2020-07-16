@@ -16,7 +16,11 @@ class TaskQueue
     redis_host = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : REDIS_HOST)
     redis_port = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"].to_i32 : REDIS_PORT)
 
-    @redis = Redis.new(redis_host, redis_port)
+    redis_pool_num = (ENV.has_key?("REDIS_POOL_NUM") ?
+                      ENV["REDIS_POOL_NUM"].to_i32 : REDIS_POOL_NUM)
+
+    @redis = Redis::PooledClient.new(host: redis_host,
+               port: redis_port, pool_size: redis_pool_num, pool_timeout: 0.01)
   end
 
   private def get_new_seqno()
@@ -36,7 +40,7 @@ class TaskQueue
     data_queue = data_hash["queue"].to_s
     return TaskInQueueStatus::SameQueue if data_queue == queue_name
 
-    if get_service_name_of_queue(data_queue) == get_service_name_of_queue(queue_name)
+    if service_name_of_queue(data_queue) == service_name_of_queue(queue_name)
       return TaskInQueueStatus::SameService
     else
       return TaskInQueueStatus::InTaskQueue
@@ -110,7 +114,7 @@ class TaskQueue
   private def delete_task_in_redis(queue : String, id : String)
     content = find_task(id)
     return nil if content.nil?
-    return nil if (get_service_name_of_queue(content["queue"].to_s) != queue)
+    return nil if (service_name_of_queue(content["queue"].to_s) != queue)
 
     # if another hdel first, then the result will be []
     #   or result will be [1, 1]

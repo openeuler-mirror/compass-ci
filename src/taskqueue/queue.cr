@@ -24,7 +24,7 @@ class TaskQueue
         return queue_respond_header_set(env, 409,
           "Queue <#{queue_name[0]}> already has id <#{id}>")
       when TaskInQueueStatus::SameService
-        service_name = get_service_name_of_queue(param_queue)
+        service_name = service_name_of_queue(param_queue)
         return queue_respond_header_set(env, 409,
           "Service <#{service_name}> still has id <#{id}> in process")
       when TaskInQueueStatus::InTaskQueue
@@ -96,7 +96,7 @@ class TaskQueue
     return nil
   end
 
-  def get_service_name_of_queue(queue_name : String)
+  def service_name_of_queue(queue_name : String)
     find_slash = queue_name.index('/')
     return find_slash ? queue_name[0, find_slash] : queue_name
   end
@@ -108,7 +108,7 @@ class TaskQueue
     # input queue parameter may like "scheduler/$tbox_group/..."
     #   we just need make sure the "id" blongs to queue "scheduler"
     #   the (queue "scheduler") is a queue for scheduler-service
-    queue = get_service_name_of_queue(params[0])
+    queue = service_name_of_queue(params[0])
     id    = params[1]
 
     if delete_task_in_redis(queue, id)
