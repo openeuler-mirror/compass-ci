@@ -43,6 +43,7 @@ class TaskQueue
 
     # -------------------
     # request: curl -X PUT http://localhost:3060/consume?queue=scheduler/$tbox_group
+    #   option parameter timeout=XXXX (default as 3000ms, max 57000ms)
     #
     # response: 200 {"suite":"test01", "tbox_group":"host", "id":1}.to_json
     #           201 ## when there has no task in queue (scheduler/$tbox_group)

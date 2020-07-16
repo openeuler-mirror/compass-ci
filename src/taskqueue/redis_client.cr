@@ -111,6 +111,33 @@ class TaskQueue
     return content["data"].to_json
   end
 
+  private def move_first_task_in_redis(from : String, to : String)
+    first_task_id = Redis::Future.new
+    @redis.watch("#{QUEUE_NAME_BASE}/#{from}")
+    result = @redis.multi do |multi|
+      first_task_id = multi.zrange("#{QUEUE_NAME_BASE}/#{from}", 0, 0)
+      multi.zremrangebyrank("#{QUEUE_NAME_BASE}/#{from}", 0, 0)
+    end
+    return nil if result.size < 2           # caused by watch
+    return nil if result[1].as(Int64) == 0  # 0 means no delete == no id
+
+    # result was [[id], 1]
+    id = first_task_id.value.as(Array)[0].to_s
+    content = find_task(id)
+    return nil if content.nil?
+
+    operate_time = Time.local.to_unix_f
+    content = content.merge({"queue" => to})
+    content = content.merge({"move_time" => operate_time})
+
+    @redis.multi do |multi|
+      multi.zadd("#{QUEUE_NAME_BASE}/#{to}", operate_time, id)
+      multi.hset("#{QUEUE_NAME_BASE}/id2content", id, content.to_json)
+    end
+
+    return content["data"].to_json
+  end
+
   private def delete_task_in_redis(queue : String, id : String)
     content = find_task(id)
     return nil if content.nil?

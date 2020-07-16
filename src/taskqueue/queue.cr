@@ -68,14 +68,26 @@ class TaskQueue
     queue_name_from = queue_name[0] + "/ready"
     queue_name_to   = queue_name[0] + "/in_process"
 
-    if id = find_first_task_in_redis(queue_name_from)
-      env.response.status_code = 200
-      task = move_task_in_redis(queue_name_from, queue_name_to, id)
-    else
-      env.response.status_code = 201
-      task = nil
+    begin
+      timeout = "#{env.params.query["timeout"]?}".to_i
+      timeout = HTTP_MAX_TIMEOUT if timeout > HTTP_MAX_TIMEOUT
+    rescue
+      timeout = HTTP_DEFAULT_TIMEOUT
     end
 
+    task = nil
+    time_start = Time.local.to_unix_ms
+    loop do
+      task = move_first_task_in_redis(queue_name_from, queue_name_to)
+      break if task
+      break if (Time.local.to_unix_ms - time_start) > timeout
+    end
+
+    if task.nil?
+      env.response.status_code = 201
+    else
+      env.response.status_code = 200
+    end
     return task
   end
 
