@@ -35,20 +35,21 @@ class MirrorMain
     load_fork_info
   end
 
-  attr_reader :git_info
-  attr_reader :git_queue
+  def load_project_dir(repodir, project)
+    project_dir = "#{repodir}/#{project}"
+    fork_list = Dir.entries(project_dir) - Array['.', '..', 'DEFAULTS', '.ignore']
+    fork_list = Array['linus'] if project == 'linux'
+    fork_list.each do |fork_name|
+      @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open("#{project_dir}/#{fork_name}"))
+      @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
+    end
+  end
 
   def load_fork_info
     repodir = "#{ENV['LKP_SRC']}/repo"
     project_list = Dir.entries(repodir) - Array['.', '..']
     project_list.each do |project|
-      project_dir = "#{repodir}/#{project}"
-      fork_list = Dir.entries(project_dir) - Array['.', '..', 'DEFAULTS', '.ignore']
-      fork_list = Array['linus'] if project == 'linux'
-      fork_list.each do |fork_name|
-        @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open("#{project_dir}/#{fork_name}"))
-        @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
-      end
+      load_project_dir(repodir, project)
     end
   end
 
