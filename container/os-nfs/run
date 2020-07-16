@@ -14,6 +14,7 @@ cmd=(
 #	--name os
 	-e NFS_DISABLE_VERSION_3=1
 	-v /srv/os:/exports/os:ro
+	-v /srv/os:/exports/os-rw	 # for install/setup
 	-v /srv/result:/exports/result
 	-v /srv/initrd:/exports/initrd
 	-v /srv/initrd:/exports/osimage  # for lkp compatibility
