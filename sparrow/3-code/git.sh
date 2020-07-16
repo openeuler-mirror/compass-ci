@@ -7,7 +7,7 @@ cd /c
 
 # git clone https://gitee.com/openeuler/crystal-ci.git
 # modify and manual run for now:
-git clone ssh://crystal/c/crystal-ci.git
+git clone git://$GIT_SERVER/crystal-ci/crystal-ci.git
 ln -s crystal-ci cci
 
-git clone https://gitee.com/wu_fengguang/lkp-tests.git
+git clone git://$GIT_SERVER/lkp-tests/lkp-tests.git
