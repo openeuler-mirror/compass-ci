@@ -66,13 +66,6 @@ class Redis::Client
         return priority_as_score
     end
 
-    # pending queue name is sched/jobs_to_run/$tbox_group
-    def find_any_job(tbox_group : String)
-        job_list = "sched/jobs_to_run/#{tbox_group}"
-        job_id = find_job_in_queue(job_list)
-        return job_id, job_list
-    end
-
     def find_job_in_queue(queue_name : String)
         # check the first order job_id
         first_job = @client.zrange(queue_name, 0, 0)
