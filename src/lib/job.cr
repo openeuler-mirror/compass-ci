@@ -15,6 +15,25 @@ struct JSON::Any
   end
 end
 
+module JobHelper
+  def self.get_tbox_group(job_content : JSON::Any)
+    if job_content["tbox_group"]?
+      job_content["tbox_group"]
+    elsif job_content["testbox"]?
+      self.match_tbox_group(job_content["testbox"].to_s)
+    end
+  end
+
+  def self.match_tbox_group(testbox : String)
+    tbox_group = testbox
+    find = testbox.match(/(.*)(\-\d{1,}$)/)
+    if find != nil
+      tbox_group = find.not_nil![1]
+    end
+    return tbox_group
+  end
+end
+
 class Job
 
   getter hash : Hash(String, JSON::Any)
@@ -105,13 +124,9 @@ class Job
   end
 
   private def set_tbox_group()
-    if !@hash["tbox_group"]?
-      find = @hash["testbox"].to_s.match(/(.*)(\-\d{1,}$)/)
-      if find != nil
-        self["tbox_group"] = find.not_nil![1]
-      else
-        self["tbox_group"] = @hash["testbox"].to_s
-      end
+    tbox_group_name = JobHelper.get_tbox_group(JSON.parse(@hash.to_json))
+    if tbox_group_name
+      self["tbox_group"] = "#{tbox_group_name}"
     end
   end
 
