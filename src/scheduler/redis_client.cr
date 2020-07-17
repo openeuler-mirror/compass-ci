@@ -110,7 +110,6 @@ class Redis::Client
     end
 
     def remove_finished_job(job_id : String)
-        move_job("sched/jobs_running", "queue/extract_stats", job_id)
         @client.hdel("sched/id2job", job_id)
     end
 

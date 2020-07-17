@@ -162,6 +162,13 @@ class Sched
             raise "es set job content fail! "
         end
 
+        respon = @task_queue.hand_over_task(
+            "sched/#{job.tbox_group}", "extract_stats", job_id
+        )
+        if respon[0] != 201
+            raise "#{respon}"
+        end
+
         @redis.remove_finished_job(job_id)
     end
 end
