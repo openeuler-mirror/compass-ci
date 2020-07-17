@@ -9,7 +9,10 @@ cd $CCI_SRC/sparrow || exit
 1-storage/tiny.sh
 2-network/br0.sh
 2-network/iptables
+2-network/nfs.sh
 3-code/git.sh
 3-code/dev-env.sh
 4-docker/buildall
+5-build/ipxe.sh
+6-test/qemu.sh
 6-test/docker.sh
