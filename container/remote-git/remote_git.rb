@@ -8,7 +8,6 @@ set :bind, '0.0.0.0'
 set :port, 8100
 
 GIT = '/git'
-ALLOW_GIT_COMMAND = %w[pull log].freeze
 ILLEGAL_SHELL_CHAR = %w[& $].freeze
 
 post '/git_command' do
@@ -47,9 +46,8 @@ end
 def check_git_params(git_command)
   return JSON.dump({ 'status': 104, 'errmsg': 'git_command params type error' }) if git_command.class != Array
   return JSON.dump({ 'status': 105, 'errmsg': 'git_command length error' }) if git_command.length < 2
-  return JSON.dump({ 'status': 106, 'errmsg': 'not git command' }) if git_command[0] != 'git'
 
-  JSON.dump({ 'status': 107, 'errmsg': 'illegal git option' }) unless ALLOW_GIT_COMMAND.include?(git_command[1])
+  JSON.dump({ 'status': 107, 'errmsg': 'not git-* command' }) unless git_command[0].start_with? 'git-'
 end
 
 def check_params_complete(params)
@@ -59,7 +57,7 @@ def check_params_complete(params)
 end
 
 def check_illegal_char(git_command)
-  return unless git_command.length > 2
+  return unless git_command.length > 1
 
   detected_string = git_command.join
   ILLEGAL_SHELL_CHAR.each do |char|
