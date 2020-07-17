@@ -10,10 +10,6 @@ require "../lib/job"
 #  - use redis incr as job_id
 #
 # -------------------------------------------------------------------------------------------
-# move_job(queue_name_from : String, queue_name_to : String, job_id : String)
-#  - move job from queue_name_from to [queue_name_to], data type is a redis sorted set
-#  - example : move_job("sched/jobs_to_run/$tbox_group", "sched/jobs_running", "12")
-#
 
 class Redis::Client
     class_property :client
@@ -78,16 +74,6 @@ class Redis::Client
         return first_job[0]
     end
 
-    def move_job(queue_name_from : String, queue_name_to : String, job_id : String)
-        @client.zrem(queue_name_from, job_id)
-        priority_as_score = Time.local.to_unix_f
-
-        # queue_name_to: sched/jobs_running
-        @client.zadd(queue_name_to, priority_as_score, job_id)
-
-        return priority_as_score
-    end
-
     # move job atomiclly
     def move_job(queue_name_from : String, queue_name_to : String)
         lua_script = "local job =  redis.call('zrange', KEYS[1], 0, 0)
@@ -102,11 +88,6 @@ class Redis::Client
         priority_as_score = Time.local.to_unix_f
 
         @client.eval(lua_script, [queue_name_from, queue_name_to], [priority_as_score])
-    end
-
-    def remove_running(job_id : String)
-        @client.zrem("sched/jobs_running", job_id)
-        @client.hdel("sched/id2job", job_id)
     end
 
     def remove_finished_job(job_id : String)
