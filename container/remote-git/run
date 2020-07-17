@@ -3,6 +3,7 @@
 cmd=(
 	docker run
 	--restart=always
+	-u nobody
 	-d
 	-p 8100:8100
 	-v /srv/git:/git
