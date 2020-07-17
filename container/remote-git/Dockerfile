@@ -1,17 +1,10 @@
 FROM debian
 
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN apt-get update && \
-    apt-get install -y ruby-full && \
-    apt-get install -y git && \
-    gem install sinatra  && \
-    mkdir /app && \
-    mkdir /git
+    apt-get install -y git ruby-json ruby-sinatra
 
-COPY ./remote_git.rb /app/
+COPY remote-git.rb /usr/local/bin/
 
-
-WORKDIR /app
-
-VOLUME /git
-
-CMD ["ruby", "remote_git.rb"]
+CMD ["/usr/local/bin/remote-git.rb"]

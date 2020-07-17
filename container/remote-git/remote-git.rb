@@ -1,3 +1,4 @@
+#!/usr/bin/ruby
 # frozen_string_literal: true
 
 require 'sinatra'
@@ -7,7 +8,7 @@ require 'open3'
 set :bind, '0.0.0.0'
 set :port, 8100
 
-GIT = '/git'
+GIT = '/srv/git'
 ILLEGAL_SHELL_CHAR = %w[& $].freeze
 
 post '/git_command' do
@@ -48,6 +49,8 @@ def check_git_params(git_command)
   return JSON.dump({ 'status': 105, 'errmsg': 'git_command length error' }) if git_command.length < 2
 
   JSON.dump({ 'status': 107, 'errmsg': 'not git-* command' }) unless git_command[0].start_with? 'git-'
+  git_command[0] = "/usr/lib/git-core/#{git_command[0]}"
+  return nil
 end
 
 def check_params_complete(params)

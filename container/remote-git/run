@@ -6,16 +6,13 @@ cmd=(
 	-u nobody
 	-d
 	-p 8100:8100
-	-v /srv/git:/git
-	--name remote-git
+	-v /srv/git:/srv/git
 	debian:remote-git
 )
 
 "${cmd[@]}"
 
-# test
-
 cat <<EOF
 you can use cmd:
-curl -H 'Content-Type: Application/json' -XPOST 'localhost:8100/git_command' -d '{"project": "smatch", "developer_repo": "smatch", "git_command": ["git", "pull"]}'
+curl -H 'Content-Type: Application/json' -XPOST 'localhost:8100/git_command' -d '{"project": "crystal-ci", "developer_repo": "crystal-ci.git", "git_command": ["git-show", "HEAD"]}'
 EOF
