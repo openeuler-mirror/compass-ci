@@ -30,9 +30,9 @@ module Scheduler
 
     # for debug (maybe kemal debug|logger does better)
     def self.debug_message(env, respon)
+        puts "\n\n"
         puts ">> #{env.request.remote_address}"
         puts "<< #{respon}"
-        puts ""
     end
 
     # echo alive
