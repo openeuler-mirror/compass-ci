@@ -21,27 +21,23 @@ class Sched
         @redis.set_hash_queue("sched/mac2host", mac, hostname)
     end
 
-    private def save_job_data(job : Job)
-        @es.set_job_content(job)
-        @redis.add2queue("sched/jobs_to_run/" + job.tbox_group, job.id)
-
-        return job.id, 0
-    end
-
     def submit_job(env : HTTP::Server::Context)
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)
 
-        # use redis incr as sched/seqno2jobid
-        job_id = @redis.get_new_job_id()
-        if job_id == "0"
-            return job_id, 1
+        task_queue_name = JobHelper.get_tbox_group(job_content)
+        if task_queue_name
+            task_desc = JSON.parse(%({"domain": "huawei"}))
+            response = @task_queue.add_task(task_queue_name.to_s, task_desc)
+            job_id = JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
+            if job_id
+                job_content["id"] = job_id
+                job = Job.new(job_content)
+                @es.set_job_content(job)
+                return job.id, 0
+            end
         end
-
-        job_content["id"] = job_id
-        job = Job.new(job_content)
-
-        return save_job_data(job)
+        return "0", 1
     end
 
     private def ipxe_msg(msg)
