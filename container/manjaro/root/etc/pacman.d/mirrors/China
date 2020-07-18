@@ -1,1 +1,1 @@
-Server = https://mirrors.ustc.edu.cn/manjaro-arm/stable/$repo/$arch/
+Server = http://mirrors.ustc.edu.cn/manjaro-arm/stable/$repo/$arch/
