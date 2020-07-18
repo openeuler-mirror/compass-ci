@@ -70,6 +70,7 @@ class TaskQueue
     put "/hand_over" do |env|
       response = queue_respond_hand_over(env)
       debug_message(env, response, Time.utc)
+      nil
     end
 
     # -------------------
@@ -82,6 +83,7 @@ class TaskQueue
     put "/delete" do |env|
       response = queue_respond_delete(env)
       debug_message(env, response, Time.utc)
+      nil
     end
 
     @port = (ENV.has_key?("TASKQUEUE_PORT") ? ENV["TASKQUEUE_PORT"].to_i32 : TASKQUEUE_PORT)

@@ -107,8 +107,6 @@ class TaskQueue
     else
       queue_respond_header_set(env, 409, "Can not find id <#{id}> in queue <#{params[0]}>")
     end
-
-    return nil
   end
 
   def service_name_of_queue(queue_name : String)
@@ -131,7 +129,5 @@ class TaskQueue
     else
       queue_respond_header_set(env, 409, "Can not find id <#{id}> in queue <#{params[0]}>")
     end
-
-    return nil
   end
 end
