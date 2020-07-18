@@ -6,10 +6,16 @@ require "./queue"
 class TaskQueue
   VERSION = "0.0.1"
 
-  def debug_message(env, response)
-    puts ">> #{env.request.remote_address}"
-    puts "<< #{response}"
-    puts ""
+  def debug_message(env, response, time_in)
+    puts("\n")
+
+    from_message = "#{time_in} --> #{env.request.remote_address}"
+    if env.request.body != nil
+      from_message += " #{env.request.body}"
+    end
+    puts(from_message)
+
+    puts("#{Time.utc} <-- #{response}")
   end
 
   def run
@@ -19,7 +25,7 @@ class TaskQueue
     # response: TaskQueue@v0.0.1 is alive.
     get "/" do |env|
       response = "TaskQueue@v#{VERSION} is alive."
-      debug_message(env, response)
+      debug_message(env, response, Time.utc)
 
       "#{response.to_json}\n"
     end
@@ -37,7 +43,7 @@ class TaskQueue
     #           400 "Missing http body"
     post "/add" do |env|
       response = queue_respond_add(env)
-      debug_message(env, response)
+      debug_message(env, response, Time.utc)
       response if env.response.status_code == 200
     end
 
@@ -50,7 +56,7 @@ class TaskQueue
     #           400 "Missing parameter <queue>"
     put "/consume" do |env|
       response = queue_respond_consume(env)
-      debug_message(env, response)
+      debug_message(env, response, Time.utc)
       response if env.response.status_code == 200
     end
 
@@ -63,7 +69,7 @@ class TaskQueue
     #           409 "Can not find id <$id> in queue <scheduler/$tbox_group>"
     put "/hand_over" do |env|
       response = queue_respond_hand_over(env)
-      debug_message(env, response)
+      debug_message(env, response, Time.utc)
     end
 
     # -------------------
@@ -75,7 +81,7 @@ class TaskQueue
     #           409 "Can not find id <$id> in queue <scheduler/$tbox_group>"
     put "/delete" do |env|
       response = queue_respond_delete(env)
-      debug_message(env, response)
+      debug_message(env, response, Time.utc)
     end
 
     @port = (ENV.has_key?("TASKQUEUE_PORT") ? ENV["TASKQUEUE_PORT"].to_i32 : TASKQUEUE_PORT)

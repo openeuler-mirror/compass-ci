@@ -13,7 +13,10 @@ class TaskQueue
 
     param_queue = queue_name[0] + "/ready"
 
-    task_content = JSON.parse(body.gets_to_end)
+    body_content = body.gets_to_end
+    env.request.body = body_content  # restore back for debug message
+
+    task_content = JSON.parse(body_content)
     id = task_content["id"]?
     if id
       case task_in_queue_status(id.to_s, param_queue)
