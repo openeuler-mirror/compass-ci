@@ -127,7 +127,7 @@ class TaskQueue
     end
   end
 
-  # loop try: when there has no task, return untill get one or timeout
+  # loop try: when there has no task, return until get one or timeout
   #
   # when parameter is wrong, this function also try a lot of times
   # default timeout is 300ms, we delay for 5ms at each time, that's 60 times retry

@@ -33,7 +33,15 @@ class TaskQueue
     current_seqno = current_seqno.to_i64
     return TaskInQueueStatus::TooBigID  if id.to_i64 > current_seqno
 
-    data = @redis.hget("#{QUEUE_NAME_BASE}/id2content", id)
+    data_f = Redis::Future.new
+    loop_till_done() {
+      @redis.watch("#{QUEUE_NAME_BASE}/id2content")
+      op_result = @redis.multi do |multi|
+        data_f = multi.hget("#{QUEUE_NAME_BASE}/id2content", id)
+      end
+      op_result
+    }
+    data = data_f.value.as(String?)
     return TaskInQueueStatus::NotExists if data.nil?
 
     data_hash = JSON.parse(data)
@@ -48,28 +56,35 @@ class TaskQueue
   end
 
   private def add2redis(queue_name : String, content : Hash)
+    operate_time = Time.local.to_unix_f  # do prepare thing early
+
     if content["id"]?
+      # this means we'll add like duplicate id
+      #  will operate to same redis key (queues/id2content)
       task_id = content["id"].as_i64
     else
       task_id = get_new_seqno()
       content = content.merge({:id => task_id})
     end
-    operate_time = Time.local.to_unix_f
     data = {
       :add_time => operate_time,
       :queue => queue_name,
       :data => content
     }
 
-    # no need watch (id must not eq, so zadd | hset will not duplicate)
-    @redis.multi do |multi|
-      multi.zadd("#{QUEUE_NAME_BASE}/#{queue_name}", operate_time, task_id)
-      multi.hset("#{QUEUE_NAME_BASE}/id2content", task_id, data.to_json)
-    end
+    loop_till_done() {
+      @redis.watch("#{QUEUE_NAME_BASE}/id2content")
+      op_result = @redis.multi do |multi|
+        multi.zadd("#{QUEUE_NAME_BASE}/#{queue_name}", operate_time, task_id)
+        multi.hset("#{QUEUE_NAME_BASE}/id2content", task_id, data.to_json)
+      end
+      op_result
+    }
 
     return task_id
   end
 
+  # need loop_till_done ?
   private def find_first_task_in_redis(queue_name)
     first_task = @redis.zrange("#{QUEUE_NAME_BASE}/#{queue_name}", 0, 0)
     if first_task.size == 0
@@ -79,6 +94,7 @@ class TaskQueue
     end
   end
 
+  # need loop_till_done ?
   private def find_task(id : String)
     task_content_raw = @redis.hget("#{QUEUE_NAME_BASE}/id2content", id)
     if task_content_raw.nil?
@@ -98,28 +114,34 @@ class TaskQueue
     content = content.merge({"move_time" => operate_time})
 
     # if another zrem first, then the result will be []
-    #   or result will be [1, 1, 1]
-    @redis.watch("#{QUEUE_NAME_BASE}/#{from}")
-    result = @redis.multi do |multi|
-      multi.zadd("#{QUEUE_NAME_BASE}/#{to}", operate_time, id)
-      multi.zrem("#{QUEUE_NAME_BASE}/#{from}", id)
-      multi.hset("#{QUEUE_NAME_BASE}/id2content", id, content.to_json)
+    #   or result will be [1, 1, 1|0]
+    result = loop_till_done() {
+      @redis.watch("#{QUEUE_NAME_BASE}/#{from}")
+      op_result = @redis.multi do |multi|
+        multi.zadd("#{QUEUE_NAME_BASE}/#{to}", operate_time, id)
+        multi.zrem("#{QUEUE_NAME_BASE}/#{from}", id)
+        multi.hset("#{QUEUE_NAME_BASE}/id2content", id, content.to_json)
+      end
+      op_result
+    }
+    if (result.not_nil![0] != 1) || (result.not_nil![1] != 1)
+      puts "#{Time.utc} WARN -- operate error in move task."
     end
-
-    return nil if result.size < 3
 
     return content["data"].to_json
   end
 
   private def move_first_task_in_redis(from : String, to : String)
     first_task_id = Redis::Future.new
-    @redis.watch("#{QUEUE_NAME_BASE}/#{from}")
-    result = @redis.multi do |multi|
-      first_task_id = multi.zrange("#{QUEUE_NAME_BASE}/#{from}", 0, 0)
-      multi.zremrangebyrank("#{QUEUE_NAME_BASE}/#{from}", 0, 0)
-    end
-    return nil if result.size < 2           # caused by watch
-    return nil if result[1].as(Int64) == 0  # 0 means no delete == no id
+    result = loop_till_done() {
+      @redis.watch("#{QUEUE_NAME_BASE}/#{from}")
+      op_result = @redis.multi do |multi|
+        first_task_id = multi.zrange("#{QUEUE_NAME_BASE}/#{from}", 0, 0)
+        multi.zremrangebyrank("#{QUEUE_NAME_BASE}/#{from}", 0, 0)
+      end
+      op_result
+    }
+    return nil if result.not_nil![1].as(Int) == 0  # 0 means no delete == no id
 
     # result was [[id], 1]
     id = first_task_id.value.as(Array)[0].to_s
@@ -130,10 +152,12 @@ class TaskQueue
     content = content.merge({"queue" => to})
     content = content.merge({"move_time" => operate_time})
 
-    @redis.multi do |multi|
-      multi.zadd("#{QUEUE_NAME_BASE}/#{to}", operate_time, id)
-      multi.hset("#{QUEUE_NAME_BASE}/id2content", id, content.to_json)
-    end
+    loop_till_done() {
+      @redis.multi do |multi|
+        multi.zadd("#{QUEUE_NAME_BASE}/#{to}", operate_time, id)
+        multi.hset("#{QUEUE_NAME_BASE}/id2content", id, content.to_json)
+      end
+    }
 
     return content["data"].to_json
   end
@@ -145,15 +169,63 @@ class TaskQueue
 
     # if another hdel first, then the result will be []
     #   or result will be [1, 1]
-    @redis.watch("#{QUEUE_NAME_BASE}/#{content["queue"]}")
-    result = @redis.multi do |multi|
-      multi.zrem("#{QUEUE_NAME_BASE}/#{content["queue"]}", id)
-      multi.hdel("#{QUEUE_NAME_BASE}/id2content", id)
-    end
-
-    return nil if result.size < 2
+    loop_till_done() {
+      @redis.watch("#{QUEUE_NAME_BASE}/#{content["queue"]}")
+      op_result = @redis.multi do |multi|
+        multi.zrem("#{QUEUE_NAME_BASE}/#{content["queue"]}", id)
+        multi.hdel("#{QUEUE_NAME_BASE}/id2content", id)
+      end
+      op_result
+    }
 
     return content["data"].to_json
+  end
+
+  # when use redis PooledClient and <watch, multi> command,
+  #   there maybe a conflict need to fix:
+  #   1) thread-1 try to find something that thread-2 will write in
+  #   2) thread-3 may do write too, and this will make thread-2
+  #      can do write at first time
+  # so we need let the thread-2's command retry as soon as possible.
+  #
+  # loop until there has no operate conflict
+  #   when use redis.watch(keys) command, if another
+  #     thread is modify the key, all redis.multi
+  #     command will not do. that returns [].
+  #   when no conflict, all redis.multi command will
+  #     be done. return [result, ...] for each command.
+  #
+  # yield block like this
+  # {
+  #   redis.watch
+  #   op_result = redis.multi do |multi|
+  #   end
+  #   op_result   <- this value will return
+  # }
+  #
+  # connect pool timeout is 0.01 second (10 ms)
+  #   here keep try for 30ms
+  private def loop_till_done()
+    result = nil
+    time_start = Time.local.to_unix_ms
+
+    # i = 0
+    loop do
+      result = yield
+      break if result.size > 0
+      # i = i + 1
+      if (Time.local.to_unix_ms - time_start) > 30
+        # there should only retry 1-2 times
+        puts "#{Time.utc} WARN -- should not retry so long."
+        break
+      end
+    end
+
+    # call record: 5208 times of command
+    #              115 times of retry
+    #  max retried 7 times ( occurence 1 times)
+    # p "retry #{i} times"
+    return result
   end
 
 end
