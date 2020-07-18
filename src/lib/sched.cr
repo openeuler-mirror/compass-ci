@@ -104,7 +104,7 @@ class Sched
     end
 
     private def get_job_boot(job : Job)
-        initrd_lkp_cgz = "lkp-#{job.arch}.cgz"
+        initrd_lkp_cgz = "lkp-#{job.os_arch}.cgz"
 
         initrd_deps, initrd_pkg = get_pp_initrd(job)
 
