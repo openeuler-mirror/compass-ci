@@ -78,13 +78,9 @@ class TaskQueue
       timeout = HTTP_DEFAULT_TIMEOUT
     end
 
-    task = nil
-    time_start = Time.local.to_unix_ms
-    loop do
-      task = move_first_task_in_redis(queue_name_from, queue_name_to)
-      break if task
-      break if (Time.local.to_unix_ms - time_start) > timeout
-    end
+    task = operate_with_timeout(timeout) {
+      move_first_task_in_redis(queue_name_from, queue_name_to)
+    }
 
     if task.nil?
       env.response.status_code = 201
@@ -130,4 +126,25 @@ class TaskQueue
       queue_respond_header_set(env, 409, "Can not find id <#{id}> in queue <#{params[0]}>")
     end
   end
+
+  # loop try: when there has no task, return untill get one or timeout
+  #
+  # when parameter is wrong, this function also try a lot of times
+  # default timeout is 300ms, we delay for 5ms at each time, that's 60 times retry
+  private def operate_with_timeout(timeout)
+    result = nil
+    time_span = Time::Span.new(nanoseconds: 5_000)
+    time_start = Time.local.to_unix_ms
+
+    loop do
+      result = yield
+      break if result
+
+      sleep(time_span)
+      break if (Time.local.to_unix_ms - time_start) > timeout
+    end
+
+    return result
+  end
+
 end
