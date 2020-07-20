@@ -25,10 +25,10 @@ class Sched
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)
 
-        task_queue_name = JobHelper.get_tbox_group(job_content)
-        if task_queue_name
+        tbox_group = JobHelper.get_tbox_group(job_content)
+        if tbox_group
             task_desc = JSON.parse(%({"domain": "huawei"}))
-            response = @task_queue.add_task(task_queue_name.to_s, task_desc)
+            response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
             job_id = JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
             if job_id
                 job_content["id"] = job_id
