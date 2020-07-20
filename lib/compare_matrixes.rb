@@ -161,7 +161,7 @@ def get_index(matrixes_number)
   (1...matrixes_number).each do |index|
     print_buf += format("%#{COLUMN_WIDTH + INTERVAL_WIDTH}d", index)
   end
-  print_buf + format("#{INTERVAL_BLANK}%-#{COLUMN_WIDTH}s\n", FIELD_STR)
+  print_buf + ' ' * INTERVAL_WIDTH + format("%-#{COLUMN_WIDTH}s\n", FIELD_STR)
 end
 
 def get_liner(matrixes_number)
