@@ -1,7 +1,10 @@
 [TOC]
 
 # restful-API
-- First of all, you should deploy the lkp-tests and crystal-ci project, and set the environment variables needed for running
+- First of all, you should deploy the lkp-tests and crystal-ci project
+- and set the environment variables needed for running
+	export LKP_SRC=<path to your lkp-tests repo>
+	export CCI_SRC=<parh to your crystal-ci repo>
 ## submit a job
 - restAPI: POST "/submit_job"
 - request body: {"#!jobs/iperf.yaml":null,"suite":"iperf","testcase":"iperf"...}
@@ -247,25 +250,48 @@ L82 response = HTTP::Client.put(url: endpoint, body: post_data) ->
 ### build it
 	./build.sh
 
-## 2. how to debug <scheduler>
-### stop running scheduler server
-	docker stop s001-alpine
 
-### prepare public directory for program use (?? 777)
-	mkdir public
-	chmod 777 public
 
-### run
-	./scheduler
+# How to start your own scheduler container
 
-## 3. how to build docker image <like sch-ruby-a:v0.00d>
-### copy program
-	cp ./scheduler ../container/scheduler/
+### 1.Add port configuration,select an unused port number<like 3001>, write in xxx.yaml<like "example.yaml">
+	
+	cat > ~/.config/crystal/defaults/example.yaml <<EOF
+	SCHED_PORT: 3001
+	EOF
+	 
+# This step need basic image,if scheduler-dev image exist,no need to build it.	 
+# cd $CCI_SRC/container/scheduler-dev
+# ./build
+### 2.Build docker image	
+    cd $CCI_SRC/container/scheduler
+    ./build
+	
+### 3.Start container
+     cd $CCI_SRC/container/scheduler
+    ./run
 
-### go to container
-	cd ../container/scheduer
+# How to submit and execute tasks
 
-### build it
-	./build
+### 1.Modify iperf.yaml's field,You can find it in the "~/crystal-ci/user-client/helper" directory
 
+    vim $CCI_SRC/user-client/helper/iperf.yaml     
+	runtime: 30  # If it is not a test, the time can be shortened
+	arch: aarch64
+    testbox: vm-hi1620-2p8g-$USER  # < "$USER" for your own user name>
+	LKP_CGI_PORT: 3001
+	
+### 2.Submit job,make sure that the Gemfile dependency under LKP-tests is installed
+    
+	submit-job $_CCI_SRC/user-client/helper/iperf.yaml
+
+### 3.Execute QEMU script
+    
+	cd $CCI_SRC/providers
+	./my-qemu.sh
+	
+
+# How to view docker log
+    docker logs -f $container_name  # like: docker logs -f s001-alpine-3001
+	docker logs --tail==100 $container_name # Show the last 100 lines of logs
 ```
