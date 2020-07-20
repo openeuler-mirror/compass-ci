@@ -48,10 +48,12 @@ man bash
 https://devhints.io/bash
 https://github.com/denysdovhan/bash-handbook/blob/master/translations/zh-CN/README.md
 
+https://juejin.im/post/5e4123e3e51d45271515501f
+https://juejin.im/post/5e42858de51d45270d53022e
+
 https://shellmagic.xyz/
 https://ngte-ac.gitbook.io/i/infrastructure/linux-command-cheatsheet
 https://github.com/jlevy/the-art-of-command-line/blob/master/README-zh.md
-https://github.com/macrozheng/mall/blob/master/document/reference/linux.md
 
 https://google.github.io/styleguide/shellguide.html
 
