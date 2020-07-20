@@ -133,7 +133,7 @@ end
 
 # Format Output
 def format_field(field)
-  INTERVAL_BLANK + format("%#{COLUMN_WIDTH}s", field)
+  INTERVAL_BLANK + format("%-#{COLUMN_WIDTH}s", field)
 end
 
 def format_runs_fails(runs, fails)
