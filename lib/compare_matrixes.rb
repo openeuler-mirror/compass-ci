@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-LKP_SRC ||= ENV['LKP_SRC'] || File.dirname(__dir__)
-
 require 'set'
 
 COLUMN_WIDTH = 38 # print column width
@@ -156,25 +154,36 @@ def format_change(change)
   format("%-#{SUB_SHORT_COLUMN_WIDTH}s", change_str)
 end
 
-def get_index(matrixes_number)
-  print_buf = "\n\n\n" + format("%#{SUB_LONG_COLUMN_WIDTH + INTERVAL_WIDTH}d", 0)
-  (1...matrixes_number).each do |index|
-    print_buf += format("%#{COLUMN_WIDTH + INTERVAL_WIDTH}d", index)
+def format_stddev_percent(stddev_percent, average_width)
+  if stddev_percent
+    if stddev_percent.abs != 0
+      percent_width = SUB_LONG_COLUMN_WIDTH - average_width - 4
+      percent_str = get_suitable_number_str(stddev_percent, percent_width, "%#{percent_width}d")
+      # that symbol print width is 2
+      return " ±#{percent_str}%"
+    end
   end
-  print_buf + ' ' * INTERVAL_WIDTH + format("%-#{COLUMN_WIDTH}s\n", FIELD_STR)
+  ''
+end
+
+def format_stddev(average, stddev_percent)
+  average_width = (SUB_LONG_COLUMN_WIDTH * STDDEV_AVERAGE_PROPORTION).to_i
+  average_str = get_suitable_number_str(average.round(2), average_width, "%#{average_width}.2f")
+  percent_str = format_stddev_percent(stddev_percent, average_width)
+  format("%-#{SUB_LONG_COLUMN_WIDTH}s", average_str + percent_str)
+end
+
+def get_index(matrixes_number)
+  print_buf = "\n\n\n" + INTERVAL_BLANK + format("%#{SUB_LONG_COLUMN_WIDTH}d", 0)
+  (1...matrixes_number).each do |index|
+    print_buf += INTERVAL_BLANK + format("%#{COLUMN_WIDTH}d", index)
+  end
+  print_buf + INTERVAL_BLANK + format("%-#{COLUMN_WIDTH}s\n", FIELD_STR)
 end
 
 def get_liner(matrixes_number)
   liner_buf = INTERVAL_BLANK + '-' * SUB_LONG_COLUMN_WIDTH
-  (1...matrixes_number).each do |_index|
-    liner_buf += INTERVAL_BLANK + '-' * COLUMN_WIDTH
-  end
-  liner_buf + INTERVAL_BLANK + '-' * COLUMN_WIDTH
-end
-
-def get_title_bar(common_title, compare_title, matrixes_number)
-  print_buf = get_title(common_title, compare_title, matrixes_number)
-  print_buf + get_title_symbol(common_title, compare_title, matrixes_number)
+  liner_buf + (INTERVAL_BLANK + '-' * COLUMN_WIDTH) * matrixes_number + "\n"
 end
 
 def get_title(common_title, compare_title, matrixes_number)
@@ -183,15 +192,6 @@ def get_title(common_title, compare_title, matrixes_number)
   print_column += common_title
   format("%#{SUB_LONG_COLUMN_WIDTH + INTERVAL_WIDTH}s", common_title) + print_column \
     * (matrixes_number - 1) + "\n"
-end
-
-def get_matrixes_header(matrixes_number, success)
-  print_buf = get_index(matrixes_number) + get_liner(matrixes_number) + "\n"
-  if success
-    print_buf + get_title_bar(STDDEV_STR, CHANGE_STR, matrixes_number)
-  else
-    print_buf + get_title_bar(RUNS_FAILS_STR, REPRODUCTION_STR, matrixes_number)
-  end
 end
 
 def get_base_matrix_title_symbol(common_title)
@@ -218,6 +218,11 @@ def get_title_symbol(common_title, compare_title, matrixes_number)
   ) + "\n"
 end
 
+def get_title_bar(common_title, compare_title, matrixes_number)
+  print_buf = get_title(common_title, compare_title, matrixes_number)
+  print_buf + get_title_symbol(common_title, compare_title, matrixes_number)
+end
+
 def get_suitable_number_str(number, length, format_pattern)
   # if number string length can't < target length, transform number string to scientific notation string
   #
@@ -228,27 +233,8 @@ def get_suitable_number_str(number, length, format_pattern)
   format("%.#{number_length}e", number)
 end
 
-def format_stddev_percent(stddev_percent, average_width)
-  if stddev_percent
-    if stddev_percent.abs != 0
-      percent_width = SUB_LONG_COLUMN_WIDTH - average_width - 4
-      percent_str = get_suitable_number_str(stddev_percent, percent_width, "%#{percent_width}d")
-      # that symbol print width is 2
-      return " ±#{percent_str}%"
-    end
-  end
-  ''
-end
-
-def format_stddev(average, stddev_percent)
-  average_width = (SUB_LONG_COLUMN_WIDTH * STDDEV_AVERAGE_PROPORTION).to_i
-  average_str = get_suitable_number_str(average.round(2), average_width, "%#{average_width}.2f")
-  percent_str = format_stddev_percent(stddev_percent, average_width)
-  format("%-#{SUB_LONG_COLUMN_WIDTH}s", average_str + percent_str)
-end
-
 def get_header(matrixes_number, success)
-  print_buf = get_index(matrixes_number) + get_liner(matrixes_number) + "\n"
+  print_buf = get_index(matrixes_number) + get_liner(matrixes_number)
   if success
     print_buf + get_title_bar(STDDEV_STR, CHANGE_STR, matrixes_number)
   else
