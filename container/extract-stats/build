@@ -1,0 +1,8 @@
+#!/bin/bash
+
+CCI_SRC=$CCI_SRC
+bash $CCI_SRC/container/compile .
+
+docker build -t extract-stats .
+
+rm extract-stats

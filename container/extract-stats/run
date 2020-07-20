@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'set'
+require '../lab.rb'
+
+names = Set.new %w[
+  REDIS_HOST
+  REDIS_PORT
+  ES_HOST
+  ES_PORT
+]
+
+defaults = relevant_defaults(names)
+env = docker_env(defaults)
+
+DEFAULT_LKP = '/c/lkp-tests'
+DEFAULT_CCI = '/c/crystal-ci'
+system 'docker rm -f extract-stats'
+
+cmd = %w[
+  docker run
+  --name extract-stats
+  -d
+] + env + %W[
+  -e LKP_SRC=#{DEFAULT_LKP}
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v /srv/result:/result
+  extract-stats
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./extract-stats']
+
+system(*cmd)
