@@ -168,6 +168,19 @@ class Sched
         @redis.update_job(job_content)
     end
 
+    def update_tbox_wtmp(env : HTTP::Server::Context)
+        hash = {} of String => String | JSON::Any
+        testbox = ""
+        if (tbox_name = env.params.query["tbox_name"]?) && (tbox_state = env.params.query["tbox_state"]?)
+            timestamp = Time.local.to_unix
+            testbox = tbox_name
+            time = Time.unix(timestamp).to_s("%Y-%m-%d %H:%M:%S")
+            hash[time] = tbox_state
+        end
+
+        @redis.update_wtmp(testbox, hash)
+    end
+
     def close_job(job_id : String)
         job = @redis.get_job(job_id)
 

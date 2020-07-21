@@ -130,4 +130,11 @@ module Scheduler
         end
         "Done"
     end
+
+    get "/~lkp/cgi-bin/lkp-wtmp" do |env|
+        debug_message(env, "Done")
+
+        sched.update_tbox_wtmp(env)
+        "Done"
+    end
 end

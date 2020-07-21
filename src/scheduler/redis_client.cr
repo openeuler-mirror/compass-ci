@@ -38,6 +38,15 @@ class Redis::Client
         Job.new(JSON.parse(job_hash))
     end
 
+    def update_wtmp(testbox : String, hash : Hash)
+        if (wtmp = @client.hget("sched/wtmp", testbox))
+            hash.merge!(JSON.parse(wtmp).as_h)
+            set_hash_queue("sched/wtmp", testbox, hash.to_json)
+        else
+            set_hash_queue("sched/wtmp", testbox, hash.to_json)
+        end
+    end
+
     def update_job(job_content : JSON::Any | Hash)
         job_id = job_content["id"].to_s
 
