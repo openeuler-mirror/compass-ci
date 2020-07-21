@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [ $# != 1 ]; then
+  echo "USAGE: $0 id   # trace the job <id>"
+  exit 1
+fi
+
+echo
+echo -e "--> \033[34m[Scheduler]\033[0m trace start"
+
+# get job description
+result=`redis-cli --eval key_cmd_params.lua sched/id2job , hget $1`
+if [ "$result" == "" ]; then
+  echo -e "\033[31mNo job\033[0m id=$1"
+  exit 1
+fi
+
+# show the job information
+echo $result
+
+echo -e "<-- \033[32m[Scheduler]\033[0m trace end"
+echo

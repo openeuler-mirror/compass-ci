@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ $# != 3 ]; then
+  echo "USAGE: $0 key min max"
+  echo "e.g.: $0 queues/sched/vm-hi1620-2p8g/in_process 10 20"
+  exit 1
+fi
+
+# use current filename's last string as lua command script
+cmd_lua=${0##*_}
+
+redis-cli --eval key_cmd_params.lua $1 , $cmd_lua $2 $3
