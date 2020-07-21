@@ -24,7 +24,7 @@ require "../lib/sched"
 # - restful API [get "/"] default echo
 #
 module Scheduler
-    VERSION = "0.1.1"
+    VERSION = "0.2.0"
 
     sched = Sched.new
 
