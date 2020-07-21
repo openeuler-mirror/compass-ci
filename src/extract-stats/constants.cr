@@ -1,2 +1,2 @@
-DATA_EXTRACT_QUEUE = "data/in_extract"
-SCHEDULER_EXTRACT_QUEUE = "queue/extract_stats"
+EXTRACT_STATS_QUEUE_PATH = "extract_stats"
+STATS_WORKER_COUNT = 10
