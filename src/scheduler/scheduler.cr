@@ -46,9 +46,16 @@ module Scheduler
     # /boot.xxx/host/${hostname}
     # /boot.yyy/mac/${mac}
     get "/boot.:boot_type/:parameter/:value" do |env|
-        va = env.params.url["value"]
+        respon = sched.find_job_boot(env)
 
-        respon = sched.find_job_boot(va)
+        debug_message(env, respon)
+
+        respon
+    end
+
+    # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
+    get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
+        respon = sched.find_next_job_boot(env)
 
         debug_message(env, respon)
 

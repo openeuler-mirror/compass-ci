@@ -48,7 +48,8 @@ class Sched
         reboot"
     end
 
-    def find_job_boot(mac : String)
+    def find_job_boot(env : HTTP::Server::Context)
+        mac = env.params.url["value"]
         hostname = redis.@client.hget("sched/mac2host", mac)
 
         job = find_job(hostname, 10) if hostname
@@ -59,6 +60,24 @@ class Sched
         Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
 
         get_job_boot(job)
+    end
+
+    def find_next_job_boot(env)
+        hostname = env.params.query["hostname"]?
+        mac = env.params.query["mac"]?
+        if !hostname && mac
+            hostname = redis.@client.hget("sched/mac2host", mac)
+        end
+
+        if hostname
+            job = find_job(hostname, 10)
+            if job
+                Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
+                return get_job_boot(job)
+            end
+        end
+
+        return ipxe_msg("No next job now")
     end
 
     private def find_job(testbox : String, count = 1)
