@@ -42,7 +42,8 @@ class Job
     os: "debian",
     os_arch: "aarch64",
     os_version: "sid",
-    lkp_initrd_user: "latest"
+    lkp_initrd_user: "latest",
+    docker_image: "centos:7"
   }
 
   def initialize(job_content : JSON::Any)
@@ -66,6 +67,7 @@ class Job
     result_root
     lkp_initrd_user
     kernel_append_root
+    docker_image
   )
 
   macro method_missing(call)

@@ -48,18 +48,35 @@ class Sched
         reboot"
     end
 
-    def find_job_boot(env : HTTP::Server::Context)
-        mac = env.params.url["value"]
-        hostname = redis.@client.hget("sched/mac2host", mac)
+    private def get_boot_container(job : Job)
+        respon = Hash(String, String).new
+        respon["status"] = "1"
+        respon["docker_image"] = "#{job.docker_image}"
+        respon["lkp"] = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz"
+        respon["job"] = "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
 
-        job = find_job(hostname, 10) if hostname
-        if !job
-            return ipxe_msg("No job now")
+        return respon.to_json
+    end
+
+    def find_job_boot(env : HTTP::Server::Context)
+        api_param = env.params.url["value"]
+
+        case env.params.url["boot_type"]
+        when "ipxe"
+          hostname = redis.@client.hget("sched/mac2host", api_param)
+        when "container"
+          hostname = api_param
         end
 
-        Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
+        job = find_job(hostname) if hostname
+        Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder) if job
 
-        get_job_boot(job)
+        case env.params.url["boot_type"]
+        when "ipxe"
+          return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
+        when "container"
+          return job ? get_boot_container(job) : {"status" => "0"}.to_json
+        end
     end
 
     def find_next_job_boot(env)
@@ -122,7 +139,7 @@ class Sched
         return initrd_deps, initrd_pkg
     end
 
-    private def get_job_boot(job : Job)
+    private def get_boot_ipxe(job : Job)
         initrd_lkp_cgz = "lkp-#{job.os_arch}.cgz"
 
         initrd_deps, initrd_pkg = get_pp_initrd(job)
