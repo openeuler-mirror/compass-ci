@@ -153,7 +153,7 @@ class Sched
         respon += "kernel http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{job.os_dir}/vmlinuz user=lkp"
         respon += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
         respon += " root=#{job.kernel_append_root} rootovl ip=dhcp ro"
-        respon += add_kernel_console_param(job.arch)
+        respon += add_kernel_console_param(job.os_arch)
         respon += " initrd=initrd.lkp initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
         respon += "boot\n"
 
