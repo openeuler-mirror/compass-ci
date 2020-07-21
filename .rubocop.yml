@@ -20,3 +20,6 @@ Metrics/MethodLength:
 
 Style/RedundantReturn:
   Enabled: false
+
+Style/IfUnlessModifier:
+  Enabled: false
