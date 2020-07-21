@@ -5,7 +5,7 @@ cmd=(
 	--restart=always
 	-it
 	-p 11300:80
-	-v /srv:/usr/share/nginx/html/srv:ro
+	-v /srv/pub:/usr/share/nginx/html/srv/pub:ro
 	-d
 	srv-http
 )
