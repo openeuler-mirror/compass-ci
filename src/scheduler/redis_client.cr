@@ -39,11 +39,11 @@ class Redis::Client
     end
 
     def update_wtmp(testbox : String, hash : Hash)
-        if (wtmp = @client.hget("sched/wtmp", testbox))
+        if (wtmp = @client.hget("sched/tbox_stats", testbox))
             hash.merge!(JSON.parse(wtmp).as_h)
-            set_hash_queue("sched/wtmp", testbox, hash.to_json)
+            set_hash_queue("sched/tbox_stats", testbox, hash.to_json)
         else
-            set_hash_queue("sched/wtmp", testbox, hash.to_json)
+            set_hash_queue("sched/tbox_stats", testbox, hash.to_json)
         end
     end
 
