@@ -81,6 +81,7 @@ def combine_query_data(query_data)
     next unless stats
 
     stats.each do |key, value|
+      next if key =~ /^stderr/
       matrix[key] = [] unless matrix[key]
       matrix[key] << value
     end
