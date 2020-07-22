@@ -16,7 +16,7 @@ post '/git_command' do
   begin
     data = JSON.parse request.body.read
   rescue JSON::ParserError
-    return JSON.dump({ 'errcode' => '100', 'errmsg' => 'parse json error' })
+    return [400, headers.update({ 'errcode' => '100', 'errmsg' => 'parse json error' }), '']
   end
 
   begin
@@ -30,17 +30,16 @@ post '/git_command' do
     repo_path = File.join(GIT, data['git_repo'])
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'repository not exists' }) unless File.exist?(repo_path)
   rescue StandardError => e
-    return e.message
+    return [400, headers.update(JSON.parse(e.message)), '']
   end
 
   # execute git command
   Dir.chdir(repo_path)
-  _stdin, stdout, stderr, wait_thr = Open3.popen3(*data['git_command'])
+  _stdin, stdout, _stderr, wait_thr = Open3.popen3(*data['git_command'])
   out = stdout.read.force_encoding('ISO-8859-1').encode('UTF-8')
-  err = stderr.read
   exit_code = wait_thr.value.to_i
 
-  { 'errcode' => '0', 'stdout' => out, 'stderr' => err, 'exit_code' => exit_code }.to_json
+  [200, headers.update({ 'errcode' => '0', 'exit_code' => exit_code.to_s }), out]
 end
 
 def check_git_params(git_command)
