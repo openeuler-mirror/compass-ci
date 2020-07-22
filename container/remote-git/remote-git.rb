@@ -18,6 +18,8 @@ post '/git_command' do
   rescue JSON::ParserError
     return [400, headers.update({ 'errcode' => '100', 'errmsg' => 'parse json error' }), '']
   end
+  puts '-' * 50
+  puts 'post body:', data
 
   begin
     # check if the parameters are complete
@@ -30,6 +32,7 @@ post '/git_command' do
     repo_path = File.join(GIT, data['git_repo'])
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'repository not exists' }) unless File.exist?(repo_path)
   rescue StandardError => e
+    puts 'error message: ', e.message
     return [400, headers.update(JSON.parse(e.message)), '']
   end
 
