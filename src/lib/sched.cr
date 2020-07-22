@@ -90,7 +90,7 @@ class Sched
             job = find_job(hostname, 10)
             if job
                 Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
-                return get_job_boot(job)
+                return get_boot_ipxe(job)
             end
         end
 
