@@ -18,21 +18,20 @@ post '/git_command' do
   rescue JSON::ParserError
     return JSON.dump({ 'status': 100, 'errmsg': 'parse json error' })
   end
-  # check if the parameters are complete
-  params_complete_result = check_params_complete(data)
-  return params_complete_result if params_complete_result
 
-  # check whether the git_command parameter meets the requirements
-  git_command_check_result = check_git_params(data['git_command'])
-  return git_command_check_result if git_command_check_result
-
-  # check if git_command contains illegal characters
-  check_illegal_char_result = check_illegal_char(data['git_command'])
-  return check_illegal_char_result if check_illegal_char_result
-
-  # check if git repository exists
-  repo_path = File.join(GIT, data['project'], data['developer_repo'])
-  return JSON.dump({ 'status': 200, 'errmsg': 'repository not exists' }) unless File.exist?(repo_path)
+  begin
+    # check if the parameters are complete
+    check_params_complete(data)
+    # check whether the git_command parameter meets the requirements
+    check_git_params(data['git_command'])
+    # check if git_command contains illegal characters
+    check_illegal_char(data['git_command'])
+    # check if git repository exists
+    repo_path = File.join(GIT, data['project'], data['developer_repo'])
+    raise JSON.dump({ 'status': 200, 'errmsg': 'repository not exists' }) unless File.exist?(repo_path)
+  rescue StandardError => e
+    return e.message
+  end
 
   # execute git command
   Dir.chdir(repo_path)
@@ -45,25 +44,24 @@ post '/git_command' do
 end
 
 def check_git_params(git_command)
-  return JSON.dump({ 'status': 104, 'errmsg': 'git_command params type error' }) if git_command.class != Array
-  return JSON.dump({ 'status': 105, 'errmsg': 'git_command length error' }) if git_command.length < 2
+  raise JSON.dump({ 'status': 104, 'errmsg': 'git_command params type error' }) if git_command.class != Array
+  raise JSON.dump({ 'status': 105, 'errmsg': 'git_command length error' }) if git_command.length < 2
+  raise JSON.dump({ 'status': 107, 'errmsg': 'not git-* command' }) unless git_command[0].start_with? 'git-'
 
-  JSON.dump({ 'status': 107, 'errmsg': 'not git-* command' }) unless git_command[0].start_with? 'git-'
   git_command[0] = "/usr/lib/git-core/#{git_command[0]}"
   return nil
 end
 
 def check_params_complete(params)
-  return JSON.dump({ 'status': 101, 'errmsg': 'no project params' }) unless params.key?('project')
-  return JSON.dump({ 'status': 102, 'errmsg': 'no developer_repo params' }) unless params.key?('developer_repo')
-  return JSON.dump({ 'status': 103, 'errmsg': 'no git_command params' }) unless params.key?('git_command')
+  raise JSON.dump({ 'status': 101, 'errmsg': 'no project params' }) unless params.key?('project')
+  raise JSON.dump({ 'status': 102, 'errmsg': 'no developer_repo params' }) unless params.key?('developer_repo')
+  raise JSON.dump({ 'status': 103, 'errmsg': 'no git_command params' }) unless params.key?('git_command')
 end
 
 def check_illegal_char(git_command)
-  return unless git_command.length > 1
-
   detected_string = git_command.join
   ILLEGAL_SHELL_CHAR.each do |char|
-    return JSON.dump({ 'status': 108, 'errmsg': 'git_command params illegal' }) if detected_string.include?(char)
+    raise JSON.dump({ 'status': 108, 'errmsg': 'git_command params illegal' }) if detected_string.include?(char)
   end
+  nil
 end
