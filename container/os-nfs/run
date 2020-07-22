@@ -7,11 +7,14 @@ lsmod | grep -q "^nfsd\s" || {
 	sudo modprobe nfsd
 }
 
+# Several nfs servers running will cause conflict, so rm an old before running a new nfs server docker.
+docker rm -f os-nfs
+
 cmd=(
 	docker run
 	--restart=always
 #	-it
-#	--name os
+	--name os-nfs
 	-e NFS_DISABLE_VERSION_3=1
 	-v /srv/os:/exports/os:ro
 	-v /srv/os:/exports/os-rw	 # for install/setup
