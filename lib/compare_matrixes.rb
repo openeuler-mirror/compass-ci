@@ -113,6 +113,8 @@ def get_matrixes_values(matrixes_list)
   matrixes_values = { false => {}, true => {} }
   matrixes_size = get_matrixes_size(matrixes_list)
   get_matrixes_fields(matrixes_list).each do |field|
+    next if field == 'stats_source'
+
     success = success?(field)
     matrixes_values[success][field] = get_values_by_field(matrixes_list, field, matrixes_size, success)
   end
