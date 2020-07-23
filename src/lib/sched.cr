@@ -192,7 +192,7 @@ class Sched
             timestamp = Time.local.to_unix
             testbox = tbox_name
             time = Time.unix(timestamp).to_s("%Y-%m-%d %H:%M:%S")
-            tbox_stats = "#{time}: #{tbox_state}"
+            tbox_stats = "#{time} #{tbox_state}"
             array << tbox_stats
         end
 
