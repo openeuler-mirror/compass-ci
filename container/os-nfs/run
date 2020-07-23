@@ -14,7 +14,7 @@ cmd=(
 	docker run
 	--restart=always
 #	-it
-	--name os-nfs
+	--name os-nfs # avoid multiple containers
 	-e NFS_DISABLE_VERSION_3=1
 	-v /srv/os:/exports/os:ro
 	-v /srv/os:/exports/os-rw	 # for install/setup
