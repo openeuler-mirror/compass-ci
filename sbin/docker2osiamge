@@ -9,25 +9,30 @@ arch="$(uname -m)"
 rootdir="./$(echo "$image" | sed 's/[^a-zA-Z0-9_]/-/g')"
 image_name="$(echo "$image" | cut -d '/' -f 2 | cut -d ':' -f 1)-$arch.cgz"
 
-if [ $UID -ne 0 ];then 
+if [ $UID -ne 0 ]; then 
 	 echo "Please run with root user" 
 	 exit 1
 fi
 
-if [ -z "$image" ];then 
+if [ -z "$image" ]; then 
 	 echo "Usage: $0 image" 
 	 exit 2
 fi
 
 echo "LOG: Now install docker"
-if [ $(command -v yum) ];then
-	yum -y repolist
-	yum -y install docker
-fi
 
-if [ $(command -v apt-get) ];then
-	apt-get -y update
-	apt-get -y install docker.io
+if  command -v docker >/dev/null; then
+	true
+else
+	if  command -v yum >/dev/null; then
+		yum -y repolist
+		yum -y install docker
+	fi
+
+	if command -v apt-get >/dev/null; then
+		apt-get -y update
+		apt-get -y install docker.io
+	fi
 fi
 
 echo "LOG: Pulling $image"
