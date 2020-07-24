@@ -11,6 +11,7 @@ pkgs=(
 	ruby-dev
 	bridge-utils
 	qemu
+	dmidecode
 )
 
 apt-get install -y "${pkgs[@]}"

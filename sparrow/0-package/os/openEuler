@@ -13,6 +13,7 @@ pkgs=(
 	qemu
 	lvm2
 	docker-engine
+	dmidecode
 )
 
 yum install -y "${pkgs[@]}"
