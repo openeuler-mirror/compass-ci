@@ -1,0 +1,19 @@
+#!/usr/bin/expect
+#
+# This file is called by script main in container
+# convert qcow2 file to tar.gz
+
+set qcow2_file [lindex $argv 0]
+set tar_out_file [lindex $argv 1]
+
+puts "[exec date +'%D_%T'] Entering guest filesystem shell and mount qcow2 file: $qcow2_file"
+set timeout 30
+spawn /usr/bin/guestfish -i --ro -a $qcow2_file
+expect "><fs>"
+
+puts "[exec date +'%D_%T'] Compressing file to $tar_out_file"
+send "tar-out / $tar_out_file compress:gzip numericowner:true xattrs:true selinux:true acls:true\n"
+set timeout 600
+puts "Please wait until command returned..."
+expect "><fs>"
+send "exit"

@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 
-source "$(dirname $(realpath "$0"))/bin/common"
+source "$(dirname $(realpath $0))/bin/common"
 
 # password for rootfs under $HOME/.config/crystal-ci/rootfs.passwd with mode 700
 # - password will be changed based on specified config file
