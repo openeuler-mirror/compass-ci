@@ -3,7 +3,7 @@
 [[ $CCI_SRC ]] || export CCI_SRC=$(dirname $(dirname $(dirname $(realpath $0))))
 CONTAINER_PATH="$CCI_SRC/container"
 
-git checkout 35ecf8b5b1a743aee939c639ac0696fdc87ef9c5
+git checkout 0dd9b39f066a582626d4b3e7aeb6925c9ac83e7a
 
 for dir in $CONTAINER_PATH/*
 do
