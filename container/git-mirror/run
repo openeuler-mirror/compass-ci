@@ -9,6 +9,7 @@ cmd = %W[
   docker run
   --restart=always
   --name git-mirror
+  -u 1090:1999
   -d
   -e LKP_SRC=#{DOCKER_LKP}
   -e CCI_SRC=#{DOCKER_CCI}
@@ -19,5 +20,5 @@ cmd = %W[
   alpine311:git-mirror
 ]
 
-cmd += ['ruby', 'git-mirror.rb']
+cmd += ['sh', '-c', 'umask 002 && ./git-mirror.rb']
 system(*cmd)
