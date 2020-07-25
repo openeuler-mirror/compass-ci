@@ -1,11 +1,13 @@
 #!/bin/bash
 
 [ -d "$1" -a -n "$2" ] || {
-	echo "Example usage:
+	cat << 'EOF'
+	Example usage:
 	1> ./run /os/centos/aarch64/76 pack1 pack2 ...
-	2> ./run /os/centos/aarch64/76 \$(./getpackages \$distro)
-	distro is an adaption file contain packages map from debian to other os,
-	the whole path is '\$LKP_SRC/distro/adaptation/\$distro'"
+	2> ./run /os/centos/aarch64/76 $(show-depends-packages $distro)
+	distro is an adaption file contain packages mapping from debian to other os,
+	the whole path is '$LKP_SRC/distro/adaptation/$distro', default $distro is centos
+EOF
 	exit
 }
 
