@@ -59,24 +59,24 @@ check_qcow2_file() {
 }
 
 init_rootfs_dir() {
-	[ -d "$1" ] || {
-		local limit_prompt_times current_prompt_time
-		limit_prompt_times=3
-		current_prompt_time=0
-		while true
-		do
-			read -r -p "[WARNNING] Do you want to create \"$1\"? [y|n]> " if_create
-			if [ "$if_create" == 'y' ]; then break
-			elif [ "$if_create" == 'n' ]; then echo "[ERROR] User cancelled running." ; exit
-			else
-				current_prompt_time=$((current_prompt_time + 1))
-				[ $current_prompt_time -ge $limit_prompt_times ] && {
-					echo "[ERROR] Exit for Prompt times limit."
-					exit 3
-				}
-			fi
-		done
-	}
+	[ -d "$1" ] && return
+
+	local limit_prompt_times current_prompt_time
+	limit_prompt_times=3
+	current_prompt_time=0
+	while true
+	do
+		read -r -p "[WARNING] Do you want to create \"$1\"? [y|n]> " if_create
+
+		[ "$if_create" == 'y' ] && break
+		[ "$if_create" == 'n' ] && echo "[ERROR] User cancelled running." && exit
+
+		current_prompt_time=$((current_prompt_time + 1))
+		[ $current_prompt_time -ge $limit_prompt_times ] && {
+			echo "[ERROR] Exit for Prompt times limit."
+			exit 3
+		}
+	done
 }
 
 check_passwd_file() {
