@@ -30,9 +30,19 @@ end
 # main thread
 class MirrorMain
   def initialize
+    @fork_stat = {}
     @git_info = {}
     @git_queue = SizedQueue.new(10)
     load_fork_info
+  end
+
+  def fork_stat_init(stat_key)
+    @fork_stat[stat_key] = {
+      queued: false,
+      priority: 0,
+      fetch_time: nil,
+      new_refs_time: nil
+    }
   end
 
   def load_project_dir(repodir, project)
@@ -42,6 +52,7 @@ class MirrorMain
     fork_list.each do |fork_name|
       @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open("#{project_dir}/#{fork_name}"))
       @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
+      fork_stat_init("#{project}/#{fork_name}")
     end
   end
 
@@ -65,8 +76,10 @@ class MirrorMain
 
   def fork_loop
     loop do
-      @git_info.each do |_key, value|
-        fork_info = value
+      @git_info.each do |key, fork_info|
+        next if @fork_stat[key][:queued]
+
+        @fork_stat[key][:queued] = true
         @git_queue.push(fork_info)
         sleep(10)
       end
