@@ -10,6 +10,7 @@ dirs=(
 	/srv/redis
 	/srv/result
 	/srv/cci/scheduler
+	/tftpboot
 )
 
 mkdir -p "${dirs[@]}"
