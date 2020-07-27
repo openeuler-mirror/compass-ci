@@ -50,7 +50,6 @@ class Sched
 
     private def get_boot_container(job : Job)
         respon = Hash(String, String).new
-        respon["status"] = "1"
         respon["docker_image"] = "#{job.docker_image}"
         respon["lkp"] = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz"
         respon["job"] = "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
@@ -75,7 +74,7 @@ class Sched
         when "ipxe"
           return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
         when "container"
-          return job ? get_boot_container(job) : {"status" => "0"}.to_json
+          return job ? get_boot_container(job) : Hash(String, String).new.to_json
         end
     end
 
