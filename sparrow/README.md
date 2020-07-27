@@ -14,23 +14,12 @@ Prepare:
 		git: suggest 2.23.0
 	
 	3. network
-		Internet is availiable
+		Internet is available
 
-	4. /srv/os, /os for rootfs
+	4. /os for store rootfs
 		>= 300G
 
 Steps:
 	1. git clone https://gitee.com/openeuler/crystal-ci.git
 	2. cd crystal-ci/sparrow
 	3. ./install-tiny.sh
-
-
-# storage
-
-A reasonble setup is to prepare standalone partitions for
-- /var/lib/docker
-- /srv
-
-A larger setup example `sbin/llvm.sh `
-
-
