@@ -2,7 +2,7 @@
 # For your reference only.
 # It's better to run the below scripts step by step.
 
-[[ $CCI_SRC ]] || export CCI_SRC=$(cd $(dirname $(realpath $0));git rev-parse --show-toplevel)
+[[ $CCI_SRC ]] || export CCI_SRC=$(cd $(dirname $(realpath $0)); git rev-parse --show-toplevel)
 cd $CCI_SRC/sparrow || exit
 
 0-package/install.sh
