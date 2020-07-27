@@ -23,4 +23,6 @@ cmd=(
 	yum install -y --skip-broken --installroot=/mnt/root $packages
 )
 
-"${cmd[@]}" | tee install.log
+os=$(echo "$rootdir" | awk -F '/' '{print $3}')
+echo "rootdir=$rootdir" | tee install-$os.log 
+"${cmd[@]}" | tee -a install-$os.log
