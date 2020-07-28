@@ -6,5 +6,5 @@ RUN apk update && \
     apk add ruby-dev make gcc g++
 
 RUN umask 002 && \
-    gem install bunny json
+    gem install bunny json priority_queue
 
