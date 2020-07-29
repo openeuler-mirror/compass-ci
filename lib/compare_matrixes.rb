@@ -50,10 +50,7 @@ def fill_missing_with_zeros(value_list, matrix_size)
 end
 
 def success?(field)
-  FAILURE_PATTERNS.each do |pattern|
-    return false if field =~ /^#{pattern}/
-  end
-  true
+  FAILURE_PATTERNS.all? { |pattern| field !~ /^#{pattern}/ }
 end
 
 def standard_deviation(value_list, average, length)
@@ -67,7 +64,6 @@ def latency?(field)
 end
 
 # Core
-
 def get_values(value_list, success)
   # get values(type: Hash) that include :average, :runs, :stddev_percent, ...
   #
@@ -215,28 +211,48 @@ end
 def format_runs_fails(runs, fails)
   runs_width = (SUB_LONG_COLUMN_WIDTH * 3 / 4).to_i
   fails_width = SUB_LONG_COLUMN_WIDTH - runs_width - 3
-  runs_str = get_suitable_number_str(runs, runs_width, "%#{runs_width}d")
-  fails_str = get_suitable_number_str(fails, fails_width, "%-#{fails_width}d")
+  runs_str = get_suitable_number_str(
+    runs,
+    runs_width,
+    "%#{runs_width}d"
+  )
+  fails_str = get_suitable_number_str(
+    fails,
+    fails_width,
+    "%-#{fails_width}d"
+  )
   runs_str + ' : ' + fails_str
 end
 
 def format_reproduction(reproduction)
-  reproduction_str = get_suitable_number_str(reproduction, SUB_SHORT_COLUMN_WIDTH, '%+.1f%%')
+  reproduction_str = get_suitable_number_str(
+    reproduction,
+    SUB_SHORT_COLUMN_WIDTH,
+    '%+.1f%%'
+  )
   format("%-#{SUB_SHORT_COLUMN_WIDTH}s", reproduction_str)
 end
 
 def format_change(change)
   return format("%-#{SUB_SHORT_COLUMN_WIDTH}d", 0) unless change
 
-  change_str = get_suitable_number_str(change, SUB_SHORT_COLUMN_WIDTH - 2, '%+.1f%%')
+  change_str = get_suitable_number_str(
+    change,
+    SUB_SHORT_COLUMN_WIDTH - 2,
+    '%+.1f%%'
+  )
   format("%-#{SUB_SHORT_COLUMN_WIDTH}s", change_str)
 end
 
 def format_stddev_percent(stddev_percent, average_width)
   if stddev_percent
-    if stddev_percent.abs != 0
+    if stddev_percent != 0
       percent_width = SUB_LONG_COLUMN_WIDTH - average_width - 4
-      percent_str = get_suitable_number_str(stddev_percent, percent_width, "%#{percent_width}d")
+      percent_str = get_suitable_number_str(
+        stddev_percent.abs,
+        percent_width,
+        "%#{percent_width}d"
+      )
       # that symbol print width is 2
       return " ±#{percent_str}%"
     end
@@ -245,8 +261,14 @@ def format_stddev_percent(stddev_percent, average_width)
 end
 
 def format_stddev(average, stddev_percent)
-  average_width = (SUB_LONG_COLUMN_WIDTH * STDDEV_AVERAGE_PROPORTION).to_i
-  average_str = get_suitable_number_str(average.round(2), average_width, "%#{average_width}.2f")
+  average_width = (
+    SUB_LONG_COLUMN_WIDTH * STDDEV_AVERAGE_PROPORTION
+  ).to_i
+  average_str = get_suitable_number_str(
+    average.round(2),
+    average_width,
+    "%#{average_width}.2f"
+  )
   percent_str = format_stddev_percent(stddev_percent, average_width)
   format("%-#{SUB_LONG_COLUMN_WIDTH}s", average_str + percent_str)
 end
@@ -268,8 +290,8 @@ def get_title(common_title, compare_title, matrixes_number)
   print_column = INTERVAL_BLANK + compare_title
   print_column += ' ' * (COLUMN_WIDTH - common_title.length - compare_title.length)
   print_column += common_title
-  format("%#{SUB_LONG_COLUMN_WIDTH + INTERVAL_WIDTH}s", common_title) + print_column \
-    * (matrixes_number - 1) + "\n"
+  print_str = format("%#{SUB_LONG_COLUMN_WIDTH + INTERVAL_WIDTH}s", common_title)
+  print_str + print_column * (matrixes_number - 1) + "\n"
 end
 
 def get_base_matrix_title_symbol(common_title)
@@ -281,7 +303,7 @@ end
 def get_other_matrixes_title_symbol(common_title, compare_title, matrixes_number)
   print_buf = ' ' * ((INTERVAL_WIDTH + COLUMN_WIDTH) * (matrixes_number - 1))
   start_point = 0
-  (1...matrixes_number).each do |_i|
+  (1...matrixes_number).each do |_|
     start_point += INTERVAL_WIDTH
     print_buf[start_point + compare_title.length / 2] = '|'
     start_point += COLUMN_WIDTH
@@ -302,11 +324,13 @@ def get_title_bar(common_title, compare_title, matrixes_number)
 end
 
 def get_suitable_number_str(number, length, format_pattern)
-  # if number string length can't < target length, transform number string to scientific notation string
+  # if number string length can't < target length,
+  # transform number string to scientific notation string
   #
   number_length = length - 5
   number_length -= 1 if number.negative?
-  return format(format_pattern, number) if Math.log(number.abs, 10) < length || number_length.negative?
+  suitable = Math.log(number.abs, 10) < length || number_length.negative?
+  return format(format_pattern, number) if suitable
 
   format("%.#{number_length}e", number)
 end
