@@ -67,7 +67,7 @@ end
 # Core
 
 def get_values(value_list, success)
-  # get values(type: Hash) that include 'average', 'runs', 'stddev_percent', ...
+  # get values(type: Hash) that include :average, :runs, :stddev_percent, ...
   #
   sum = value_list.sum
   length = value_list.length
@@ -78,9 +78,9 @@ def get_values(value_list, success)
          standard_deviation(value_list, average, length) * 100 / average
        ).to_i
     end
-    { 'average' => average, 'stddev_percent' => stddev_percent }
+    { average: average, stddev_percent: stddev_percent }
   else
-    { 'average' => average, 'runs' => sum, 'fails' => length }
+    { average: average, runs: sum, fails: length }
   end
 end
 
@@ -97,15 +97,15 @@ def get_compare_value(base_value_average, value_average, success)
 end
 
 def get_values_by_field(matrixes_list, field, matrixes_size, success)
-  # get values by field, values struce example: values[0]['average']
+  # get values by field, values struce example: values[0][:average]
   #
   values = {}
   (0...matrixes_list.length).each do |index|
     values[index] = get_values(fill_missing_with_zeros(matrixes_list[index][field], matrixes_size[index]), success)
     next if index.zero?
 
-    compare_str = success ? 'change' : 'reproduction'
-    values[index][compare_str] = get_compare_value(values[0]['average'], values[index]['average'], success)
+    compare_str = success ? :change : :reproduction
+    values[index][compare_str] = get_compare_value(values[0][:average], values[index][:average], success)
   end
   values
 end
@@ -258,13 +258,13 @@ def get_header(matrixes_number, success)
 end
 
 def print_success_values(values, index)
-  print format_change(values['change']) unless index.zero?
-  print format_stddev(values['average'], values['stddev_percent'])
+  print format_change(values[:change]) unless index.zero?
+  print format_stddev(values[:average], values[:stddev_percent])
 end
 
 def print_failure_values(values, index)
-  print format_reproduction(values['reproduction']) unless index.zero?
-  print format_runs_fails(values['runs'], values['fails'])
+  print format_reproduction(values[:reproduction]) unless index.zero?
+  print format_runs_fails(values[:runs], values[:fails])
 end
 
 def print_values(matrixes, success)
