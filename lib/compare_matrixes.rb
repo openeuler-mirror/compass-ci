@@ -54,6 +54,16 @@ def success?(field)
   true
 end
 
+def standard_deviation(value_list, average, length)
+  Math.sqrt(
+    value_list.reduce { |result, v| result + (v - average)**2 } / length.to_f
+  )
+end
+
+def latency?(field)
+  LATENCY_PATTERNS.any? { |pattern| field =~ /^#{pattern}/ }
+end
+
 # Core
 
 def get_values(value_list, success)
@@ -63,8 +73,11 @@ def get_values(value_list, success)
   length = value_list.length
   average = sum / length
   if success
-    stddev_percent = nil
-    stddev_percent = (value_list.standard_deviation * 100 / average).to_i if length > 1 && average != 0
+    if length > 1 && average != 0
+      stddev_percent = (
+         standard_deviation(value_list, average, length) * 100 / average
+       ).to_i
+    end
     { 'average' => average, 'stddev_percent' => stddev_percent }
   else
     { 'average' => average, 'runs' => sum, 'fails' => length }
