@@ -22,6 +22,7 @@ system "docker rm -f #{service_name}-#{service_port}"
 cmd = %W[
   docker run
   --name #{service_name}-#{service_port}
+  --restart=always
   -d
   -u 1090:1090
   -p #{service_port}:3060
