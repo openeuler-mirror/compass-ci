@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+LKP_SRC ||= ENV['LKP_SRC'] || File.dirname(__dir__)
 require 'set'
+require "#{LKP_SRC}/lib/stats"
 
 COLUMN_WIDTH = 38 # print column width
 INTERVAL_WIDTH = 3 # width of interval that between column
@@ -18,8 +20,8 @@ FIELD_STR = 'field'
 RUNS_FAILS_STR = 'runs:fails'
 REPRODUCTION_STR = 'reproduction'
 
-LKP_SRC ||= ENV['LKP_SRC'] || File.dirname(__dir__)
 FAILURE_PATTERNS = IO.read("#{LKP_SRC}/etc/failure").split("\n")
+LATENCY_PATTERNS = IO.read("#{LKP_SRC}/etc/latency").split("\n")
 
 # Tools
 
@@ -72,15 +74,19 @@ def get_values(value_list, success)
   sum = value_list.sum
   length = value_list.length
   average = sum / length
+  sorted = value_list.sort
   if success
+    stddev_percent = nil
     if length > 1 && average != 0
       stddev_percent = (
-         standard_deviation(value_list, average, length) * 100 / average
-       ).to_i
+        standard_deviation(value_list, average, length) * 100 / average
+      ).to_i
     end
-    { average: average, stddev_percent: stddev_percent }
+    { average: average, stddev_percent: stddev_percent,
+      min: sorted[0], max: sorted[-1], sorted: sorted }
   else
-    { average: average, runs: sum, fails: length }
+    { average: average, runs: sum, fails: length,
+      min: sorted[0], max: sorted[-1], sorted: sorted }
   end
 end
 
@@ -96,17 +102,58 @@ def get_compare_value(base_value_average, value_average, success)
   end
 end
 
-def get_values_by_field(matrixes_list, field, matrixes_size, success)
+def field_changed?(base_values, values, success, field, options)
+  # check matrix field if changed
+  #
+  changed_stats?(
+    values[:sorted], values[:min],
+    values[:average], values[:max],
+    base_values[:sorted], base_values[:min],
+    base_values[:average], base_values[:max],
+    !success,
+    latency?(field),
+    field,
+    options
+  )
+end
+
+def set_compare_values(index, values, field, success, options)
+  # set compare values, example average/ reproduction and check if changed
+  #
+  compare_str = success ? :change : :reproduction
+  values[index][compare_str] = get_compare_value(
+    values[0][:average],
+    values[index][:average],
+    success
+  )
+  values[:changed] |= field_changed?(
+    values[0],
+    values[index],
+    success,
+    field,
+    options
+  )
+end
+
+def get_values_by_field(matrixes_list, field, matrixes_size, success, options)
   # get values by field, values struce example: values[0][:average]
   #
   values = {}
-  (0...matrixes_list.length).each do |index|
-    values[index] = get_values(fill_missing_with_zeros(matrixes_list[index][field], matrixes_size[index]), success)
+  matrixes_list.length.times do |index|
+    value_list = fill_missing_with_zeros(
+      matrixes_list[index][field],
+      matrixes_size[index]
+    )
+    values[index] = get_values(value_list, success)
     next if index.zero?
 
-    compare_str = success ? :change : :reproduction
-    values[index][compare_str] = get_compare_value(values[0][:average], values[index][:average], success)
+    set_compare_values(
+      index, values,
+      field, success,
+      options
+    )
   end
+
   values
 end
 
@@ -120,7 +167,7 @@ def get_matrixes_fields(matrixes_list)
   matrixes_fields
 end
 
-def get_matrixes_values(matrixes_list)
+def get_matrixes_values(matrixes_list, options)
   # get all matrixes all field values
   #
   matrixes_values = { false => {}, true => {} }
@@ -129,19 +176,35 @@ def get_matrixes_values(matrixes_list)
     next if field == 'stats_source'
 
     success = success?(field)
-    matrixes_values[success][field] = get_values_by_field(matrixes_list, field, matrixes_size, success)
+    matrixes_values[success][field] = get_values_by_field(
+      matrixes_list, field,
+      matrixes_size, success, options
+    )
   end
   matrixes_values
 end
 
-def compare_matrixes(matrixes_list)
+def remove_unchanged_field(matrixes_values)
+  # remove unchanged field from matrixes valus and remove :changed key
+  #
+  matrixes_values.each_key do |success|
+    matrixes_values[success].delete_if do |field|
+      !matrixes_values[success][field].delete(:changed)
+    end
+  end
+end
+
+def compare_matrixes(matrixes_list, options = {})
   # compare matrix in matrixes_list and print info
   #
   # @matrixes_list: list consisting of matrix
+  # @options: compare options, type: hash
   #
-  matrixes_value = get_matrixes_values(matrixes_list)
-  print_result(matrixes_value, matrixes_list.length, false)
-  print_result(matrixes_value, matrixes_list.length, true)
+  options = { 'perf-profile': 5 }.merge(options)
+  matrixes_values = get_matrixes_values(matrixes_list, options)
+  remove_unchanged_field(matrixes_values)
+  print_result(matrixes_values, matrixes_list.length, false)
+  print_result(matrixes_values, matrixes_list.length, true)
 end
 
 # Format Output
