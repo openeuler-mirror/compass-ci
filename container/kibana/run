@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+system 'docker rm -f kibana'
+
+cmd = %w[
+  docker run
+  --restart=always
+  --name kibana
+  -d
+  --link logging-es:elasticsearch
+  -p 11309:5601
+  kibana:7.6.2
+]
+
+system(*cmd)
