@@ -3,7 +3,6 @@
 cmd=(
 	docker run
 	--restart=always
-	-it
 	-p 11300:80
 	-v /srv/pub:/usr/share/nginx/html/srv/pub:ro
 	-d

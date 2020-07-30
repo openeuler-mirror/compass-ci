@@ -2,7 +2,6 @@
 
 cmd=(
 	docker run
-	-i
 	--rm
 	-v $PWD:/shellbox
 	shellcheck

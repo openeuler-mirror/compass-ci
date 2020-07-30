@@ -3,7 +3,6 @@
 cmd=(
 	docker run 
 	--restart=always
-	-it
 	-v debian-home:/home
 	-v debian-root:/root
 	-v /c:/c

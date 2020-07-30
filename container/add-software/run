@@ -17,7 +17,6 @@ packages="${*:2}"
 cmd=(
 	docker run
 	--rm
-	-it
 	-v "$rootdir":/mnt/root
 	addsoftware:auto
 	yum install -y --skip-broken --installroot=/mnt/root $packages

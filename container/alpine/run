@@ -3,7 +3,6 @@
 cmd=(
 	docker run
 	--restart=always
-	-it
 	-d
 	-v alpine-home:/home
 	-v alpine-root:/root

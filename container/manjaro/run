@@ -3,7 +3,6 @@
 cmd=(
 	docker run
 	--restart=always
-	-it
 	-v manjaro-home:/home
 	-v manjaro-root:/root
 	-v /c:/c

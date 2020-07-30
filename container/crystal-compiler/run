@@ -14,7 +14,6 @@ cmd=(
 	docker run
 	-u $UID
 	--rm
-	-it
 	-v $v_dir:$v_dir
 	-w $PWD
 	alpine:crystal-complier

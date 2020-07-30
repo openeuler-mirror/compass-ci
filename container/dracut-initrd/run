@@ -22,7 +22,6 @@ initrd_output=/boot/initramfs.lkp-${kver}.img
 cmd=(
 	docker run
 	--rm
-	-it
 	-v $root/boot:/boot
 	-v $root/lib/modules:/lib/modules
 	debian:dracut
