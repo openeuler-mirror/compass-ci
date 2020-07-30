@@ -33,11 +33,11 @@ vgcreate vg-image /dev/sde /dev/sdf
 lvcreate --type raid1 --size 300G -n lv-initrd vg-image
 mkfs.ext4 /dev/vg-image/lv-initrd
 
-# large HDD: package repos; data not important
-pvcreate /dev/sdg
-vgcreate vg-cdn /dev/sdg
-lvcreate --size 300G -n lv-openeuler vg-cdn
-mkfs.ext4 /dev/vg-cdn/lv-openeuler
+# large HDD: proxy cache
+pvcreate /dev/sdk
+vgcreate vg-cache /dev/sdk
+lvcreate --size 300G -n lv-cache vg-cache
+mkfs.ext4 /dev/vg-cache/lv-cache
 
 # large HDD: archive
 pvcreate /dev/sdh
@@ -60,7 +60,7 @@ mkfs.ext4 /dev/vg-crystal/lv-crystal
 # mkfs.ext4 /dev/vg-result/lv-result
 
 # fast SSD: git mirror
-pvcreate /dev/sdk
+pvcreate /dev/sdg
 vgcreate vg-git /dev/sdg
 lvcreate --size 300G -n lv-git vg-git
 mkfs.ext4 /dev/vg-git/lv-git
@@ -80,6 +80,7 @@ cat >> /etc/fstab <<EOF
 /dev/vg-result/lv-result            /srv/result      ext4  defaults        0       0
 /dev/vg-image/lv-initrd 	    /srv/initrd	     ext4  defaults        0       0
 /dev/vg-git/lv-git                  /srv/git         ext4  defaults        0       0
+/dev/vg-cache/lv-cache              /srv/cache       ext4  defaults        0       0
 /dev/vg-crystal/lv-crystal          /cci             ext4  defaults        0       0
 /dev/vg-archive/lv-backup           /backup          ext4  defaults        0       0
 /dev/vg-os/lv-docker                /var/lib/docker  ext4  defaults        0       0
@@ -100,6 +101,7 @@ mount /srv/os
 mount /srv/result
 mount /srv/initrd
 mount /srv/git
+mount /srv/cache
 mkdir -p /cci
 mount /cci
 mkdir -p /backup
