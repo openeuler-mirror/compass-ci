@@ -14,5 +14,3 @@ dirs=(
 )
 
 mkdir -p "${dirs[@]}"
-chgrp lkp /srv/result
-chmod 775 /srv/result

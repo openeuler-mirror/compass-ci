@@ -7,6 +7,7 @@ cd $CCI_SRC/sparrow || exit
 
 0-package/install.sh
 1-storage/tiny.sh
+1-storage/permission.sh
 2-network/br0.sh
 2-network/iptables
 2-network/nfs.sh
