@@ -21,4 +21,6 @@ RUN umask 002 &&\
     gem install io-console &&\
     gem install etc
 
-EXPOSE 24224 24224/udp 8888
+COPY --chown=1090:1090 docker-fluentd.conf /fluentd/etc/docker-fluentd.conf
+
+EXPOSE 24224 24224/udp
