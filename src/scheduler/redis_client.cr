@@ -38,8 +38,8 @@ class Redis::Client
         Job.new(JSON.parse(job_hash))
     end
 
-    def update_wtmp(testbox : String, array : Array)
-        @client.lpush("queues/sched/#{testbox}/tbox_stats", array)
+    def update_wtmp(testbox : String, wtmp_hash : Hash)
+        @client.hset("sched/tbox_wtmp", testbox, wtmp_hash.to_json)
     end
 
     def update_job(job_content : JSON::Any | Hash)

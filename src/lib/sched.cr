@@ -189,16 +189,26 @@ class Sched
 
     def update_tbox_wtmp(env : HTTP::Server::Context)
         testbox = ""
-        array = [] of String
-        if (tbox_name = env.params.query["tbox_name"]?) && (tbox_state = env.params.query["tbox_state"]?)
-            timestamp = Time.local.to_unix
-            testbox = tbox_name
-            time = Time.unix(timestamp).to_s("%Y-%m-%d %H:%M:%S")
-            tbox_stats = "#{time} #{tbox_state}"
-            array << tbox_stats
+        hash = Hash(String, String).new
+
+        timestamp = Time.local.to_unix
+        time = Time.unix(timestamp).to_s("%Y-%m-%d %H:%M:%S")
+        hash["time"] = time
+
+        %w(mac ip job_id tbox_name tbox_state).each do |parameter|
+            if (value = env.params.query[parameter]?)
+                case parameter
+                when "tbox_name"
+                    testbox = value
+                when "tbox_state"
+                    hash["state"] = value
+                else
+                    hash[parameter] = value
+                end
+            end
         end
 
-        @redis.update_wtmp(testbox, array)
+        @redis.update_wtmp(testbox, hash)
     end
 
     def close_job(job_id : String)
