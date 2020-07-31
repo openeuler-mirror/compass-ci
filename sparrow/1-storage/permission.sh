@@ -2,3 +2,5 @@
 
 chgrp lkp /srv/result
 chmod 775 /srv/result
+
+chmod 775 /srv/es
