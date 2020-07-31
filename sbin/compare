@@ -1,0 +1,86 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Usage:
+#       compare "group1_conditions" "group2_conditions" ...
+# Eg:
+#       compare "id=6000,6001" "id=7000,7001"
+#       compare "os=debian" "os=centos" -c "suite=iperf"
+#       compare "commit=a12d232e" "commit=b3bacc31"
+
+require 'optparse'
+require_relative '../lib/es_query.rb'
+require_relative '../container/lab.rb'
+require_relative '../lib/matrix2.rb'
+require_relative '../lib/compare_matrixes.rb'
+
+config = cci_defaults
+ES_HOST = config['ES_HOST'] || '172.17.0.1'
+ES_PORT = config['ES_PORT'] || 9200
+
+common_conditions = nil
+
+opt_parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: compare "group1_conditions" "group2_conditions" ... -c "common_conditions"'
+
+  opts.separator ''
+  opts.separator 'a conditions can be "id=100, ..." or "suite=iperf os=debian ..."'
+  opts.separator ''
+  opts.separator 'options:'
+
+  opts.on('-c', '--common common_conditions', 'common conditions of all group_conditions') do |c|
+    common_conditions = c
+  end
+
+  opts.on_tail('-h', '--help', 'show this message') do
+    puts opts
+    exit
+  end
+end
+
+argv = if ARGV == []
+         ['-h']
+       else
+         ARGV
+       end
+opt_parser.parse!(argv)
+
+def parse_conditions(items)
+  items_hash = {}
+  items.each do |i|
+    key, value = i.split('=')
+    if key && value
+      value_list = value.split(',')
+      items_hash[key] = value_list.length > 1 ? value_list : value
+    else
+      puts 'error: condition missing'
+      exit
+    end
+  end
+  items_hash
+end
+
+def parse_argv(common_conditions)
+  conditions = []
+  ARGV.each do |item|
+    item += ' ' + common_conditions unless common_conditions.nil?
+    items = item.split(' ')
+    hash = parse_conditions(items)
+    conditions << hash
+  end
+  conditions
+end
+
+def create_matrices_list(conditions)
+  matrices = []
+  es = ESQuery.new(ES_HOST, ES_PORT)
+  conditions.each do |condition|
+    results = es.multi_field_query(condition)
+    matrices << combine_query_data(results)
+  end
+  matrices
+end
+
+condition_list = parse_argv(common_conditions)
+matrices_list = create_matrices_list(condition_list)
+compare_matrixes(matrices_list)
