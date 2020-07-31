@@ -6,4 +6,4 @@ require "#{ENV['CCI_SRC']}/lib/git_mirror"
 git_mirror = MirrorMain.new
 
 git_mirror.create_workers
-git_mirror.fork_loop
+git_mirror.main_loop

@@ -2,6 +2,10 @@
 
 require 'yaml'
 require 'fileutils'
+require 'bunny'
+require 'json'
+# gem install PriorityQueue
+require 'priority_queue'
 
 # worker threads
 class GitMirror
@@ -84,9 +88,15 @@ class MirrorMain
   def initialize
     @feedback_queue = Queue.new
     @fork_stat = {}
+    @priority = 0
+    @priority_queue = PriorityQueue.new
     @git_info = {}
-    @git_queue = SizedQueue.new(10)
+    @git_queue = Queue.new
     load_fork_info
+    connection = Bunny.new('amqp://172.17.0.1:5672')
+    connection.start
+    channel = connection.create_channel
+    @message_queue = channel.queue('new_refs')
   end
 
   def fork_stat_init(stat_key)
@@ -106,6 +116,8 @@ class MirrorMain
       @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open("#{project_dir}/#{fork_name}"))
       @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
       fork_stat_init("#{project}/#{fork_name}")
+      @priority_queue.push "#{project}/#{fork_name}", @priority
+      @priority += 1
     end
   end
 
@@ -127,15 +139,36 @@ class MirrorMain
     end
   end
 
-  def fork_loop
-    loop do
-      @git_info.each do |key, fork_info|
-        next if @fork_stat[key][:queued]
+  def send_message(feedback_info)
+    message = feedback_info.to_json
+    @message_queue.publish(message)
+  end
 
-        @fork_stat[key][:queued] = true
-        @git_queue.push(fork_info)
-        sleep(10)
-      end
+  def handle_feedback
+    return if @feedback_queue.empty?
+
+    feedback_info = @feedback_queue.pop(true)
+    @fork_stat[feedback_info[:git_repo]][:queued] = false
+    send_message(feedback_info) if feedback_info[:new_refs]
+  end
+
+  def push_git_queue
+    return if @git_queue.size >= 1
+
+    fork_key = @priority_queue.delete_min_return_key
+    unless @fork_stat[fork_key][:queued]
+      @fork_stat[fork_key][:queued] = true
+      @git_queue.push(@git_info[fork_key])
+    end
+    @priority_queue.push fork_key, @priority
+    @priority += 1
+  end
+
+  def main_loop
+    loop do
+      push_git_queue
+      handle_feedback
+      sleep(0.1)
     end
   end
 end
