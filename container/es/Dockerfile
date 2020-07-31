@@ -23,6 +23,8 @@ RUN rm -rf /etc/init.d/elasticsearch \
 
 RUN sed -i 's:#path.data\: /path/to/data:path.data\: /srv/es:' /usr/share/es/config/elasticsearch.yml;
 RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/es/config/elasticsearch.yml;
+RUN sed -i "s/-Xms256m/-Xms2g/g" /usr/share/es/config/jvm.options
+RUN sed -i "s/-Xmx256m/-Xmx20g/g" /usr/share/es/config/jvm.options
 
 WORKDIR /usr/share/es
 
