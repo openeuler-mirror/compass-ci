@@ -57,7 +57,9 @@ end
 
 def standard_deviation(value_list, average, length)
   Math.sqrt(
-    value_list.reduce { |result, v| result + (v - average)**2 } / length.to_f
+    value_list.reduce(0) do |result, v|
+      result + (v - average)**2
+    end / length.to_f
   )
 end
 
