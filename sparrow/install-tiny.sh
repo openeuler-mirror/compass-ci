@@ -17,3 +17,4 @@ cd $CCI_SRC/sparrow || exit
 5-build/ipxe.sh
 6-test/qemu.sh
 6-test/docker.sh
+7-systemd/systemd-setup.sh
