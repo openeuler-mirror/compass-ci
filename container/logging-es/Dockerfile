@@ -5,7 +5,7 @@ FROM gagara/elasticsearch-oss-arm64:7.6.2
 MAINTAINER Wu Zhende <wuzhende1@huawei.com>
 
 RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/elasticsearch/config/elasticsearch.yml;
-RUN sed -i '$a path.data: /srv/es/' /usr/share/elasticsearch/config/elasticsearch.yml;
+RUN sed -i '$a path.data: /srv/es/logging-es' /usr/share/elasticsearch/config/elasticsearch.yml;
 RUN sed -i '$a node.name: node-1' /usr/share/elasticsearch/config/elasticsearch.yml;
 RUN sed -i '$a cluster.initial_master_nodes: ["node-1"]' /usr/share/elasticsearch/config/elasticsearch.yml;
 
