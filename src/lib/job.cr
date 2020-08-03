@@ -164,9 +164,9 @@ class Job
 
   private def set_kernel_append_root()
     fs2root = {
-      "nfs" => "#{OS_HTTP_HOST}:/os/#{os_dir}",
-      "cifs" => "cifs://#{OS_HTTP_HOST}/os/#{os_dir},guest,ro,hard,vers=1.0,noacl,nouser_xattr",
-      "initramfs" => "/dev/ram0"
+      "nfs" => "#{OS_HTTP_HOST}:/os/#{os_dir} initrd=initrd.lkp",
+      "cifs" => "cifs://#{OS_HTTP_HOST}/os/#{os_dir},guest,ro,hard,vers=1.0,noacl,nouser_xattr initrd=initrd.lkp",
+      "initramfs" => "/dev/ram0 rdinit=/sbin/init prompt_ramdisk=0 initrd=current"
     }
     self["kernel_append_root"] = fs2root[os_mount]
   end

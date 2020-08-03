@@ -147,21 +147,17 @@ class Sched
         respon += initrd_deps
         respon += initrd_pkg
         if job.os_mount == "initramfs"
-            respon += " initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/osimage/#{job.os_dir}/current\n"
+            respon += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/osimage/#{job.os_dir}/current\n"
         else
-            respon += " initrd http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{job.os_dir}/initrd.lkp\n"
+            respon += "initrd http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{job.os_dir}/initrd.lkp\n"
         end
         respon += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}\n"
         respon += "initrd http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz\n"
         respon += "kernel http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{job.os_dir}/vmlinuz user=lkp"
-        respon += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
-        respon += " root=#{job.kernel_append_root} rootovl ip=dhcp ro"
+        respon += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
+        respon += " root=#{job.kernel_append_root}"
         respon += add_kernel_console_param(job.os_arch)
-        if job.os_mount == "initramfs"
-            respon += " rdinit=/sbin/init prompt_ramdisk=0 initrd=current initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
-        else
-            respon += " initrd=initrd.lkp initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
-        end
+        respon += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
         respon += "boot\n"
         return respon
     end
