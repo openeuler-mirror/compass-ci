@@ -24,6 +24,10 @@ class Redis::Client
       @client.hset(queue_name, key.to_s, value.to_s)
     end
 
+    def hash_get(key : String, field)
+      @client.hget(key, field.to_s)
+    end
+
     # redis incr is a 64bit signed int
     def get_new_job_id()
         sn = @client.incr("sched/seqno2jobid")

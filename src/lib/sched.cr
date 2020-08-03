@@ -62,7 +62,7 @@ class Sched
 
         case env.params.url["boot_type"]
         when "ipxe"
-          hostname = redis.@client.hget("sched/mac2host", api_param)
+          hostname = @redis.hash_get("sched/mac2host", api_param)
         when "container"
           hostname = api_param
         end
@@ -82,7 +82,7 @@ class Sched
         hostname = env.params.query["hostname"]?
         mac = env.params.query["mac"]?
         if !hostname && mac
-            hostname = redis.@client.hget("sched/mac2host", mac)
+          hostname = @redis.hash_get("sched/mac2host", mac)
         end
 
         if hostname
