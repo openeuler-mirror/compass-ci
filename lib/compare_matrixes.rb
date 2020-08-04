@@ -85,7 +85,7 @@ def get_values(value_list, success)
     { average: average, stddev_percent: stddev_percent,
       min: sorted[0], max: sorted[-1], sorted: sorted }
   else
-    { average: average, runs: sum, fails: length,
+    { average: average, fails: sum, runs: length,
       min: sorted[0], max: sorted[-1], sorted: sorted }
   end
 end
