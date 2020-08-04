@@ -285,7 +285,7 @@ Scheduler->User: Done
 ```sequence
 User->Scheduler: PUT "/set_host_mac?hostname=\n<hostname>&mac=<mac>"
 Scheduler->Sched: set_host_mac(mac, hostname)
-Sched->Redis: set_hash_queue("sched/mac2host",\nmac, hostname)
+Sched->Redis: hash_set("sched/mac2host",\nmac, hostname)
 Scheduler->User: Done
 ```
 - doing what:

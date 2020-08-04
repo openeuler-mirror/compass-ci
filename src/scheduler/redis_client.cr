@@ -20,8 +20,8 @@ class Redis::Client
         @client = Redis.new(host, port) # if redis-server is not ready? here may need raise error
     end
 
-    def set_hash_queue(queue_name : String, key, value)
-      @client.hset(queue_name, key.to_s, value.to_s)
+    def hash_set(key : String, field, value)
+      @client.hset(key, field.to_s, value.to_s)
     end
 
     def hash_get(key : String, field)
@@ -52,11 +52,11 @@ class Redis::Client
         job = get_job(job_id)
         job.update(job_content)
 
-        set_hash_queue("sched/id2job", job_id, job.dump_to_json)
+        hash_set("sched/id2job", job_id, job.dump_to_json)
     end
 
     def set_job(job : Job)
-        set_hash_queue("sched/id2job", job.id, job.dump_to_json)
+        hash_set("sched/id2job", job.id, job.dump_to_json)
     end
 
     def add2queue(queue_name : String, job_id : String)

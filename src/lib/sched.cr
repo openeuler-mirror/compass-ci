@@ -18,7 +18,7 @@ class Sched
     end
 
     def set_host_mac(mac : String, hostname : String)
-        @redis.set_hash_queue("sched/mac2host", mac, hostname)
+        @redis.hash_set("sched/mac2host", mac, hostname)
     end
 
     def submit_job(env : HTTP::Server::Context)
