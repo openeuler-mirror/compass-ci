@@ -12,7 +12,7 @@ do
 	mkdir $NEWROOT/$dir
 	[ "$i" != "${i%/\*}" ] && continue	# skip empty dir
 
-	for j in $i/*
+	for j in $i/* $i/.??*
 	do
 		[ "$j" != "${j%/\*}" ] && continue	# skip empty dir
 
