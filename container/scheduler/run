@@ -15,6 +15,8 @@ names = Set.new %w[
   OS_HTTP_PORT
   INITRD_HTTP_HOST
   INITRD_HTTP_PORT
+  FLUENTD_HOST
+  FLUENTD_PORT
 ]
 
 defaults = relevant_defaults(names)
@@ -23,6 +25,8 @@ env = docker_env(defaults)
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/cci'
 SCHED_PORT = defaults['SCHED_PORT'] || '3000'
+FLUENTD_HOST = defaults['FLUENTD_HOST'] || 'localhost'
+FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 system "docker rm -f s001-alpine-#{SCHED_PORT}"
 
 cmd = %W[
@@ -40,6 +44,11 @@ cmd = %W[
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/result:/result
   -v /srv/initrd:/srv/initrd
+  --log-driver=fluentd
+  --log-opt fluentd-address=#{FLUENTD_HOST}:#{FLUENTD_PORT}
+  --log-opt mode=non-blocking
+  --log-opt max-buffer-size=4m
+  --log-opt tag=s001-alpine-#{SCHED_PORT}
   sch-ruby-a:v0.00d-#{SCHED_PORT}
 ]
 
