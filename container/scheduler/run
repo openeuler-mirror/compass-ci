@@ -48,7 +48,7 @@ cmd = %W[
   --log-opt fluentd-address=#{FLUENTD_HOST}:#{FLUENTD_PORT}
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
-  --log-opt tag=s001-alpine-#{SCHED_PORT}
+  --log-opt tag=scheduler-#{SCHED_PORT}
   sch-ruby-a:v0.00d-#{SCHED_PORT}
 ]
 
