@@ -80,6 +80,7 @@ init_rootfs_dir() {
 }
 
 check_passwd_file() {
+	export ROOT_NEW_PASSWD=
 	[ -f "$1" ] || {
 		echo "[INFO] No password file specified and root password kept."
 		return
