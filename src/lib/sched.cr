@@ -57,11 +57,45 @@ class Sched
         return respon.to_json
     end
 
+    private def get_boot_grub(job : Job)
+        initrd_lkp_cgz = "lkp-#{job.os_arch}.cgz"
+
+        response = "#!grub\n\n"
+        response += "linux (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})/os/"
+        response += "#{job.os_dir}/vmlinuz user=lkp"
+        response += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
+        response += " rootovl ip=dhcp ro root=#{job.kernel_append_root}\n"
+
+        response += "initrd (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})/os/"
+        response += "#{job.os_dir}/initrd.lkp"
+        response += " (http,#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT})/initrd/"
+        response += "lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}"
+        response += " (http,#{SCHED_HOST}:#{SCHED_PORT})/job_initrd_tmpfs/"
+        response += "#{job.id}/job.cgz\n"
+
+        response += "boot\n"
+
+        return response
+    end
+
+    def boot_content(job : Job | Nil, boot_type : String)
+        case boot_type
+        when "ipxe"
+          return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
+        when "grub"
+          return job ? get_boot_grub(job) : "#!grub\n\necho...\necho No job now\necho...\nreboot\n"
+        when "container"
+          return job ? get_boot_container(job) : Hash(String, String).new.to_json
+        else
+          raise "Not defined boot type #{boot_type}"
+        end
+    end
+
     def find_job_boot(env : HTTP::Server::Context)
         api_param = env.params.url["value"]
 
         case env.params.url["boot_type"]
-        when "ipxe"
+        when "ipxe", "grub"
           hostname = @redis.hash_get("sched/mac2host", api_param)
         when "container"
           hostname = api_param
@@ -70,12 +104,7 @@ class Sched
         job = find_job(hostname) if hostname
         Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder) if job
 
-        case env.params.url["boot_type"]
-        when "ipxe"
-          return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
-        when "container"
-          return job ? get_boot_container(job) : Hash(String, String).new.to_json
-        end
+        return boot_content(job, env.params.url["boot_type"])
     end
 
     def find_next_job_boot(env)
