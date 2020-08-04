@@ -20,12 +20,25 @@ class Redis::Client
         @client = Redis.new(host, port) # if redis-server is not ready? here may need raise error
     end
 
+    def key_special_field(key, field)
+      case key
+      when "sched/mac2host"
+         # ignore mac format "ff:ff" | "ff-ff", inner use "ff-ff"
+         field_dst = field.to_s.gsub(":", "-")
+      else
+         field_dst = field.to_s
+      end
+      return field_dst
+    end
+
     def hash_set(key : String, field, value)
-      @client.hset(key, field.to_s, value.to_s)
+      field_to_set = key_special_field(key, field)
+      @client.hset(key, field_to_set, value.to_s)
     end
 
     def hash_get(key : String, field)
-      @client.hget(key, field.to_s)
+      field_to_get = key_special_field(key, field)
+      @client.hget(key, field_to_get)
     end
 
     # redis incr is a 64bit signed int
