@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#! /bin/bash -eu
 
 # This file is called by script run running on host
 # define functions and set host environment variables

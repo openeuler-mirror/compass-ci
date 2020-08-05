@@ -1,7 +1,8 @@
-#!/bin/bash
+#! /bin/bash
 
 dirs=(
 	/srv/es
+	/srv/es/logging-es
 	/srv/git
 	/srv/initrd
 	/srv/initrd/pkg

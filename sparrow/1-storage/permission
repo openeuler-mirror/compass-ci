@@ -1,0 +1,7 @@
+#! /bin/bash
+
+chgrp lkp /srv/result
+chgrp lkp /srv/es/logging-es
+chmod 775 /srv/result
+chmod 775 /srv/es/logging-es
+chmod 775 /srv/es
