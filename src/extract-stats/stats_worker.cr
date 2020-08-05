@@ -10,7 +10,12 @@ class StatsWorker
 
   def consume_sched_queue(queue_path : String)
     loop do
-      response = @tq.consume_task(queue_path)
+      begin
+        response = @tq.consume_task(queue_path)
+      rescue e
+        puts e.message
+        next
+      end
       if response[0] == 200
         job_id= JSON.parse(response[1].to_json)["id"]
 
