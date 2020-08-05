@@ -7,8 +7,8 @@ cmd=(
 	docker run 
 	-it
 	--rm
-	-v ${LKP_SRC}:/lkp/lkp/src:ro
-	-v ${load_path}/lkp/scheduled:/lkp/scheduled:ro
+	--mount type=tmpfs,destination=/tmp
+	-v ${load_path}/lkp:/lkp
 	-v ${DIR}/bin:/root/bin:ro
 	${docker_image} 
 	/root/bin/entrypoint.sh
