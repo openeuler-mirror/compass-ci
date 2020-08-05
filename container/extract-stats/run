@@ -21,6 +21,7 @@ system 'docker rm -f extract-stats'
 cmd = %w[
   docker run
   --name extract-stats
+  --restart=always
   -d
 ] + env + %W[
   -e LKP_SRC=#{DEFAULT_LKP}
