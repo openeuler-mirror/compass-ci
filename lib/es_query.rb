@@ -22,6 +22,12 @@ class ESQuery
     }
     @client.search index: 'jobs', body: query
   end
+
+  def query_by_id(id)
+    @client.get_source({ index: 'jobs', type: '_doc', id: id })
+  rescue Elasticsearch::Transport::Transport::Errors::NotFound
+    nil
+  end
 end
 
 def build_mutli_field_subquery_body(items)
