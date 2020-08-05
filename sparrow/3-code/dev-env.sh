@@ -15,6 +15,5 @@ cat > /etc/profile.d/crystal.sh <<EOF
 export LKP_SRC=/c/lkp-tests
 export CCI_SRC=/c/crystal-ci
 
-PATH="$PATH:$CCI_SRC/sbin"
-PATH="$PATH:$LKP_SRC/sbin:$LKP_SRC/bin"
+export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
 EOF
