@@ -2,7 +2,7 @@
 # 2020.3 by wufengguang
 
 ip link add br0 type bridge
-ip addr add 192.168.177.1/24 dev br0
+ip addr add 172.18.0.1/16 dev br0
 ip link set dev br0 up
 
 brctl setfd br0 2
