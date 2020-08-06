@@ -1,41 +1,34 @@
-#!/bin/bash -e
+#!/bin/bash
 
-[[ $CCI_SRC ]] || export CCI_SRC=$(cd $(dirname $(realpath $0));git rev-parse --show-toplevel)
 CONTAINER_PATH="$CCI_SRC/container"
 
-git checkout 0dd9b39f066a582626d4b3e7aeb6925c9ac83e7a
+build_depends()
+{
+        local container=$1
+        [ -f "$container/depends" ] && {
+                for line in $(<$container/depends)
+                do
+                        build_depends $CONTAINER_PATH/$line
+                done
+        }
+	do_one $container &
+}
 
-for dir in $CONTAINER_PATH/*
-do
-	[ -f "$dir"/Dockerfile ] || continue
-	cur_dir=${dir##*/}
+do_one()
+{
+	local container=$1
+	local container_name=$(basename $container)
+	lockfile-create -q --use-pid --retry 10 --lock-name "$container_name".lock
 	(
-	cd "$dir"
-	[ "$cur_dir" == 'scheduler' ] && {
-		echo "scheduler-dev first"
-		exit
-	}
-	./build
-	[ "$cur_dir" == 'debian' ] || \
-	[ "$cur_dir" == 'lkp-initrd' ] || \
-	[ "$cur_dir" == 'dracut-initrd' ] || \
-	[ "$cur_dir" == 'crystal-base' ] || \
-	[ "$cur_dir" == 'crystal-shards' ] || \
-	[ "$cur_dir" == 'taskqueue' ] || \
-	[ "$cur_dir" == 'shellcheck' ] && {
-		echo "$cur_dir just build, skip!"
-		exit
-	}
-	[ "$cur_dir" == 'scheduler-dev' ] && {
-		cd "../scheduler"
-		./build
-		./run
-		exit
-	}
-	[ "$cur_dir" == 'crystal-compiler' ] && {
-		./install
-		exit
-	}
-	./run
-	)&
+		cd $container
+		[ -x build ] && ./build
+		[ -x install ] && ./install
+		[ -x start ] && ./start
+	)
+	lockfile-remove --lock-name "$container_name".lock
+}
+
+for dir in $CONTAINER_PATH/*/
+do
+	build_depends $dir
 done
