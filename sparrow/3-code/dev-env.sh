@@ -4,7 +4,7 @@ server_name=$(hostname | cut -f1 -d.)
 server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 
 mkdir -p /etc/crystal-ci/defaults
-cat >    /etc/crystal-ci/defaults/$server_name.yaml <<EOF
+cat > /etc/crystal-ci/defaults/$server_name.yaml <<EOF
 SCHED_HOST: $server_ip
 SCHED_PORT: 3000
 EOF
@@ -15,3 +15,5 @@ export CCI_SRC=/c/crystal-ci
 
 export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
 EOF
+
+. /etc/profile.d/crystal.sh
