@@ -26,10 +26,12 @@ do
 		[  -d $NEWROOT/$dir/$subdir ] ||
 		mkdir $NEWROOT/$dir/$subdir
 
-		k=$j/*
-		[ "$k" != "${k%/\*}" ] && continue	# skip empty dir
+		for k in $j/*
+		do
+			[ "$k" != "${k%/\*}" ] && continue	# skip empty dir
 
-		cp -a $j/* 	$NEWROOT/$dir/$subdir/
+			cp -a $j/* 	$NEWROOT/$dir/$subdir/
+		done
 	done
 done
 
