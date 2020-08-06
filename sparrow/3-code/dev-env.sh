@@ -2,6 +2,8 @@
 
 server_name=$(hostname | cut -f1 -d.)
 server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
+LKP_SRC=/c/lkp-tests
+CCI_SRC=/c/crystal-ci
 
 mkdir -p /etc/crystal-ci/defaults
 cat > /etc/crystal-ci/defaults/$server_name.yaml <<EOF
