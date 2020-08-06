@@ -43,6 +43,10 @@ do
 #done < /tftpboot/boot.ipxe-centos
 done < $ipxe_script
 
+[ -n "$initrds" ] || {
+	exit
+}
+
 initrd=initrd
 cat $initrds > $initrd
 
