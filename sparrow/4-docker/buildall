@@ -37,4 +37,5 @@ do
 	build_depends $dir
 done
 
+wait
 rm -fr $tmpdir
