@@ -48,6 +48,14 @@ class Sched
         reboot"
     end
 
+    private def grub_msg(msg)
+        "#!grub
+        echo ...
+        echo #{msg}
+        echo ...
+        reboot"
+    end
+
     private def get_boot_container(job : Job)
         respon = Hash(String, String).new
         respon["docker_image"] = "#{job.docker_image}"
@@ -83,7 +91,7 @@ class Sched
         when "ipxe"
           return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
         when "grub"
-          return job ? get_boot_grub(job) : "#!grub\n\necho...\necho No job now\necho...\nreboot\n"
+          return job ? get_boot_grub(job) : grub_msg("No job now")
         when "container"
           return job ? get_boot_container(job) : Hash(String, String).new.to_json
         else
