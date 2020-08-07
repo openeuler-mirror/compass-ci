@@ -4,7 +4,9 @@ require 'rest-client'
 
 # sched client class
 class SchedClient
-  def initialize(host = '127.0.0.1', port = 3000)
+  HOST = (ENV.key?('SCHED_HOST') ? ENV['SCHED_HOST'] : '127.0.0.1')
+  PORT = (ENV.key?('SCHED_PORT') ? ENV['SCHED_PORT'] : 3000).to_i
+  def initialize(host = HOST, port = PORT)
     @host = host
     @port = port
   end

@@ -4,7 +4,9 @@ require 'elasticsearch'
 
 # build multiple query request body
 class ESQuery
-  def initialize(host, port)
+  HOST = (ENV.key?('ES_HOST') ? ENV['ES_HOST'] : '127.0.0.1')
+  PORT = (ENV.key?('ES_PORT') ? ENV['ES_PORT'] : 9200).to_i
+  def initialize(host = HOST, port = PORT)
     @client = Elasticsearch::Client.new url: "http://#{host}:#{port}"
     raise 'Connect Elasticsearch  error!' unless @client.ping
   end
