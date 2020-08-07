@@ -24,6 +24,7 @@ do_one()
 		cd $container
 		[ -x build ] && ./build
 		[ -x install ] && ./install
+		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
 	)
 	lockfile-remove --lock-name "$container_name".lock

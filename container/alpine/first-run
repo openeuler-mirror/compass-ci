@@ -1,2 +1,4 @@
+#!/bin/sh
+
 export OS=alpine
 ../first-run.sh

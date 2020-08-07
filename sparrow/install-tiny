@@ -5,16 +5,16 @@
 [[ $CCI_SRC ]] || export CCI_SRC=$(cd $(dirname $(realpath $0)); git rev-parse --show-toplevel)
 cd $CCI_SRC/sparrow || exit
 
-0-package/install.sh
-1-storage/tiny.sh
-1-storage/permission.sh
-2-network/br0.sh
+0-package/install
+1-storage/tiny
+1-storage/permission
+2-network/br0
 2-network/iptables
-2-network/nfs.sh
-3-code/git.sh
-3-code/dev-env.sh
+2-network/nfs
+3-code/git
+3-code/dev-env
 4-docker/buildall
-5-build/ipxe.sh
-6-test/qemu.sh
-6-test/docker.sh
-7-systemd/systemd-setup.sh
+5-build/ipxe
+6-test/qemu
+6-test/docker
+7-systemd/systemd-setup

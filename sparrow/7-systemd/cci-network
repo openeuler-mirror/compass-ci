@@ -4,9 +4,9 @@
 
 [[ $CCI_SRC ]] || CCI_SRC=/c/crystal-ci
 
-$CCI_SRC/sparrow/2-network/br0.sh
+$CCI_SRC/sparrow/2-network/br0
 $CCI_SRC/sparrow/2-network/iptables
-$CCI_SRC/sparrow/2-network/nfs.sh
+$CCI_SRC/sparrow/2-network/nfs
 
 # --restart=always option is not absolutely reliable
 containers=($(docker ps -a |grep -v NAMES |awk '{print $NF}'))

@@ -2,7 +2,7 @@
 
 #! jobs/iperf.yaml
 
-#this job yaml file is used to run qemu test by using pxe, in crystal-ci/sparrow/6-test/qemu.sh,
+#this job yaml file is used to run qemu test by using pxe, in crystal-ci/sparrow/6-test/qemu,
 #usage like this: 0_addjob iperf-pxe.yaml
 
 suite: iperf
