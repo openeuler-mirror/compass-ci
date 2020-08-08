@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cmd=(
+	docker run
+	--name qemu-efi
+	debian:qemu-efi
+)
+
+"${cmd[@]}"
+docker cp qemu-efi:/usr/share/qemu-efi-aarch64 /usr/share/qemu-efi-aarch64
