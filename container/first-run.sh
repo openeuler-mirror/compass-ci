@@ -2,7 +2,6 @@
 
 cmd=(
 	docker run
-	-it
 	--cidfile=/tmp/cid-$$
 	-e SSH_KEYS="$(</etc/ssh/team.pub)"
 	-e COMMITTERS="$(awk -F: '/^committer:/ {print $4}' /etc/group)"
