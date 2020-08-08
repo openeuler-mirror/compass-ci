@@ -20,6 +20,6 @@ Prepare:
 		>= 300G
 
 Steps:
-	1. git clone https://gitee.com/openeuler/crystal-ci.git
+	1. git clone https://gitee.com/wu_fengguang/crystal-ci.git
 	2. cd crystal-ci/sparrow
 	3. ./install-tiny.sh

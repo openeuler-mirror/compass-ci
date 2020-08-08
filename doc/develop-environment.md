@@ -43,8 +43,8 @@ Example:
 Clone the following git repos to your $HOME
 
 	git clone file:///c/todo.git
-	git clone file:///c/lkp-tests.git
-	git clone file:///c/crystal-ci.git
+	git clone https://gitee.com/wu_fengguang/lkp-tests.git
+	git clone https://gitee.com/wu_fengguang/crystal-ci.git
 
 Then read through documents
 
