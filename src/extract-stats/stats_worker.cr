@@ -25,7 +25,12 @@ class StatsWorker
           # extract stats.json
           system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
           # storage job to es
-          storage_stats_es(result_root, job) if result_root
+          begin
+            storage_stats_es(result_root, job) if result_root
+          rescue e
+            puts e.message
+            next
+          end
         end
 
         @tq.delete_task(queue_path + "/in_process", "#{job_id}")
@@ -37,6 +42,8 @@ class StatsWorker
 
   def storage_stats_es(result_root : String, job : Job)
     stats_path = "#{result_root}/stats.json"
+    raise "#{stats_path} file not exists." unless File.exists?(stats_path)
+
     stats = File.open(stats_path) do |file|
         JSON.parse(file)
     end
