@@ -73,7 +73,7 @@ module Scheduler
         job_id
     end
 
-    # file down load server
+    # file download server
     get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
         job_id = env.params.url["job_id"]
         job_package = env.params.url["job_package"]
