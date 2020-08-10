@@ -1,6 +1,4 @@
-crystal-base
-crystal-shards
 scheduler-dev
 redis
-taskqueue
+fluentd
 es
