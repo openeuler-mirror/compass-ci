@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 TASKQUEUE_PORT = 3060
 
 QUEUE_NAME_BASE = "queues"

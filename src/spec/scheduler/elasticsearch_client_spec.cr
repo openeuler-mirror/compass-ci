@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 require "spec"
 require "scheduler/elasticsearch_client"
 require "scheduler/constants"

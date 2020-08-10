@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 require "file_utils"
 require "json"
 require "yaml"
