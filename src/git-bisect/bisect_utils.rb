@@ -7,10 +7,10 @@ require_relative './bisect_constants'
 # bisect utils module
 module BisectUtils
   class << self
-    def clone_repo(repo)
+    def clone_repo(repo, commit)
       repo_root = "#{TMEP_GIT_BASE}/#{File.basename(repo, '.git')}-#{`echo $$`}".chomp
       FileUtils.rm_r(repo_root) if Dir.exist?(repo_root)
-      system("git clone -q #{repo} #{repo_root}") ? repo_root : nil
+      system("git clone -q #{repo} #{repo_root} && git -C #{repo_root} checkout -q #{commit}") ? repo_root : nil
     end
 
     def get_day_ago_commit(commit, day_ago, work_dir)

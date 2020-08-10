@@ -53,7 +53,7 @@ class BisectWorker
   # run git bisect start use upstream_commit and good_commit
   # run bisect script get the bisect info
   def start_bisect
-    @work_dir = BisectUtils.clone_repo(@upstream_repo)
+    @work_dir = BisectUtils.clone_repo(@upstream_repo, @upstream_commit)
     puts "work_dir = #{@work_dir}"
     return unless @work_dir
 
