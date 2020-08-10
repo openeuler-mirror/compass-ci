@@ -194,12 +194,24 @@ def remove_unchanged_field(matrixes_values)
   end
 end
 
+def matrixes_empty?(matrixes_list)
+  return true if matrixes_list.nil?
+  return true if matrixes_list.empty?
+
+  return matrixes_list.any?(&:empty?)
+end
+
 def compare_matrixes(matrixes_list, options = {})
   # compare matrix in matrixes_list and print info
   #
   # @matrixes_list: list consisting of matrix
   # @options: compare options, type: hash
-  #
+
+  if matrixes_empty?(matrixes_list)
+    STDERR.puts 'Matrix cannot be empty!'
+    return
+  end
+
   options = { 'perf-profile': 5 }.merge(options)
   matrixes_values = get_matrixes_values(matrixes_list, options)
   remove_unchanged_field(matrixes_values)
