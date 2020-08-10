@@ -13,6 +13,7 @@ cd $CCI_SRC/sparrow || exit
 2-network/nfs
 3-code/git
 3-code/dev-env
+. /etc/profile.d/crystal.sh
 4-docker/buildall
 5-build/ipxe
 7-systemd/systemd-setup
