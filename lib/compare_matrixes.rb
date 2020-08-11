@@ -209,7 +209,7 @@ def compare_matrixes(matrixes_list, options = {})
   # @options: compare options, type: hash
 
   if matrixes_empty?(matrixes_list)
-    STDERR.puts 'Matrix cannot be empty!'
+    warn 'Matrix cannot be empty!'
     return
   end
 
