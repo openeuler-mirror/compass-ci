@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 : ${CCI_SRC:=/c/cci}
 : ${LKP_SRC:=/c/lkp-tests}

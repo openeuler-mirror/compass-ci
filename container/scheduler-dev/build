@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 docker build -t alpine:scheduler-dev .

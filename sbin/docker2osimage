@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 # This script requires root permission to run.
 # Origin script:

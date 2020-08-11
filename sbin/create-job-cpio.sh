@@ -1,4 +1,5 @@
 #!/bin/bash -e
+# SPDX-License-Identifier: MulanPSL-2.0+
 #
 # input files: $1/job.sh $1/job.yaml
 # output file: $1/job.cgz

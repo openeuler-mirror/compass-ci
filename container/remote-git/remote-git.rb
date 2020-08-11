@@ -1,4 +1,5 @@
 #!/usr/bin/ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
 require 'sinatra'

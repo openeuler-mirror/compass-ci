@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 CCI_SRC=$CCI_SRC
 bash $CCI_SRC/container/compile .

@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
 : ${docker_image:="centos:7"}
 : ${load_path:="${HOME}/jobs"}
 

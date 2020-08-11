@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 cp $(dirname $0)/cci-network.service /etc/systemd/system
 systemctl daemon-reload

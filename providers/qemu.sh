@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
 # - hostname
 
 . $LKP_SRC/lib/yaml.sh

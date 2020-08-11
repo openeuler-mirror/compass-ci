@@ -1,4 +1,5 @@
 #!/bin/sh -e
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 cd /c
 

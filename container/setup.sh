@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 

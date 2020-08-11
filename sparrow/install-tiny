@@ -1,4 +1,5 @@
 #!/bin/bash -e
+# SPDX-License-Identifier: MulanPSL-2.0+
 # For your reference only.
 # It's better to run the below scripts step by step.
 

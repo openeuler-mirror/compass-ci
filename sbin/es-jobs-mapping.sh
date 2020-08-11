@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 # Determine whether curl is installed. If not, install curl.
 if ! [ -x "$(command -v curl)" ]

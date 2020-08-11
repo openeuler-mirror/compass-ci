@@ -1,4 +1,5 @@
 #!/usr/bin/expect
+# SPDX-License-Identifier: MulanPSL-2.0+
 #
 # This file is called by script main in container
 # convert qcow2 file to tar.gz

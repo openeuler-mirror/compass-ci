@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 cmd=(
 	docker run
