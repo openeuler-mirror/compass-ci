@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-License-Identifier: MulanPSL-2.0+
+# SPDX-License-Identifier: MIT
 
 umask 002
 
