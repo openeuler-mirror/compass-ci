@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 FROM alpine:3.11
 
 RUN apk add --no-cache 'gcc' 'pcre' 'libevent' 'bash'

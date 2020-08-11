@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 FROM centos:8
 
 MAINTAINER Yu Chuan <yuchuan6@huawei.com>, Shi Zhichao <shizhichao2@huawei.com>

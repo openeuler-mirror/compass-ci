@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 FROM lopsided/archlinux
 
 MAINTAINER Wu Fenguang <wufengguang@huawei.com>

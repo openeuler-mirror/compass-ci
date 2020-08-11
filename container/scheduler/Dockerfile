@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 FROM alpine:3.11
 
 # replace the source apk repo to huaweicloud

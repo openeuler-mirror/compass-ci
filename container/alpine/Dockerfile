@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 # 3.12 cannot install crystal
 FROM alpine:3.11
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 FROM debian
 MAINTAINER wangchenglong17@huawei.com
 ENV DEBIAN_FRONTEND noninteractive

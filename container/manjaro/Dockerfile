@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 FROM manjaroarm/manjaro-aarch64-base
 
 MAINTAINER Wu Fenguang <wufengguang@huawei.com>

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
 FROM gagara/elasticsearch-oss-arm64:7.6.2
 
 # docker image borrowed from hub.docker.com/r/gagara/elasticsearch-oss-arm64
