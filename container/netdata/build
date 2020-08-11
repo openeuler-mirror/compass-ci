@@ -1,5 +1,5 @@
 #!/bin/bash
 # Origin: https://hub.docker.com/r/netdata/netdata
-# SPDX-License-Identifier: GPLv3+
+# SPDX-License-Identifier: GPL-3.0+
 
 docker pull netdata/netdata

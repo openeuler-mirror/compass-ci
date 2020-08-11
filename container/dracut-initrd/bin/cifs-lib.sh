@@ -1,6 +1,6 @@
 #!/bin/sh
 # From: https://github.com/dracutdevs/dracut/blob/master/modules.d/95cifs/cifs-lib.sh
-# SPDX-License-Identifier: GPLv2
+# SPDX-License-Identifier: GPL-2.0
 
 # cifs_to_var CIFSROOT
 # use CIFSROOT to set $server, $path, and $options.
