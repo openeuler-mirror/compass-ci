@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
 sched_port = ENV['SCHED_PORT'] || 3000

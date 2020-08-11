@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
 taskqueue_port = ENV['TASKQUEUE_PORT'] || 3060
