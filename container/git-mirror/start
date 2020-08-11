@@ -17,7 +17,7 @@ cmd = %W[
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
   -v /srv/git:/srv/git
   -w /c/crystal-ci/sbin
-  alpine311:git-mirror
+  alpine38:git-mirror
 ]
 
 cmd += ['sh', '-c', 'umask 002 && ./git-mirror.rb']

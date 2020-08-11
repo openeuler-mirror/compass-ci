@@ -1,4 +1,4 @@
-FROM alpine:3.11
+FROM alpine:3.8
 
 RUN apk update && \
     apk upgrade && \
@@ -6,5 +6,5 @@ RUN apk update && \
     apk add ruby-dev make gcc g++
 
 RUN umask 002 && \
-    gem install bunny json priority_queue
+    gem install bunny json PriorityQueue --no-rdoc --no-ri
 
