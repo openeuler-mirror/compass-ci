@@ -70,7 +70,9 @@ pre_config_rootfs() {
 
 	# disable selinux
 	echo "Disable selinux"
-	sed -i -r 's/SELINUX=enforcing/SELINUX=disabled/g' "$ROOTFS_DIR/etc/selinux/config"
+	[ -f ${ROOTFS_DIR}/etc/selinux/config ] && {
+		sed -i -r 's/SELINUX=enforcing/SELINUX=disabled/g' "$ROOTFS_DIR/etc/selinux/config"
+	}
 }
 
 clean_environment() {
