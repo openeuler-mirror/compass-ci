@@ -25,7 +25,7 @@ do_one()
 {
 	local container=$1
 	local container_name=$(basename $container)
-	lockfile-create -q --use-pid --retry 10 --lock-name "$container_name".lock
+	lockfile-create -q --use-pid --retry 100 --lock-name "$container_name".lock
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
 		cd $container
