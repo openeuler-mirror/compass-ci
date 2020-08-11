@@ -4,14 +4,21 @@ CONTAINER_PATH="$CCI_SRC/container"
 
 build_depends()
 {
-        local container=$1
-        [ -f "$container/depends" ] && {
-                for line in $(<$container/depends)
-                do
-                        build_depends $CONTAINER_PATH/$line
-                done
-        }
-	do_one $container &
+	local container=$1
+	local should_wait=$2
+
+	[ -f "$container/depends" ] && {
+		for line in $(<$container/depends)
+		do
+			build_depends $CONTAINER_PATH/$line block_wait
+		done
+	}
+
+	if [ -n "$should_wait" ]; then
+		do_one $container
+	else
+		do_one $container &
+	fi
 }
 
 do_one()
@@ -25,6 +32,7 @@ do_one()
 		[ -x build ] && ./build
 		[ -x install ] && ./install
 		[ -x first-run ] && ./first-run
+		[ "$container_name" == 'os-nfs' ] && exit
 		[ -x start ] && ./start
 	)
 	lockfile-remove --lock-name "$container_name".lock
