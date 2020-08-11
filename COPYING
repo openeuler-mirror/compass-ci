@@ -1,0 +1,24 @@
+The crystal-ci is provided under the terms of the Mulan Permissive
+Software License Version 2 or any later version:
+
+	SPDX-License-Identifier: MulanPSL-2.0+
+
+as provided in
+
+	LICENSES/MulanPSL-2.0
+
+In addition, other licenses may also apply to individual source files.
+Please see:
+
+	LICENSES/GPL-2.0
+	LICENSES/GPL-3.0
+	LICENSES/MIT
+
+for more details.
+
+Aside from that, individual files can be provided under a dual license,
+e.g.
+
+	SPDX-License-Identifier: MulanPSL-2.0 or GPL-2.0
+
+All contributions to the crystal-ci are subject to this COPYING file.
