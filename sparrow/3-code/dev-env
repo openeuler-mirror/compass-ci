@@ -8,6 +8,9 @@ mkdir -p /etc/crystal-ci/defaults
 cat > /etc/crystal-ci/defaults/$server_name.yaml <<EOF
 SCHED_HOST: $server_ip
 SCHED_PORT: 3000
+OS_HTTP_HOST: $os_http_host
+INITRD_HTTP_HOST: $initrd_http_host
+INITRD_HTTP_PORT: $initrd_http_port
 EOF
 
 cat > /etc/profile.d/crystal.sh <<'EOF'
