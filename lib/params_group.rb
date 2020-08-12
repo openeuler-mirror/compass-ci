@@ -50,9 +50,21 @@ def group(jobs_list, dimensions)
     group_key = get_group_key(group_params)
     groups[group_key] ||= {}
     groups[group_key][dimension_key] ||= []
+    next unless job['stats']
+
     groups[group_key][dimension_key] << job
   end
+  filter_groups(groups)
   groups
+end
+
+def filter_groups(groups)
+  groups.each do |group_key, value|
+    value.each_key do |dim_key|
+      value.delete(dim_key) if value[dim_key].empty?
+    end
+    groups.delete(group_key) if groups[group_key].empty?
+  end
 end
 
 def get_all_params(job)
