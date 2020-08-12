@@ -1,6 +1,12 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+if [ -f /etc/ssh/team.pub ]; then
+        ssh_keys="$(</etc/ssh/team.pub)"
+else
+        ssh_keys=""
+fi
+
 cmd=(
 	docker run
 	--cidfile=/tmp/cid-$$
