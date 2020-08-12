@@ -1,8 +1,9 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-. ../lab.sh
 DIR=$(dirname $(realpath $0))
+. $(dirname $DIR)/lab.sh
+
 cmd=(
 	docker run 
 	--rm
