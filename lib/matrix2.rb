@@ -7,6 +7,7 @@ LKP_SRC = ENV['LKP_SRC'] || '/c/lkp-tests'
 require "#{LKP_SRC}/lib/stats"
 require "#{LKP_SRC}/lib/yaml"
 require "#{LKP_SRC}/lib/matrix"
+require_relative './params_group.rb'
 
 def set_pre_value(item, value, sample_size)
   if value.size == 1
@@ -65,30 +66,57 @@ def samples_fill_missing_zeros(value, size)
   samples
 end
 
-# input: query results from es-find
-# return: Hash(String, Array(Number))
-#   Eg: matrix :{
+# input: job_list
+# return: matrix of Hash(String, Array(Number))
+#   Eg: matrix: {
 #                 test_params_1 => [value_1, value_2, ...],
 #                 test_params_2 => [value_1, value_2, ...],
 #                 test_params_3 => [value_1, 0, ...]
 #                 ...
 #               }
-def combine_query_data(query_data)
-  job_results = query_data['hits']['hits']
+def create_matrix(job_list)
   matrix = {}
-  job_results.each do |job|
-    stats = job['_source']['stats']
+  job_list.each do |job|
+    stats = job['stats']
     next unless stats
 
     stats.each do |key, value|
-      next if key =~ /^stderr/
       matrix[key] = [] unless matrix[key]
       matrix[key] << value
     end
   end
-  col_size = job_results.size
+  col_size = job_list.size
   matrix.each_value do |value|
     samples_fill_missing_zeros(value, col_size)
   end
   matrix
+end
+
+# input: query results from es_query
+# return: matrix
+def combine_query_data(query_data)
+  job_list = query_data['hits']['hits']
+  job_list.map! { |job| job['_source'] }
+  create_matrix(job_list)
+end
+
+# input: query results from es_query
+# return: group_matrix of Hash(String, Hash(String, matrix))
+#   Eg: group_matrix: {
+#                 group1_key => { dimension_1 => matrix
+#                                 dimension_2 => matrix
+#                                ...
+#                 group2_key => {...}
+#                 ...
+#               }
+def combine_group_query_data(query_data, dims)
+  job_list = query_data['hits']['hits']
+  groups = auto_group(job_list, dims)
+  groups.each do |group_key, value|
+    value.each do |dimension_key, jobs|
+      groups[group_key][dimension_key] = create_matrix(jobs)
+    end
+    groups.delete(group_key) if value.size < 2
+  end
+  groups
 end
