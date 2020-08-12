@@ -178,3 +178,58 @@ create_links_vmlinuz_initrd() {
 		echo "Failed!"
 	fi
 }
+
+get_vmlinuz_start_postion() {
+	local vmlinuz=$1
+
+	local vmlinuz_start_line
+	local vmlinuz_start_postion
+	# '1f 8b 08' - https://www.filesignatures.net/index.php?page=search&search=1F8B08&mode=SIG
+	vmlinuz_start_line=$(od -A d -t x1 ${vmlinuz} | grep "1f 8b 08")
+	vmlinuz_start_postion=${vmlinuz_start_line%% *}
+
+	[ -z ${vmlinuz_start_postion} ] && {
+		echo "[WARNING] identify vmlinuz failed."
+		export VMLINUZ_START_POSTION=-1
+		return
+	}
+
+	[ X${vmlinuz_start_postion} == X0000000 ] || {
+		local vmlinuz_start_postion_tmp
+		vmlinuz_start_postion_tmp=$(echo ${vmlinuz_start_line} | awk '{for(i=1;i<=NF;i++)if($i=="1f")print i-1}')
+		vmlinuz_start_postion=$((${vmlinuz_start_postion} + ${vmlinuz_start_postion_tmp} -1))
+	}
+
+	export VMLINUZ_START_POSTION=${vmlinuz_start_postion}
+}
+
+unzip_vmlinuz() {
+	get_rootfs_kernel
+
+	file ${ROOTFS_VMLINUZ_FILE} | grep -q gzip || return
+
+	get_vmlinuz_start_postion ${ROOTFS_VMLINUZ_FILE}
+	[ $VMLINUZ_START_POSTION -eq -1 ] && return
+
+	local unzip_str
+
+	if [ $VMLINUZ_START_POSTION -eq 0 ]; then
+		unzip_str="dd if=$ROOTFS_VMLINUZ bs=1 | zcat > $ROOTFS_VMLINUZ.tmp"
+	else
+		unzip_str="dd if=$ROOTFS_VMLINUZ bs=1 skip=$VMLINUZ_START_POSTION | zcat > $ROOTFS_VMLINUZ.tmp"
+	fi
+
+	echo "Unzipping vmlinuz..."
+	local cmds
+	cmds=(
+		docker exec
+		"$container"
+		bash -c "
+			cd $EXTRACT_ROOT/rootfs-dir/boot
+			$unzip_str
+			mv $ROOTFS_VMLINUZ.tmp $ROOTFS_VMLINUZ
+			chmod o+r $ROOTFS_VMLINUZ
+		"
+	)
+	"${cmds[@]}"
+}

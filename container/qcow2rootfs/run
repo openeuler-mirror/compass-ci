@@ -41,3 +41,4 @@ extract=(
 "${extract[@]}"
 
 create_links_vmlinuz_initrd
+unzip_vmlinuz
