@@ -19,7 +19,7 @@ class Redis::Client
     PORT = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
 
     def initialize(host = HOST, port = PORT)
-        @client = Redis.new(host, port) # if redis-server is not ready? here may need raise error
+        @client = Redis::PooledClient.new(host: host, port: port, pool_size: 25, pool_timeout: 0.01)
     end
 
     def key_special_field(key, field)
