@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-[ -d "$1" -a -n "$2" ] || {
+[ -L "$1/vmlinuz" -a -n "$2" ] || {
 	cat << 'EOF'
 	Example usage:
 	1> ./run /os/centos/aarch64/76 pack1 pack2 ...
@@ -12,10 +12,27 @@ EOF
 	exit
 }
 
-rootdir=$1
-packages="${*:2}"
+basedir=$(dirname $1)
+basever=$(basename $1)
+newver=$basever-$(date +'%Y%m%d%H%M%S')
+rootdir=$basedir/$newver
+rsync_cmds=(
+	docker run
+	--rm
+	-v "$basedir":/mnt
+	addsoftware:auto
+	bash -c "
+		umask 0022
+		rsync -ap /mnt/$basever/* /mnt/$newver
+	"
+)
 
-cmd=(
+packages="${@:2}"
+osinfo=(${rootdir//\// })
+os=${osinfo[1]}
+arch=${osinfo[2]}
+version=${osinfo[3]}
+install_cmds=(
 	docker run
 	--rm
 	-v "$rootdir":/mnt/root
@@ -23,9 +40,8 @@ cmd=(
 	yum install -y --skip-broken --installroot=/mnt/root $packages
 )
 
-osinfo=(${rootdir//\// })
-os=${osinfo[1]}
-arch=${osinfo[2]}
-version=${osinfo[3]}
-echo "rootdir=$rootdir" | tee install-$os-$arch-$version.log 
-"${cmd[@]}" | tee -a install-$os-$arch-$version.log
+echo "rsync rootfs from $basever to $newver..."
+"${rsync_cmds[@]}"
+
+echo "install packages under $rootdir..." | tee install-$os-$arch-$version.log 
+"${install_cmds[@]}" | tee -a install-$os-$arch-$version.log
