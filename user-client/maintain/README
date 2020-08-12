@@ -1,0 +1,15 @@
+1. Information including hostname, IP and type of all servers in LAB shall be
+   recorded in file /etc/servers.info with mode 644.
+   content below FYI:
+   	p1-1	1.1.1.1		2288hv5
+	p1-2	1.1.1.2		thaishan
+
+2. All manager user accounts and passwords, servers' IP providing service, network
+   configuration shall be recorded in file /root/.config/iBMC/accnt.info with mode 600.
+   content below FYI:
+	VAR1=VALUE1
+	VAR2=VALUE2
+	...
+
+3. Copy script ibmcOper under /usr/bin/ and the use command ibmcOper to manage all the
+   servers in LAB when iBMC basic configuration is ready.

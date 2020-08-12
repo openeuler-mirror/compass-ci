@@ -1,0 +1,244 @@
+#!/bin/bash
+
+source "$HOME/.config/iBMC/accnt.info"
+servers_info_file=/etc/servers.info
+operations=(
+	'ibmcMac'
+	'busiMac'
+	'unlink'
+	'relink'
+	'power'
+	'reboot'
+	'users'
+)
+
+NUMBER_SERVERS=0
+declare -A SERVERS IP_SERVERS HOST_SERVERS TYPE_SERVERS INVALID
+
+read_servers_file() {
+	[ -f "$servers_info_file" ] || exit
+	while read line 
+	do
+		SERVERS[$NUMBER_SERVERS]="$line"
+		IP_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $1}')"
+		HOST_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $2}')"
+		TYPE_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $3}')"
+		NUMBER_SERVERS=$((NUMBER_SERVERS + 1))
+	done < "$servers_info_file"
+	NUMBER_SERVERS=$((NUMBER_SERVERS - 1))
+}
+
+read_servers_cmd() {
+	[ -f "$servers_info_file" ] || exit
+	[ -z "$1" ] && return -1
+
+	local server idx
+	idx=0
+	for server in $@
+	do
+		([ 'on' == "$server" ] || [ 'off' == $server ]) && continue
+		line=$(grep -w $server "$servers_info_file")
+		[ -z "$line" ]  && {
+			INVALID[$idx]="$server"
+			idx=$((idx + 1))
+			continue
+		}
+		SERVERS[$NUMBER_SERVERS]="$line"
+		IP_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $1}')"
+		HOST_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $2}')"
+		TYPE_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $3}')"
+		NUMBER_SERVERS=$((NUMBER_SERVERS + 1))
+	done
+	NUMBER_SERVERS=$((NUMBER_SERVERS - 1))
+}
+
+print_servers() {
+	for idx in $(seq 0 $NUMBER_SERVERS)
+	do
+		echo "
+	Index: $idx
+		IP: ${IP_SERVERS[$idx]}
+		HOST: ${HOST_SERVERS[$idx]}
+		TYPE: ${TYPE_SERVERS[$idx]}"
+	done
+}
+
+get_cur_ibmc_NIC_mac() {
+	[ 'thaishan' != $cur_type ] && [ '2288hv5' != $cur_type ] && return
+
+	local mac
+	[ 'thaishan' == $cur_type ] && {
+		mac=$(ipmitool -I lanplus -H $cur_ip -U $iBMC_user -P $iBMC_passwd lan print |grep 'MAC Address' |awk '{print $NF}')
+		echo "ThaiShan: $cur_host $mac"
+	}
+	[ '2288hv5' == $cur_type ] && {
+		mac=$(ipmitool -I lanplus -H $cur_ip -U $iBMC_user -P $iBMC_passwd lan print |grep 'MAC Address' |awk '{print $NF}')
+		echo "2288HV5: $cur_host $mac"
+	}
+}
+
+get_cur_busi_NIC_mac() {
+	[ 'thaishan' != $cur_type ] && [ '2288hv5' != $cur_type ] && return
+
+	local mac mac_list nic_idx
+	[ 'thaishan' == $cur_type ] && {
+		for nic_idx in {1..4} ; do
+			mac=$(ipmitool -I lanplus -H $cur_ip -U $iBMC_user -P $iBMC_passwd raw 0x30 0x90 0x01 0x03 0x0${nic_idx} 0x00\
+				|awk '{print $5,$6,$7,$8,$9,$10}' |sed 's/\s/\-/g')
+			mac_list="$mac_list $mac"
+		done
+		echo "ThaiShan: $cur_host $mac_list"
+	}
+	[ '2288hv5' == $cur_type ] && {
+		for nic_idx in 1 2 ; do
+			mac=$(ipmitool -I lanplus -H $cur_ip -U $iBMC_user -P $iBMC_passwd raw 0x30 0x90 0x01 0x00 0x0${nic_idx} 0x00\
+				|awk '{print $5,$6,$7,$8,$9,$10}' |sed 's/\s/\-/g')
+			mac_list="$mac_list $mac"
+		done
+		echo "2288HV5: $cur_host $mac_list"
+	}
+}
+
+get_power_status() {
+	local status
+
+	status=$(ipmitool -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd power status |awk '{print $NF}')
+	[ 'on' != "$status" ] && [ 'off' == "$status" ] && {
+		echo "Get $cur_host Power Status Failed! Status: $status"
+		return -1
+	}
+	echo "$cur_host Power Status: $status"
+	[ 'on' == "$status" ] && return 0
+	[ 'off' == "$status" ] && return -1
+}
+
+set_power_status() {
+	local new_status
+	new_status="$1"
+	[ -z "$new_status" ] && return
+
+	ipmitool -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd power $new_status
+}
+
+check_power_status_on() {
+	get_power_status && return
+	set_power_status on
+}
+
+link_ibmc() {
+	check_power_status_on
+
+	ipmitool -I lanplus -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd sol deactivate || echo "reconnecting..."
+	[ -d "$HOME/log" ] || mkdir -p $HOME/log
+	ipmitool -I lanplus -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd sol activate |tee -a $HOME/log/${cur_host}_$(date +'%d-%m-%Y').log
+}
+
+unlink_ibmc() {
+	check_power_status_on
+	ipmitool -I lanplus -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd sol deactivate
+}
+
+reboot_server() {
+	(
+		[ "$JUMPER_SERVER" == $cur_ip ] || [ "$CRYSTAL_SERVER" == $cur_ip ] ||
+		[ "$FILE_SERVER" == $cur_ip ] || [ "$BACKUP_SERVER" == $cur_ip ] ||
+		[ "$PXE_SERVER" == $cur_ip ] || [ "iBMC_MANAGE_SERVER" == $cur_ip ] ||
+		[ 'p1-1' == $cur_host ] || [ 'p1-2' == $cur_host ] ||
+		[ 'p1-3' == $cur_host ] || [ 'p1-4' == $cur_host ] ||
+		[ 'p1-5' == $cur_host ] || [ 'p3-1' == $cur_host ]
+	) && {
+		echo "Forbidden Operation! Please reboot $cur_host/$cur_ip manually! Thanks!"
+		return
+	}
+	ipmitool -I lanplus -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd power reset
+}
+
+check_ibmc_network() {
+	ping "$cur_host" -c 1 -W 1 >/dev/null 2>&1
+}
+
+get_users() {
+	echo "$cur_host Users List:"
+	ipmitool -I lanplus -H $cur_ip -U $iBMC_user -P $iBMC_passwd user list
+}
+
+walk_servers_do() {
+	[ -z "$1" ] && return
+
+	for idx in $(seq 0 $NUMBER_SERVERS)
+	do
+		cur_ip=${IP_SERVERS[$idx]}
+		cur_type=${TYPE_SERVERS[$idx]}
+		cur_host=${HOST_SERVERS[$idx]}
+		check_ibmc_network || {
+			echo "Unreachable $cur_host/$cur_ip!"
+			continue
+		}
+		eval "$@"
+	done
+}
+
+trap 'echo && echo User Cancelled! && exit' SIGINT
+
+oper=$1
+echo "operation: $oper"
+( [ -z "$oper" ] || [ -z "$(echo ${operations[*]} |grep -w "$oper")" ] ) && {
+	echo -e "Unexpected iBMC operation!\nMaybe you can do: ${operations[*]}"
+	exit -1
+}
+read_servers_cmd "${@:2}" || read_servers_file
+
+# here for program debugging
+# print_servers
+
+[ 'ibmcMac' == "$oper" ] && {
+	echo
+	echo "iBMC NIC mac address:"
+	walk_servers_do get_cur_ibmc_NIC_mac
+	exit
+}
+
+[ 'busiMac' == "$oper" ] && {
+	echo
+	echo "business NIC mac address:"
+	walk_servers_do get_cur_busi_NIC_mac
+	exit
+}
+
+[ "power" == "$oper" ] && {
+	new_status=$2
+	walk_servers_do get_power_status
+
+	[ -z "$new_status" ] && exit
+	[ 'on' != "$new_status" ] && [ 'off' != "$new_status" ] && {
+		exit
+	}
+	walk_servers_do set_power_status $new_status
+	exit
+}
+
+[ 'relink' == "$oper" ] && {
+	echo
+	[ 0 -eq $NUMBER_SERVERS ] && walk_servers_do link_ibmc
+	[ 0 -ne $NUMBER_SERVERS ] && echo "Failed! Please Specify only ONE server!"
+	exit
+}
+
+[ 'unlink' == "$oper" ] && {
+	echo
+	walk_servers_do unlink_ibmc
+	exit
+}
+
+[ 'reboot' == "$oper" ] && {
+	echo
+	walk_servers_do check_power_status_on
+	walk_servers_do reboot_server
+	exit
+}
+
+[ 'users' == "$oper" ] && {
+	echo
+	walk_servers_do get_users
+	exit
+}
