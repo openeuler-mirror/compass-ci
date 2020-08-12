@@ -15,7 +15,7 @@ class StatsWorker
       begin
         response = @tq.consume_task(queue_path)
       rescue e
-        puts e.message
+        STDERR.puts e.message
         next
       end
       if response[0] == 200
@@ -30,7 +30,7 @@ class StatsWorker
           begin
             storage_stats_es(result_root, job) if result_root
           rescue e
-            puts e.message
+            STDERR.puts e.message
             next
           end
         end
