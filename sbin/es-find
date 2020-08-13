@@ -11,6 +11,7 @@
 
 require 'yaml'
 require 'optparse'
+require 'json'
 require_relative '../lib/es_query.rb'
 require_relative '../container/lab.rb'
 
@@ -56,4 +57,6 @@ end
 opt_parser.parse!(ARGV)
 items = parse_argv
 es = ESQuery.new(ES_HOST, ES_PORT)
-p es.multi_field_query items, size: options[:nr_jobs]
+query_result = es.multi_field_query(items, size: options[:nr_jobs])
+json_string = JSON.pretty_generate(query_result)
+puts json_string
