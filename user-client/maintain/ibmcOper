@@ -1,7 +1,8 @@
 #!/bin/bash
 
-source "$HOME/.config/iBMC/accnt.info"
-servers_info_file=/etc/servers.info
+source "/etc/iBMC/.config/accnt.info"
+servers_info_file='/etc/servers.info'
+forbidden_list_file='/etc/iBMC/.config/forbidden.list'
 operations=(
 	'ibmcMac'
 	'busiMac'
@@ -13,10 +14,9 @@ operations=(
 )
 
 NUMBER_SERVERS=0
-declare -A SERVERS IP_SERVERS HOST_SERVERS TYPE_SERVERS INVALID
+declare -A SERVERS IP_SERVERS HOST_SERVERS TYPE_SERVERS
 
 read_servers_file() {
-	[ -f "$servers_info_file" ] || exit
 	while read line 
 	do
 		SERVERS[$NUMBER_SERVERS]="$line"
@@ -29,20 +29,16 @@ read_servers_file() {
 }
 
 read_servers_cmd() {
-	[ -f "$servers_info_file" ] || exit
+	([ 'on' == "$1" ] || [ 'off' == "$1" ]) && shift
 	[ -z "$1" ] && return -1
 
 	local server idx
 	idx=0
 	for server in $@
 	do
-		([ 'on' == "$server" ] || [ 'off' == $server ]) && continue
 		line=$(grep -w $server "$servers_info_file")
-		[ -z "$line" ]  && {
-			INVALID[$idx]="$server"
-			idx=$((idx + 1))
-			continue
-		}
+		[ -z "$line" ]  && continue
+
 		SERVERS[$NUMBER_SERVERS]="$line"
 		IP_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $1}')"
 		HOST_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $2}')"
@@ -50,6 +46,14 @@ read_servers_cmd() {
 		NUMBER_SERVERS=$((NUMBER_SERVERS + 1))
 	done
 	NUMBER_SERVERS=$((NUMBER_SERVERS - 1))
+}
+
+check_forbidden_server() {
+	grep -wq -E "$cur_ip|$cur_host" $forbidden_list_file && {
+		echo "Forbidden $cur_host/$cur_ip Operation! Thanks!"
+		return -1
+	}
+	return 0
 }
 
 print_servers() {
@@ -103,8 +107,8 @@ get_power_status() {
 	local status
 
 	status=$(ipmitool -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd power status |awk '{print $NF}')
-	[ 'on' != "$status" ] && [ 'off' == "$status" ] && {
-		echo "Get $cur_host Power Status Failed! Status: $status"
+	[ 'on' != "$status" ] && [ 'off' != "$status" ] && {
+		echo "Get $cur_host Power Status Failed!"
 		return -1
 	}
 	echo "$cur_host Power Status: $status"
@@ -113,9 +117,11 @@ get_power_status() {
 }
 
 set_power_status() {
+	check_forbidden_server || return
+
 	local new_status
 	new_status="$1"
-	[ -z "$new_status" ] && return
+	[ -n "$new_status" ] || return
 
 	ipmitool -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd power $new_status
 }
@@ -126,6 +132,7 @@ check_power_status_on() {
 }
 
 link_ibmc() {
+	check_forbidden_server || return
 	check_power_status_on
 
 	ipmitool -I lanplus -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd sol deactivate || echo "reconnecting..."
@@ -139,17 +146,9 @@ unlink_ibmc() {
 }
 
 reboot_server() {
-	(
-		[ "$JUMPER_SERVER" == $cur_ip ] || [ "$CRYSTAL_SERVER" == $cur_ip ] ||
-		[ "$FILE_SERVER" == $cur_ip ] || [ "$BACKUP_SERVER" == $cur_ip ] ||
-		[ "$PXE_SERVER" == $cur_ip ] || [ "iBMC_MANAGE_SERVER" == $cur_ip ] ||
-		[ 'p1-1' == $cur_host ] || [ 'p1-2' == $cur_host ] ||
-		[ 'p1-3' == $cur_host ] || [ 'p1-4' == $cur_host ] ||
-		[ 'p1-5' == $cur_host ] || [ 'p3-1' == $cur_host ]
-	) && {
-		echo "Forbidden Operation! Please reboot $cur_host/$cur_ip manually! Thanks!"
-		return
-	}
+	check_forbidden_server || return
+	check_power_status_on
+
 	ipmitool -I lanplus -H $cur_ip -I lanplus -U $iBMC_user -P $iBMC_passwd power reset
 }
 
@@ -158,7 +157,7 @@ check_ibmc_network() {
 }
 
 get_users() {
-	echo "$cur_host Users List:"
+	echo "$cur_host Users List Below:"
 	ipmitool -I lanplus -H $cur_ip -U $iBMC_user -P $iBMC_passwd user list
 }
 
@@ -177,6 +176,9 @@ walk_servers_do() {
 		eval "$@"
 	done
 }
+
+[ -f "$servers_info_file" ] || exit
+[ -f "$forbidden_list_file" ] || exit
 
 trap 'echo && echo User Cancelled! && exit' SIGINT
 
@@ -207,13 +209,16 @@ read_servers_cmd "${@:2}" || read_servers_file
 
 [ "power" == "$oper" ] && {
 	new_status=$2
-	walk_servers_do get_power_status
-
-	[ -z "$new_status" ] && exit
-	[ 'on' != "$new_status" ] && [ 'off' != "$new_status" ] && {
+	[ -z "$new_status" ] && {
+		walk_servers_do get_power_status
 		exit
 	}
-	walk_servers_do set_power_status $new_status
+	[ 'on' != "$new_status" ] && [ 'off' != "$new_status" ] && exit
+	[ 'off' == "$new_status" ] && {
+		[ 0 -eq $NUMBER_SERVERS ] && walk_servers_do set_power_status $new_status
+		[ 0 -ne $NUMBER_SERVERS ] && echo "Failed! Please Specify only ONE server!"
+	}
+	[ 'on' == "$new_status" ] && walk_servers_do set_power_status $new_status
 	exit
 }
 
@@ -232,8 +237,8 @@ read_servers_cmd "${@:2}" || read_servers_file
 
 [ 'reboot' == "$oper" ] && {
 	echo
-	walk_servers_do check_power_status_on
-	walk_servers_do reboot_server
+	[ 0 -eq $NUMBER_SERVERS ] && walk_servers_do reboot_server
+	[ 0 -ne $NUMBER_SERVERS ] && echo "Failed! Please Specify only ONE server!"
 	exit
 }
 
