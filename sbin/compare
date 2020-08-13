@@ -10,14 +10,7 @@
 #       compare "commit=a12d232e" "commit=b3bacc31"
 
 require 'optparse'
-require_relative '../lib/es_query.rb'
-require_relative '../container/lab.rb'
-require_relative '../lib/matrix2.rb'
-require_relative '../lib/compare_matrixes.rb'
-
-config = cci_defaults
-ES_HOST = config['ES_HOST'] || '172.17.0.1'
-ES_PORT = config['ES_PORT'] || 9200
+require_relative '../lib/compare.rb'
 
 common_conditions = nil
 
@@ -46,42 +39,4 @@ argv = if ARGV == []
        end
 opt_parser.parse!(argv)
 
-def parse_conditions(items)
-  items_hash = {}
-  items.each do |i|
-    key, value = i.split('=')
-    if key && value
-      value_list = value.split(',')
-      items_hash[key] = value_list.length > 1 ? value_list : value
-    else
-      puts 'error: condition missing'
-      exit
-    end
-  end
-  items_hash
-end
-
-def parse_argv(common_conditions)
-  conditions = []
-  ARGV.each do |item|
-    item += ' ' + common_conditions unless common_conditions.nil?
-    items = item.split(' ')
-    hash = parse_conditions(items)
-    conditions << hash
-  end
-  conditions
-end
-
-def create_matrices_list(conditions)
-  matrices = []
-  es = ESQuery.new(ES_HOST, ES_PORT)
-  conditions.each do |condition|
-    results = es.multi_field_query(condition)
-    matrices << combine_query_data(results)
-  end
-  matrices
-end
-
-condition_list = parse_argv(common_conditions)
-matrices_list = create_matrices_list(condition_list)
-compare_matrixes(matrices_list)
+compare_matrices_list(argv, common_conditions)

@@ -53,3 +53,18 @@ def build_multi_field_or_query_body(field, value_list)
   end
   inner_query
 end
+
+def parse_conditions(items)
+  items_hash = {}
+  items.each do |i|
+    key, value = i.split('=')
+    if key && value
+      value_list = value.split(',')
+      items_hash[key] = value_list.length > 1 ? value_list : value
+    else
+      puts 'error: condition missing'
+      exit
+    end
+  end
+  items_hash
+end
