@@ -1,3 +1,14 @@
+culture
+=======
+
+How To Ask Questions The Smart Way
+https://zhuanlan.zhihu.com/p/19779979
+https://www.jianshu.com/p/60dd8e9cd12f
+
+The Cathedral and the Bazaar
+https://www.ruanyifeng.com/blog/2008/02/notes_on_the_cathedral_and_the_bazaar.html
+http://www.catb.org/~esr/writings/cathedral-bazaar/cathedral-bazaar/
+
 ruby
 ====
 
