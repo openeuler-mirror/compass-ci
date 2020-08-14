@@ -1,0 +1,41 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# frozen_string_literal: true
+
+require 'bunny'
+require 'json'
+require 'yaml'
+
+# receive message and auto submit job
+class AutoSubmit
+  def initialize
+    connection = Bunny.new('amqp://172.17.0.1:5672')
+    connection.start
+    channel = connection.create_channel
+    @queue = channel.queue('new_refs')
+    @repo2job = YAML.load_file("#{$PROGRAM_NAME}.yaml")
+  end
+
+  def submit_job(newrefs_info)
+    git_repo = newrefs_info['git_repo']
+    return unless @repo2job[git_repo]
+
+    jobfile = "#{ENV['LKP_SRC']}/jobs/#{@repo2job[git_repo]}"
+    newrefs_info['new_refs']['heads'].each_value do |value|
+      system("#{ENV['LKP_SRC']}/sbin/submit -s 'upstream_repo: #{git_repo}' -s 'upstream_commit: #{value}' #{jobfile}")
+    end
+  end
+
+  def listen
+    @queue.subscribe(block: true) do |_delivery, _properties, message|
+      Thread.new do
+        message_info = JSON.parse(message)
+        submit_job(message_info)
+      end
+      sleep(1)
+    end
+  end
+end
+
+auto_submitter = AutoSubmit.new
+auto_submitter.listen
