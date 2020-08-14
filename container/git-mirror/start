@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
+require_relative '../lab.rb'
+
 DOCKER_LKP = '/c/lkp-tests'
 DOCKER_CCI = '/c/crystal-ci'
-system 'docker rm -f git-mirror'
+docker_rm "git-mirror"
 
 cmd = %W[
   docker run

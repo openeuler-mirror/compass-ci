@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
-system 'docker rm -f kibana'
+require_relative '../lab.rb'
+
+docker_rm "kibana"
 
 cmd = %w[
   docker run

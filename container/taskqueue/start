@@ -18,7 +18,7 @@ service_port = defaults['TASKQUEUE_PORT'] || '3060'
 service_name = 'taskqueue'
 service_image = "#{service_name}-alpine:v0.001-#{service_port}"
 
-system "docker rm -f #{service_name}-#{service_port}"
+docker_rm "#{service_name}-#{service_port}"
 
 cmd = %W[
   docker run

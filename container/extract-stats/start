@@ -17,7 +17,7 @@ env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/crystal-ci'
-system 'docker rm -f extract-stats'
+docker_rm "extract-stats"
 
 cmd = %w[
   docker run

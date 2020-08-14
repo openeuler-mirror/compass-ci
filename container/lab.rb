@@ -20,3 +20,10 @@ end
 def docker_env(hash)
   hash.map { |k, v| ['-e', "#{k}=#{v}"] }.flatten
 end
+
+def docker_rm(container)
+  res = %x(docker ps -aqf name="^#{container}$")
+  return if res.empty?
+
+  system "docker rm -f #{container}"
+end
