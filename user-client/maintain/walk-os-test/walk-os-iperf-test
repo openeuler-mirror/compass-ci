@@ -1,0 +1,63 @@
+#!/bin/bash -e
+
+# os test rounds
+test_times=50
+
+test_logs=walk-test.report
+test_yaml=iperf-walk-os.yaml
+test_os=(
+	'openeuler aarch64 20'
+	'openeuler aarch64 20.03'
+	'centos aarch64 7.6'
+	'centos aarch64 7.8'
+	'centos aarch64 8.1'
+	'debian aarch64 sid'
+	'debian aarch64 10'
+)
+
+trap 'echo User Cancelled! && exit' SIGINT
+
+sec2date() {
+	date -d@$1 +"%Y%m%d_%H:%M:%S"
+}
+
+logging() {
+	if [ 'new' == "$1" ] ; then
+		printf "%-5s %-8s %-25s %-20s %-20s %-8s %-10s\n" ${@:2} > $test_logs
+	else
+		printf "%-5s %-8s %-25s %-20s %-20s %-8s %-10s\n" $@ >> $test_logs
+	fi
+}
+
+create_test_yaml() {
+	local hwarch os os_arch os_ver cur_os
+	hwarch=$(arch)
+	cur_os="$@"
+	os=$(echo $cur_os |cut -d' ' -f1)
+	os_arch=$(echo $cur_os |cut -d' ' -f2)
+	os_ver=$(echo $cur_os |cut -d' ' -f3)
+	sed "s/USER/$USER/" $test_yaml > test.yaml
+	sed -i "s/OS_ARCH/$os_arch/" test.yaml
+	sed -i "s/ARCH/$hwarch/" test.yaml
+	sed -i "s/OS_VER/$os_ver/" test.yaml
+	sed -i "s/OS/$os/" test.yaml
+	echo "$hwarch $os/$os_arch/$os_ver"
+}
+
+job_test() {
+	local job_id bef aft
+	job_id=$(submit test.yaml |awk '{print $NF}')
+	bef=$(date +%s)
+	./my-qemu.sh
+	aft=$(date +%s)
+	logging "$1" "$2" "$3" "$(sec2date $bef)" "$(sec2date $aft)" "$((aft - bef))" "$job_id"
+}
+
+logging new "Index" "hwArch" "OS" "Begin" "End" "Cost/sec" "Job_ID"
+for round in $(seq $test_times)
+do
+	for idx in "${!test_os[@]}"
+	do
+		job_test $round $(create_test_yaml "${test_os[$idx]}")
+	done
+done
