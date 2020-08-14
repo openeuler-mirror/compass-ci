@@ -1,6 +1,8 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+. $CCI_SRC/container/lab.sh
+
 lsmod | grep -q "^nfs\s" || {
 	sudo modprobe nfs
 }
@@ -9,7 +11,7 @@ lsmod | grep -q "^nfsd\s" || {
 }
 
 # Several nfs servers running will cause conflict, so rm an old before running a new nfs server docker.
-docker rm -f os-nfs
+docker_rm os-nfs
 
 cmd=(
 	docker run

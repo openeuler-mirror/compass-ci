@@ -5,6 +5,8 @@
 
 . $CCI_SRC/container/lab.sh
 
+load_cci_defaults
+
 service_port=${TASKQUEUE_PORT:-3060}
 
 if [[ ! -f "taskqueue" ]]; then

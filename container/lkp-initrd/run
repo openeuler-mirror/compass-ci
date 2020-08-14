@@ -4,6 +4,8 @@
 DIR=$(dirname $(realpath $0))
 . $(dirname $DIR)/lab.sh
 
+load_cci_defaults
+
 cmd=(
 	docker run 
 	--rm
