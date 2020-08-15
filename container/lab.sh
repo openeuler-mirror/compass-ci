@@ -16,5 +16,5 @@ load_cci_defaults()
 docker_rm()
 {
 	container=$1
-	[ -n "$(docker ps -aqf name='^${container}$')" ] && docker rm -f $container
+	[ -n "$(docker ps -aqf name="^${container}$")" ] && docker rm -f $container
 }
