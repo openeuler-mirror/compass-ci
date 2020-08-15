@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
-system 'docker rm -f fluentd'
+require_relative '../lab.rb'
+
+docker_rm "fluentd"
 
 cmd = %w[
   docker run
