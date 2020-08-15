@@ -14,6 +14,7 @@ RUN apk add --no-cache 'ruby-dev' \
 
 RUN umask 002 &&\
     gem install fluentd &&\
+    gem install fluent-plugin-rabbitmq &&\
     gem install fluent-plugin-elasticsearch &&\
     gem install fluent-plugin-tail-ex &&\
     gem install fluent-plugin-tail-multiline &&\
