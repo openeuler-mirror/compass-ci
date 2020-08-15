@@ -2,6 +2,6 @@
 # frozen_string_literal: true
 
 TMEP_GIT_BASE = '/c/public_git'
-BISECT_TASK_QUEUE = 'bisect'
+DELIMITER_TASK_QUEUE = 'delimiter'
 BISECT_RUN_SCRIPT = "#{ENV['CCI_SRC']}/src/git-bisect/bisect_run_script.rb"
-BISECT_TBOX_GROUP = 'vm-git-bisect'
+DELIMITER_TBOX_GROUP = 'vm-hi1620-2p8g--delimiter'
