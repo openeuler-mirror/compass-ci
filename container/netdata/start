@@ -15,6 +15,6 @@ cmd=(
 	-v /srv/cache/netdata_lib:/var/lib/netdata
 	--cap-add SYS_PTRACE 
 	--security-opt apparmor=unconfined 
-	netdata/netdata
+	netdata/netdatalkp
 )
 "${cmd[@]}"
