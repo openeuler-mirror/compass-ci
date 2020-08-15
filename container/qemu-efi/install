@@ -1,6 +1,8 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+. '../lab.sh'
+
 cmd=(
 	docker run
 	--name qemu-efi
@@ -9,4 +11,4 @@ cmd=(
 
 "${cmd[@]}"
 docker cp qemu-efi:/usr/share/qemu-efi-aarch64 /usr/share/qemu-efi-aarch64
-docker rm -f qemu-efi
+docker_rm qemu-efi

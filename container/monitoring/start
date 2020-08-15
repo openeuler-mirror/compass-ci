@@ -16,7 +16,7 @@ env = docker_env(defaults)
 
 DEFAULT_CCI = '/c/cci'
 MONITOR_PORT = defaults['MONITOR_PORT'] || '11310'
-system "docker rm -f monitoring-#{MONITOR_PORT}"
+docker_rm "monitoring-#{MONITOR_PORT}"
 
 cmd = %W[
   docker run
