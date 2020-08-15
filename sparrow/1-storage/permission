@@ -1,7 +1,7 @@
 #! /bin/bash
 
 chown lkp:lkp /srv/result
-chown lkp:lkp /srv/es/logging-es
+chown -R lkp:lkp /srv/es
 chmod 775 /srv/result
 chmod 775 /srv/es/logging-es
 chmod 775 /srv/es
