@@ -10,5 +10,8 @@ WORKDIR /usr/share/crystal/app
 RUN shards
 RUN sed -i 's:data):data, headers\: HTTP\:\:Headers{"Content-Type" => "application/json"}):' /usr/share/crystal/app/lib/elasticsearch-crystal/src/elasticsearch/api/namespace/common.cr;
 
+copy shard-amqp.yml /usr/share/crystal/app/shard.yml
+RUN shards
+
 CMD ["bash"]
 

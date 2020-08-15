@@ -1,0 +1,7 @@
+name: monitor
+version: 0.1.0
+
+dependencies:
+  amqp-client:
+    github: cloudamqp/amqp-client.cr
+    version: 0.5.14
