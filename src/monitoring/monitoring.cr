@@ -2,9 +2,14 @@ require "kemal"
 require "json"
 
 require "./filter"
+require "./amqp"
 
 module Monitoring
   filter = Filter.new
+
+  message_queue_client = MessageQueueClient.new
+
+  spawn message_queue_client.monitoring_message_queue(filter, "logging-test", "logging-test")
 
   ws "/filter" do |socket|
     query = JSON::Any.new("")

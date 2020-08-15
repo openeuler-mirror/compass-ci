@@ -1,3 +1,4 @@
+require "set"
 require "json"
 
 class Filter
@@ -16,6 +17,29 @@ class Filter
   def remove_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
     return unless @hash[query]?
     @hash[query].delete(socket)
+  end
+
+  def send_msg(query, msg)
+    return unless @hash[query]?
+    @hash[query].each do |socket|
+      socket.send msg.to_s
+    end
+  end
+
+  def filter_msg(msg)
+    msg = JSON.parse(msg.to_s).as_h?
+    return unless msg
+    @hash.keys.each do |query|
+      if match_query(query.as_h, msg)
+        send_msg(query, msg)
+      end
+    end
+  end
+
+  def match_query(query : Hash(String, JSON::Any), msg : Hash(String, JSON::Any))
+    query_set = query.to_a.to_set
+    msg_set = msg.to_a.to_set
+    query_set.subset?(msg_set)
   end
 
 end
