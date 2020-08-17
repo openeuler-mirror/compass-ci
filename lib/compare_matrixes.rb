@@ -197,11 +197,14 @@ def compare_matrixes(matrixes_list, options = {})
     return
   end
 
-  options = { 'perf-profile': 5 }.merge(options)
+  options = { 'perf-profile': 5, theme: :default }.merge(options)
   matrixes_values = get_matrixes_values(matrixes_list, options)
   remove_unchanged_field(matrixes_values)
-  print_result(matrixes_values, matrixes_list.length, false)
-  print_result(matrixes_values, matrixes_list.length, true)
+  show_result(
+    matrixes_values,
+    matrixes_list.length,
+    options[:theme]
+  )
 end
 
 # Format Tools
@@ -285,16 +288,20 @@ def format_runs_fails(runs, fails)
   runs_str + ' : ' + fails_str
 end
 
-def format_reproduction(reproduction)
+def format_reproduction(reproduction, theme)
   reproduction_str = get_suitable_number_str(
     reproduction,
     SUB_SHORT_COLUMN_WIDTH - 1,
     '%+.1f'
   ) + '%'
-  format("%-#{SUB_SHORT_COLUMN_WIDTH}s", reproduction_str)
+  color = get_compare_value_color(reproduction, theme)
+  colorize(
+    color,
+    format("%-#{SUB_SHORT_COLUMN_WIDTH}s", reproduction_str)
+  )
 end
 
-def format_change(change)
+def format_change(change, theme)
   change_str = '0'
   if change
     change_str = get_suitable_number_str(
@@ -303,8 +310,11 @@ def format_change(change)
       '%+.1f'
     ) + '%'
   end
-
-  format("%-#{SUB_SHORT_COLUMN_WIDTH}s", change_str)
+  color = get_compare_value_color(change, theme)
+  colorize(
+    color,
+    format("%-#{SUB_SHORT_COLUMN_WIDTH}s", change_str)
+  )
 end
 
 def format_stddev_percent(stddev_percent, average_width)
@@ -428,8 +438,8 @@ def get_header(matrixes_number, success)
   header
 end
 
-def get_success_str(values, index)
-  change_str = format_change(values[:change]) unless index.zero?
+def get_success_str(values, index, theme)
+  change_str = format_change(values[:change], theme) unless index.zero?
   stddev_str = format_stddev(
     values[:average],
     values[:stddev_percent]
@@ -437,10 +447,10 @@ def get_success_str(values, index)
   (change_str || '') + stddev_str
 end
 
-def get_failure_str(values, index)
+def get_failure_str(values, index, theme)
   unless index.zero?
     reproduction_str = format_reproduction(
-      values[:reproduction]
+      values[:reproduction], theme
     )
   end
 
@@ -451,16 +461,16 @@ def get_failure_str(values, index)
   (reproduction_str || '') + runs_fails_str
 end
 
-def get_values_str(matrixes, success)
+def get_values_str(matrixes, success, theme)
   values_str = ''
   matrixes.each do |index, values|
     values_str += if success
                     get_success_str(
-                      values, index
+                      values, index, theme
                     ) + INTERVAL_BLANK
                   else
                     get_failure_str(
-                      values, index
+                      values, index, theme
                     ) + INTERVAL_BLANK
                   end
   end
@@ -473,13 +483,28 @@ end
 
 # Print
 
-def print_result(matrixes_values, matrixes_number, success)
+def show_result(matrixes_values, matrixes_list_length, theme)
+  if theme.is_a?(String)
+    theme = theme.to_sym
+  end
+
+  if THEMES.key?(theme)
+    theme = THEMES[theme]
+  else
+    warn "Theme #{theme} does not exist! use default theme."
+    theme = THEMES[:default]
+  end
+  print_result(matrixes_values, matrixes_list_length, false, theme)
+  print_result(matrixes_values, matrixes_list_length, true, theme)
+end
+
+def print_result(matrixes_values, matrixes_number, success, theme)
   return if matrixes_values[success].empty?
 
   print "\n\n\n"
   print get_header(matrixes_number, success)
   matrixes_values[success].each do |field, matrixes|
-    print get_values_str(matrixes, success)
+    print get_values_str(matrixes, success, theme)
     print get_field_str(field)
     print "\n"
   end
