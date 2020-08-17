@@ -3,6 +3,8 @@
 dirs=(
 	/srv/es
 	/srv/es/logging-es
+	/srv/cache/netdata_cache
+	/srv/cache/netdata_lib
 	/srv/git
 	/srv/initrd
 	/srv/initrd/pkg

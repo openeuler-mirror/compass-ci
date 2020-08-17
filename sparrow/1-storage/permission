@@ -2,6 +2,10 @@
 
 chown lkp:lkp /srv/result
 chown -R lkp:lkp /srv/es
+chown lkp:lkp /srv/cache/netdata_cache
+chown lkp:lkp /srv/cache/netdata_lib
 chmod 775 /srv/result
 chmod 775 /srv/es/logging-es
 chmod 775 /srv/es
+chmod 775 /srv/cache/netdata_cache
+chmod 775 /srv/cache/netdata_lib
