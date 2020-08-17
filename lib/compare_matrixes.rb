@@ -224,6 +224,49 @@ def get_suitable_number_str(number, length, format_pattern)
   format_str
 end
 
+# Colorize
+
+def get_compare_value_color(value, theme)
+  if value.nil?
+  elsif value >= GOOD_STANDARD
+    {
+      foreground: theme[:good_foreground],
+      background: theme[:good_background]
+    }
+  elsif value <= BAD_STANDARD
+    {
+      foreground: theme[:bad_foreground],
+      background: theme[:bad_background]
+    }
+  end
+end
+
+def get_color_code(color_str)
+  color_sym = color_str.to_sym if color_str.is_a?(String)
+  COLORS.key?(color_sym) ? COLORS[color_sym] : COLORS[:default]
+end
+
+def replace_n(str, left_str, right_str)
+  if str.index("\n")
+    result_str = str.split("\n").join(right_str + "\n" + left_str)
+    result_str = left_str + result_str + right_str
+    result_str += "\n" if str[-1] == "\n"
+    result_str
+  else
+    left_str + str + right_str
+  end
+end
+
+def colorize(color, str)
+  return str if color.nil? || color.empty?
+
+  foreground_color = get_color_code(color[:foreground])
+  background_color = get_color_code(color[:background]) + 10
+  left_str = "\033[#{background_color}m\033[#{foreground_color}m"
+  right_str = "\033[0m"
+  replace_n(str, left_str, right_str)
+end
+
 # Format Fields
 
 def format_runs_fails(runs, fails)
