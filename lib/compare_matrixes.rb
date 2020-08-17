@@ -219,10 +219,6 @@ end
 
 # Format Field
 
-def format_field(field)
-  INTERVAL_BLANK + format("%-#{COLUMN_WIDTH}s", field)
-end
-
 def format_runs_fails(runs, fails)
   runs_width = (SUB_LONG_COLUMN_WIDTH * 3 / 4).to_i
   fails_width = SUB_LONG_COLUMN_WIDTH - runs_width - 3
@@ -364,25 +360,47 @@ def get_header(matrixes_number, success)
   end
 end
 
-def print_success_values(values, index)
-  print format_change(values[:change]) unless index.zero?
-  print format_stddev(values[:average], values[:stddev_percent])
+def get_success_str(values, index)
+  change_str = format_change(values[:change]) unless index.zero?
+  stddev_str = format_stddev(
+    values[:average],
+    values[:stddev_percent]
+  )
+  (change_str || '') + stddev_str
 end
 
-def print_failure_values(values, index)
-  print format_reproduction(values[:reproduction]) unless index.zero?
-  print format_runs_fails(values[:runs], values[:fails])
-end
-
-def print_values(matrixes, success)
-  matrixes.each do |index, values|
-    print INTERVAL_BLANK
-    if success
-      print_success_values(values, index)
-    else
-      print_failure_values(values, index)
-    end
+def get_failure_str(values, index)
+  unless index.zero?
+    reproduction_str = format_reproduction(
+      values[:reproduction]
+    )
   end
+
+  runs_fails_str = format_runs_fails(
+    values[:runs],
+    values[:fails]
+  )
+  (reproduction_str || '') + runs_fails_str
+end
+
+def get_values_str(matrixes, success)
+  values_str = ''
+  matrixes.each do |index, values|
+    values_str += if success
+                    get_success_str(
+                      values, index
+                    ) + INTERVAL_BLANK
+                  else
+                    get_failure_str(
+                      values, index
+                    ) + INTERVAL_BLANK
+                  end
+  end
+  values_str
+end
+
+def get_field(field)
+  format("%-#{COLUMN_WIDTH}s", field)
 end
 
 # Print
@@ -393,8 +411,8 @@ def print_result(matrixes_values, matrixes_number, success)
   print "\n\n\n"
   print get_header(matrixes_number, success)
   matrixes_values[success].each do |field, matrixes|
-    print_values(matrixes, success)
-    print format_field(field)
+    print get_values_str(matrixes, success)
+    print get_field(field)
     print "\n"
   end
 end
