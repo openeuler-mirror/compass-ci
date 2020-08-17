@@ -3,25 +3,8 @@
 
 LKP_SRC ||= ENV['LKP_SRC'] || File.dirname(__dir__)
 require 'set'
+require_relative 'themes'
 require "#{LKP_SRC}/lib/stats"
-
-COLUMN_WIDTH = 30 # print column width
-INTERVAL_WIDTH = 2 # width of interval that between column
-INTERVAL_BLANK = ' ' * INTERVAL_WIDTH
-
-# the sub_column that are children of column
-# sub_short_column_width : sub_long_column_width = 1 : 3
-# the short sub_column
-SUB_SHORT_COLUMN_WIDTH = (COLUMN_WIDTH / 3.0).to_i
-# the long sub_column
-SUB_LONG_COLUMN_WIDTH = COLUMN_WIDTH - SUB_SHORT_COLUMN_WIDTH
-
-CHANGE_STR = 'change'
-STDDEV_STR = '%stddev'
-STDDEV_AVERAGE_PROPORTION = 3 / 4.0
-FIELD_STR = 'field'
-RUNS_FAILS_STR = 'runs:fails'
-REPRODUCTION_STR = 'reproduction'
 
 FAILURE_PATTERNS = IO.read("#{LKP_SRC}/etc/failure").split("\n")
 LATENCY_PATTERNS = IO.read("#{LKP_SRC}/etc/latency").split("\n")
