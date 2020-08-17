@@ -15,6 +15,7 @@ pkgs=(
 	lvm2
 	docker-engine
 	dmidecode
+	redis
 )
 
 yum install -y "${pkgs[@]}"
