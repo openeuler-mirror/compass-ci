@@ -11,6 +11,7 @@ cmd=(
 	--mount type=tmpfs,destination=/tmp
 	-v ${load_path}/lkp:/lkp
 	-v ${DIR}/bin:/root/bin:ro
+	--oom-score-adj="-1000"
 	${docker_image} 
 	/root/bin/entrypoint.sh
 )
