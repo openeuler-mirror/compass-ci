@@ -9,3 +9,4 @@ chmod 775 /srv/es/logging-es
 chmod 775 /srv/es
 chmod 775 /srv/cache/netdata_cache
 chmod 775 /srv/cache/netdata_lib
+chmod 775 /tftpboot
