@@ -52,6 +52,7 @@ def latency?(field)
 end
 
 # Core
+
 def get_values(value_list, success)
   # get values(type: Hash) that include :average, :runs, :stddev_percent, ...
   #
@@ -209,12 +210,18 @@ def get_suitable_number_str(number, length, format_pattern)
   # if number string length can't < target length,
   # transform number string to scientific notation string
 
-  number_length = length - 5
-  number_length -= 1 if number.negative?
-  suitable = Math.log(number.abs, 10) < length || number_length.negative?
-  return format(format_pattern, number) if suitable
+  format_str = format(format_pattern, number)
+  return format_str if format_str.length <= length
 
-  format("%.#{number_length}e", number)
+  number_length = length - 7
+  unless number_length.negative?
+    scientific_str = format("%+.#{number_length}e", number)
+    lack_length = length - scientific_str.length
+    unless lack_length.negative?
+      return scientific_str + ' ' * lack_length
+    end
+  end
+  format_str
 end
 
 # Format Field
