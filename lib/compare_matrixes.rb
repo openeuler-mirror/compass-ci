@@ -224,10 +224,10 @@ def get_suitable_number_str(number, length, format_pattern)
   format_str
 end
 
-# Format Field
+# Format Fields
 
 def format_runs_fails(runs, fails)
-  runs_width = (SUB_LONG_COLUMN_WIDTH * 3 / 4).to_i
+  runs_width = (SUB_LONG_COLUMN_WIDTH * RUNS_PROPORTION).to_i
   fails_width = SUB_LONG_COLUMN_WIDTH - runs_width - 3
   runs_str = get_suitable_number_str(
     runs,
@@ -245,27 +245,30 @@ end
 def format_reproduction(reproduction)
   reproduction_str = get_suitable_number_str(
     reproduction,
-    SUB_SHORT_COLUMN_WIDTH,
-    '%+.1f%%'
-  )
+    SUB_SHORT_COLUMN_WIDTH - 1,
+    '%+.1f'
+  ) + '%'
   format("%-#{SUB_SHORT_COLUMN_WIDTH}s", reproduction_str)
 end
 
 def format_change(change)
-  return format("%-#{SUB_SHORT_COLUMN_WIDTH}d", 0) unless change
+  change_str = '0'
+  if change
+    change_str = get_suitable_number_str(
+      change,
+      SUB_SHORT_COLUMN_WIDTH - 3,
+      '%+.1f'
+    ) + '%'
+  end
 
-  change_str = get_suitable_number_str(
-    change,
-    SUB_SHORT_COLUMN_WIDTH - 2,
-    '%+.1f%%'
-  )
   format("%-#{SUB_SHORT_COLUMN_WIDTH}s", change_str)
 end
 
 def format_stddev_percent(stddev_percent, average_width)
+  percent_width = SUB_LONG_COLUMN_WIDTH - average_width
   if stddev_percent
     if stddev_percent != 0
-      percent_width = SUB_LONG_COLUMN_WIDTH - average_width - 4
+      percent_width -= 4
       percent_str = get_suitable_number_str(
         stddev_percent.abs,
         percent_width,
@@ -275,7 +278,7 @@ def format_stddev_percent(stddev_percent, average_width)
       return " ±#{percent_str}%"
     end
   end
-  ''
+  ' ' * percent_width
 end
 
 def format_stddev(average, stddev_percent)
@@ -288,7 +291,7 @@ def format_stddev(average, stddev_percent)
     "%#{average_width}.2f"
   )
   percent_str = format_stddev_percent(stddev_percent, average_width)
-  format("%-#{SUB_LONG_COLUMN_WIDTH}s", average_str + percent_str)
+  average_str + percent_str
 end
 
 # Get Table Content
@@ -406,7 +409,7 @@ def get_values_str(matrixes, success)
   values_str
 end
 
-def get_field(field)
+def get_field_str(field)
   format("%-#{COLUMN_WIDTH}s", field)
 end
 
@@ -419,7 +422,7 @@ def print_result(matrixes_values, matrixes_number, success)
   print get_header(matrixes_number, success)
   matrixes_values[success].each do |field, matrixes|
     print get_values_str(matrixes, success)
-    print get_field(field)
+    print get_field_str(field)
     print "\n"
   end
 end
