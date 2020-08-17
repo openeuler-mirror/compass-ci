@@ -1,8 +1,4 @@
----
-
-#! jobs/iperf.yaml
-suite: iperf
-testcase: iperf
+suite: iperf-walk-os-test
 category: benchmark
 runtime: 300
 cluster: cs-localhost
@@ -11,27 +7,9 @@ if role server:
 if role client:
   iperf:
     protocol: tcp
-job_origin: jobs/iperf.yaml
 testbox: vm-hi1620-2p8g--USER
-arch: ARCH
 os: OS
 os_arch: OS_ARCH
 os_version: OS_VER
 node_roles: server client
-
-#! include/category/benchmark
-kmsg:
-boot-time:
-uptime:
-iostat:
-heartbeat:
-vmstat:
-numa-numastat:
-numa-vmstat:
-numa-meminfo:
-proc-vmstat:
-proc-stat:
-meminfo:
-
-result_root: /result/iperf
 LKP_DEBUG_PREFIX: bash -x

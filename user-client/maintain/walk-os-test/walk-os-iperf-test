@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 # os test rounds
-test_times=50
+test_times=1
 
 test_logs=walk-test.report
 test_yaml=iperf-walk-os.yaml
@@ -38,7 +38,6 @@ create_test_yaml() {
 	os_ver=$(echo $cur_os |cut -d' ' -f3)
 	sed "s/USER/$USER/" $test_yaml > test.yaml
 	sed -i "s/OS_ARCH/$os_arch/" test.yaml
-	sed -i "s/ARCH/$hwarch/" test.yaml
 	sed -i "s/OS_VER/$os_ver/" test.yaml
 	sed -i "s/OS/$os/" test.yaml
 	echo "$hwarch $os/$os_arch/$os_ver"
