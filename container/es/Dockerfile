@@ -2,7 +2,7 @@
 
 FROM alpine:3.11
 
-RUN apk add --no-cache elasticsearch
+RUN apk add --no-cache elasticsearch curl
 
 RUN rm -rf /etc/init.d/elasticsearch \
     && rm -rf /usr/share/java/elasticsearch/plugins \
