@@ -9,7 +9,7 @@ require "#{LKP_SRC}/lib/stats"
 FAILURE_PATTERNS = IO.read("#{LKP_SRC}/etc/failure").split("\n")
 LATENCY_PATTERNS = IO.read("#{LKP_SRC}/etc/latency").split("\n")
 
-# Tools
+# Compute Tools
 
 def get_matrix_size(matrix)
   if matrix.nil? || matrix.empty?
@@ -203,7 +203,22 @@ def compare_matrixes(matrixes_list, options = {})
   print_result(matrixes_values, matrixes_list.length, true)
 end
 
-# Format Output
+# Format Tools
+
+def get_suitable_number_str(number, length, format_pattern)
+  # if number string length can't < target length,
+  # transform number string to scientific notation string
+
+  number_length = length - 5
+  number_length -= 1 if number.negative?
+  suitable = Math.log(number.abs, 10) < length || number_length.negative?
+  return format(format_pattern, number) if suitable
+
+  format("%.#{number_length}e", number)
+end
+
+# Format Field
+
 def format_field(field)
   INTERVAL_BLANK + format("%-#{COLUMN_WIDTH}s", field)
 end
@@ -273,6 +288,8 @@ def format_stddev(average, stddev_percent)
   format("%-#{SUB_LONG_COLUMN_WIDTH}s", average_str + percent_str)
 end
 
+# Get Table Content
+
 def get_index(matrixes_number)
   index_line = INTERVAL_BLANK + format("%#{SUB_LONG_COLUMN_WIDTH}d", 0)
   (1...matrixes_number).each do |index|
@@ -338,18 +355,6 @@ def get_title_line(common_title, compare_title, matrixes_number)
   title_line + get_title_symbol(common_title, compare_title, matrixes_number)
 end
 
-def get_suitable_number_str(number, length, format_pattern)
-  # if number string length can't < target length,
-  # transform number string to scientific notation string
-  #
-  number_length = length - 5
-  number_length -= 1 if number.negative?
-  suitable = Math.log(number.abs, 10) < length || number_length.negative?
-  return format(format_pattern, number) if suitable
-
-  format("%.#{number_length}e", number)
-end
-
 def get_header(matrixes_number, success)
   header = get_index(matrixes_number) + get_liner(matrixes_number)
   if success
@@ -379,6 +384,8 @@ def print_values(matrixes, success)
     end
   end
 end
+
+# Print
 
 def print_result(matrixes_values, matrixes_number, success)
   return if matrixes_values[success].empty?
