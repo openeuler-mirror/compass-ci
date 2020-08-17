@@ -5,6 +5,8 @@
 . $LKP_SRC/lib/yaml.sh
 . $CCI_SRC/container/lab.sh
 
+load_cci_defaults
+
 : ${hostname:="vm-hi1620-1p1g-1"}
 # unicast prefix: x2, x6, xA, xE
 export mac=$(echo $hostname | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/0a-\1-\2-\3-\4-\5/')
