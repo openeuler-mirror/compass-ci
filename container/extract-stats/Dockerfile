@@ -5,7 +5,7 @@ FROM alpine:3.11
 RUN sed -i 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories &&\
     apk update &&\
     apk add --no-cache 'ruby-dev' \
-    'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
+    'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'grep'
 
 RUN umask 002 &&\
     gem install rest-client activesupport git json yaml
