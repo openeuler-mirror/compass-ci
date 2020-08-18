@@ -22,7 +22,7 @@ class Filter
   def send_msg(query, msg)
     return unless @hash[query]?
     @hash[query].each do |socket|
-      socket.send msg.to_s
+      socket.send msg.to_json
     end
   end
 

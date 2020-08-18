@@ -15,7 +15,6 @@ module Monitoring
     query = JSON::Any.new("")
 
     socket.on_message do |msg|
-      socket.send "query=>#{msg}"
       # query like {"job_id": 1}
       query = JSON.parse(msg)
       if query.as_h?
