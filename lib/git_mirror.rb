@@ -56,30 +56,60 @@ class GitMirror
     @feedback_queue.push(@feedback_info)
   end
 
-  def fetch_read(mirror_dir)
-    return File.exist?("#{mirror_dir}/FETCH_HEAD") ? File.read("#{mirror_dir}/FETCH_HEAD") : ''
+  def git_clone(url, mirror_dir)
+    has_new_refs = false
+    content = ''
+    ret = false
+    10.times do
+      ret = system("git clone --mirror #{url} #{mirror_dir}")
+      break if ret
+    end
+    if ret
+      content = `git -C #{mirror_dir} show-ref --heads`
+      has_new_refs = true
+    end
+    [has_new_refs, content]
   end
 
-  def mirror_once
+  def check_new_refs(fork_info, content)
+    return true unless fork_info[:new_refs]
+
+    commits = fork_info[:new_refs][:heads].merge(fork_info[:new_refs][:tags])
+    content.each_line do |line|
+      next if line.start_with? '#'
+
+      strings = line.split
+      return true unless commits.value?(strings.first)
+    end
+    return false
+  end
+
+  def git_fetch(mirror_dir, fork_info)
+    has_new_refs = false
+    content = ''
+    ret = system("git -C #{mirror_dir} fetch")
+    if ret
+      content = `git -C #{mirror_dir} show-ref --heads`
+      has_new_refs = check_new_refs(fork_info, content)
+    end
+    [has_new_refs, content]
+  end
+
+  def mirror_sync
     fork_info = @queue.pop
     mirror_dir = "/srv/git/#{fork_info['forkdir']}.git"
     if File.directory?(mirror_dir)
-      content_old = fetch_read(mirror_dir)
-      system("git -C #{mirror_dir} fetch")
-      content = fetch_read(mirror_dir)
-      has_new_refs = (content != content_old)
+      has_new_refs, content = git_fetch(mirror_dir, fork_info)
     else
       FileUtils.mkdir_p(mirror_dir)
-      system("git clone --bare #{fork_info['url']} #{mirror_dir}")
-      content = `git show-ref --heads`
-      has_new_refs = true
+      has_new_refs, content = git_clone(fork_info['url'], mirror_dir)
     end
     feedback(has_new_refs, fork_info['forkdir'], content)
   end
 
-  def gitmirror
+  def git_mirror
     loop do
-      mirror_once
+      mirror_sync
     end
   end
 end
@@ -134,7 +164,7 @@ class MirrorMain
     10.times do
       Thread.new do
         git_mirror = GitMirror.new(@git_queue, @feedback_queue)
-        git_mirror.gitmirror
+        git_mirror.git_mirror
       end
       sleep(0.1)
     end
@@ -150,7 +180,10 @@ class MirrorMain
 
     feedback_info = @feedback_queue.pop(true)
     @fork_stat[feedback_info[:git_repo]][:queued] = false
-    send_message(feedback_info) if feedback_info[:new_refs]
+    return unless feedback_info[:new_refs]
+
+    send_message(feedback_info)
+    @git_info[feedback_info[:git_repo]][:new_refs] = feedback_info[:new_refs]
   end
 
   def push_git_queue
