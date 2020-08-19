@@ -9,7 +9,7 @@ shopt -s nullglob
 # rm /home/*/.gem/ruby/specifications/overcommit-*
 # rm /home/*/.gem/ruby/specifications/rubocop-0.*
 
-git_dirs=($HOME/*/.git/ $HOME/*/*/.git/ $HOME/.*/*/.git/)
+git_dirs=("$HOME"/*/.git/ "$HOME"/*/*/.git/ "$HOME"/.*/*/.git/)
 
 for git_dir in "${git_dirs[@]}"
 do
@@ -17,14 +17,15 @@ do
 	[[ $git_dir =~ 'igcommit' ]]	&& continue
 
 	cd "$git_dir/.." || continue
-	echo $PWD
+	echo "$PWD"
 
 	[[ $git_dir =~ 'lkp-tests' ]] && {	# too many old files
-		echo UNINSTALL overcommit from $git_dir  ......
+		echo UNINSTALL overcommit from "$git_dir"  ......
 		overcommit --uninstall
 		continue
 	}
 
-	overcommit --install --force --sign
+	overcommit --install --force
+	overcommit --sign
 	rm -f .overcommit.yml	# should use global config
 done
