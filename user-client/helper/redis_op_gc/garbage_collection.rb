@@ -17,7 +17,7 @@ class GarbageCollection
   def run
     abn = AbnormalIdDetect.new(@task_id, @day_number, @content.to_json)
     result = abn.check
-    case result.gsub!(/=.*/, '')
+    case result.gsub(/=.*/, '')
     when MANUAL_DELETED
       gc4taskqueue
       gc4scheduler
