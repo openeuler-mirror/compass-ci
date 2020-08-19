@@ -14,51 +14,21 @@ class GitMirror
     @queue = queue
     @feedback_queue = feedback_queue
     @feedback_info = {}
+    @new_refs = {}
   end
 
-  def handle_strings(strings)
-    strings.each_index do |index|
-      if strings[index] == 'branch'
-        @feedback_info[:new_refs][:heads][strings[index + 1]] = strings.first
-        return true
-      elsif strings[index] == 'tag'
-        @feedback_info[:new_refs][:tags][strings[index + 1]] = strings.first
-        return true
-      end
-    end
-    return false
-  end
-
-  def handle_line(line)
-    strings = line.split
-    ret = handle_strings(strings)
-    if !ret && strings.length == 2
-      @feedback_info[:new_refs][:heads][strings[1]] = strings.first
-    else
-      errlog = File.open('errlog', 'a')
-      errlog.puts "unresolved line: #{line}\n"
-    end
-  end
-
-  # FETCH_HEAD content example:
-  # 3031dbcd8f9ebf702b7cc8f046cd12393cf64e5a                branch 'master' of file:///c/lkp-tests
-  # b23c83df362fdcf0cfcedeae2934176ec0af3b51        not-for-merge   branch 'sunlijun' of file:///c/lkp-tests
-  def feedback(has_new_refs, git_repo, content)
+  # git show-ref --heads content example:
+  # 9bedcbbf64d6d3270e645f7e04f13e61933f0c28 refs/heads/master
+  def feedback(has_new_refs, git_repo)
     @feedback_info = { git_repo: git_repo }
     if has_new_refs
-      @feedback_info[:new_refs] = { heads: {}, tags: {} }
-      content.each_line do |line|
-        next if line.start_with? '#'
-
-        handle_line(line)
-      end
+      @feedback_info[:new_refs] = @new_refs
     end
     @feedback_queue.push(@feedback_info)
   end
 
   def git_clone(url, mirror_dir)
     has_new_refs = false
-    content = ''
     ret = false
     10.times do
       ret = system("git clone --mirror #{url} #{mirror_dir}")
@@ -67,44 +37,59 @@ class GitMirror
     if ret
       content = `git -C #{mirror_dir} show-ref --heads`
       has_new_refs = true
+      get_all_refs(content)
     end
-    [has_new_refs, content]
+    return has_new_refs
   end
 
-  def check_new_refs(fork_info, content)
-    return true unless fork_info[:new_refs]
-
-    commits = fork_info[:new_refs][:heads].merge(fork_info[:new_refs][:tags])
+  def get_all_refs(content)
+    @new_refs = { heads: {} }
     content.each_line do |line|
       next if line.start_with? '#'
 
       strings = line.split
-      return true unless commits.value?(strings.first)
+      @new_refs[:heads][strings[1]] = strings.first
     end
-    return false
+  end
+
+  def check_new_refs(fork_info, content)
+    return false unless fork_info[:new_refs]
+
+    @new_refs = { heads: {} }
+    ret = false
+    commits = fork_info[:new_refs][:heads]
+    content.each_line do |line|
+      next if line.start_with? '#'
+
+      strings = line.split
+      if commits[strings[1]] != strings.first
+        @new_refs[:heads][strings[1]] = strings.first
+        ret = true
+      end
+    end
+    return ret
   end
 
   def git_fetch(mirror_dir, fork_info)
     has_new_refs = false
-    content = ''
     ret = system("git -C #{mirror_dir} fetch")
     if ret
       content = `git -C #{mirror_dir} show-ref --heads`
       has_new_refs = check_new_refs(fork_info, content)
     end
-    [has_new_refs, content]
+    return has_new_refs
   end
 
   def mirror_sync
     fork_info = @queue.pop
     mirror_dir = "/srv/git/#{fork_info['forkdir']}.git"
     if File.directory?(mirror_dir)
-      has_new_refs, content = git_fetch(mirror_dir, fork_info)
+      has_new_refs = git_fetch(mirror_dir, fork_info)
     else
       FileUtils.mkdir_p(mirror_dir)
-      has_new_refs, content = git_clone(fork_info['url'], mirror_dir)
+      has_new_refs = git_clone(fork_info['url'], mirror_dir)
     end
-    feedback(has_new_refs, fork_info['forkdir'], content)
+    feedback(has_new_refs, fork_info['forkdir'])
   end
 
   def git_mirror
@@ -175,15 +160,28 @@ class MirrorMain
     @message_queue.publish(message)
   end
 
+  def memmory_all_refs(git_repo)
+    mirror_dir = "/srv/git/#{git_repo}.git"
+    content = `git -C #{mirror_dir} show-ref --heads`
+    new_refs = { heads: {} }
+    content.each_line do |line|
+      next if line.start_with? '#'
+
+      strings = line.split
+      new_refs[:heads][strings[1]] = strings.first
+    end
+    return new_refs
+  end
+
   def handle_feedback
     return if @feedback_queue.empty?
 
     feedback_info = @feedback_queue.pop(true)
     @fork_stat[feedback_info[:git_repo]][:queued] = false
+    @git_info[feedback_info[:git_repo]][:new_refs] = memmory_all_refs(feedback_info[:git_repo])
     return unless feedback_info[:new_refs]
 
     send_message(feedback_info)
-    @git_info[feedback_info[:git_repo]][:new_refs] = feedback_info[:new_refs]
   end
 
   def push_git_queue
