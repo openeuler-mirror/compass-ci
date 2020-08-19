@@ -207,6 +207,84 @@ def compare_matrixes(matrixes_list, options = {})
   )
 end
 
+# HTML Format
+
+def get_html_index(matrixes_number)
+  index = "  <tr>\n    <th>0</th>\n"
+  (1...matrixes_number).each do |matrix_index|
+    index += "    <th colspan='2'>#{matrix_index}</th>\n"
+  end
+  index + "    <th>#{FIELD_STR}</th>\n  </tr>\n"
+end
+
+def get_html_title(common_title, compare_title, matrixes_number)
+  title = "  <tr>\n    <td>#{common_title}</td>\n"
+  title += "    <td>#{compare_title}</td>\n    <td>#{common_title}</td>\n" * (
+    matrixes_number - 1
+  )
+  title + "  </tr>\n"
+end
+
+def get_html_header(matrixes_number, success)
+  if success
+    common_title = STDDEV_STR
+    compare_title = CHANGE_STR
+  else
+    common_title = RUNS_FAILS_STR
+    compare_title = REPRODUCTION_STR
+  end
+
+  header = get_html_index(matrixes_number)
+  header + get_html_title(common_title, compare_title, matrixes_number)
+end
+
+def get_html_success(values, index)
+  stddev_str = values[:average].to_s
+  stddev_percent = values[:stddev_percent]
+  if stddev_percent && stddev_percent != 0
+    stddev_str += " ± #{stddev_percent}%"
+  end
+
+  change_str = "    <td>#{values[:change]}%</td>\n" unless index.zero?
+  (change_str || '') + "    <td>#{stddev_str}</td>\n"
+end
+
+def get_html_failure(values, index)
+  runs_fails_str = "#{values[:runs]}:#{values[:fails]}"
+  reproduction_str = "    <td>#{values[:reproduction]}%</td>\n" unless index.zero?
+  (reproduction_str || '') + "    <td>#{runs_fails_str}</td>\n"
+end
+
+def get_html_values(matrixes, success)
+  html_values = ''
+  matrixes.each do |index, values|
+    html_values += if success
+                     get_html_success(values, index)
+                   else
+                     get_html_failure(values, index)
+                   end
+  end
+  html_values
+end
+
+def get_html_field(field)
+  "    <td>#{field}</td>\n"
+end
+
+def print_html_result(matrixes_values, matrixes_number, success)
+  return if matrixes_values[success].empty?
+
+  print "<table>\n"
+  print get_html_header(matrixes_number, success)
+  matrixes_values[success].each do |field, matrixes|
+    print "  <tr>\n"
+    print get_html_values(matrixes, success)
+    print get_html_field(field)
+    print "  </tr>\n"
+  end
+  print '</table>'
+end
+
 # Format Tools
 
 def get_suitable_number_str(number, length, format_pattern)
@@ -487,6 +565,11 @@ def show_result(matrixes_values, matrixes_list_length, theme)
   if theme.is_a?(String)
     theme = theme.to_sym
   end
+  if theme == :html
+    print_html_result(matrixes_values, matrixes_list_length, false)
+    print_html_result(matrixes_values, matrixes_list_length, true)
+    return
+  end
 
   if THEMES.key?(theme)
     theme = THEMES[theme]
@@ -494,6 +577,7 @@ def show_result(matrixes_values, matrixes_list_length, theme)
     warn "Theme #{theme} does not exist! use default theme."
     theme = THEMES[:none]
   end
+
   print_result(matrixes_values, matrixes_list_length, false, theme)
   print_result(matrixes_values, matrixes_list_length, true, theme)
 end
