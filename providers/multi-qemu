@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
+require 'fileutils'
+
 # Run multiple QEMU in parallel
 HOSTNAME = "vm-pxe-hi1620-2p8g--#{ENV['USER']}"
 NR_VM = 2
@@ -15,12 +17,27 @@ def run(seqno)
   end
 end
 
-def multiqemu
-  NR_VM.times do |i|
-    Process.fork do
-      run i
-    end
+def save_pid(arr)
+  FileUtils.rm('pid') if File.exist?('pid')
+  f = File.new('pid', 'a')
+  arr.each do |i|
+    f.puts(i)
   end
+  f.close
 end
 
-multiqemu if $PROGRAM_NAME == __FILE__
+def multiqemu
+  pids = []
+  NR_VM.times do |i|
+    pid = Process.fork do
+      run i
+    end
+    pids << pid
+  end
+  return pids
+end
+
+if $PROGRAM_NAME == __FILE__
+  pids = multiqemu
+  save_pid pids
+end
