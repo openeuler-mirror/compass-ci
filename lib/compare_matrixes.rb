@@ -336,7 +336,7 @@ end
 
 def get_color_code(color_str)
   color_sym = color_str.to_sym if color_str.is_a?(String)
-  COLORS.key?(color_sym) ? COLORS[color_sym] : COLORS[:default]
+  COLORS[color_sym]
 end
 
 def replace_n(str, left_str, right_str)
@@ -353,9 +353,13 @@ end
 def colorize(color, str)
   return str if color.nil? || color.empty?
 
-  foreground_color = get_color_code(color[:foreground])
-  background_color = get_color_code(color[:background]) + 10
-  left_str = "\033[#{background_color}m\033[#{foreground_color}m"
+  f_code = get_color_code(color[:foreground])
+  b_code = get_color_code(color[:background])
+  b_str = "\033[#{b_code + 10}m" if b_code
+  f_str = "\033[#{f_code}m" if f_code
+  left_str = "#{b_str}#{f_str}"
+  return str if left_str == ''
+
   right_str = "\033[0m"
   replace_n(str, left_str, right_str)
 end
