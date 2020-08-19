@@ -19,8 +19,12 @@ class Sched
         @task_queue = TaskQueueAPI.new
     end
 
+    def normalize_mac(mac : String)
+      mac.gsub(":", "-")
+    end
+
     def set_host_mac(mac : String, hostname : String)
-        @redis.hash_set("sched/mac2host", mac, hostname)
+        @redis.hash_set("sched/mac2host", normalize_mac(mac), hostname)
     end
 
     def submit_job(env : HTTP::Server::Context)
@@ -106,7 +110,7 @@ class Sched
 
         case env.params.url["boot_type"]
         when "ipxe", "grub"
-          hostname = @redis.hash_get("sched/mac2host", api_param)
+          hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
         when "container"
           hostname = api_param
         end
@@ -121,7 +125,7 @@ class Sched
         hostname = env.params.query["hostname"]?
         mac = env.params.query["mac"]?
         if !hostname && mac
-          hostname = @redis.hash_get("sched/mac2host", mac)
+          hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
         end
 
         if hostname
@@ -241,6 +245,8 @@ class Sched
                     testbox = value
                 when "tbox_state"
                     hash["state"] = value
+                when "mac"
+                    hash["mac"] = normalize_mac(value)
                 else
                     hash[parameter] = value
                 end

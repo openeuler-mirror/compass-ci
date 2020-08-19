@@ -22,25 +22,12 @@ class Redis::Client
         @client = Redis::PooledClient.new(host: host, port: port, pool_size: 25, pool_timeout: 0.01)
     end
 
-    def key_special_field(key, field)
-      case key
-      when "sched/mac2host"
-         # ignore mac format "ff:ff" | "ff-ff", inner use "ff-ff"
-         field_dst = field.to_s.gsub(":", "-")
-      else
-         field_dst = field.to_s
-      end
-      return field_dst
-    end
-
     def hash_set(key : String, field, value)
-      field_to_set = key_special_field(key, field)
-      @client.hset(key, field_to_set, value.to_s)
+      @client.hset(key, field.to_s, value.to_s)
     end
 
     def hash_get(key : String, field)
-      field_to_get = key_special_field(key, field)
-      @client.hget(key, field_to_get)
+      @client.hget(key, field.to_s)
     end
 
     # redis incr is a 64bit signed int
