@@ -108,6 +108,12 @@ else
 		          "os_version": {
 		            "type": "keyword"
 		          },
+		          "upstream_repo": {
+		            "type": "keyword"
+		          },
+		          "upstream_commit": {
+		            "type": "keyword"
+		          },
 		          "enqueue_time": {
 		            "type": "date",
 		            "format": "yyyy-MM-dd HH:mm:ss"
