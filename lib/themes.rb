@@ -48,7 +48,7 @@ COLORS = {
 }.freeze
 
 THEMES = {
-  default: {},
+  none: {},
   classic: {
     good_foreground: 'light yellow',
     bad_foreground: 'light red'

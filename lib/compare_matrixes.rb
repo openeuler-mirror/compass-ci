@@ -197,7 +197,7 @@ def compare_matrixes(matrixes_list, options = {})
     return
   end
 
-  options = { 'perf-profile': 5, theme: :default }.merge(options)
+  options = { 'perf-profile': 5, theme: :none }.merge(options)
   matrixes_values = get_matrixes_values(matrixes_list, options)
   remove_unchanged_field(matrixes_values)
   show_result(
@@ -492,7 +492,7 @@ def show_result(matrixes_values, matrixes_list_length, theme)
     theme = THEMES[theme]
   else
     warn "Theme #{theme} does not exist! use default theme."
-    theme = THEMES[:default]
+    theme = THEMES[:none]
   end
   print_result(matrixes_values, matrixes_list_length, false, theme)
   print_result(matrixes_values, matrixes_list_length, true, theme)
