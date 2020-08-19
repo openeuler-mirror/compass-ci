@@ -9,4 +9,5 @@ chmod 775 /srv/es/logging-es
 chmod 775 /srv/es
 chmod 775 /srv/cache/netdata_cache
 chmod 775 /srv/cache/netdata_lib
-chmod 775 /tftpboot
+find /tftpboot -type d | xargs chmod 775
+find /tftpboot -type f | xargs chmod 664
