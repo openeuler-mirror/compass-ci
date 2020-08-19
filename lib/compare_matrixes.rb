@@ -3,6 +3,7 @@
 
 LKP_SRC ||= ENV['LKP_SRC'] || File.dirname(__dir__)
 require 'set'
+require 'json/ext'
 require_relative 'themes'
 require "#{LKP_SRC}/lib/stats"
 
@@ -205,6 +206,17 @@ def compare_matrixes(matrixes_list, options = {})
     matrixes_list.length,
     options[:theme]
   )
+end
+
+# JSON Format
+
+def print_json_result(matrixes_values, matrixes_number)
+  result = {
+    'matrixes_indexes': Array.new(matrixes_number) { |i| i },
+    'success': matrixes_values[true],
+    'failure': matrixes_values[false]
+  }.to_json
+  print result
 end
 
 # HTML Format
@@ -568,6 +580,9 @@ def show_result(matrixes_values, matrixes_list_length, theme)
   if theme == :html
     print_html_result(matrixes_values, matrixes_list_length, false)
     print_html_result(matrixes_values, matrixes_list_length, true)
+    return
+  elsif theme == :json
+    print_json_result(matrixes_values, matrixes_list_length)
     return
   end
 
