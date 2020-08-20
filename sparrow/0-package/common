@@ -3,7 +3,7 @@
 
 gem install git activesupport rest-client cucumber json faye-websocket
 
-adduser -u 1090 lkp
+grep -q '^lkp:' /etc/passwd || adduser -u 1090 lkp
 
 cat >> /etc/sysctl.conf <<EOF
 net.ipv4.ip_forward=1
