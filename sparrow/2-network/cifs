@@ -1,0 +1,9 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+modprobe cifs
+
+[[ -f /etc/modules-load.d/cci-cifs.conf ]] ||
+cat > /etc/modules-load.d/cci-cifs.conf <<EOF
+cifs
+EOF
