@@ -53,12 +53,12 @@ class GitBisect
   def set_work_dir
     @work_dir = Utils.clone_repo(@upstream_repo, @upstream_commit)
     puts "work_dir: #{@work_dir}"
-    raise "checkout repo: #{@upstream_repo} to commit: #{@upstream_commit} failed!" unless @work_dir 
+    raise "checkout repo: #{@upstream_repo} to commit: #{@upstream_commit} failed!" unless @work_dir
   end
 
   def set_good_commit
     @good_commit = find_good_commit
-    raise "can not find a good commit" unless @good_commit
+    raise 'can not find a good commit' unless @good_commit
   end
 
   # run git bisect start use upstream_commit and good_commit
