@@ -38,9 +38,14 @@ class Filter
   end
 
   def match_query(query : Hash(String, JSON::Any), msg : Hash(String, JSON::Any))
-    query_set = query.to_a.to_set
-    msg_set = msg.to_a.to_set
-    query_set.subset?(msg_set)
+    query.each do |key, value|
+      if value == nil
+        return false unless msg.has_key?(key)
+      else
+        return false unless value == msg[key]?
+      end
+    end
+    return true
   end
 
 end
