@@ -187,10 +187,12 @@ def matrixes_empty?(matrixes_list)
   return matrixes_list.any?(&:empty?)
 end
 
-def compare_matrixes(matrixes_list, options = {})
+def compare_matrixes(matrixes_list, matrixes_titles = matrixes_list.size, group_key = nil, options = {})
   # compare matrix in matrixes_list and print info
   #
   # @matrixes_list: list consisting of matrix
+  # @matrixes_titles: number or dimension of matrix
+  # @group_key: group_key of matrixes_list(only for group mode)
   # @options: compare options, type: hash
 
   if matrixes_empty?(matrixes_list)
@@ -201,9 +203,15 @@ def compare_matrixes(matrixes_list, options = {})
   options = { 'perf-profile': 5, theme: :none }.merge(options)
   matrixes_values = get_matrixes_values(matrixes_list, options)
   remove_unchanged_field(matrixes_values)
+
+  if group_key
+    print "\n\n\n\n\n"
+    print group_key
+  end
+
   show_result(
     matrixes_values,
-    matrixes_list.length,
+    matrixes_titles,
     options[:theme]
   )
 end
@@ -364,6 +372,22 @@ def colorize(color, str)
   replace_n(str, left_str, right_str)
 end
 
+# compare each matrices_list within pre dimension of group matrices
+# input: group matrices
+# output: pre compare result of each group
+def compare_group_matrices(group_matrices)
+  group_matrices.each do |k, v|
+    matrices_list = []
+    matrices_titles = []
+    v.each do |dim, matrix|
+      matrices_titles << dim
+      matrices_list << matrix
+    end
+
+    compare_matrixes(matrices_list, matrices_titles, k)
+  end
+end
+
 # Format Fields
 
 def format_runs_fails(runs, fails)
@@ -453,6 +477,14 @@ def get_index(matrixes_number)
   index_line
 end
 
+def get_dim(dims)
+  index_line = format("%#{SUB_LONG_COLUMN_WIDTH}s", dims[0])
+  (1...dims.size).each do |i|
+    index_line += INTERVAL_BLANK + format("%#{COLUMN_WIDTH}s", dims[i])
+  end
+  index_line + INTERVAL_BLANK + format("%-#{COLUMN_WIDTH}s\n", FIELD_STR)
+end
+
 def get_liner(matrixes_number)
   liner = '-' * SUB_LONG_COLUMN_WIDTH
   liner + (INTERVAL_BLANK + '-' * COLUMN_WIDTH) * matrixes_number + "\n"
@@ -512,7 +544,7 @@ def get_title_symbol(common_title, compare_title, matrixes_number)
   title_symbol + "\n"
 end
 
-def get_header(matrixes_number, success)
+def get_header(matrixes_titles, success)
   if success
     common_title = STDDEV_STR
     compare_title = CHANGE_STR
@@ -521,7 +553,7 @@ def get_header(matrixes_number, success)
     compare_title = REPRODUCTION_STR
   end
 
-  header = get_index(matrixes_number)
+  header, matrixes_number = get_first_header(matrixes_titles)
   header += get_liner(matrixes_number)
   header += get_title(common_title, compare_title, matrixes_number)
   header += get_title_symbol(
@@ -530,6 +562,17 @@ def get_header(matrixes_number, success)
     matrixes_number
   )
   header
+end
+
+def get_first_header(matrixes_titles)
+  if matrixes_titles.is_a?(Array)
+    matrixes_number = matrixes_titles.size
+    header = get_dim(matrixes_titles)
+  else
+    matrixes_number = matrixes_titles
+    header = get_index(matrixes_number)
+  end
+  [header, matrixes_number]
 end
 
 def get_success_str(values, index, theme)
@@ -601,11 +644,11 @@ def show_result(matrixes_values, matrixes_list_length, theme)
   print_result(matrixes_values, matrixes_list_length, true, theme)
 end
 
-def print_result(matrixes_values, matrixes_number, success, theme)
+def print_result(matrixes_values, matrixes_titles, success, theme)
   return if matrixes_values[success].empty?
 
   print "\n\n\n"
-  print get_header(matrixes_number, success)
+  print get_header(matrixes_titles, success)
   matrixes_values[success].each do |field, matrixes|
     print get_values_str(matrixes, success, theme)
     print get_field_str(field)
