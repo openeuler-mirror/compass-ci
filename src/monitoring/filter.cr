@@ -17,6 +17,7 @@ class Filter
   def remove_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
     return unless @hash[query]?
     @hash[query].delete(socket)
+    @hash.delete(query) if @hash[query].empty?
   end
 
   def send_msg(query, msg)
