@@ -108,6 +108,19 @@ module Scheduler
         end
     end
 
+    # curl -X PUT "http://localhost:3000/del_host_mac?mac=00-01-02-03-04-05"
+    put "/del_host_mac" do |env|
+        if client_mac = env.params.query["mac"]?
+            sched.del_host_mac(client_mac)
+
+            debug_message(env, "Done")
+
+            "Done"
+        else
+            "No yet!"
+        end
+    end
+
     # client(runner) report job's status
     # /~lkp/cgi-bin/lkp-jobfile-append-var
     #  ?job_file=/lkp/scheduled/job.yaml&job_state=running&job_id=10

@@ -18,6 +18,8 @@ chmod +x ip.sh
 
 curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/set_host_mac?hostname=${hostname}&mac=${mac}"
 
+trap 'curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/del_host_mac?mac=${mac}"' INT
+
 (
 	if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
 		tbox_group=${BASH_REMATCH[1]}
@@ -31,3 +33,4 @@ curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/set_host_mac?h
 
 	source "$CCI_SRC/providers/$provider/${template}.sh"
 )
+curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/del_host_mac?mac=${mac}"

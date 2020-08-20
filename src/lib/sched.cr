@@ -27,6 +27,10 @@ class Sched
         @redis.hash_set("sched/mac2host", normalize_mac(mac), hostname)
     end
 
+    def del_host_mac(mac : String)
+        @redis.hash_del("sched/mac2host", normalize_mac(mac))
+    end
+
     def submit_job(env : HTTP::Server::Context)
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)

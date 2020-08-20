@@ -23,6 +23,10 @@ class Redis::Client
       @client.hget(key, field.to_s)
     end
 
+    def hash_del(key : String, field)
+      @client.hdel(key, field.to_s)
+    end
+
     def get_job(job_id : String)
         job_hash = @client.hget("sched/id2job", job_id)
         if !job_hash
