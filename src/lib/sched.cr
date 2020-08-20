@@ -68,6 +68,7 @@ class Sched
         respon["lkp"] = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz"
         respon["job"] = "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
 
+        puts %({"job_id": "#{job.id}", "state": "boot"})
         return respon.to_json
     end
 
@@ -89,6 +90,7 @@ class Sched
 
         response += "boot\n"
 
+        puts %({"job_id": "#{job.id}", "state": "boot"})
         return response
     end
 
@@ -202,6 +204,8 @@ class Sched
         respon += add_kernel_console_param(job.os_arch)
         respon += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
         respon += "boot\n"
+
+        puts %({"job_id": "#{job.id}", "state": "boot"})
         return respon
     end
 
@@ -228,6 +232,9 @@ class Sched
         end
 
         @redis.update_job(job_content)
+
+        job_content["job_id"] = job_id
+        puts job_content.to_json
     end
 
     def update_tbox_wtmp(env : HTTP::Server::Context)
@@ -254,6 +261,8 @@ class Sched
         end
 
         @redis.update_wtmp(testbox, hash)
+
+        puts hash.to_json
     end
 
     def close_job(job_id : String)
@@ -273,5 +282,7 @@ class Sched
         end
 
         @redis.remove_finished_job(job_id)
+
+        puts %({"job_id": "#{job_id}", "state": "complete"})
     end
 end
