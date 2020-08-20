@@ -172,9 +172,9 @@ create_links_vmlinuz_initrd() {
 		"
 	)
 	if "${cmds[@]}" ; then
-		echo "Success!"
+		echo "[INFO] Create links to initrd.lkp and vmlinuz success!"
 	else
-		echo "Failed!"
+		echo "[WARNING] Create links to initrd.lkp and vmlinuz failed!"
 	fi
 }
 
@@ -230,5 +230,9 @@ unzip_vmlinuz() {
 			chmod o+r $ROOTFS_VMLINUZ
 		"
 	)
-	"${cmds[@]}"
+	if "${cmds[@]}" ; then
+		echo "[INFO] Unzipping vmlinuz success!"
+	else
+		echo "[WARNING] Unzipping vmlinuz failed!"
+	fi
 }
