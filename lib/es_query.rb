@@ -62,7 +62,7 @@ def parse_conditions(items)
       value_list = value.split(',')
       items_hash[key] = value_list.length > 1 ? value_list : value
     else
-      puts 'error: condition missing'
+      warn "error: condition \"#{key}\" missing", "tips: should give the input like \"#{key}=value\" "
       exit
     end
   end

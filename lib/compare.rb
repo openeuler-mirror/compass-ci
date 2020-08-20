@@ -24,9 +24,9 @@ end
 
 def parse_argv(argv, common_conditions)
   conditions = []
+  common_items = common_conditions.split(' ')
   argv.each do |item|
-    item += ' ' + common_conditions unless common_conditions.nil?
-    items = item.split(' ')
+    items = item.split(' ') + common_items
     condition = parse_conditions(items)
     conditions << condition
   end
