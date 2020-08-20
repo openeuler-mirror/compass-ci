@@ -3,27 +3,37 @@
 # frozen_string_literal: true
 
 # Usage:
-#       compare "group1_conditions" "group2_conditions" ...
+#       compare "conditions_1" "conditions_2" ... -c "common_conditions"
+#       compare "conditions" -d "dimensions"
 # Eg:
 #       compare "id=6000,6001" "id=7000,7001"
-#       compare "os=debian" "os=centos" -c "suite=iperf"
 #       compare "commit=a12d232e" "commit=b3bacc31"
+#       compare "os=debian" "os=centos" -c "suite=iperf"
+#       compare "os=centos" -d "os_version os_arch"
 
 require 'optparse'
 require_relative '../lib/compare.rb'
 
 common_conditions = nil
+is_group = false
+dimensions = nil
 
 opt_parser = OptionParser.new do |opts|
-  opts.banner = 'Usage: compare "group1_conditions" "group2_conditions" ... -c "common_conditions"'
+  opts.banner = 'Usage: compare "conditions" ... [option]'
 
   opts.separator ''
   opts.separator 'a conditions can be "id=100, ..." or "suite=iperf os=debian ..."'
   opts.separator ''
   opts.separator 'options:'
 
-  opts.on('-c', '--common common_conditions', 'common conditions of all group_conditions') do |c|
+  opts.on('-c', '--common common_conditions', 'common conditions are same with conditions
+         and will merge with each conditions') do |c|
     common_conditions = c
+  end
+
+  opts.on('-d', '--dimension dimensions', 'dimensions to group compare: "tbox_group os_arch os ..."') do |d|
+    dimensions = d
+    is_group = true
   end
 
   opts.on_tail('-h', '--help', 'show this message') do
@@ -39,4 +49,8 @@ argv = if ARGV == []
        end
 opt_parser.parse!(argv)
 
-compare_matrices_list(argv, common_conditions)
+if is_group
+  compare_group(argv, dimensions)
+else
+  compare_matrices_list(argv, common_conditions)
+end

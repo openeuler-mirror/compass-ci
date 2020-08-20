@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
 require_relative './es_query.rb'
@@ -40,4 +41,27 @@ def create_matrices_list(conditions)
     matrices_list << combine_query_data(query_results)
   end
   matrices_list
+end
+
+# -------------------------------------------------------------------------------------------
+# compare_group
+# - one condition only
+# - condition can be parsed to query_fields for es_query
+# - option: dimensions required, used for auto_group
+# dimensions sample:
+# - single dimension: "os"
+# - multiple dimensions: "os os_version ..."
+#
+
+def compare_group(argv, dimensions)
+  conditions = parse_conditions(argv)
+  dims = dimensions.split(' ')
+  groups_matrices = create_groups_matrices_list(conditions, dims)
+  compare_group_matrices(groups_matrices)
+end
+
+def create_groups_matrices_list(conditions, dims)
+  es = ESQuery.new(ES_HOST, ES_PORT)
+  query_results = es.multi_field_query(conditions)
+  combine_group_query_data(query_results, dims)
 end
