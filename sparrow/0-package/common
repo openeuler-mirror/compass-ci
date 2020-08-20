@@ -16,3 +16,7 @@ cat >> /etc/modules-load.d/nfs <<EOF
 nfs
 nfsd
 EOF
+
+cat >> /etc/modules-load.d/cifs <<EOF
+cifs
+EOF
