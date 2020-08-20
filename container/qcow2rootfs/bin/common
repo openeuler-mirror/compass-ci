@@ -163,7 +163,6 @@ create_links_vmlinuz_initrd() {
 	local cmds
 	cmds=(
 		docker exec
-		-it
 		"$container"
 		bash -c "
 			cd $EXTRACT_ROOT/rootfs-dir
