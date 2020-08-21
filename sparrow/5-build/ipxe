@@ -14,3 +14,4 @@ make CONFIG=rpi bin-arm64-efi/rpi.efi
 
 mkdir -p                  /tftpboot/ipxe/bin-arm64-efi/
 cp -a bin-arm64-efi/*.efi /tftpboot/ipxe/bin-arm64-efi/
+chmod 664 /tftpboot/ipxe/bin-arm64-efi/*.efi
