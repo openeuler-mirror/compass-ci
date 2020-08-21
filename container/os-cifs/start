@@ -6,6 +6,9 @@ cmd=(
 	-p 445:445
 	-v $PWD/smb.conf:/etc/samba/smb.conf
 	-v /srv/os:/srv/os:ro
+	-v /srv/os:/srv/os-rw
+	-v /srv/initrd:/srv/initrd
+	-v /srv/result:/srv/result
 	--name samba
 	--restart=always
 	alpine/samba
