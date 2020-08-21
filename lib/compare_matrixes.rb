@@ -53,14 +53,18 @@ def latency?(field)
 end
 
 # Core
+def get_length_sum_average_sorted(value_list)
+  length = value_list.length
+  sum = value_list.sum
+  average = sum / length.to_f
+  sorted = value_list.sort
+  return length, sum, average, sorted
+end
 
 def get_values(value_list, success)
   # get values(type: Hash) that include :average, :runs, :stddev_percent, ...
   #
-  sum = value_list.sum
-  length = value_list.length
-  average = sum / length
-  sorted = value_list.sort
+  length, sum, average, sorted = get_length_sum_average_sorted(value_list)
   if success
     stddev_percent = nil
     if length > 1 && average != 0
