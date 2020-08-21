@@ -410,27 +410,31 @@ def format_fails_runs(fails, runs)
   fails_str + ':' + runs_str
 end
 
-def format_reproduction(reproduction, theme)
-  reproduction_str = get_suitable_number_str(
-    reproduction,
-    SUB_SHORT_COLUMN_WIDTH - 1,
-    '%+.1f'
-  ) + '%'
+def format_reproduction(reproduction, theme, compare_index)
+  if reproduction
+    reproduction_str = format('%+.1f%%', reproduction)
+    space_str = ' ' * (SUB_SHORT_COLUMN_WIDTH - reproduction_str.length)
+    reproduction_index = compare_index - reproduction_str.index('.')
+    reproduction_str = space_str.insert(reproduction_index, reproduction_str)
+  else
+    reproduction_str = format("%-#{SUB_SHORT_COLUMN_WIDTH}s", '0')
+  end
   color = get_compare_value_color(reproduction, theme)
   colorize(
     color,
-    format("%-#{SUB_SHORT_COLUMN_WIDTH}s", reproduction_str)
+    reproduction_str
   )
 end
 
-def format_change(change, theme)
+def format_change(change, theme, compare_index)
   change_str = '0'
   if change
-    change_str = get_suitable_number_str(
-      change,
-      SUB_SHORT_COLUMN_WIDTH - 3,
-      '%+.1f'
-    ) + '%'
+    change_str = format('%+.1f%%', change)
+    space_str = ' ' * (SUB_SHORT_COLUMN_WIDTH - change_str.length)
+    change_index = compare_index - change_str.index('.')
+    change_str = space_str.insert(change_index, change_str)
+  else
+    change_str = format("%-#{SUB_SHORT_COLUMN_WIDTH}s", '0')
   end
   color = get_compare_value_color(change, theme)
   colorize(
@@ -579,8 +583,8 @@ def get_first_header(matrixes_titles)
   [header, matrixes_number]
 end
 
-def get_success_str(values, index, theme)
-  change_str = format_change(values[:change], theme) unless index.zero?
+def get_success_str(values, index, theme, compare_index)
+  change_str = format_change(values[:change], theme, compare_index) unless index.zero?
   stddev_str = format_stddev(
     values[:average],
     values[:stddev_percent]
@@ -588,10 +592,10 @@ def get_success_str(values, index, theme)
   (change_str || '') + stddev_str
 end
 
-def get_failure_str(values, index, theme)
+def get_failure_str(values, index, theme, compare_index)
   unless index.zero?
     reproduction_str = format_reproduction(
-      values[:reproduction], theme
+      values[:reproduction], theme, compare_index
     )
   end
 
@@ -604,14 +608,15 @@ end
 
 def get_values_str(matrixes, success, theme)
   values_str = ''
+  compare_index = SUB_SHORT_COLUMN_WIDTH / 2
   matrixes.each do |index, values|
     values_str += if success
                     get_success_str(
-                      values, index, theme
+                      values, index, theme, compare_index
                     ) + INTERVAL_BLANK
                   else
                     get_failure_str(
-                      values, index, theme
+                      values, index, theme, compare_index
                     ) + INTERVAL_BLANK
                   end
   end
