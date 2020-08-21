@@ -3,6 +3,7 @@
 require "kemal"
 
 require "./job"
+require "./block_helper"
 require "./taskqueue_api"
 require "../scheduler/jobfile_operate"
 require "../scheduler/redis_client"
@@ -12,11 +13,13 @@ class Sched
 
     property es
     property redis
+    property block_helper
 
     def initialize()
         @es = Elasticsearch::Client.new
         @redis = Redis::Client.new
         @task_queue = TaskQueueAPI.new
+        @block_helper = BlockHelper.new
     end
 
     def normalize_mac(mac : String)
