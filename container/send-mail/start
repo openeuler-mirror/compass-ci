@@ -1,0 +1,20 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+cmd=(
+	docker run
+	--restart=always
+	--name=send-mail
+	-u nobody
+	-d
+	-p 8101:8101
+	send-mail
+)
+
+"${cmd[@]}"
+
+cat<<EOF
+port: 8101
+data: includ mail's subject, to, body, etc.
+curl -H 'Content-Type: Application/json' -XPOST 'localhost:8101/send_mail' -d '{"subject": "test mail", "to": "xxx", "body": "test message2"}'
+EOF

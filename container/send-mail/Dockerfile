@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+FROM debian
+MAINTAINER luanshengde2@huawei.com
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update && \
+    apt-get install -y ruby-mail ruby-json ruby-sinatra
+
+EXPOSE 25
+
+COPY mail-post.rb /usr/local/bin/
+COPY send-mail.rb /usr/local/bin/
+
+CMD ["/usr/local/bin/mail-post.rb"]
