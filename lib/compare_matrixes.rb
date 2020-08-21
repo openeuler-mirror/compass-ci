@@ -447,14 +447,14 @@ def format_stddev_percent(stddev_percent, average_width)
   percent_width = SUB_LONG_COLUMN_WIDTH - average_width
   if stddev_percent
     if stddev_percent != 0
-      percent_width -= 4
       percent_str = get_suitable_number_str(
         stddev_percent.abs,
-        percent_width,
-        "%#{percent_width}d"
+        percent_width - 4,
+        "%-#{percent_width - 4}d"
       )
-      # that symbol print width is 2
-      return " ±#{percent_str}%"
+      space_index = percent_str.index(' ') || -1
+      percent_str = percent_str.insert(space_index, '%')
+      return " ± #{percent_str}"
     end
   end
   ' ' * percent_width
@@ -498,61 +498,29 @@ def get_liner(matrixes_number)
   liner + (INTERVAL_BLANK + '-' * COLUMN_WIDTH) * matrixes_number + "\n"
 end
 
-def get_base_matrix_title(common_title)
-  format("%#{SUB_LONG_COLUMN_WIDTH}s", common_title)
+def get_base_matrix_title(common_title, common_index)
+  str = ' ' * (SUB_LONG_COLUMN_WIDTH - common_title.length)
+  str.insert(common_index, common_title)
 end
 
-def get_other_matrixes_title(common_title, compare_title, matrixes_number)
-  column = compare_title + ' ' * (
-    COLUMN_WIDTH - common_title.length - compare_title.length
+def get_other_matrix_title(common_title, compare_title, common_index)
+  column = ' ' * (
+     COLUMN_WIDTH - common_title.length - compare_title.length
+   )
+  compare_index = (SUB_SHORT_COLUMN_WIDTH - compare_title.length) / 2
+  compare_index = 0 if compare_index.negative?
+  column = column.insert(compare_index, compare_title)
+  column.insert(SUB_SHORT_COLUMN_WIDTH + common_index, common_title)
+end
+
+def get_other_matrixes_title(common_title, compare_title, matrixes_number, common_index)
+  column = INTERVAL_BLANK + get_other_matrix_title(
+    common_title, compare_title, common_index
   )
-  column += common_title
   column * (matrixes_number - 1)
 end
 
-def get_title(common_title, compare_title, matrixes_number)
-  title = get_base_matrix_title(common_title)
-  title += INTERVAL_BLANK + get_other_matrixes_title(
-    common_title, compare_title, matrixes_number
-  )
-  title += INTERVAL_BLANK + ' ' * COLUMN_WIDTH
-  title + "\n"
-end
-
-def get_base_matrix_title_symbol(common_title)
-  title_symbol = ' ' * SUB_LONG_COLUMN_WIDTH
-  title_symbol[
-    INTERVAL_WIDTH + SUB_LONG_COLUMN_WIDTH - common_title.length / 2
-  ] = '\\'
-  title_symbol
-end
-
-def get_other_matrixes_title_symbol(common_title, compare_title, matrixes_number)
-  title_symbol = ' ' * (
-    (INTERVAL_WIDTH + COLUMN_WIDTH) * matrixes_number
-  )
-  start_point = 0
-  half_compare_title_length = compare_title.length / 2
-  half_common_title_length = common_title.length / 2
-
-  (matrixes_number - 1).times do |_|
-    start_point += INTERVAL_WIDTH
-    title_symbol[start_point + half_compare_title_length] = '|'
-    start_point += COLUMN_WIDTH
-    title_symbol[start_point - half_common_title_length] = '\\'
-  end
-  title_symbol
-end
-
-def get_title_symbol(common_title, compare_title, matrixes_number)
-  title_symbol = get_base_matrix_title_symbol(common_title)
-  title_symbol += get_other_matrixes_title_symbol(
-    common_title, compare_title, matrixes_number
-  )
-  title_symbol + "\n"
-end
-
-def get_header(matrixes_titles, success)
+def get_title_name(success)
   if success
     common_title = STDDEV_STR
     compare_title = CHANGE_STR
@@ -560,14 +528,73 @@ def get_header(matrixes_titles, success)
     common_title = FAILS_RUNS_STR
     compare_title = REPRODUCTION_STR
   end
+  return common_title, compare_title
+end
+
+def get_title(common_title, compare_title, matrixes_number, success, common_index)
+  common_index -= if success
+                    common_title.length / 2
+                  else
+                    common_title.index(':')
+                  end
+  title = get_base_matrix_title(common_title, common_index)
+  title += get_other_matrixes_title(
+    common_title, compare_title, matrixes_number, common_index
+  )
+  title += INTERVAL_BLANK + ' ' * COLUMN_WIDTH
+  title + "\n"
+end
+
+def get_base_matrix_title_symbol(common_index, success)
+  title_symbol = ' ' * SUB_LONG_COLUMN_WIDTH
+  title_symbol[common_index] = success ? '\\' : '|'
+  title_symbol
+end
+
+def get_other_matrixes_title_symbol(_compare_title, matrixes_number, common_index, success)
+  title_symbol = ' ' * (
+    (INTERVAL_WIDTH + COLUMN_WIDTH) * matrixes_number
+  )
+  start_point = 0
+
+  common_symbol = success ? '\\' : '|'
+  compare_symbol = '|'
+  compare_index = SUB_SHORT_COLUMN_WIDTH / 2
+
+  (matrixes_number - 1).times do |_|
+    start_point += INTERVAL_WIDTH
+    title_symbol[start_point + compare_index] = compare_symbol
+    title_symbol[start_point + SUB_SHORT_COLUMN_WIDTH + common_index] = common_symbol
+    start_point += COLUMN_WIDTH
+  end
+  title_symbol
+end
+
+def get_title_symbol(compare_title, matrixes_number, common_index, success)
+  title_symbol = get_base_matrix_title_symbol(common_index, success)
+  title_symbol += get_other_matrixes_title_symbol(
+    compare_title, matrixes_number, common_index, success
+  )
+  title_symbol + "\n"
+end
+
+def get_header(matrixes_titles, success, common_title, compare_title)
+  common_index = if success
+                   #  average + " + " + standard_deviation
+                   STDDEV_AVERAGE_PROPORTION * SUB_LONG_COLUMN_WIDTH + 1
+                 else
+                   #  fails + ":" + runs
+                   FAILS_PROPORTION * SUB_LONG_COLUMN_WIDTH
+                 end
 
   header, matrixes_number = get_first_header(matrixes_titles)
   header += get_liner(matrixes_number)
-  header += get_title(common_title, compare_title, matrixes_number)
+  header += get_title(common_title, compare_title, matrixes_number, success, common_index)
   header += get_title_symbol(
-    common_title,
     compare_title,
-    matrixes_number
+    matrixes_number,
+    common_index,
+    success
   )
   header
 end
@@ -654,11 +681,13 @@ def show_result(matrixes_values, matrixes_list_length, theme)
 end
 
 def print_result(matrixes_values, matrixes_titles, success, theme)
-  return if matrixes_values[success].empty?
+  values = matrixes_values[success].sort
+  return if values.empty?
 
   print "\n\n\n"
-  print get_header(matrixes_titles, success)
-  matrixes_values[success].each do |field, matrixes|
+  common_title, compare_title = get_title_name(success)
+  print get_header(matrixes_titles, success, common_title, compare_title)
+  values.each do |field, matrixes|
     print get_values_str(matrixes, success, theme)
     print get_field_str(field)
     print "\n"
