@@ -14,6 +14,7 @@ dirs=(
 	/srv/result
 	/srv/cci/scheduler
 	/tftpboot
+	/c
 )
 
 mkdir -p "${dirs[@]}"

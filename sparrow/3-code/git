@@ -3,8 +3,7 @@
 
 # download git trees
 
-mkdir -p /c
-cd /c
+cd /c || exit
 
 # git clone https://gitee.com/openeuler/crystal-ci.git
 # modify and manual run for now:
