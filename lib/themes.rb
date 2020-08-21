@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 COLUMN_WIDTH = 30 # print column width
-INTERVAL_WIDTH = 1 # width of interval that between column
+INTERVAL_WIDTH = 2 # width of interval that between column
 INTERVAL_BLANK = ' ' * INTERVAL_WIDTH
 
 # the sub_column that are children of column
@@ -16,9 +16,9 @@ CHANGE_STR = 'change'
 STDDEV_STR = '%stddev'
 STDDEV_AVERAGE_PROPORTION = 5 / 8.0
 FIELD_STR = 'metric'
-RUNS_FAILS_STR = 'runs:fails'
+FAILS_RUNS_STR = 'fails:runs'
 REPRODUCTION_STR = 'reproduction'
-RUNS_PROPORTION = 3 / 7.0
+FAILS_PROPORTION = 4 / 7.0
 
 # when change or reproduction greater or equal to GOOD_STANDARD
 # change show color.

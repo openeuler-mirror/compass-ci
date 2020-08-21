@@ -250,7 +250,7 @@ def get_html_header(matrixes_number, success)
     common_title = STDDEV_STR
     compare_title = CHANGE_STR
   else
-    common_title = RUNS_FAILS_STR
+    common_title = FAILS_RUNS_STR
     compare_title = REPRODUCTION_STR
   end
 
@@ -270,9 +270,9 @@ def get_html_success(values, index)
 end
 
 def get_html_failure(values, index)
-  runs_fails_str = "#{values[:runs]}:#{values[:fails]}"
+  fails_runs_str = "#{values[:fails]}:#{values[:runs]}"
   reproduction_str = "    <td>#{values[:reproduction]}%</td>\n" unless index.zero?
-  (reproduction_str || '') + "    <td>#{runs_fails_str}</td>\n"
+  (reproduction_str || '') + "    <td>#{fails_runs_str}</td>\n"
 end
 
 def get_html_values(matrixes, success)
@@ -390,20 +390,20 @@ end
 
 # Format Fields
 
-def format_runs_fails(runs, fails)
-  runs_width = (SUB_LONG_COLUMN_WIDTH * RUNS_PROPORTION).to_i
-  fails_width = SUB_LONG_COLUMN_WIDTH - runs_width - 3
+def format_fails_runs(fails, runs)
+  fails_width = (SUB_LONG_COLUMN_WIDTH * FAILS_PROPORTION).to_i
+  runs_width = SUB_LONG_COLUMN_WIDTH - fails_width - 1
   runs_str = get_suitable_number_str(
     runs,
     runs_width,
-    "%#{runs_width}d"
+    "%-#{runs_width}d"
   )
   fails_str = get_suitable_number_str(
     fails,
     fails_width,
-    "%-#{fails_width}d"
+    "%#{fails_width}d"
   )
-  runs_str + ' : ' + fails_str
+  fails_str + ':' + runs_str
 end
 
 def format_reproduction(reproduction, theme)
@@ -549,7 +549,7 @@ def get_header(matrixes_titles, success)
     common_title = STDDEV_STR
     compare_title = CHANGE_STR
   else
-    common_title = RUNS_FAILS_STR
+    common_title = FAILS_RUNS_STR
     compare_title = REPRODUCTION_STR
   end
 
@@ -591,11 +591,11 @@ def get_failure_str(values, index, theme)
     )
   end
 
-  runs_fails_str = format_runs_fails(
-    values[:runs],
-    values[:fails]
+  fails_runs_str = format_fails_runs(
+    values[:fails],
+    values[:runs]
   )
-  (reproduction_str || '') + runs_fails_str
+  (reproduction_str || '') + fails_runs_str
 end
 
 def get_values_str(matrixes, success, theme)
