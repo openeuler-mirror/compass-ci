@@ -410,36 +410,63 @@ def format_fails_runs(fails, runs)
   fails_str + ':' + runs_str
 end
 
-def format_reproduction(reproduction, theme, compare_index)
+def get_reproduction_index_str(reproduction, compare_index)
+  reproduction_str = format('%+.1f%%', reproduction)
+  reproduction_index = compare_index - reproduction_str.index('.')
+  if reproduction_index.negative?
+    reproduction_index = compare_index - reproduction_str.index('e') - 1
+    reproduction_str = format('%+.1e%%', reproduction)
+  end
+  return reproduction_index, reproduction_str
+end
+
+def get_reprodcution(reproduction, compare_index)
   if reproduction
-    reproduction_str = format('%+.1f%%', reproduction)
+    reproduction_index, reproduction_str = get_reproduction_index_str(reproduction, compare_index)
     space_str = ' ' * (SUB_SHORT_COLUMN_WIDTH - reproduction_str.length)
-    reproduction_index = compare_index - reproduction_str.index('.')
     reproduction_str = space_str.insert(reproduction_index, reproduction_str)
   else
     reproduction_str = format("%-#{SUB_SHORT_COLUMN_WIDTH}s", '0')
   end
+  reproduction_str
+end
+
+def format_reproduction(reproduction, theme, compare_index)
   color = get_compare_value_color(reproduction, theme)
   colorize(
     color,
-    reproduction_str
+    get_reprodcution(reproduction, compare_index)
   )
 end
 
-def format_change(change, theme, compare_index)
-  change_str = '0'
+def get_change_index_str(change, compare_index)
+  change_str = format('%+.1f%%', change)
+  change_index = compare_index - change_str.index('.')
+  if change_index.negative?
+    change_str = format('%+.1e%%', change)
+    change_index = compare_index - change_str.index('e') - 1
+  end
+  return change_index, change_str
+end
+
+def get_change(change, compare_index)
   if change
-    change_str = format('%+.1f%%', change)
-    space_str = ' ' * (SUB_SHORT_COLUMN_WIDTH - change_str.length)
-    change_index = compare_index - change_str.index('.')
+    change_index, change_str = get_change_index_str(change, compare_index)
+    space_length = SUB_SHORT_COLUMN_WIDTH - change_str.length
+    space_str = ' ' * space_length
     change_str = space_str.insert(change_index, change_str)
   else
-    change_str = format("%-#{SUB_SHORT_COLUMN_WIDTH}s", '0')
+    space_str = ' ' * (SUB_SHORT_COLUMN_WIDTH - 1)
+    change_str = space_str.insert(compare_index, '0')
   end
+  format("%-#{SUB_SHORT_COLUMN_WIDTH}s", change_str)
+end
+
+def format_change(change, theme, compare_index)
   color = get_compare_value_color(change, theme)
   colorize(
     color,
-    format("%-#{SUB_SHORT_COLUMN_WIDTH}s", change_str)
+    get_change(change, compare_index)
   )
 end
 

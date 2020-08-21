@@ -17,7 +17,7 @@ STDDEV_STR = '%stddev'
 STDDEV_AVERAGE_PROPORTION = 5 / 8.0
 FIELD_STR = 'metric'
 FAILS_RUNS_STR = 'fails:runs'
-REPRODUCTION_STR = 'reproduction'
+REPRODUCTION_STR = 'change'
 FAILS_PROPORTION = 4 / 7.0
 
 # when change or reproduction greater or equal to GOOD_STANDARD
