@@ -191,7 +191,7 @@ def matrixes_empty?(matrixes_list)
   return matrixes_list.any?(&:empty?)
 end
 
-def compare_matrixes(matrixes_list, matrixes_titles = matrixes_list.size, group_key = nil, options = {})
+def compare_matrixes(matrixes_list, matrixes_titles = matrixes_list.size, group_key = nil, options: {})
   # compare matrix in matrixes_list and print info
   #
   # @matrixes_list: list consisting of matrix
@@ -379,7 +379,7 @@ end
 # compare each matrices_list within pre dimension of group matrices
 # input: group matrices
 # output: pre compare result of each group
-def compare_group_matrices(group_matrices)
+def compare_group_matrices(group_matrices, options)
   group_matrices.each do |k, v|
     matrices_list = []
     matrices_titles = []
@@ -388,7 +388,7 @@ def compare_group_matrices(group_matrices)
       matrices_list << matrix
     end
 
-    compare_matrixes(matrices_list, matrices_titles, k)
+    compare_matrixes(matrices_list, matrices_titles, k, options: options)
   end
 end
 

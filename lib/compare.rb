@@ -16,10 +16,10 @@ require_relative './constants.rb'
 # - multiple conditions: "os=centos,debian suite=iperf,atomic"
 #
 
-def compare_matrices_list(argv, common_conditions)
+def compare_matrices_list(argv, common_conditions, options)
   condition_list = parse_argv(argv, common_conditions)
   matrices_list = create_matrices_list(condition_list)
-  compare_matrixes(matrices_list)
+  compare_matrixes(matrices_list, options: options)
 end
 
 def parse_argv(argv, common_conditions)
@@ -53,11 +53,11 @@ end
 # - multiple dimensions: "os os_version ..."
 #
 
-def compare_group(argv, dimensions)
+def compare_group(argv, dimensions, options)
   conditions = parse_conditions(argv)
   dims = dimensions.split(' ')
   groups_matrices = create_groups_matrices_list(conditions, dims)
-  compare_group_matrices(groups_matrices)
+  compare_group_matrices(groups_matrices, options)
 end
 
 def create_groups_matrices_list(conditions, dims)
