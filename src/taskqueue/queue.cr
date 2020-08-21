@@ -135,7 +135,7 @@ class TaskQueue
   # default timeout is 300ms, we delay for 5ms at each time, that's 60 times retry
   private def operate_with_timeout(timeout)
     result = nil
-    time_span = Time::Span.new(nanoseconds: 5_000)
+    time_span = Time::Span.new(nanoseconds: (REDIS_POOL_TIMEOUT + 1) * 1000)
     time_start = Time.local.to_unix_ms
 
     loop do

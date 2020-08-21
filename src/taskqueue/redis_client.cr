@@ -21,8 +21,12 @@ class TaskQueue
     redis_pool_num = (ENV.has_key?("REDIS_POOL_NUM") ?
                       ENV["REDIS_POOL_NUM"].to_i32 : REDIS_POOL_NUM)
 
+    redis_pool_timeout = (ENV.has_key?("REDIS_POOL_TIMEOUT") ?
+                      ENV["REDIS_POOL_TIMEOUT"].to_i32 : REDIS_POOL_TIMEOUT)
+
     @redis = Redis::PooledClient.new(host: redis_host,
-               port: redis_port, pool_size: redis_pool_num, pool_timeout: 0.01)
+               port: redis_port, pool_size: redis_pool_num,
+               pool_timeout: redis_pool_timeout / 1000)
   end
 
   private def get_new_seqno()
