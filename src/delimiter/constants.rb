@@ -3,5 +3,5 @@
 
 TMEP_GIT_BASE = '/c/public_git'
 DELIMITER_TASK_QUEUE = 'delimiter'
-BISECT_RUN_SCRIPT = "#{ENV['CCI_SRC']}/src/git-bisect/bisect_run_script.rb"
+BISECT_RUN_SCRIPT = "#{ENV['CCI_SRC']}/src/delimiter/find-commit/bisect_run_script.rb"
 DELIMITER_TBOX_GROUP = 'vm-hi1620-2p8g--delimiter'
