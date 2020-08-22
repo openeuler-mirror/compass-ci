@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 cmd=(
-	docker run 
+	docker run
 	--restart=always
 	-v debian-home:/home
 	-v debian-root:/root

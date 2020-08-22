@@ -17,7 +17,7 @@ NUMBER_SERVERS=0
 declare -A SERVERS IP_SERVERS HOST_SERVERS TYPE_SERVERS
 
 read_servers_file() {
-	while read line 
+	while read line
 	do
 		SERVERS[$NUMBER_SERVERS]="$line"
 		IP_SERVERS[$NUMBER_SERVERS]="$(echo $line |awk '{print $1}')"

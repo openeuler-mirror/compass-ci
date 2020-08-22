@@ -52,7 +52,7 @@ check_qcow2_file() {
 	[ "$qcow2_suffix" == 'qcow2' ] || {
 		qcow2_suffix=$(echo "$qcow2_name" |awk -F '.' '{print $(NF-1)"."$NF}')
 		echo "${allow_qcow2_suffix_list[@]}" |grep -wq "$qcow2_suffix" || {
-			echo "[ERROR] Only support: .qcow2 .qcow2.xz file!" 
+			echo "[ERROR] Only support: .qcow2 .qcow2.xz file!"
 			exit 2
 		}
 	}

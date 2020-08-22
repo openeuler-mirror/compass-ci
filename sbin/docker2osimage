@@ -10,13 +10,13 @@ arch="$(uname -m)"
 rootdir="./$(echo "$image" | sed 's/[^a-zA-Z0-9_]/-/g')"
 image_name="$(echo "$image" | cut -d '/' -f 2 | cut -d ':' -f 1)-$arch.cgz"
 
-if [ $UID -ne 0 ]; then 
-	 echo "Please run with root user" 
+if [ $UID -ne 0 ]; then
+	 echo "Please run with root user"
 	 exit 1
 fi
 
-if [ -z "$image" ]; then 
-	 echo "Usage: $0 image" 
+if [ -z "$image" ]; then
+	 echo "Usage: $0 image"
 	 exit 2
 fi
 
@@ -37,7 +37,7 @@ else
 fi
 
 echo "LOG: Pulling $image"
-docker pull "$image" || exit 3 
+docker pull "$image" || exit 3
 
 echo "LOG: Running $image"
 id=$(docker run -d "$image")
@@ -55,6 +55,6 @@ docker cp -a "$id":/ "$rootdir"/
 # docker image rm -f "$image"
 
 echo "LOG: Package rootfs"
-cd "$rootdir" || exit 4 
+cd "$rootdir" || exit 4
 find . | cpio -o -Hnewc | gzip -9 > ../"$image_name"
 echo "Package: $(realpath ../"$image_name")"

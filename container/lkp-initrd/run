@@ -7,7 +7,7 @@ DIR=$(dirname $(realpath $0))
 load_cci_defaults
 
 cmd=(
-	docker run 
+	docker run
 	--rm
 	-e LKP_SRC=$LKP_SRC
 	-v $LKP_SRC:$LKP_SRC

@@ -43,5 +43,5 @@ install_cmds=(
 echo "rsync rootfs from $basever to $newver..."
 "${rsync_cmds[@]}"
 
-echo "install packages under $rootdir..." | tee install-$os-$arch-$version.log 
+echo "install packages under $rootdir..." | tee install-$os-$arch-$version.log
 "${install_cmds[@]}" | tee -a install-$os-$arch-$version.log

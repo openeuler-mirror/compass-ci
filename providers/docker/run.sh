@@ -5,15 +5,15 @@
 
 DIR=$(dirname $(realpath $0))
 cmd=(
-	docker run 
+	docker run
 	-it
 	--rm
 	--mount type=tmpfs,destination=/tmp
 	-v ${load_path}/lkp:/lkp
 	-v ${DIR}/bin:/root/bin:ro
 	--oom-score-adj="-1000"
-	${docker_image} 
+	${docker_image}
 	/root/bin/entrypoint.sh
 )
 
-"${cmd[@]}" 
+"${cmd[@]}"
