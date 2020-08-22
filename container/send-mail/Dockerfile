@@ -4,6 +4,7 @@ FROM debian
 MAINTAINER luanshengde2@huawei.com
 ENV DEBIAN_FRONTEND noninteractive
 
+COPY conf/sources.list* /etc/apt/
 RUN apt-get update && \
     apt-get install -y ruby-mail ruby-json ruby-sinatra
 

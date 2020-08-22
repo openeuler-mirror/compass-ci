@@ -1,10 +1,16 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 FROM debian
+
 MAINTAINER wangchenglong17@huawei.com
+
 ENV DEBIAN_FRONTEND noninteractive
+
+COPY conf/sources.list* /etc/apt/
 RUN apt-get update && \
     apt-get install -y shellcheck
+
 VOLUME /shellbox
 WORKDIR /shellbox
+
 CMD ["/bin/bash"]
