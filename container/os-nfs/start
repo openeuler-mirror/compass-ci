@@ -19,6 +19,7 @@ cmd=(
 #	-it
 	--name os-nfs # avoid multiple containers
 	-e NFS_DISABLE_VERSION_3=1
+	--mount type=tmpfs,destination=/exports
 	-v /srv/os:/exports/os:ro
 	-v /srv/os:/exports/os-rw	 # for install/setup
 	-v /srv/result:/exports/result

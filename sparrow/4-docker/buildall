@@ -33,7 +33,6 @@ do_one()
 		[ -x build ] && ./build
 		[ -x install ] && ./install
 		[ -x first-run ] && ./first-run
-		[ "$container_name" == 'os-nfs' ] && exit
 		[ -x start ] && ./start
 	)
 	lockfile-remove --lock-name "$container_name".lock
