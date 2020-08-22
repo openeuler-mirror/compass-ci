@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 require "kemal"
+require "yaml"
 
 require "./job"
 require "./block_helper"
@@ -33,12 +34,12 @@ class Sched
     def del_host_mac(mac : String)
         @redis.hash_del("sched/mac2host", normalize_mac(mac))
     end
-    
+
     # EXAMPLE:
     # cluster_file: "cs-lkp-hsw-ep5"
     # return: Hash(YAML::Any, YAML::Any) | Nil
-    #   {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]}, 
-    #    "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}} 
+    #   {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]},
+    #    "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}}
     def get_cluster_config(cluster_file)
         lkp_src = ENV["LKP_SRC"] || "/c/lkp-tests"
         cluster_file_path = Path.new(lkp_src, "cluster", cluster_file)
@@ -65,6 +66,23 @@ class Sched
             end
         end
         return "0", 1
+    end
+
+    # add a task to task-queue and return a job_id
+    # return:
+    #     job_id : success
+    #        "0" : failure
+    def add_task(tbox_group)
+        task_desc = JSON.parse(%({"domain": "crystal-ci"}))
+        response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
+        job_id = JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
+        job_id || "0"
+    end
+
+    # add job content to es
+    def add_job(job_content)
+        job = Job.new(job_content)
+        @es.set_job_content(job)
     end
 
     private def ipxe_msg(msg)
