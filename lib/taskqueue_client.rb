@@ -5,8 +5,8 @@ require 'rest-client'
 
 # taskqueue client
 class TaskQueueClient
-  HOST = (ENV.key?('TASK_QUEUE_HOST') ? ENV['TASK_QUEUE_HOST'] : '127.0.0.1')
-  PORT = (ENV.key?('TASK_QUEUE_PORT') ? ENV['TASK_QUEUE_PORT'] : 3060).to_i
+  HOST = (ENV.key?('TASKQUEUE_HOST') ? ENV['TASKQUEUE_HOST'] : '127.0.0.1')
+  PORT = (ENV.key?('TASKQUEUE_PORT') ? ENV['TASKQUEUE_PORT'] : 3060).to_i
   def initialize(host = HOST, port = PORT)
     @host = host
     @port = port
