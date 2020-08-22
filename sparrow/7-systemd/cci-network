@@ -8,6 +8,7 @@
 $CCI_SRC/sparrow/2-network/br0
 $CCI_SRC/sparrow/2-network/iptables
 $CCI_SRC/sparrow/2-network/nfs
+$CCI_SRC/sparrow/2-network/cifs
 
 # --restart=always option is not absolutely reliable
 containers=($(docker ps -a |grep -v NAMES |awk '{print $NF}'))
