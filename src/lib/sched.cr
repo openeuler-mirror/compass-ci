@@ -33,6 +33,20 @@ class Sched
     def del_host_mac(mac : String)
         @redis.hash_del("sched/mac2host", normalize_mac(mac))
     end
+    
+    # EXAMPLE:
+    # cluster_file: "cs-lkp-hsw-ep5"
+    # return: Hash(YAML::Any, YAML::Any) | Nil
+    #   {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]}, 
+    #    "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}} 
+    def get_cluster_config(cluster_file)
+        lkp_src = ENV["LKP_SRC"] || "/c/lkp-tests"
+        cluster_file_path = Path.new(lkp_src, "cluster", cluster_file)
+
+        if File.file?(cluster_file_path)
+          YAML.parse(File.read(cluster_file_path)).as_h
+        end
+    end
 
     def submit_job(env : HTTP::Server::Context)
         body = env.request.body.not_nil!.gets_to_end
