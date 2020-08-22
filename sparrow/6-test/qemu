@@ -10,8 +10,6 @@ run_job()
 	)
 }
 
-cd /c/cci/user-client/helper
-
 dmidecode -s system-product-name | grep -iq "virtual" && exit
 run_job vm-hi1620-2p8g
 run_job vm-pxe-hi1620-2p8g
