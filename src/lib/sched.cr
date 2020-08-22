@@ -75,7 +75,7 @@ class Sched
         respon["lkp"] = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz"
         respon["job"] = "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
 
-        puts %({"job_id": "#{job.id}", "state": "boot"})
+        puts %({"job_id": "#{job.id}", "job_state": "boot"})
         return respon.to_json
     end
 
@@ -97,7 +97,7 @@ class Sched
 
         response += "boot\n"
 
-        puts %({"job_id": "#{job.id}", "state": "boot"})
+        puts %({"job_id": "#{job.id}", "job_state": "boot"})
         return response
     end
 
@@ -212,7 +212,7 @@ class Sched
         respon += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
         respon += "boot\n"
 
-        puts %({"job_id": "#{job.id}", "state": "boot"})
+        puts %({"job_id": "#{job.id}", "job_state": "boot"})
         return respon
     end
 
@@ -240,8 +240,10 @@ class Sched
 
         @redis.update_job(job_content)
 
-        job_content["job_id"] = job_id
-        puts job_content.to_json
+        # json log
+        log = job_content.dup
+        log["job_id"] = log.delete("id").not_nil!
+        puts log.to_json
     end
 
     def update_tbox_wtmp(env : HTTP::Server::Context)
@@ -269,6 +271,8 @@ class Sched
 
         @redis.update_wtmp(testbox, hash)
 
+        # json log
+        hash["testbox"] = testbox
         puts hash.to_json
     end
 
@@ -290,6 +294,6 @@ class Sched
 
         @redis.remove_finished_job(job_id)
 
-        puts %({"job_id": "#{job_id}", "state": "complete"})
+        puts %({"job_id": "#{job_id}", "job_state": "complete"})
     end
 end

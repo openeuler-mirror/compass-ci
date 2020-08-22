@@ -70,7 +70,7 @@ module Scheduler
     post "/submit_job" do |env|
         job_id, _ = sched.submit_job(env)
 
-        puts %({"job_id": "#{job_id}", "state": "submit"})
+        puts %({"job_id": "#{job_id}", "job_state": "submit"})
         debug_message(env, job_id)
 
         job_id
@@ -82,7 +82,7 @@ module Scheduler
         job_package = env.params.url["job_package"]
         file_path = ::File.join [Kemal.config.public_folder, job_id, job_package]
 
-        puts %({"job_id": "#{job_id}", "state": "download"})
+        puts %({"job_id": "#{job_id}", "job_state": "download"})
         debug_message(env, file_path)
 
         send_file env,  file_path
