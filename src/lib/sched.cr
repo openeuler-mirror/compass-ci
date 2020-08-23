@@ -68,6 +68,15 @@ class Sched
         return "0", 1
     end
 
+    # for one-device
+    def submit_single_job(job_content)
+        tbox_group = JobHelper.get_tbox_group(job_content)
+        job_id = add_task(tbox_group)
+        job_id == "0" && (return "0")
+        add_job(job_content)
+        return job_id
+    end
+
     # add a task to task-queue and return a job_id
     # return:
     #     job_id : success
