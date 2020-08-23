@@ -37,16 +37,20 @@ class Sched
 
     # EXAMPLE:
     # cluster_file: "cs-lkp-hsw-ep5"
-    # return: Hash(YAML::Any, YAML::Any) | Nil
+    # return: Hash(YAML::Any, YAML::Any) | Nil, 0 | <hosts_size>
     #   {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]},
-    #    "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}}
+    #    "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}}, 2
     def get_cluster_config(cluster_file)
         lkp_src = ENV["LKP_SRC"] || "/c/lkp-tests"
         cluster_file_path = Path.new(lkp_src, "cluster", cluster_file)
 
         if File.file?(cluster_file_path)
-          YAML.parse(File.read(cluster_file_path)).as_h
+          cluster_config = YAML.parse(File.read(cluster_file_path)).as_h
+          hosts_size = cluster_config.values.size
+          return cluster_config, hosts_size
         end
+
+        return nil, 0
     end
 
     def submit_job(env : HTTP::Server::Context)
