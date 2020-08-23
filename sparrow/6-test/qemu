@@ -6,7 +6,7 @@ run_job()
 	submit -s "testbox: $1--$USER"  /c/cci/user-client/jobs/iperf-sparrow.yaml
 	(
 		export tbox_group=$1
-		cd /c/cci/provider && ./my-qemu.sh
+		cd /c/cci/providers && ./my-qemu.sh
 	)
 }
 
