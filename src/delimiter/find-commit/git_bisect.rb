@@ -47,10 +47,12 @@ class GitBisect
     puts "upstream_repo: #{@upstream_repo}"
     puts "upstream_commit: #{@upstream_commit}"
     raise 'upstream info is null' unless @upstream_repo || @upstream_commit
+
+    @upstream_repo_git = "git://#{GIT_MIRROR_HOST}/#{@upstream_repo}"
   end
 
   def set_work_dir
-    @work_dir = Utils.clone_repo(@upstream_repo, @upstream_commit)
+    @work_dir = Utils.clone_repo(@upstream_repo_git, @upstream_commit)
     puts "work_dir: #{@work_dir}"
     raise "checkout repo: #{@upstream_repo} to commit: #{@upstream_commit} failed!" unless @work_dir
   end
