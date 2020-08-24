@@ -120,12 +120,10 @@ module Jobfile::Operate
         job_dir = base_dir + "/" +  job_content["id"].to_s
 
         if job_sh_array.empty?
-            target_path = "#{ENV["CCI_SRC"]}/scheduler/expand_cgz/#{job_content["id"]}"
-            lkp_src = prepare_lkp_tests(job_content, target_path)
+            lkp_src = prepare_lkp_tests(job_content)
 
             cmd = "#{lkp_src}/sbin/create-job-cpio.sh #{temp_yaml}"
             idd = `#{cmd}`
-            FileUtils.rm_rf(target_path)
         else
             cmd ="./create-job-cpio.sh #{job_dir}"
             idd = `#{cmd}`
@@ -152,8 +150,10 @@ module Jobfile::Operate
         system cmd
     end
 
-    def self.prepare_lkp_tests(job_content : Hash, target_path : String)
+    def self.prepare_lkp_tests(job_content : Hash)
         if job_content["lkp_initrd_user"]?
+            target_path = "#{ENV["CCI_SRC"]}/scheduler/expand_cgz/" +
+              "#{job_content["lkp_initrd_user"]}/lkp-#{job_content["arch"]}"
             source_path = "/srv/initrd/lkp/#{job_content["lkp_initrd_user"]}/lkp-#{job_content["arch"]}.cgz"
             unzip_cgz(source_path, target_path)
             return "#{target_path}/lkp/lkp/src"
