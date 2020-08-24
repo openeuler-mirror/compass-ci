@@ -2,7 +2,7 @@
 
 FROM alpine:3.11
 
-RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+RUN sed -i.origin 's|dl-cdn.alpinelinux.org|mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk add --no-cache elasticsearch curl
 

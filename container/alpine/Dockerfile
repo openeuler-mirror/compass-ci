@@ -5,7 +5,7 @@ FROM alpine:3.11
 
 MAINTAINER Wu Fenguang <wufengguang@huawei.com>
 
-RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+RUN sed -i.origin 's|dl-cdn.alpinelinux.org|mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk update
 RUN apk add shadow bash zsh git openssh openrc rsync crystal shards make gcc g++ tzdata sudo coreutils util-linux libffi-dev openssl-dev libtool yaml-dev vim && shards init
