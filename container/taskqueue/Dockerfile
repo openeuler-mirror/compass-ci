@@ -2,6 +2,8 @@
 
 FROM alpine:3.11
 
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+
 RUN apk add --no-cache 'gcc' 'pcre' 'libevent' 'bash'
 
 ENV RUNTIME_DIR /c/cci/taskqueue

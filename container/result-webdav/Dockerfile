@@ -4,6 +4,8 @@ FROM nginx:stable-alpine
 
 LABEL maintainer="jbbodart"
 
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+
 RUN apk -U upgrade && apk add --no-cache apache2-utils && adduser lkp -u 1090 -g 1090 -D
 
 COPY webdav.conf /etc/nginx/conf.d/default.conf

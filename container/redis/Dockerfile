@@ -2,6 +2,8 @@
 
 FROM alpine:3.11
 
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+
 RUN apk add --no-cache 'redis'
 
 RUN sed -i 's:dir /var/lib/redis:dir /srv/redis:' /etc/redis.conf; \

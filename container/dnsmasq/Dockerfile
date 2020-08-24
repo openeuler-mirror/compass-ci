@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-FROM alpine
+FROM alpine:3.11
+
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk add dnsmasq
 RUN mkdir -p /var/log/dnsmasq

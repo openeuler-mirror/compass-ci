@@ -4,9 +4,7 @@ FROM alpine:3.11
 
 MAINTAINER caoxl
 
-RUN cp -a /etc/apk/repositories /etc/apk/repositories.bak
-
-RUN sed -i 's/dl-cdn.alpinelinux.ort/mirror.huaweicloud.com/g' /etc/apk/repositories
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk add gcc g++ make libffi-dev openssl-dev libtool yaml-dev crystal shards && shards init
 

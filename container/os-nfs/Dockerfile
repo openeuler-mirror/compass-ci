@@ -2,9 +2,11 @@
 # Copyright (C) 2017-2020  Eric D. Hough
 # SPDX-License-Identifier: GPL-3.0
 
-ARG BUILD_FROM=alpine:latest
+ARG BUILD_FROM=alpine:3.11
 
 FROM $BUILD_FROM
+
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk --update --no-cache add bash nfs-utils && \
                                                   \

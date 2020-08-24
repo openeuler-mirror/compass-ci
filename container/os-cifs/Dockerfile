@@ -4,6 +4,8 @@
 
 FROM alpine:edge
 
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+
 RUN apk add --update \
     samba-common-tools \
     samba-client \

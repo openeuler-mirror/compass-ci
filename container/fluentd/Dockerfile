@@ -4,8 +4,7 @@ FROM alpine:3.11
 
 MAINTAINER Wu Zhende <wuzhende1@huawei.com>
 
-# replace the source apk repo to huaweicloud
-RUN sed -i 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk update
 

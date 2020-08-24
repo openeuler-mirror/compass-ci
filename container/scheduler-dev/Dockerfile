@@ -4,6 +4,8 @@ FROM alpine:crystal-base
 
 MAINTAINER chief <tongqunfeng@huawei.com>
 
+RUN sed -i.origin 's|http://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+
 RUN umask 002 && \
   gem install rest-client activesupport bigdecimal open3 && \
   gem install git json yaml && \
