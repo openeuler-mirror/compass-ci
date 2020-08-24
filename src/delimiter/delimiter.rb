@@ -21,10 +21,9 @@ class Delimiter
     # find first bad commit based on the task
     git_bisect = GitBisect.new task
     result = git_bisect.find_first_bad_commit
-    puts 'find first bad commit result: ', result
 
-    # todo
-    # save result to task queue
+    # send mail
+    system("send_delimiter_result #{result['repo']} #{result['commit']}") if result
   end
 
   private

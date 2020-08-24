@@ -23,8 +23,7 @@ class GitBisect
     set_work_dir
     set_good_commit
 
-    bisect_result = start_bisect
-    return bisect_result
+    start_bisect
   end
 
   private
@@ -47,7 +46,7 @@ class GitBisect
     @upstream_commit = @bad_job['upstream_commit']
     puts "upstream_repo: #{@upstream_repo}"
     puts "upstream_commit: #{@upstream_commit}"
-    raise 'upstream repo is null' unless @upstream_repo || @upstream_commit
+    raise 'upstream info is null' unless @upstream_repo || @upstream_commit
   end
 
   def set_work_dir
@@ -75,7 +74,16 @@ class GitBisect
     end
     FileUtils.rm_r(@work_dir) if Dir.exist?(@work_dir)
     puts "\nbisect result: #{result}"
-    return result
+    analyse_result(result)
+  end
+
+  def analyse_result(result)
+    temp = result.split(/\n/)
+    return nil unless temp[0].include?('is the first bad commit') || temp[-1].include?('bisect run success')
+
+    first_bad_commit = Utils.parse_first_bad_commit(result)
+
+    return Hash['repo' => @upstream_repo, 'commit' => first_bad_commit]
   end
 
   # first search the good commit in db
@@ -86,8 +94,6 @@ class GitBisect
 
     good_commit = find_good_commit_by_job
     return good_commit if good_commit
-
-    return
   end
 
   def find_good_commit_by_db

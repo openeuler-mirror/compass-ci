@@ -38,5 +38,13 @@ module Utils
       last_commit = `git -C #{work_dir} rev-list --first-parent #{commit} -2 | sed -n 2p`.chomp!
       return last_commit
     end
+
+    def parse_first_bad_commit(result)
+      result = result.split(/\n/)
+      result.each do |item|
+        return item.split()[0] if item.end_with? 'is the first bad commit'
+      end
+    end
+
   end
 end
