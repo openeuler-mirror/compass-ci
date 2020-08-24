@@ -35,6 +35,21 @@ class Sched
         @redis.hash_del("sched/mac2host", normalize_mac(mac))
     end
 
+    # return:
+    #     Hash(String, Hash(String, String))
+    def get_cluster_state(cluster_id)
+        cluster_state = @redis.hash_get("sched/cluster_state", cluster_id)
+        cluster_state = Hash(String, Hash(String, String)).from_json(cluster_state)
+        return cluster_state
+    end
+
+    # get -> modify -> set
+    def update_cluster_state(cluster_id, job_id, state)
+        cluster_state = get_cluster_state(cluster_id)
+        cluster_state[job_id] = state
+        cluster_state = @redis.hash_set("sched/cluster_state", cluster_state.to_json)
+    end
+
     # EXAMPLE:
     # cluster_file: "cs-lkp-hsw-ep5"
     # return: Hash(YAML::Any, YAML::Any) | Nil, 0 | <hosts_size>
