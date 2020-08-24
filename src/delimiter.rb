@@ -16,5 +16,5 @@ loop do
       end
     end
   end
-  sleep(600)
+  sleep(30)
 end
