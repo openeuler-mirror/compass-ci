@@ -10,6 +10,7 @@ cmd = %w[
   docker run
   --restart=always
   --name kibana
+  -v /etc/localtime:/etc/localtime:ro
   -d
   --link logging-es:elasticsearch
   -p 11309:5601
