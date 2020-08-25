@@ -87,6 +87,55 @@ class Sched
         return "0", 1
     end
 
+    # for multi-device.
+    # cluster_config: Hash(YAML::Any, YAML::Any)
+    #    {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]},
+    #     "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}},
+    # return:
+    #   job_ids : success
+    #       "0" : failure
+    def submit_cluster_job(job_content, cluster_config)
+          # collect all job ids
+          job_ids = [] of String
+
+          # steps for each host
+          cluster_config.each do |host, config|
+            tbox_group = host.to_s
+            job_id = add_task(tbox_group)
+
+            # return when job_id is '0'
+            # 2 Questions:
+            #   - how to deal with the jobs added to DB prior to this loop
+            #   - may consume job before all jobs done
+            job_id == "0" && (return "0")
+            job_content["id"] = job_id
+            job_ids << job_id
+
+            # add to job content when multi-test
+            job_content["testbox"] = tbox_group
+            job_content["tbox_group"] = tbox_group
+            job_content["node_roles"] = config["roles"].as_a.join(" ")
+            job_content["node_macs"] = config["macs"].as_a.join(" ")
+            add_job(job_content)
+          end
+
+          cluster_id = job_ids[0]
+          # collect all host states
+          cluster_state = Hash(String, Hash(String, String)).new
+
+          job_ids.each do |job_id|
+            # only collect host state until now
+            cluster_state[job_id] = {"state" => ""}
+            # will get cluster id according to job id
+            @redis.hash_set("sched/id2cluster", job_id, cluster_id)
+          end
+
+          @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
+
+          job_ids.to_s
+    end
+
+
     # for one-device
     def submit_single_job(job_content)
         tbox_group = JobHelper.get_tbox_group(job_content)
