@@ -46,8 +46,8 @@ class Sched
     # get -> modify -> set
     def update_cluster_state(cluster_id, job_id, state)
         cluster_state = get_cluster_state(cluster_id)
-        cluster_state[job_id] = state
-        @redis.hash_set("sched/cluster_state", cluster_state.to_json)
+        cluster_state[job_id]["state"] = state
+        @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
     end
 
     # EXAMPLE:
