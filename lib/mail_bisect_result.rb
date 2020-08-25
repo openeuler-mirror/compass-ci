@@ -35,3 +35,4 @@ class MailBisectResult
     json = @hash.to_json
     MailClient.new.send_mail(json)
   end
+end
