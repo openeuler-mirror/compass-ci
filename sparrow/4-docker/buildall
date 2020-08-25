@@ -6,16 +6,19 @@ CONTAINER_PATH="$CCI_SRC/container"
 build_depends()
 {
 	local container=$1
-	local should_wait=$2
 
-	[ -f "$container/depends" ] && {
-		for line in $(<$container/depends)
+	if ls $container/*-depends >/dev/null 2>&1; then
+		for dep in $(cat $container/*-depends)
 		do
-			build_depends $CONTAINER_PATH/$line block_wait
+			if [ -f "$container/start-depends" ] && grep -wq $dep $container/start-depends ; then
+				build_depends $CONTAINER_PATH/$dep
+			else
+				build_depends $CONTAINER_PATH/$dep block_wait
+			fi
 		done
-	}
+	fi
 
-	if [ -n "$should_wait" ]; then
+	if [ -n "$2" ]; then
 		do_one $container
 	else
 		do_one $container &
