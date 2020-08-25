@@ -6,6 +6,7 @@ require 'json'
 require_relative './constants'
 require_relative './find-commit/git_bisect'
 require_relative '../../lib/taskqueue_client'
+require_relative '../../lib/mail_bisect_result'
 
 # consume assister task queue
 class Delimiter
@@ -23,7 +24,8 @@ class Delimiter
     result = git_bisect.find_first_bad_commit
 
     # send mail
-    system("send_delimiter_result #{result['repo']} #{result['commit']}") if result
+    mbr = MailBisectResult.new result
+    mbr.create_send_email
   end
 
   private
