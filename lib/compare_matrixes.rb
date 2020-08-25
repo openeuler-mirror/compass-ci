@@ -310,6 +310,11 @@ def print_html_result(matrixes_values, matrixes_number, success)
 end
 
 # Format Tools
+def get_decimal_length(number, length)
+  return length - 7 if number.negative?
+
+  return length - 6
+end
 
 def get_suitable_number_str(number, length, format_pattern)
   # if number string length can't < target length,
@@ -318,9 +323,9 @@ def get_suitable_number_str(number, length, format_pattern)
   format_str = format(format_pattern, number)
   return format_str if format_str.length <= length
 
-  number_length = length - 7
-  unless number_length.negative?
-    scientific_str = format("%+.#{number_length}e", number)
+  decimal_length = get_decimal_length(number, length)
+  unless decimal_length.negative?
+    scientific_str = format("%.#{decimal_length}e", number).sub('e+0', 'e+').sub('e-0', 'e-')
     lack_length = length - scientific_str.length
     unless lack_length.negative?
       return scientific_str + ' ' * lack_length
@@ -415,7 +420,7 @@ def get_reproduction_index_str(reproduction, compare_index)
   reproduction_index = compare_index - reproduction_str.index('.')
   if reproduction_index.negative?
     reproduction_index = compare_index - reproduction_str.index('e') - 1
-    reproduction_str = format('%+.1e%%', reproduction)
+    reproduction_str = format('%+.1e%%', reproduction).sub('e+0', 'e+').sub('e-0', 'e-')
   end
   return reproduction_index, reproduction_str
 end
@@ -443,7 +448,7 @@ def get_change_index_str(change, compare_index)
   change_str = format('%+.1f%%', change)
   change_index = compare_index - change_str.index('.')
   if change_index.negative?
-    change_str = format('%+.1e%%', change)
+    change_str = format('%+.1e%%', change).sub('e+0', 'e+').sub('e-0', 'e-')
     change_index = compare_index - change_str.index('e') - 1
   end
   return change_index, change_str
