@@ -5,13 +5,16 @@
 require 'fileutils'
 
 # Run multiple QEMU in parallel
-HOSTNAME = "vm-pxe-hi1620-2p8g--#{ENV['USER']}"
+HOSTNAME = "vm-hi1620-2p8g--#{ENV['USER']}"
 NR_VM = 2
 
 def run(seqno)
   loop do
+    hostname = "#{HOSTNAME}-#{seqno}"
+    FileUtils.mkdir_p(hostname) unless File.exist?(hostname)
+    FileUtils.cd(hostname)
     system(
-      { 'hostname' => "#{HOSTNAME}-#{seqno}" },
+      { 'hostname' => hostname },
       ENV['CCI_SRC'] + '/providers/qemu.sh'
     )
   end
