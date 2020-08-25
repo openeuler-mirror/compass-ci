@@ -4,7 +4,7 @@ FROM nginx:stable-alpine
 
 LABEL maintainer="jbbodart"
 
-RUN sed -i.origin 's|dl-cdn.alpinelinux.org|mirrors.huaweicloud.com|g' /etc/apk/repositories
+RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk -U upgrade && apk add --no-cache apache2-utils && adduser lkp -u 1090 -g 1090 -D
 

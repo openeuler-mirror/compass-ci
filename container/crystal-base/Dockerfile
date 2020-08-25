@@ -4,7 +4,7 @@ FROM alpine:3.11
 
 MAINTAINER chief <tongqunfeng@huawei.com>
 
-ONBUILD RUN sed -i.origin 's|dl-cdn.alpinelinux.org|mirrors.huaweicloud.com|g' /etc/apk/repositories
+ONBUILD RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 ONBUILD RUN apk update
 ONBUILD RUN apk add bash zsh git rsync curl crystal shards tzdata sudo \

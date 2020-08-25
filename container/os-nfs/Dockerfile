@@ -6,7 +6,7 @@ ARG BUILD_FROM=alpine:3.11
 
 FROM $BUILD_FROM
 
-RUN sed -i.origin 's|dl-cdn.alpinelinux.org|mirrors.huaweicloud.com|g' /etc/apk/repositories
+RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk --update --no-cache add bash nfs-utils && \
                                                   \
