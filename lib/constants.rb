@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MulanPSL-2.0+ or GPL-2.0
 # frozen_string_literal: true
 
 require_relative '../container/lab.rb'

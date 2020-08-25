@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MulanPSL-2.0+
+# SPDX-License-Identifier: MulanPSL-2.0+ or GPL-2.0
 # frozen_string_literal: true
 
 LKP_SRC ||= ENV['LKP_SRC'] || File.dirname(__dir__)

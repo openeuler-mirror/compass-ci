@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MulanPSL-2.0+
+# SPDX-License-Identifier: MulanPSL-2.0+ or GPL-2.0
 
 TASKQUEUE_PORT = 3060
 
