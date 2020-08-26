@@ -1,9 +1,9 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 require_relative 'mail_client.rb'
 require 'json'
 
+# compose and send email for bisect result
 class MailBisectResult
   def initialize(bisect_info)
     @repo = bisect_info['repo']
@@ -11,12 +11,12 @@ class MailBisectResult
   end
 
   def create_send_email
-    get_commit_info
+    parse_commit_info
     compose_mail
     send_mail
   end
 
-  def get_commit_info
+  def parse_commit_info
     git_prefix = "git -C /srv/git/#{@repo}.git"
     @author = `#{git_prefix} log -n1 --pretty=format:'%an' #{@commit_id}`
     @email = `#{git_prefix} log -n1 --pretty=format:'%ae' #{@commit_id}`
