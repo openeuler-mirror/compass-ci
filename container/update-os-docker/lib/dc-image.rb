@@ -4,16 +4,16 @@
 
 require 'yaml'
 
+CONTAINER_PATH = File.dirname(__dir__)
+
 def get_hub_dc_image(os_name, os_version)
-  container_path = File.dirname(__dir__)
-  name_map = YAML.load_file("#{container_path}/config.d/hub_dc_image_name")
-  tag_map = YAML.load_file("#{container_path}/config.d/hub_dc_image_tag")
+  name_map = YAML.load_file("#{CONTAINER_PATH}/config.d/hub_dc_image_name")
+  tag_map = YAML.load_file("#{CONTAINER_PATH}/config.d/hub_dc_image_tag")
   return "#{name_map[os_name]}:#{tag_map[os_name + os_version]}"
 end
 
 def get_local_dc_image(os_name, os_version)
-  container_path = File.dirname(__dir__)
-  tag_map = YAML.load_file("#{container_path}/config.d/local_dc_image_tag")
+  tag_map = YAML.load_file("#{CONTAINER_PATH}/config.d/local_dc_image_tag")
   return "dc-#{os_name}:#{tag_map[os_name + os_version]}"
 end
 
