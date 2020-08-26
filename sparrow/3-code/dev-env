@@ -3,11 +3,13 @@
 
 server_name=$(hostname | cut -f1 -d.)
 server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
+: ${SCHED_HOST:=$server_ip}
+: ${SCHED_PORT:=3000}
 
 mkdir -p /etc/crystal-ci/defaults
 cat > /etc/crystal-ci/defaults/$server_name.yaml <<EOF
-SCHED_HOST: $server_ip
-SCHED_PORT: 3000
+SCHED_HOST: $SCHED_HOST
+SCHED_PORT: $SCHED_PORT
 OS_HTTP_HOST: $os_http_host
 INITRD_HTTP_HOST: $initrd_http_host
 INITRD_HTTP_PORT: $initrd_http_port
