@@ -1,9 +1,9 @@
 #!/bin/sh
 
 # check whether regression index has created
-status_code=$(curl -sIL -w "%{http_code}\n" -o /dev/null http://localhost:9200/regression)
+status_code=$(curl -sIL -w "%{http_code}\\n" -o /dev/null http://localhost:9200/regression)
 
-if [ $status_code -eq 200 ]
+if [ "$status_code" -eq 200 ]
 then
 	echo "regression index has been created, exit."
 else
