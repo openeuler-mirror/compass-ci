@@ -152,12 +152,52 @@ module Jobfile::Operate
 
     def self.prepare_lkp_tests(job_content : Hash)
         if job_content["lkp_initrd_user"]?
-            target_path = "#{ENV["CCI_SRC"]}/scheduler/expand_cgz/" +
-              "#{job_content["lkp_initrd_user"]}/lkp-#{job_content["arch"]}"
-            source_path = "/srv/initrd/lkp/#{job_content["lkp_initrd_user"]}/lkp-#{job_content["arch"]}.cgz"
-            unzip_cgz(source_path, target_path)
+            expand_dir_base = "#{ENV["CCI_SRC"]}/scheduler/expand_cgz"
+            FileUtils.mkdir_p(expand_dir_base)
+
+            # update lkp-xxx.cgz if they are different
+            target_path = update_lkp_when_different(expand_dir_base,
+                                     job_content["lkp_initrd_user"],
+                                     job_content["os_arch"])
+
+            # delete oldest lkp, if exists too much
+            del_lkp_if_too_much(expand_dir_base)
+
             return "#{target_path}/lkp/lkp/src"
         end
         return ENV["LKP_SRC"]
+    end
+
+    # list *.cgz (lkp initrd), sorted in reverse time order
+    # and delete 10 oldest cgz file, when exists more than 100
+    # also delete the DIR expand from the cgz file
+    def self.del_lkp_if_too_much(base_dir)
+        file_list = `ls #{base_dir}/*.cgz -tr`
+        file_array = file_list.split("\n")
+        if file_array.size > 100
+            10.times do |index|
+                FileUtils.rm_rf(file_array[index])
+                FileUtils.rm_rf(file_array[index].chomp(".cgz"))
+            end
+        end
+    end
+
+    def self.update_lkp_when_different(base_dir, lkp_initrd_user, os_arch)
+        target_path = base_dir + "/#{lkp_initrd_user}-#{os_arch}"
+        bak_lkp_filename = target_path + ".cgz"
+        source_path = "/srv/initrd/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz"
+
+        if File.exists?(bak_lkp_filename)
+            # no need update
+            return target_path if FileUtils.cmp(source_path, bak_lkp_filename)
+
+            # remove last expanded lkp initrd DIR
+            FileUtils.rm_rf(target_path)
+        end
+
+        # bakup user lkp-xxx.cgz (for next time check)
+        FileUtils.cp(source_path, bak_lkp_filename)
+        unzip_cgz(bak_lkp_filename, target_path)
+        return target_path
     end
 end
