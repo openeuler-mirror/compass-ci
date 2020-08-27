@@ -1,10 +1,17 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+. $CCI_SRC/container/lab.sh
+
+lsmod | grep -q "^cifs\s" || {
+	sudo modprobe cifs
+}
+
+docker_rm samba
+
 cmd=(
 	docker run -dt
 	-p 445:445
-	-v $PWD/smb.conf:/etc/samba/smb.conf
 	-v /srv/os:/srv/os:ro
 	-v /srv/os:/srv/os-rw
 	-v /srv/initrd:/srv/initrd

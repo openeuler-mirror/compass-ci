@@ -15,6 +15,8 @@ RUN apk add --update \
     bash \
     && rm -rf /var/cache/apk/*
 
+COPY ./smb.conf /etc/samba/
+
 EXPOSE 445/tcp
 
 ENTRYPOINT ["smbd", "--foreground", "--no-process-group", "--log-stdout"]
