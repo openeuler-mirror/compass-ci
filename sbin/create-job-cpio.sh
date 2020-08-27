@@ -4,7 +4,7 @@
 # input files: $1/job.sh $1/job.yaml
 # output file: $1/job.cgz
 
-cd $1
+cd "$1" || exit
 
 install -m775 -D -t lkp/scheduled job.sh
 install -m664 -D -t lkp/scheduled job.yaml
