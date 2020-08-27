@@ -1,4 +1,5 @@
 #! /bin/bash -eu
+# SPDX-License-Identifier: MulanPSL-2.0+
 
 # This file is called by script run running on host
 # define functions and set host environment variables
