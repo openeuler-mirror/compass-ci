@@ -41,6 +41,7 @@ cmd = %W[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
   -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/result:/result
