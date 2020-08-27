@@ -6,12 +6,11 @@ require 'open-uri'
 require 'json'
 require 'set'
 require 'fileutils'
-require_relative '../container/lab.rb'
+require_relative '../container/lab'
 
-# utility class of request boot.container interface
-# and consume job by docker container
-class DockerProvider; end
-def DockerProvider.get_url(hostname)
+BASE_DIR = ENV['HOME'] + '/jobs'
+
+def get_url(hostname)
   names = Set.new %w[
     SCHED_HOST
     SCHED_PORT
@@ -22,7 +21,7 @@ def DockerProvider.get_url(hostname)
   "http://#{host}:#{port}/boot.container/hostname/#{hostname}"
 end
 
-def DockerProvider.parse_response(url)
+def parse_response(url)
   response = nil
   URI.open(url) do |http|
     response = http.read
@@ -32,21 +31,27 @@ def DockerProvider.parse_response(url)
     puts '..........'
     puts 'no job now'
     puts '..........'
-    return nil
+    exit
   end
   return hash
 end
 
-def DockerProvider.load_job(base_path, url)
-  load_path = base_path + '/' + Process.pid.to_s
+def wget_cmd(path, url, name)
+  system "wget -P #{path} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
+end
+
+def load_initrds(base_dir, hash)
+  load_path = base_dir + '/' + Process.pid.to_s
   FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
-  system "wget -P #{load_path} #{url} && gzip -dc #{load_path}/job.cgz | cpio -id -D #{load_path}"
+  arch = RUBY_PLATFORM.split('-')[0]
+  job_url = hash['job']
+  lkp_url = hash['lkp']
+  wget_cmd(load_path, job_url, 'job.cgz')
+  wget_cmd(load_path, lkp_url, "lkp-#{arch}.cgz")
   return load_path
 end
 
-def DockerProvider.run(hash)
-  base_dir = ENV['HOME'] + '/jobs'
-  load_path = load_job(base_dir, hash['job'])
+def run(load_path, hash)
   docker_image = hash['docker_image']
   system "docker pull #{docker_image}"
   system(
@@ -57,12 +62,11 @@ def DockerProvider.run(hash)
 end
 
 def main(hostname)
-  url = DockerProvider.get_url(hostname)
+  url = get_url hostname
   puts url
-  hash = DockerProvider.parse_response(url)
-  return if hash.nil?
-
-  DockerProvider.run(hash)
+  hash = parse_response url
+  load_path = load_initrds(BASE_DIR, hash)
+  run(load_path, hash)
 end
 
 main 'dc-1g-1' if $PROGRAM_NAME == __FILE__
