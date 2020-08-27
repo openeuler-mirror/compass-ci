@@ -18,3 +18,4 @@ cmd=(
 )
 
 "${cmd[@]}"
+echo "PATH: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-aarch64.cgz"
