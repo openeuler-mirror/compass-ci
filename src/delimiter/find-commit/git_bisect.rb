@@ -36,6 +36,8 @@ class GitBisect
 
   def set_bad_job
     @bad_job = @es.query_by_id @bad_job_id
+    raise "es query job id: #{@bad_job_id} failed!" unless @bad_job
+
     @bad_job.delete('stats')
     @bad_job.delete('id')
     @bad_job['tbox_group'] = DELIMITER_TBOX_GROUP
@@ -85,7 +87,8 @@ class GitBisect
 
     first_bad_commit = Utils.parse_first_bad_commit(result)
 
-    return Hash['repo' => @upstream_repo, 'commit' => first_bad_commit]
+    return Hash['repo' => @upstream_repo, 'commit' => first_bad_commit,
+                'job_id' => @bad_job_id, 'error_id' => @error_id]
   end
 
   # first search the good commit in db
