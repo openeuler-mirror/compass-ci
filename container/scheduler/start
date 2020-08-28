@@ -24,7 +24,7 @@ defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
-DEFAULT_CCI = '/c/cci'
+DEFAULT_CCI = '/c/crystal-ci'
 SCHED_PORT = defaults['SCHED_PORT'] || '3000'
 FLUENTD_HOST = defaults['FLUENTD_HOST'] || 'localhost'
 FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
