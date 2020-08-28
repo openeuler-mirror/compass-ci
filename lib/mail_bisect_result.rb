@@ -25,7 +25,7 @@ class MailBisectResult
   end
 
   def compose_mail
-    subject = "[Crystal-CI] delimit /srv/git/#{@repo} result for commit #{@commit_id}"
+    subject = "[Crystal-CI] delimit #{@repo} result for commit #{@commit_id}"
     signature = "Crystal-CI delimit service\nhttps://gitee.com/openeuler/crystal-ci"
     body = "Hi #{@author},\n\nDelimit for #{@git_url} succeeded.\n\n#{@git_diff}\n\n#{signature}"
     @hash = { 'to' => @email, 'body' => body, 'subject' => subject }
