@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: MulanPSL-2.0+
+# SPDX-License-Identifier: GPL-3.0
 #
 # ehough/docker-nfs-server: A lightweight, robust, flexible, and containerized NFS server.
 #
