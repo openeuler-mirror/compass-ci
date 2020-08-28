@@ -8,13 +8,13 @@ for i in /lkp/lkp/src/rootfs/addon/* /usr/local/* /opt/*
 do
 	dir=$(basename "$i")
 
-	[  -d "$NEWROOT/$dir" ] ||
+	[ "$i" != "${i%/\*}" ] && continue  # skip: i='dir/*'
+	[ -d "$NEWROOT/$dir" ] ||
 		mkdir -p "$NEWROOT/$dir"
-	[ "$i" != "${i%/\*}" ] && continue	# skip empty dir
 
 	for j in "$i"/* "$i"/.??*
 	do
-		[ "$j" != "${j%/\*}" ] && continue	# skip empty dir
+		[ "$j" != "${j%/\*}" ] && continue  # skip: j='dir/*'
 
 		[ -f "$j" ] && {
 			cp -a "$j" "$NEWROOT/$dir"/
@@ -28,7 +28,7 @@ do
 
 		for k in "$j"/*
 		do
-			[ "$k" != "${k%/\*}" ] && continue	# skip empty dir
+			[ "$k" != "${k%/\*}" ] && continue	# skip: k='dir/*'
 
 			cp -a "$j"/* 	"$NEWROOT/$dir/$subdir"/
 		done
