@@ -15,6 +15,31 @@ cmd=(
 
 cat<<EOF
 port: 8101
-data: includ mail's subject, to, body, etc.
-curl -H 'Content-Type: Application/json' -XPOST 'localhost:8101/send_mail' -d '{"subject": "test mail", "to": "xxx", "body": "test message2"}'
+---
+data='{
+"subject": "mail subject",
+"to": "email_to_addr",
+"body": "email message"
+}'
+
+or
+
+data="
+subject: mail subject
+to: email_to_addr
+body: email message"
+
+curl -XPOST 'localhost:8101/send_mail_yaml' -d "$data"
+
+---
+data="
+To: mail_address
+Subject: mail_subject
+
+mail_msg_line1
+mail_msg_line2
+...
+"
+
+curl -XPOST 'localhost:8101/send_mail_text' -d "$data"
 EOF
