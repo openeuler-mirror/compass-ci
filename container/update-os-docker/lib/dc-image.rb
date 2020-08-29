@@ -18,6 +18,7 @@ def get_local_dc_image(os_name, os_version)
 end
 
 def prepare_dc_images(local_dc_image, hub_dc_image)
+  puts "preparing, local_dc_image: #{local_dc_image} hub_dc_image: #{hub_dc_image}"
   find_local_image = %x(docker images #{local_dc_image})
   return if find_local_image.include?(local_dc_image.split(':')[0])
 
