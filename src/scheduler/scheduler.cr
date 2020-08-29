@@ -68,12 +68,17 @@ module Scheduler
     #  - echo job_id to caller
     #  -- job_id = "0" ? means failed
     post "/submit_job" do |env|
-        job_id, _ = sched.submit_job(env)
+        job_id, error_msg = sched.submit_job(env)
 
-        puts %({"job_id": "#{job_id}", "job_state": "submit"})
-        debug_message(env, job_id)
-
-        job_id
+        if error_msg
+            puts %({"job_id": "#{job_id}", "job_state": "submit", "message": "#{error_msg}", "level": "error"})
+            debug_message(env, "#{job_id}: #{error_msg}")
+            error_msg
+        else
+            puts %({"job_id": "#{job_id}", "job_state": "submit"})
+            debug_message(env, job_id)
+            job_id
+        end
     end
 
     # file download server

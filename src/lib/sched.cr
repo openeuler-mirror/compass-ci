@@ -73,18 +73,19 @@ class Sched
         job_content = JSON.parse(body)
 
         tbox_group = JobHelper.get_tbox_group(job_content)
-        if tbox_group
-            task_desc = JSON.parse(%({"domain": "crystal-ci"}))
-            response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
-            job_id = JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
-            if job_id
-                job_content["id"] = job_id
-                job = Job.new(job_content)
-                @es.set_job_content(job)
-                return job.id, 0
-            end
-        end
-        return "0", 1
+        return "0", "get tbox group failed." unless tbox_group
+
+        task_desc = JSON.parse(%({"domain": "crystal-ci"}))
+        response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
+        job_id = JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
+        return "0", "add task queue sched/#{tbox_group} failed." unless job_id
+
+        job_content["id"] = job_id
+        job = Job.new(job_content)
+        response = @es.set_job_content(job)
+        return job_id, response["error"]["root_cause"] if response["error"]?
+
+        return job.id, nil
     end
 
     # for multi-device.
