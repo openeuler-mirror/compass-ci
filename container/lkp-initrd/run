@@ -6,9 +6,13 @@ DIR=$(dirname $(realpath $0))
 
 load_cci_defaults
 
+[[ $ARCH 	]] || ARCH=$(uname -m)
+[[ $LKP_SRC	]] || LKP_SRC=/c/lkp-tests
+
 cmd=(
 	docker run
 	--rm
+	-e ARCH=$ARCH
 	-e LKP_SRC=$LKP_SRC
 	-v $LKP_SRC:$LKP_SRC
 	-v $DIR/bin:/root/bin
@@ -18,4 +22,4 @@ cmd=(
 )
 
 "${cmd[@]}"
-echo "ls -l  /srv/initrd/lkp/${lkp_initrd_user:-latest}/"
+echo "result: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz"
