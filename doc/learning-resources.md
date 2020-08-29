@@ -93,6 +93,8 @@ https://learnxinyminutes.com/docs/python/
 Vim
 ===
 
+https://www.jianshu.com/p/bcbe916f97e1
+https://coolshell.cn/articles/5426.html
 https://devhints.io/vim
 
 ## vim keys (customized)
