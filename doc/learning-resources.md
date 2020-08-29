@@ -150,6 +150,10 @@ The most used ones are:
 Regular Expression
 ==================
 
+Regular expression is powerful but cryptic.
+The right way is to learn by examples:
+https://www.rubyguides.com/2015/06/ruby-regex/
+
 ri Regexp
 https://cheatography.com/davechild/cheat-sheets/regular-expressions/
 
