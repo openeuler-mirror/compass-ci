@@ -120,7 +120,8 @@ module Jobfile::Operate
         job_dir = base_dir + "/" +  job_content["id"].to_s
 
         if job_sh_array.empty?
-            lkp_src = prepare_lkp_tests(job_content)
+            lkp_src = prepare_lkp_tests(job_content["lkp_initrd_user"],
+                                        job_content["os_arch"])
 
             cmd = "#{lkp_src}/sbin/create-job-cpio.sh #{temp_yaml}"
             idd = `#{cmd}`
@@ -146,26 +147,24 @@ module Jobfile::Operate
 
     def self.unzip_cgz(source_path : String, target_path : String)
         FileUtils.mkdir_p(target_path)
-        cmd =  "cd #{target_path};gzip -dc #{source_path}|cpio -id"
+        cmd = "cd #{target_path};gzip -dc #{source_path}|cpio -id"
         system cmd
     end
 
-    def self.prepare_lkp_tests(job_content : Hash)
-        if job_content["lkp_initrd_user"]?
-            expand_dir_base = "#{ENV["CCI_SRC"]}/scheduler/expand_cgz"
-            FileUtils.mkdir_p(expand_dir_base)
+    def self.prepare_lkp_tests(lkp_initrd_user = "latest", os_arch = "aarch64")
+        expand_dir_base = File.expand_path(Kemal.config.public_folder +
+                                           "/expand_cgz")
+        FileUtils.mkdir_p(expand_dir_base)
 
-            # update lkp-xxx.cgz if they are different
-            target_path = update_lkp_when_different(expand_dir_base,
-                                     job_content["lkp_initrd_user"],
-                                     job_content["os_arch"])
+        # update lkp-xxx.cgz if they are different
+        target_path = update_lkp_when_different(expand_dir_base,
+                                                lkp_initrd_user,
+                                                os_arch)
 
-            # delete oldest lkp, if exists too much
-            del_lkp_if_too_much(expand_dir_base)
+        # delete oldest lkp, if exists too much
+        del_lkp_if_too_much(expand_dir_base)
 
-            return "#{target_path}/lkp/lkp/src"
-        end
-        return ENV["LKP_SRC"]
+        return "#{target_path}/lkp/lkp/src"
     end
 
     # list *.cgz (lkp initrd), sorted in reverse time order

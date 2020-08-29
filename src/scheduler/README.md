@@ -5,7 +5,7 @@
 - First of all, you should deploy the lkp-tests and crystal-ci project
 - And set the environment variables needed for running (modify "/etc/crystal-ci/defaults/crystal.yaml", and run $CCI_SRC/container/lab.rb | lab.sh)
   LKP_SRC: ~/code/lkp-tests    # path to your lkp-tests repo
-  CCI_SRC: ~/code/crystal-ci   # parh to your crystal-ci repo
+  CCI_SRC: ~/code/crystal-ci   # path to your crystal-ci repo
   SCHED_HOST: 172.168.131.131  # hostname or ip of the scheduler
   SCHED_PORT: 3000             # port of the scheduler
   JOB_INDEX_TYPE: "jobs/_doc"  # es job document index and type
