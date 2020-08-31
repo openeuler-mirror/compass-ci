@@ -16,8 +16,8 @@ class GitMirror
     @feedback_info = {}
   end
 
-  def feedback(git_repo)
-    @feedback_info = { git_repo: git_repo }
+  def feedback(git_repo, possible_new_refs)
+    @feedback_info = { git_repo: git_repo, possible_new_refs: possible_new_refs }
     @feedback_queue.push(@feedback_info)
   end
 
@@ -27,22 +27,25 @@ class GitMirror
       ret = system("git clone --mirror #{url} #{mirror_dir}")
       break if ret
     end
+    return ret
   end
 
   def git_fetch(mirror_dir)
-    system("git -C #{mirror_dir} fetch")
+    fetch_info = `git -C #{mirror_dir} fetch 2>&1`
+    return fetch_info.include? '->'
   end
 
   def mirror_sync
     fork_info = @queue.pop
     mirror_dir = "/srv/git/#{fork_info['forkdir']}.git"
+    possible_new_refs = false
     if File.directory?(mirror_dir)
-      git_fetch(mirror_dir)
+      possible_new_refs = git_fetch(mirror_dir)
     else
       FileUtils.mkdir_p(mirror_dir)
-      git_clone(fork_info['url'], mirror_dir)
+      possible_new_refs = git_clone(fork_info['url'], mirror_dir)
     end
-    feedback(fork_info['forkdir'])
+    feedback(fork_info['forkdir'], possible_new_refs)
   end
 
   def git_mirror
@@ -57,7 +60,6 @@ class MirrorMain
   def initialize
     @feedback_queue = Queue.new
     @fork_stat = {}
-    @new_refs = {}
     @priority = 0
     @priority_queue = PriorityQueue.new
     @git_info = {}
@@ -114,39 +116,17 @@ class MirrorMain
     @message_queue.publish(message)
   end
 
-  def handle_ref_elements(ref_elements, git_repo)
-    if @git_info[git_repo][:new_refs][:heads][ref_elements[1]] != ref_elements.first
-      @new_refs[:heads][ref_elements[1]] = ref_elements.first
-    end
-    @git_info[git_repo][:new_refs][:heads][ref_elements[1]] = ref_elements.first
-  end
-
-  def analyze_refs(show_ref_out, git_repo)
-    show_ref_out.each_line do |line|
-      next if line.start_with? '#'
-
-      strings = line.split
-      handle_ref_elements(strings, git_repo)
-    end
-  end
-
-  def check_new_refs(git_repo)
-    mirror_dir = "/srv/git/#{git_repo}.git"
-    show_ref_out = `git -C #{mirror_dir} show-ref --heads`
-    @git_info[git_repo][:new_refs] = { heads: {} } unless @git_info[git_repo][:new_refs]
-    @new_refs = { heads: {} }
-    analyze_refs(show_ref_out, git_repo)
-  end
-
   def handle_feedback
     return if @feedback_queue.empty?
 
     feedback_info = @feedback_queue.pop(true)
     @fork_stat[feedback_info[:git_repo]][:queued] = false
-    check_new_refs(feedback_info[:git_repo])
-    return if @new_refs[:heads].empty?
+    return unless feedback_info[:possible_new_refs]
 
-    feedback_info[:new_refs] = @new_refs
+    new_refs = check_new_refs(feedback_info[:git_repo])
+    return if new_refs[:heads].empty?
+
+    feedback_info[:new_refs] = new_refs
     send_message(feedback_info)
   end
 
@@ -156,6 +136,7 @@ class MirrorMain
     fork_key = @priority_queue.delete_min_return_key
     unless @fork_stat[fork_key][:queued]
       @fork_stat[fork_key][:queued] = true
+      @git_info[fork_key][:cur_refs] = get_cur_refs(fork_key) if @git_info[fork_key][:cur_refs].nil?
       @git_queue.push(@git_info[fork_key])
     end
     @priority_queue.push fork_key, @priority
@@ -168,5 +149,38 @@ class MirrorMain
       handle_feedback
       sleep(0.1)
     end
+  end
+end
+
+# main thread
+class MirrorMain
+  def compare_refs(cur_refs, old_refs)
+    new_refs = { heads: {} }
+    cur_refs[:heads].each do |ref, commit_id|
+      if old_refs[:heads][ref] != commit_id
+        new_refs[:heads][ref] = commit_id
+      end
+    end
+    return new_refs
+  end
+
+  def get_cur_refs(git_repo)
+    mirror_dir = "/srv/git/#{git_repo}.git"
+    show_ref_out = `git -C #{mirror_dir} show-ref --heads`
+    cur_refs = { heads: {} }
+    show_ref_out.each_line do |line|
+      next if line.start_with? '#'
+
+      strings = line.split
+      cur_refs[:heads][strings[1]] = strings.first
+    end
+    return cur_refs
+  end
+
+  def check_new_refs(git_repo)
+    cur_refs = get_cur_refs(git_repo)
+    new_refs = compare_refs(cur_refs, @git_info[git_repo][:cur_refs])
+    @git_info[git_repo][:cur_refs] = cur_refs
+    return new_refs
   end
 end
