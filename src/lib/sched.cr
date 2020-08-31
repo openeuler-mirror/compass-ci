@@ -339,7 +339,7 @@ class Sched
 
         (%w(start_time end_time loadavg job_state)).each do |parameter|
             value = env.params.query[parameter]?
-            if !value
+            if !value || value == ""
                 next
             end
             if parameter == "start_time" || parameter == "end_time"
