@@ -31,7 +31,7 @@ def parse_response(url)
     puts '..........'
     puts 'no job now'
     puts '..........'
-    exit
+    return nil
   end
   return hash
 end
@@ -40,15 +40,16 @@ def wget_cmd(path, url, name)
   system "wget -P #{path} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
 end
 
-def load_initrds(base_dir, hash)
-  load_path = base_dir + '/' + Process.pid.to_s
-  FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
+def build_load_path
+  return BASE_DIR + '/' + Process.pid.to_s
+end
+
+def load_initrds(load_path, hash)
   arch = RUBY_PLATFORM.split('-')[0]
   job_url = hash['job']
   lkp_url = hash['lkp']
   wget_cmd(load_path, job_url, 'job.cgz')
   wget_cmd(load_path, lkp_url, "lkp-#{arch}.cgz")
-  return load_path
 end
 
 def run(load_path, hash)
@@ -65,7 +66,10 @@ def main(hostname)
   url = get_url hostname
   puts url
   hash = parse_response url
-  load_path = load_initrds(BASE_DIR, hash)
+  return if hash.nil?
+
+  load_path = build_load_path
+  load_initrds(load_path, hash)
   run(load_path, hash)
 end
 
