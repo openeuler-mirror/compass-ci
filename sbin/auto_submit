@@ -22,7 +22,9 @@ class AutoSubmit
 
     jobfile = "#{ENV['LKP_SRC']}/jobs/#{@repo2job[git_repo]}"
     newrefs_info['new_refs']['heads'].each_value do |value|
-      system("#{ENV['LKP_SRC']}/sbin/submit -s 'upstream_repo: #{git_repo}' -s 'upstream_commit: #{value}' #{jobfile}")
+      commit_date = `git -C /srv/git/#{git_repo}.git log  --format=%ct -1 #{value}`
+      system("#{ENV['LKP_SRC']}/sbin/submit -s 'upstream_repo: #{git_repo}'\
+             -s 'upstream_commit: #{value}' -s 'commit_date: #{commit_date}' #{jobfile}")
     end
   end
 
