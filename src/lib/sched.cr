@@ -50,6 +50,38 @@ class Sched
         @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
     end
 
+    # Return response according to different request states.
+    #
+    # all request states:
+    #     wait_ready | abort | failed | finished | wait_finish |
+    #     write_state | roles_ip
+    # NOTE: have't implemented until now:
+    #     write_state | roles_ip
+    def request_cluster_state(env)
+        request_state = env.params.query["state"]
+        job_id = env.params.query["job_id"]
+        cluster_id = @redis.hash_get("sched/id2cluster", job_id)
+
+        states = {"abort" => "abort",
+                  "finished" => "finish",
+                  "failed" => "abort",
+                  "wait_ready" => "ready",
+                  "wait_finish" => "finish"}
+
+        case request_state
+        when "abort", "finished", "failed"
+            # update node state only
+            update_cluster_state(cluster_id, job_id, states[request_state])
+
+        when "wait_ready", "wait_finish"
+            # return cluster state: ready | retry | finish | abort
+            return sync_cluster_state(cluster_id, job_id, states[request_state])
+        end
+
+        # show cluster state
+        return @redis.hash_get("sched/cluster_state", cluster_id)
+    end
+
     # EXAMPLE:
     # cluster_file: "cs-lkp-hsw-ep5"
     # return: Hash(YAML::Any, YAML::Any) | Nil, 0 | <hosts_size>
