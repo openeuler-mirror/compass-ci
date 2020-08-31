@@ -5,6 +5,8 @@ server_name=$(hostname | cut -f1 -d.)
 server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 : ${sched_host:=$server_ip}
 : ${sched_port:=3000}
+: ${gitcache_host:=$server_ip}
+: ${gitcache_port:=5000}
 
 mkdir -p /etc/crystal-ci/defaults
 cat > /etc/crystal-ci/defaults/$server_name.yaml <<EOF
@@ -13,6 +15,8 @@ SCHED_PORT: $sched_port
 OS_HTTP_HOST: $os_http_host
 INITRD_HTTP_HOST: $initrd_http_host
 INITRD_HTTP_PORT: $initrd_http_port
+GITCACHE_HOST: $gitcache_host
+GITCACHE_PORT: $gitcache_port
 EOF
 
 cat > /etc/profile.d/crystal.sh <<'EOF'

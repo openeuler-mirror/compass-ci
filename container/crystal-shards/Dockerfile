@@ -4,6 +4,10 @@ FROM alpine:crystal-base
 
 MAINTAINER chief <tongqunfeng@huawei.com>
 
+ARG GITCACHE_HOST
+ARG GITCACHE_PORT
+RUN [ -n "$GITCACHE_HOST" ] && echo -e "[url \"http://$GITCACHE_HOST:${GITCACHE_PORT:-5000}/\"]\n\tinsteadOf = https://" >> /etc/gitconfig
+
 copy shard.yml /usr/share/crystal/app/shard.yml
 
 WORKDIR /usr/share/crystal/app

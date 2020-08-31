@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-docker build -t alpine:crystal-shards .
+# GITCACHE_HOST and GITCACHE_PORT parameters come from gitcache_host and gitcache_port in the job.yaml file you submitted.
+# If job.yaml does not have these two parameters, git will use the local proxy cache,
+# GITCACHE_HOST defaults to the local ip, GITCACHE_PORT default port is 5000
+. ../lab.sh
+load_cci_defaults
+
+docker build --build-arg GITCACHE_HOST=$GITCACHE_HOST --build-arg GITCACHE_PORT=$GITCACHE_PORT -t alpine:crystal-shards .
