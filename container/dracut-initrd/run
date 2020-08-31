@@ -6,9 +6,12 @@
 # output:
 #   initramfs image file of the specified os version
 
-[ -d "$1" ] || {
+OS_PATH=${OS_PATH-"/os"}
+
+modules_dir="${OS_PATH%/}/$1"
+[ -d "${modules_dir}/kernel" ] || {
 	echo "Example usage:
-		./run /os/debian/aarch64/sid/lib/modules/5.4.0-4-arm64
+		./run debian/aarch64/sid/lib/modules/5.4.0-4-arm64
 "
 	exit
 }
