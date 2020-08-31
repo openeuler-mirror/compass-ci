@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# frozen_string_literal: true
+
+require 'set'
+require '../lab.rb'
+
+names = Set.new %w[
+  ES_HOST
+  ES_PORT
+  MAIL_HOST
+  MAIL_PORT
+  TASKQUEUE_HOST
+  TASKQUEUE_PORT
+]
+
+defaults = relevant_defaults(names)
+env = docker_env(defaults)
+
+DEFAULT_CCI = '/c/crystal-ci'
+
+cmd = %w[
+  docker run
+  --name delimiter
+  --restart=always
+  -d
+] + env + %W[
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -w #{DEFAULT_CCI}/src
+  delimiter
+]
+
+cmd += ['sh', '-c', 'umask 002 && ruby ./delimiter.rb']
+
+system(*cmd)
