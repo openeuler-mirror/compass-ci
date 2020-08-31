@@ -127,6 +127,7 @@ class GitBisect
   # according to the job stats return good/bad/nil
   def get_commit_status_by_job(commit)
     @bad_job['upstream_commit'] = commit
+    @bad_job['commit_date'] = Utils.parse_commit_date(@work_dir, commit)
     new_job_id = @sched.submit_job @bad_job.to_json
     puts "new_job_id: #{new_job_id}"
     10.times do

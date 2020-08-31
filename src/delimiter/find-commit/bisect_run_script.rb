@@ -6,6 +6,7 @@
 require 'json'
 require_relative "#{ENV['CCI_SRC']}/lib/sched_client"
 require_relative "#{ENV['CCI_SRC']}/lib/es_query"
+require_relative "#{ENV['CCI_SRC']}/src/delimiter/utils"
 
 # git bisect run
 class GitBisectRun
@@ -23,7 +24,9 @@ class GitBisectRun
     job.delete('stats') if job.key?('stats')
     job['tbox_group'] = @tbox_group
     commit = `git -C #{@work_dir} log --pretty=format:"%H" -1`
+    commit_date = Utils.parse_commit_date(@work_dir, commit)
     job['upstream_commit'] = commit
+    job['commit_date'] = commit_date
     get_bisect_status job
   end
 

@@ -42,9 +42,13 @@ module Utils
     def parse_first_bad_commit(result)
       result = result.split(/\n/)
       result.each do |item|
-        return item.split()[0] if item.end_with? 'is the first bad commit'
+        # b9e2a2fe56e92f4fe5ac15251ab3f77d645fbf82 is the first bad commit
+        return item.split(/ /)[0] if item.end_with? 'is the first bad commit'
       end
     end
 
+    def parse_commit_date(work_dir, commit)
+      `git -C #{work_dir} log --pretty=format:%cd --date=unix #{commit} -1`
+    end
   end
 end
