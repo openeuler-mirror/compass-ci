@@ -310,6 +310,7 @@ class Sched
         respon += initrd_pkg
         if job.os_mount == "initramfs"
             respon += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/osimage/#{job.os_dir}/current\n"
+            respon += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/osimage/#{job.os_dir}/run-ipconfig.cgz\n"
         else
             respon += "initrd http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{job.os_dir}/initrd.lkp\n"
         end
