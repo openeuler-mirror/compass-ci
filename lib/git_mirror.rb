@@ -27,6 +27,7 @@ class GitMirror
       ret = system("git clone --mirror #{url} #{mirror_dir}")
       break if ret
     end
+    FileUtils.rm_r(mirror_dir) unless ret
     return ret
   end
 
