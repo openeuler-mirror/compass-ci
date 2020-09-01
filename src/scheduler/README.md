@@ -81,7 +81,7 @@ Scheduler->User: <job_id>
   ElasticSearch::Client.set_job_content(job)
   Job.new, Job.tbox_group
 
-## qemu-pxe testbox pull a job
+## qemu-pxe testbox consume a job
 - restAPI: GET "/boot.ipxe/mac/:mac" (e.g. "/boot.ipxe/mac/52-54-00-12-34-56")
 - request body: none
 - response body: "#{ipxe_command}"
@@ -177,6 +177,50 @@ sched/id2job                    |[{field => job_id, value => job_info},]      |H
   Sched.find_job_boot
   Elasticsearch::Client.get_job
   Jobfile::Operate.create_job_cpio
+
+## docker container testbox consume a job
+- restAPI: GET "/boot.container/host/:host" (e.g. "/boot.container/host/dc-1g-1")
+- request body: none
+- response body:
+  "{
+    "docker_images": "centos:7",
+    "lkp": "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/lkp/#{job.lkp_initrd_use}/lkp-#{job.os_arch}.cgz",
+    "job": "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
+  }" |
+  "{}"
+- debug cmd:
+  curl http://${SCHED_HOST}:${SCHED_PORT}/boot.container/host/dc-1g-1
+
+- inner process:
+-- doing what:
+   most same to <qemu-pxe testbox consume a job>, but
+   1. direct gives hostname (testbox), no need search from the mac address
+   2. only 3 parameter, use <"docker_images"> to start a container, and
+      mount the <"lkp"> initrd to run the user submited <"job">
+
+## physical[|qemu-grub] testbox consume a job
+- restAPI: GET "/boot.grub/mac/:mac" (e.g. "/boot.grub/mac/52:54:00:12:34:56")
+- request body: none
+- response body: "#{grub_command}"
+- debug cmd:
+  curl http://${SCHED_HOST}:${SCHED_PORT}/boot.grub/mac/52:54:00:12:34:56
+
+### case 1: <grub_command> when find a job
+	#!grub
+	linux (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})/os/#{job.os_dir}/vmlinuz user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro root=#{job.kernel_append_root}
+	initrd (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})/os/#{job.os_dir}/initrd.lkp (http,#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT})/initrd/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz} (http,#{SCHED_HOST}:#{SCHED_PORT})/job_initrd_tmpfs/#{job.id}/job.cgz"
+	boot
+
+### case 2: <grub_command> when find no job
+	#!grub
+	echo ...
+	No job now
+	echo ...
+	reboot
+
+- inner process:
+-- doing what:
+   same to <qemu-pxe testbox consume a job>
 
 ## job download
 - restAPI: GET "/job_initrd_tmpfs/:job_id/job.cgz" (e.g. "/job_initrd_tmpfs/6/job.cgz")
