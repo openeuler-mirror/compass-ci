@@ -9,5 +9,4 @@ COPY conf/sources.list* /etc/apt/
 COPY conf/add-cifs.conf /etc/dracut.conf.d/
 WORKDIR /usr/local/bin
 
-RUN sed -i "s/^exit [0-9]*/exit 0/" /usr/sbin/policy-rc.d
 RUN setup-dracut.sh
