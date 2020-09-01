@@ -31,10 +31,10 @@ module Scheduler
     sched = Sched.new
 
     # for debug (maybe kemal debug|logger does better)
-    def self.debug_message(env, respon)
+    def self.debug_message(env, response)
         puts "\n\n"
         puts ">> #{env.request.remote_address}"
-        puts "<< #{respon}"
+        puts "<< #{response}"
     end
 
     # echo alive
@@ -48,20 +48,20 @@ module Scheduler
     # /boot.xxx/host/${hostname}
     # /boot.yyy/mac/${mac}
     get "/boot.:boot_type/:parameter/:value" do |env|
-        respon = sched.find_job_boot(env)
+        response = sched.find_job_boot(env)
 
-        debug_message(env, respon)
+        debug_message(env, response)
 
-        respon
+        response
     end
 
     # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
     get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
-        respon = sched.find_next_job_boot(env)
+        response = sched.find_next_job_boot(env)
 
-        debug_message(env, respon)
+        debug_message(env, response)
 
-        respon
+        response
     end
 
     # enqueue
