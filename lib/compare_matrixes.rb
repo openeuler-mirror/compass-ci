@@ -206,7 +206,7 @@ def compare_matrixes(matrixes_list, matrixes_titles = matrixes_list.size, group_
 
   options = { 'perf-profile': 5, theme: :none }.merge(options)
   matrixes_values = get_matrixes_values(matrixes_list, options)
-  remove_unchanged_field(matrixes_values)
+  remove_unchanged_field(matrixes_values) if matrixes_list.length > 1
 
   if group_key
     print "\n\n\n\n\n"
