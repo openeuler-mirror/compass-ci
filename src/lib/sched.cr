@@ -141,7 +141,6 @@ class Sched
             #   - how to deal with the jobs added to DB prior to this loop
             #   - may consume job before all jobs done
             job_id == "0" && (return "0")
-            job_content["id"] = job_id
             job_ids << job_id
 
             # add to job content when multi-test
@@ -149,7 +148,7 @@ class Sched
             job_content["tbox_group"] = tbox_group
             job_content["node_roles"] = config["roles"].as_a.join(" ")
             job_content["node_macs"] = config["macs"].as_a.join(" ")
-            add_job(job_content)
+            add_job(job_content, job_id)
           end
 
           cluster_id = job_ids[0]
@@ -168,13 +167,12 @@ class Sched
           job_ids.to_s
     end
 
-
     # for one-device
     def submit_single_job(job_content)
         tbox_group = JobHelper.get_tbox_group(job_content)
         job_id = add_task(tbox_group)
         job_id == "0" && (return "0")
-        add_job(job_content)
+        add_job(job_content, job_id)
         return job_id
     end
 
@@ -190,7 +188,8 @@ class Sched
     end
 
     # add job content to es
-    def add_job(job_content)
+    def add_job(job_content, job_id)
+        job_content["id"] = job_id
         job = Job.new(job_content)
         @es.set_job_content(job)
     end
