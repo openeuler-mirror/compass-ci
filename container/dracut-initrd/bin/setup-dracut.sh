@@ -3,10 +3,8 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
-# change apt source repo to 163
 apt-get update
 apt-get install -y --no-install-recommends apt-utils >/dev/null 2>&1
-apt-get install -y ca-certificates
 apt-get install -y nfs-common netbase cifs-utils kmod
 apt-get install -y dracut dracut-network dracut-config-generic
 
