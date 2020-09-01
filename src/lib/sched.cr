@@ -81,6 +81,23 @@ class Sched
         # show cluster state
         return @redis.hash_get("sched/cluster_state", cluster_id)
     end
+    
+    # node_state: "finish" | "ready"
+    def sync_cluster_state(cluster_id, job_id, node_state)
+        update_cluster_state(cluster_id, job_id, node_state)
+        sleep(10)
+
+        cluster_state = get_cluster_state(cluster_id)
+        cluster_state.each_value do |host_state|
+            state = host_state["state"]
+            return "abort" if state == "abort"
+            flag = need_retry(node_state, state)
+            return "retry" if flag
+        end
+
+        # cluster state is node state when all nodes are normal
+        return node_state
+    end
 
     # EXAMPLE:
     # cluster_file: "cs-lkp-hsw-ep5"
