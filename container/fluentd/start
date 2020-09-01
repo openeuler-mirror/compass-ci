@@ -11,6 +11,8 @@ cmd = %w[
   --restart=always
   --name fluentd
   -v /etc/localtime:/etc/localtime:ro
+  -v /c/serial/logs:/c/serial/logs:ro
+  -v /c/serial/fluentd-pos:/c/serial/fluentd-pos
   -d
   -u 1090:1090
   -p 24224:24224/tcp
