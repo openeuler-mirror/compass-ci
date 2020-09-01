@@ -7,7 +7,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends apt-utils >/dev/null 2>&1
 apt-get install -y ca-certificates
-apt-get install -y nfs-common netbase cifs-utils
+apt-get install -y nfs-common netbase cifs-utils kmod
 apt-get install -y dracut dracut-network dracut-config-generic
 
 apt-get clean
