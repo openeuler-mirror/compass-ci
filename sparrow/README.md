@@ -22,4 +22,4 @@ Prepare:
 Steps:
 	1. git clone https://gitee.com/wu_fengguang/crystal-ci.git
 	2. cd crystal-ci/sparrow
-	3. ./install-tiny.sh
+	3. ./install-tiny
