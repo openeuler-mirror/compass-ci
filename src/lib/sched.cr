@@ -352,7 +352,11 @@ class Sched
         respon += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
         respon += " root=#{job.kernel_append_root}"
         respon += add_kernel_console_param(job.os_arch)
-        respon += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
+        if job.os_mount == "initramfs"
+          respon += " initrd=#{initrd_lkp_cgz} initrd=job.cgz initrd=run-ipconfig.cgz\n"
+        else
+          respon += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
+        end
         respon += "boot\n"
 
         puts %({"job_id": "#{job.id}", "job_state": "boot"})
