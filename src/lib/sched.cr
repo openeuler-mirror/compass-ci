@@ -99,6 +99,22 @@ class Sched
         return node_state
     end
 
+    # | node_state    | "ready"      | "finish"      | ↓
+    # | state         | ""(empty)    | "ready"       | ↓
+    # | retry?        |    true      |    true       | ↓
+    def need_retry(node_state, state)
+        flag = false
+
+        case node_state
+        when "ready"
+            flag = true if state.empty?
+        when "finish"
+            flag = true if state == "ready"
+        end
+
+        return flag
+    end
+
     # EXAMPLE:
     # cluster_file: "cs-lkp-hsw-ep5"
     # return: Hash(YAML::Any, YAML::Any) | Nil, 0 | <hosts_size>
