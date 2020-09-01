@@ -46,9 +46,5 @@ module Utils
         return item.split(/ /)[0] if item.end_with? 'is the first bad commit'
       end
     end
-
-    def parse_commit_date(work_dir, commit)
-      `git -C #{work_dir} log --pretty=format:%cd --date=unix #{commit} -1`
-    end
   end
 end

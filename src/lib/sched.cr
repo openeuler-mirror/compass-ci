@@ -6,6 +6,7 @@ require "yaml"
 require "./job"
 require "./block_helper"
 require "./taskqueue_api"
+require "./remote_git_client"
 require "../scheduler/jobfile_operate"
 require "../scheduler/redis_client"
 require "../scheduler/elasticsearch_client"
@@ -21,6 +22,7 @@ class Sched
         @redis = Redis::Client.new
         @task_queue = TaskQueueAPI.new
         @block_helper = BlockHelper.new
+        @rgc = RemoteGitClient.new
     end
 
     def normalize_mac(mac : String)
@@ -133,6 +135,18 @@ class Sched
         return nil, 0
     end
 
+    def get_commit_date(job_content : JSON::Any)
+      if job_content["upstream_repo"]? && job_content["upstream_commit"]?
+        data = JSON.parse(%({"git_repo": "#{job_content["upstream_repo"]}.git",
+                          "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
+                          "#{job_content["upstream_commit"]}", "-1"]}))
+        response = @rgc.git_command(data)
+        return response.body if response.status_code == 200
+      end
+
+      return nil
+    end
+
     def submit_job(env : HTTP::Server::Context)
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)
@@ -145,6 +159,8 @@ class Sched
         job_id = JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
         return "0", "add task queue sched/#{tbox_group} failed." unless job_id
 
+        commit_date = get_commit_date(job_content)
+        job_content["commit_date"] = commit_date if commit_date
         job_content["id"] = job_id
         job = Job.new(job_content)
         response = @es.set_job_content(job)
