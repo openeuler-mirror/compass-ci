@@ -11,16 +11,16 @@ RUN apk update
 RUN apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
 
-RUN umask 002 &&\
-    gem install fluentd &&\
-    gem install fluent-plugin-rabbitmq &&\
-    gem install fluent-plugin-elasticsearch &&\
-    gem install fluent-plugin-tail-ex &&\
-    gem install fluent-plugin-tail-multiline &&\
-    gem install json &&\
-    gem install async &&\
-    gem install webrick &&\
-    gem install io-console &&\
+RUN umask 002 && \
+    gem install fluentd && \
+    gem install fluent-plugin-rabbitmq && \
+    gem install fluent-plugin-elasticsearch && \
+    gem install fluent-plugin-tail-ex && \
+    gem install fluent-plugin-tail-multiline && \
+    gem install json && \
+    gem install async && \
+    gem install webrick && \
+    gem install io-console && \
     gem install etc
 
 COPY --chown=1090:1090 docker-fluentd.conf /fluentd/etc/docker-fluentd.conf

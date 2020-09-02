@@ -11,7 +11,7 @@ RUN sed -i '$a path.data: /srv/es/logging-es' /usr/share/elasticsearch/config/el
 RUN sed -i '$a node.name: node-1' /usr/share/elasticsearch/config/elasticsearch.yml;
 RUN sed -i '$a cluster.initial_master_nodes: ["node-1"]' /usr/share/elasticsearch/config/elasticsearch.yml;
 
-RUN mkdir /usr/share/elasticsearch/tmp &&\
+RUN mkdir /usr/share/elasticsearch/tmp && \
     chown -R 1090:1090 /usr/share/elasticsearch
 
 WORKDIR /usr/share/elasticsearch
