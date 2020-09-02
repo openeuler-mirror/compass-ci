@@ -5,6 +5,8 @@
 
 docker_rm dnsmasq
 
+ps -ef| grep dnsmasq| grep -v "grep"| awk '{print $2}'| xargs kill
+
 cmd=(
 	docker run
 	--restart=always
