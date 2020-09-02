@@ -8,7 +8,7 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'grep'
 
 RUN umask 002 && \
-    gem source --add http://rubygems.org/ --remove https://rubygems.org/ && \
+    echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
     gem install rest-client activesupport git json yaml
 
 ENV RUNTIME_DIR /c/cci/extract
