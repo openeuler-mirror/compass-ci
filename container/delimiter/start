@@ -10,13 +10,18 @@ names = Set.new %w[
   ES_PORT
   MAIL_HOST
   MAIL_PORT
+  MONITOR_HOST
+  MONITOR_PORT
   TASKQUEUE_HOST
   TASKQUEUE_PORT
+  GIT_MIRROR_HOST
 ]
 
 defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
+
+DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/crystal-ci'
 
 cmd = %w[
@@ -25,7 +30,9 @@ cmd = %w[
   --restart=always
   -d
 ] + env + %W[
+  -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
+  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
   -w #{DEFAULT_CCI}/src
   delimiter

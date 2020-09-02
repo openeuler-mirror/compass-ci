@@ -4,6 +4,7 @@
 require 'json'
 require_relative '../../../lib/es_query'
 require_relative '../../../lib/sched_client'
+require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 
 require_relative '../utils'
 
@@ -123,23 +124,23 @@ class GitBisect
 
   # get commit status
   # submit the bad job
-  # cycle 10 times to check the job stats, everytime interval 60s
+  # monitor the job id and job state query job stats when job state is extract_finished
   # according to the job stats return good/bad/nil
   def get_commit_status_by_job(commit)
     @bad_job['upstream_commit'] = commit
     new_job_id = @sched.submit_job @bad_job.to_json
     puts "new_job_id: #{new_job_id}"
-    10.times do
-      sleep 60
+    return nil if new_job_id.to_i.zero?
 
-      new_job = @es.query_by_id new_job_id
+    monitor = Monitor.new
+    monitor.url = "ws//#{MONITOR_HOST}:#{MONITOR_PORT}/filter"
+    monitor.query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
+    extract_finished = monitor.run('stop')
+    return nil unless extract_finished == true
 
-      next unless new_job
-      next unless new_job['stats']
-      return 'bad' if new_job['stats'].key?(@error_id)
+    new_job = @es.query_by_id new_job_id
+    return 'bad' if new_job['stats'].key?(@error_id)
 
-      return 'good'
-    end
-    return nil
+    return 'good'
   end
 end
