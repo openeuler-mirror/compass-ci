@@ -2,6 +2,7 @@
 
 require "../lib/taskqueue_api"
 require "../scheduler/elasticsearch_client"
+require "../scheduler/redis_client"
 require "../scheduler/constants"
 require "./regression_client"
 require "./constants.cr"
@@ -99,4 +100,19 @@ class StatsWorker
     error_ids
   end
 
+  def back_fill_task(queue_path)
+    redis_client = Redis::Client.new
+    # this queue may have leftover task_ids
+    queue_name = "queues/#{queue_path}/in_process"
+    begin
+      job_ids = redis_client.@client.zrange(queue_name, 0, -1)
+      return if job_ids.empty?
+
+      job_ids.each do |job_id|
+        @tq.hand_over_task(queue_path, queue_path, job_id.to_s)
+      end
+    rescue e
+      STDERR.puts e.message
+    end
+  end
 end
