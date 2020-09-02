@@ -351,6 +351,7 @@ class Sched
                     raise "Invalid job (id=#{job_id}) in es"
                 end
 
+                job.update({"testbox" => testbox})
                 @redis.set_job(job)
 
                 return job
