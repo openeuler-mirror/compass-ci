@@ -7,6 +7,7 @@ MAINTAINER chief <tongqunfeng@huawei.com>
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN umask 002 && \
+  echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
   gem install rest-client activesupport bigdecimal open3 && \
   gem install git json yaml && \
   gem install cucumber

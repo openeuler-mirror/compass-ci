@@ -10,6 +10,7 @@ RUN apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
 
 RUN umask 002 && \
+    echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
     gem install rest-client && \
     gem install activesupport && \
     gem install git && \

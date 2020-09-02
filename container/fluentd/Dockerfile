@@ -12,6 +12,7 @@ RUN apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
 
 RUN umask 002 && \
+    echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
     gem install fluentd && \
     gem install fluent-plugin-rabbitmq && \
     gem install fluent-plugin-elasticsearch && \
