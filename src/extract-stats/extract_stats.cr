@@ -13,6 +13,9 @@ module ExtractStats
         self.consume_task
       }
     end
+
+    # keep main-process alive
+    sleep()
   end
 
   def self.consume_task()
