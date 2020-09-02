@@ -10,6 +10,8 @@ names = Set.new %w[
   REDIS_PORT
   ES_HOST
   ES_PORT
+  FLUENTD_HOST
+  FLUENTD_PORT
 ]
 
 defaults = relevant_defaults(names)
@@ -17,6 +19,8 @@ env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/crystal-ci'
+FLUENTD_HOST = defaults['FLUENTD_HOST'] || 'localhost'
+FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 docker_rm "extract-stats"
 
 cmd = %w[
@@ -30,6 +34,11 @@ cmd = %w[
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
   -v /srv/result:/result
+  --log-driver=fluentd
+  --log-opt fluentd-address=#{FLUENTD_HOST}:#{FLUENTD_PORT}
+  --log-opt mode=non-blocking
+  --log-opt max-buffer-size=4m
+  --log-opt tag=extract-stats
   extract-stats
 ]
 

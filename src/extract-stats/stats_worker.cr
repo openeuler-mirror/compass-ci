@@ -69,6 +69,7 @@ class StatsWorker
       @tq.add_task(DELIMITER_TASK_QUEUE, JSON.parse({"error_id" => new_error_ids.sample,
                                          "job_id" => job.id}.to_json))
     end
+    puts %({"job_id": "#{job.id}", "job_state": "extract_finished"})
   end
 
   def check_new_error_ids(error_ids : Array, job_id : String)
