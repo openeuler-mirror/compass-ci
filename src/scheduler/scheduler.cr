@@ -139,6 +139,23 @@ module Scheduler
         "Done"
     end
 
+    # node in cluster requests cluster state
+    # wget 'http://localhost:3000/~lkp/cgi-bin/lkp-cluster-sync?job_id=60447&state=<state>
+    # 1) state   : wait_ready
+    #    response: "ready" | "abort" | "retry"
+    # 2) state   : wait_finish
+    #    response: "finish" | "abort" | "retry"
+    # 3) state   : abort | failed | write_state | roles_ip
+    #    response: current cluster state:
+    #              "{\"60446\":{\"state\":\"finish\"},\"60447\":{\"state\":\"ready\"}}"
+    get "/~lkp/cgi-bin/lkp-cluster-sync" do |env|
+        response = sched.request_cluster_state(env)
+
+        debug_message(env, response)
+
+        response
+    end
+
     # client(runner) report job post_run finished
     # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
     #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
