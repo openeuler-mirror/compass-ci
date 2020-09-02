@@ -1,6 +1,9 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+. ../lab.sh
+
+docker_rm manjaro
 cmd=(
 	docker run
 	--restart=always
@@ -9,6 +12,7 @@ cmd=(
 	-v /c:/c
 	-v /srv/os:/srv/os
 	-p 2203:2203
+	--name manjaro
 	--hostname manjaro
 	--security-opt seccomp=unconfined
 	-d
