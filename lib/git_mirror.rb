@@ -81,25 +81,32 @@ class MirrorMain
     }
   end
 
-  def load_project_dir(repodir, project)
-    project_dir = "#{repodir}/#{project}"
-    fork_list = Dir.entries(project_dir) - Array['.', '..', 'DEFAULTS', '.ignore']
-    fork_list = Array['linus'] if project == 'linux'
-    fork_list.each do |fork_name|
-      @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open("#{project_dir}/#{fork_name}"))
-      @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
-      fork_stat_init("#{project}/#{fork_name}")
-      @priority_queue.push "#{project}/#{fork_name}", @priority
-      @priority += 1
+  def load_repo_file(repodir)
+    project = File.dirname(repodir)
+    project.delete_prefix!("#{ENV['LKP_SRC']}/repo/")
+    fork_name = File.basename(repodir)
+    @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open(repodir))
+    @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
+    fork_stat_init("#{project}/#{fork_name}")
+    @priority_queue.push "#{project}/#{fork_name}", @priority
+    @priority += 1
+  end
+
+  def traverse_repodir(repodir)
+    if File.directory? repodir
+      entry_list = Dir.entries(repodir) - Array['.', '..', 'DEFAULTS', '.ignore']
+      entry_list = Array['linus'] if File.basename(repodir) == 'linux'
+      entry_list.each do |entry|
+        traverse_repodir("#{repodir}/#{entry}")
+      end
+    else
+      load_repo_file(repodir)
     end
   end
 
   def load_fork_info
     repodir = "#{ENV['LKP_SRC']}/repo"
-    project_list = Dir.entries(repodir) - Array['.', '..']
-    project_list.each do |project|
-      load_project_dir(repodir, project)
-    end
+    traverse_repodir(repodir)
   end
 
   def create_workers
