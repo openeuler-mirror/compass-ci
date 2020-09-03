@@ -132,11 +132,9 @@ class GitBisect
     puts "new_job_id: #{new_job_id}"
     return nil if new_job_id.to_i.zero?
 
-    monitor = Monitor.new
-    monitor.url = "ws//#{MONITOR_HOST}:#{MONITOR_PORT}/filter"
-    monitor.query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
-    extract_finished = monitor.run('stop')
-    return nil unless extract_finished == true
+    query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
+    extract_finished = Utils.monitor_run_stop(query)
+    return nil unless extract_finished.zero?
 
     new_job = @es.query_by_id new_job_id
     return 'bad' if new_job['stats'].key?(@error_id)

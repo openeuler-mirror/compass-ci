@@ -5,6 +5,7 @@ require 'set'
 require 'fileutils'
 
 require_relative './constants'
+require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 
 # a utils module for delimiter service
 module Utils
@@ -45,6 +46,12 @@ module Utils
         # b9e2a2fe56e92f4fe5ac15251ab3f77d645fbf82 is the first bad commit
         return item.split(/ /)[0] if item.end_with? 'is the first bad commit'
       end
+    end
+
+    def monitor_run_stop(query)
+      monitor = Monitor.new("ws//#{MONITOR_HOST}:#{MONITOR_PORT}/filter")
+      monitor.query = query
+      return monitor.run('stop')
     end
   end
 end

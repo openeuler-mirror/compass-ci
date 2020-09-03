@@ -7,7 +7,6 @@ require 'json'
 require_relative "#{ENV['CCI_SRC']}/lib/sched_client"
 require_relative "#{ENV['CCI_SRC']}/lib/es_query"
 require_relative "#{ENV['CCI_SRC']}/src/delimiter/utils"
-require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 
 # git bisect run
 class GitBisectRun
@@ -35,11 +34,9 @@ class GitBisectRun
     new_job_id = @sched.submit_job job.to_json
     exit 125 if new_job_id.to_i.zero?
 
-    monitor = Monitor.new
-    monitor.url = "ws//#{MONITOR_HOST}:#{MONITOR_PORT}/filter"
-    monitor.query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
-    extract_finished = monitor.run('stop')
-    exit 125 unless extract_finished == true
+    query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
+    extract_finished = Utils.monitor_run_stop(query)
+    exit 125 unless extract_finished.zero?
 
     new_job = @es.query_by_id new_job_id
     exit 1 if new_job['stats'].key?(@error_id)
