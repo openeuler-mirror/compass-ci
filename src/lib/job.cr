@@ -180,12 +180,12 @@ class Job
       program_params = @hash["pp"].as_h
       program_params.keys.each do |program|
         if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
-          File.exists?("/srv/initrd/deps/#{os_dir}/#{program}.cgz")
-          initrd_deps_arr << "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/deps/#{os_dir}/#{program}.cgz"
+          File.exists?("/srv/initrd/deps/#{os_mount}/#{os_dir}/#{program}.cgz")
+          initrd_deps_arr << "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/deps/#{os_mount}/#{os_dir}/#{program}.cgz"
         end
         if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") &&
-          File.exists?("/srv/initrd/pkg/#{os_dir}/#{program}.cgz")
-          initrd_pkg_arr << "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/pkg/#{os_dir}/#{program}.cgz"
+          File.exists?("/srv/initrd/pkg/#{os_mount}/#{os_dir}/#{program}.cgz")
+          initrd_pkg_arr << "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/pkg/#{os_mount}/#{os_dir}/#{program}.cgz"
         end
       end
     end
