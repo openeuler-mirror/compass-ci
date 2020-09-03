@@ -94,9 +94,14 @@ class Sched
         sleep(10)
 
         cluster_state = get_cluster_state(cluster_id)
+
         cluster_state.each_value do |host_state|
             state = host_state["state"]
             return "abort" if state == "abort"
+        end
+
+        cluster_state.each_value do |host_state|
+            state = host_state["state"]
             flag = need_retry(node_state, state)
             return "retry" if flag
         end
