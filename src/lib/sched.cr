@@ -307,8 +307,14 @@ class Sched
         api_param = env.params.url["value"]
 
         case env.params.url["boot_type"]
-        when "ipxe", "grub"
+        when "ipxe"
           hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
+        when  "grub"
+          hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
+          if hostname.nil? # auto name new/unknown machine
+            hostname = "sut-#{api_param}"
+            set_host_mac(api_param, hostname)
+          end
         when "container"
           hostname = api_param
         end
