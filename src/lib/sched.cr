@@ -171,8 +171,8 @@ class Sched
     #    {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]},
     #     "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}},
     # return:
-    #   job_ids : success
-    #       "0" : failure
+    #   job_ids, nil : success
+    #       "0", nil : failure
     def submit_cluster_job(job_content, cluster_config)
           # collect all job ids
           job_ids = [] of String
@@ -186,7 +186,7 @@ class Sched
             # 2 Questions:
             #   - how to deal with the jobs added to DB prior to this loop
             #   - may consume job before all jobs done
-            job_id == "0" && (return "0")
+            job_id == "0" && (return "0", nil)
             job_ids << job_id
 
             # add to job content when multi-test
@@ -210,16 +210,16 @@ class Sched
 
           @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
 
-          job_ids.to_s
+          return job_ids.to_s, nil
     end
 
     # for one-device
     def submit_single_job(job_content)
         tbox_group = JobHelper.get_tbox_group(job_content)
         job_id = add_task(tbox_group)
-        job_id == "0" && (return "0")
+        job_id == "0" && (return "0", nil)
         add_job(job_content, job_id)
-        return job_id
+        return job_id, nil
     end
 
     # add a task to task-queue and return a job_id
