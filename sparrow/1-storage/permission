@@ -5,9 +5,13 @@ chown lkp:lkp /srv/initrd
 chown -R lkp:lkp /srv/es
 chown lkp:lkp /srv/cache/netdata_cache
 chown lkp:lkp /srv/cache/netdata_lib
+chown lkp:lkp /srv/cci/serial/fluentd-pos
+chgrp team /srv/cci/serial/logs
 chmod 775 /srv/result
 chmod 775 /srv/es/logging-es
 chmod 775 /srv/es
 chmod 775 /srv/cache/netdata_cache
 chmod 775 /srv/cache/netdata_lib
+chmod 775 /srv/cci/serial/logs
+chmod 775 /srv/cci/serial/fluentd-pos
 find /tftpboot -type d | xargs chmod 775
