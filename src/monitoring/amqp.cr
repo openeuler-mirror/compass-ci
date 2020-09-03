@@ -23,7 +23,11 @@ class MessageQueueClient
         queue = channel.queue(queue_name)
         queue.bind(exchange_name, "")
         queue.subscribe(tag: queue_name, block: true) do |msg|
-          filter.filter_msg(msg.body_io)
+          begin
+            filter.filter_msg(msg.body_io)
+          rescue e
+            puts "filter message error: #{e}"
+          end
         end
       end
     end
