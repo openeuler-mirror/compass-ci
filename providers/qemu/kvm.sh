@@ -6,12 +6,14 @@
 : ${nr_cpu:=1}
 : ${memory:=1G}
 
+file_log=/srv/cci/serial/logs/${hostname}
 qemu=qemu-system-aarch64
 command -v $qemu >/dev/null || qemu=qemu-kvm
 
 echo $SCHED_PORT
 ipxe_script=ipxe_script
 curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
+cp $ipxe_script ${file_log}
 #echo -----
 #cat $ipxe_script
 #echo -----
@@ -27,14 +29,14 @@ do
 		initrd)
 			file=$(basename "$b")
 			rm -f $file
-			wget $b
+			wget -a ${file_log} --progress=bar:force $b
 			initrds+="$file "
 			;;
 		kernel)
 			kernel=$(basename "$b")
 			#[[ -f $kernel ]] ||
 			rm -f $kernel
-			wget $b
+			wget -a ${file_log} --progress=bar:force $b
 			append=$(echo "$c" | sed -r "s/ initrd=[^ ]+//g")
 			;;
 		*)
@@ -69,7 +71,7 @@ kvm=(
 	-k en-us
 	-no-reboot
 	-nographic
-	-serial stdio
+	-serial file:${file_log}
 	-monitor null
 )
 
