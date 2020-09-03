@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
-require_relative '../lab.rb'
+require_relative '../defconfig.rb'
 
 DOCKER_LKP = '/c/lkp-tests'
 DOCKER_CCI = '/c/crystal-ci'

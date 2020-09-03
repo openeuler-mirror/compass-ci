@@ -3,7 +3,7 @@
 # frozen_string_literal: true
 
 require 'set'
-require '../lab.rb'
+require_relative '../defconfig.rb'
 
 names = Set.new %w[
   ES_HOST

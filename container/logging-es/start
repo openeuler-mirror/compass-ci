@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-. $CCI_SRC/container/lab.sh
+. $CCI_SRC/container/defconfig.sh
 
 docker_rm logging-es
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-. ../lab.sh
+. ../defconfig.sh
 
 docker_rm rsync_server
 cmd=(

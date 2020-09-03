@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-. $CCI_SRC/container/lab.sh
+. $CCI_SRC/container/defconfig.sh
 
 lsmod | grep -q "^cifs\s" || {
 	sudo modprobe cifs

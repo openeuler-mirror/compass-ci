@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 DIR=$(dirname $(realpath $0))
-. $(dirname $DIR)/lab.sh
+. $(dirname $DIR)/defconfig.sh
 
 load_cci_defaults
 

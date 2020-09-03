@@ -3,8 +3,8 @@
 # frozen_string_literal: true
 
 require 'pathname'
-require_relative 'lib/common'
-require_relative '../lab'
+require_relative 'lib/common.rb'
+require_relative '../defconfig.rb'
 
 SBIN_DIR = Pathname.new(File.dirname(__FILE__)).realpath.to_s + '/sbin'
 ROOT_DIR = check_argv(ARGV)
