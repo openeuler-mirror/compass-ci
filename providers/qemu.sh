@@ -3,7 +3,7 @@
 # - hostname
 
 . $LKP_SRC/lib/yaml.sh
-. $CCI_SRC/container/lab.sh
+. $CCI_SRC/container/defconfig.sh
 
 load_cci_defaults
 

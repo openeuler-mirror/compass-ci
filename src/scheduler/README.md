@@ -3,7 +3,7 @@
 ---
 # restful-API
 - First of all, you should deploy the lkp-tests and crystal-ci project
-- And set the environment variables needed for running (modify "/etc/crystal-ci/defaults/crystal.yaml", and run $CCI_SRC/container/lab.rb | lab.sh)
+- And set the environment variables needed for running (modify "/etc/crystal-ci/defaults/crystal.yaml", and run $CCI_SRC/container/defconfig.rb | defconfig.sh)
   LKP_SRC: ~/code/lkp-tests    # path to your lkp-tests repo
   CCI_SRC: ~/code/crystal-ci   # path to your crystal-ci repo
   SCHED_HOST: 172.168.131.131  # hostname or ip of the scheduler
