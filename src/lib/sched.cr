@@ -26,7 +26,7 @@ class Sched
     end
 
     def normalize_mac(mac : String)
-      mac.gsub(":", "-")
+        mac.gsub(":", "-")
     end
 
     def set_host_mac(mac : String, hostname : String)
@@ -41,14 +41,18 @@ class Sched
     #     Hash(String, Hash(String, String))
     def get_cluster_state(cluster_id)
         cluster_state = @redis.hash_get("sched/cluster_state", cluster_id)
-        cluster_state = Hash(String, Hash(String, String)).from_json(cluster_state)
+        if cluster_state
+            cluster_state = Hash(String, Hash(String, String)).from_json(cluster_state)
+        else
+            cluster_state = Hash(String, Hash(String, String)).new
+        end
         return cluster_state
     end
 
     # get -> modify -> set
     def update_cluster_state(cluster_id, job_id, state)
         cluster_state = get_cluster_state(cluster_id)
-        cluster_state[job_id]["state"] = state
+        cluster_state.merge!({job_id => {"state" => state}})
         @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
     end
 
@@ -83,7 +87,7 @@ class Sched
         # show cluster state
         return @redis.hash_get("sched/cluster_state", cluster_id)
     end
-    
+
     # node_state: "finish" | "ready"
     def sync_cluster_state(cluster_id, job_id, node_state)
         update_cluster_state(cluster_id, job_id, node_state)
@@ -151,22 +155,15 @@ class Sched
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)
 
-        tbox_group = JobHelper.get_tbox_group(job_content)
-        return "0", "get tbox group failed." unless tbox_group
+        if job_content["cluster"]?
+            cluster_file = job_content["cluster"].to_s
+            cluster_config, hosts_size = get_cluster_config(cluster_file)
+            if hosts_size >= 2
+                return submit_cluster_job(job_content, cluster_config.not_nil!)
+            end
+        end
 
-        task_desc = JSON.parse(%({"domain": "crystal-ci"}))
-        response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
-        job_id = JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
-        return "0", "add task queue sched/#{tbox_group} failed." unless job_id
-
-        commit_date = get_commit_date(job_content)
-        job_content["commit_date"] = commit_date if commit_date
-        job_content["id"] = job_id
-        job = Job.new(job_content)
-        response = @es.set_job_content(job)
-        return job_id, response["error"]["root_cause"] if response["error"]?
-
-        return job.id, nil
+        return submit_single_job(job_content)
     end
 
     # for multi-device.
