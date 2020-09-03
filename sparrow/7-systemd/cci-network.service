@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 TimeoutStartSec=0
-ExecStart=/c/crystal-ci/cci-network
+ExecStart=/c/crystal-ci/sparrow/7-systemd/cci-network
 
 [Install]
 WantedBy=default.target
