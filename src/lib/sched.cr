@@ -235,6 +235,8 @@ class Sched
 
     # add job content to es
     def add_job(job_content, job_id)
+        commit_date = get_commit_date(job_content)
+        job_content["commit_date"] = commit_date if commit_date
         job_content["id"] = job_id
         job = Job.new(job_content)
         @es.set_job_content(job)
