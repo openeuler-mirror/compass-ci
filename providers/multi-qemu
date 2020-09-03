@@ -5,8 +5,8 @@
 require 'fileutils'
 
 # Run multiple QEMU in parallel
-HOSTNAME = "vm-hi1620-2p8g--#{ENV['USER']}"
-NR_VM = 2
+HOSTNAME = ARGV[0] || "vm-hi1620-2p8g--#{ENV['USER']}"
+NR_VM = ARGV[1] || 1
 
 def run(seqno)
   loop do
@@ -31,7 +31,7 @@ end
 
 def multiqemu
   pids = []
-  NR_VM.times do |i|
+  NR_VM.to_i.times do |i|
     pid = Process.fork do
       run i
     end
