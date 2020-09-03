@@ -151,6 +151,11 @@ create_get_initrd() {
 	local initrd_lkp
 	initrd_lkp=$(find ./boot -name "initramfs.lkp*") && export ROOTFS_INITRD_LKP=$initrd_lkp
 
+	[ -f "$ROOTFS_INITRD_LKP" ] || {
+		echo "Failed to generate \"$ROOTFS_INITRD_LKP\""
+		exit 8
+	}
+
 	echo
 	echo "initrd_lkp: $ROOTFS_INITRD_LKP"
 }
