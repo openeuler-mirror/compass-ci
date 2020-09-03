@@ -396,7 +396,7 @@ class Sched
         respon += "initrd http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz\n"
         respon += "kernel http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{job.os_dir}/vmlinuz user=lkp"
         respon += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
-        respon += " root=#{job.kernel_append_root}"
+        respon += " #{job.kernel_append_root}"
         respon += add_kernel_console_param(job.os_arch)
         if job.os_mount == "initramfs"
           respon += " initrd=#{initrd_lkp_cgz} initrd=job.cgz initrd=run-ipconfig.cgz\n"
