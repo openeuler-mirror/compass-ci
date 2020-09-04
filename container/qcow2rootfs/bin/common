@@ -35,13 +35,13 @@ EOF
 usage() {
 	echo "
 	Usage:
-		./run.sh <src_qcow2_file_abspath> <dst_rootfs_new_abspath>
+		./run <src_qcow2_file_abspath> <dst_rootfs_new_abspath>
 
 		src_qcow2_file_abspath: source .qcow2 file absolute path with suffix: [qcow2, qcow2.xz].
 		dst_rootfs_new_abspath: destination absolute path to create for rootfs
 
 	Example:
-		./run.sh /tmp/openEuler-qcow2/lts.qcow2 /tmp/openeuler-rootfs/
+		./run /tmp/openEuler-qcow2/lts.qcow2 /tmp/openeuler-rootfs/
 	"
 }
 
