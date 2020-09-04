@@ -6,7 +6,7 @@
 : ${nr_cpu:=1}
 : ${memory:=1G}
 
-file_log=/srv/cci/serial/logs/${hostname}
+serial_log=/srv/cci/serial/logs/${hostname}
 qemu=qemu-system-aarch64
 command -v $qemu >/dev/null || qemu=qemu-kvm
 
@@ -22,7 +22,7 @@ kvm=(
 	-k en-us
 	-no-reboot
 	-nographic
-	-serial file:${file_log}
+	-serial file:${serial_log}
 	-monitor null
 )
 "${kvm[@]}"
