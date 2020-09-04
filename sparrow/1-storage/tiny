@@ -18,6 +18,7 @@ dirs=(
 	/srv/cci/serial/fluentd-pos
 	/tftpboot
 	/c
+	/etc/qemu
 )
 
 mkdir -p "${dirs[@]}"
