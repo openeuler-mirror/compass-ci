@@ -56,6 +56,7 @@ cat $initrds > $initrd
 echo kernel: $kernel
 echo initrds: $initrds
 echo append: $append
+echo less $log_file
 
 kvm=(
 	$qemu

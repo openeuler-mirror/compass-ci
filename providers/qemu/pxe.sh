@@ -10,6 +10,8 @@ serial_log=/srv/cci/serial/logs/${hostname}
 qemu=qemu-system-aarch64
 command -v $qemu >/dev/null || qemu=qemu-kvm
 
+echo less $serial_log
+
 kvm=(
 	$qemu
 	-machine virt-4.0,accel=kvm,gic-version=3
