@@ -191,7 +191,7 @@ class Sched
             # 2 Questions:
             #   - how to deal with the jobs added to DB prior to this loop
             #   - may consume job before all jobs done
-            job_id == "0" && (return "0", nil)
+            return "0", "add task queue sched/#{tbox_group} failed." unless job_id
             job_ids << job_id
 
             # add to job content when multi-test
@@ -199,7 +199,8 @@ class Sched
             job_content["tbox_group"] = tbox_group
             job_content["node_roles"] = config["roles"].as_a.join(" ")
             job_content["node_macs"] = config["macs"].as_a.join(" ")
-            add_job(job_content, job_id)
+            response = add_job(job_content, job_id)
+            return job_id, response["error"]["root_cause"] if response["error"]?
           end
 
           cluster_id = job_ids[0]
@@ -221,9 +222,11 @@ class Sched
     # for one-device
     def submit_single_job(job_content)
         tbox_group = JobHelper.get_tbox_group(job_content)
+        return "0", "get tbox group failed." unless tbox_group
         job_id = add_task(tbox_group)
-        job_id == "0" && (return "0", nil)
-        add_job(job_content, job_id)
+        return "0", "add task queue sched/#{tbox_group} failed." unless job_id
+        response = add_job(job_content, job_id)
+        return job_id, response["error"]["root_cause"] if response["error"]?
         return job_id, nil
     end
 
@@ -234,8 +237,7 @@ class Sched
     def add_task(tbox_group)
         task_desc = JSON.parse(%({"domain": "crystal-ci"}))
         response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
-        job_id = JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
-        job_id || "0"
+        JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
     end
 
     # add job content to es
