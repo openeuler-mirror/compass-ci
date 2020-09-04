@@ -6,18 +6,31 @@
 # output:
 #   initramfs image file of the specified os version
 
-OS_PATH=${OS_PATH-"/os"}
-
-modules_dir="${OS_PATH%/}/$1"
-[ -d "${modules_dir}/kernel" ] || {
+[ -d "$1" ] || {
 	echo "Example usage:
 		./run debian/aarch64/sid/lib/modules/5.4.0-4-arm64
-"
+	"
 	exit
 }
 
 modules_dir=$1
-kver=$(basename $modules_dir)
+
+[ -d "${modules_dir}/kernel" ] || {
+	echo "[INFO] cannot find kernel dir under ${modules_dir} ."
+
+	OS_PATH=${OS_PATH-"/os"}
+	modules_dir="${OS_PATH%/}/$1"
+
+	echo "[INFO] finding kernel dir under ${modules_dir} ..."
+
+	[ -d "${modules_dir}/kernel" ] || {
+		echo "[ERROR] cannot find kernel dir under ${modules_dir} !!!"
+		exit
+	}
+}
+
+modules_dir=$(realpath "$modules_dir")
+kver=$(basename "$modules_dir")
 root=${modules_dir%/lib/modules/*}
 
 kernel_modules=/lib/modules/$kver
