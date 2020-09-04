@@ -1,6 +1,8 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+export DEBIAN_FRONTEND=noninteractive
+
 pkgs=(
 	vim
 	lvm2
