@@ -9,7 +9,7 @@ require 'open3'
 require_relative 'send-mail.rb'
 
 set :bind, '0.0.0.0'
-set :port, 8101
+set :port, 11311
 
 post '/send_mail_yaml' do
   data = YAML.safe_load request.body.read
