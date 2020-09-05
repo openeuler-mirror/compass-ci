@@ -10,13 +10,28 @@ NR_VM = ARGV[1] || 1
 
 def run(seqno)
   loop do
+    start_time = Time.new
     hostname = "#{HOSTNAME}-#{seqno}"
+    log_file = "/srv/cci/serial/logs/#{hostname}"
+
+    File.open(log_file, 'w') do |f|
+      f.puts "\nThis qemu starts at #{start_time.strftime('%Y-%m-%d %H:%M:%S')}"
+    end
+
     FileUtils.mkdir_p(hostname) unless File.exist?(hostname)
     FileUtils.cd(hostname)
     system(
       { 'hostname' => hostname },
       ENV['CCI_SRC'] + '/providers/qemu.sh'
     )
+
+    duration = ((Time.new - start_time) / 60).round(2)
+    File.open(log_file, 'a') do |f|
+      f.puts "\nThis qemu takes #{duration} minutes"
+    end
+
+    # sleep 5s is for fluentd to collect it's log
+    sleep(5)
   end
 end
 
