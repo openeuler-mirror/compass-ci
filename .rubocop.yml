@@ -19,6 +19,13 @@ Metrics/MethodLength:
   CountAsOne: ['array', 'hash', 'heredoc']
   Max: 15
 
+Metrics/BlockLength:
+  Enabled: true
+  CountComments: false  # count full line comments?
+  CountAsOne: ['array', 'hash', 'heredoc']
+  ExcludedMethods: ['refine', 'OptionParser.new']
+  Max: 15
+
 Style/RedundantReturn:
   Enabled: false
 
