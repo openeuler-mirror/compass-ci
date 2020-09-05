@@ -58,6 +58,8 @@ end
 
 # main thread
 class MirrorMain
+  REPO_DIR = "#{ENV['LKP_SRC']}/repo"
+
   def initialize
     @feedback_queue = Queue.new
     @fork_stat = {}
@@ -83,7 +85,7 @@ class MirrorMain
 
   def load_repo_file(repodir)
     project = File.dirname(repodir)
-    project.delete_prefix!("#{ENV['LKP_SRC']}/repo/")
+    project.delete_prefix!("#{REPO_DIR}/")
     fork_name = File.basename(repodir)
     @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open(repodir))
     @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
@@ -105,8 +107,7 @@ class MirrorMain
   end
 
   def load_fork_info
-    repodir = "#{ENV['LKP_SRC']}/repo"
-    traverse_repodir(repodir)
+    traverse_repodir(REPO_DIR)
   end
 
   def create_workers
