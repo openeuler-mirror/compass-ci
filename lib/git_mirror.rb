@@ -32,7 +32,7 @@ class GitMirror
   end
 
   def git_fetch(mirror_dir)
-    fetch_info = `git -C #{mirror_dir} fetch 2>&1`
+    fetch_info = %x(git -C #{mirror_dir} fetch 2>&1)
     return fetch_info.include? '->'
   end
 
@@ -174,7 +174,7 @@ class MirrorMain
 
   def get_cur_refs(git_repo)
     mirror_dir = "/srv/git/#{git_repo}.git"
-    show_ref_out = `git -C #{mirror_dir} show-ref --heads`
+    show_ref_out = %x(git -C #{mirror_dir} show-ref --heads)
     cur_refs = { heads: {} }
     show_ref_out.each_line do |line|
       next if line.start_with? '#'
