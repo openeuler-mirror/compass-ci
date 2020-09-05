@@ -179,6 +179,8 @@ class Sched
     #   job_ids, nil : success
     #       "0", nil : failure
     def submit_cluster_job(job_content, cluster_config)
+          job_messages = Array(Hash(String, String)).new
+
           # collect all job ids
           job_ids = [] of String
 
@@ -191,7 +193,12 @@ class Sched
             # 2 Questions:
             #   - how to deal with the jobs added to DB prior to this loop
             #   - may consume job before all jobs done
-            return "0", "add task queue sched/#{tbox_group} failed." unless job_id
+            return job_messages << {
+              "job_id" => "0",
+              "message" => "add task queue sched/#{tbox_group} failed",
+              "job_state" => "submit"
+            } unless job_id
+
             job_ids << job_id
 
             # add to job content when multi-test
@@ -199,8 +206,15 @@ class Sched
             job_content["tbox_group"] = tbox_group
             job_content["node_roles"] = config["roles"].as_a.join(" ")
             job_content["node_macs"] = config["macs"].as_a.join(" ")
+
             response = add_job(job_content, job_id)
-            return job_id, response["error"]["root_cause"] if response["error"]?
+            message = (response["error"]? ? response["error"]["root_cause"] : "")
+            job_messages << {
+              "job_id" => job_id,
+              "message" => message.to_s,
+              "job_state" => "submit"
+            }
+            return job_messages if response["error"]?
           end
 
           cluster_id = job_ids[0]
@@ -216,18 +230,33 @@ class Sched
 
           @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
 
-          return job_ids.to_s, nil
+          return job_messages
     end
 
     # for one-device
     def submit_single_job(job_content)
         tbox_group = JobHelper.get_tbox_group(job_content)
-        return "0", "get tbox group failed." unless tbox_group
+        return [{
+          "job_id" => "0",
+          "message" => "get tbox group failed",
+          "job_state" => "submit"
+        }] unless tbox_group
+
         job_id = add_task(tbox_group)
-        return "0", "add task queue sched/#{tbox_group} failed." unless job_id
+        return [{
+          "job_id" => "0",
+          "message" => "add task queue sched/#{tbox_group} failed",
+          "job_state" => "submit"
+        }] unless job_id
+
         response = add_job(job_content, job_id)
-        return job_id, response["error"]["root_cause"] if response["error"]?
-        return job_id, nil
+        message = (response["error"]? ? response["error"]["root_cause"] : "")
+
+        return [{
+          "job_id" => job_id,
+          "message" => message.to_s,
+          "job_state" => "submit"
+        }]
     end
 
     # add a task to task-queue and return a job_id
