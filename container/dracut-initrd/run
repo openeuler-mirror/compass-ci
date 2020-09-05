@@ -29,7 +29,6 @@ modules_dir=$1
 	}
 }
 
-modules_dir=$(realpath "$modules_dir")
 kver=$(basename "$modules_dir")
 root=${modules_dir%/lib/modules/*}
 
