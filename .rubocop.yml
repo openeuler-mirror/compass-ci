@@ -16,7 +16,8 @@ Style/PerlBackrefs:
 Metrics/MethodLength:
   Enabled: true
   CountComments: false  # count full line comments?
-  Max: 20
+  CountAsOne: ['array', 'hash', 'heredoc']
+  Max: 15
 
 Style/RedundantReturn:
   Enabled: false
