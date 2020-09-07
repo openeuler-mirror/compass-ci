@@ -6,7 +6,7 @@ require 'open-uri'
 require 'json'
 require 'set'
 require 'fileutils'
-require_relative '../container/defconfig'
+require_relative '../../container/defconfig'
 
 BASE_DIR = ENV['HOME'] + '/jobs'
 
