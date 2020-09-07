@@ -1,6 +1,6 @@
 [Unit]
 Description=Setup network for CCI qemu boxes
-After=network.target
+After=docker.service
 
 [Service]
 Type=simple
