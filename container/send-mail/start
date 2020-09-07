@@ -17,7 +17,8 @@ cat<<EOF
 port: 11311
 ---
 data='{
-"subject": "mail subject",
+"from": "email_from_addr" # default: team@crystal.ci
+"subject": "email subject",
 "to": "email_to_addr",
 "body": "email message"
 }'
@@ -25,7 +26,8 @@ data='{
 or
 
 data="
-subject: mail subject
+from: email_from_addr # default: team@crystal.ci
+subject: email subject
 to: email_to_addr
 body: email message"
 
@@ -36,8 +38,9 @@ when other server:
 
 ---
 data="
-To: mail_address
-Subject: mail_subject
+From: email_from_addr # default: team@crystal.ci
+To: email_to_addr
+Subject: email_subject
 
 mail_msg_line1
 mail_msg_line2
