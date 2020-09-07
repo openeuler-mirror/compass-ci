@@ -18,6 +18,8 @@ names = Set.new %w[
   INITRD_HTTP_PORT
   FLUENTD_HOST
   FLUENTD_PORT
+  TASKQUEUE_PORT
+  TASKQUEUE_HOST
 ]
 
 defaults = relevant_defaults(names)
