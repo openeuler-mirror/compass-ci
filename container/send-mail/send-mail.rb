@@ -4,21 +4,21 @@
 
 require 'mail'
 
-ip_addr = `/sbin/ip route |awk '/default/ {print $3}'`.chomp
+mail_server = `/sbin/ip route |awk '/default/ {print $3}'`.chomp
 
 # setup smtp config
 smtp = {
-  address: ip_addr,
+  address: mail_server,
   enable_starttls_auto: false
 }
 
 Mail.defaults { delivery_method :smtp, smtp }
 
 # send mail
-def send_mail(subject, to, body)
+def send_mail(from, subject, to, body)
   mail = Mail.new do
+    from from
     subject subject
-    from 'team@crystal.ci'
     to to
     body body
   end
