@@ -41,7 +41,9 @@ cmd=(
 	-v $root/boot:/boot
 	-v $root/lib/modules:/lib/modules
 	debian:dracut
-	dracut --force --kver $kver -k $kernel_modules $initrd_output
+	bash -c
+	"dracut --force --kver $kver -k $kernel_modules $initrd_output &&
+	chmod 644 $initrd_output"
 
 	# example:
 	# dracut --kver 5.4.0-4-arm64 -k /os/debian/aarch64/sid/lib/modules/5.4.0-4-arm64 /os/debian/aarch64/sid/boot/initramfs.lkp-5.4.0-4-arm64.img
