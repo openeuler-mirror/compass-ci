@@ -15,7 +15,7 @@ def run(seqno)
     log_file = "/srv/cci/serial/logs/#{hostname}"
 
     File.open(log_file, 'w') do |f|
-      f.puts "\nThis qemu starts at #{start_time.strftime('%Y-%m-%d %H:%M:%S')}"
+      f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting QEMU"
     end
 
     FileUtils.mkdir_p(hostname) unless File.exist?(hostname)
@@ -27,7 +27,7 @@ def run(seqno)
 
     duration = ((Time.new - start_time) / 60).round(2)
     File.open(log_file, 'a') do |f|
-      f.puts "\nThis qemu takes #{duration} minutes"
+      f.puts "\nTotal duration:  #{duration} minutes"
     end
 
     # sleep 5s is for fluentd to collect it's log
