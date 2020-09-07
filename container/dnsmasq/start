@@ -5,7 +5,7 @@
 
 docker_rm dnsmasq
 
-ps -ef| grep dnsmasq| grep -v "grep"| awk '{print $2}'| xargs kill
+kill $(ps -ef| grep dnsmasq| grep libvirt| awk '{print $2}') 2> /dev/null
 
 cmd=(
 	docker run
