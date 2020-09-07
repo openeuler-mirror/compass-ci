@@ -1,11 +1,18 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+make()
+{
+	command make -j $cpus "$@"
+}
+
 cd /c || exit
 
 git clone -b custom-config  https://gitee.com/wu_fengguang/ipxe.git
 
 cd ipxe/src || exit
+
+cpus=$(nproc)
 
 make ARCH=arm64 bin-arm64-efi/ipxe.efi
 make ARCH=arm64 bin-arm64-efi/snponly.efi
