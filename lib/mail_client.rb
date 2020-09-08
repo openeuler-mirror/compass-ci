@@ -14,7 +14,7 @@ class MailClient
   end
 
   def send_mail(mail_json)
-    resource = RestClient::Resource.new("http://#{@host}:#{@port}/send_mail")
+    resource = RestClient::Resource.new("http://#{@host}:#{@port}/send_mail_yaml")
     resource.post(mail_json)
   end
 end
