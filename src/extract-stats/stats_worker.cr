@@ -34,6 +34,8 @@ class StatsWorker
           # storage job to es
           begin
             store_stats_es(result_root, job) if result_root
+            # send mail to submitter for job results
+            system "#{ENV["CCI_SRC"]}/sbin/mail-job #{job_id}"
           rescue e
             STDERR.puts e.message
             next
