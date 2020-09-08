@@ -377,6 +377,14 @@ class Sched
           if hostname.nil? # auto name new/unknown machine
             hostname = "sut-#{api_param}"
             set_host_mac(api_param, hostname)
+
+            # auto submit a job to collect the host information
+            # grub hostname is link with ":", like "00:01:02:03:04:05"
+            # remind: if like with "-", last "-05" is treated as host number
+            #   then hostname will be "sut-00-01-02-03-04" !!!
+            Jobfile::Operate.auto_submit_job(
+              "#{ENV["LKP_SRC"]}/jobs/host-info.yaml",
+              "testbox: #{hostname}")
           end
         when "container"
           hostname = api_param

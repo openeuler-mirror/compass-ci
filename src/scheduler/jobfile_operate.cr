@@ -199,4 +199,11 @@ module Jobfile::Operate
         unzip_cgz(bak_lkp_filename, target_path)
         return target_path
     end
+
+    def self.auto_submit_job(job_file, overide_parameter)
+        cmd = "#{ENV["LKP_SRC"]}/sbin/submit SCHED_HOST=localhost"
+        cmd += " SCHED_PORT=#{ENV["SCHED_PORT"]}"
+        cmd += " -s '#{overide_parameter}' #{job_file}"
+        puts `#{cmd}`
+    end
 end
