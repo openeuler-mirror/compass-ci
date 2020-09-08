@@ -37,7 +37,7 @@ def parse_response(url)
 end
 
 def wget_cmd(path, url, name)
-  system "wget -P #{path} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
+  system "wget -q -P #{path} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
 end
 
 def build_load_path
