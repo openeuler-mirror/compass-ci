@@ -50,10 +50,12 @@ class Sched
     end
 
     # get -> modify -> set
-    def update_cluster_state(cluster_id, job_id, state)
+    def update_cluster_state(cluster_id, job_id, property, value)
         cluster_state = get_cluster_state(cluster_id)
-        cluster_state.merge!({job_id => {"state" => state}})
-        @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
+        if cluster_state[job_id]?
+            cluster_state[job_id].merge!({property => value})
+            @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
+        end
     end
 
     # Return response according to different request states.
@@ -77,20 +79,41 @@ class Sched
         case request_state
         when "abort", "finished", "failed"
             # update node state only
-            update_cluster_state(cluster_id, job_id, states[request_state])
+            update_cluster_state(cluster_id, job_id, "state", states[request_state])
 
         when "wait_ready", "wait_finish"
             # return cluster state: ready | retry | finish | abort
             return sync_cluster_state(cluster_id, job_id, states[request_state])
+
+        when "write_state"
+            node_roles = env.params.query["node_roles"]
+            node_ip = env.params.query["ip"]
+            update_cluster_state(cluster_id, job_id, "roles", node_roles)
+            update_cluster_state(cluster_id, job_id, "ip", node_ip)
+
+        when "roles_ip"
+            role = "server"
+            server_ip = get_ip(cluster_id, role)
+            return "server=#{server_ip}"
         end
 
         # show cluster state
         return @redis.hash_get("sched/cluster_state", cluster_id)
     end
 
+    # get the ip of role from cluster_state
+    def get_ip(cluster_id, role)
+        cluster_state = get_cluster_state(cluster_id)
+        cluster_state.each_value do |config|
+            if %(#{config["roles"]}) == role
+                return config["ip"]
+            end
+        end
+    end
+
     # node_state: "finish" | "ready"
     def sync_cluster_state(cluster_id, job_id, node_state)
-        update_cluster_state(cluster_id, job_id, node_state)
+        update_cluster_state(cluster_id, job_id, "state", node_state)
         sleep(10)
 
         cluster_state = get_cluster_state(cluster_id)
