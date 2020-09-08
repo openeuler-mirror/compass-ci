@@ -7,6 +7,7 @@ require "./job"
 require "./block_helper"
 require "./taskqueue_api"
 require "./remote_git_client"
+require "../scheduler/constants"
 require "../scheduler/jobfile_operate"
 require "../scheduler/redis_client"
 require "../scheduler/elasticsearch_client"
@@ -182,6 +183,7 @@ class Sched
     def submit_job(env : HTTP::Server::Context)
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)
+        job_content["lab"] = LAB unless job_content["lab"]
 
         if job_content["cluster"]?
             cluster_file = job_content["cluster"].to_s
@@ -203,6 +205,7 @@ class Sched
     #       "0", nil : failure
     def submit_cluster_job(job_content, cluster_config)
           job_messages = Array(Hash(String, String)).new
+          lab = job_content["lab"]
 
           # collect all job ids
           job_ids = [] of String
@@ -210,7 +213,7 @@ class Sched
           # steps for each host
           cluster_config.each do |host, config|
             tbox_group = host.to_s
-            job_id = add_task(tbox_group)
+            job_id = add_task(tbox_group, lab)
 
             # return when job_id is '0'
             # 2 Questions:
@@ -265,7 +268,8 @@ class Sched
           "job_state" => "submit"
         }] unless tbox_group
 
-        job_id = add_task(tbox_group)
+        lab = job_content["lab"]
+        job_id = add_task(tbox_group, lab)
         return [{
           "job_id" => "0",
           "message" => "add task queue sched/#{tbox_group} failed",
@@ -286,8 +290,8 @@ class Sched
     # return:
     #     job_id : success
     #        "0" : failure
-    def add_task(tbox_group)
-        task_desc = JSON.parse(%({"domain": "crystal-ci"}))
+    def add_task(tbox_group, lab)
+        task_desc = JSON.parse(%({"domain": "crystal-ci", "lab": "#{lab}"}))
         response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
         JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
     end

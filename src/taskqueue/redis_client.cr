@@ -37,7 +37,7 @@ class TaskQueue
     current_seqno = @redis.get("#{QUEUE_NAME_BASE}/seqno")
     current_seqno = "0" if current_seqno.nil?
     current_seqno = current_seqno.to_i64
-    return TaskInQueueStatus::TooBigID  if id.to_i64 > current_seqno
+    return TaskInQueueStatus::TooBigID  if id.split('.')[-1].to_i64 > current_seqno
 
     data_f = Redis::Future.new
     loop_till_done() {
@@ -67,9 +67,9 @@ class TaskQueue
     if content["id"]?
       # this means we'll add like duplicate id
       #  will operate to same redis key (queues/id2content)
-      task_id = content["id"].as_i64
+      task_id = content["id"]
     else
-      task_id = get_new_seqno()
+      task_id = "#{content["lab"]}.#{get_new_seqno()}"
       content = content.merge({:id => task_id})
     end
     data = {

@@ -37,6 +37,8 @@ class TaskQueue
           "TaskQueue still has id <#{id}> in process")
       when TaskInQueueStatus::NotExists
       end
+    else
+      return queue_respond_header_set(env, 409, "Need the lab in the task content") unless task_content["lab"]?
     end
 
     task_id = add2redis("#{param_queue}", task_content.as_h)

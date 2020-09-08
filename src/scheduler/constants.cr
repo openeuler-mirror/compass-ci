@@ -9,6 +9,8 @@ JOB_ES_PORT = 9200
 JOB_ES_PORT_DEBUG = 9201
 JOB_INDEX_TYPE = "jobs/_doc"
 
+LAB = (ENV.has_key?("LAB") ? ENV["LAB"] : "crystal-ci")
+
 SCHED_HOST = (ENV.has_key?("SCHED_HOST") ? ENV["SCHED_HOST"] : "172.17.0.1")
 SCHED_PORT = (ENV.has_key?("SCHED_PORT") ? ENV["SCHED_PORT"] : 3000).to_i32
 
