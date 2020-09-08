@@ -73,4 +73,23 @@ def main(hostname)
   run(hostname, load_path, hash)
 end
 
-main 'dc-1g-1' if $PROGRAM_NAME == __FILE__
+def save_pid(pids)
+  FileUtils.cd("#{ENV['CCI_SRC']}/providers")
+  f = File.new('dc.pid', 'a')
+  f.puts pids
+  f.close
+end
+
+def multi_docker(hostname, nr_container)
+  pids = []
+  nr_container.to_i.times do |i|
+    pid = Process.fork do
+      loop do
+        main("#{hostname}-#{i}")
+        sleep 5
+      end
+    end
+    pids << pid
+  end
+  return pids
+end
