@@ -2,11 +2,12 @@
 # frozen_string_literal: true
 
 require 'elasticsearch'
+require_relative 'constants.rb'
 
 # build multiple query request body
 class ESQuery
-  HOST = (ENV.key?('ES_HOST') ? ENV['ES_HOST'] : '127.0.0.1')
-  PORT = (ENV.key?('ES_PORT') ? ENV['ES_PORT'] : 9200).to_i
+  HOST = (ENV.key?('ES_HOST') ? ENV['ES_HOST'] : ES_HOST)
+  PORT = (ENV.key?('ES_PORT') ? ENV['ES_PORT'] : ES_PORT).to_i
   def initialize(host = HOST, port = PORT)
     @client = Elasticsearch::Client.new url: "http://#{host}:#{port}"
     raise 'Connect Elasticsearch  error!' unless @client.ping
