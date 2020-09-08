@@ -1,12 +1,15 @@
 require "set"
 require "json"
 
+require "./parse_serial_logs"
+
 class Filter
 
   def initialize()
     # use @hash to save query and socket
     # like {query => [socket1, socket2]}
     @hash = Hash(JSON::Any, Array(HTTP::WebSocket)).new
+    @sp = SerialParser.new()
   end
 
   def add_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
@@ -16,12 +19,14 @@ class Filter
 
   def remove_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
     return unless @hash[query]?
+
     @hash[query].delete(socket)
     @hash.delete(query) if @hash[query].empty?
   end
 
   def send_msg(query, msg)
     return unless @hash[query]?
+
     @hash[query].each do |socket|
       socket.send msg.to_json
     end
@@ -30,6 +35,8 @@ class Filter
   def filter_msg(msg)
     msg = JSON.parse(msg.to_s).as_h?
     return unless msg
+
+    @sp.save_dmesg_to_result_root(msg)
     @hash.keys.each do |query|
       if match_query(query.as_h, msg)
         send_msg(query, msg)
