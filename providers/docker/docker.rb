@@ -52,11 +52,11 @@ def load_initrds(load_path, hash)
   wget_cmd(load_path, lkp_url, "lkp-#{arch}.cgz")
 end
 
-def run(load_path, hash)
+def run(hostname, load_path, hash)
   docker_image = hash['docker_image']
   system "docker pull #{docker_image}"
   system(
-    { 'docker_image' => docker_image, 'load_path' => load_path },
+    { 'hostname' => hostname, 'docker_image' => docker_image, 'load_path' => load_path },
     ENV['CCI_SRC'] + '/providers/docker/run.sh'
   )
   FileUtils.rm_r(load_path)
@@ -70,7 +70,7 @@ def main(hostname)
 
   load_path = build_load_path
   load_initrds(load_path, hash)
-  run(load_path, hash)
+  run(hostname, load_path, hash)
 end
 
 main 'dc-1g-1' if $PROGRAM_NAME == __FILE__
