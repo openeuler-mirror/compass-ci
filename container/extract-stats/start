@@ -12,6 +12,8 @@ names = Set.new %w[
   ES_PORT
   FLUENTD_HOST
   FLUENTD_PORT
+  MAIL_HOST
+  MAIL_PORT
 ]
 
 defaults = relevant_defaults(names)
