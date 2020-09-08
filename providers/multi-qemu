@@ -27,7 +27,7 @@ def run(seqno)
 
     duration = ((Time.new - start_time) / 60).round(2)
     File.open(log_file, 'a') do |f|
-      f.puts "\nTotal duration:  #{duration} minutes"
+      f.puts "\nTotal QEMU duration:  #{duration} minutes"
     end
 
     # sleep 5s is for fluentd to collect it's log
