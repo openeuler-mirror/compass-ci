@@ -7,9 +7,16 @@ require 'bunny'
 require 'json'
 # gem install PriorityQueue
 require 'priority_queue'
+require 'English'
 
 # worker threads
 class GitMirror
+  ERR_MESSAGE = <<~MESSAGE
+    fatal: not a git repository (or any parent up to mount point /)
+    Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+  MESSAGE
+  ERR_CODE = 128
+
   def initialize(queue, feedback_queue)
     @queue = queue
     @feedback_queue = feedback_queue
@@ -33,6 +40,10 @@ class GitMirror
 
   def git_fetch(mirror_dir)
     fetch_info = %x(git -C #{mirror_dir} fetch 2>&1)
+    # Check whether mirror_dir is a good git repository by 3 conditions. If not, delete it.
+    if ($CHILD_STATUS.exitstatus == ERR_CODE) && fetch_info.include?(ERR_MESSAGE) && Dir.empty?(mirror_dir)
+      FileUtils.rmdir(mirror_dir)
+    end
     return fetch_info.include? '->'
   end
 
