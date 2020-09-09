@@ -24,7 +24,7 @@ class ESQuery
         }
       }, size: size
     }
-    @client.search index: 'jobs', body: query
+    @client.search index: 'jobs*', body: query
   end
 
   def query_by_id(id)
