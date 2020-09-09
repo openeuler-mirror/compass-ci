@@ -36,7 +36,7 @@ def fill_missing_with_zeros(value_list, matrix_size)
   value_list
 end
 
-def success?(field)
+def successful?(field)
   FAILURE_PATTERNS.all? { |pattern| field !~ /^#{pattern}/ }
 end
 
@@ -165,7 +165,7 @@ def get_matrixes_values(matrixes_list, options)
   get_matrixes_fields(matrixes_list).each do |field|
     next if field == 'stats_source'
 
-    success = success?(field)
+    success = successful?(field)
     matrixes_values[success][field] = get_values_by_field(
       matrixes_list, field,
       matrixes_size, success, options
@@ -191,40 +191,35 @@ def matrixes_empty?(matrixes_list)
   return matrixes_list.any?(&:empty?)
 end
 
-def compare_matrixes(matrixes_list, matrixes_titles = matrixes_list.size, group_key = nil, options: {})
+def compare_matrixes(matrixes_list, matrixes_titles = nil, group_key = nil, options: {})
   # compare matrix in matrixes_list and print info
-  #
   # @matrixes_list: list consisting of matrix
   # @matrixes_titles: number or dimension of matrix
   # @group_key: group_key of matrixes_list(only for group mode)
   # @options: compare options, type: hash
+  return warn('Matrix cannot be empty!') || '' if matrixes_empty?(matrixes_list)
 
-  if matrixes_empty?(matrixes_list)
-    warn 'Matrix cannot be empty!'
-    return
-  end
-
-  options = { 'perf-profile': 5, theme: :none }.merge(options)
+  options = { 'perf-profile': 5, theme: :none, no_print: false }.merge(options)
   matrixes_values = get_matrixes_values(matrixes_list, options)
   remove_unchanged_field(matrixes_values) if matrixes_list.length > 1
-
-  if group_key
-    print "\n\n\n\n\n"
-    print group_key
-  end
-
-  show_result(
+  no_print = options[:no_print]
+  result_str = group_key ? "\n\n\n\n\n" + group_key : ''
+  result_str += get_all_result_str(
     matrixes_values,
     matrixes_titles,
+    matrixes_list.size,
     options[:theme]
   )
+  return result_str if no_print
+
+  print result_str
 end
 
 # JSON Format
 
-def print_json_result(matrixes_values, matrixes_number)
+def print_json_result(matrixes_values, matrixes_titles)
   result = {
-    'matrixes_indexes': Array.new(matrixes_number) { |i| i },
+    'matrixes_titles': matrixes_titles,
     'success': matrixes_values[true],
     'failure': matrixes_values[false]
   }.to_json
@@ -233,15 +228,16 @@ end
 
 # HTML Format
 
-def get_html_index(matrixes_number)
+def get_html_index(matrixes_titles)
   index = "  <tr>\n    <th>0</th>\n"
-  (1...matrixes_number).each do |matrix_index|
+  matrixes_titles.each do |matrix_index|
     index += "    <th colspan='2'>#{matrix_index}</th>\n"
   end
   index + "    <th>#{FIELD_STR}</th>\n  </tr>\n"
 end
 
-def get_html_title(common_title, compare_title, matrixes_number)
+def get_html_title(common_title, compare_title, matrixes_titles)
+  matrixes_number = matrixes_titles.size
   title = "  <tr>\n    <td>#{common_title}</td>\n"
   title += "    <td>#{compare_title}</td>\n    <td>#{common_title}</td>\n" * (
     matrixes_number - 1
@@ -249,7 +245,7 @@ def get_html_title(common_title, compare_title, matrixes_number)
   title + "  </tr>\n"
 end
 
-def get_html_header(matrixes_number, success)
+def get_html_header(matrixes_titles, success)
   if success
     common_title = STDDEV_STR
     compare_title = CHANGE_STR
@@ -258,8 +254,8 @@ def get_html_header(matrixes_number, success)
     compare_title = REPRODUCTION_STR
   end
 
-  header = get_html_index(matrixes_number)
-  header + get_html_title(common_title, compare_title, matrixes_number)
+  header = get_html_index(matrixes_titles)
+  header + get_html_title(common_title, compare_title, matrixes_titles)
 end
 
 def get_html_success(values, index)
@@ -295,11 +291,11 @@ def get_html_field(field)
   "    <td>#{field}</td>\n"
 end
 
-def print_html_result(matrixes_values, matrixes_number, success)
+def print_html_result(matrixes_values, matrixes_titles, success)
   return if matrixes_values[success].empty?
 
   print "<table>\n"
-  print get_html_header(matrixes_number, success)
+  print get_html_header(matrixes_titles, success)
   matrixes_values[success].each do |field, matrixes|
     print "  <tr>\n"
     print get_html_values(matrixes, success)
@@ -385,6 +381,7 @@ end
 # input: group matrices
 # output: pre compare result of each group
 def compare_group_matrices(group_matrices, options)
+  result_str = ''
   group_matrices.each do |k, v|
     matrices_list = []
     matrices_titles = []
@@ -392,9 +389,13 @@ def compare_group_matrices(group_matrices, options)
       matrices_titles << dim
       matrices_list << matrix
     end
-
-    compare_matrixes(matrices_list, matrices_titles, k, options: options)
+    if options[:no_print]
+      result_str += compare_matrixes(matrices_list, matrices_titles, k, options: options)
+    else
+      print compare_matrixes(matrices_list, matrices_titles, k, options: options)
+    end
   end
+  result_str
 end
 
 # Format Fields
@@ -687,41 +688,41 @@ def get_field_str(field)
 end
 
 # Print
-
-def show_result(matrixes_values, matrixes_list_length, theme)
-  if theme.is_a?(String)
-    theme = theme.to_sym
-  end
+def get_theme(matrixes_values, matrixes_title, theme)
+  theme = theme.to_sym if theme.is_a?(String)
   if theme == :html
-    print_html_result(matrixes_values, matrixes_list_length, false)
-    print_html_result(matrixes_values, matrixes_list_length, true)
+    print_html_result(matrixes_values, matrixes_title, false)
+    print_html_result(matrixes_values, matrixes_title, true)
     return
   elsif theme == :json
-    print_json_result(matrixes_values, matrixes_list_length)
-    return
+    return print_json_result(matrixes_values, matrixes_titles)
   end
+  return THEMES[theme] if THEMES.key?(theme)
 
-  if THEMES.key?(theme)
-    theme = THEMES[theme]
-  else
-    warn "Theme #{theme} does not exist! use default theme."
-    theme = THEMES[:none]
-  end
-
-  print_result(matrixes_values, matrixes_list_length, false, theme)
-  print_result(matrixes_values, matrixes_list_length, true, theme)
+  warn "Theme #{theme} does not exist! use default theme."
+  return THEMES[:none]
 end
 
-def print_result(matrixes_values, matrixes_titles, success, theme)
-  values = matrixes_values[success].sort
-  return if values.empty?
+def get_all_result_str(matrixes_values, matrixes_titles, matrixes_number, theme)
+  matrixes_titles ||= matrixes_number.times.to_a.map(&:to_s)
+  theme = get_theme(matrixes_values, matrixes_titles, theme)
+  return '' unless theme
 
-  print "\n\n\n"
+  failure_str = get_result_str(matrixes_values[false].sort, matrixes_titles, false, theme)
+  success_str = get_result_str(matrixes_values[true].sort, matrixes_titles, true, theme)
+  failure_str + success_str
+end
+
+def get_result_str(values, matrixes_titles, success, theme)
+  return '' if values.empty?
+
+  result_str = "\n\n\n"
   common_title, compare_title = get_title_name(success)
-  print get_header(matrixes_titles, success, common_title, compare_title)
+  result_str += get_header(matrixes_titles, success, common_title, compare_title)
   values.each do |field, matrixes|
-    print get_values_str(matrixes, success, theme)
-    print get_field_str(field)
-    print "\n"
+    result_str += get_values_str(matrixes, success, theme)
+    result_str += get_field_str(field)
+    result_str += "\n"
   end
+  result_str
 end
