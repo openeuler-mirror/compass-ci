@@ -12,7 +12,6 @@ require_relative '../utils'
 class GitBisect
   def initialize(task)
     @es = ESQuery.new
-    @sched = SchedClient.new
     @task = task
   end
 
@@ -128,9 +127,8 @@ class GitBisect
   # according to the job stats return good/bad/nil
   def get_commit_status_by_job(commit)
     @bad_job['upstream_commit'] = commit
-    new_job_id = @sched.submit_job @bad_job.to_json
-    puts "new_job_id: #{new_job_id}"
-    return nil if new_job_id.to_i.zero?
+    new_job_id = Utils.submit_job(@bad_job)
+    return nil unless new_job_id
 
     query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
     extract_finished = Utils.monitor_run_stop(query)

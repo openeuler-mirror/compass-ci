@@ -2,9 +2,11 @@
 # frozen_string_literal: true
 
 require 'set'
+require 'json'
 require 'fileutils'
 
 require_relative './constants'
+require_relative '../../lib/sched_client'
 require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 
 # a utils module for delimiter service
@@ -53,6 +55,17 @@ module Utils
       monitor.query = query
       monitor.action = {'stop' => true}
       return monitor.run
+    end
+
+    def submit_job(job)
+      sched = SchedClient.new
+      response = sched.submit_job(job.to_json)
+      puts "submit job response: #{response}"
+      res_arr = JSON.parse(response)
+      return nil if res_arr.empty? || res_arr[0]['message'].empty?
+
+      # just consider build-pkg job
+      return res_arr[0]['job_id']
     end
   end
 end

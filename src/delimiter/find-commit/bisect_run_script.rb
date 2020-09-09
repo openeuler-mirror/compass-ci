@@ -4,7 +4,6 @@
 # frozen_string_literal: true
 
 require 'json'
-require_relative "#{ENV['CCI_SRC']}/lib/sched_client"
 require_relative "#{ENV['CCI_SRC']}/lib/es_query"
 require_relative "#{ENV['CCI_SRC']}/src/delimiter/utils"
 
@@ -12,7 +11,6 @@ require_relative "#{ENV['CCI_SRC']}/src/delimiter/utils"
 class GitBisectRun
   def initialize(job_id, error_id, tbox_group, work_dir)
     @es = ESQuery.new
-    @sched = SchedClient.new
     @job_id = job_id
     @error_id = error_id
     @tbox_group = tbox_group
@@ -31,8 +29,8 @@ class GitBisectRun
   private
 
   def get_bisect_status(job)
-    new_job_id = @sched.submit_job job.to_json
-    exit 125 if new_job_id.to_i.zero?
+    new_job_id = Utils.submit_job(job)
+    exit 125 unless new_job_id
 
     query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
     extract_finished = Utils.monitor_run_stop(query)
