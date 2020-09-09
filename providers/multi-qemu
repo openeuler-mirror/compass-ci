@@ -4,6 +4,8 @@
 
 require 'fileutils'
 
+PWD = File.dirname(File.realpath($PROGRAM_NAME))
+
 # Run multiple QEMU in parallel
 HOSTNAME = ARGV[0] || "vm-hi1620-2p8g--#{ENV['USER']}"
 NR_VM = ARGV[1] || 1
@@ -18,8 +20,9 @@ def run(seqno)
       f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting QEMU"
     end
 
-    FileUtils.mkdir_p(hostname) unless File.exist?(hostname)
-    FileUtils.cd(hostname)
+    pwd_hostname = File.join(PWD, hostname)
+    FileUtils.mkdir_p(pwd_hostname) unless File.exist?(pwd_hostname)
+    FileUtils.cd(pwd_hostname)
     system(
       { 'hostname' => hostname },
       ENV['CCI_SRC'] + '/providers/qemu.sh'
