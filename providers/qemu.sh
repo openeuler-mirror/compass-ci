@@ -27,7 +27,7 @@ trap 'curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/del_host
 		tbox_group=$hostname
 	fi
 
-	host=${tbox_group%--*}
+	host=${tbox_group%%--*}
 
 	create_yaml_variables "$LKP_SRC/hosts/${host}"
 
