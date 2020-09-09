@@ -126,28 +126,12 @@ class Sched
 
         cluster_state.each_value do |host_state|
             state = host_state["state"]
-            flag = need_retry(node_state, state)
-            return "retry" if flag
+            next if "#{state}" == "#{node_state}"
+            return "retry"
         end
 
         # cluster state is node state when all nodes are normal
         return node_state
-    end
-
-    # | node_state    | "ready"      | "finish"      | ↓
-    # | state         | ""(empty)    | "ready"       | ↓
-    # | retry?        |    true      |    true       | ↓
-    def need_retry(node_state, state)
-        flag = false
-
-        case node_state
-        when "ready"
-            flag = true if state.empty?
-        when "finish"
-            flag = true if state == "ready"
-        end
-
-        return flag
     end
 
     # EXAMPLE:
