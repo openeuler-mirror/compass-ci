@@ -77,6 +77,7 @@ class MirrorMain
     @priority = 0
     @priority_queue = PriorityQueue.new
     @git_info = {}
+    @defaults = {}
     @git_queue = Queue.new
     load_fork_info
     connection = Bunny.new('amqp://172.17.0.1:5672')
@@ -94,12 +95,18 @@ class MirrorMain
     }
   end
 
-  def load_repo_file(repodir)
-    project = File.dirname(repodir)
-    project.delete_prefix!("#{REPO_DIR}/")
-    fork_name = File.basename(repodir)
+  def load_defaults(repodir)
+    defaults_file = "#{repodir}/DEFAULTS"
+    return unless File.exist?(defaults_file)
+
+    project = repodir.delete_prefix("#{REPO_DIR}/")
+    @defaults[project] = YAML.safe_load(File.open(defaults_file))
+  end
+
+  def load_repo_file(repodir, project, fork_name)
     @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open(repodir))
     @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
+    @git_info["#{project}/#{fork_name}"].merge!(@defaults[project]) if @defaults[project]
     fork_stat_init("#{project}/#{fork_name}")
     @priority_queue.push "#{project}/#{fork_name}", @priority
     @priority += 1
@@ -107,13 +114,16 @@ class MirrorMain
 
   def traverse_repodir(repodir)
     if File.directory? repodir
+      load_defaults(repodir)
       entry_list = Dir.entries(repodir) - Array['.', '..', 'DEFAULTS', '.ignore']
       entry_list = Array['linus'] if File.basename(repodir) == 'linux'
       entry_list.each do |entry|
         traverse_repodir("#{repodir}/#{entry}")
       end
     else
-      load_repo_file(repodir)
+      project = File.dirname(repodir).delete_prefix("#{REPO_DIR}/")
+      fork_name = File.basename(repodir)
+      load_repo_file(repodir, project, fork_name)
     end
   end
 
