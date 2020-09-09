@@ -28,6 +28,7 @@ do_one()
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
 		cd $container
+		[ "$container_name" == 'sub-fluentd' ] && exit
 		[ -x build ] && ./build
 		[ -x install ] && ./install
 		[ -x first-run ] && ./first-run
