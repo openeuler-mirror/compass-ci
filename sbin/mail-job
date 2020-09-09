@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# frozen_string_literal: true
+
+# Usage:
+#       mail-job job_id
+
+require_relative '../lib/mail_job_result.rb'
+
+job_id = ARGV[0]
+mail = MailJobResult.new(job_id)
+mail.send_mail
