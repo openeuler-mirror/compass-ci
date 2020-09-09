@@ -176,16 +176,21 @@ class Job
   private def set_pp_initrd()
     initrd_deps_arr = Array(String).new
     initrd_pkg_arr = Array(String).new
+    initrd_src="http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd"
+    deps_dir="/srv/initrd/deps"
+    pkg_dir="/srv/initrd/pkg"
+    mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
     if @hash["pp"]?
       program_params = @hash["pp"].as_h
       program_params.keys.each do |program|
+        dest_file="#{mount_type}/#{os_dir}/#{program}"
         if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
-          File.exists?("/srv/initrd/deps/#{os_mount}/#{os_dir}/#{program}.cgz")
-          initrd_deps_arr << "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/deps/#{os_mount}/#{os_dir}/#{program}.cgz"
+          File.exists?("#{deps_dir}/#{dest_file}.cgz")
+          initrd_deps_arr << "#{initrd_src}/deps/#{dest_file}.cgz"
         end
         if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") &&
-          File.exists?("/srv/initrd/pkg/#{os_mount}/#{os_dir}/#{program}.cgz")
-          initrd_pkg_arr << "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/pkg/#{os_mount}/#{os_dir}/#{program}.cgz"
+          File.exists?("#{pkg_dir}/#{dest_file}.cgz")
+          initrd_pkg_arr << "#{initrd_src}/pkg/#{dest_file}.cgz"
         end
       end
     end
