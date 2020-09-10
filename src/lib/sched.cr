@@ -167,7 +167,7 @@ class Sched
     def submit_job(env : HTTP::Server::Context)
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)
-        job_content["lab"] = LAB unless job_content["lab"]
+        job_content["lab"] = LAB unless job_content["lab"]?
 
         if job_content["cluster"]?
             cluster_file = job_content["cluster"].to_s
