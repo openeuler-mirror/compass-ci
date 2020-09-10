@@ -4,8 +4,8 @@
 
 require_relative '../defconfig.rb'
 
-DOCKER_LKP = '/c/lkp-tests'
 DOCKER_CCI = '/c/crystal-ci'
+DOCKER_REPO = '/c/upstream-repos'
 docker_rm "git-mirror"
 
 cmd = %W[
@@ -14,10 +14,10 @@ cmd = %W[
   --name git-mirror
   -u 1090:1999
   -d
-  -e LKP_SRC=#{DOCKER_LKP}
   -e CCI_SRC=#{DOCKER_CCI}
-  -v #{ENV['LKP_SRC']}:#{DOCKER_LKP}
+  -e REPO_SRC=#{DOCKER_REPO}
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
+  -v #{ENV['REPO_SRC']}:#{DOCKER_REPO}
   -v /srv/git:/srv/git
   -w /c/crystal-ci/sbin
   alpine38:git-mirror
