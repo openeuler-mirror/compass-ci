@@ -20,11 +20,12 @@ class AutoSubmit
     git_repo = newrefs_info['git_repo']
     return unless @repo2job[git_repo]
 
+    pkgbuild_repo = newrefs_info['pkgbuild_repo']
     jobfile = "#{ENV['LKP_SRC']}/jobs/#{@repo2job[git_repo]}"
     newrefs_info['new_refs']['heads'].each_value do |value|
       commit_date = `git -C /srv/git/#{git_repo}.git log  --format=%ct -1 #{value}`
-      system("#{ENV['LKP_SRC']}/sbin/submit -s 'upstream_repo: #{git_repo}'\
-             -s 'upstream_commit: #{value}' -s 'commit_date: #{commit_date}' #{jobfile}")
+      system("#{ENV['LKP_SRC']}/sbin/submit -s 'upstream_repo: #{git_repo}' -s 'upstream_commit: #{value}'\
+             -s 'pkgbuild_repo: #{pkgbuild_repo}' -s 'commit_date: #{commit_date}' #{jobfile}")
     end
   end
 
