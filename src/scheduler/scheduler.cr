@@ -18,6 +18,7 @@ require "../lib/sched"
 # - restful API [put "/set_host_mac?hostname=myhostname&mac=ff-ff-ff-ff-ff-ff"] to report testbox's {mac => hostname}
 # - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
 # - restful API [get "/~lkp/cgi-bin/lkp-jobfile-append-var"] report job var that should be append
+# - restful API [get "/~lkp/cgi-bin/lkp-cluster-sync"] for nodes to request cluster state
 # - restful API [get "/~lkp/cgi-bin/lkp-post-run" ] to move job from redis queue "sched/jobs_running" to "sched/extract_stats" and remove job from redis queue "sched/id2job"
 #
 # -------------------------------------------------------------------------------------------
@@ -136,14 +137,22 @@ module Scheduler
     end
 
     # node in cluster requests cluster state
-    # wget 'http://localhost:3000/~lkp/cgi-bin/lkp-cluster-sync?job_id=60447&state=<state>
-    # 1) state   : wait_ready
-    #    response: "ready" | "abort" | "retry"
+    # wget 'http://localhost:3000/~lkp/cgi-bin/lkp-cluster-sync?job_id=<job_id>&state=<state>'
+    # 1) state   : "wait_ready"
+    #    response: return "abort" if one node state is "abort",
+    #              "ready" if all nodes are "ready", "retry" otherwise.
     # 2) state   : wait_finish
-    #    response: "finish" | "abort" | "retry"
-    # 3) state   : abort | failed | write_state | roles_ip
-    #    response: current cluster state:
-    #              "{\"60446\":{\"state\":\"finish\"},\"60447\":{\"state\":\"ready\"}}"
+    #    response: return "abort" if one node state is "abort",
+    #              "finish" if all nodes are "finish", "retry" otherwise.
+    # 3) state   : abort | failed
+    #    response: update the node state to "abort",
+    #              return all nodes states at this moment.
+    # 4) state   : write_state
+    #    response: add "roles" and "ip" fields to cluster state,
+    #              return all nodes states at this moment.
+    # 5) state   : roles_ip
+    #    response: get "server ip" from cluster state,
+    #              return "server=<server ip>".
     get "/~lkp/cgi-bin/lkp-cluster-sync" do |env|
         response = sched.request_cluster_state(env)
 
