@@ -1,11 +1,16 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+. $CCI_SRC/container/defconfig.sh
+docker_rm srv-http
+
 cmd=(
 	docker run
 	--restart=always
-	-p 11300:80
-	-v /srv/pub:/usr/share/nginx/html/srv/pub:ro
+	--name srv-http
+	-p 11300:11300
+	-v /srv/pub:/srv/pub:ro
+	-v /srv/result:/srv/result:ro
 	-d
 	srv-http
 )
