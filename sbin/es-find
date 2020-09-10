@@ -14,11 +14,7 @@ require 'optparse'
 require 'json'
 require_relative '../lib/es_query.rb'
 require_relative '../container/defconfig.rb'
-
-# get elasticsearch config from lab yaml file or use default.
-config = cci_defaults
-ES_HOST = config['ES_HOST'] || '172.17.0.1'
-ES_PORT = config['ES_PORT'] || 9200
+require_relative '../lib/constants.rb'
 
 def parse_argv
   items = {}
