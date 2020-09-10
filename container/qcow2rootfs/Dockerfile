@@ -7,7 +7,7 @@ MAINTAINER Yu Chuan <yuchuan6@huawei.com>, Shi Zhichao <shizhichao2@huawei.com>
 RUN rpm --import /etc/pki/rpm-gpg/RPM*
 
 RUN yum makecache && \
-    yum install -y libvirt libguestfs-tools xz expect openssl && \
+    yum install -y --skip-broken libvirt libguestfs-tools xz expect openssl && \
     yum clean all
 
 ENV EXTRACT_USER=extract
