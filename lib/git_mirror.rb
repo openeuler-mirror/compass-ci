@@ -23,13 +23,14 @@ class GitMirror
     @feedback_info = {}
   end
 
-  def feedback(git_repo, possible_new_refs)
-    @feedback_info = { git_repo: git_repo, possible_new_refs: possible_new_refs }
+  def feedback(git_repo, pkgbuild_repo, possible_new_refs)
+    @feedback_info = { git_repo: git_repo, pkgbuild_repo: pkgbuild_repo, possible_new_refs: possible_new_refs }
     @feedback_queue.push(@feedback_info)
   end
 
   def git_clone(url, mirror_dir)
     ret = false
+    url = url[0] if url.is_a?(Array)
     10.times do
       ret = system("git clone --mirror #{url} #{mirror_dir}")
       break if ret
@@ -57,7 +58,7 @@ class GitMirror
       FileUtils.mkdir_p(mirror_dir)
       possible_new_refs = git_clone(fork_info['url'], mirror_dir)
     end
-    feedback(fork_info['forkdir'], possible_new_refs)
+    feedback(fork_info['forkdir'], fork_info['pkgbuild_repo'][0], possible_new_refs)
   end
 
   def git_mirror
@@ -69,7 +70,7 @@ end
 
 # main thread
 class MirrorMain
-  REPO_DIR = "#{ENV['LKP_SRC']}/repo"
+  REPO_DIR = ENV['REPO_SRC']
 
   def initialize
     @feedback_queue = Queue.new
@@ -115,7 +116,7 @@ class MirrorMain
   def traverse_repodir(repodir)
     if File.directory? repodir
       load_defaults(repodir)
-      entry_list = Dir.entries(repodir) - Array['.', '..', 'DEFAULTS', '.ignore']
+      entry_list = Dir.entries(repodir) - Array['.', '..', 'DEFAULTS', '.ignore', '.git']
       entry_list = Array['linus'] if File.basename(repodir) == 'linux'
       entry_list.each do |entry|
         traverse_repodir("#{repodir}/#{entry}")
@@ -177,7 +178,6 @@ class MirrorMain
     loop do
       push_git_queue
       handle_feedback
-      sleep(0.1)
     end
   end
 end
