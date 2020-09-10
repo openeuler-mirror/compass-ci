@@ -17,6 +17,9 @@ def run(seqno)
     log_file = "/srv/cci/serial/logs/#{hostname}"
 
     File.open(log_file, 'w') do |f|
+      # fluentd refresh time is 1s
+      # let fluentd to monitor this file first
+      sleep(2)
       f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting QEMU"
     end
 

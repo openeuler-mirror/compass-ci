@@ -7,13 +7,20 @@
 : ${memory:=1G}
 
 log_file=/srv/cci/serial/logs/${hostname}
+if [ ! -f "$log_file" ]; then
+	touch $log_file
+	# fluentd refresh time is 1s
+	# let fluentd to monitor this file first
+	sleep 2
+fi
+
 qemu=qemu-system-aarch64
 command -v $qemu >/dev/null || qemu=qemu-kvm
 
 echo $SCHED_PORT
 ipxe_script=ipxe_script
 curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
-cp $ipxe_script ${log_file}
+cat $ipxe_script >> ${log_file}
 #echo -----
 #cat $ipxe_script
 #echo -----

@@ -7,6 +7,13 @@
 : ${memory:=1G}
 
 serial_log=/srv/cci/serial/logs/${hostname}
+if [ ! -f "$serial_log" ]; then
+	touch $serial_log
+	# fluentd refresh time is 1s
+	# let fluentd to monitor this file first
+	sleep 2
+fi
+
 qemu=qemu-system-aarch64
 command -v $qemu >/dev/null || qemu=qemu-kvm
 
