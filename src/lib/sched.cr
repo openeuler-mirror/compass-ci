@@ -60,11 +60,8 @@ class Sched
     end
 
     # Return response according to different request states.
-    #
     # all request states:
     #     wait_ready | abort | failed | finished | wait_finish |
-    #     write_state | roles_ip
-    # NOTE: have't implemented until now:
     #     write_state | roles_ip
     def request_cluster_state(env)
         request_state = env.params.query["state"]
@@ -180,13 +177,9 @@ class Sched
         return submit_single_job(job_content)
     end
 
-    # for multi-device.
-    # cluster_config: Hash(YAML::Any, YAML::Any)
-    #    {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]},
-    #     "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}},
     # return:
-    #   job_ids, nil : success
-    #       "0", nil : failure
+    #   success: [{"job_id" => job_id1, "message => "", "job_state" => "submit"}, ...]
+    #   failure: [..., {"job_id" => 0, "message" => err_msg, "job_state" => "submit"}]
     def submit_cluster_job(job_content, cluster_config)
           job_messages = Array(Hash(String, String)).new
           lab = job_content["lab"]
@@ -228,11 +221,10 @@ class Sched
           end
 
           cluster_id = job_ids[0]
+
           # collect all host states
           cluster_state = Hash(String, Hash(String, String)).new
-
           job_ids.each do |job_id|
-            # only collect host state until now
             cluster_state[job_id] = {"state" => ""}
             # will get cluster id according to job id
             @redis.hash_set("sched/id2cluster", job_id, cluster_id)
@@ -243,7 +235,9 @@ class Sched
           return job_messages
     end
 
-    # for one-device
+    # return:
+    #   success: [{"job_id" => job_id, "message" => "", job_state => "submit"}]
+    #   failure: [{"job_id" => "0", "message" => err_msg, job_state => "submit"}]
     def submit_single_job(job_content)
         tbox_group = JobHelper.get_tbox_group(job_content)
         return [{
@@ -270,17 +264,14 @@ class Sched
         }]
     end
 
-    # add a task to task-queue and return a job_id
-    # return:
-    #     job_id : success
-    #        "0" : failure
+    # return job_id
     def add_task(tbox_group, lab)
         task_desc = JSON.parse(%({"domain": "crystal-ci", "lab": "#{lab}"}))
         response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
         JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
     end
 
-    # add job content to es
+    # add job content to es and return a response
     def add_job(job_content, job_id)
         commit_date = get_commit_date(job_content)
         job_content["commit_date"] = commit_date if commit_date
