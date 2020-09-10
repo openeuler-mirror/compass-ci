@@ -53,7 +53,7 @@ module Utils
     def monitor_run_stop(query)
       monitor = Monitor.new("ws//#{MONITOR_HOST}:#{MONITOR_PORT}/filter")
       monitor.query = query
-      monitor.action = {'stop' => true}
+      monitor.action = { 'stop' => true }
       return monitor.run
     end
 
@@ -62,10 +62,29 @@ module Utils
       response = sched.submit_job(job.to_json)
       puts "submit job response: #{response}"
       res_arr = JSON.parse(response)
-      return nil if res_arr.empty? || res_arr[0]['message'].empty?
+      return nil if res_arr.empty? || !res_arr[0]['message'].empty?
 
       # just consider build-pkg job
       return res_arr[0]['job_id']
+    end
+
+    # submit the bad job
+    # monitor the job id and job state query job stats when job state is extract_finished
+    # according to the job stats return good/bad/nil
+    def get_job_status(job, error_id)
+      new_job_id = submit_job(job)
+      puts "new job id: #{new_job_id}"
+      return nil unless new_job_id
+
+      query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
+      extract_finished = monitor_run_stop(query)
+      return nil unless extract_finished.zero?
+
+      es = ESQuery.new
+      new_job = es.query_by_id(new_job_id)
+      return 'bad' if new_job['stats'].key?(error_id)
+
+      return 'good'
     end
   end
 end

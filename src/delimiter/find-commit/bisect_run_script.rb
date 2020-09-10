@@ -29,15 +29,10 @@ class GitBisectRun
   private
 
   def get_bisect_status(job)
-    new_job_id = Utils.submit_job(job)
-    exit 125 unless new_job_id
+    status = Utils.get_job_status(job, @error_id)
+    exit 125 unless status
 
-    query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
-    extract_finished = Utils.monitor_run_stop(query)
-    exit 125 unless extract_finished.zero?
-
-    new_job = @es.query_by_id new_job_id
-    exit 1 if new_job['stats'].key?(@error_id)
+    exit 1 if status.eql?('bad')
 
     exit 0
   end

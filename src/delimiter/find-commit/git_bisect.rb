@@ -121,22 +121,10 @@ class GitBisect
     return nil
   end
 
-  # get commit status
-  # submit the bad job
-  # monitor the job id and job state query job stats when job state is extract_finished
+  # get commit status by submit the bad job
   # according to the job stats return good/bad/nil
   def get_commit_status_by_job(commit)
     @bad_job['upstream_commit'] = commit
-    new_job_id = Utils.submit_job(@bad_job)
-    return nil unless new_job_id
-
-    query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
-    extract_finished = Utils.monitor_run_stop(query)
-    return nil unless extract_finished.zero?
-
-    new_job = @es.query_by_id new_job_id
-    return 'bad' if new_job['stats'].key?(@error_id)
-
-    return 'good'
+    return Utils.get_job_status(@bad_job, @error_id)
   end
 end
