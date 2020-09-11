@@ -393,25 +393,28 @@ class Sched
         tbox_group = JobHelper.match_tbox_group(testbox)
 
         count.times do
-            response = @task_queue.consume_task("sched/#{tbox_group}")
-            job_id = JSON.parse(response[1].to_json)["id"] if response[0] == 200
-
-            if job_id
-                job = @es.get_job(job_id.to_s)
-                if !job
-                    raise "Invalid job (id=#{job_id}) in es"
-                end
-
-                job.update({"testbox" => testbox})
-                @redis.set_job(job)
-
-                return job
-            end
+            job = prepare_job("sched/#{tbox_group}", testbox)
+            return job if job
 
             sleep(1) unless count == 1
         end
 
         return nil
+    end
+
+    private def prepare_job(queue_name, testbox)
+        response = @task_queue.consume_task(queue_name)
+        job_id = JSON.parse(response[1].to_json)["id"] if response[0] == 200
+        job = nil
+
+        if job_id
+            job = @es.get_job(job_id.to_s)
+            raise "Invalid job (id=#{job_id}) in es" unless job
+
+            job.update({"testbox" => testbox})
+            @redis.set_job(job)
+        end
+        return job
     end
 
     private def add_kernel_console_param(arch_tmp)
