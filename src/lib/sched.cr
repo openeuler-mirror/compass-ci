@@ -399,7 +399,9 @@ class Sched
             sleep(1) unless count == 1
         end
 
-        return nil
+        # when find no job at "sched/#{tbox_group}"
+        #   try to get from "sched/#{tbox_group}/idle"
+        return get_idle_job(tbox_group, testbox)
     end
 
     private def prepare_job(queue_name, testbox)
@@ -415,6 +417,25 @@ class Sched
             @redis.set_job(job)
         end
         return job
+    end
+
+    private def get_idle_job(tbox_group, testbox)
+        job = prepare_job("sched/#{tbox_group}/idle", testbox)
+
+        # if there has no idle job, auto submit and get 1
+        if job.nil?
+            auto_submit_idle_job(testbox)
+            job = prepare_job("sched/#{tbox_group}/idle", testbox)
+        end
+
+        return job
+    end
+
+    def auto_submit_idle_job(testbox)
+        full_path_patterns = "#{ENV["CCI_SRC"]}/allot/idle/#{testbox}/*.yaml"
+        Jobfile::Operate.auto_submit_job(
+            full_path_patterns,
+            "testbox: #{testbox}") if Dir.glob(full_path_patterns).size > 0
     end
 
     private def add_kernel_console_param(arch_tmp)
