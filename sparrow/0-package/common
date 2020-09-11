@@ -5,6 +5,7 @@ gem install git activesupport rest-client cucumber json faye-websocket elasticse
 
 grep -q '^lkp:' /etc/passwd || adduser -u 1090 lkp
 grep -q '^team:' /etc/group || groupadd team
+grep -q '^committer:' /etc/group || groupadd -g 1999 committer
 
 cat >> /etc/sysctl.conf <<EOF
 net.ipv4.ip_forward=1
