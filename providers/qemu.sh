@@ -18,7 +18,7 @@ chmod +x ip.sh
 
 curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/set_host_mac?hostname=${hostname}&mac=${mac}"
 
-del_host_mac="curl -X PUT 'http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/del_host_mac?mac=${mac}'"
+del_host_mac="curl -X PUT 'http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/del_host_mac?mac=${mac}' > /dev/null 2>&1"
 trap "$del_host_mac" EXIT
 
 (
@@ -34,4 +34,5 @@ trap "$del_host_mac" EXIT
 
 	source "$CCI_SRC/providers/$provider/${template}.sh"
 )
-echo "$del_host_mac" | bash
+
+"$del_host_mac"
