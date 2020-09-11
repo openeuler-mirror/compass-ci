@@ -32,11 +32,37 @@ class SerialParser
     host = File.basename(msg["serial_path"].to_s)
   end
 
+  def detect_start(msg, host)
+    matched = msg["message"].to_s.match(/.*(?<start>starting QEMU)/)
+    return unless matched
+
+    start_signal = matched.named_captures["start"]
+    return unless start_signal
+
+    @host2head.delete(host) if host2head.has_key?(host)
+    @host2rt.delete(host) if host2rt.has_key?(host)
+  end
+
+  def detect_end(msg, host)
+    matched = msg["message"].to_s.match(/.*(?<end>Total QEMU duration)/)
+    return unless matched
+
+    finish_signal = matched.named_captures["end"]
+    return unless finish_signal
+
+    @host2head.delete(host) if host2head.has_key?(host)
+    @host2rt.delete(host) if host2rt.has_key?(host)
+  end
+
   def save_dmesg_to_result_root(msg)
     host = host_in_msg(msg)
     return unless host
 
-    return if check_save_dmesg(msg, host)
+    detect_start(msg, host)
+
+    check_save = check_save_dmesg(msg, host)
+    detect_end(msg, host)
+    return if check_save
 
     job_id = match_job_id(msg)
     job = find_job(job_id)
