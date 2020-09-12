@@ -462,8 +462,6 @@ class Sched
         initrd_deps, initrd_pkg = get_pp_initrd(job)
 
         response = "#!ipxe\n\n"
-        response += initrd_deps
-        response += initrd_pkg
         if job.os_mount == "initramfs"
             response += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/osimage/#{job.os_dir}/current\n"
             response += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/osimage/#{job.os_dir}/run-ipconfig.cgz\n"
@@ -472,6 +470,8 @@ class Sched
         end
         response += "initrd http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}\n"
         response += "initrd http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz\n"
+        response += initrd_deps
+        response += initrd_pkg
         response += "kernel http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}/os/#{job.os_dir}/vmlinuz user=lkp"
         response += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
         response += " #{job.kernel_append_root}"
