@@ -39,8 +39,8 @@ class SerialParser
     start_signal = matched.named_captures["start"]
     return unless start_signal
 
-    @host2head.delete(host) if host2head.has_key?(host)
-    @host2rt.delete(host) if host2rt.has_key?(host)
+    @host2head.delete(host)
+    @host2rt.delete(host)
   end
 
   def detect_end(msg, host)
@@ -50,8 +50,8 @@ class SerialParser
     finish_signal = matched.named_captures["end"]
     return unless finish_signal
 
-    @host2head.delete(host) if host2head.has_key?(host)
-    @host2rt.delete(host) if host2rt.has_key?(host)
+    @host2head.delete(host)
+    @host2rt.delete(host)
   end
 
   def save_dmesg_to_result_root(msg)
