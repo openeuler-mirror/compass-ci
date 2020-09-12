@@ -477,7 +477,11 @@ class Sched
         response += " #{job.kernel_append_root}"
         response += add_kernel_console_param(job.os_arch)
         if job.os_mount == "initramfs"
-          response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz initrd=run-ipconfig.cgz\n"
+          response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz"
+          job.initrd_deps.split().each do |initrd_deps|
+            response += " initrd=#{File.basename(initrd_deps)}"
+          end
+          response += " initrd=run-ipconfig.cgz\n"
         else
           response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
         end
