@@ -23,14 +23,14 @@ class GitMirror
     @feedback_info = {}
   end
 
-  def feedback(git_repo, pkgbuild_repo, possible_new_refs)
-    @feedback_info = { git_repo: git_repo, pkgbuild_repo: pkgbuild_repo, possible_new_refs: possible_new_refs }
+  def feedback(git_repo, possible_new_refs)
+    @feedback_info = { git_repo: git_repo, possible_new_refs: possible_new_refs }
     @feedback_queue.push(@feedback_info)
   end
 
   def git_clone(url, mirror_dir)
     ret = false
-    url = url[0] if url.is_a?(Array)
+    url = Array(url)[0]
     10.times do
       ret = system("git clone --mirror #{url} #{mirror_dir}")
       break if ret
@@ -58,7 +58,7 @@ class GitMirror
       FileUtils.mkdir_p(mirror_dir)
       possible_new_refs = git_clone(fork_info['url'], mirror_dir)
     end
-    feedback(fork_info['forkdir'], fork_info['pkgbuild_repo'][0], possible_new_refs)
+    feedback(fork_info['forkdir'], possible_new_refs)
   end
 
   def git_mirror
@@ -158,6 +158,8 @@ class MirrorMain
     return if new_refs[:heads].empty?
 
     feedback_info[:new_refs] = new_refs
+    feedback_info.merge!(@git_info[feedback_info[:git_repo]])
+    feedback_info.delete(:cur_refs)
     send_message(feedback_info)
   end
 
