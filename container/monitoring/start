@@ -28,6 +28,7 @@ cmd = %W[
 ] + env + %W[
   -e CCI_SRC=#{DEFAULT_CCI}
   -v /etc/localtime:/etc/localtime:ro
+  -v /srv/result:/srv/result
   monitoring-#{MONITOR_PORT}
 ]
 
