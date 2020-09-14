@@ -21,6 +21,21 @@ require "json"
 
 class SerialParser
 
+  START_PATTERNS = [
+   "starting QEMU",
+   "Start PXE over IPv4",
+   "iPXE initialising devices",
+   "Open Source Network Boot Firmware",
+   "BIOS Build Version:",
+   "BIOS Log @ "
+  ]
+
+  END_PATTERNS = [
+    "Total QEMU duration: ",
+    "No job now",
+    "Restarting system"
+  ]
+ 
   def initialize()
     @host2head = Hash(String, Array(String)).new
     @host2rt = Hash(String, String).new
@@ -32,23 +47,18 @@ class SerialParser
     host = File.basename(msg["serial_path"].to_s)
   end
 
-  def detect_start(msg, host)
-    matched = msg["message"].to_s.match(/.*(?<start>starting QEMU)/)
-    return unless matched
-
-    start_signal = matched.named_captures["start"]
-    return unless start_signal
-
-    @host2head.delete(host)
-    @host2rt.delete(host)
+  def detect_start_or_end(msg, host, pattern_list)
+    message = msg["message"].to_s
+    pattern_list.each do |pattern|
+      matched = message.match(/.*(?<#{signal}>#{pattern})/)
+      boundary_signal = matched.named_captures[signal] unless matched.nil?
+      return boundary_signal if boundary_signal
+    end
   end
 
-  def detect_end(msg, host)
-    matched = msg["message"].to_s.match(/.*(?<end>Total QEMU duration)/)
-    return unless matched
-
-    finish_signal = matched.named_captures["end"]
-    return unless finish_signal
+  def delete_host(msg, host, signal)
+    boundary_signal = detect_start_or_end(msg, host, signal)
+    return unless boundary_signal
 
     @host2head.delete(host)
     @host2rt.delete(host)
@@ -58,10 +68,10 @@ class SerialParser
     host = host_in_msg(msg)
     return unless host
 
-    detect_start(msg, host)
+    delete_host(msg, host, START_PATTERNS)
 
     check_save = check_save_dmesg(msg, host)
-    detect_end(msg, host)
+    delete_host(msg, host, END_PATTERNS)
     return if check_save
 
     job_id = match_job_id(msg)
