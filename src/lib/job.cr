@@ -166,8 +166,10 @@ class Job
 
   private def set_kernel_append_root()
     fs2root = {
-      "nfs" => "root=#{OS_HTTP_HOST}:/os/#{os_dir} initrd=initrd.lkp",
-      "cifs" => "root=cifs://#{OS_HTTP_HOST}/os/#{os_dir},guest,ro,hard,vers=1.0,noacl,nouser_xattr initrd=initrd.lkp",
+      "nfs" => "root=#{OS_HTTP_HOST}:#{File.real_path("/os/#{os_dir}")}" +
+          " initrd=initrd.lkp",
+      "cifs" => "root=cifs://#{OS_HTTP_HOST}#{File.real_path("/os/#{os_dir}")}" +
+          ",guest,ro,hard,vers=1.0,noacl,nouser_xattr initrd=initrd.lkp",
       "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0 initrd=current"
     }
     self["kernel_append_root"] = fs2root[os_mount]
@@ -176,7 +178,7 @@ class Job
   private def set_pp_initrd()
     initrd_deps_arr = Array(String).new
     initrd_pkg_arr = Array(String).new
-    http_initrd = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd"
+    initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
     srv_initrd = "/initrd"
     mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
     if @hash["pp"]?
@@ -185,11 +187,13 @@ class Job
         dest_file="#{mount_type}/#{os_dir}/#{program}"
         if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
           File.exists?(       "#{srv_initrd}/deps/#{dest_file}.cgz")
-          initrd_deps_arr << "#{http_initrd}/deps/#{dest_file}.cgz"
+          initrd_deps_arr << "#{initrd_http_prefix}" +
+            File.real_path("/initrd/deps/#{dest_file}.cgz")
         end
         if File.exists?( "#{ENV["LKP_SRC"]}/pkg/#{program}") &&
           File.exists?(      "#{srv_initrd}/pkg/#{dest_file}.cgz")
-          initrd_pkg_arr << "#{http_initrd}/pkg/#{dest_file}.cgz"
+          initrd_pkg_arr << "#{initrd_http_prefix}" +
+            File.real_path("/initrd/pkg/#{dest_file}.cgz")
         end
       end
     end
