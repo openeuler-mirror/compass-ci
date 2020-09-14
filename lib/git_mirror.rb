@@ -12,7 +12,7 @@ require 'English'
 # worker threads
 class GitMirror
   ERR_MESSAGE = <<~MESSAGE
-    fatal: not a git repository (or any parent up to mount point /)
+    fatal: not a git repository (or any parent up to mount point /srv)
     Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
   MESSAGE
   ERR_CODE = 128
