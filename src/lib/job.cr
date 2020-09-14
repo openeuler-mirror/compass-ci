@@ -177,7 +177,7 @@ class Job
     initrd_deps_arr = Array(String).new
     initrd_pkg_arr = Array(String).new
     http_initrd = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}/initrd"
-    srv_initrd = "/srv/initrd"
+    srv_initrd = "/initrd"
     mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
     if @hash["pp"]?
       program_params = @hash["pp"].as_h

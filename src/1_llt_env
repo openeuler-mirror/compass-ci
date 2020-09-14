@@ -24,7 +24,7 @@ cmd=(
   --mount type=tmpfs,destination=/result
   -v $LKP_SRC:/c/lkp-tests
   -v $CCI_SRC:/c/crystal-ci
-  --mount type=tmpfs,destination=/srv/initrd
+  --mount type=tmpfs,destination=/initrd
   -w $SCHED_DEBUG_DIR
   alpine:scheduler-dev
   sh

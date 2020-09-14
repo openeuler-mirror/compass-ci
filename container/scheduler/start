@@ -47,7 +47,8 @@ cmd = %W[
   -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/result:/result
-  -v /srv/initrd:/srv/initrd
+  -v /srv/initrd:/initrd:ro
+  -v /srv/os:/os:ro
   --log-driver=fluentd
   --log-opt fluentd-address=#{FLUENTD_HOST}:#{FLUENTD_PORT}
   --log-opt mode=non-blocking
