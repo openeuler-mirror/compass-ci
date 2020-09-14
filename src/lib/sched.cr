@@ -148,8 +148,8 @@ class Sched
     # return: Hash(YAML::Any, YAML::Any) | Nil, 0 | <hosts_size>
     #   {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]},
     #    "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}}, 2
-    def get_cluster_config(cluster_file)
-        lkp_src = ENV["LKP_SRC"] || "/c/lkp-tests"
+    def get_cluster_config(cluster_file, lkp_initrd_user, os_arch)
+        lkp_src = Jobfile::Operate.prepare_lkp_tests(lkp_initrd_user, os_arch)
         cluster_file_path = Path.new(lkp_src, "cluster", cluster_file)
 
         if File.file?(cluster_file_path)
@@ -180,7 +180,9 @@ class Sched
 
         if job_content["cluster"]?
             cluster_file = job_content["cluster"].to_s
-            cluster_config, hosts_size = get_cluster_config(cluster_file)
+            lkp_initrd_user = job_content["lkp_initrd_user"]? || "latest"
+            os_arch = job_content["os_arch"]? || "aarch64"
+            cluster_config, hosts_size = get_cluster_config(cluster_file, lkp_initrd_user.to_s, os_arch.to_s)
             if hosts_size >= 2
                 return submit_cluster_job(job_content, cluster_config.not_nil!)
             end
