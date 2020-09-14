@@ -10,3 +10,16 @@ BR0_SUBNET=172.18.0.0/16
 iptables -I FORWARD 1 -j ACCEPT
 iptables -t nat -A POSTROUTING -o "$PUB_IFACE" -s $BR0_SUBNET -j MASQUERADE
 iptables -t nat -A POSTROUTING -o $BR0_IFACE -d $BR0_SUBNET -j MASQUERADE
+
+systemctl status firewalld | grep -q "running" && {
+
+        DOCKER0_IFACE=docker0
+        DOCKER0_SUBNET=172.17.0.0/16
+
+        iptables -t nat -A POSTROUTING -o $PUB_IFACE -s $DOCKER0_SUBNET -j MASQUERADE
+        iptables -t nat -A POSTROUTING -o $DOCKER0_IFACE -d $DOCKER0_SUBNET -j MASQUERADE
+
+        firewall-cmd --zone=public --add-rich-rule="rule family=ipv4 source address=$DOCKER0_SUBNET accept"
+        firewall-cmd --zone=public --add-rich-rule="rule family=ipv4 source address=$BR0_SUBNET accept"
+        firewall-cmd --zone=public --add-rich-rule="rule family=ipv4 source address=0.0.0.0/32 accept"
+}
