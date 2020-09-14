@@ -66,7 +66,8 @@ class Sched
     def request_cluster_state(env)
         request_state = env.params.query["state"]
         job_id = env.params.query["job_id"]
-        cluster_id = @redis.hash_get("sched/id2cluster", job_id)
+        cluster_id = @redis.hash_get("sched/id2cluster", job_id).not_nil!
+        cluster_state = ""
 
         states = {"abort" => "abort",
                   "finished" => "finish",
@@ -79,10 +80,25 @@ class Sched
             # update node state only
             update_cluster_state(cluster_id, job_id, "state", states[request_state])
 
-        when "wait_ready", "wait_finish"
-            # return cluster state: ready | retry | finish | abort
-            return sync_cluster_state(cluster_id, job_id, states[request_state])
+        when "wait_ready"
+            update_cluster_state(cluster_id, job_id, "state", states[request_state])
+            @block_helper.block_until_finished(cluster_id) {
+                cluster_state = sync_cluster_state(cluster_id, job_id, states[request_state])
+                cluster_state == "ready" || cluster_state == "abort"
+            }
 
+            return cluster_state
+
+        when "wait_finish"
+            update_cluster_state(cluster_id, job_id, "state", states[request_state])
+            while 1
+                sleep(10)
+                cluster_state = sync_cluster_state(cluster_id, job_id, states[request_state])
+                break if (cluster_state == "finish" || cluster_state == "abort")
+            end
+
+            return cluster_state
+            
         when "write_state"
             node_roles = env.params.query["node_roles"]
             node_ip = env.params.query["ip"]
@@ -111,11 +127,7 @@ class Sched
 
     # node_state: "finish" | "ready"
     def sync_cluster_state(cluster_id, job_id, node_state)
-        update_cluster_state(cluster_id, job_id, "state", node_state)
-        sleep(10)
-
         cluster_state = get_cluster_state(cluster_id)
-
         cluster_state.each_value do |host_state|
             state = host_state["state"]
             return "abort" if state == "abort"
