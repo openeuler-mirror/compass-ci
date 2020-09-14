@@ -14,4 +14,8 @@ chmod 775 /srv/cache/netdata_cache
 chmod 775 /srv/cache/netdata_lib
 chmod 775 /srv/cci/serial/logs
 chmod 775 /srv/cci/serial/fluentd-pos
+
+chgrp team /srv/dc
+chmod g+ws /srv/dc
+
 find /tftpboot -type d | xargs chmod 775

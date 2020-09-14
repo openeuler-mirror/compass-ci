@@ -11,6 +11,7 @@ dirs=(
 	/srv/initrd/pkg
 	/srv/initrd/deps
 	/srv/os
+	/srv/dc
 	/srv/redis
 	/srv/result
 	/srv/cci/scheduler
