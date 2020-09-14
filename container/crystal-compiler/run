@@ -17,7 +17,7 @@ cmd=(
 	--rm
 	-v $v_dir:$v_dir
 	-w $PWD
-	alpine:crystal-complier
+	alpine:crystal-compiler
 	crystal $opt_build --static "$@"
 )
 
