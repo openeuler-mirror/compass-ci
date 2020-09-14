@@ -1,0 +1,4 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+docker build -t assign-account:latest .
