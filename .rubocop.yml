@@ -31,3 +31,6 @@ Style/RedundantReturn:
 
 Style/IfUnlessModifier:
   Enabled: false
+
+Style/NumericLiterals:
+  Enabled: false
