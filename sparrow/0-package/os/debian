@@ -16,6 +16,7 @@ pkgs=(
 	qemu
 	dmidecode
 	lockfile-progs
+	bridge-utils
 )
 
 apt-get install -y "${pkgs[@]}"
