@@ -15,17 +15,27 @@ class Delimiter
   end
 
   def start_delimit
-    # consume delimiter task queue
-    task = consume_delimiter_queue
-    return unless task
+    loop do
+      begin
+        # consume delimiter task queue
+        task = consume_delimiter_queue
+        unless task
+          sleep(2)
+          next
+        end
 
-    # find first bad commit based on the task
-    git_bisect = GitBisect.new task
-    result = git_bisect.find_first_bad_commit
+        # find first bad commit based on the task
+        git_bisect = GitBisect.new task
+        result = git_bisect.find_first_bad_commit
 
-    # send mail
-    mbr = MailBisectResult.new result
-    mbr.create_send_email
+        # send mail
+        mbr = MailBisectResult.new result
+        mbr.create_send_email
+      rescue StandardError => e
+        puts e
+        sleep(30)
+      end
+    end
   end
 
   private

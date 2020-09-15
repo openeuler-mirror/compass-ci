@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
+START_PROCESS_COUNT = 10
 GIT_MIRROR_HOST = ENV['GIT_MIRROR_HOST'] || 'localhost'
 MONITOR_HOST = ENV['MONITOR_HOST'] || 'localhost'
 MONITOR_PORT = ENV['MONITOR_PORT'] || '11310'

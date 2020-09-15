@@ -1,20 +1,18 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
-require 'threadpool'
+require_relative './delimiter/constants'
 require_relative './delimiter/delimiter'
 
-pool = ThreadPool.new(10)
-loop do
-  10.times do
-    pool.process do
-      begin
-        delimiter = Delimiter.new
-        delimiter.start_delimit
-      rescue StandardError => e
-        puts e
-      end
+START_PROCESS_COUNT.times do
+  begin
+    Process.fork do
+      delimiter = Delimiter.new
+      delimiter.start_delimit
     end
+  rescue StandardError => e
+    puts e
   end
-  sleep(30)
 end
+
+sleep()

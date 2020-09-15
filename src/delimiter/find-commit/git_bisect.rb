@@ -40,6 +40,7 @@ class GitBisect
 
     @bad_job.delete('stats')
     @bad_job.delete('id')
+    @bad_job.delete('error_ids')
     @bad_job['tbox_group'] = DELIMITER_TBOX_GROUP
   end
 
