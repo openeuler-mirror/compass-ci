@@ -57,6 +57,8 @@ def compare_group(argv, dimensions, options)
   conditions = parse_conditions(argv)
   dims = dimensions.split(' ')
   groups_matrices = create_groups_matrices_list(conditions, dims)
+  return nil if groups_matrices.empty?
+
   compare_group_matrices(groups_matrices, options)
 end
 
