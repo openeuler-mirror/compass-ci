@@ -16,6 +16,10 @@ class GitCommit
     `#{@git_prefix} log -n1 --pretty=format:'%ae' #{@commit}`.chomp
   end
 
+  def commit_time
+    `#{@git_prefix} log -n1 --pretty=format:'%ci' #{@commit}`.chomp
+  end
+
   def url
     `#{@git_prefix} remote -v`.split[1]
   end
