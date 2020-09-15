@@ -18,6 +18,8 @@ cmd = %w[
   -p 24224:24224/tcp
   -p 24224:24224/udp
   -e FLUENTD_CONF=docker-fluentd.conf
+  --log-driver json-file
+  --log-opt max-size=1g
   fluentd:alpine
 ]
 cmd += ['sh', '-c', 'umask 002 & fluentd -c /fluentd/etc/docker-fluentd.conf']
