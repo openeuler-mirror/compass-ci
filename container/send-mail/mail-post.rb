@@ -15,27 +15,33 @@ post '/send_mail_yaml' do
   data = YAML.safe_load request.body.read
   raise TypeError, data, 'request data type error' unless data.class.eql? Hash
 
-  from = data['from'] || 'team@crystal.ci'
-  subject = data['subject']
-  to = data['to']
-  body = data['body']
-  to_send_mail(from, subject, to, body)
+  mail_info = {
+    'references' => data['references'] || '',
+    'from' => data['from'] || 'team@crystal.ci',
+    'subject' => data['subject'],
+    'to' => data['to'],
+    'body' => data['body']
+  }
+  check_send_mail(mail_info)
 end
 
 post '/send_mail_text' do
   data = Mail.read_from_string(request.body.read)
 
-  from = data.from || 'team@crystal.ci'
-  subject = data.subject
-  to = data.to
-  body = data.body.decoded
-  to_send_mail(from, subject, to, body)
+  mail_info = {
+    'references' => data.references || '',
+    'from' => data.from || 'team@crystal.ci',
+    'subject' => data.subject,
+    'to' => data.to,
+    'body' => data.body.decoded
+  }
+  check_send_mail(mail_info)
 end
 
-def to_send_mail(from, subject, to, body)
-  raise TypeError, data, 'empty subject.' if subject.empty?
-  raise TypeError, data, 'empty email address.' if to.empty?
-  raise TypeError, data, 'empty email content.' if body.empty?
+def check_send_mail(mail_info)
+  raise TypeError, data, 'empty subject.' if mail_info['subject'].empty?
+  raise TypeError, data, 'empty email address.' if mail_info['to'].empty?
+  raise TypeError, data, 'empty email content.' if mail_info['body'].empty?
 
-  send_mail(from, subject, to, body)
+  send_mail(mail_info)
 end
