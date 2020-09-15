@@ -50,9 +50,8 @@ class SerialParser
   def detect_start_or_end(msg, host, pattern_list)
     message = msg["message"].to_s
     pattern_list.each do |pattern|
-      matched = message.match(/.*(?<#{signal}>#{pattern})/)
-      boundary_signal = matched.named_captures[signal] unless matched.nil?
-      return boundary_signal if boundary_signal
+      matched = message.match(/.*(?<signal>#{pattern})/)
+      return matched.named_captures["signal"] unless matched.nil?
     end
   end
 
