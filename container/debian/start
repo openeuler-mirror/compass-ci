@@ -5,6 +5,7 @@ cmd=(
 	docker run
 	--restart=always
 	-v debian-home:/home
+	-v /etc/localtime:/etc/localtime:ro
 	-v debian-root:/root
 	-v /c:/c
 	-v /srv/os:/srv/os

@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-docker run --restart=always -d -p 9418:9418 -v  /srv/git:/git --name git-daemon apline311:git-daemon
+docker run --restart=always -d -p 9418:9418 -v /srv/git:/git -v /etc/localtime:/etc/localtime:ro --name git-daemon apline311:git-daemon
 
 
 # test

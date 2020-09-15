@@ -13,6 +13,7 @@ cmd=(
 	docker run -dt
 	-p 445:445
 	-v /srv/os:/srv/os:ro
+	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/os:/srv/os-rw
 	-v /srv/initrd:/srv/initrd
 	-v /srv/result:/srv/result

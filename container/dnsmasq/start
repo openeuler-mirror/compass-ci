@@ -15,6 +15,7 @@ cmd=(
 	--publish 67:67/udp
 	--publish 69:69/udp
 	-v $PWD/dnsmasq.d:/etc/dnsmasq.d
+	-v /etc/localtime:/etc/localtime:ro
 	-v /tftpboot:/tftpboot:ro
 	--detach
 	--name dnsmasq

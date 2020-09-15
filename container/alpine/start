@@ -6,6 +6,7 @@ cmd=(
 	--restart=always
 	-d
 	-v alpine-home:/home
+	-v /etc/localtime:/etc/localtime:ro
 	-v alpine-root:/root
 	-v /c:/c
 	-v /srv/os:/srv/os

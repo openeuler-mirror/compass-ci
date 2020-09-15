@@ -8,6 +8,7 @@ cmd=(
 	-u nobody
 	-d
 	-p 11311:11311
+	-v /etc/localtime:/etc/localtime:ro
 	send-mail
 )
 

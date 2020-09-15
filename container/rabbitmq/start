@@ -13,6 +13,7 @@ cmd=(
 	--name rabbitmq
 	-p 5672:5672
 	-p 15672:15672
+	-v /etc/localtime:/etc/localtime:ro
 	rabbitmq:3-management
 )
 

@@ -10,6 +10,7 @@ cmd=(
 	--name srv-http
 	-p 11300:11300
 	-v /srv/pub:/srv/pub:ro
+	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result:/srv/result:ro
 	-d
 	srv-http

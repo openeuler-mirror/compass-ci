@@ -21,6 +21,7 @@ cmd=(
 	-e NFS_DISABLE_VERSION_3=1
 	--mount type=tmpfs,destination=/exports
 	-v /srv/os:/exports/os:ro
+	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/os:/exports/os-rw	 # for install/setup
 	-v /srv/result:/exports/result
 	-v /srv/data:/exports/data

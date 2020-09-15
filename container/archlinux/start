@@ -5,6 +5,7 @@ cmd=(
 	docker run
 	--restart=always
 	-v archlinux-home:/home
+	-v /etc/localtime:/etc/localtime:ro
 	-v archlinux-root:/root
 	-v /c:/c
 	-v /srv/os:/srv/os

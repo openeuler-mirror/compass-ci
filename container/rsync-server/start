@@ -9,6 +9,7 @@ cmd=(
 	-id
 	--name=rsync_server 
 	-v /srv/result:/result
+	-v /etc/localtime:/etc/localtime:ro
 	-p 873:873
 	rsync_server:latest
 )

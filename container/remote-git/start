@@ -8,6 +8,7 @@ cmd=(
 	-d
 	-p 8100:8100
 	-v /srv/git:/srv/git
+	-v /etc/localtime:/etc/localtime:ro
 	debian:remote-git
 )
 

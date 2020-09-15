@@ -17,6 +17,7 @@ cmd = %W[
   -e CCI_SRC=#{DOCKER_CCI}
   -e REPO_SRC=#{DOCKER_REPO}
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
+  -v /etc/localtime:/etc/localtime:ro
   -v #{ENV['REPO_SRC']}:#{DOCKER_REPO}
   -v /srv/git:/srv/git
   -w /c/crystal-ci/sbin

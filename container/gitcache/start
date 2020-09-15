@@ -9,6 +9,7 @@ cmd=(
 	--restart=always
 	-p 5000:5000
 	-v /srv/cache/gitcache/:/var/gitcache/
+	-v /etc/localtime:/etc/localtime:ro
 	gitcache
 )
 

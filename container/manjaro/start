@@ -8,6 +8,7 @@ cmd=(
 	docker run
 	--restart=always
 	-v manjaro-home:/home
+	-v /etc/localtime:/etc/localtime:ro
 	-v manjaro-root:/root
 	-v /c:/c
 	-v /srv/os:/srv/os
