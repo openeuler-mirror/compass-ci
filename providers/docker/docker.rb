@@ -8,7 +8,7 @@ require 'set'
 require 'fileutils'
 require_relative '../../container/defconfig'
 
-BASE_DIR = ENV['HOME'] + '/jobs'
+BASE_DIR = '/srv/dc'
 
 def get_url(hostname)
   names = Set.new %w[
