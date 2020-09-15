@@ -15,12 +15,13 @@ smtp = {
 Mail.defaults { delivery_method :smtp, smtp }
 
 # send mail
-def send_mail(from, subject, to, body)
+def send_mail(mail_info)
   mail = Mail.new do
-    from from
-    subject subject
-    to to
-    body body
+    references mail_info['references']
+    from mail_info['from']
+    subject mail_info['subject']
+    to mail_info['to']
+    body mail_info['body']
   end
   mail.deliver!
 end
