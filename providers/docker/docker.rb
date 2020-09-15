@@ -40,8 +40,21 @@ def wget_cmd(path, url, name)
   system "wget -q -P #{path} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
 end
 
-def build_load_path
-  return BASE_DIR + '/' + Process.pid.to_s
+def build_load_path(hostname)
+  return BASE_DIR + '/' + hostname
+end
+
+def clean_dir(path)
+  Dir.foreach(path) do |file|
+    if file != '.' && file != '..'
+      filename = File.join(path, file)
+      if File.directory?(filename)
+        FileUtils.rm_r(filename)
+      else
+        File.delete(filename)
+      end
+    end
+  end
 end
 
 def load_initrds(load_path, hash)
@@ -59,7 +72,7 @@ def run(hostname, load_path, hash)
     { 'hostname' => hostname, 'docker_image' => docker_image, 'load_path' => load_path },
     ENV['CCI_SRC'] + '/providers/docker/run.sh'
   )
-  FileUtils.rm_r(load_path)
+  clean_dir(load_path)
 end
 
 def main(hostname)
@@ -68,7 +81,7 @@ def main(hostname)
   hash = parse_response url
   return if hash.nil?
 
-  load_path = build_load_path
+  load_path = build_load_path(hostname)
   load_initrds(load_path, hash)
   run(hostname, load_path, hash)
 end
