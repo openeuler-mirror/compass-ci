@@ -22,3 +22,16 @@ EOF
 cat >> /etc/modules-load.d/cifs <<EOF
 cifs
 EOF
+
+cat > /etc/docker/daemon.json <<EOF
+{
+  "log-driver": "fluentd",
+  "log-opts":{
+    "fluentd-address": "localhost:24224",
+    "fluentd-async-connect": "true",
+    "tag": "{{.Name}}"
+  }
+}
+EOF
+
+systemctl restart docker
