@@ -65,6 +65,8 @@ echo initrds: $initrds
 echo append: $append
 echo less $log_file
 
+sleep 5
+
 kvm=(
 	$qemu
 	-machine virt-4.0,accel=kvm,gic-version=3
