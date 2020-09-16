@@ -34,3 +34,6 @@ Style/IfUnlessModifier:
 
 Style/NumericLiterals:
   Enabled: false
+
+Layout/HeredocIndentation:
+  Enabled: false
