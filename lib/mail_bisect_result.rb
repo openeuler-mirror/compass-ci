@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 require_relative 'mail_client'
@@ -27,7 +26,7 @@ class MailBisectResult
       Bisect completed for
 
       url: #{@git_commit.url}
-      
+
       This is a bisect email from crystal-ci. We met some problems when test with new commits.
       Would you help to check what happend?
       After submitting a job we noticed an error response due to the commit:
