@@ -1,0 +1,12 @@
+---
+suite:                   <%= ENV['suite'] %>
+category: functional
+os:                      <%= ENV['os'] %>
+os_arch:                 <%= ENV['os_arch'] %>
+os_mount:                <%= ENV['os_mount'] %>
+os_version:              <%= ENV['os_version'] %>
+
+"<%= ENV['suite'] %>":
+  benchmark:             <%= ENV['benchmark'] %>
+
+testbox: dc-16g
