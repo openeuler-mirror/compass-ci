@@ -30,7 +30,7 @@ COMMON_PARAMS = %w[tbox_group os os_arch os_version].freeze
 # @jobs_list: Array. job list.
 # @dimensions: Array, compare key list.
 def auto_group(jobs_list, dimensions)
-  return if dimensions.empty?
+  return [] if dimensions.empty?
 
   jobs_list = extract_jobs_list(jobs_list)
   groups = group(jobs_list, dimensions)
