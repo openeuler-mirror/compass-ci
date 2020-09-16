@@ -57,13 +57,11 @@ def compare_group(argv, dimensions, options)
   conditions = parse_conditions(argv)
   dims = dimensions.split(' ')
   groups_matrices = create_groups_matrices_list(conditions, dims)
-  return nil if groups_matrices.empty?
-
   compare_group_matrices(groups_matrices, options)
 end
 
-def create_groups_matrices_list(conditions, dims)
+def create_groups_matrices_list(conditions, dims, range: {})
   es = ESQuery.new(ES_HOST, ES_PORT)
-  query_results = es.multi_field_query(conditions)
+  query_results = es.multi_field_query(conditions, range: range)
   combine_group_query_data(query_results, dims)
 end
