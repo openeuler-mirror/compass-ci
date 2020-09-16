@@ -31,6 +31,9 @@ class GitMirror
   def git_clone(url, mirror_dir)
     ret = false
     url = Array(url)[0]
+    if url.include?('gitee.com/') && File.exist?("/srv/git/#{url.delete_prefix('https://')}")
+      url = "/srv/git/#{url.delete_prefix('https://')}"
+    end
     10.times do
       ret = system("git clone --mirror #{url} #{mirror_dir}")
       break if ret
