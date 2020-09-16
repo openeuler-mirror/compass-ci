@@ -2,7 +2,7 @@
 
 FROM manjaroarm/manjaro-aarch64-base
 
-MAINTAINER Wu Fenguang <wufengguang@huawei.com>
+MAINTAINER Wu Fenguang <wfg@mail.ustc.edu.cn>
 
 COPY root /
 RUN	chmod 755 /etc /etc/pacman.d

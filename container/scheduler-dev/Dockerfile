@@ -2,7 +2,7 @@
 
 FROM alpine:crystal-base
 
-MAINTAINER chief <tongqunfeng@huawei.com>
+MAINTAINER chief <taxcom@tom.com>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 FROM debian
-MAINTAINER luanshengde2@huawei.com
+MAINTAINER luanshd0525@163.com
 ENV DEBIAN_FRONTEND noninteractive
 
 COPY conf/sources.list* /etc/apt/

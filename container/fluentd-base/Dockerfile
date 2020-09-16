@@ -2,7 +2,7 @@
 
 FROM alpine:3.11
 
-MAINTAINER Wu Zhende <wuzhende1@huawei.com>
+MAINTAINER Wu Zhende <wuzhende666@163.com>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 

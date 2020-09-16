@@ -2,7 +2,7 @@
 
 FROM centos:8
 
-MAINTAINER Yu Chuan <yuchuan6@huawei.com>, Shi Zhichao <shizhichao2@huawei.com>
+MAINTAINER Yu Chuan <13186087857@163.com>, Shi Zhichao <angus_robot@163.com>
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM*
 

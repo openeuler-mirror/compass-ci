@@ -2,7 +2,7 @@
 
 FROM debian
 
-MAINTAINER wangchenglong17@huawei.com
+MAINTAINER 18509160991@163.com
 
 ENV DEBIAN_FRONTEND noninteractive
 

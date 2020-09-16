@@ -2,7 +2,7 @@
 
 FROM debian
 
-MAINTAINER Wu Fenguang <wufengguang@huawei.com>
+MAINTAINER Wu Fenguang <wfg@mail.ustc.edu.cn>
 
 ENV DEBIAN_FRONTEND noninteractive
 

@@ -2,6 +2,6 @@
 
 FROM centos:8
 
-MAINTAINER Xu Xijian <xuxijian@huawei.com>
+MAINTAINER Xu Xijian <hdxuxijian@163.com>
 
 RUN yum install -y rsync

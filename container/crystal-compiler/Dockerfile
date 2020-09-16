@@ -2,7 +2,7 @@
 
 FROM alpine:3.11
 
-MAINTAINER Cao Xueliang <caoxueliang2@huawei.com>
+MAINTAINER Cao Xueliang <caoxl78320@163.com>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 

@@ -4,7 +4,7 @@ FROM gagara/elasticsearch-oss-arm64:7.6.2
 
 # docker image borrowed from hub.docker.com/r/gagara/elasticsearch-oss-arm64
 
-MAINTAINER Wu Zhende <wuzhende1@huawei.com>
+MAINTAINER Wu Zhende <wuzhende666@163.com>
 
 RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/elasticsearch/config/elasticsearch.yml;
 RUN sed -i '$a path.data: /srv/es/logging-es' /usr/share/elasticsearch/config/elasticsearch.yml;

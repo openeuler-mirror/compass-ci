@@ -2,7 +2,7 @@
 
 FROM alpine:3.11
 
-MAINTAINER Wu Fenguang <wufengguang@huawei.com>
+MAINTAINER Wu Fenguang <wfg@mail.ustc.edu.cn>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 

@@ -2,7 +2,7 @@
 
 FROM alpine:crystal-base
 
-MAINTAINER chief <tongqunfeng@huawei.com>
+MAINTAINER chief <taxcom@tom.com>
 
 ARG GITCACHE_HOST
 ARG GITCACHE_PORT

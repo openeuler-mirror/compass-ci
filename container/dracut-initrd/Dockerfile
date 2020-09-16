@@ -2,7 +2,7 @@
 
 FROM debian
 
-MAINTAINER Wu Fenguang <wufengguang@huawei.com>
+MAINTAINER Wu Fenguang <wfg@mail.ustc.edu.cn>
 
 ADD bin /usr/local/bin
 COPY conf/sources.list* /etc/apt/

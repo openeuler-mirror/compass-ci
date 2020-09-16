@@ -2,7 +2,7 @@
 
 FROM alpine:3.11
 
-MAINTAINER chief <tongqunfeng@huawei.com>
+MAINTAINER chief <taxcom@tom.com>
 
 ONBUILD RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 

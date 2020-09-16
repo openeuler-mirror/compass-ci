@@ -2,7 +2,7 @@ name: scheduler
 version: 0.1.0
 
 authors:
-  - tongqunfeng <tongqunfeng@huawei.com>
+  - tongqunfeng <taxcom@tom.com>
 
 targets:
   scheduler:
