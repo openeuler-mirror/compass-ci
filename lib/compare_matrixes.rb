@@ -420,8 +420,8 @@ def get_reproduction_index_str(reproduction, compare_index)
   reproduction_str = format('%+.1f%%', reproduction)
   reproduction_index = compare_index - reproduction_str.index('.')
   if reproduction_index.negative?
-    reproduction_index = compare_index - reproduction_str.index('e') - 1
     reproduction_str = format('%+.1e%%', reproduction).sub('e+0', 'e+').sub('e-0', 'e-')
+    reproduction_index = compare_index - reproduction_str.index('e') - 1
   end
   return reproduction_index, reproduction_str
 end
