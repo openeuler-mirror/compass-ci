@@ -98,7 +98,7 @@ class Sched
             end
 
             return cluster_state
-            
+
         when "write_state"
             node_roles = env.params.query["node_roles"]
             node_ip = env.params.query["ip"]
@@ -504,8 +504,8 @@ class Sched
         response += add_kernel_console_param(job.os_arch)
         if job.os_mount == "initramfs"
           response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz"
-          job.initrd_deps.split().each do |initrd_deps|
-            response += " initrd=#{File.basename(initrd_deps)}"
+          job.initrd_deps.split().each do |initrd_dep|
+            response += " initrd=#{File.basename(initrd_dep)}"
           end
           response += " initrd=#{File.basename(JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/run-ipconfig.cgz"))}\n"
         else
