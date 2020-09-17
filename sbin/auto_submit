@@ -16,17 +16,48 @@ class AutoSubmit
     @repo2job = YAML.load_file("#{$PROGRAM_NAME}.yaml")
   end
 
-  def submit_job(newrefs_info)
-    git_repo = newrefs_info['git_repo']
-    return unless @repo2job[git_repo]
+  def get_pkgbuild_repo(repo_array)
+    pkgbuild_repo = nil
+    repo_array.each do |repo|
+      next unless repo =~ /-git$/
 
-    pkgbuild_repo = newrefs_info['pkgbuild_repo']
-    jobfile = "#{ENV['LKP_SRC']}/jobs/#{@repo2job[git_repo]}"
+      pkgbuild_repo = "archlinux/#{repo}"
+      break
+    end
+    return pkgbuild_repo
+  end
+
+  def submit(newrefs_info, cmd, git_repo, repo2job_key)
+    jobfile = "#{ENV['LKP_SRC']}/jobs/#{@repo2job[repo2job_key]}"
     newrefs_info['new_refs']['heads'].each_value do |value|
       commit_date = `git -C /srv/git/#{git_repo}.git log  --format=%ct -1 #{value}`
-      system("#{ENV['LKP_SRC']}/sbin/submit -s 'upstream_repo: #{git_repo}' -s 'upstream_commit: #{value}'\
-             -s 'pkgbuild_repo: #{pkgbuild_repo}' -s 'commit_date: #{commit_date}' #{jobfile}")
+      system("#{cmd} -s 'upstream_commit: #{value}' -s 'commit_date: #{commit_date}' #{jobfile}")
     end
+  end
+
+  def get_argvs(newrefs_info, cmd)
+    if newrefs_info['pkgbuild_repo']
+      pkgbuild_repo = get_pkgbuild_repo(newrefs_info['pkgbuild_repo'])
+      return unless pkgbuild_repo
+
+      repo2job_key = 'archlinux'
+      cmd = "#{cmd} -s 'pkgbuild_repo: #{pkgbuild_repo}'"
+    else
+      return unless @repo2job[git_repo]
+
+      repo2job_key = git_repo
+    end
+    [cmd, repo2job_key]
+  end
+
+  def submit_job(newrefs_info)
+    git_repo = newrefs_info['git_repo']
+    cmd = "#{ENV['LKP_SRC']}/sbin/submit -s 'upstream_repo: #{git_repo}'"
+
+    cmd, repo2job_key = get_argvs(newrefs_info, cmd)
+    return unless repo2job_key
+
+    submit(newrefs_info, cmd, git_repo, repo2job_key)
   end
 
   def listen
@@ -35,7 +66,7 @@ class AutoSubmit
         message_info = JSON.parse(message)
         submit_job(message_info)
       end
-      sleep(1)
+      sleep(0.1)
     end
   end
 end
