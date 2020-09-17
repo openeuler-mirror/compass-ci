@@ -27,37 +27,41 @@ class AutoSubmit
     return pkgbuild_repo
   end
 
-  def submit(newrefs_info, cmd, git_repo, repo2job_key)
-    jobfile = "#{ENV['LKP_SRC']}/jobs/#{@repo2job[repo2job_key]}"
+  def submit(newrefs_info, submit_argv, git_repo, repo2job_key)
+    submit_argv.push(@repo2job[repo2job_key])
+
     newrefs_info['new_refs']['heads'].each_value do |value|
       commit_date = `git -C /srv/git/#{git_repo}.git log  --format=%ct -1 #{value}`
-      system("#{cmd} -s 'upstream_commit: #{value}' -s 'commit_date: #{commit_date}' #{jobfile}")
+      submit_argv.push("upstream_commit=#{value}")
+      submit_argv.push("commit_date=#{commit_date}")
+
+      system(submit_argv.join(' '))
     end
   end
 
-  def get_argvs(newrefs_info, cmd)
+  def get_argvs(newrefs_info, submit_argv)
     if newrefs_info['pkgbuild_repo']
       pkgbuild_repo = get_pkgbuild_repo(newrefs_info['pkgbuild_repo'])
       return unless pkgbuild_repo
 
       repo2job_key = 'archlinux'
-      cmd = "#{cmd} -s 'pkgbuild_repo: #{pkgbuild_repo}'"
+      submit_argv.push("pkgbuild_repo=#{pkgbuild_repo}")
     else
       return unless @repo2job[git_repo]
 
       repo2job_key = git_repo
     end
-    [cmd, repo2job_key]
+    [submit_argv, repo2job_key]
   end
 
   def submit_job(newrefs_info)
     git_repo = newrefs_info['git_repo']
-    cmd = "#{ENV['LKP_SRC']}/sbin/submit -s 'upstream_repo: #{git_repo}'"
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit upstream_repo=#{git_repo}"]
 
-    cmd, repo2job_key = get_argvs(newrefs_info, cmd)
+    submit_argv, repo2job_key = get_argvs(newrefs_info, submit_argv)
     return unless repo2job_key
 
-    submit(newrefs_info, cmd, git_repo, repo2job_key)
+    submit(newrefs_info, submit_argv, git_repo, repo2job_key)
   end
 
   def listen
