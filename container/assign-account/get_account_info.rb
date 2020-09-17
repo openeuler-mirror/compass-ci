@@ -69,7 +69,7 @@ class AccountStorage
     files.sort
     account_info = []
     account_info.push files[0]
-    source_file = available_dir + files[0]
+    source_file = File.join(available_dir, files[0])
     account_info.push File.readlines(source_file)[0].chomp
 
     dest_dir = File.join(@account_dir, 'assigned-users')
