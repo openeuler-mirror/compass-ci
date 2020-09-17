@@ -1,0 +1,28 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+cmd=(
+	docker run
+	--restart=always
+	--name=assign-account
+	-d
+	-v /etc/passwd:/etc/passwd:ro
+	-v /etc/group:/etc/group:ro
+	-v /srv/account-info:/opt/account_data/:rw
+	-v /home:/home:rw
+	-p 29999:29999
+	assign-account
+)
+
+"${cmd[@]}"
+
+cat << EOF
+port: 29999
+---
+Client:
+./assign-tool.rb email_file
+
+email subject: "apply ssh account"
+
+Refer to crystal-ci/doc/apply-ssh-account.md for more information.
+EOF
