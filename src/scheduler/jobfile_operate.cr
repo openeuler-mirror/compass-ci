@@ -136,7 +136,7 @@ module Jobfile::Operate
         end
         # create result dir and copy job.sh, job.yaml and job.cgz to result dir
         src_dir = File.dirname(temp_yaml)
-        dst_dir = job_content["result_root"].to_s
+        dst_dir = File.join("/srv", job_content["result_root"].to_s)
         FileUtils.mkdir_p(dst_dir)
         # the job.yaml is not final version
         files = ["#{src_dir}/job.sh",
@@ -184,7 +184,7 @@ module Jobfile::Operate
     def self.update_lkp_when_different(base_dir, lkp_initrd_user, os_arch)
         target_path = base_dir + "/#{lkp_initrd_user}-#{os_arch}"
         bak_lkp_filename = target_path + ".cgz"
-        source_path = "/initrd/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz"
+        source_path = "/srv/initrd/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz"
 
         if File.exists?(bak_lkp_filename)
             # no need update

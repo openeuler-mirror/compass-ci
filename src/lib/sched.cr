@@ -314,7 +314,7 @@ class Sched
         response = Hash(String, String).new
         response["docker_image"] = "#{job.docker_image}"
         response["lkp"] = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}" +
-            File.real_path("/initrd/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz")
+            JobHelper.service_path("/srv/initrd/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz")
         response["job"] = "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
 
         puts %({"job_id": "#{job.id}", "job_state": "boot"})
@@ -326,14 +326,14 @@ class Sched
 
         response = "#!grub\n\n"
         response += "linux (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})"
-        response += "#{File.real_path("/os/#{job.os_dir}/vmlinuz")} user=lkp"
+        response += "#{JobHelper.service_path("/srv/os/#{job.os_dir}/vmlinuz")} user=lkp"
         response += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
         response += " rootovl ip=dhcp ro root=#{job.kernel_append_root}\n"
 
         response += "initrd (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})"
-        response += File.real_path("/os/#{job.os_dir}/initrd.lkp")
+        response += JobHelper.service_path("/srv/os/#{job.os_dir}/initrd.lkp")
         response += " (http,#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT})"
-        response += File.real_path("/initrd/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}")
+        response += JobHelper.service_path("/srv/initrd/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}")
         response += " (http,#{SCHED_HOST}:#{SCHED_PORT})/job_initrd_tmpfs/"
         response += "#{job.id}/job.cgz\n"
 
@@ -471,6 +471,7 @@ class Sched
         return initrd_deps, initrd_pkg
     end
 
+
     private def get_boot_ipxe(job : Job)
         initrd_lkp_cgz = "lkp-#{job.os_arch}.cgz"
 
@@ -483,20 +484,20 @@ class Sched
         response = "#!ipxe\n\n"
         if job.os_mount == "initramfs"
             response += "initrd #{initrd_http_prefix}" +
-                "#{File.real_path("/initrd/osimage/#{job.os_dir}/current")}\n"
+                "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/current")}\n"
             response += "initrd #{initrd_http_prefix}" +
-                "#{File.real_path("/initrd/osimage/#{job.os_dir}/run-ipconfig.cgz")}\n"
+                "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/run-ipconfig.cgz")}\n"
         else
             response += "initrd #{os_http_prefix}" +
-                "#{File.real_path("/os/#{job.os_dir}/initrd.lkp")}\n"
+                "#{JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/initrd.lkp")}\n"
         end
         response += "initrd #{initrd_http_prefix}" +
-            "#{File.real_path("/initrd/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}")}\n"
+            "#{JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}")}\n"
         response += "initrd #{sched_http_prefix}/job_initrd_tmpfs/#{job.id}/job.cgz\n"
         response += initrd_deps
         response += initrd_pkg
         response += "kernel #{os_http_prefix}" +
-            "#{File.real_path("/os/#{job.os_dir}/vmlinuz")}"
+            "#{JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/vmlinuz")}"
         response += " user=lkp"
         response += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
         response += " #{job.kernel_append_root}"
@@ -506,7 +507,7 @@ class Sched
           job.initrd_deps.split().each do |initrd_deps|
             response += " initrd=#{File.basename(initrd_deps)}"
           end
-          response += " initrd=run-ipconfig.cgz\n"
+          response += " initrd=#{File.basename(JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/run-ipconfig.cgz"))}\n"
         else
           response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
         end
