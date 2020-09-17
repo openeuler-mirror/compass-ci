@@ -36,7 +36,7 @@
 Example:
 
 	git config --global user.name "Wu Fengguang"
-	git config --global user.email "wufengguang@huawei.com"
+	git config --global user.email "wfg@mail.ustc.edu.cn"
 
 ## repos
 
