@@ -2,8 +2,8 @@
 # frozen_string_literal: true
 
 START_PROCESS_COUNT = 10
-GIT_MIRROR_HOST = ENV['GIT_MIRROR_HOST'] || 'localhost'
-MONITOR_HOST = ENV['MONITOR_HOST'] || 'localhost'
+GIT_MIRROR_HOST = ENV['GIT_MIRROR_HOST'] || '172.17.0.1'
+MONITOR_HOST = ENV['MONITOR_HOST'] || '172.17.0.1'
 MONITOR_PORT = ENV['MONITOR_PORT'] || '11310'
 TMEP_GIT_BASE = '/c/public_git'
 DELIMITER_TASK_QUEUE = 'delimiter'

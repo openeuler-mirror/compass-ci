@@ -21,7 +21,7 @@ env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/crystal-ci'
-FLUENTD_HOST = defaults['FLUENTD_HOST'] || 'localhost'
+FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'
 FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 docker_rm "extract-stats"
 
