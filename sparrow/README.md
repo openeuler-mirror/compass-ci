@@ -20,6 +20,7 @@ Prepare:
 		>= 300G
 
 Steps:
-	1. git clone https://gitee.com/wu_fengguang/crystal-ci.git
-	2. cd crystal-ci/sparrow
-	3. ./install-tiny
+	umask 002
+	git clone https://gitee.com/wu_fengguang/crystal-ci.git
+	cd crystal-ci/sparrow
+	./install-tiny
