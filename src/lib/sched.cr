@@ -178,6 +178,8 @@ class Sched
         job_content = JSON.parse(body)
         job_content["lab"] = LAB unless job_content["lab"]?
 
+        fix_job_content_from_ssh_forward(job_content)
+
         if job_content["cluster"]?
             cluster_file = job_content["cluster"].to_s
             lkp_initrd_user = job_content["lkp_initrd_user"]? || "latest"
@@ -596,5 +598,14 @@ class Sched
         @redis.remove_finished_job(job_id)
 
         puts %({"job_id": "#{job_id}", "job_state": "complete"})
+    end
+
+    def fix_job_content_from_ssh_forward(job_content)
+        if job_content["SCHED_HOST"] == "127.0.0.1"
+           job_content["SCHED_HOST"] = SCHED_HOST
+           job_content["LKP_SERVER"] = SCHED_HOST
+           job_content["SCHED_PORT"] = SCHED_PORT.to_s
+           job_content["LKP_CGI_PORT"] = SCHED_PORT.to_s
+        end
     end
 end
