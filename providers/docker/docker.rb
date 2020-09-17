@@ -58,6 +58,7 @@ def clean_dir(path)
 end
 
 def load_initrds(load_path, hash)
+  clean_dir(load_path) unless Dir.empty?(load_path)
   arch = RUBY_PLATFORM.split('-')[0]
   job_url = hash['job']
   lkp_url = hash['lkp']
