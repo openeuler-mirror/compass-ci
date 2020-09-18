@@ -28,9 +28,10 @@ class AutoSubmit
   end
 
   def submit(newrefs_info, submit_argv)
-    newrefs_info['new_refs']['heads'].each_value do |value|
-      commit_date = `git -C /srv/git/#{newrefs_info['git_repo']}.git log  --format=%ct -1 #{value}`
-      submit_argv.push("upstream_commit=#{value}")
+    newrefs_info['new_refs']['heads'].each do |branch, commit_id|
+      commit_date = `git -C /srv/git/#{newrefs_info['git_repo']}.git log  --format=%ct -1 #{commit_id}`
+      submit_argv.push("upstream_branch=#{branch.delete_prefix('refs/heads/')}")
+      submit_argv.push("upstream_commit=#{commit_id}")
       submit_argv.push("commit_date=#{commit_date}")
 
       system(submit_argv.join(' '))
@@ -39,14 +40,14 @@ class AutoSubmit
 
   def get_argvs(newrefs_info)
     git_repo = newrefs_info['git_repo']
-    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit upstream_repo=#{git_repo}"]
+    url = Array(newrefs_info['url'])[0]
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit upstream_repo=#{git_repo} upstream_url=#{url}"]
 
     if newrefs_info['pkgbuild_repo']
       pkgbuild_repo = get_pkgbuild_repo(newrefs_info['pkgbuild_repo'])
       return unless pkgbuild_repo
 
-      submit_argv.push("pkgbuild_repo=#{pkgbuild_repo}")
-      submit_argv.push(@repo2job['archlinux'])
+      submit_argv.push("pkgbuild_repo=#{pkgbuild_repo} #{@repo2job['archlinux']}")
     else
       return unless @repo2job[git_repo]
 
