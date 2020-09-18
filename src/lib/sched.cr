@@ -407,7 +407,16 @@ class Sched
     end
 
     private def find_job(testbox : String, count = 1)
-        tbox_group = JobHelper.match_tbox_group(testbox)
+        tbox = JobHelper.match_tbox_group(testbox)
+
+        count.times do
+            job = prepare_job("sched/#{tbox}", testbox)
+            return job if job
+
+            sleep(1) unless count == 1
+        end
+
+        tbox_group = tbox.sub(/\-\-\w*/, "")
 
         count.times do
             job = prepare_job("sched/#{tbox_group}", testbox)
@@ -441,18 +450,18 @@ class Sched
 
         # if there has no idle job, auto submit and get 1
         if job.nil?
-            auto_submit_idle_job(testbox)
+            auto_submit_idle_job(tbox_group)
             job = prepare_job("sched/#{tbox_group}/idle", testbox)
         end
 
         return job
     end
 
-    def auto_submit_idle_job(testbox)
-        full_path_patterns = "#{ENV["CCI_SRC"]}/allot/idle/#{testbox}/*.yaml"
+    def auto_submit_idle_job(tbox_group)
+        full_path_patterns = "#{ENV["CCI_SRC"]}/allot/idle/#{tbox_group}/*.yaml"
         Jobfile::Operate.auto_submit_job(
             full_path_patterns,
-            "testbox: #{testbox}") if Dir.glob(full_path_patterns).size > 0
+            "testbox: #{tbox_group}/idle") if Dir.glob(full_path_patterns).size > 0
     end
 
     private def add_kernel_console_param(arch_tmp)
