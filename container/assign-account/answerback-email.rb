@@ -2,6 +2,39 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # frozen_string_literal: true
 
+=begin
+
+repo_list:
+  all repos url list from upstream-repos.git
+
+API:
+call graph:
+read_mail_content
+send_account_request
+  email_addr
+    get email address
+  email_message_id
+    get email message_id
+  check_email_available
+    check email available
+  pub_key_value
+    get pub key
+  account
+    send apply account request and return account info
+  build_message
+    build email message
+  send_mail
+    call send_mail to send mail whit build message
+
+the returned data for account_info like:
+{
+  "account" => "guest",
+  "passwd" => "Use pub_key to login",
+  "jumper_ip" => "10.10.10.10",
+  "jumper_port" => "10000"
+}
+=end
+
 require 'json'
 require 'mail'
 require 'set'
@@ -56,7 +89,13 @@ def email_addr(mail_content)
 end
 
 # def check_email_available(mail_content, email)
-#   url = mail_content.body.decoded.split(/\n/).find { |line| line =~ /http:\/\/|https:\/\// }
+#   oos_list = File.read('/c/upstream-repos/repo_list').split(/\n/)
+#   url = mail_content.body.decoded.split(/\n/).find { |line| line =~ /https?:\/\// }
+#   base_url = url.split('/')[0,5].join('/')
+#   message = 'The url is not in upstream repo_list'
+#
+#   raise message unless oos_list.include? base_url
+#   
 #   url_fdback = %x(curl #{url})
 #   email_index = url_fdback.index email
 #
