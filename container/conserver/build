@@ -1,4 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+sh generate_conserver || exit 1
+
 docker build -t conserver_server .
