@@ -7,7 +7,11 @@ cd /c || exit
 
 # git clone https://gitee.com/openeuler/crystal-ci.git
 # modify and manual run for now:
-git clone https://gitee.com/wu_fengguang/crystal-ci.git
-ln -s crystal-ci cci
+[ -d "crystal-ci/.git" ] || {
+	git clone https://gitee.com/wu_fengguang/crystal-ci.git
+	ln -s crystal-ci cci
+}
 
-git clone https://gitee.com/wu_fengguang/lkp-tests.git
+[ -d "lkp-tests/.git" ] || {
+	git clone https://gitee.com/wu_fengguang/lkp-tests.git
+}
