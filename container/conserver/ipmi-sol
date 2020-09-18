@@ -1,0 +1,4 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+ipmitool -N 5 -I lanplus -H $1 -U "$USER" -E sol activate
