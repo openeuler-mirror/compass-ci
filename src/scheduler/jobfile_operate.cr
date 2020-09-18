@@ -184,7 +184,7 @@ module Jobfile::Operate
     def self.update_lkp_when_different(base_dir, lkp_initrd_user, os_arch)
         target_path = base_dir + "/#{lkp_initrd_user}-#{os_arch}"
         bak_lkp_filename = target_path + ".cgz"
-        source_path = "/srv/initrd/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz"
+        source_path = "#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz"
 
         if File.exists?(bak_lkp_filename)
             # no need update

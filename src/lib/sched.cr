@@ -316,7 +316,7 @@ class Sched
         response = Hash(String, String).new
         response["docker_image"] = "#{job.docker_image}"
         response["lkp"] = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}" +
-            JobHelper.service_path("/srv/initrd/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz")
+            JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz")
         response["job"] = "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
 
         puts %({"job_id": "#{job.id}", "job_state": "boot"})
@@ -328,14 +328,14 @@ class Sched
 
         response = "#!grub\n\n"
         response += "linux (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})"
-        response += "#{JobHelper.service_path("/srv/os/#{job.os_dir}/vmlinuz")} user=lkp"
+        response += "#{JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/vmlinuz")} user=lkp"
         response += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job"
         response += " rootovl ip=dhcp ro root=#{job.kernel_append_root}\n"
 
         response += "initrd (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})"
-        response += JobHelper.service_path("/srv/os/#{job.os_dir}/initrd.lkp")
+        response += JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/initrd.lkp")
         response += " (http,#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT})"
-        response += JobHelper.service_path("/srv/initrd/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}")
+        response += JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}")
         response += " (http,#{SCHED_HOST}:#{SCHED_PORT})/job_initrd_tmpfs/"
         response += "#{job.id}/job.cgz\n"
 
