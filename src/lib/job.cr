@@ -178,9 +178,14 @@ class Job
   private def set_kernel_append_root
     os_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}")
     lkp_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}/initrd.lkp")
-    current_real_path = JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/current")
     lkp_basename = File.basename(lkp_real_path)
-    current_basename = File.basename(current_real_path)
+
+    current_basename = ""
+    if "#{os_mount}" == "initramfs"
+      current_real_path = JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/current")
+      current_basename = File.basename(current_real_path)
+    end
+
     fs2root = {
       "nfs"  => "root=#{OS_HTTP_HOST}:#{os_real_path} initrd=#{lkp_basename}",
       "cifs" => "root=cifs://#{OS_HTTP_HOST}#{os_real_path}" +
