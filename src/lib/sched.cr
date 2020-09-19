@@ -544,7 +544,7 @@ class Sched
                 next
             end
             if parameter == "start_time" || parameter == "end_time"
-                value = Time.unix(value.to_i).to_s("%Y-%m-%d %H:%M:%S")
+                value = Time.unix(value.to_i).to_local().to_s("%Y-%m-%d %H:%M:%S")
             end
 
             job_content[parameter] = value
@@ -562,8 +562,7 @@ class Sched
         testbox = ""
         hash = Hash(String, String).new
 
-        timestamp = Time.local.to_unix
-        time = Time.unix(timestamp).to_s("%Y-%m-%d %H:%M:%S")
+        time = Time.local.to_s("%Y-%m-%d %H:%M:%S")
         hash["time"] = time
 
         %w(mac ip job_id tbox_name tbox_state).each do |parameter|
