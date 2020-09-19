@@ -350,7 +350,13 @@ class Sched
         return response
     end
 
+    def touch_access_key_file(job : Job)
+        FileUtils.touch(job.access_key_file)
+    end
+
     def boot_content(job : Job | Nil, boot_type : String)
+        touch_access_key_file(job) if job
+
         case boot_type
         when "ipxe"
             return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
@@ -584,8 +590,14 @@ class Sched
         puts hash.to_json
     end
 
+    def delete_access_key_file(job : Job)
+      File.delete(job.access_key_file) if File.exists?(job.access_key_file)
+    end
+
     def close_job(job_id : String)
         job = @redis.get_job(job_id)
+
+        delete_access_key_file(job) if job
 
         response = @es.set_job_content(job)
         if response["_id"] == nil

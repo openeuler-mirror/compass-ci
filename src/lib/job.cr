@@ -71,6 +71,8 @@ class Job
     initrd_pkg
     initrd_deps
     result_root
+    access_key
+    access_key_file
     lkp_initrd_user
     kernel_append_root
     docker_image
@@ -108,6 +110,8 @@ class Job
     append_init_field()
     set_os_dir()
     set_result_root()
+    set_result_service()
+    set_access_key()
     set_tbox_group()
     set_os_mount()
     set_kernel_append_root()
@@ -137,7 +141,16 @@ class Job
     self["result_root"] = "/result/#{suite}/#{id}"
   end
 
-  private def set_tbox_group
+  private def set_access_key()
+    self["access_key"] = "#{Random::Secure.hex(10)}" unless @hash["access_key"]?
+    self["access_key_file"] = File.join("/srv/", "#{result_root}", ".#{access_key}")
+  end
+
+  private def set_result_service()
+    self["result_service"] = "raw_upload"
+  end
+
+  private def set_tbox_group()
     tbox_group_name = JobHelper.get_tbox_group(JSON.parse(@hash.to_json))
     if tbox_group_name
       self["tbox_group"] = "#{tbox_group_name}"
