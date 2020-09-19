@@ -90,7 +90,7 @@ class SerialParser
   end
 
   def match_job_id(msg)
-    matched = msg["message"].to_s.match(/.*\/job_initrd_tmpfs\/(?<job_id>\d+)/)
+    matched = msg["message"].to_s.match(/.*\/job_initrd_tmpfs\/(?<job_id>.*?)\//)
     return unless matched
 
     job_id = matched.named_captures["job_id"]
