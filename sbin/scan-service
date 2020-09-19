@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 #
 # config file locations can be:
-# - /etc/crystal-ci/defaults/scan.list
-# - {HOME}/.config/crystal-ci/defaults/scan.list
+# - /etc/compass-ci/defaults/scan.list
+# - {HOME}/.config/compass-ci/defaults/scan.list
 # - {PWD}/scan.list
 #
 # config file demo: # namp param: -iL

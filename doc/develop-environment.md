@@ -44,14 +44,14 @@ Clone the following git repos to your $HOME
 
 	git clone file:///c/todo.git
 	git clone https://gitee.com/wu_fengguang/lkp-tests.git
-	git clone https://gitee.com/wu_fengguang/crystal-ci.git
+	git clone https://gitee.com/wu_fengguang/compass-ci.git
 
 Then read through documents
 
 	lkp-tests/doc/INSTALL.md
-	crystal-ci/doc/INSTALL.md
-	crystal-ci/doc/develop-flow.md
-	crystal-ci/doc/learning-resources.md
+	compass-ci/doc/INSTALL.md
+	compass-ci/doc/develop-flow.md
+	compass-ci/doc/learning-resources.md
 
 # crystal compiler
 

@@ -21,6 +21,6 @@ Prepare:
 
 Steps:
 	umask 002
-	git clone https://gitee.com/wu_fengguang/crystal-ci.git
-	cd crystal-ci/sparrow
+	git clone https://gitee.com/wu_fengguang/compass-ci.git
+	cd compass-ci/sparrow
 	./install-tiny

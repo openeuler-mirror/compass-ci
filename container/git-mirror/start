@@ -4,7 +4,7 @@
 
 require_relative '../defconfig.rb'
 
-DOCKER_CCI = '/c/crystal-ci'
+DOCKER_CCI = '/c/compass-ci'
 DOCKER_REPO = '/c/upstream-repos'
 docker_rm "git-mirror"
 
@@ -20,7 +20,7 @@ cmd = %W[
   -v /etc/localtime:/etc/localtime:ro
   -v #{ENV['REPO_SRC']}:#{DOCKER_REPO}
   -v /srv/git:/srv/git
-  -w /c/crystal-ci/sbin
+  -w /c/compass-ci/sbin
   alpine38:git-mirror
 ]
 

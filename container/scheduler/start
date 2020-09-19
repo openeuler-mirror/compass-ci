@@ -26,7 +26,7 @@ defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
-DEFAULT_CCI = '/c/crystal-ci'
+DEFAULT_CCI = '/c/compass-ci'
 SCHED_PORT = defaults['SCHED_PORT'] || '3000'
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'

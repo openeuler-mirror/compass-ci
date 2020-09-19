@@ -4,7 +4,7 @@
 SCHED_DEBUG_DIR=/c/cci/scheduler
 DIR=$(dirname $(realpath $0))
 [[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
-[[ $CCI_SRC ]] || CCI_SRC=/c/crystal-ci
+[[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
 
 if [ ! -d test ]; then
   mkdir test
@@ -14,7 +14,7 @@ cmd=(
   docker run
   --rm
   -e LKP_SRC=/c/lkp-tests
-  -e CCI_SRC=/c/crystal-ci
+  -e CCI_SRC=/c/compass-ci
   -e REDIS_PORT=6380
   -e ES_PORT=9201
   -e CRYSTAL_PATH="lib:/usr/share/crystal/app/lib:/usr/lib/crystal/shards:/usr/lib/crystal/core:/c/lkp-tests/lib:$SCHED_DEBUG_DIR"
@@ -23,7 +23,7 @@ cmd=(
   -v $DIR:$SCHED_DEBUG_DIR
   --mount type=tmpfs,destination=/result
   -v $LKP_SRC:/c/lkp-tests
-  -v $CCI_SRC:/c/crystal-ci
+  -v $CCI_SRC:/c/compass-ci
   --mount type=tmpfs,destination=/initrd
   -w $SCHED_DEBUG_DIR
   alpine:scheduler-dev

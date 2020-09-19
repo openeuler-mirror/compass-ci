@@ -5,11 +5,11 @@
 
 cd /c || exit
 
-# git clone https://gitee.com/openeuler/crystal-ci.git
+# git clone https://gitee.com/openeuler/compass-ci.git
 # modify and manual run for now:
-[ -d "crystal-ci/.git" ] || {
-	git clone https://gitee.com/wu_fengguang/crystal-ci.git
-	ln -s crystal-ci cci
+[ -d "compass-ci/.git" ] || {
+	git clone https://gitee.com/wu_fengguang/compass-ci.git
+	ln -s compass-ci cci
 }
 
 [ -d "lkp-tests/.git" ] || {

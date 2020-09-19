@@ -16,5 +16,5 @@ cmd=(
 
 cat <<EOF
 you can use cmd:
-curl -H 'Content-Type: Application/json' -XPOST 'localhost:8100/git_command' -d '{"git_repo": "crystal-ci/crystal-ci.git", "git_command": ["git-show", "HEAD"]}'
+curl -H 'Content-Type: Application/json' -XPOST 'localhost:8100/git_command' -d '{"git_repo": "compass-ci/compass-ci.git", "git_command": ["git-show", "HEAD"]}'
 EOF

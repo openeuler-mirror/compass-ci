@@ -10,8 +10,8 @@ server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 : ${fluentd_server_host:=$server_ip}
 : ${fluentd_server_port:=24224}
 
-mkdir -p /etc/crystal-ci/defaults
-cat > /etc/crystal-ci/defaults/$server_name.yaml <<EOF
+mkdir -p /etc/compass-ci/defaults
+cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
 SCHED_HOST: $sched_host
 SCHED_PORT: $sched_port
 OS_HTTP_HOST: $os_http_host
@@ -25,7 +25,7 @@ EOF
 
 cat > /etc/profile.d/crystal.sh <<'EOF'
 export LKP_SRC=/c/lkp-tests
-export CCI_SRC=/c/crystal-ci
+export CCI_SRC=/c/compass-ci
 
 export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
 EOF

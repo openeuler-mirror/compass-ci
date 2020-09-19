@@ -7,7 +7,7 @@ load_cci_defaults()
 {
 	shopt -s nullglob
 
-	for i in /etc/crystal-ci/defaults/*.yaml $HOME/.config/crystal-ci/defaults/*.yaml
+	for i in /etc/compass-ci/defaults/*.yaml $HOME/.config/compass-ci/defaults/*.yaml
 	do
 		create_yaml_variables "$i"
 	done

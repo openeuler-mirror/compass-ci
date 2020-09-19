@@ -21,7 +21,7 @@ defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
-DEFAULT_CCI = '/c/crystal-ci'
+DEFAULT_CCI = '/c/compass-ci'
 docker_rm 'delimiter'
 
 cmd = %w[

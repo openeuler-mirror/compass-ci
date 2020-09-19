@@ -12,9 +12,9 @@
 
 ## git repo
 
-	# git clone https://gitee.com/wu_fengguang/crystal-ci.git
+	# git clone https://gitee.com/wu_fengguang/compass-ci.git
 
-	cd crystal-ci
+	cd compass-ci
 	echo "export CCI_SRC=$PWD" >> $HOME/.${SHELL##*/}rc
 	echo "PATH=$PATH:$PWD/sbin">> $HOME/.${SHELL##*/}rc
 

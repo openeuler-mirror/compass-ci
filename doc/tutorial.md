@@ -44,7 +44,7 @@
 
 // shengde
   1. 如何申请账号
-       通过向crystal-ci@openeuler.io发邮件申请
+       通过向compass-ci@openeuler.io发邮件申请
        配置default
        write TODO
 
@@ -66,7 +66,7 @@
        
        git clone lkp-tests # submit
        git clone lab-z9    # jobs
-       #git clone crystal-ci
+       #git clone compass-ci
        
        需要支持linux / windows/mac/ 
        
@@ -277,7 +277,7 @@
 
 
 // yinsi
-- 本地搭建crystal-ci 服务器节点
+- 本地搭建compass-ci 服务器节点
   read code: sparrow
 
 ## todo call for Cooperation

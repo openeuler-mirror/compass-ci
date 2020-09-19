@@ -287,7 +287,7 @@ class Sched
 
     # return job_id
     def add_task(tbox_group, lab)
-        task_desc = JSON.parse(%({"domain": "crystal-ci", "lab": "#{lab}"}))
+        task_desc = JSON.parse(%({"domain": "compass-ci", "lab": "#{lab}"}))
         response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
         JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
     end

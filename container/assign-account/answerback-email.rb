@@ -59,9 +59,9 @@ def build_message(email, message_id, infos)
     To: #{email}
     Message-ID: #{message_id}
     Subject: jumper account is ready
- 
+
     Dear #{email}
- 
+
       Thank you for joining us.
       You can use the following command to login the jumper server:
 
@@ -72,7 +72,7 @@ def build_message(email, message_id, infos)
         account_password: #{infos['passwd']}
 
     regards
-    crystal-ci
+    compass-ci
   EMAIL_MESSAGE
 
   return message
@@ -95,7 +95,7 @@ end
 #   message = 'The url is not in upstream repo_list'
 #
 #   raise message unless oos_list.include? base_url
-#   
+#
 #   url_fdback = %x(curl #{url})
 #   email_index = url_fdback.index email
 #

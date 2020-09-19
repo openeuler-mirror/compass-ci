@@ -1,4 +1,4 @@
-# crystal-ci
+# compass-ci
 
 #### Description
 Crystal CI

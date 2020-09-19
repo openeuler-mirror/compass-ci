@@ -34,7 +34,6 @@ class MailBisectResult
       commit: #{@commit_id[0..11]} ("#{@git_commit.subject}")
       error_id: #{@error_id}
 
-    Compass-CI bisect service
     https://gitee.com/openeuler/compass-ci
     BODY
     @hash = { 'to' => @git_commit.author_email, 'body' => body, 'subject' => subject }

@@ -2,10 +2,10 @@
 
 ---
 # restful-API
-- First of all, you should deploy the lkp-tests and crystal-ci project
-- And set the environment variables needed for running (modify "/etc/crystal-ci/defaults/crystal.yaml", and run $CCI_SRC/container/defconfig.rb | defconfig.sh)
+- First of all, you should deploy the lkp-tests and compass-ci project
+- And set the environment variables needed for running (modify "/etc/compass-ci/defaults/crystal.yaml", and run $CCI_SRC/container/defconfig.rb | defconfig.sh)
   LKP_SRC: ~/code/lkp-tests    # path to your lkp-tests repo
-  CCI_SRC: ~/code/crystal-ci   # path to your crystal-ci repo
+  CCI_SRC: ~/code/compass-ci   # path to your compass-ci repo
   SCHED_HOST: 172.168.131.131  # hostname or ip of the scheduler
   SCHED_PORT: 3000             # port of the scheduler
   JOB_INDEX_TYPE: "jobs/_doc"  # es job document index and type
@@ -376,7 +376,7 @@ sched/mac2host                  |[{field => mac, value => hostname,]          |H
 # develper help
 
 ## 1. how to build exe file <scheduler>
-at crystal-ci host, scheduler will be run as a docker container.
+at compass-ci host, scheduler will be run as a docker container.
    use the script at $CCI_SRC/container/scheduler/build to build the container image
    use the script at $CCI_SRC/container/scheduler/run to start the container.
 
@@ -395,7 +395,7 @@ you can simply call the scheduler's build and run script.
 # How to start your own scheduler container
 
 ## 1.Add port configuration, select an unused port number like <3001>, write in xxx.yaml like "example.yaml"
-     cat > ~/.config/crystal-ci/defaults/example.yaml <<EOF
+     cat > ~/.config/compass-ci/defaults/example.yaml <<EOF
      SCHED_PORT: 3001
      EOF
 
@@ -409,7 +409,7 @@ you can simply call the scheduler's build and run script.
 
 # How to submit and execute tasks
 
-## 1.Modify iperf.yaml's field, You can find it in the "~/crystal-ci/user-client/helper" directory
+## 1.Modify iperf.yaml's field, You can find it in the "~/compass-ci/user-client/helper" directory
      vim $CCI_SRC/user-client/helper/iperf.yaml
      runtime: 30                    # unit in seconds, the time can be shortened
      arch: aarch64

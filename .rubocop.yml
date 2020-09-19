@@ -37,3 +37,6 @@ Style/NumericLiterals:
 
 Layout/HeredocIndentation:
   Enabled: false
+
+Style/BlockComments:
+  Enabled: false
