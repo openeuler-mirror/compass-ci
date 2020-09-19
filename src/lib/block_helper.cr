@@ -2,7 +2,6 @@
 
 # helper for (task) block
 class BlockHelper
-
   def initialize
     @block_helper = Hash(String, Fiber).new
   end
@@ -38,5 +37,4 @@ class BlockHelper
 
     @block_helper.delete(uuid)
   end
-
 end
