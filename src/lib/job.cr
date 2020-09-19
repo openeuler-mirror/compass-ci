@@ -36,21 +36,20 @@ module JobHelper
   end
 
   def self.service_path(path)
-      temp_path = File.real_path(path)
-      return temp_path.split("/srv")[-1]
+    temp_path = File.real_path(path)
+    return temp_path.split("/srv")[-1]
   end
 end
 
 class Job
-
   getter hash : Hash(String, JSON::Any)
 
   INIT_FIELD = {
-    os: "debian",
-    os_arch: "aarch64",
-    os_version: "sid",
+    os:              "debian",
+    os_arch:         "aarch64",
+    os_version:      "sid",
     lkp_initrd_user: "latest",
-    docker_image: "centos:7"
+    docker_image:    "centos:7",
   }
 
   def initialize(job_content : JSON::Any)
@@ -85,15 +84,15 @@ class Job
     end
   end
 
-  def dump_to_json()
+  def dump_to_json
     @hash.to_json
   end
 
-  def dump_to_yaml()
+  def dump_to_yaml
     @hash.to_yaml
   end
 
-  def dump_to_json_any()
+  def dump_to_json_any
     JSON.parse(dump_to_json)
   end
 
@@ -105,7 +104,7 @@ class Job
     @hash.any_merge!(json.as_h)
   end
 
-  private def set_defaults()
+  private def set_defaults
     append_init_field()
     set_os_dir()
     set_result_root()
@@ -116,7 +115,7 @@ class Job
     set_lkp_server()
   end
 
-  private def append_init_field()
+  private def append_init_field
     INIT_FIELD.each do |k, v|
       k = k.to_s
       if !@hash[k]? || @hash[k] == nil
@@ -125,20 +124,20 @@ class Job
     end
   end
 
-  private def set_lkp_server()
+  private def set_lkp_server
     self["LKP_SERVER"] = ENV["SCHED_HOST"]
     self["LKP_CGI_PORT"] = ENV["SCHED_PORT"]
   end
 
-  private def set_os_dir()
+  private def set_os_dir
     self["os_dir"] = "#{os}/#{os_arch}/#{os_version}"
   end
 
-  private def set_result_root()
+  private def set_result_root
     self["result_root"] = "/result/#{suite}/#{id}"
   end
 
-  private def set_tbox_group()
+  private def set_tbox_group
     tbox_group_name = JobHelper.get_tbox_group(JSON.parse(@hash.to_json))
     if tbox_group_name
       self["tbox_group"] = "#{tbox_group_name}"
@@ -151,7 +150,8 @@ class Job
 
   # defaults to the 1st value
   VALID_OS_MOUNTS = ["nfs", "initramfs", "cifs"]
-  private def set_os_mount()
+
+  private def set_os_mount
     if @hash["os_mount"]?
       if !VALID_OS_MOUNTS.includes?(@hash["os_mount"].to_s)
         raise "Invalid os_mount: #{@hash["os_mount"]}, should be in #{VALID_OS_MOUNTS}"
@@ -167,7 +167,7 @@ class Job
     testbox
   ]
 
-  private def check_required_keys()
+  private def check_required_keys
     REQUIRED_KEYS.each do |key|
       if !@hash[key]?
         raise "Missing required job key: '#{key}'"
@@ -175,22 +175,22 @@ class Job
     end
   end
 
-  private def set_kernel_append_root()
+  private def set_kernel_append_root
     os_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}")
     lkp_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}/initrd.lkp")
     current_real_path = JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/current")
     lkp_basename = File.basename(lkp_real_path)
     current_basename = File.basename(current_real_path)
     fs2root = {
-      "nfs" => "root=#{OS_HTTP_HOST}:#{os_real_path} initrd=#{lkp_basename}",
+      "nfs"  => "root=#{OS_HTTP_HOST}:#{os_real_path} initrd=#{lkp_basename}",
       "cifs" => "root=cifs://#{OS_HTTP_HOST}#{os_real_path}" +
-          ",guest,ro,hard,vers=1.0,noacl,nouser_xattr initrd=#{lkp_basename}",
-      "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0 initrd=#{current_basename}"
+                ",guest,ro,hard,vers=1.0,noacl,nouser_xattr initrd=#{lkp_basename}",
+      "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0 initrd=#{current_basename}",
     }
     self["kernel_append_root"] = fs2root[os_mount]
   end
 
-  private def set_pp_initrd()
+  private def set_pp_initrd
     initrd_deps_arr = Array(String).new
     initrd_pkg_arr = Array(String).new
     initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
@@ -198,16 +198,16 @@ class Job
     if @hash["pp"]?
       program_params = @hash["pp"].as_h
       program_params.keys.each do |program|
-        dest_file="#{mount_type}/#{os_dir}/#{program}"
+        dest_file = "#{mount_type}/#{os_dir}/#{program}"
         if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
-          File.exists?("#{SRV_INITRD}/deps/#{dest_file}.cgz")
+           File.exists?("#{SRV_INITRD}/deps/#{dest_file}.cgz")
           initrd_deps_arr << "#{initrd_http_prefix}" +
-            JobHelper.service_path("#{SRV_INITRD}/deps/#{dest_file}.cgz")
+                             JobHelper.service_path("#{SRV_INITRD}/deps/#{dest_file}.cgz")
         end
-        if File.exists?( "#{ENV["LKP_SRC"]}/pkg/#{program}") &&
-          File.exists?("#{SRV_INITRD}/pkg/#{dest_file}.cgz")
+        if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") &&
+           File.exists?("#{SRV_INITRD}/pkg/#{dest_file}.cgz")
           initrd_pkg_arr << "#{initrd_http_prefix}" +
-            JobHelper.service_path("#{SRV_INITRD}/pkg/#{dest_file}.cgz")
+                            JobHelper.service_path("#{SRV_INITRD}/pkg/#{dest_file}.cgz")
         end
       end
     end
