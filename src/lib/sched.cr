@@ -263,6 +263,11 @@ class Sched
         }] unless tbox_group
 
         lab = job_content["lab"]
+
+        if %<#{job_content["job_origin"]?}>.includes?("allot/idle/")
+            tbox_group = "#{tbox_group}/idle"
+        end
+
         job_id = add_task(tbox_group, lab)
         return [{
           "job_id" => "0",
@@ -456,7 +461,7 @@ class Sched
         full_path_patterns = "#{ENV["CCI_SRC"]}/allot/idle/#{tbox_group}/*.yaml"
         Jobfile::Operate.auto_submit_job(
             full_path_patterns,
-            "testbox: #{tbox_group}/idle") if Dir.glob(full_path_patterns).size > 0
+            "testbox: #{tbox_group}") if Dir.glob(full_path_patterns).size > 0
     end
 
     private def add_kernel_console_param(arch_tmp)
