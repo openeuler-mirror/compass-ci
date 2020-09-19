@@ -387,10 +387,7 @@ class Sched
             hostname = api_param
         end
 
-        job = find_job(hostname) if hostname
-        Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder) if job
-
-        return boot_content(job, env.params.url["boot_type"])
+        get_testbox_boot_content(hostname, env.params.url["boot_type"])
     end
 
     def find_next_job_boot(env)
@@ -400,15 +397,15 @@ class Sched
             hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
         end
 
-        if hostname
-            job = find_job(hostname)
-            if job
-                Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
-                return get_boot_ipxe(job)
-            end
-        end
+        get_testbox_boot_content(hostname, "ipxe")
+    end
 
-        return ipxe_msg("No next job now")
+    def get_testbox_boot_content(testbox, boot_type)
+        job = find_job(testbox) if testbox
+        Jobfile::Operate.create_job_cpio(job.dump_to_json_any,
+                                         Kemal.config.public_folder) if job
+
+        return boot_content(job, boot_type)
     end
 
     private def find_job(testbox : String, count = 1)
