@@ -408,21 +408,16 @@ class Sched
 
     private def find_job(testbox : String, count = 1)
         tbox = JobHelper.match_tbox_group(testbox)
+        tbox_group = tbox.partition("--")[0]
 
-        count.times do
-            job = prepare_job("sched/#{tbox}", testbox)
+        boxes = [testbox, tbox, tbox_group]
+        boxes.each do |box|
+          count.times do
+            job = prepare_job("sched/#{box}", testbox)
             return job if job
 
             sleep(1) unless count == 1
-        end
-
-        tbox_group = tbox.sub(/\-\-\w*/, "")
-
-        count.times do
-            job = prepare_job("sched/#{tbox_group}", testbox)
-            return job if job
-
-            sleep(1) unless count == 1
+          end
         end
 
         # when find no job at "sched/#{tbox_group}"
