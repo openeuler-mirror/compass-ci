@@ -153,24 +153,24 @@ class Sched
         cluster_file_path = Path.new(lkp_src, "cluster", cluster_file)
 
         if File.file?(cluster_file_path)
-          cluster_config = YAML.parse(File.read(cluster_file_path)).as_h
-          hosts_size = cluster_config.values.size
-          return cluster_config, hosts_size
+            cluster_config = YAML.parse(File.read(cluster_file_path)).as_h
+            hosts_size = cluster_config.values.size
+            return cluster_config, hosts_size
         end
 
         return nil, 0
     end
 
     def get_commit_date(job_content : JSON::Any)
-      if job_content["upstream_repo"]? && job_content["upstream_commit"]?
-        data = JSON.parse(%({"git_repo": "#{job_content["upstream_repo"]}.git",
-                          "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
-                          "#{job_content["upstream_commit"]}", "-1"]}))
-        response = @rgc.git_command(data)
-        return response.body if response.status_code == 200
-      end
+        if job_content["upstream_repo"]? && job_content["upstream_commit"]?
+            data = JSON.parse(%({"git_repo": "#{job_content["upstream_repo"]}.git",
+                   "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
+                   "#{job_content["upstream_commit"]}", "-1"]}))
+            response = @rgc.git_command(data)
+            return response.body if response.status_code == 200
+        end
 
-      return nil
+        return nil
     end
 
     def submit_job(env : HTTP::Server::Context)
@@ -197,14 +197,14 @@ class Sched
     #   success: [{"job_id" => job_id1, "message => "", "job_state" => "submit"}, ...]
     #   failure: [..., {"job_id" => 0, "message" => err_msg, "job_state" => "submit"}]
     def submit_cluster_job(job_content, cluster_config)
-          job_messages = Array(Hash(String, String)).new
-          lab = job_content["lab"]
+        job_messages = Array(Hash(String, String)).new
+        lab = job_content["lab"]
 
-          # collect all job ids
-          job_ids = [] of String
+        # collect all job ids
+        job_ids = [] of String
 
-          # steps for each host
-          cluster_config.each do |host, config|
+        # steps for each host
+        cluster_config.each do |host, config|
             tbox_group = host.to_s
             job_id = add_task(tbox_group, lab)
 
@@ -213,9 +213,9 @@ class Sched
             #   - how to deal with the jobs added to DB prior to this loop
             #   - may consume job before all jobs done
             return job_messages << {
-              "job_id" => "0",
-              "message" => "add task queue sched/#{tbox_group} failed",
-              "job_state" => "submit"
+                "job_id" => "0",
+                "message" => "add task queue sched/#{tbox_group} failed",
+                "job_state" => "submit"
             } unless job_id
 
             job_ids << job_id
@@ -229,26 +229,26 @@ class Sched
             response = add_job(job_content, job_id)
             message = (response["error"]? ? response["error"]["root_cause"] : "")
             job_messages << {
-              "job_id" => job_id,
-              "message" => message.to_s,
-              "job_state" => "submit"
+                "job_id" => job_id,
+                "message" => message.to_s,
+                "job_state" => "submit"
             }
             return job_messages if response["error"]?
-          end
+        end
 
-          cluster_id = job_ids[0]
+        cluster_id = job_ids[0]
 
-          # collect all host states
-          cluster_state = Hash(String, Hash(String, String)).new
-          job_ids.each do |job_id|
+        # collect all host states
+        cluster_state = Hash(String, Hash(String, String)).new
+        job_ids.each do |job_id|
             cluster_state[job_id] = {"state" => ""}
             # will get cluster id according to job id
             @redis.hash_set("sched/id2cluster", job_id, cluster_id)
-          end
+        end
 
-          @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
+        @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
 
-          return job_messages
+        return job_messages
     end
 
     # return:
@@ -257,9 +257,9 @@ class Sched
     def submit_single_job(job_content)
         tbox_group = JobHelper.get_tbox_group(job_content)
         return [{
-          "job_id" => "0",
-          "message" => "get tbox group failed",
-          "job_state" => "submit"
+            "job_id" => "0",
+            "message" => "get tbox group failed",
+            "job_state" => "submit"
         }] unless tbox_group
 
         lab = job_content["lab"]
@@ -270,18 +270,18 @@ class Sched
 
         job_id = add_task(tbox_group, lab)
         return [{
-          "job_id" => "0",
-          "message" => "add task queue sched/#{tbox_group} failed",
-          "job_state" => "submit"
+            "job_id" => "0",
+            "message" => "add task queue sched/#{tbox_group} failed",
+            "job_state" => "submit"
         }] unless job_id
 
         response = add_job(job_content, job_id)
         message = (response["error"]? ? response["error"]["root_cause"] : "")
 
         return [{
-          "job_id" => job_id,
-          "message" => message.to_s,
-          "job_state" => "submit"
+            "job_id" => job_id,
+            "message" => message.to_s,
+            "job_state" => "submit"
         }]
     end
 
@@ -353,13 +353,13 @@ class Sched
     def boot_content(job : Job | Nil, boot_type : String)
         case boot_type
         when "ipxe"
-          return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
+            return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
         when "grub"
-          return job ? get_boot_grub(job) : grub_msg("No job now")
+            return job ? get_boot_grub(job) : grub_msg("No job now")
         when "container"
-          return job ? get_boot_container(job) : Hash(String, String).new.to_json
+            return job ? get_boot_container(job) : Hash(String, String).new.to_json
         else
-          raise "Not defined boot type #{boot_type}"
+            raise "Not defined boot type #{boot_type}"
         end
     end
 
@@ -368,23 +368,23 @@ class Sched
 
         case env.params.url["boot_type"]
         when "ipxe"
-          hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
+            hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
         when  "grub"
-          hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
-          if hostname.nil? # auto name new/unknown machine
-            hostname = "sut-#{api_param}"
-            set_host_mac(api_param, hostname)
+            hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
+            if hostname.nil? # auto name new/unknown machine
+                hostname = "sut-#{api_param}"
+                set_host_mac(api_param, hostname)
 
-            # auto submit a job to collect the host information
-            # grub hostname is link with ":", like "00:01:02:03:04:05"
-            # remind: if like with "-", last "-05" is treated as host number
-            #   then hostname will be "sut-00-01-02-03-04" !!!
-            Jobfile::Operate.auto_submit_job(
-              "#{ENV["LKP_SRC"]}/jobs/host-info.yaml",
-              "testbox: #{hostname}")
-          end
+                # auto submit a job to collect the host information
+                # grub hostname is link with ":", like "00:01:02:03:04:05"
+                # remind: if like with "-", last "-05" is treated as host number
+                #   then hostname will be "sut-00-01-02-03-04" !!!
+                Jobfile::Operate.auto_submit_job(
+                    "#{ENV["LKP_SRC"]}/jobs/host-info.yaml",
+                    "testbox: #{hostname}")
+            end
         when "container"
-          hostname = api_param
+            hostname = api_param
         end
 
         job = find_job(hostname) if hostname
@@ -397,7 +397,7 @@ class Sched
         hostname = env.params.query["hostname"]?
         mac = env.params.query["mac"]?
         if !hostname && mac
-          hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
+            hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
         end
 
         if hostname
@@ -514,13 +514,13 @@ class Sched
         response += " #{job.kernel_append_root}"
         response += add_kernel_console_param(job.os_arch)
         if job.os_mount == "initramfs"
-          response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz"
-          job.initrd_deps.split().each do |initrd_dep|
-            response += " initrd=#{File.basename(initrd_dep)}"
-          end
-          response += " initrd=#{File.basename(JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/run-ipconfig.cgz"))}\n"
+            response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz"
+            job.initrd_deps.split().each do |initrd_dep|
+                response += " initrd=#{File.basename(initrd_dep)}"
+            end
+            response += " initrd=#{File.basename(JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/run-ipconfig.cgz"))}\n"
         else
-          response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
+            response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
         end
         response += "boot\n"
 

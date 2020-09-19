@@ -98,7 +98,7 @@ module Jobfile::Operate
         end
 
         # generate job.yaml
-        temp_yaml = base_dir + "/" +  job_content["id"].to_s + "/job.yaml"
+        temp_yaml = base_dir + "/#{job_content["id"]}/job.yaml"
         prepare_dir(temp_yaml)
 
         # no change to <object> content { "#! jobs/pixz.yaml": null }
@@ -114,10 +114,10 @@ module Jobfile::Operate
         job_sh_content = sh_export_top_env.as_a + job_sh_array
 
         # generate job.sh
-        job_sh = base_dir + "/" +  job_content["id"].to_s + "/job.sh"
+        job_sh = base_dir + "/#{job_content["id"]}/job.sh"
         create_job_sh(job_sh_content.to_a, job_sh)
 
-        job_dir = base_dir + "/" +  job_content["id"].to_s
+        job_dir = base_dir + "/#{job_content["id"]}"
 
         if job_sh_array.empty?
             lkp_src = prepare_lkp_tests(job_content["lkp_initrd_user"],

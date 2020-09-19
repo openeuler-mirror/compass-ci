@@ -15,15 +15,9 @@ require "../lib/job"
 #  - get job_content from es jobs/_doc/id["_source"]
 #  - return response as JSON::Any
 #
-# -------------------------------------------------------------------------------------------
-# below function will be Deprecated
-#
 # add(documents_path : String, content : Hash, id : String)
 #  - add|replace hash content to es document
 #  - documents_path index/document (default: JOB_INDEX_TYPE)
-#
-# get(documents_path : String, id : String)
-#  - get content from es documents_path/id
 #
 # update(documents_path : String, content : Hash)
 #  - update hash content to es document
