@@ -28,6 +28,7 @@ env = docker_env(defaults)
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/crystal-ci'
 SCHED_PORT = defaults['SCHED_PORT'] || '3000'
+SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'
 FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 docker_rm "s001-alpine-#{SCHED_PORT}"
@@ -42,6 +43,8 @@ cmd = %W[
 ] + env + %W[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
+  -e SCHED_HOST=#{SCHED_HOST}
+  -e SCHED_PORT=#{SCHED_PORT}
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
   -v /srv/cci/scheduler/alpine:/srv/cci/scheduler

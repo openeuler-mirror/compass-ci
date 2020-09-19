@@ -113,6 +113,7 @@ class Job
     set_os_mount()
     set_kernel_append_root()
     set_pp_initrd()
+    set_lkp_server()
   end
 
   private def append_init_field()
@@ -122,6 +123,11 @@ class Job
         self[k] = v
       end
     end
+  end
+
+  private def set_lkp_server()
+    self["LKP_SERVER"] = ENV["SCHED_HOST"]
+    self["LKP_CGI_PORT"] = ENV["SCHED_PORT"]
   end
 
   private def set_os_dir()
