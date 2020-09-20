@@ -32,7 +32,7 @@ class Redis::Client
         if !job_hash
             raise "Get job (id = #{job_id}) from redis failed."
         end
-        Job.new(JSON.parse(job_hash))
+        Job.new(JSON.parse(job_hash), job_id)
     end
 
     def update_wtmp(testbox : String, wtmp_hash : Hash)

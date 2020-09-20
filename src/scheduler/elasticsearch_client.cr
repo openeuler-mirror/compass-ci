@@ -60,7 +60,7 @@ class Elasticsearch::Client
 
         case response
         when JSON::Any
-            job = Job.new(response)
+            job = Job.new(response, job_id)
         else
             job = nil
         end

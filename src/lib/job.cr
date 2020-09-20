@@ -52,8 +52,14 @@ class Job
     docker_image:    "centos:7",
   }
 
-  def initialize(job_content : JSON::Any)
+  def initialize(job_content : JSON::Any, id)
     @hash = job_content.as_h
+
+    # init job with "-1", or use the original job_content["id"]
+    if "#{id}" == ""
+      @hash["id"] = JSON::Any.new("-1")
+    end
+
     check_required_keys()
     set_defaults()
   end
@@ -141,16 +147,16 @@ class Job
     self["result_root"] = "/result/#{suite}/#{id}"
   end
 
-  private def set_access_key()
+  private def set_access_key
     self["access_key"] = "#{Random::Secure.hex(10)}" unless @hash["access_key"]?
     self["access_key_file"] = File.join("/srv/", "#{result_root}", ".#{access_key}")
   end
 
-  private def set_result_service()
+  private def set_result_service
     self["result_service"] = "raw_upload"
   end
 
-  private def set_tbox_group()
+  private def set_tbox_group
     tbox_group_name = JobHelper.get_tbox_group(JSON.parse(@hash.to_json))
     if tbox_group_name
       self["tbox_group"] = "#{tbox_group_name}"

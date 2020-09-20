@@ -305,7 +305,7 @@ class Sched
         commit_date = get_commit_date(job_content)
         job_content["commit_date"] = commit_date if commit_date
         job_content["id"] = job_id
-        job = Job.new(job_content)
+        job = Job.new(job_content, job_id)
         @es.set_job_content(job)
     end
 
