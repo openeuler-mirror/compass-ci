@@ -174,6 +174,7 @@ class Sched
     end
 
     def submit_job(env : HTTP::Server::Context)
+      begin
         body = env.request.body.not_nil!.gets_to_end
         job_content = JSON.parse(body)
         job_content["lab"] = LAB unless job_content["lab"]?
@@ -191,6 +192,13 @@ class Sched
         end
 
         return submit_single_job(job_content)
+      rescue ex
+        return [{
+            "job_id" => "0",
+            "message" => ex.to_s,
+            "job_state" => "submit"
+        }]
+      end
     end
 
     # return:
@@ -439,9 +447,14 @@ class Sched
         job = nil
 
         if job_id
+          begin
             job = @es.get_job(job_id.to_s)
-            raise "Invalid job (id=#{job_id}) in es" unless job
+          rescue ex
+            puts "Invalid job (id=#{job_id}) in es. Info: #{ex}"
+          end
+        end
 
+        if job
             job.update({"testbox" => testbox})
             @redis.set_job(job)
         end
