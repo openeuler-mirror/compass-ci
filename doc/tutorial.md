@@ -205,13 +205,72 @@
 
 
 
-// chenglong, yuchuan
 - 添加OS支持
-  nfs
-  osimage
+  nfs/cifs
 
+  osimage(initramfs)
 
+  制作一个initramfs启动的cgz镜像，当系统内核启动时，直接从打包的cgz镜像中导出rootfs，在内存中展开文件系统，利用磁盘的高速缓存机制让系统直接在内存中读写文件，以提升系统的I/O性能。
 
+    [此处以openEuler为例]
+    1. 获取对应os版本的rootfs
+    	1) 通过docker获取rootfs 
+		a) 下载openEuler官方提供的docker镜像压缩包
+		   wget https://repo.openeuler.org/openEuler-20.03-LTS/docker_img/aarch64/openEuler-docker.aarch64.tar.xz
+
+		b) 加载docker镜像
+		   docker load -i openEuler-docker.aarch64
+
+		c) 启动openEuler容器
+		   docker run -id openeuler-20.03-lts
+
+		b) 拷贝docker的rootfs
+		   docker cp -a  docker run -d openeuler-20.03-lts:/    openEuler-rootfs
+
+	2) 通过qemu.img(qcow2格式)获取rootfs (此处以centos为例)
+		a) 下载openEuler官方网站提供的qcow2格式镜像
+		  wget https://repo.openeuler.org/openEuler-20.03-LTS/virtual_machine_img/aarch64/openEuler-20.03-LTS.aarch64.qcow2.xz
+		b) 使用{compass-ci}/container/qcow2rootfs 制作rootfs
+		  cd {compass-ci}/container/qcow2rootfs
+		  ./run  openEuler-20.03-LTS.aarch64.qcow2.xz   /tmp/openEuler-rootfs
+
+    2. 定制rootfs
+    	1) 使用chroot命令切换到rootfs中(此步骤需要root权限)
+           	chroot openEuler-rootfs
+
+    	2) 根据个人需要安装并配置服务
+	   a) 修改root密码
+	   b) 配置ssh服务
+	   c) 检查系统时间
+	   d) 如果使用docker制作osimage还需要以下操作：
+	   	安装所需版本内核
+		    从centos官方网站下载内核rpm包
+		    使用yum进行安装
+		删除docker环境变量文件
+		    rm /.dockerenv文件
+
+    3. 退出rootfs，并打包
+    	cd $rootfs
+ 	find . | coip -o -Hnewc |gzip -9 > $os_name.cgz
+
+    FAQ:
+     Q:如果出现报错：
+
+     ...
+     [    0.390437] List of all partitions:
+     [    0.390806] No filesystem could mount root, tried: 
+     [    0.391489] Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)
+     ...
+     [    0.399404] Memory Limit: none
+     [    0.399749] ---[ end Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0) ]---
+
+     A: 1)启动内存不足，增加内存可解决。
+        2)内核文件权限不足，给予644权限。
+	
+     Q:如果打包镜像体积过大，会消耗很大内存。
+     A:建议用户根据具体需要对rootfs进行裁剪
+
+   
 
 
 
