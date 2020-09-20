@@ -100,15 +100,16 @@ class Job
   end
 
   def update(hash : Hash)
-    if hash.has_key?("id")
-      hash.delete("id")
+    hash_dup = hash.dup
+    if hash_dup.has_key?("id")
+      hash_dup.delete("id")
       puts "Should not direct update id, use update_id, ignore this"
     end
-    if hash.has_key?("tbox_group")
+    if hash_dup.has_key?("tbox_group")
       raise "Should not direct update tbox_group, use update_tbox_group"
     end
 
-    @hash.any_merge!(hash)
+    @hash.any_merge!(hash_dup)
   end
 
   def update(json : JSON::Any)
@@ -143,6 +144,12 @@ class Job
 
       self["LKP_SERVER"] = SCHED_HOST
       self["LKP_CGI_PORT"] = SCHED_PORT.to_s
+
+      if self["uuid"] == ""
+        puts "Job's SCHED_HOST is #{self["SCHED_HOST"]}, " +
+          "current scheduler IP is: #{SCHED_HOST}"
+        raise "Missing uuid for remote job"
+      end
     end
   end
 
@@ -268,5 +275,10 @@ class Job
   def update_id(id)
     @hash["id"] = JSON::Any.new(id)
     set_result_root()
+  end
+
+  def get_uuid_tag
+    uuid = self["uuid"]
+    uuid != "" ? "/#{uuid}" : nil
   end
 end
