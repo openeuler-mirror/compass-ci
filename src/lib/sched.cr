@@ -161,11 +161,11 @@ class Sched
         return nil, 0
     end
 
-    def get_commit_date(job_content : JSON::Any)
-        if job_content["upstream_repo"]? && job_content["upstream_commit"]?
-            data = JSON.parse(%({"git_repo": "#{job_content["upstream_repo"]}.git",
+    def get_commit_date(job)
+        if (job["upstream_repo"] != "") && (job["upstream_commit"] != "")
+            data = JSON.parse(%({"git_repo": "#{job["upstream_repo"]}.git",
                    "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
-                   "#{job_content["upstream_commit"]}", "-1"]}))
+                   "#{job["upstream_commit"]}", "-1"]}))
             response = @rgc.git_command(data)
             return response.body if response.status_code == 200
         end
@@ -176,22 +176,21 @@ class Sched
     def submit_job(env : HTTP::Server::Context)
       begin
         body = env.request.body.not_nil!.gets_to_end
+
         job_content = JSON.parse(body)
-        job_content["lab"] = LAB unless job_content["lab"]?
+        job = Job.new(job_content, job_content["id"]?)
+        job["commit_date"] = get_commit_date(job)
 
-        fix_job_content_from_ssh_forward(job_content)
+        cluster_file = job["cluster"]
+        if cluster_file != ""
+          cluster_config, hosts_size = get_cluster_config(
+            cluster_file, job.lkp_initrd_user, job.os_arch)
 
-        if job_content["cluster"]?
-            cluster_file = job_content["cluster"].to_s
-            lkp_initrd_user = job_content["lkp_initrd_user"]? || "latest"
-            os_arch = job_content["os_arch"]? || "aarch64"
-            cluster_config, hosts_size = get_cluster_config(cluster_file, lkp_initrd_user.to_s, os_arch.to_s)
-            if hosts_size >= 2
-                return submit_cluster_job(job_content, cluster_config.not_nil!)
-            end
+          return submit_cluster_job(
+            job, cluster_config.not_nil!) if hosts_size >= 2
         end
 
-        return submit_single_job(job_content)
+        return submit_single_job(job)
       rescue ex
         return [{
             "job_id" => "0",
@@ -204,9 +203,9 @@ class Sched
     # return:
     #   success: [{"job_id" => job_id1, "message => "", "job_state" => "submit"}, ...]
     #   failure: [..., {"job_id" => 0, "message" => err_msg, "job_state" => "submit"}]
-    def submit_cluster_job(job_content, cluster_config)
+    def submit_cluster_job(job, cluster_config)
         job_messages = Array(Hash(String, String)).new
-        lab = job_content["lab"]
+        lab = job.lab
 
         # collect all job ids
         job_ids = [] of String
@@ -229,12 +228,12 @@ class Sched
             job_ids << job_id
 
             # add to job content when multi-test
-            job_content["testbox"] = tbox_group
-            job_content["tbox_group"] = tbox_group
-            job_content["node_roles"] = config["roles"].as_a.join(" ")
-            job_content["node_macs"] = config["macs"].as_a.join(" ")
+            job["testbox"] = tbox_group
+            job.update_tbox_group(tbox_group)
+            job["node_roles"] = config["roles"].as_a.join(" ")
+            job["node_macs"] = config["macs"].as_a.join(" ")
 
-            response = add_job(job_content, job_id)
+            response = add_job(job, job_id)
             message = (response["error"]? ? response["error"]["root_cause"] : "")
             job_messages << {
                 "job_id" => job_id,
@@ -262,28 +261,26 @@ class Sched
     # return:
     #   success: [{"job_id" => job_id, "message" => "", job_state => "submit"}]
     #   failure: [{"job_id" => "0", "message" => err_msg, job_state => "submit"}]
-    def submit_single_job(job_content)
-        tbox_group = JobHelper.get_tbox_group(job_content)
+    def submit_single_job(job)
+        tbox_group = job.tbox_group
         return [{
             "job_id" => "0",
             "message" => "get tbox group failed",
             "job_state" => "submit"
         }] unless tbox_group
 
-        lab = job_content["lab"]
-
-        if %<#{job_content["job_origin"]?}>.includes?("allot/idle/")
+        if %<job["job_origin"]>.includes?("allot/idle/")
             tbox_group = "#{tbox_group}/idle"
         end
 
-        job_id = add_task(tbox_group, lab)
+        job_id = add_task(tbox_group, job.lab)
         return [{
             "job_id" => "0",
             "message" => "add task queue sched/#{tbox_group} failed",
             "job_state" => "submit"
         }] unless job_id
 
-        response = add_job(job_content, job_id)
+        response = add_job(job, job_id)
         message = (response["error"]? ? response["error"]["root_cause"] : "")
 
         return [{
@@ -301,11 +298,8 @@ class Sched
     end
 
     # add job content to es and return a response
-    def add_job(job_content, job_id)
-        commit_date = get_commit_date(job_content)
-        job_content["commit_date"] = commit_date if commit_date
-        job_content["id"] = job_id
-        job = Job.new(job_content, job_id)
+    def add_job(job, job_id)
+        job.update_id(job_id)
         @es.set_job_content(job)
     end
 
@@ -498,7 +492,6 @@ class Sched
         return initrd_deps, initrd_pkg
     end
 
-
     private def get_boot_ipxe(job : Job)
         initrd_lkp_cgz = "lkp-#{job.os_arch}.cgz"
 
@@ -628,14 +621,5 @@ class Sched
         @redis.remove_finished_job(job_id)
 
         puts %({"job_id": "#{job_id}", "job_state": "complete"})
-    end
-
-    def fix_job_content_from_ssh_forward(job_content)
-        if job_content["SCHED_HOST"] == "127.0.0.1"
-           job_content["SCHED_HOST"] = SCHED_HOST
-           job_content["LKP_SERVER"] = SCHED_HOST
-           job_content["SCHED_PORT"] = SCHED_PORT.to_s
-           job_content["LKP_CGI_PORT"] = SCHED_PORT.to_s
-        end
     end
 end

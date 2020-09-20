@@ -18,14 +18,6 @@ struct JSON::Any
 end
 
 module JobHelper
-  def self.get_tbox_group(job_content : JSON::Any)
-    if job_content["tbox_group"]?
-      job_content["tbox_group"]
-    elsif job_content["testbox"]?
-      self.match_tbox_group(job_content["testbox"].to_s)
-    end
-  end
-
   def self.match_tbox_group(testbox : String)
     tbox_group = testbox
     find = testbox.match(/(.*)(\-\d{1,}$)/)
@@ -46,6 +38,7 @@ class Job
 
   INIT_FIELD = {
     os:              "debian",
+    lab:             LAB,
     os_arch:         "aarch64",
     os_version:      "sid",
     lkp_initrd_user: "latest",
@@ -74,6 +67,8 @@ class Job
     arch
     suite
     tbox_group
+    testbox
+    lab
     initrd_pkg
     initrd_deps
     result_root
@@ -105,11 +100,19 @@ class Job
   end
 
   def update(hash : Hash)
+    if hash.has_key?("id")
+      hash.delete("id")
+      puts "Should not direct update id, use update_id, ignore this"
+    end
+    if hash.has_key?("tbox_group")
+      raise "Should not direct update tbox_group, use update_tbox_group"
+    end
+
     @hash.any_merge!(hash)
   end
 
   def update(json : JSON::Any)
-    @hash.any_merge!(json.as_h)
+    update(json.as_h)
   end
 
   private def set_defaults
@@ -118,7 +121,6 @@ class Job
     set_result_root()
     set_result_service()
     set_access_key()
-    set_tbox_group()
     set_os_mount()
     set_kernel_append_root()
     set_pp_initrd()
@@ -135,8 +137,13 @@ class Job
   end
 
   private def set_lkp_server
-    self["LKP_SERVER"] = ENV["SCHED_HOST"]
-    self["LKP_CGI_PORT"] = ENV["SCHED_PORT"]
+    if self["SCHED_HOST"] != SCHED_HOST   # remote submited job
+      # ?further fix to 127.0.0.1 (from remote ssh port forwarding)
+      # ?even set self["SCHED_HOST"] and self["SCHED_PORT"]
+
+      self["LKP_SERVER"] = SCHED_HOST
+      self["LKP_CGI_PORT"] = SCHED_PORT.to_s
+    end
   end
 
   private def set_os_dir
@@ -144,7 +151,9 @@ class Job
   end
 
   private def set_result_root
-    self["result_root"] = "/result/#{suite}/#{id}"
+    update_tbox_group_from_testbox # id must exists, need update tbox_group
+    date = Time.local.to_s("%F")
+    self["result_root"] = "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
   end
 
   private def set_access_key
@@ -156,15 +165,27 @@ class Job
     self["result_service"] = "raw_upload"
   end
 
-  private def set_tbox_group
-    tbox_group_name = JobHelper.get_tbox_group(JSON.parse(@hash.to_json))
-    if tbox_group_name
-      self["tbox_group"] = "#{tbox_group_name}"
+  # if not assign tbox_group, set it to a match result from testbox
+  #  ?if job special testbox, should we just set tbox_group=textbox
+  private def update_tbox_group_from_testbox
+    if self["tbox_group"] == ""
+      @hash["tbox_group"] = JSON::Any.new(JobHelper.match_tbox_group(testbox))
     end
   end
 
-  private def []=(key : String, value : String)
-    @hash[key] = JSON::Any.new(value)
+  def [](key : String) : String
+    "#{@hash[key]?}"
+  end
+
+  def []?(key : String)
+    @hash.[key]?
+  end
+
+  def []=(key : String, value : String | Nil)
+    if key == "id" || key == "tbox_group"
+      raise "Should not []= id and tbox_group, use update_#{key}"
+    end
+    @hash[key] = JSON::Any.new(value) if value
   end
 
   # defaults to the 1st value
@@ -237,5 +258,15 @@ class Job
     end
     self["initrd_deps"] = initrd_deps_arr.join(" ")
     self["initrd_pkg"] = initrd_pkg_arr.join(" ")
+  end
+
+  def update_tbox_group(tbox_group)
+    @hash["tbox_group"] = JSON::Any.new(tbox_group)
+    set_result_root()
+  end
+
+  def update_id(id)
+    @hash["id"] = JSON::Any.new(id)
+    set_result_root()
   end
 end
