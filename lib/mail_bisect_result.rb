@@ -19,7 +19,7 @@ class MailBisectResult
   end
 
   def compose_mail
-    subject = "[Crystal-CI] #{@repo}.git: bisect result"
+    subject = "[Compass-CI] #{@repo}.git: bisect result"
     body = <<~BODY
     Hi #{@git_commit.author_name},
 
@@ -27,15 +27,15 @@ class MailBisectResult
 
       url: #{@git_commit.url}
 
-      This is a bisect email from crystal-ci. We met some problems when test with new commits.
+      This is a bisect email from compass-ci. We met some problems when test with new commits.
       Would you help to check what happend?
       After submitting a job we noticed an error response due to the commit:
 
       commit: #{@commit_id[0..11]} ("#{@git_commit.subject}")
       error_id: #{@error_id}
 
-    Crystal-CI bisect service
-    https://gitee.com/openeuler/crystal-ci
+    Compass-CI bisect service
+    https://gitee.com/openeuler/compass-ci
     BODY
     @hash = { 'to' => @git_commit.author_email, 'body' => body, 'subject' => subject }
   end
