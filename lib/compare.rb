@@ -60,8 +60,8 @@ def compare_group(argv, dimensions, options)
   compare_group_matrices(groups_matrices, options)
 end
 
-def create_groups_matrices_list(conditions, dims, range: {})
+def create_groups_matrices_list(conditions, dims)
   es = ESQuery.new(ES_HOST, ES_PORT)
-  query_results = es.multi_field_query(conditions, range: range)
+  query_results = es.multi_field_query(conditions)
   combine_group_query_data(query_results, dims)
 end
