@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 # GITCACHE_HOST and GITCACHE_PORT parameters come from gitcache_host and gitcache_port in the job.yaml file you submitted.
 # If job.yaml does not have these two parameters, git will use the local proxy cache,

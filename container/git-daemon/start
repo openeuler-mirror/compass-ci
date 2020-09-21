@@ -1,5 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 docker run --restart=always -d -p 9418:9418 -v /srv/git:/git -v /etc/localtime:/etc/localtime:ro --name git-daemon apline311:git-daemon
 

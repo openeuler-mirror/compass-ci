@@ -1,5 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 # Determine whether curl is installed. If not, install curl.
 if ! [ -x "$(command -v curl)" ]

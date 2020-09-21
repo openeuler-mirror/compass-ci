@@ -1,5 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 # check whether accounts index has created
 status_code=$(curl -sIL -w "%{http_code}\\n" -o /dev/null http://localhost:9200/accounts)

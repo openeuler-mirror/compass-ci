@@ -1,5 +1,6 @@
 #!/usr/bin/expect
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 #
 # This file is called by script main in container
 # convert qcow2 file to tar.gz

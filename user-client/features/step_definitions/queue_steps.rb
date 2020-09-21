@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
 require "#{File.dirname(__FILE__)}/../../src/lkp_server_info"

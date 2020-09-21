@@ -1,5 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 PUB_IFACE=$(ip route get 1.2.3.4 | awk '{print $5; exit}')
 BR0_IFACE=br0

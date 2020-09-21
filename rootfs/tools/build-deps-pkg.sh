@@ -1,5 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 # Exclude 'dev' or some files that do not need to perform cci-depends.
 suffix_detect()

@@ -1,5 +1,6 @@
 #! /bin/bash -eu
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 # This file is called by script run running on host
 # define functions and set host environment variables

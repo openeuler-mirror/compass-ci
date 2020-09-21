@@ -1,5 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 #this file used in our own systemd unit file: cci-network.service.
 #contents as follows will be automatically executed after system reboot.
 

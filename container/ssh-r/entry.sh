@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 # Below script mainly borrow from https://github.com/panubo/docker-sshd.git
 # It use MIT LICENSE

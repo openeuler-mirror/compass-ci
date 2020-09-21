@@ -1,5 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 if [ -f /etc/ssh/team.pub ]; then
         ssh_keys="$(</etc/ssh/team.pub)"
