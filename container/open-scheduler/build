@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# frozen_string_literal: true
+
+# nothing to do
+# just basic container struct "build file"
