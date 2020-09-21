@@ -5,12 +5,11 @@ require "./filter"
 require "./constants"
 
 class MessageQueueClient
-
   def initialize(host = MQ_HOST, port = MQ_PORT)
     @client = AMQP::Client.new("amqp://#{host}:#{port}")
   end
 
-  private def start()
+  private def start
     conn = @client.connect
     yield conn
   ensure
@@ -32,5 +31,4 @@ class MessageQueueClient
       end
     end
   end
-
 end
