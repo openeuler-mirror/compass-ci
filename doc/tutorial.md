@@ -82,14 +82,13 @@
 
 
 
+## 3. 注册自己的仓库
 
-// liping
-  3. 在Crystal-CI中注册自己的仓库
-     - ***TODO----------------------------------------注册方式***
-     git clone upstream-repos
-     add repo
-     commit and send patch email or PULL REQUEST
-    
+如果您想在git push的时候, 自动触发测试, 那么需要把您的公开git url添加到如下仓库
+[upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)
+	git clone https://gitee.com/wu_fengguang/upstream-repos.git
+	less upstream-repos/README.md
+
 
 
 
