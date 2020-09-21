@@ -61,15 +61,13 @@
 
 
 
-// xiezheng, xuejiao
-  2. 建立本地环境（构建一个能够提交job的环境）
-       
-       git clone lkp-tests # submit
-       git clone lab-z9    # jobs
-       #git clone compass-ci
-       
-       需要支持linux / windows/mac/ 
-       
+## 2. 建立本地环境（构建一个能够提交job的环境）
+下载lkp-tests, 安装依赖包并配置环境变量
+       ```bash
+       git clone http://gitee.com/wu_fengguang/lkp-tests.git
+       cd lkp-tests
+       make install
+       ```
 
 
 
