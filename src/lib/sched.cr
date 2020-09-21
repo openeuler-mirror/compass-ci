@@ -269,8 +269,11 @@ class Sched
             "job_state" => "submit"
         }] unless tbox_group
 
+        # only single job will has "idle job" and "execute rate limiter"
         if %<job["job_origin"]>.includes?("allot/idle/")
             tbox_group = "#{tbox_group}/idle"
+        else
+            tbox_group += "#{job.get_uuid_tag}"
         end
 
         job_id = add_task(tbox_group, job.lab)
