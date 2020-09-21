@@ -4,7 +4,6 @@
 require "./redis_client"
 
 class TaskQueue
-
   def queue_respond_add(env)
     body = env.request.body
     if body.nil?
@@ -17,7 +16,7 @@ class TaskQueue
     param_queue = queue_name[0] + "/ready"
 
     body_content = body.gets_to_end
-    env.request.body = body_content  # restore back for debug message
+    env.request.body = body_content # restore back for debug message
 
     task_content = JSON.parse(body_content)
     id = task_content["id"]?
@@ -60,8 +59,8 @@ class TaskQueue
       parameter_value = env.params.query[parameter_name]?
 
       if parameter_value.nil?
-         ext_set = queue_respond_header_set(env, 400, "Missing parameter <#{parameter_name}>")
-         return params, ext_set
+        ext_set = queue_respond_header_set(env, 400, "Missing parameter <#{parameter_name}>")
+        return params, ext_set
       end
       params << parameter_value
     end
@@ -74,7 +73,7 @@ class TaskQueue
     return ext_set if ext_set
 
     queue_name_from = queue_name[0] + "/ready"
-    queue_name_to   = queue_name[0] + "/in_process"
+    queue_name_to = queue_name[0] + "/in_process"
 
     begin
       timeout = "#{env.params.query["timeout"]?}".to_i
@@ -100,8 +99,8 @@ class TaskQueue
     return ext_set if ext_set
 
     from = params[0] + "/in_process"
-    to   = params[1] + "/ready"
-    id   = params[2]
+    to = params[1] + "/ready"
+    id = params[2]
 
     if move_task_in_redis(from, to, id)
       env.response.status_code = 201
@@ -123,7 +122,7 @@ class TaskQueue
     #   we just need make sure the "id" blongs to queue "scheduler"
     #   the (queue "scheduler") is a queue for scheduler-service
     queue = service_name_of_queue(params[0])
-    id    = params[1]
+    id = params[1]
 
     if delete_task_in_redis(queue, id)
       env.response.status_code = 201
@@ -151,5 +150,4 @@ class TaskQueue
 
     return result
   end
-
 end
