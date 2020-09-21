@@ -275,9 +275,49 @@
 
 
 
-// yinsi
 - 本地搭建compass-ci 服务器节点
-  read code: sparrow
+
+      概述：在openEuler系统一键部署compass-ci环境
+
+      声明：目前已支持 openEuler-aarch64-20.03-LTS 系统环境
+            以下配置仅供参考
+
+      - 准备工作
+
+              - 硬件
+                      服务器类型：ThaiShan200-2280 (建议)
+                            架构：aarch64
+                            内存：>= 8GB
+                             CPU：64 nuclear       (建议)
+                            硬盘：>= 500G
+
+              - 软件
+                              OS：openEuler-aarch64-20.03 LTS
+                             git：2.23.0版本       (建议)
+                        预留空间：>= 300G
+                            网络：可以访问互联网
+
+      说明: openEuler系统安装
+      https://openeuler.org/zh/docs/20.03_LTS/docs/Installation/%E5%AE%89%E8%A3%85%
+E5%87%86%E5%A4%87.html
+
+      - 操作指导
+
+              1. 登录openEuler系统
+
+              2. 创建工作目录并设置文件权限
+
+                      mkdir demo && cd demo && umask 002
+
+              3. 克隆compass-ci项目代码到demo目录
+
+                      git clone https://gitee.com/wu_fengguang/compass-ci.git
+
+              4. 执行一键部署脚本install-tiny
+
+                      cd compass-ci/sparrow && ./install-tiny
+
+
 
 ## todo call for Cooperation
   improve git bisect 
