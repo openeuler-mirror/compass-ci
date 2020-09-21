@@ -9,34 +9,33 @@ require "json"
 # START_PATTERN               close @host2file[host]; cache line to @host2head[host]
 # header lines w/o job info   cache line to @host2head[host]
 # JOB_PATTERN                 get job_id --> job --> result_root; dump cache to file
-# dmesg lines w/ job info     append line to dmesg file under result_root; 
+# dmesg lines w/ job info     append line to dmesg file under result_root;
 # CRASH_PATTERN               notify oops/crash/warn --> reboot machine
 # END_PATTERN                 close @host2file[host]
 # ==================================================================================
 # steps for a dmesg:
-# 1) stash the head of dmesg file to hash before getting the job_id. 
+# 1) stash the head of dmesg file to hash before getting the job_id.
 # 2) create dmesg file under the result_root of the job when successfully
 #    matched the job_id from the received message.
-# 3) detect kernel oops/crash and the end of dmesg file. 
+# 3) detect kernel oops/crash and the end of dmesg file.
 
 class SerialParser
-
   START_PATTERNS = [
-   "starting QEMU",
-   "Start PXE over IPv4",
-   "iPXE initialising devices",
-   "Open Source Network Boot Firmware",
-   "BIOS Build Version:",
-   "BIOS Log @ "
+    "starting QEMU",
+    "Start PXE over IPv4",
+    "iPXE initialising devices",
+    "Open Source Network Boot Firmware",
+    "BIOS Build Version:",
+    "BIOS Log @ ",
   ]
 
   END_PATTERNS = [
     "Total QEMU duration: ",
     "No job now",
-    "Restarting system"
+    "Restarting system",
   ]
- 
-  def initialize()
+
+  def initialize
     @host2head = Hash(String, Array(String)).new
     @host2rt = Hash(String, String).new
   end
@@ -119,5 +118,4 @@ class SerialParser
     @host2head[host] ||= Array(String).new
     @host2head[host] << msg["message"].to_s
   end
-
 end
