@@ -4,7 +4,6 @@ require "json"
 require "http/client"
 
 class TaskQueueAPI
-
   def initialize
     @port = ENV.has_key?("TASKQUEUE_PORT") ? ENV["TASKQUEUE_PORT"].to_i32 : 3060
     @host = ENV.has_key?("TASKQUEUE_HOST") ? ENV["TASKQUEUE_HOST"] : "172.17.0.1"
@@ -50,5 +49,4 @@ class TaskQueueAPI
       end
     end
   end
-
 end
