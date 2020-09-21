@@ -100,21 +100,112 @@
 
 
 
-// yale
-  4. 提交测试任务
 
-       1. job yaml文件如何写？（简单介绍并附上示例）
-          - ***TODO----------------------------------------***
-	  details refer to
-	  https://gitee.com/wu_fengguang/lkp-tests/blob/master/jobs/README.md
-          
-       2. 如何提交yaml文件（job） 我们监控仓库中某个文件夹？or 通过某种方式上传到某个位置？
-          - ***TODO----------------------------------------***
+# Job的定义和提交
 
+## 一、job yaml文件如何写？
 
+### job yaml的简介
+	
+- job yaml是测试描述和执行的基本单元。
+- 它是以[YAML]的格式编写(http://yaml.org/YAML_for_ruby.html)。
+- 所有job文件位于**```$LKP_SRC/jobs```**路径下。
 
+### job yaml的结构
 
+#### 1、yaml的标识头部（必选）
 
+- 每一个job文件的开始部分，都有一些基础的描述信息，称之为yaml的Header。
+- 头部主要有suite和category，suite是测试套的名称。category是测试类型，
+  包括benchmarch（性能测试）/functional（功能测试）/noise-benchmark（不常用）。
+	
+  ```yaml
+        suite: netperf
+        category: benchmark
+  ```	
+#### 2、测试脚本和参数（必选）
+
+- Job yaml是以键:值的格式编写，如果该键与下面路径中的某个脚本文件相匹配，则将其视为可执行脚本
+  
+     ```$LKP_SRC/setup
+        $LKP_SRC/monitors
+        $LKP_SRC/daemon
+        $LKP_SRC/tests
+      ```
+- 测试脚本位于```**$LKP_SRC/tests**```，```**$LKP_SRC/daemon**```。
+- 参数值是一个字符串或字符串数组，
+  每个测试脚本将在其文件头的注释中记录可接受的参数(它将作为环境变量传递)。
+
+	```yaml
+        netserver:
+        netperf:
+            runtime: 10s
+            test:
+            - TCP_STREAM
+            - UDP_STREAM
+            send_size:
+            - 1024
+            - 2048
+        ```
+#### 3、测试资源相关变量（必选）
+
+- SUT/schduler/部署等资源相关变量。
+		
+	```yaml
+        testbox: vm-hi1620-2p8g
+        os: openeuler
+        os_version: 20.03
+        os_arch: aarch64
+	```  
+#### 4、系统设置脚本（可选）
+
+- 设置脚本位于```**$LKP_SRC/setup**``` 目录。
+- 设置脚本将在测试脚本之前运行，主要是用于启停一些依赖性服务或工具，或者配置测试所需的参数等。
+
+  ```yaml
+        cgroup2: #$LKP_SRC/setup/cgroup2 executable script
+        memory.high: 90%
+        memory.low: 50%
+        memory.max: max
+        memory.swap.max:
+        io.max:
+        io.weight:
+        rdma.max:
+  ```
+#### 5、监控脚本（可选）
+
+- 位于```**$LKP_SRC/monitors**```
+- 监视器在运行基准测试时捕获性能统计数据。
+- 对性能分析和回归根源有价值。
+		  
+  ```yaml
+      proc-vmstats:
+           nterval: 5
+  ```
+### Job yaml的扩展和解释可参考：
+```
+【job的定义到执行】（https://gitee.com/wu_fengguang/lkp-tests/blob/master/jobs/README.md）
+```
+## 二、 提交测试任务
+
+- 环境准备就绪，就可以提交job给调度器。
+- 测试任务的结果见结果查看章节。
+
+#### 1、 submit命令的用法：
+```
+- Usage: submit [options] jobs...
+      submit test jobs to scheduler
+- options:
+        - s, --set 'KEY: VALUE'   #add YAML hash to job
+        - o, --output DIR         #save job yaml to DIR/
+        - a, --auto-define-files  #auto add define_files
+        - c, --connect            #auto connect to the host
+        - m, --monitor            # monitor job status: use -m 'KEY: VALUE' to add rule"
+```
+#### 2、以netperf为例，提交job文件
+```
+     **submit netperf.yaml** 
+```
 
 
 
