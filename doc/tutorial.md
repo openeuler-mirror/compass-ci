@@ -78,14 +78,23 @@
 
 
 ## 2. 建立本地环境（构建一个能够提交job的环境）
-下载lkp-tests, 安装依赖包并配置环境变量
+- 下载lkp-tests, 安装依赖包并配置环境变量
        ```bash
        git clone http://gitee.com/wu_fengguang/lkp-tests.git
        cd lkp-tests
        make install
        ```
 
-
+- 配置lab
+  - 打开lkp-tests/include/lab/z9
+	```yaml
+	SCHED_HOST: ip
+	SCHED_PORT: port
+	```
+  - 新建$HOME/.config/compass-ci/defaults/$USER.yaml
+	```yaml
+	lab: z9
+	```
 
 
 
