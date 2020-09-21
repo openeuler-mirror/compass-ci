@@ -138,7 +138,7 @@ class Job
   end
 
   private def set_lkp_server
-    if self["SCHED_HOST"] != SCHED_HOST   # remote submited job
+    if self["SCHED_HOST"] != SCHED_HOST # remote submited job
       # ?further fix to 127.0.0.1 (from remote ssh port forwarding)
       # ?even set self["SCHED_HOST"] and self["SCHED_PORT"]
 
@@ -147,7 +147,7 @@ class Job
 
       if self["uuid"] == ""
         puts "Job's SCHED_HOST is #{self["SCHED_HOST"]}, " +
-          "current scheduler IP is: #{SCHED_HOST}"
+             "current scheduler IP is: #{SCHED_HOST}"
         raise "Missing uuid for remote job"
       end
     end
