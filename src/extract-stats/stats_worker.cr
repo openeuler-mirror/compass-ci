@@ -7,9 +7,8 @@ require "../scheduler/constants"
 require "./regression_client"
 require "./constants.cr"
 
-
 class StatsWorker
-  def initialize()
+  def initialize
     @es = Elasticsearch::Client.new
     @tq = TaskQueueAPI.new
     @rc = RegressionClient.new
@@ -24,7 +23,7 @@ class StatsWorker
         next
       end
       if response[0] == 200
-        job_id= JSON.parse(response[1].to_json)["id"]
+        job_id = JSON.parse(response[1].to_json)["id"]
 
         job = @es.get_job(job_id.to_s)
         if job
@@ -69,7 +68,7 @@ class StatsWorker
     unless new_error_ids.empty?
       STDOUT.puts "send a delimiter task: job_id is #{job.id}"
       @tq.add_task(DELIMITER_TASK_QUEUE, JSON.parse({"error_id" => new_error_ids.sample,
-                                         "job_id" => job.id}.to_json))
+                                                     "job_id"   => job.id}.to_json))
     end
     puts %({"job_id": "#{job.id}", "job_state": "extract_finished"})
   end
