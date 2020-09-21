@@ -24,73 +24,73 @@ require "../lib/job"
 #
 # -------------------------------------------------------------------------------------------
 class Elasticsearch::Client
-    class_property :client
-    HOST = (ENV.has_key?("ES_HOST") ? ENV["ES_HOST"] : JOB_ES_HOST)
-    PORT = (ENV.has_key?("ES_PORT") ? ENV["ES_PORT"] : JOB_ES_PORT).to_i32
+  class_property :client
+  HOST = (ENV.has_key?("ES_HOST") ? ENV["ES_HOST"] : JOB_ES_HOST)
+  PORT = (ENV.has_key?("ES_PORT") ? ENV["ES_PORT"] : JOB_ES_PORT).to_i32
 
-    def initialize(host = HOST, port = PORT)
-        @client = Elasticsearch::API::Client.new( { :host => host, :port => port } )
+  def initialize(host = HOST, port = PORT)
+    @client = Elasticsearch::API::Client.new({:host => host, :port => port})
+  end
+
+  # caller should judge response["_id"] != nil
+  def set_job_content(job : Job)
+    response = get_job_content(job.id)
+    if response["id"]?
+      response = update(job.dump_to_json_any, job.id)
+    else
+      response = create(job.dump_to_json_any, job.id)
     end
 
-    # caller should judge response["_id"] != nil
-    def set_job_content(job : Job)
-        response = get_job_content(job.id)
-        if response["id"]?
-            response = update(job.dump_to_json_any, job.id)
-        else
-            response = create(job.dump_to_json_any, job.id)
-        end
+    return response
+  end
 
-        return response
+  # caller should judge response["id"]?
+  def get_job_content(job_id : String)
+    if @client.exists({:index => "jobs", :type => "_doc", :id => job_id})
+      response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
+    else
+      response = {"_id" => job_id, "found" => false}
     end
 
-    # caller should judge response["id"]?
-    def get_job_content(job_id : String)
-        if @client.exists({:index => "jobs", :type => "_doc", :id => job_id})
-            response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
-        else
-            response = {"_id" => job_id, "found" => false}
-        end
+    return response
+  end
 
-        return response
+  def get_job(job_id : String)
+    response = get_job_content(job_id)
+
+    case response
+    when JSON::Any
+      job = Job.new(response, job_id)
+    else
+      job = nil
     end
 
-    def get_job(job_id : String)
-        response = get_job_content(job_id)
+    return job
+  end
 
-        case response
-        when JSON::Any
-            job = Job.new(response, job_id)
-        else
-            job = nil
-        end
+  private def create(job_content : JSON::Any, job_id : String)
+    return @client.create(
+      {
+        :index => "jobs", :type => "_doc",
+        :id => job_id,
+        :body => job_content,
+      }
+    )
+  end
 
-        return job
-    end
+  private def update(job_content : JSON::Any, job_id : String)
+    return @client.update(
+      {
+        :index => "jobs", :type => "_doc",
+        :id => job_id,
+        :body => {:doc => job_content},
+      }
+    )
+  end
 
-    private def create(job_content : JSON::Any, job_id : String)
-        return @client.create(
-            {
-                :index => "jobs", :type => "_doc",
-                :id => job_id,
-                :body => job_content
-            }
-        )
-    end
-
-    private def update(job_content : JSON::Any, job_id : String)
-        return @client.update(
-            {
-                :index => "jobs", :type => "_doc",
-                :id => job_id,
-                :body => { :doc => job_content }
-            }
-        )
-    end
-
-    # [no use now] add a yaml file to es documents_path
-    def add(documents_path : String, fullpath_file : String, id : String)
-        yaml = YAML.parse(File.read(fullpath_file))
-        return add(documents_path, yaml, id)
-    end
+  # [no use now] add a yaml file to es documents_path
+  def add(documents_path : String, fullpath_file : String, id : String)
+    yaml = YAML.parse(File.read(fullpath_file))
+    return add(documents_path, yaml, id)
+  end
 end
