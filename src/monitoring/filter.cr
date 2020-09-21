@@ -4,12 +4,11 @@ require "json"
 require "./parse_serial_logs"
 
 class Filter
-
-  def initialize()
+  def initialize
     # use @hash to save query and socket
     # like {query => [socket1, socket2]}
     @hash = Hash(JSON::Any, Array(HTTP::WebSocket)).new
-    @sp = SerialParser.new()
+    @sp = SerialParser.new
   end
 
   def add_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
@@ -54,5 +53,4 @@ class Filter
     end
     return true
   end
-
 end
