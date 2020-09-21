@@ -1,0 +1,23 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+vm_name=ssh_r
+
+docker stop ${vm_name}
+docker rm ${vm_name}
+
+cmd=(
+  docker run
+  --restart=always
+  --name ${vm_name}
+  -e GATEWAY_PORTS=true
+  -e TCP_FORWARDING=true
+  -d
+  -p 20000-22000:20000-22000
+  -p 5050:22
+  -v /etc/localtime:/etc/localtime:ro
+  -v /srv/pub/sshr/keys/:/etc/ssh/keys
+  ssh-r:0.001
+)
+
+"${cmd[@]}"
