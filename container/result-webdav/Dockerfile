@@ -5,5 +5,10 @@
 
 FROM openresty/openresty:alpine
 
+RUN apk add bash
 RUN mkdir -p /var/log/nginx/
 RUN adduser lkp -u 1090 -g 1090 -D
+
+COPY ./openresty.sh /usr/local/bin/
+
+CMD ["/usr/local/bin/openresty.sh"]
