@@ -15,22 +15,20 @@ enum TaskInQueueStatus
 end
 
 class TaskQueue
-  def initialize()
+  def initialize
     redis_host = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : REDIS_HOST)
     redis_port = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"].to_i32 : REDIS_PORT)
 
-    redis_pool_num = (ENV.has_key?("REDIS_POOL_NUM") ?
-                      ENV["REDIS_POOL_NUM"].to_i32 : REDIS_POOL_NUM)
+    redis_pool_num = (ENV.has_key?("REDIS_POOL_NUM") ? ENV["REDIS_POOL_NUM"].to_i32 : REDIS_POOL_NUM)
 
-    redis_pool_timeout = (ENV.has_key?("REDIS_POOL_TIMEOUT") ?
-                      ENV["REDIS_POOL_TIMEOUT"].to_i32 : REDIS_POOL_TIMEOUT)
+    redis_pool_timeout = (ENV.has_key?("REDIS_POOL_TIMEOUT") ? ENV["REDIS_POOL_TIMEOUT"].to_i32 : REDIS_POOL_TIMEOUT)
 
     @redis = Redis::PooledClient.new(host: redis_host,
-               port: redis_port, pool_size: redis_pool_num,
-               pool_timeout: redis_pool_timeout / 1000)
+      port: redis_port, pool_size: redis_pool_num,
+      pool_timeout: redis_pool_timeout / 1000)
   end
 
-  private def get_new_seqno()
+  private def get_new_seqno
     return @redis.incr("#{QUEUE_NAME_BASE}/seqno")
   end
 
@@ -38,7 +36,7 @@ class TaskQueue
     current_seqno = @redis.get("#{QUEUE_NAME_BASE}/seqno")
     current_seqno = "0" if current_seqno.nil?
     current_seqno = current_seqno.to_i64
-    return TaskInQueueStatus::TooBigID  if id.split('.')[-1].to_i64 > current_seqno
+    return TaskInQueueStatus::TooBigID if id.split('.')[-1].to_i64 > current_seqno
 
     data_f = Redis::Future.new
     loop_till_done() {
@@ -63,7 +61,7 @@ class TaskQueue
   end
 
   private def add2redis(queue_name : String, content : Hash)
-    operate_time = Time.local.to_unix_f  # do prepare thing early
+    operate_time = Time.local.to_unix_f # do prepare thing early
 
     if content["id"]?
       # this means we'll add like duplicate id
@@ -75,8 +73,8 @@ class TaskQueue
     end
     data = {
       :add_time => operate_time,
-      :queue => queue_name,
-      :data => content
+      :queue    => queue_name,
+      :data     => content,
     }
 
     loop_till_done() {
@@ -148,7 +146,7 @@ class TaskQueue
       end
       op_result
     }
-    return nil if result.not_nil![1].as(Int) == 0  # 0 means no delete == no id
+    return nil if result.not_nil![1].as(Int) == 0 # 0 means no delete == no id
 
     # result was [[id], 1]
     id = first_task_id.value.as(Array)[0].to_s
@@ -212,7 +210,7 @@ class TaskQueue
   #
   # connect pool timeout is 0.01 second (10 ms)
   #   here keep try for 30ms
-  private def loop_till_done()
+  private def loop_till_done
     result = nil
     time_start = Time.local.to_unix_ms
 
@@ -234,5 +232,4 @@ class TaskQueue
     # p "retry #{i} times"
     return result
   end
-
 end
