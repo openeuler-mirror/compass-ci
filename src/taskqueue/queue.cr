@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+ or GPL-2.0
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+require "uuid"
+
 require "./redis_client"
 
 class TaskQueue
@@ -13,7 +15,8 @@ class TaskQueue
     queue_name, ext_set = queue_check_params(env, ["queue"])
     return ext_set if ext_set
 
-    param_queue = queue_name[0] + "/ready"
+    type, prefix = get_matched_queue_name(queue_name[0])
+    param_queue = "#{prefix}/#{type}"
 
     body_content = body.gets_to_end
     env.request.body = body_content # restore back for debug message
@@ -72,8 +75,20 @@ class TaskQueue
     queue_name, ext_set = queue_check_params(env, ["queue"])
     return ext_set if ext_set
 
-    queue_name_from = queue_name[0] + "/ready"
-    queue_name_to = queue_name[0] + "/in_process"
+    # type can be "idle" | "ready", can not be "uuid"
+    type, prefix = get_matched_queue_name(queue_name[0])
+    queue_name_from = "#{prefix}/#{type}"
+    case type
+    when "ready"
+      move_uuid_task2ready(prefix)
+    when "idle"
+      # doing noting
+    else # uuid
+      puts "Warring: Should not direct comsume job with uuid."
+    end
+
+    queue_name_from = "#{prefix}/#{type}"
+    queue_name_to = prefix + "/in_process"
 
     begin
       timeout = "#{env.params.query["timeout"]?}".to_i
@@ -148,5 +163,40 @@ class TaskQueue
     end
 
     return result
+  end
+
+  private def get_matched_queue_name(queue_name)
+    test_queue_name = "#{queue_name}"
+    match = test_queue_name.match(/(.*)\/(.*)$/)
+    if !match.nil?
+      return "idle", match[1] if match[2] == "idle"
+
+      begin
+        uuid = UUID.new(match[2])
+        return uuid.to_s, match[1]
+      rescue
+      end
+    end
+
+    return "ready", test_queue_name
+  end
+
+  private def move_uuid_task2ready(queue_name)
+    # get uuid lists
+    # uuid_keys ["queues/sched/vm-hi1620-2p8g/ee44b164-90e3-49a7-9798-5e7cc9bc7451", ]
+    uuid_keys = get_uuid_keys("#{queue_name}")
+    return unless uuid_keys # nil
+    return unless uuid_keys.size > 0
+
+    # move task to ready, and with rate control to each uuid
+    uuid_keys.each do |key|
+      uuid, prefix = get_matched_queue_name(key)
+      if @@rate_limiter.rate_limited?(:l2pH, uuid) == false
+        # prefix is start with "queues", need delete it
+        s_name = prefix.sub("#{QUEUE_NAME_BASE}/", "")
+        move_first_task_in_redis_with_score("#{s_name}/#{uuid}",
+                                            "#{s_name}/ready")
+      end
+    end
   end
 end

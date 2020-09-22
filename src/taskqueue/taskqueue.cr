@@ -2,12 +2,20 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 require "kemal"
+require "rate_limiter"
 
 require "./constants"
 require "./queue"
 
 class TaskQueue
   VERSION = "0.0.2"
+
+  # l2pH: limit 2 / hours
+  # l100pms: limit 100 / ms
+  @@rate_limiter = RateLimiter(String).new
+  @@rate_limiter.bucket(:l2pH, 1_u32, 30.minutes)
+  @@rate_limiter.bucket(:l1pms, 1_u32, 0.001.seconds)
+  @@rate_limiter.bucket(:l100pms, 1_u32, 0.00001.seconds)
 
   def debug_message(env, response, time_in)
     puts("\n")

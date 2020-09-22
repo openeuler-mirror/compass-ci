@@ -232,4 +232,57 @@ class TaskQueue
     # p "retry #{i} times"
     return result
   end
+
+  private def get_uuid_keys(queue_name)
+    return nil unless queue_name[0..5] == "sched/"
+
+    # search = "queues/sched/vm-hi1620-2p8g/ee44b164-90e3-49a7-9798-5e7cc9bc7451"
+    # only 3 matchs keyword: * [] ?
+    search = "#{QUEUE_NAME_BASE}/#{queue_name}/[0-9a-eA-F\-]*"
+    lua_script = "return redis.call('keys', KEYS[1])"
+    keys = @redis.eval(lua_script, [search])
+
+    case keys
+    when Array(Redis::RedisValue)
+      return nil unless keys.size > 0
+    else
+      return nil
+    end
+
+    keys.each do |key|
+      # must end with uuid, then keep it
+      #  some queue name that has "uuid" at middle, also will delete
+      uuid, _ = get_matched_queue_name(key)
+      case uuid
+      when "idle", "ready"
+        keys.delete(key)
+      end
+    end
+    return keys
+  end
+
+  private def move_first_task_in_redis_with_score(from : String, to : String)
+    # result was ["crystal.87230", "1600782938.9017849"]
+    result = @redis.zrange("#{QUEUE_NAME_BASE}/#{from}", 0, 0, with_scores: true)
+    case result
+    when Array(Redis::RedisValue)
+      # empty queue will be auto delete by redis
+      return if result.size != 2
+    else
+      return
+    end
+
+    @redis.zremrangebyrank("#{QUEUE_NAME_BASE}/#{from}", 0, 0)
+    content = find_task(result[0].to_s)
+    return if content.nil?
+
+    operate_time = Time.local.to_unix_f
+    content = content.merge({"queue" => to})
+    content = content.merge({"move_with_score_time" => operate_time})
+
+    @redis.zadd("#{QUEUE_NAME_BASE}/#{to}", result[1], result[0])
+    @redis.hset("#{QUEUE_NAME_BASE}/id2content", result[0], content.to_json)
+
+    # return content["data"].to_json
+  end
 end
