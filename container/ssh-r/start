@@ -4,7 +4,6 @@
 
 vm_name=ssh_r
 
-docker stop ${vm_name}
 docker rm ${vm_name}
 
 cmd=(
