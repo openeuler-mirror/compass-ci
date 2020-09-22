@@ -540,10 +540,8 @@ Compass-CI 集开发调测、测试服务、测试结果分析、辅助定位为
 
 
 
-// baijing, zhangyu
 - 添加测试用例
- refer to
- https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md 
+ 参考文档详见：[添加测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
 
 
 
