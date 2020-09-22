@@ -467,7 +467,7 @@ class Sched
   end
 
   def auto_submit_idle_job(tbox_group)
-    full_path_patterns = "#{ENV["CCI_SRC"]}/allot/idle/#{tbox_group}/*.yaml"
+    full_path_patterns = "#{ENV["CCI_REPOS"]}/lab-#{ENV["lab"]}/allot/idle/#{tbox_group}/*.yaml"
     Jobfile::Operate.auto_submit_job(
       full_path_patterns,
       "testbox: #{tbox_group}") if Dir.glob(full_path_patterns).size > 0
