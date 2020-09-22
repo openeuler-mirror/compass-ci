@@ -595,6 +595,10 @@ class Sched
     puts hash.to_json
   end
 
+  def report_ssh_port(testbox : String, ssh_port : String)
+    @redis.hash_set("sched/tbox2ssh_port", testbox, ssh_port)
+  end
+
   def delete_access_key_file(job : Job)
     File.delete(job.access_key_file) if File.exists?(job.access_key_file)
   end

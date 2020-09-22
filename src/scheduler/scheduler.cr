@@ -180,4 +180,19 @@ module Scheduler
     sched.update_tbox_wtmp(env)
     "Done"
   end
+
+  get "/~lkp/cgi-bin/report_ssh_port" do |env|
+    testbox = env.params.query["tbox_name"]
+    ssh_port = env.params.query["ssh_port"].to_s
+    job_id = env.params.query["job_id"].to_s
+
+    if testbox && ssh_port
+      debug_message(env, "Done")
+
+      sched.report_ssh_port(testbox, ssh_port)
+    end
+
+    puts %({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"})
+    "Done"
+  end
 end
