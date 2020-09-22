@@ -354,11 +354,42 @@ Compass-CI 集开发调测、测试服务、测试结果分析、辅助定位为
 
 
 
-// yuhang
-  6、比较测试结果
-  	concepts
-        通过compare web  查询比较结果
-        通过命令行查询
+#### 6、比较测试结果
+
+> After the test has been completed, use conditions to query data, then combine data to multiple matrices. And that will compute each matrix average and standard deviation to compare test case performance changes in a specific dimension. At last, print compare result in pretty format.
+
+- methods
+    - web
+        - Compass CI/compare
+    - command
+        - `compare conditions -d dimension`
+
+- example result
+
+    ```
+    os=openeuler/os_arch=aarch64/tbox_group=vm-hi1620-2p8g
+
+
+                      20                               1  metric
+    --------------------  ------------------------------  ------------------------------
+          fails:runs        change        fails:runs
+               |               |               |
+              8:21          -38.1%            0:1         last_state.daemon.sshd.exit_code.1
+              1:21           -4.8%            0:1         last_state.daemon.sshd.exit_code.2
+              1:21           -4.8%            0:1         last_state.setup.disk.exit_code.1
+              1:21           -4.8%            0:1         last_state.test.dbench.exit_code.99
+              1:21           -4.8%            0:1         last_state.test.email.exit_code.7
+
+
+                      20                               1  metric
+    --------------------  ------------------------------  ------------------------------
+              %stddev       change            %stddev
+                 \             |                 \
+            0.02 ± 265%   +2259.8%          0.57          mpstat.cpu.all.soft%
+            0.48 ± 299%   +1334.9%          6.90          mpstat.cpu.all.sys%
+         2760.71 ± 164%    +292.6%      10838.00          proc-vmstat.nr_dirty_background_threshold
+         5522.10 ± 164%    +292.6%      21680.00          proc-vmstat.nr_dirty_threshold
+    ```
 
 
 
