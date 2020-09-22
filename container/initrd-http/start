@@ -6,6 +6,8 @@
 
 load_cci_defaults
 
+docker_rm initrd-http
+
 cmd=(
 	docker run
 	--restart=always

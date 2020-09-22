@@ -3,6 +3,10 @@
 # Copyright (C) 2019-2020  Eric D.little51
 # SPDX-License-Identifier: GPL-3.0
 
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm gitcache
+
 cmd=(
 	docker run -dt
 	--name gitcache

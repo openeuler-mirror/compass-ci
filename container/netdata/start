@@ -2,6 +2,10 @@
 # Origin: https://hub.docker.com/r/netdata/netdata
 # SPDX-License-Identifier: GPL-3.0+
 
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm netdata
+
 cmd=(
 	docker run -d
 	--restart=always
