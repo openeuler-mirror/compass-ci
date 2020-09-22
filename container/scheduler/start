@@ -21,13 +21,16 @@ names = Set.new %w[
   FLUENTD_PORT
   TASKQUEUE_PORT
   TASKQUEUE_HOST
+  lab
 ]
 
 defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
-DEFAULT_LKP = '/c/lkp-tests'
-DEFAULT_CCI = '/c/compass-ci'
+CCI_REPOS = ENV['CCI_REPOS'] || '/c'
+DEFAULT_LKP = "#{CCI_REPOS}/lkp-tests"
+DEFAULT_CCI = "#{CCI_REPOS}/compass-ci"
+LAB = defaults['lab'] || 'z9'
 SCHED_PORT = defaults['SCHED_PORT'] || '3000'
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'
@@ -42,12 +45,14 @@ cmd = %W[
   -u 1090:1090
   -p #{SCHED_PORT}:#{SCHED_PORT}
 ] + env + %W[
+  -e CCI_REPOS=#{CCI_REPOS}
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
   -e SCHED_HOST=#{SCHED_HOST}
   -e SCHED_PORT=#{SCHED_PORT}
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
   -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/result:/srv/result
