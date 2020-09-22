@@ -335,13 +335,26 @@ Compass-CI 集开发调测、测试服务、测试结果分析、辅助定位为
 
 
 
-// weitao
-  5、查看测试结果
-  	local: /srv/result/$suite/$testbox/$date/$jobid/ file types under it
-        通过job web 直接查看任务结果
-        通过命令行查询
+  5. 查看测试结果
+	- 测试结果生成与存储
+		1. 测试执行机完成测试任务后，将结果保存为日志文件，并上传至服务器，按照
+		   $suite/$tbox_group/$date/job_id的目录结构存储在本地/srv/result目录。
+		2. extract-stats 服务将本地日志文件的数据进行提取，生成与日志文件对应的json文件
+		   以及汇总的结果stats.json，并将汇总后的结果存储到jobs数据库(ES)对应id的job中。
 
 
+	- web页面查看结果:
+		- jobs数据库（ES）中的结果：https://compass-ci.openeuler.org/jobs
+
+		- 文件中的结果,示例：
+			http://124.90.34.227:11300/result/iperf/dc-2g--xiao/2020-09-21/crystal.83385/，其中：
+
+				boot-time, diskstats.gz, interrupts.gz, ...等文件
+				- 日志文件（由测试执行机上传）。
+
+				boot-time.json, diskstats.json, interrupts.json, ... stats.json等
+				- json 文件对应每一个日志文件提取后的结果，stats.json为汇总后的结果,
+				（由extract-stats服务生成）。
 
 
 
