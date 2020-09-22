@@ -9,6 +9,7 @@ docker_rm remote-git
 cmd=(
 	docker run
 	--restart=always
+	--name remote-git
 	-u nobody
 	-d
 	-p 8100:8100

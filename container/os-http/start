@@ -10,7 +10,7 @@ docker_rm os-http
 cmd=(
 	docker run
 	--restart=always
-#	--name os-http
+	--name os-http
 	-p ${OS_HTTP_PORT:-8000}:80
 	-v /srv/os:/usr/share/nginx/html/os:ro
 	-v /etc/localtime:/etc/localtime:ro

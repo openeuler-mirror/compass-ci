@@ -9,6 +9,7 @@ docker_rm archlinux
 cmd=(
 	docker run
 	--restart=always
+	--name archlinux
 	-v archlinux-home:/home
 	-v /etc/localtime:/etc/localtime:ro
 	-v archlinux-root:/root

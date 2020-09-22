@@ -9,6 +9,7 @@ docker_rm debian
 cmd=(
 	docker run
 	--restart=always
+	--name debian
 	-v debian-home:/home
 	-v /etc/localtime:/etc/localtime:ro
 	-v debian-root:/root

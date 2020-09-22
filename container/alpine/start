@@ -9,6 +9,7 @@ docker_rm alpine
 cmd=(
 	docker run
 	--restart=always
+	--name alpine
 	-d
 	-v alpine-home:/home
 	-v /etc/localtime:/etc/localtime:ro
