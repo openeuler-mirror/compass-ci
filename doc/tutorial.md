@@ -142,21 +142,21 @@ Compass-CI 集开发调测、测试服务、测试结果分析、辅助定位为
        通过向compass-ci@openeuler.io发邮件申请
        配置default
 
-       when "apply ssh account"
-         send email for apply ssh account
-	   - subject: apply ssh account
-	   - to: compass-ci@139.io
-	   - pub_key:
-	     - as mail content
-	     - as attachment
-	   - oss_url:
-	     - https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+       申请邮件：
+         - 邮件标题：'apply account'
+	 - 收件地址：compass-ci@139.com
+         - 公钥：附件方式添加公钥
+	 - url: 开源社区提交过commit的url地址
+           - 例：https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
 
-	   - return jumper_info: "jumper_ip, jumper_port, account, password"
-	     - gererate uuid
-	       - write "account, uuid, email" to es
+       回复邮件内容：
 
-	     send jumper_info and uuid to user
+             account_uuird: xxxxxx
+             SCHED_HOST:   xxx.xxx.xxx.xxx
+             SCHED_PORT:   10000
+
+
+
 
 
 
