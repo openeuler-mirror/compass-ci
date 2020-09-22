@@ -292,10 +292,26 @@
 
 
 
-// xueliang
   8. 提交 bisect任务
-     - ***TODO----------------------------------------***
-    
+    The bisect task will find the first commit information which introduced the error in a git repo.
+
+    Refer to $LKP_SRC/jobs/bisect.yaml.
+    Required fields:
+      bisect:
+        job_id: 
+        error_id:
+
+    Field description:
+      job_id: 
+      submit a job and get a $job_id.
+      error_id:
+      search $job_id in compass-ci web and get the $error_ids, select a $error_id from $error_ids for bisect. 
+  
+    Command:
+      submit bisect.yaml
+
+    Result:
+      will get a email if bisect successed.
 
 
 ## 高级功能
