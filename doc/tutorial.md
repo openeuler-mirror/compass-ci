@@ -46,7 +46,23 @@
   1. 如何申请账号
        通过向compass-ci@openeuler.io发邮件申请
        配置default
-       write TODO
+
+       when "apply ssh account"
+         send email for apply ssh account
+	   - subject: apply ssh account
+	   - to: compass-ci@139.io
+	   - pub_key:
+	     - as mail content
+	     - as attachment
+	   - oss_url:
+	     - https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+
+	   - return jumper_info: "jumper_ip, jumper_port, account, password"
+	     - gererate uuid
+	       - write "account, uuid, email" to es
+
+	     send jumper_info and uuid to user
+
 
 
 
