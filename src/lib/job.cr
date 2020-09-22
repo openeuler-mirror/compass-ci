@@ -197,7 +197,7 @@ class Job
   end
 
   # defaults to the 1st value
-  VALID_OS_MOUNTS = ["nfs", "initramfs", "cifs"]
+  VALID_OS_MOUNTS = ["nfs", "initramfs", "cifs", "container"]
 
   private def set_os_mount
     if @hash["os_mount"]?
@@ -239,6 +239,7 @@ class Job
       "cifs" => "root=cifs://#{OS_HTTP_HOST}#{os_real_path}" +
                 ",guest,ro,hard,vers=1.0,noacl,nouser_xattr initrd=#{lkp_basename}",
       "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0 initrd=#{current_basename}",
+      "container" => ""
     }
     self["kernel_append_root"] = fs2root[os_mount]
   end
