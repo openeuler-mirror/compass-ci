@@ -132,20 +132,19 @@ class TaskQueue
   end
 
   # loop try: when there has no task, return until get one or timeout
-  #
-  # when parameter is wrong, this function also try a lot of times
-  # default timeout is 300ms, we delay for 5ms at each time, that's 60 times retry
+  # default timeout is 0.015ms, we delay for 10ms at each time
   private def operate_with_timeout(timeout)
     result = nil
     time_span = Time::Span.new(nanoseconds: (REDIS_POOL_TIMEOUT + 1) * 1000)
-    time_start = Time.local.to_unix_ms
+    time_start = Time.local.to_unix_f
+    timeout_seconds_f = timeout / 1000
 
     loop do
       result = yield
       break if result
 
+      break if (Time.local.to_unix_f - time_start) > timeout_seconds_f
       sleep(time_span)
-      break if (Time.local.to_unix_ms - time_start) > timeout
     end
 
     return result

@@ -7,10 +7,16 @@ QUEUE_NAME_BASE = "queues"
 
 REDIS_HOST     = "172.17.0.1"
 REDIS_PORT     = 6379
-REDIS_POOL_NUM =   32 # when use 16 (scheduler use 25), meet Exception:
-#   Exception: No free connection (used 16 of 16)
+
+# delimiter and exttract-ststs will loop consume job
+# when use 32 (scheduler use 25), meet Exception:
+#   Exception: No free connection (used 32 of 32)
+REDIS_POOL_NUM =   64
 
 REDIS_POOL_TIMEOUT = 10 # ms
 
 HTTP_MAX_TIMEOUT     = 57000 # less to 1 minute (most http longest timeout)
-HTTP_DEFAULT_TIMEOUT =     1 # 1ms (less than redis timeout, that's no retry)
+
+# redis-benchmark: 100000 request in 1.88 seconds (0.0188ms/each)
+#   so we use 0.015ms for timeout, means no retry at default
+HTTP_DEFAULT_TIMEOUT = 0.015

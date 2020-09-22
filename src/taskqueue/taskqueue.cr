@@ -7,7 +7,7 @@ require "./constants"
 require "./queue"
 
 class TaskQueue
-  VERSION = "0.0.1"
+  VERSION = "0.0.2"
 
   def debug_message(env, response, time_in)
     puts("\n")
