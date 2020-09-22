@@ -417,16 +417,61 @@ Compass-CI 集开发调测、测试服务、测试结果分析、辅助定位为
 
 
 
-// zhengde
-  7. 提交borrow任务
-	fields:
-		sshd:
-		runtime:
+##7. 提交borrow任务
+-概述：通过提交任务的方式申请环境
+      提交borrow任务的yaml文件可以参考lkp-tests/jobs/borrow-1h.yaml
 
-  	os env
-	testbox list
-	submit -c -m borrow.yaml
+###yaml文件配置说明：
 
+-必填字段：
+  sshd:
+    pub_key: <%=
+    begin
+      File.read("#{ENV['HOME']}/.ssh/id_rsa.pub").chomp
+    rescue
+      nil
+    end
+    %>
+    email:
+  runtime: 1h
+  testbox: vm-hi1620-2p8g
+
+-选填字段：
+  os: openeuler
+  os_arch: aarch64
+  os_version: 20.03
+
+-字段描述：
+  1.sshd:
+    pub_key:
+      将用户的公钥信息添加到job中
+      请确保公钥文件"#{ENV['HOME']}/.ssh/id_rsa.pub"存在
+    email:
+      配置用户邮箱地址（用于接收申请设备的登录信息）
+  2.runtime:
+    申请环境的使用时间
+    可以使用单位 h/d/w
+  3.testbox:
+    申请环境的规格,如下：
+      vm-hi1620-1p1g
+      vm-hi1620-2p1g
+      vm-hi1620-2p4g
+      vm-hi1620-2p8g
+      vm-pxe-hi1620-1p1g
+      vm-pxe-hi1620-2p1g
+      vm-pxe-hi1620-2p4g
+      vm-pxe-hi1620-2p8g
+      taishan200-2280-2s64p-256g
+  4.申请环境的操作系统参数：
+    默认配置为：
+      os: openeuler, os_arch: aarch64, os_version: 20.03
+    可选：
+      os: debian, os_arch: aarch64, os_version: sid
+      os: centos, os_arch: aarch64, os_version: 7.6.1810
+
+###提交任务
+  submit -m -c borrow-1h.yaml
+  运行该命令之后，会自动ssh连接到申请的环境当中
 
 
 
