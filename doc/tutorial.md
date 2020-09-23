@@ -614,9 +614,30 @@ Compass-CI 集开发调测、测试服务、测试结果分析、辅助定位为
 
 
 
-// shaofei
 - PKGBUILD 构建 
 
+1. 概述：
+
+         使用PKGBUILD完成上游项目源代码的编译构建，同一项目可以使用不同PKGBUILD完成项目编译构建过程。
+         PKGBUILD相关参考文档：https://wiki.archlinux.org/index.php/PKGBUILD
+
+2. 步骤：
+
+       1) 注册仓库
+          如果您想在git push的时候, 自动触发测试, 那么需要把您的公开git url添加到如下仓库
+	  [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)
+	  git clone https://gitee.com/wu_fengguang/upstream-repos.git
+	  less upstream-repos/README.md
+
+       2) 执行构建测试
+          项目代码更新后自动触发构建任务，无需其他操作。
+
+       3) 查看结果
+          web: http://159.138.45.71:8081/jobs
+
+       4) 备注
+          目前提供archlinux下已有PKGBUILD项目构建测试，暂不支持自主导入PKGBUILD文件。
+          PKGBUILD存放路径： /srv/git/archlinux/*/*/PKGBUILD
 
 
 
