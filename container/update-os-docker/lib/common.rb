@@ -4,6 +4,7 @@
 # frozen_string_literal: true
 
 require_relative 'dc-image'
+require 'pathname'
 
 OS_PATH ||= ENV['OS_PATH'] || '/os/'
 
@@ -13,19 +14,19 @@ class ParseParam
 
   def initialize(rootdir)
     _, _, @os_name, _, @os_version = rootdir.split('/')
-    @dc_name = "dc-#{@os_name}-#{@os_version}"
   end
 
   def prepare_env
     @hub_dc_img = get_hub_dc_image(@os_name, @os_version)
     @local_dc_img = get_local_dc_image(@os_name, @os_version)
+    @dc_name = @local_dc_img.gsub(':', '-')
     prepare_dc_images(@local_dc_img, @hub_dc_img)
   end
 end
 
 def check_argv(argv)
   usage(argv)
-  rootfs_dir = OS_PATH + argv[0]
+  rootfs_dir = Pathname.new(OS_PATH + argv[0]).realpath.to_s
   raise 'Wrong vmlinuz path' unless File.exist?(rootfs_dir + '/vmlinuz')
 
   return rootfs_dir
