@@ -8,8 +8,8 @@ server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 : ${sched_port:=3000}
 : ${gitcache_host:=$server_ip}
 : ${gitcache_port:=5000}
-: ${fluentd_server_host:=$server_ip}
-: ${fluentd_server_port:=24224}
+: ${FLUENTD_SERVER_HOST:=$server_ip}
+: ${FLUENTD_SERVER_PORT:=24224}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -20,8 +20,8 @@ INITRD_HTTP_HOST: $initrd_http_host
 INITRD_HTTP_PORT: $initrd_http_port
 GITCACHE_HOST: $gitcache_host
 GITCACHE_PORT: $gitcache_port
-FLUENTD_SERVER_HOST: $fluentd_server_host
-FLUENTD_SERVER_PORT: $fluentd_server_port
+FLUENTD_SERVER_HOST: $FLUENTD_SERVER_HOST
+FLUENTD_SERVER_PORT: $FLUENTD_SERVER_PORT
 EOF
 
 cat > /etc/profile.d/compass.sh <<'EOF'
