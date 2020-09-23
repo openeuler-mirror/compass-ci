@@ -515,8 +515,13 @@ class Sched
     response += "initrd #{sched_http_prefix}/job_initrd_tmpfs/#{job.id}/job.cgz\n"
     response += initrd_deps
     response += initrd_pkg
-    response += "kernel #{os_http_prefix}" +
+    if job.os_mount == "initramfs"
+      response += "kernel #{initrd_http_prefix}" +
+                  "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/vmlinuz")}"
+    else
+      response += "kernel #{os_http_prefix}" +
                 "#{JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/vmlinuz")}"
+    end
     response += " user=lkp"
     response += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
     response += " #{job.kernel_append_root}"
