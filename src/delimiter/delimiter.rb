@@ -5,7 +5,7 @@
 require 'json'
 
 require_relative './constants'
-require_relative './find-commit/git_bisect'
+require_relative '../../lib/git_bisect'
 require_relative '../../lib/taskqueue_client'
 require_relative '../../lib/mail_bisect_result'
 

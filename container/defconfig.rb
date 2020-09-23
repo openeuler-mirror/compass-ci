@@ -18,6 +18,13 @@ def relevant_defaults(names)
   cci_defaults.select { |k, _| names.include? k }
 end
 
+def set_local_env
+  hash = cci_defaults
+  hash.map { |k, v|
+    system "export #{k}=#{v}"
+  }
+end
+
 def docker_env(hash)
   hash.map { |k, v| ['-e', "#{k}=#{v}"] }.flatten
 end

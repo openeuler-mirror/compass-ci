@@ -52,7 +52,7 @@ module Utils
     end
 
     def monitor_run_stop(query)
-      monitor = Monitor.new("ws//#{MONITOR_HOST}:#{MONITOR_PORT}/filter")
+      monitor = Monitor.new("ws://#{MONITOR_HOST}:#{MONITOR_PORT}/filter")
       monitor.query = query
       monitor.action = { 'stop' => true }
       return monitor.run

@@ -3,11 +3,10 @@
 # frozen_string_literal: true
 
 require 'json'
-require_relative '../../../lib/es_query'
-require_relative '../../../lib/sched_client'
+require_relative 'es_query'
+require_relative 'sched_client'
+require_relative "../src/delimiter/utils"
 require_relative "#{ENV['LKP_SRC']}/lib/monitor"
-
-require_relative '../utils'
 
 # find the first bad commit
 class GitBisect
@@ -39,6 +38,7 @@ class GitBisect
     @bad_job = @es.query_by_id @bad_job_id
     raise "es query job id: #{@bad_job_id} failed!" unless @bad_job
 
+    @bad_job.delete('uuid')
     @bad_job.delete('stats')
     @bad_job.delete('id')
     @bad_job.delete('error_ids')

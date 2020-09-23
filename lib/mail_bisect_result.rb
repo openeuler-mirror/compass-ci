@@ -36,7 +36,9 @@ class MailBisectResult
 
     https://gitee.com/openeuler/compass-ci
     BODY
-    @hash = { 'to' => @git_commit.author_email, 'body' => body, 'subject' => subject }
+    to = "caoxl@crystal.ci"
+    @hash = { 'to' => to, 'body' => body, 'subject' => subject, 'from' => 'compass-ci@139.com' }
+    #@hash = { 'to' => @git_commit.author_email, 'body' => body, 'subject' => subject }
   end
 
   def send_mail

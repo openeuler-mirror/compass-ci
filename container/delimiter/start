@@ -36,6 +36,7 @@ cmd = %w[
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v /etc/localtime:/etc/localtime:ro
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v /srv/git:/srv/git:ro
   -w #{DEFAULT_CCI}/src
   delimiter
 ]
