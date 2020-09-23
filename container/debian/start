@@ -1,0 +1,27 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm debian
+
+cmd=(
+	docker run
+	--restart=always
+	--name debian
+	-v debian-home:/home
+	-v /etc/localtime:/etc/localtime:ro
+	-v debian-root:/root
+	-v /c:/c
+	-v /srv/os:/srv/os
+	-p 2201:2201
+	-p 1301:1301
+	--hostname debian
+	--security-opt seccomp=unconfined
+	-d
+	debian:testbed
+	/usr/sbin/sshd -D -p 2201
+)
+
+"${cmd[@]}"

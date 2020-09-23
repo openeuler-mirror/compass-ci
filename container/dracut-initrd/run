@@ -1,0 +1,53 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# create initramfs from specified os lib modules
+# input:
+#   specified os lib modules directory
+# output:
+#   initramfs image file of the specified os version
+
+[ -d "$1" ] || {
+	echo "Example usage:
+		./run /srv/os/debian/aarch64/sid/lib/modules/5.4.0-4-arm64
+	"
+	exit
+}
+
+modules_dir=$1
+
+[ -d "${modules_dir}/kernel" ] || {
+	echo "[INFO] cannot find kernel dir under ${modules_dir} ."
+
+	OS_PATH=${OS_PATH-"/os"}
+	modules_dir="${OS_PATH%/}/$1"
+
+	echo "[INFO] finding kernel dir under ${modules_dir} ..."
+
+	[ -d "${modules_dir}/kernel" ] || {
+		echo "[ERROR] cannot find kernel dir under ${modules_dir} !!!"
+		exit
+	}
+}
+
+kver=$(basename "$modules_dir")
+root=${modules_dir%/lib/modules/*}
+
+kernel_modules=/lib/modules/$kver
+initrd_output=/boot/initramfs.lkp-${kver}.img
+
+cmd=(
+	docker run
+	--rm
+	-v $root/boot:/boot
+	-v $root/lib/modules:/lib/modules
+	debian:dracut
+	bash -c
+	"dracut --force --kver $kver -k $kernel_modules $initrd_output &&
+	chmod 644 $initrd_output"
+
+	# example:
+	# dracut --kver 5.4.0-4-arm64 -k /os/debian/aarch64/sid/lib/modules/5.4.0-4-arm64 /os/debian/aarch64/sid/boot/initramfs.lkp-5.4.0-4-arm64.img
+)
+
+"${cmd[@]}"

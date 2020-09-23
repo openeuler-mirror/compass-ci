@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new ['SCHED_PORT']
+defaults = relevant_defaults(names)
+
+SCHED_PORT = (defaults['SCHED_PORT'] || '3000')
+
+CCI_SRC = ENV['CCI_SRC']
+system "bash #{CCI_SRC}/container/compile ."
+system "cp #{CCI_SRC}/sbin/create-job-cpio.sh ."
+
+system "docker build -t sch-ruby-a:v0.00d-#{SCHED_PORT} ."
+
+system 'rm scheduler'
+system 'rm create-job-cpio.sh'

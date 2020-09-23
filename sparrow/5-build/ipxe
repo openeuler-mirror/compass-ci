@@ -1,0 +1,25 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+make()
+{
+	command make -j $cpus "$@"
+}
+
+cd /c || exit
+
+git clone -b custom-config  https://gitee.com/wu_fengguang/ipxe.git
+
+cd ipxe/src || exit
+
+cpus=$(nproc)
+
+make ARCH=arm64 bin-arm64-efi/ipxe.efi
+make ARCH=arm64 bin-arm64-efi/snponly.efi
+make ARCH=arm64 bin-arm64-efi/snp.efi
+make CONFIG=rpi bin-arm64-efi/rpi.efi
+
+mkdir -p                  /tftpboot/ipxe/bin-arm64-efi/
+cp -a bin-arm64-efi/*.efi /tftpboot/ipxe/bin-arm64-efi/
+chmod 664 /tftpboot/ipxe/bin-arm64-efi/*.efi

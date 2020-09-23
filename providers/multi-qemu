@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'fileutils'
+
+PWD = File.dirname(File.realpath($PROGRAM_NAME))
+
+# Run multiple QEMU in parallel
+HOSTNAME = ARGV[0] || "vm-hi1620-2p8g--#{ENV['USER']}"
+NR_VM = ARGV[1] || 1
+
+def run(seqno)
+  loop do
+    start_time = Time.new
+    hostname = "#{HOSTNAME}-#{seqno}"
+    log_file = "/srv/cci/serial/logs/#{hostname}"
+
+    File.open(log_file, 'w') do |f|
+      # fluentd refresh time is 1s
+      # let fluentd to monitor this file first
+      sleep(2)
+      f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting QEMU"
+    end
+
+    pwd_hostname = File.join(PWD, hostname)
+    FileUtils.mkdir_p(pwd_hostname) unless File.exist?(pwd_hostname)
+    FileUtils.cd(pwd_hostname)
+    system(
+      { 'hostname' => hostname },
+      ENV['CCI_SRC'] + '/providers/qemu.sh'
+    )
+
+    duration = ((Time.new - start_time) / 60).round(2)
+    File.open(log_file, 'a') do |f|
+      f.puts "\nTotal QEMU duration:  #{duration} minutes"
+    end
+
+    # sleep 5s is for fluentd to collect it's log
+    sleep(5)
+  end
+end
+
+def save_pid(arr)
+  FileUtils.rm('pid') if File.exist?('pid')
+  f = File.new('pid', 'a')
+  arr.each do |i|
+    f.puts(i)
+  end
+  f.close
+end
+
+def multiqemu
+  pids = []
+  NR_VM.to_i.times do |i|
+    pid = Process.fork do
+      run i
+    end
+    pids << pid
+  end
+  return pids
+end
+
+if $PROGRAM_NAME == __FILE__
+  pids = multiqemu
+  save_pid pids
+end

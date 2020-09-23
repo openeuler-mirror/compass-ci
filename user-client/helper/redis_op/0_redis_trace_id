@@ -1,0 +1,41 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+if [ $# != 1 ]; then
+  echo "USAGE: $0 id   # trace the task <id>"
+  exit 1
+fi
+
+echo
+echo -e "--> \033[34m[TaskQueue]\033[0m trace start"
+
+# get task description
+result=`redis-cli --eval key_cmd_params.lua queues/id2content , hget $1`
+if [ "$result" == "" ]; then
+  echo -e "\033[31mNo task\033[0m id=$1"
+  exit 1
+fi
+
+# show the task id information
+echo $result
+
+# find the id's queue owner
+queue_info=${result##*queue\":\"}
+queue_name=${queue_info%%\",*}
+
+# check exists of the job id
+result=`redis-cli --eval key_cmd_params.lua queues/${queue_name} , zrank $1`
+if [ "$result" == "" ]; then
+  echo -e "\033[31mNo task\033[0m id=$1 at queues/$queue_name"
+  exit 1
+fi
+
+# show the task id rank information
+echo "task id=$1 at $result order of queues/$queue_name"
+
+echo -e "<-- \033[32m[TaskQueue]\033[0m trace end"
+echo
+
+service_name=${queue_name%%/*}
+. ./${service_name}_trace_id $1

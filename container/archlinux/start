@@ -1,0 +1,26 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm archlinux
+
+cmd=(
+	docker run
+	--restart=always
+	--name archlinux
+	-v archlinux-home:/home
+	-v /etc/localtime:/etc/localtime:ro
+	-v archlinux-root:/root
+	-v /c:/c
+	-v /srv/os:/srv/os
+	-p 2202:2202
+	--hostname archlinux
+	--security-opt seccomp=unconfined
+	-d
+	archlinux:testbed
+	/usr/sbin/sshd -D -p 2202
+)
+
+"${cmd[@]}"

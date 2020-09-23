@@ -1,0 +1,26 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm remote-git
+
+cmd=(
+	docker run
+	--restart=always
+	--name remote-git
+	-u nobody
+	-d
+	-p 8100:8100
+	-v /srv/git:/srv/git
+	-v /etc/localtime:/etc/localtime:ro
+	debian:remote-git
+)
+
+"${cmd[@]}"
+
+cat <<EOF
+you can use cmd:
+curl -H 'Content-Type: Application/json' -XPOST 'localhost:8100/git_command' -d '{"git_repo": "compass-ci/compass-ci.git", "git_command": ["git-show", "HEAD"]}'
+EOF

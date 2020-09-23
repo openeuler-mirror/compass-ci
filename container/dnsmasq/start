@@ -1,0 +1,27 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm dnsmasq
+
+kill $(ps -ef| grep dnsmasq| grep libvirt| awk '{print $2}') 2> /dev/null
+
+cmd=(
+	docker run
+	--restart=always
+	--cap-add NET_ADMIN
+	--net=host
+	--publish 67:67/udp
+	--publish 69:69/udp
+	-v $PWD/dnsmasq.d:/etc/dnsmasq.d
+	-v /etc/localtime:/etc/localtime:ro
+	-v /tftpboot:/tftpboot:ro
+	--detach
+	--name dnsmasq
+	dnsmasq:alpine
+	dnsmasq -k
+)
+
+"${cmd[@]}"

@@ -1,0 +1,245 @@
+#! /bin/bash -eu
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+# This file is called by script run running on host
+# define functions and set host environment variables
+
+check_cmd_input() {
+	( [ $# -eq 2 ] && [ -f "$1" ] ) || {
+		usage
+		exit 1
+	}
+
+	check_qcow2_file "$1"
+	init_rootfs_dir "$2"
+
+	export EXTRACT_ROOT='/root/extract'
+	export RUN_DIR=$(dirname $(realpath "$0"))
+	export QCOW2_FILE=$(realpath "$1")
+	export QCOW2_DIR=$(dirname "$QCOW2_FILE")
+	export QCOW2_NAME=$(basename "$QCOW2_FILE")
+	export ROOTFS_DIR=$(realpath "$2")
+}
+
+set_env_vars() {
+	cat > "$RUN_DIR/bin/env.list" <<EOF
+	QCOW2_FILE=$EXTRACT_ROOT/qcow2-dir/$QCOW2_NAME
+	QCOW2_DIR=$EXTRACT_ROOT/qcow2-dir
+	QCOW2_NAME=$QCOW2_NAME
+	ROOTFS_DIR=$EXTRACT_ROOT/rootfs-dir
+	ROOT_NEW_PASSWD=$ROOT_NEW_PASSWD
+EOF
+	chmod 600 "$RUN_DIR/bin/env.list"
+}
+
+usage() {
+	echo "
+	Usage:
+		./run <src_qcow2_file_abspath> <dst_rootfs_new_abspath>
+
+		src_qcow2_file_abspath: source .qcow2 file absolute path with suffix: [qcow2, qcow2.xz].
+		dst_rootfs_new_abspath: destination absolute path to create for rootfs
+
+	Example:
+		./run /tmp/openEuler-qcow2/lts.qcow2 /tmp/openeuler-rootfs/
+	"
+}
+
+check_qcow2_file() {
+	local allow_qcow2_suffix_list qcow2_name qcow2_suffix
+	allow_qcow2_suffix_list=('qcow2' 'qcow2.xz')
+	qcow2_name=$(basename "$1")
+	qcow2_suffix=${qcow2_name##*.}
+	[ "$qcow2_suffix" == 'qcow2' ] || {
+		qcow2_suffix=$(echo "$qcow2_name" |awk -F '.' '{print $(NF-1)"."$NF}')
+		echo "${allow_qcow2_suffix_list[@]}" |grep -wq "$qcow2_suffix" || {
+			echo "[ERROR] Only support: .qcow2 .qcow2.xz file!"
+			exit 2
+		}
+	}
+}
+
+init_rootfs_dir() {
+	[ -d "$1" ] && return
+
+	local limit_prompt_times current_prompt_time
+	limit_prompt_times=3
+	current_prompt_time=0
+	while true
+	do
+		read -r -p "[WARNING] Do you want to create \"$1\"? [y|n]> " if_create
+
+		[ "$if_create" == 'y' ] && break
+		[ "$if_create" == 'n' ] && echo "[ERROR] User cancelled running." && exit
+
+		current_prompt_time=$((current_prompt_time + 1))
+		[ $current_prompt_time -ge $limit_prompt_times ] && {
+			echo "[ERROR] Exit for Prompt times limit."
+			exit 3
+		}
+	done
+}
+
+check_passwd_file() {
+	export ROOT_NEW_PASSWD=
+	[ -f "$1" ] || {
+		echo "[INFO] No password file specified and root password kept."
+		return
+	}
+
+	export ROOT_NEW_PASSWD=$(cat "$1")
+}
+
+check_container_running() {
+	local container check_times check_interval cur_times
+	container=$1
+	docker ps -a |grep -q "$container" || {
+		echo "[ERROR] Container $container do not exist!"
+		exit 4
+	}
+
+	echo "Checking whether container $container is running..."
+	check_times=5
+	check_interval=3
+	cur_times=0
+	while [ $check_times -gt $cur_times ]
+	do
+		docker ps |grep "$container" |grep -iq 'up ' && {
+			echo "Container $container is running now"
+			break
+		}
+		cur_times=$((cur_times + 1))
+		sleep $check_interval
+	done
+
+	trap '
+		[ -f $RUN_DIR/bin/env.list ] && rm -f $RUN_DIR/bin/env.list
+		docker stop $container >/dev/null
+		echo "[INFO] Container $container stopped."
+	' EXIT
+}
+
+get_rootfs_kernel() {
+	echo "Finding vmlinuz under $ROOTFS_DIR/boot ..."
+	cd "$ROOTFS_DIR" || {
+		echo "Failed to change into dir \"$ROOTFS_DIR\""
+		exit 5
+	}
+	local vmlinuz_file vmlinuz kernel
+	vmlinuz_file=$(find ./boot -name "vmlinuz-*" |grep -v rescue) && export ROOTFS_VMLINUZ_FILE=$vmlinuz_file
+	vmlinuz=$(basename "$vmlinuz_file") && export ROOTFS_VMLINUZ=$vmlinuz
+	kernel=${vmlinuz:8} && export ROOTFS_KERNEL=$kernel
+
+	echo
+	echo "vmlinuz: $ROOTFS_VMLINUZ_FILE"
+	echo "kernel:  $ROOTFS_KERNEL"
+}
+
+create_get_initrd() {
+	echo "Creating initrd.lkp via container/dracut-initrd..."
+	cd "$CCI_SRC/container/dracut-initrd" || {
+		echo "Failed to change into $CCI_SRC/container/dracut-initrd"
+		exit 6
+	}
+	./run "$ROOTFS_DIR/lib/modules/$ROOTFS_KERNEL"
+
+	echo "Finding initrd.lkp under $ROOTFS_DIR/boot ..."
+	cd "$ROOTFS_DIR" || {
+		echo "Failed to change into dir \"$ROOTFS_DIR\""
+		exit 7
+	}
+	local initrd_lkp
+	initrd_lkp=$(find ./boot -name "initramfs.lkp*") && export ROOTFS_INITRD_LKP=$initrd_lkp
+
+	[ -f "$ROOTFS_INITRD_LKP" ] || {
+		echo "Failed to generate \"$ROOTFS_INITRD_LKP\""
+		exit 8
+	}
+
+	echo
+	echo "initrd_lkp: $ROOTFS_INITRD_LKP"
+}
+
+create_links_vmlinuz_initrd() {
+
+	get_rootfs_kernel
+	create_get_initrd
+
+	echo "Creating links to initrd.lkp and vmlinuz..."
+	local cmds
+	cmds=(
+		docker exec
+		"$container"
+		bash -c "
+			cd $EXTRACT_ROOT/rootfs-dir
+			chmod a+r $ROOTFS_INITRD_LKP
+			ln -sf $ROOTFS_VMLINUZ_FILE vmlinuz
+			ln -sf $ROOTFS_INITRD_LKP initrd.lkp
+		"
+	)
+	if "${cmds[@]}" ; then
+		echo "[INFO] Create links to initrd.lkp and vmlinuz success!"
+	else
+		echo "[WARNING] Create links to initrd.lkp and vmlinuz failed!"
+	fi
+}
+
+get_vmlinuz_start_postion() {
+	local vmlinuz=$1
+
+	local vmlinuz_start_line
+	local vmlinuz_start_postion
+	# '1f 8b 08' - https://www.filesignatures.net/index.php?page=search&search=1F8B08&mode=SIG
+	vmlinuz_start_line=$(od -A d -t x1 ${vmlinuz} | grep "1f 8b 08")
+	vmlinuz_start_postion=${vmlinuz_start_line%% *}
+
+	[ -z ${vmlinuz_start_postion} ] && {
+		echo "[WARNING] identify vmlinuz failed."
+		export VMLINUZ_START_POSTION=-1
+		return
+	}
+
+	[ X${vmlinuz_start_postion} == X0000000 ] || {
+		local vmlinuz_start_postion_tmp
+		vmlinuz_start_postion_tmp=$(echo ${vmlinuz_start_line} | awk '{for(i=1;i<=NF;i++)if($i=="1f")print i-1}')
+		vmlinuz_start_postion=$((${vmlinuz_start_postion} + ${vmlinuz_start_postion_tmp} -1))
+	}
+
+	export VMLINUZ_START_POSTION=${vmlinuz_start_postion}
+}
+
+unzip_vmlinuz() {
+	get_rootfs_kernel
+
+	file ${ROOTFS_VMLINUZ_FILE} | grep -q gzip || return
+
+	get_vmlinuz_start_postion ${ROOTFS_VMLINUZ_FILE}
+	[ $VMLINUZ_START_POSTION -eq -1 ] && return
+
+	local unzip_str
+
+	if [ $VMLINUZ_START_POSTION -eq 0 ]; then
+		unzip_str="dd if=$ROOTFS_VMLINUZ bs=1 | zcat > $ROOTFS_VMLINUZ.tmp"
+	else
+		unzip_str="dd if=$ROOTFS_VMLINUZ bs=1 skip=$VMLINUZ_START_POSTION | zcat > $ROOTFS_VMLINUZ.tmp"
+	fi
+
+	echo "Unzipping vmlinuz..."
+	local cmds
+	cmds=(
+		docker exec
+		"$container"
+		bash -c "
+			cd $EXTRACT_ROOT/rootfs-dir/boot
+			$unzip_str
+			mv $ROOTFS_VMLINUZ.tmp $ROOTFS_VMLINUZ
+			chmod o+r $ROOTFS_VMLINUZ
+		"
+	)
+	if "${cmds[@]}" ; then
+		echo "[INFO] Unzipping vmlinuz success!"
+	else
+		echo "[WARNING] Unzipping vmlinuz failed!"
+	fi
+}

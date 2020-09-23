@@ -1,0 +1,48 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+[ -L "$1/vmlinuz" -a -n "$2" ] || {
+	cat << 'EOF'
+	Example usage:
+	1> ./run /os/centos/aarch64/76 pack1 pack2 ...
+	2> ./run /os/centos/aarch64/76 $(show-depends-packages centos)
+	centos is an adaption file contain packages mapping from debian to centos,
+	the whole path is '$LKP_SRC/distro/adaptation/centos'.
+EOF
+	exit
+}
+
+basedir=$(dirname $1)
+basever=$(basename $1)
+newver=$basever-$(date +'%Y%m%d%H%M%S')
+rootdir=$basedir/$newver
+rsync_cmds=(
+	docker run
+	--rm
+	-v "$basedir":/mnt
+	addsoftware:auto
+	bash -c "
+		umask 0022
+		rsync -ap /mnt/$basever/* /mnt/$newver
+	"
+)
+
+packages="${@:2}"
+osinfo=(${rootdir//\// })
+os=${osinfo[1]}
+arch=${osinfo[2]}
+version=${osinfo[3]}
+install_cmds=(
+	docker run
+	--rm
+	-v "$rootdir":/mnt/root
+	addsoftware:auto
+	yum install -y --skip-broken --installroot=/mnt/root $packages
+)
+
+echo "rsync rootfs from $basever to $newver..."
+"${rsync_cmds[@]}"
+
+echo "install packages under $rootdir..." | tee install-$os-$arch-$version.log
+"${install_cmds[@]}" | tee -a install-$os-$arch-$version.log

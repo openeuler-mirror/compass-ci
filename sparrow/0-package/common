@@ -1,0 +1,38 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+gem install git activesupport rest-client cucumber json faye-websocket elasticsearch
+
+grep -q '^lkp:' /etc/passwd || adduser -u 1090 lkp
+grep -q '^team:' /etc/group || groupadd team
+grep -q '^committer:' /etc/group || groupadd -g 1999 committer
+
+cat >> /etc/sysctl.conf <<EOF
+net.ipv4.ip_forward=1
+vm.max_map_count=262144
+EOF
+
+sysctl -p
+
+cat >> /etc/modules-load.d/nfs <<EOF
+nfs
+nfsd
+EOF
+
+cat >> /etc/modules-load.d/cifs <<EOF
+cifs
+EOF
+
+cat > /etc/docker/daemon.json <<EOF
+{
+  "log-driver": "fluentd",
+  "log-opts":{
+    "fluentd-address": "localhost:24224",
+    "fluentd-async-connect": "true",
+    "tag": "{{.Name}}"
+  }
+}
+EOF
+
+systemctl restart docker

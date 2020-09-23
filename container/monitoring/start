@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  MONITOR_PORT
+  MQ_PORT
+  MQ_HOST
+]
+
+defaults = relevant_defaults(names)
+env = docker_env(defaults)
+
+DEFAULT_CCI = '/c/cci'
+MONITOR_PORT = defaults['MONITOR_PORT'] || '11310'
+docker_rm "monitoring-#{MONITOR_PORT}"
+
+cmd = %W[
+  docker run
+  --restart=always
+  --name monitoring-#{MONITOR_PORT}
+  -d
+  -u 1090:1090
+  -p #{MONITOR_PORT}:#{MONITOR_PORT}
+] + env + %W[
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -v /etc/localtime:/etc/localtime:ro
+  -v /srv/result:/srv/result
+  monitoring-#{MONITOR_PORT}
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./monitoring']
+
+system(*cmd)

@@ -1,0 +1,18 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+# download git trees
+
+cd /c || exit
+
+# git clone https://gitee.com/openeuler/compass-ci.git
+# modify and manual run for now:
+[ -d "compass-ci/.git" ] || {
+	git clone https://gitee.com/wu_fengguang/compass-ci.git
+	ln -s compass-ci cci
+}
+
+[ -d "lkp-tests/.git" ] || {
+	git clone https://gitee.com/wu_fengguang/lkp-tests.git
+}

@@ -1,0 +1,49 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+CONTAINER_PATH="$CCI_SRC/container"
+
+build_depends()
+{
+	local container=$1
+	local should_wait=$2
+
+	for dep in $(cat $container/*-depends 2> /dev/null)
+	do
+		build_depends $CONTAINER_PATH/$dep block_wait
+	done
+
+	if [ -n "$should_wait" ]; then
+		do_one $container
+	else
+		do_one $container &
+	fi
+}
+
+do_one()
+{
+	local container=$1
+	local container_name=$(basename $container)
+	lockfile-create -q --use-pid --retry 100 --lock-name "$container_name".lock
+	mkdir $tmpdir/$container_name 2>/dev/null &&
+	(
+		cd $container
+		[ "$container_name" == 'sub-fluentd' ] && exit
+		[ -x build ] && ./build
+		[ -x install ] && ./install
+		[ -x first-run ] && ./first-run
+		[ -x start ] && ./start
+	)
+	lockfile-remove --lock-name "$container_name".lock
+}
+
+tmpdir=$(mktemp -d)
+
+for dir in $CONTAINER_PATH/*/
+do
+	build_depends $dir
+done
+
+wait
+rm -fr $tmpdir

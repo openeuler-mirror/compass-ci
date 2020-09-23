@@ -1,0 +1,11 @@
+#!/bin/bash -e
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+cd /c
+
+git clone https://github.com/crystal-ameba/ameba
+
+cd ameba
+
+crystal build src/cli.cr -o bin/ameba

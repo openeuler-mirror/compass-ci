@@ -1,0 +1,42 @@
+AllCops:
+  NewCops: enable
+
+Style/FormatStringToken:
+  Description: 'Use a consistent style for format string tokens.'
+  Enabled: false
+
+Style/CommandLiteral:
+  Description: 'Use `` or %x around command literals.'
+  Enabled: false
+
+Style/PerlBackrefs:
+  Description: 'Avoid Perl-style regex back references.'
+  Enabled: false
+
+Metrics/MethodLength:
+  Enabled: true
+  CountComments: false  # count full line comments?
+  CountAsOne: ['array', 'hash', 'heredoc']
+  Max: 15
+
+Metrics/BlockLength:
+  Enabled: true
+  CountComments: false  # count full line comments?
+  CountAsOne: ['array', 'hash', 'heredoc']
+  ExcludedMethods: ['refine', 'OptionParser.new']
+  Max: 15
+
+Style/RedundantReturn:
+  Enabled: false
+
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/NumericLiterals:
+  Enabled: false
+
+Layout/HeredocIndentation:
+  Enabled: false
+
+Style/BlockComments:
+  Enabled: false

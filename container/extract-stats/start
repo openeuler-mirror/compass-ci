@@ -1,0 +1,51 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  REDIS_HOST
+  REDIS_PORT
+  ES_HOST
+  ES_PORT
+  FLUENTD_HOST
+  FLUENTD_PORT
+  MAIL_HOST
+  MAIL_PORT
+]
+
+defaults = relevant_defaults(names)
+env = docker_env(defaults)
+
+DEFAULT_LKP = '/c/lkp-tests'
+DEFAULT_CCI = '/c/compass-ci'
+FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'
+FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
+docker_rm "extract-stats"
+
+cmd = %w[
+  docker run
+  --name extract-stats
+  --restart=always
+  -d
+] + env + %W[
+  -e LKP_SRC=#{DEFAULT_LKP}
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
+  -v /etc/localtime:/etc/localtime:ro
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v /srv/result:/result
+  --log-driver=fluentd
+  --log-opt fluentd-address=#{FLUENTD_HOST}:#{FLUENTD_PORT}
+  --log-opt mode=non-blocking
+  --log-opt max-buffer-size=4m
+  --log-opt tag=extract-stats
+  extract-stats
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./extract-stats']
+
+system(*cmd)

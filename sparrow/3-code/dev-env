@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+server_name=$(hostname | cut -f1 -d.)
+server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
+: ${sched_host:=$server_ip}
+: ${sched_port:=3000}
+: ${gitcache_host:=$server_ip}
+: ${gitcache_port:=5000}
+: ${fluentd_server_host:=$server_ip}
+: ${fluentd_server_port:=24224}
+
+mkdir -p /etc/compass-ci/defaults
+cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
+SCHED_HOST: $sched_host
+SCHED_PORT: $sched_port
+OS_HTTP_HOST: $os_http_host
+INITRD_HTTP_HOST: $initrd_http_host
+INITRD_HTTP_PORT: $initrd_http_port
+GITCACHE_HOST: $gitcache_host
+GITCACHE_PORT: $gitcache_port
+FLUENTD_SERVER_HOST: $fluentd_server_host
+FLUENTD_SERVER_PORT: $fluentd_server_port
+EOF
+
+cat > /etc/profile.d/crystal.sh <<'EOF'
+export LKP_SRC=/c/lkp-tests
+export CCI_SRC=/c/compass-ci
+
+export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
+EOF
+

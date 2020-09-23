@@ -1,0 +1,15 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. '../defconfig.sh'
+
+cmd=(
+	docker run
+	--name qemu-efi
+	debian:qemu-efi
+)
+
+"${cmd[@]}"
+docker cp qemu-efi:/usr/share/qemu-efi-aarch64 /usr/share/qemu-efi-aarch64
+docker_rm qemu-efi

@@ -1,0 +1,11 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+# standalone partitions for /var/lib/docker and /srv
+
+# modify before use
+DOCKER_DEV=/dev/disk1
+SRV_DEV=/dev/disk2
+
+

@@ -1,0 +1,12 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+modprobe nfs
+modprobe nfsd
+
+[[ -f /etc/modules-load.d/cci-nfs.conf ]] ||
+cat > /etc/modules-load.d/cci-nfs.conf <<EOF
+nfs
+nfsd
+EOF

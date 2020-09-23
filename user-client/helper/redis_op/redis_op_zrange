@@ -1,0 +1,21 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+if [ $# -gt 1 ]; then
+  echo "USAGE: $0 # find all your job"
+  echo "e.g.: $0 queues/sched/vm-hi1620-2p8g/in_process # find jobs in queue"
+  exit 1
+fi
+
+if [[ $1 ]]; then
+  key_name=$1
+else
+  [[ $tbox_group ]] || tbox_group=vm-hi1620-2p8g
+  key_name=queues/sched/$tbox_group-$USER/ready
+fi
+
+# use current filename's last string as lua command script
+cmd_lua=${0##*_}
+
+redis-cli --eval key_cmd_params.lua $key_name , $cmd_lua 0 -1

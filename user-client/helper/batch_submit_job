@@ -1,0 +1,40 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+# split and batch submit job.yaml
+
+function message_and_exit {
+  cat tmp.txt
+  exit $?
+}
+
+function batch_submit {
+  sed -i 's/^.* => //' tmp.txt
+
+  for line in $(cat tmp.txt)
+  do
+    ruby ./client/src/lkp.rb queue $line;
+    rm $line
+  done
+
+  rm tmp.txt
+  exit 0
+}
+
+export LANG=
+
+: ${LKP_SRC:=/c/lkp-tests}
+
+`${LKP_SRC}/sbin/split-job $1 > tmp.txt`
+
+first_line=`sed -n '1p' tmp.txt`
+
+if [ "$1" != "" ]; then
+  if [[ $first_line =~ $1 ]]; then
+    batch_submit
+  fi
+fi
+
+message_and_exit
+

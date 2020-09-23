@@ -1,0 +1,26 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+lsmod | grep -q "^cifs\s" || {
+	sudo modprobe cifs
+}
+
+docker_rm samba
+
+cmd=(
+	docker run -dt
+	-p 445:445
+	-v /srv/os:/srv/os:ro
+	-v /etc/localtime:/etc/localtime:ro
+	-v /srv/os:/srv/os-rw
+	-v /srv/initrd:/srv/initrd
+	-v /srv/result:/srv/result
+	--name samba
+	--restart=always
+	alpine/samba
+)
+
+"${cmd[@]}"

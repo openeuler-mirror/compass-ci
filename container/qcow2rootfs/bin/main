@@ -1,0 +1,92 @@
+#!/bin/bash -eu
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+#
+# This file as the main program running in container
+
+tar_out_file="$ROOTFS_DIR/qcow2-out.tar.gz"
+
+# store the original user and group of qcow2 file
+qcow2_usr=$(ls -nl "$EXTRACT_ROOT" |grep -w qcow2-dir |awk '{print $3}')
+qcow2_grp=$(ls -nl "$EXTRACT_ROOT" |grep -w qcow2-dir |awk '{print $4}')
+
+trap_excepts() {
+	# trap Ctrl-C to avoid authority problem happening
+	trap '
+		echo "[WARNNING] Detected interrupt, restoring the owner of qcow2 file"
+		chown $qcow2_usr:$qcow2_grp $QCOW2_FILE
+		echo "[INFO] User cancelled."
+	' SIGINT ERR
+}
+
+unzip_qcow2_xz() {
+	local qcow2_suffix="${QCOW2_NAME##*.}"
+	[ "$qcow2_suffix" == 'qcow2' ] || {
+		echo "Unzip .qcow2.xz file to .qcow2 file..."
+		(
+			cd "$QCOW2_DIR"
+			/usr/bin/unxz -fk "$QCOW2_NAME"
+		)
+		export QCOW2_NAME="${QCOW2_NAME%.*}"
+	}
+}
+
+extract_rootfs() {
+	echo "[WARNNING] Temporarily change owner of qcow2 file"
+	chown "$EXTRACT_USER":"$EXTRACT_USER" "$QCOW2_FILE"
+	chmod 775 "$ROOTFS_DIR"
+
+	echo "[$(date +'%D %T')] Converting .qcow2 to .tar.gz, please wait several minutes..."
+	su - "$EXTRACT_USER" -c "
+		export LIBGUESTFS_BACKEND=direct
+		$EXTRACT_ROOT/bin/extract $QCOW2_FILE $tar_out_file
+	"
+
+	echo "[$(date +'%D %T')] Depressing rootfs to $ROOTFS_DIR"
+	([ -f "$tar_out_file" ] && /usr/bin/tar -xf "$tar_out_file" -C "$ROOTFS_DIR") || exit 4
+}
+
+pre_config_rootfs() {
+	[ -n "$ROOT_NEW_PASSWD" ] && {
+		echo "Changing root password"
+		passwd_md5=$(openssl passwd -1 "$ROOT_NEW_PASSWD")
+		sed -i -r "s/^root:[^:]*:(.*)/root:${passwd_md5//\//\\/}:\1/" "$ROOTFS_DIR/etc/shadow"
+		sed -i 's/[# ]PermitRootLogin.*/PermitRootLogin yes/' "$ROOTFS_DIR/etc/ssh/sshd_config"
+	}
+
+	# no mapping via rootfs
+	echo "Comment out all lines in \$rootfs/etc/fstab"
+	sed -i -r 's/^([^#].*)/#\1/' "$ROOTFS_DIR/etc/fstab"
+
+	# private ssh key mode shall be 600
+	for key in $ROOTFS_DIR/etc/ssh/ssh*key
+	do
+		[ "$ROOTFS_DIR/etc/ssh/ssh*key" == "$key" ] && continue
+		chmod 600 $key
+	done
+
+	echo "Pre config authority of rootfs layout"
+	chmod +w -R "$ROOTFS_DIR"
+	chmod a+r -R "$ROOTFS_DIR/boot"
+
+	# disable selinux
+	echo "Disable selinux"
+	if [ -f ${ROOTFS_DIR}/etc/selinux/config ]; then
+		sed -i -r 's/SELINUX=enforcing/SELINUX=disabled/g' "$ROOTFS_DIR/etc/selinux/config"
+	fi
+}
+
+clean_environment() {
+	echo "[INFO] Program exiting, clean up environment..."
+	echo "Delete .tar.gz file"
+	[ -f $tar_out_file ] && rm -f $tar_out_file
+
+	echo "[WARNNING] Restoring the owner of qcow2 file"
+	chown "$qcow2_usr":"$qcow2_grp" "$QCOW2_FILE"
+}
+
+trap_excepts
+unzip_qcow2_xz
+extract_rootfs
+pre_config_rootfs
+clean_environment

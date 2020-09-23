@@ -1,0 +1,9 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+[[ -e /tftpboot/boot.ipxe ]] || {
+    cp tftpboot/boot.ipxe /tftpboot/boot.ipxe
+}
+
+docker build -t dnsmasq:alpine .

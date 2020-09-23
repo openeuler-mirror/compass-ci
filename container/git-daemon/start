@@ -1,0 +1,15 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm git-daemon
+
+docker run --restart=always -d -p 9418:9418 -v /srv/git:/git -v /etc/localtime:/etc/localtime:ro --name git-daemon apline311:git-daemon
+
+
+# test
+
+echo you can use git clone command: git clone git://127.0.0.1/\$project_name
+

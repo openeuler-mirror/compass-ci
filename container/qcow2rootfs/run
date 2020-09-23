@@ -1,0 +1,45 @@
+#!/bin/bash -eu
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+source "$(dirname $(realpath $0))/bin/common"
+
+# password for rootfs under $HOME/.config/compass-ci/rootfs.passwd with mode 700
+# - password will be changed based on specified config file
+# - password won't be changed if there's no the same file
+# - password based remote login will be disabled
+root_pwd_file="$HOME/.config/compass-ci/rootfs.passwd"
+
+# check and initial host environment variables
+check_cmd_input "$@"
+check_passwd_file "$root_pwd_file"
+
+set_env_vars
+
+start=(
+	docker run
+	--rm
+	--privileged=true
+	-d
+	-v $RUN_DIR/bin:$EXTRACT_ROOT/bin
+	-v $QCOW2_DIR:$EXTRACT_ROOT/qcow2-dir
+	-v $ROOTFS_DIR:$EXTRACT_ROOT/rootfs-dir
+	--env-file $RUN_DIR/bin/env.list
+	qcow2rootfs:auto
+	/usr/sbin/init
+)
+
+echo "[INFO] Creating qcow2rootfs container..."
+container=$("${start[@]}" |awk '{print substr($0,1,10)}')
+check_container_running "$container"
+
+extract=(
+	docker exec
+	$container
+	$EXTRACT_ROOT/bin/main $QCOW2_FILE
+)
+
+"${extract[@]}"
+
+create_links_vmlinuz_initrd
+unzip_vmlinuz

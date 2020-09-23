@@ -1,0 +1,5 @@
+#!/bin/bash
+# Origin: https://docs.docker.com/registry
+# SPDX-License-Identifier: Apache license
+
+docker pull registry

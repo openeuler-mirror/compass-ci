@@ -1,0 +1,18 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. ../defconfig.sh
+
+docker_rm rsync_server
+cmd=(
+	docker run 
+	-id
+	--name=rsync_server 
+	-v /srv/result:/result
+	-v /etc/localtime:/etc/localtime:ro
+	-p 873:873
+	rsync_server:latest
+)
+
+"${cmd[@]}"

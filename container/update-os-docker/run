@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'pathname'
+require_relative 'lib/common.rb'
+require_relative '../defconfig.rb'
+
+SBIN_DIR = Pathname.new(File.dirname(__FILE__)).realpath.to_s + '/sbin'
+ROOT_DIR = check_argv(ARGV)
+
+params = ParseParam.new(ROOT_DIR)
+params.prepare_env
+packages = get_packages(ARGV)
+
+cmd = %W[
+  docker run
+  -it
+  --name #{params.dc_name}
+  -v #{SBIN_DIR}:/usr/local/sbin
+  -v #{ROOT_DIR}/etc/yum.repos.d:/etc/yum.repos.d:ro
+  #{params.local_dc_img}
+]
+
+cmd += ['bash', '-c', "umask 0002 && /usr/local/sbin/setup #{packages}"]
+
+system(*cmd)
+system "docker commit #{params.dc_name} #{params.local_dc_img}"
+docker_rm params.dc_name

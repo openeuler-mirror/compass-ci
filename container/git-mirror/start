@@ -1,0 +1,29 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require_relative '../defconfig.rb'
+
+DOCKER_CCI = '/c/compass-ci'
+DOCKER_REPO = '/c/upstream-repos'
+docker_rm "git-mirror"
+
+cmd = %W[
+  docker run
+  --restart=always
+  --name git-mirror
+  -u 1090:1999
+  -d
+  -e CCI_SRC=#{DOCKER_CCI}
+  -e REPO_SRC=#{DOCKER_REPO}
+  -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
+  -v /etc/localtime:/etc/localtime:ro
+  -v #{ENV['REPO_SRC']}:#{DOCKER_REPO}
+  -v /srv/git:/srv/git
+  -w /c/compass-ci/sbin
+  alpine38:git-mirror
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./git-mirror.rb']
+system(*cmd)

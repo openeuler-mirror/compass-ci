@@ -1,0 +1,9 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+source /etc/os-release
+
+. $(dirname ${BASH_SOURCE[0]})/os/${ID}
+
+. $(dirname ${BASH_SOURCE[0]})/common

@@ -1,0 +1,24 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+pkgs=(
+	vim
+	git
+	gcc
+	gcc-c++
+	make
+	ruby
+	rubygems
+	ruby-devel
+	bridge-utils
+	qemu-kvm
+	lvm2
+	docker
+	dmidecode
+	redis
+	liblockfile
+	lockfile-progs
+)
+
+yum install -y "${pkgs[@]}"

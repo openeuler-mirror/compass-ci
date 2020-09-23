@@ -1,0 +1,26 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+DIR=$(dirname $(realpath $0))
+. $(dirname $DIR)/defconfig.sh
+
+load_cci_defaults
+
+[[ $ARCH 	]] || ARCH=$(uname -m)
+[[ $LKP_SRC	]] || LKP_SRC=/c/lkp-tests
+
+cmd=(
+	docker run
+	--rm
+	-e ARCH=$ARCH
+	-e LKP_SRC=$LKP_SRC
+	-v $LKP_SRC:$LKP_SRC
+	-v $DIR/bin:/root/bin
+	-v /srv/initrd/lkp/${lkp_initrd_user:-latest}:/osimage/user/lkp
+	alpine:lkp
+	/root/bin/pack-lkp.sh
+)
+
+"${cmd[@]}"
+echo "result: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz"

@@ -1,0 +1,13 @@
+#!/bin/sh -e
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+cd /c
+
+git clone https://github.com/sds/overcommit.git || exit
+
+cd overcommit
+
+oc_build_out=$(gem build overcommit.gemspec | grep "overcommit-.*\.gem")
+
+gem install "$oc_build_out"

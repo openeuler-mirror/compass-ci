@@ -1,0 +1,25 @@
+#! /bin/bash
+
+dirs=(
+	/srv/es
+	/srv/es/logging-es
+	/srv/cache/netdata_cache
+	/srv/cache/netdata_lib
+	/srv/cache/gitcache
+	/srv/git
+	/srv/initrd
+	/srv/initrd/pkg
+	/srv/initrd/deps
+	/srv/os
+	/srv/dc
+	/srv/redis
+	/srv/result
+	/srv/cci/scheduler
+	/srv/cci/serial/logs
+	/srv/cci/serial/fluentd-pos
+	/tftpboot
+	/c
+	/etc/qemu
+)
+
+mkdir -p "${dirs[@]}"

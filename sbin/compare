@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+# Usage:
+#       compare "conditions_1" "conditions_2" ... -c "common_conditions"
+#       compare "conditions" -d "dimensions"
+# Eg:
+#       compare "id=6000,6001" "id=7000,7001"
+#       compare "commit=a12d232e" "commit=b3bacc31"
+#       compare "os=debian" "os=centos" -c "suite=iperf"
+#       compare "os=centos" -d "os_version os_arch"
+#       compare "os=centos" -d "os_version os_arch" --color "classic"
+
+require 'optparse'
+require_relative '../lib/compare.rb'
+
+common_conditions = ''
+is_group = false
+dimensions = nil
+colorful = nil
+options = {}
+
+opt_parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: compare "conditions" ... [option]'
+
+  opts.separator ''
+  opts.separator 'a conditions can be "id=100, ..." or "suite=iperf os=debian ..."'
+  opts.separator ''
+  opts.separator 'options:'
+
+  opts.on('-c', '--common common_conditions', 'common conditions are same with conditions',
+          'and will merge with each conditions') do |c|
+    common_conditions = c
+  end
+
+  opts.on('-d', '--dimension dimensions', 'dimensions to group compare: "tbox_group os_arch os ..."') do |d|
+    dimensions = d
+    is_group = true
+  end
+
+  opts.on('--color color', 'turn on colorful display with theme: classic|focus_good|focus_bad',
+          '|striking|light|none') do |color|
+    colorful = color
+  end
+
+  opts.on_tail('-h', '--help', 'show this message') do
+    puts opts
+    exit
+  end
+end
+
+argv = if ARGV == []
+         ['-h']
+       else
+         ARGV
+       end
+opt_parser.parse!(argv)
+
+options = { theme: colorful } if colorful
+
+if is_group
+  compare_group(argv, dimensions, options)
+else
+  compare_matrices_list(argv, common_conditions, options)
+end

@@ -1,0 +1,16 @@
+#!/bin/bash -e
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+run_job()
+{
+	submit -s "testbox: $1--$USER"  /c/cci/user-client/jobs/iperf-sparrow.yaml
+	(
+		export tbox_group=$1
+		cd /c/cci/providers && ./my-qemu.sh
+	)
+}
+
+dmidecode -s system-product-name | grep -iq "virtual" && exit
+run_job vm-hi1620-2p8g
+run_job vm-pxe-hi1620-2p8g

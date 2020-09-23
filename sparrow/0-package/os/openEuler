@@ -1,0 +1,27 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+pkgs=(
+	vim
+	git
+	gcc
+	gcc-c++
+	make
+	ruby
+	rubygems
+	ruby-devel
+	bridge-utils
+	qemu
+	lvm2
+	docker-engine
+	dmidecode
+	redis
+)
+
+yum install -y "${pkgs[@]}"
+
+wget http://rpmfind.net/linux/openmandriva/cooker/repository/aarch64/main/release/lib64lockfile1-1.16-1-omv4002.aarch64.rpm
+wget http://rpmfind.net/linux/openmandriva/cooker/repository/aarch64/main/release/lockfile-progs-0.1.18-5-omv4002.aarch64.rpm
+
+rpm -i lib64lockfile1-1.16-1-omv4002.aarch64.rpm lockfile-progs-0.1.18-5-omv4002.aarch64.rpm

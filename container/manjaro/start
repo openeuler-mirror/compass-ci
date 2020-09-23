@@ -1,0 +1,25 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. ../defconfig.sh
+
+docker_rm manjaro
+cmd=(
+	docker run
+	--restart=always
+	-v manjaro-home:/home
+	-v /etc/localtime:/etc/localtime:ro
+	-v manjaro-root:/root
+	-v /c:/c
+	-v /srv/os:/srv/os
+	-p 2203:2203
+	--name manjaro
+	--hostname manjaro
+	--security-opt seccomp=unconfined
+	-d
+	manjaro:testbed
+	/usr/sbin/sshd -D -p 2203
+)
+
+"${cmd[@]}"

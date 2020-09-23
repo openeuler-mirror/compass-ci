@@ -1,0 +1,98 @@
+#!/bin/bash -e
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+#
+# config file locations can be:
+# - /etc/compass-ci/defaults/scan.list
+# - {HOME}/.config/compass-ci/defaults/scan.list
+# - {PWD}/scan.list
+#
+# config file demo: # namp param: -iL
+#   1.2.3.4
+#   1.2.3.4/5
+
+log_info()
+{
+	echo "$(date "+%Y%m%d %H%M%S ")[INFO] $*"
+}
+
+pre_works()
+{
+	log_info "Starting pre work ..."
+}
+
+nmap_scan()
+{
+	log_info "Starting nmap scan ..."
+}
+
+format_tab_header()
+{
+	local tab_header="$(
+		printf "$TAB_CONTENT_FORMAT" \
+			"Server" "Port" "State" "Service Name"
+	)"
+
+	cat <<-EOF >> "${RESULT_FILE}"
+	$TAB_SEPARATOR
+	$tab_header
+	$TAB_SEPARATOR
+	EOF
+}
+
+format_tab_content()
+{
+	local service
+	for service
+	do
+		local s_arr=($service)
+		printf "${TAB_CONTENT_FORMAT}\n" \
+			"${s_arr[0]}" "${s_arr[1]}" "${s_arr[2]}" "${s_arr[3]}"\
+			>> "${RESULT_FILE}"
+	done
+}
+
+format_result()
+{
+	log_info "Starting format result ..."
+
+	local ld_server=15
+	local ld_port=9
+	local ld_state=13
+	local ld_service_name=18
+	TAB_SEPARATOR="$(
+		printf "|-%s-|-%s-|-%s-|-%s-|" \
+			"$(printf "%0.s-" $(seq "$ld_server"))" \
+			"$(printf "%0.s-" $(seq "$ld_port"))" \
+			"$(printf "%0.s-" $(seq "$ld_state"))" \
+			"$(printf "%0.s-" $(seq "$ld_service_name"))"
+	)"
+
+	TAB_CONTENT_FORMAT="| %-${ld_server}s | %-${ld_port}s | %-${ld_state}s | %-${ld_service_name}s |"
+
+	[ "${#NMAP_RESULTS[@]}" -eq "0" ] || {
+		format_tab_header
+		format_tab_content "${NMAP_RESULTS[@]}"
+		echo "$TAB_SEPARATOR" >> "${RESULT_FILE}"
+	}
+}
+
+post_works()
+{
+	log_info "Starting post work ..."
+
+	log_info "Scan finished."
+}
+
+main()
+{
+	pre_works
+
+	nmap_scan
+
+	format_result
+
+	post_works
+}
+
+main

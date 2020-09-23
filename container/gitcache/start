@@ -1,0 +1,20 @@
+#!/bin/bash
+# Origin: https://github.com/git-cloner/gitcache
+# Copyright (C) 2019-2020  Eric D.little51
+# SPDX-License-Identifier: GPL-3.0
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm gitcache
+
+cmd=(
+	docker run -dt
+	--name gitcache
+	--restart=always
+	-p 5000:5000
+	-v /srv/cache/gitcache/:/var/gitcache/
+	-v /etc/localtime:/etc/localtime:ro
+	gitcache
+)
+
+"${cmd[@]}"

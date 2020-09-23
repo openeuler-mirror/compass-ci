@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'optparse'
+require_relative './docker/docker'
+
+opt = {}
+
+options = OptionParser.new do |opts|
+  opts.banner = 'Usage: multi-qemu [-t] [-n]'
+
+  opts.separator ''
+  opts.on('-n HOSTNAME_PREFIX', '--name HOSTNAME_PREFIX', 'specify used hostname_prefix') do |name|
+    opt['hostname_prefix'] = name
+  end
+
+  opts.on('-c count', '--count count', 'how much container do you need') do |num|
+    opt['nr_container'] = num
+  end
+
+  opts.on_tail('-h', '--help', 'show this message') do
+    puts opts
+    exit
+  end
+end
+
+if ARGV.size.zero?
+  puts options
+  exit
+end
+
+options.parse!(ARGV)
+
+hostname = opt['hostname_prefix'] || 'dc-1g'
+nr_container = opt['nr_container'] || 1
+
+pids = multi_docker(hostname, nr_container)
+save_pid pids

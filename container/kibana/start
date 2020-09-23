@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require_relative '../defconfig.rb'
+
+docker_rm "kibana"
+
+cmd = %w[
+  docker run
+  --restart=always
+  --name kibana
+  -v /etc/localtime:/etc/localtime:ro
+  -d
+  --link logging-es:elasticsearch
+  -p 11309:5601
+  kibana:7.6.2
+]
+
+system(*cmd)

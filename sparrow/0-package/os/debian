@@ -1,0 +1,23 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+export DEBIAN_FRONTEND=noninteractive
+
+pkgs=(
+	vim
+	lvm2
+	gcc
+	g++
+	make
+	docker.io
+	ruby-full
+	ruby-dev
+	bridge-utils
+	qemu
+	dmidecode
+	lockfile-progs
+	bridge-utils
+)
+
+apt-get install -y "${pkgs[@]}"

@@ -1,0 +1,3 @@
+Server = http://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/$arch/$repo
+Server = http://mirrors.163.com/archlinuxarm/$arch/$repo
+Server = http://mirror.archlinuxarm.org/$arch/$repo

@@ -1,0 +1,26 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm alpine
+
+cmd=(
+	docker run
+	--restart=always
+	--name alpine
+	-d
+	-v alpine-home:/home
+	-v /etc/localtime:/etc/localtime:ro
+	-v alpine-root:/root
+	-v /c:/c
+	-v /srv/os:/srv/os
+	-p 2200:2200
+	--hostname alpine
+	--security-opt seccomp=unconfined
+	alpine:testbed
+	/usr/sbin/sshd -D -p 2200
+)
+
+"${cmd[@]}"

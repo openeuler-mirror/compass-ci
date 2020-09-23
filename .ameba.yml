@@ -1,0 +1,5 @@
+Style/RedundantReturn:
+  Description: Reports redundant return expressions
+  AllowMultiReturn: true
+  AllowEmptyReturn: true
+  Enabled: false

@@ -1,0 +1,15 @@
+suite: iperf-walk-os-test
+category: benchmark
+runtime: 300
+cluster: cs-localhost
+if role server:
+  iperf-server:
+if role client:
+  iperf:
+    protocol: tcp
+testbox: vm-hi1620-2p8g--USER
+os: OS
+os_arch: OS_ARCH
+os_version: OS_VER
+node_roles: server client
+LKP_DEBUG_PREFIX: bash -x

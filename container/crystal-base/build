@@ -1,0 +1,11 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+if [ -n "$SQUID_HOST" ] && [ -n "$SQUID_PORT" ]; then
+	proxy="http://$SQUID_HOST:$SQUID_PORT/"
+else
+	proxy=
+fi
+
+docker build --build-arg HTTP_PROXY=$proxy -t alpine:crystal-base .

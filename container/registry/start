@@ -1,0 +1,17 @@
+#!/bin/bash
+# Origin: https://docs.docker.com/registry
+# SPDX-License-Identifier: Apache license
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm registry
+
+cmd=(
+	docker run -dt
+	--name registry
+	-p 5001:5001
+	-v /srv/cache/registry/:/srv/cache/registry/
+	-v $PWD/config.yml:/etc/docker/registry/config.yml
+	registry
+)
+"${cmd[@]}"

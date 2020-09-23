@@ -1,0 +1,20 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+if [ $# -gt 1 ]; then
+  echo "USAGE: $0                 # hgetall for id2content"
+  echo "     : $0 queues/your_key # hgetall for your key"
+  exit 1
+fi
+
+if [[ $1 ]]; then
+  key_name=$1
+else
+  key_name=queues/id2content
+fi
+
+# use current filename's last string as lua command script
+cmd_lua=${0##*_}
+
+redis-cli --eval key_cmd_params.lua $key_name , $cmd_lua
