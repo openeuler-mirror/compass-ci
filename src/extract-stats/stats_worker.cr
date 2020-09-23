@@ -44,7 +44,7 @@ class StatsWorker
 
         @tq.delete_task(queue_path + "/in_process", "#{job_id}")
       else
-        sleep(2)
+        sleep(60)
       end
     end
   end
