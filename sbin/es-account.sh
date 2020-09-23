@@ -15,10 +15,19 @@ else
 			"_doc": {
 				"dynamic": false,
 				"properties": {
+					"my_commit_url": {
+						"type": "keyword"
+					},
 					"uuid": {
 						"type": "keyword"
 					},
 					"email": {
+						"type": "keyword"
+					},
+					"name": {
+						"type": "keyword"
+					},
+					"user": {
 						"type": "keyword"
 					}
 				}
