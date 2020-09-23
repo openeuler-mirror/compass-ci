@@ -21,25 +21,25 @@ class StatsWorker
         response = @tq.consume_task(queue_path)
       rescue e
         STDERR.puts e.message
+        # incase of many error message when task-queue is busy
+        sleep(10)
         next
       end
+
       if response[0] == 200
         job_id = JSON.parse(response[1].to_json)["id"]
-
-        job = @es.get_job(job_id.to_s)
-        if job
-          result_root = job.result_root
+        job = @es.get_job_content(job_id.to_s)
+        result_root = job["result_root"]
+        begin
           # extract stats.json
           system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
-          # storage job to es
-          begin
-            store_stats_es(result_root, job) if result_root
-            # send mail to submitter for job results
-            system "#{ENV["CCI_SRC"]}/sbin/mail-job #{job_id}"
-          rescue e
-            STDERR.puts e.message
-            next
-          end
+          # storage stats to job in es
+          store_stats_es(result_root.to_s, job_id.to_s) if result_root
+          # send mail to submitter for job results
+          system "#{ENV["CCI_SRC"]}/sbin/mail-job #{job_id}"
+        rescue e
+          STDERR.puts e.message
+          next
         end
 
         @tq.delete_task(queue_path + "/in_process", "#{job_id}")
@@ -49,7 +49,7 @@ class StatsWorker
     end
   end
 
-  def store_stats_es(result_root : String, job : Job)
+  def store_stats_es(result_root : String, job_id : String)
     stats_path = "#{result_root}/stats.json"
     raise "#{stats_path} file not exists." unless File.exists?(stats_path)
 
@@ -57,21 +57,28 @@ class StatsWorker
       JSON.parse(file)
     end
 
-    job_stats = {"stats" => stats.as_h}
-    job.update(job_stats)
+    update_content = Hash(String, Array(String) | Hash(String, JSON::Any)).new
+    update_content.merge!({"stats" => stats.as_h})
 
     error_ids = get_error_ids_by_json(result_root)
-    job.update(JSON.parse({"error_ids" => error_ids}.to_json)) unless error_ids.empty?
+    update_content.merge!({"error_ids" => error_ids}) unless error_ids.empty?
 
-    @es.set_job_content(job)
 
-    new_error_ids = check_new_error_ids(error_ids, job.id)
+    @es.@client.update(
+      {
+        :index => "jobs", :type => "_doc",
+        :id => job_id,
+        :body => {:doc => update_content},
+      }
+    )
+
+    new_error_ids = check_new_error_ids(error_ids, job_id)
     unless new_error_ids.empty?
-      STDOUT.puts "send a delimiter task: job_id is #{job.id}"
+      STDOUT.puts "send a delimiter task: job_id is #{job_id}"
       @tq.add_task(DELIMITER_TASK_QUEUE, JSON.parse({"error_id" => new_error_ids.sample,
-                                                     "job_id"   => job.id}.to_json))
+                                                     "job_id"   => job_id}.to_json))
     end
-    puts %({"job_id": "#{job.id}", "job_state": "extract_finished"})
+    puts %({"job_id": "#{job_id}", "job_state": "extract_finished"})
   end
 
   def check_new_error_ids(error_ids : Array, job_id : String)
