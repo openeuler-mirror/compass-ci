@@ -9,7 +9,8 @@ require_relative 'constants.rb'
 class ESQuery
   HOST = (ENV.key?('ES_HOST') ? ENV['ES_HOST'] : ES_HOST)
   PORT = (ENV.key?('ES_PORT') ? ENV['ES_PORT'] : ES_PORT).to_i
-  def initialize(host = HOST, port = PORT)
+  def initialize(host = HOST, port = PORT, index: 'jobs')
+    @index = index
     @client = Elasticsearch::Client.new url: "http://#{host}:#{port}"
     raise 'Connect Elasticsearch  error!' unless @client.ping
   end
@@ -29,7 +30,7 @@ class ESQuery
   end
 
   def query_by_id(id)
-    @client.get_source({ index: 'jobs', type: '_doc', id: id })
+    @client.get_source({ index: @index, type: '_doc', id: id })
   rescue Elasticsearch::Transport::Transport::Errors::NotFound
     nil
   end
