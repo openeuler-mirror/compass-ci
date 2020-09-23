@@ -13,6 +13,7 @@ class TaskQueue
   # l2pH: limit 2 / hours
   # l100pms: limit 100 / ms
   @@rate_limiter = RateLimiter(String).new
+  @@rate_limiter.bucket(:l48pD, 48_u32, 1.days)
   @@rate_limiter.bucket(:l2pH, 1_u32, 30.minutes)
   @@rate_limiter.bucket(:l1pms, 1_u32, 0.001.seconds)
   @@rate_limiter.bucket(:l100pms, 1_u32, 0.00001.seconds)

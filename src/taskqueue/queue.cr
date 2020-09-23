@@ -191,7 +191,7 @@ class TaskQueue
     # move task to ready, and with rate control to each uuid
     uuid_keys.each do |key|
       uuid, prefix = get_matched_queue_name(key)
-      if @@rate_limiter.rate_limited?(:l2pH, uuid) == false
+      if @@rate_limiter.rate_limited?(:l48pD, uuid) == false
         # prefix is start with "queues", need delete it
         s_name = prefix.sub("#{QUEUE_NAME_BASE}/", "")
         move_first_task_in_redis_with_score("#{s_name}/#{uuid}",
