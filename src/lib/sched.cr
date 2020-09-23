@@ -611,7 +611,7 @@ class Sched
     response = @es.set_job_content(job)
     if response["_id"] == nil
       # es update fail, raise exception
-      raise "es set job content fail! "
+      raise "es set job content fail!"
     end
 
     response = @task_queue.hand_over_task(

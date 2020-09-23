@@ -122,7 +122,6 @@ class Job
     set_os_dir()
     set_result_root()
     set_result_service()
-    set_access_key()
     set_os_mount()
     set_kernel_append_root()
     set_pp_initrd()
@@ -162,6 +161,10 @@ class Job
     update_tbox_group_from_testbox # id must exists, need update tbox_group
     date = Time.local.to_s("%F")
     self["result_root"] = "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
+
+    # access_key has information based on "result_root"
+    #  so when set result_root, we need redo set_ to update it
+    set_access_key()
   end
 
   private def set_access_key
@@ -271,11 +274,17 @@ class Job
 
   def update_tbox_group(tbox_group)
     @hash["tbox_group"] = JSON::Any.new(tbox_group)
+
+    # "result_root" is based on "tbox_group"
+    #  so when update tbox_group, we need redo set_
     set_result_root()
   end
 
   def update_id(id)
     @hash["id"] = JSON::Any.new(id)
+
+    # "result_root" is based on "id"
+    #  so when update id, we need redo set_
     set_result_root()
   end
 
