@@ -9,12 +9,12 @@ CONTAINER_PATH = File.dirname(__dir__)
 
 def get_hub_dc_image(os_name, os_version)
   name_map = YAML.load_file("#{CONTAINER_PATH}/config.d/hub_dc_image_name")
-  tag_map = YAML.load_file("#{CONTAINER_PATH}/config.d/hub_dc_image_tag")
+  tag_map = YAML.load_file("#{CONTAINER_PATH}/config.d/image_tag")
   return "#{name_map[os_name]}:#{tag_map[os_name + os_version]}"
 end
 
 def get_local_dc_image(os_name, os_version)
-  tag_map = YAML.load_file("#{CONTAINER_PATH}/config.d/local_dc_image_tag")
+  tag_map = YAML.load_file("#{CONTAINER_PATH}/config.d/image_tag")
   return "dc-#{os_name}:#{tag_map[os_name + os_version]}"
 end
 
