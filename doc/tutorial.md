@@ -633,7 +633,7 @@ Compass-CI 集开发调测、测试服务、测试结果分析、辅助定位为
           项目代码更新后自动触发构建任务，无需其他操作。
 
        3) 查看结果
-          web: http://159.138.45.71:8081/jobs
+          web: https://compass-ci.openeuler.org/jobs
 
        4) 备注
           目前提供archlinux下已有PKGBUILD项目构建测试，暂不支持自主导入PKGBUILD文件。
