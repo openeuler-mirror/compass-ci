@@ -651,8 +651,20 @@ Compass-CI 集开发调测、测试服务、测试结果分析、辅助定位为
 
 
 
-// wangyong
-- depends
+- 依赖包构建
+	流程: 以下默认使用debian:sid版本进行,如果使用其他OS跑测试用例，则需要在lkp-tests/distro/adaptation/下将包名以
+键值对的形式写入对应OS的文件中。例：echo 'apache2: httpd' >> lkp-tests/distro/adaptation/openeuler
+	   a) 在lkp-tests/distro/depends/下新建一个与测试用例同名的文件
+		vim lkp-tests/distro/depends/test
+	   b) 将测试用例所需debian下的包名填入创建的文件中
+		echo "apache2" >> lkp-tests/distro/depends/test
+	   c) 生成lkp-aarch64.cgz
+		./crystal-ci/container/lkp-initrd/run
+	   d) 提交测试用例
+		submit test.yaml
+	   e) 查看结果
+		https://compass-ci.openeuler.org/jobs
+		
 
 
 
