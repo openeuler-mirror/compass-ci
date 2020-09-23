@@ -9,6 +9,8 @@ require_relative '../defconfig.rb'
 names = Set.new %w[
   SCHED_HOST
   SCHED_PORT
+  SCHED_HTTPS_HOST
+  SCHED_HTTPS_PORT
   REDIS_HOST
   REDIS_PORT
   ES_HOST
@@ -30,19 +32,20 @@ DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'
 SCHED_PORT = defaults['SCHED_PORT'] || '3000'
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
+SCHED_HTTPS_PORT = defaults['SCHED_HTTPS_PORT'] || 11306
+SCHED_HTTPS_HOST = defaults['SCHED_HTTPS_HOST'] || 'api.compass-ci.openeuler.org'
 FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'
 FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 
-OPEN_SCHED_PORT = 11330
-docker_rm "s001-alpine-#{OPEN_SCHED_PORT}"
+docker_rm "s001-alpine-#{SCHED_HTTPS_PORT}"
 
 cmd = %W[
   docker run
   --restart=always
-  --name s001-alpine-#{OPEN_SCHED_PORT}
+  --name s001-alpine-#{SCHED_HTTPS_PORT}
   -d
   -u 1090:1090
-  -p #{OPEN_SCHED_PORT}:#{SCHED_PORT}
+  -p #{SCHED_HTTPS_PORT}:#{SCHED_PORT}
 ] + env + %W[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
@@ -55,14 +58,15 @@ cmd = %W[
   -v /srv/result:/srv/result
   -v /srv/initrd:/srv/initrd:ro
   -v /srv/os:/srv/os:ro
+  -v /etc/compass-ci/ca:/ca
   --log-driver=fluentd
   --log-opt fluentd-address=#{FLUENTD_HOST}:#{FLUENTD_PORT}
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
-  --log-opt tag=scheduler-#{OPEN_SCHED_PORT}
+  --log-opt tag=scheduler-#{SCHED_HTTPS_PORT}
   sch-ruby-a:v0.00d-#{SCHED_PORT}
 ]
 
-cmd += ['sh', '-c', 'umask 002 && ./scheduler']
+cmd += ['sh', '-c', 'umask 002 && ./scheduler --ssl --ssl-key-file /ca/server.key --ssl-cert-file /ca/server.crt']
 
 system(*cmd)
