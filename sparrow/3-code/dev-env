@@ -24,7 +24,7 @@ FLUENTD_SERVER_HOST: $fluentd_server_host
 FLUENTD_SERVER_PORT: $fluentd_server_port
 EOF
 
-cat > /etc/profile.d/crystal.sh <<'EOF'
+cat > /etc/profile.d/compass.sh <<'EOF'
 export LKP_SRC=/c/lkp-tests
 export CCI_SRC=/c/compass-ci
 
