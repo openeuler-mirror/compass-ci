@@ -36,15 +36,12 @@ do
 			;;
 		initrd)
 			file=$(basename "$b")
-			rm -f $file
-			wget -a ${log_file} --progress=bar:force $b
+			wget --timestamping -a ${log_file} --progress=bar:force $b
 			initrds+="$file "
 			;;
 		kernel)
 			kernel=$(basename "$b")
-			#[[ -f $kernel ]] ||
-			rm -f $kernel
-			wget -a ${log_file} --progress=bar:force $b
+			wget --timestamping -a ${log_file} --progress=bar:force $b
 			append=$(echo "$c" | sed -r "s/ initrd=[^ ]+//g")
 			;;
 		*)
