@@ -201,3 +201,120 @@ def compare(params)
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
+
+def space_to_nil(str)
+  return unless str
+
+  str&.strip!
+  str.empty? ? nil : str
+end
+
+def get_positive_number(num, default_num)
+  num = num.to_i
+  return default_num unless num.positive?
+
+  return num
+rescue StandardError
+  return default_num
+end
+
+def wrong_size?(size, from)
+  return true if from.negative? || size.negative?
+  return true if from > 1000000 || size > 1000000
+  return true if size + from > 1000000
+end
+
+def es_search(must, size, from)
+  FIELDS.each do |f|
+    next if NOT_NEED_EXIST_FIELDS.include? f
+
+    must << { exists: { field: f } }
+  end
+  count_query = { query: { bool: { must: must } } }
+  total = es_count(count_query)
+  unless size
+    size = total
+    from = 0
+  end
+  query = {
+    query: { bool: { must: must } },
+    size: size,
+    from: from,
+    sort: [{
+      start_time: { order: 'desc' },
+      id: { order: 'desc' }
+    }]
+  }
+  return {}, total if wrong_size?(size, from)
+
+  return es_query(query)['hits']['hits'], total
+end
+
+def get_job(result)
+  job = {}
+  ALL_FIELDS.each do |f|
+    job[f] = result[f]
+  end
+  job
+end
+
+def search_job(git_repo, page_size, page_num)
+  must = []
+  must << { regexp: { upstream_repo: ".*#{git_repo}.*" } } if git_repo
+  jobs = []
+  result, total = es_search(must, page_size, page_num * page_size)
+  result.each do |r|
+    jobs << get_job(r['_source'])
+  end
+  return jobs, total
+end
+
+def get_banner(git_repo, branches)
+  {
+    repo: git_repo,
+    git_url: get_repo(git_repo)[:git_url],
+    upstream_branch: branches
+  }
+end
+
+def get_optimize_jobs_braches(jobs)
+  branch_set = Set.new
+  jobs.size.times do |i|
+    branch = jobs[i]['upstream_branch'].to_s
+    if branch.empty?
+      jobs[i]['upstream_branch'] = 'master'
+      branch_set.add 'master'
+    else
+      jobs[i]['upstream_branch'] = branch
+      branch_set.add branch
+    end
+  end
+  return jobs, branch_set.to_a
+end
+
+def get_jobs_body(params)
+  git_repo = space_to_nil(params[:upstream_repo])
+  page_size = get_positive_number(params[:page_size], 20)
+  page_num = get_positive_number(params[:page_num], 1) - 1
+  jobs, total = search_job(git_repo, page_size, page_num)
+  jobs, branches = get_optimize_jobs_braches(jobs)
+  {
+    total: total,
+    filter: {
+      upstream_repo: git_repo
+    },
+    banner: get_banner(git_repo, branches),
+    jobs: jobs,
+    fields: FIELDS
+  }
+end
+
+def get_jobs(params)
+  begin
+    body = get_jobs_body(params)
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get jobs error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), JSON.dump(body)]
+end
