@@ -47,43 +47,12 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 
 ## 使用Compass-CI
+> 当您注册之后，便可以以编写yaml文件并通过我们的工具上传任务以进行自定义测试，测试功能将尽快上线。
 
-### 前提条件
-
-
-- 申请账号
-
-    您可以通过向compass-ci@139.com发邮件申请，邮件标题为“apply account”，正文提供向开源社区提交过commit的url地址，以附件方式添加公钥即可。
-	邮件回复内容如下：
-	
-		account_uuird: xxxxxx
-    	SCHED_HOST:   xxx.xxx.xxx.xxx
-    	SCHED_PORT:   10000
-
--  构建本地可以提交job的环境
-	
-	- 下载lkp-tests, 安装依赖包并配置环境变量，命令如下所示。
-       ```bash
-       git clone http://gitee.com/wu_fengguang/lkp-tests.git
-       cd lkp-tests
-       make install
-       ```
-	
-	- 配置lab
-	
-	  - 打开lkp-tests/include/lab/z9
-		```yaml
-		SCHED_HOST: ip
-		SCHED_PORT: port
-		```
-	  - 新建$HOME/.config/compass-ci/defaults/$USER.yaml
-		```yaml
-		lab: z9
-		```
 
 -  注册自己的仓库
 
-	如果您想在 git push 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库[upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。   
+	如果您想在 `git push` 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库[upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。   
 	```bash
 	git clone https://gitee.com/wu_fengguang/upstream-repos.git
 	less upstream-repos/README.md
@@ -92,7 +61,7 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 ### 编写job yaml文件
 
 #### job yaml简介
-job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAML_for_ruby.html)的格式编写，所有 job 文件位于```$LKP_SRC/jobs```路径下。
+job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAML_for_ruby.html)的格式编写，所有 job 文件位于```$LKP_SRC/jobs```路径下。[$LKP_SRC](https://gitee.com/wu_fengguang/lkp-tests)
 
 #### job yaml的结构
 	
@@ -165,131 +134,13 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 
 ###  提交测试任务
 
-
-使用```submit```关键字提交测试任务，以netperf为例，命令如下。
-```bash
-submit netperf.yaml
-```
-
-
-submit命令更多参数设置方法如下。
-```
-- Usage: submit [options] jobs...
-      submit test jobs to scheduler
-- options:
-        - s, --set 'KEY: VALUE'   #add YAML hash to job
-        - o, --output DIR         #save job yaml to DIR
-        - a, --auto-define-files  #auto add define_files
-        - c, --connect            #auto connect to the host
-        - m, --monitor            # monitor job status: use -m 'KEY: VALUE' to add rule"
-```
-
-
 ###  查看测试结果
-
-
-- 生成与存储测试结果
-	测试执行机完成测试任务后，将结果保存到日志文件中，并上传至服务器，按照```$suite/$tbox_group/$date/job_id```的目录结构存储在本地```/srv/result```目录。
-	extract-stats 服务将提取本地日志文件中的数据，生成与日志文件对应的json文件，并将汇总后的结果存储到obs数据库(ES)对应id的job中。
-
-
-- web页面查看结果:
-	- 点击链接查看obs数据库（ES）中的结果：https://compass-ci.openeuler.org/jobs
-
-	- 点击链接查看文件中的结果,示例：http://124.90.34.227:11300/result/iperf/dc-2g--xiao/2020-09-21/crystal.83385/， 文件分为两类：
-
-		- 由测试执行机上传的日志文件：
-		boot-time, diskstats.gz, interrupts.gz, ...等。
-		
-		- 由extract-stats服务生成的json文件：
-		boot-time.json, diskstats.json, interrupts.json,stats.json, ... 等。
-		json 文件对应每一个日志文件提取后的结果，stats.json为汇总后的结果。
-
 
 ###  比较测试结果
 
-测试完成后，Compass-CI通过条件查询数据并将数据合并为多个矩阵，计算每个矩阵的平均值和标准差，以比较测试用例在特定维度的性能变化。最后，将比较结果打印输出。
-
-
-可以通过如下两种方式比较测试结果：
-
--  通过compare web比较
-    Compass CI/compare
-	
--  通过命令行比较
-     ```
-	 compare conditions -d dimension
-	```
-
-示例比较测试结果如下。
-```
-    os=openeuler/os_arch=aarch64/tbox_group=vm-hi1620-2p8g
-
-
-                      20                               1  metric
-    --------------------  ------------------------------  ------------------------------
-          fails:runs        change        fails:runs
-               |               |               |
-              8:21          -38.1%            0:1         last_state.daemon.sshd.exit_code.1
-              1:21           -4.8%            0:1         last_state.daemon.sshd.exit_code.2
-              1:21           -4.8%            0:1         last_state.setup.disk.exit_code.1
-              1:21           -4.8%            0:1         last_state.test.dbench.exit_code.99
-              1:21           -4.8%            0:1         last_state.test.email.exit_code.7
-
-
-                      20                               1  metric
-    --------------------  ------------------------------  ------------------------------
-              %stddev       change            %stddev
-                 \             |                 \
-            0.02 ± 265%   +2259.8%          0.57          mpstat.cpu.all.soft%
-            0.48 ± 299%   +1334.9%          6.90          mpstat.cpu.all.sys%
-         2760.71 ± 164%    +292.6%      10838.00          proc-vmstat.nr_dirty_background_threshold
-         5522.10 ± 164%    +292.6%      21680.00          proc-vmstat.nr_dirty_threshold
- 
-```
-
-
 ###   提交borrow任务
 
-borrow任务是指通过提交任务的方式申请环境，提交borrow任务的yaml文件请参考lkp-tests/jobs/borrow-1h.yaml。
-
-1. yaml文件配置说明：
-
-	- 必填字段：
-	```
-	  sshd:
-		pub_key  \\将用户的公钥信息添加到job中
-		email    \\ 配置用户邮箱地址
-	  runtime    \\申请环境的使用时间 h/d/w
-	  testbox    \\申请环境的规格
-	```
-	- 选填字段：
-	```
-	  os         \\申请环境的操作系统参数
-	  os_arch
-	  os_version
-	```
-
-2. 提交任务
-
-	执行命令```submit -m -c borrow-1h.yaml```，可以提交borrow任务并自动ssh连接到申请的环境当中。
-
-
 ###  提交 bisect 任务
-
-bisect 任务可以找到首次在git repo中引入问题的commit信息。提交bisect任务的yaml文件请参考 $LKP_SRC/jobs/bisect.yaml。
-
-1. yaml文件配置说明：
-    - 必填字段：
-	```
-      bisect:
-      job_id:    \\提交job的job_id
-      error_id:  \\在Compass-CI网页上搜索$job_id，得到$error_ids，从$error_ids中选择一个$error_id。
-	```
-2. 提交任务
-      执行命令```submit bisect.yaml```，提交成功后会收到通知邮件。
-
-
 
 ## 高级功能
 
