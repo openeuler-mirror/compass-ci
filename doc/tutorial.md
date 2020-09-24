@@ -53,37 +53,37 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 - 申请账号
 
-    您可以通过向compass-ci@139.com发邮件申请，邮件标题为“apply account”，正文提供向开源社区提交过commit的url地址，以附件方式添加公钥即可。
-	邮件回复内容如下：
+    您可以通过向**compass-ci@139.com**发送邮件进行账号申请，邮件标题为"**apply account**"，在正文中提供**您向开源项目提交过的commit的url地址**(我们将根据此进行审查并决定是否发放账号)，并以附件方式添加**准备用来提交任务的个人电脑的公钥**。  
+    发送邮件后，将收到一封回复邮件，邮件回复内容如下：
 	
-		account_uuird: xxxxxx
-    	SCHED_HOST:   xxx.xxx.xxx.xxx
-    	SCHED_PORT:   10000
+	    account_uuird: xxxxxx
+    	    SCHED_HOST: ip      # 下面配置中将会使用到的ip地址
+    	    SCHED_PORT: port    # 下面配置中将会使用到的端口
 
 -  构建本地可以提交job的环境
 	
-	- 下载lkp-tests, 安装依赖包并配置环境变量，命令如下所示。
+	- 下载安装[lkp-tests](https://gitee.com/wu_fengguang/lkp-tests)
        ```bash
-       git clone http://gitee.com/wu_fengguang/lkp-tests.git
+       git clone https://gitee.com/wu_fengguang/lkp-tests.git
        cd lkp-tests
-       make install
+       sudo make install
        ```
 	
 	- 配置lab
 	
-	  - 打开lkp-tests/include/lab/z9
+	  - 编辑`.../lkp-tests/include/lab/z9`
 		```yaml
-		SCHED_HOST: ip
-		SCHED_PORT: port
+		SCHED_HOST: ip      # 申请账号时回复邮件中的ip
+		SCHED_PORT: port    # 申请账号时回复邮件中的端口
 		```
-	  - 新建$HOME/.config/compass-ci/defaults/$USER.yaml
+	  - 新建`$HOME/.config/compass-ci/defaults/$USER.yaml` 内容如下
 		```yaml
 		lab: z9
 		```
 
 -  注册自己的仓库
 
-	如果您想在 git push 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库[upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。   
+	如果您想在 `git push` 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库[upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。   
 	```bash
 	git clone https://gitee.com/wu_fengguang/upstream-repos.git
 	less upstream-repos/README.md
