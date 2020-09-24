@@ -1,0 +1,29 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+ipmi_info="/etc/compass-ci/ipmi_info"
+[ -f "$ipmi_info" ] || {
+	echo "ipmi_info file not found!"
+	exit
+}
+
+read -r user passwd <<< "$(< $ipmi_info)"
+if [ -z "$user" ] || [ -z "$passwd" ]; then
+	echo "Wrong! Username and password should be together in ipmi_info."
+	exit
+fi
+
+cmd=(
+	docker run
+	-d
+	-e "USER=${user}"
+	-e "IPMI_PASSWORD=${passwd}"
+	--name conserver_server
+	-v /etc/localtime:/etc/localtime:ro
+	-v /srv/cci/serial/logs/:/var/consoles/
+	-p 782:782
+	conserver_server
+)
+
+"${cmd[@]}"
