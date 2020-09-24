@@ -117,3 +117,87 @@ def compare_candidates
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
+
+def get_dimension_conditions(params)
+  dimension = params.key?(:dimension) ? [params.delete(:dimension)] : []
+  conditions = {}
+  FIELDS.each do |f|
+    v = params[f]
+    next if !v || v.empty?
+
+    conditions[f] = v
+  end
+  return dimension, conditions
+end
+
+def get_es_prefix(params)
+  prefix = {}
+  PREFIX_SEARCH_FIELDS.each do |f|
+    v = params[f]
+    prefix[f] = v if v
+  end
+  prefix
+end
+
+def get_es_must(params)
+  must = []
+  prefix = get_es_prefix(params)
+  must << { prefix: prefix } unless prefix.empty?
+  must << { terms: { job_state: %w[finished failed] } }
+  must
+end
+
+def get_groups_matrices(conditions, dimension, must, size, from)
+  must += build_mutli_field_subquery_body(conditions)
+  count_query = { query: { bool: { must: must } } }
+  total = es_count(count_query)
+  return {} if total < 1
+
+  query = {
+    query: {
+      bool: {
+        must: must
+      }
+    },
+    size: size,
+    from: from,
+    sort: [{
+      start_time: { order: 'desc' }
+    }]
+  }
+
+  result = es_query(query)
+  matrices = combine_group_query_data(result, dimension)
+  while matrices.empty?
+    from += size
+    break if from > total
+
+    query[:from] = from
+    result = es_query(query)
+    matrices = combine_group_query_data(result, dimension)
+  end
+  matrices
+end
+
+def get_compare_body(params)
+  dimension, conditions = get_dimension_conditions(params)
+  must = get_es_must(params)
+  groups_matrices = get_groups_matrices(conditions, dimension, must, COMPARE_RECORDS_NUMBER, 0)
+  if !groups_matrices || groups_matrices.empty?
+    body = 'No Data.'
+  else
+    body = compare_group_matrices(groups_matrices, { no_print: true })
+    body = 'No Difference.' if !body || body.empty?
+  end
+  return body
+end
+
+def compare(params)
+  begin
+    body = get_compare_body(params)
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'compare error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
