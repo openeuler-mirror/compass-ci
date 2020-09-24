@@ -138,12 +138,14 @@ class Job
   end
 
   private def set_lkp_server
+    # handle by me, then keep connect to me
+    self["LKP_SERVER"] = SCHED_HOST
+    self["LKP_CGI_PORT"] = SCHED_PORT.to_s
+
+    # need further uuid check (validate? exist? no need?)
     if self["SCHED_HOST"] != SCHED_HOST # remote submited job
       # ?further fix to 127.0.0.1 (from remote ssh port forwarding)
       # ?even set self["SCHED_HOST"] and self["SCHED_PORT"]
-
-      self["LKP_SERVER"] = SCHED_HOST
-      self["LKP_CGI_PORT"] = SCHED_PORT.to_s
 
       if self["uuid"] == ""
         puts "Job's SCHED_HOST is #{self["SCHED_HOST"]}, " +
