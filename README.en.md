@@ -1,7 +1,7 @@
 # compass-ci
 
 #### Description
-Crystal CI
+Compass CI
 
 #### Software Architecture
 Software architecture description

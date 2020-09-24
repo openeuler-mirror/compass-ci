@@ -30,12 +30,13 @@ class AutoSubmit
 
   def submit(newrefs_info, submit_argv)
     newrefs_info['new_refs']['heads'].each do |branch, commit_id|
+      real_argvs = Array.new(submit_argv)
       commit_date = `git -C /srv/git/#{newrefs_info['git_repo']}.git log  --format=%ct -1 #{commit_id}`
-      submit_argv.push("upstream_branch=#{branch.delete_prefix('refs/heads/')}")
-      submit_argv.push("upstream_commit=#{commit_id}")
-      submit_argv.push("commit_date=#{commit_date}")
+      real_argvs.push("upstream_branch=#{branch.delete_prefix('refs/heads/')}")
+      real_argvs.push("upstream_commit=#{commit_id}")
+      real_argvs.push("commit_date=#{commit_date}")
 
-      system(submit_argv.join(' '))
+      system(real_argvs.join(' '))
     end
   end
 

@@ -1,7 +1,7 @@
 # compass-ci
 
 #### 介绍
-Crystal CI
+Compass CI
 
 #### 软件架构
 软件架构说明
