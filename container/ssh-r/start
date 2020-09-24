@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. $CCI_SRC/container/defconfig.sh
+
 vm_name=ssh_r
 
-docker rm ${vm_name}
+docker_rm ${vm_name}
 
 cmd=(
   docker run

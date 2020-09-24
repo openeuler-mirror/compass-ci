@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm conserver_server
+
 ipmi_info="/etc/compass-ci/ipmi_info"
 [ -f "$ipmi_info" ] || {
 	echo "ipmi_info file not found!"

@@ -3,6 +3,10 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm result-webdav
+
 cmd=(
 	docker run -d
 	--name result-webdav
