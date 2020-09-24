@@ -15,8 +15,6 @@ UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
 
 FIELDS = %w[
   upstream_repo
-  upstream_branch
-  upstream_commit
   os
   os_version
   os_arch
@@ -30,7 +28,7 @@ FIELDS = %w[
 ].freeze
 NOT_SHOW_FIELDS = %w[result_root].freeze
 ALL_FIELDS = FIELDS + NOT_SHOW_FIELDS
-NOT_NEED_EXIST_FIELDS = %w[error_ids upstream_branch upstream_repo upstream_commit].freeze
+NOT_NEED_EXIST_FIELDS = %w[error_ids upstream_repo].freeze
 PREFIX_SEARCH_FIELDS = ['tbox_group'].freeze
 ES_CLIENT = Elasticsearch::Client.new(url: "http://#{ES_HOST}:#{ES_PORT}")
 COMPARE_RECORDS_NUMBER = 50
@@ -97,7 +95,7 @@ def compare_candidates_body
       OS: [
         { os: 'openeuler', os_version: ['1.0', '20.03'] },
         { os: 'centos', os_version: ['7.6', '7.8', '8.1', 'sid'] },
-        { os: 'debian', os_version: %w[10 sid] },
+        { os: 'debian', os_version: ['10', 'sid'] },
         { os: 'archlinux', os_version: ['5.5.0-1'] }
       ],
       os_arch: %w[aarch64 x86_64],
@@ -316,5 +314,74 @@ def get_jobs(params)
     warn e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get jobs error']
   end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), JSON.dump(body)]
+end
+
+def get_repo_url(repo_file)
+  return unless File.file? repo_file
+
+  urls = YAML.load_file(repo_file)['url']
+  urls.each do |url|
+    return url if url[0, 4] == 'http'
+  end
+  urls[0]
+end
+
+def get_repo(git_repo, repo_file = nil)
+  repo = {
+    git_repo: git_repo,
+    git_url: nil
+  }
+  return repo if !git_repo && !repo_file
+
+  if !git_repo
+    git_repo = repo_file[UPSTREAM_REPOS_PATH.size + 1, repo_file.size - 1]
+    repo[:git_repo] = git_repo
+  elsif !repo_file
+    repo_file = File.join(UPSTREAM_REPOS_PATH, git_repo)
+  end
+
+  repo[:git_url] = get_repo_url(repo_file)
+  repo
+end
+
+def repo_files_list
+  Dir["#{UPSTREAM_REPOS_PATH}/*/*/*"].sort
+end
+
+def get_repos_list(repo_files, from, finish, total)
+  repos_list = []
+
+  total.times do |index|
+    next if index < from
+    break if index >= finish
+
+    repos_list << get_repo(nil, repo_files[index])
+  end
+  repos_list
+end
+
+def get_repos_body(params)
+  repo_files = repo_files_list
+  page_size = get_positive_number(params[:page_size], 20)
+  page_num = get_positive_number(params[:page_num], 1) - 1
+
+  from = page_num * page_size
+  finish = from + page_size
+  total = repo_files.size
+
+  {
+    total: total,
+    repos: get_repos_list(repo_files, from, finish, total)
+  }
+end
+
+def get_repos(params)
+  begin
+   body = get_repos_body(params)
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get repos error']
+ end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), JSON.dump(body)]
 end
