@@ -5,7 +5,7 @@
 
 require 'fileutils'
 
-PWD = File.dirname(File.realpath($PROGRAM_NAME))
+PWD = Dir.pwd
 
 # Run multiple QEMU in parallel
 HOSTNAME = ARGV[0] || "vm-hi1620-2p8g--#{ENV['USER']}"
