@@ -1,0 +1,39 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+
+[[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
+[[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
+[[ $UPSTREAM_REPOS_PATH ]] || UPSTREAM_REPOS_PATH=/c/upstream-repos
+[[ $FLUENTD_HOST ]] || FLUENTD_HOST=localhost
+[[ $FLUENTD_PORT ]] || FLUENTD_PORT=24224
+
+. $CCI_SRC/container/defconfig.sh
+docker_rm web-backend
+
+cmd=(
+	docker run
+	--name web-backend
+	--restart=always
+	-d
+	-p 32767:32767
+
+	-e ES_PORT=9200
+	-e CCI_SRC=/c/compass-ci
+	-e LKP_SRC=/c/lkp-tests
+	-e UPSTREAM_REPOS_PATH=/c/upstream-repos
+
+	-v $CCI_SRC:/c/compass-ci
+	-v $LKP_SRC:/c/lkp-tests
+	-v $UPSTREAM_REPOS_PATH:/c/upstream-repos
+
+	--log-driver=fluentd
+	--log-opt fluentd-address=$FLUENTD_HOST:$FLUENTD_PORT
+	--log-opt mode=non-blocking
+	--log-opt max-buffer-size=4m
+	--log-opt tag=web-backend
+
+	debian:web-backend
+)
+
+"${cmd[@]}"

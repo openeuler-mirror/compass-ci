@@ -1,0 +1,64 @@
+#!/usr/bin/ruby
+# frozen_string_literal: true
+
+require 'sinatra'
+
+CCI_SRC = ENV['CCI_SRC'] || '/c/compass-ci'
+require "#{CCI_SRC}/src/lib/web_backend.rb"
+
+set :bind, '0.0.0.0'
+set :port, 32767
+set :show_exceptions, false
+
+# GET /compare_candidates
+# return: {"query_conditions": {...}, "dimension": [...]}
+get '/compare_candidates' do
+  compare_candidates
+end
+
+# GET /compare?suite=borrow&dimension=tbox_group
+# query_conditions:
+#   > must
+#   - os / os_version / suite / os_arch / tbox_group
+#
+# dimension:
+#   > must
+#   - os / os_version / os_arch / suite / tbox_group
+#
+# return: compare result string / "No Data." / "No Difference."
+get '/compare' do
+  compare(params)
+end
+
+# GET /get_jobs?upstream_repo=AvxToNeon/AvxToNeon&page_size=12&page_num=3
+# upstream_repo:
+#   > optional
+#
+# page_size:
+#   > optional
+#   - default: 20
+#
+# page_num:
+#   > optional
+#   - default: 1
+#
+# return:
+#   - default: 20 jobs
+get '/get_jobs' do
+  get_jobs(params)
+end
+
+# GET /get_repos?page_size=12&page_num=3
+# page_size:
+#   > optional
+#   - default: 20
+#
+# page_num:
+#   > optional
+#   - default: 1
+#
+# return:
+#   - default: 20 repos
+get '/get_repos' do
+  get_repos(params)
+end
