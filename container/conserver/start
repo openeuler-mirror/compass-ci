@@ -21,7 +21,7 @@ fi
 cmd=(
 	docker run
 	-d
-	-e "USER=${user}"
+	-e "IPMI_USER=${user}"
 	-e "IPMI_PASSWORD=${passwd}"
 	--name conserver_server
 	-v /etc/localtime:/etc/localtime:ro
