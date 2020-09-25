@@ -1,0 +1,11 @@
+
+types {
+    text/html                                        html htm shtml;
+    text/css                                         css;
+    text/xml                                         xml;
+    text/yaml                                        yaml;
+    text/plain                                       txt time data sh;
+
+    application/json                                 json;
+    application/x-gzip                               gz tgz;
+}
