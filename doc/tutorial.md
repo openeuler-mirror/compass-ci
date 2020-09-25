@@ -47,7 +47,7 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 
 ## 使用 Compass-CI
-> 当您注册之后，便可以以编写 yaml 文件并通过我们的工具上传任务以进行自定义测试，测试功能将尽快上线。
+> 当您注册之后，便可以编写 yaml 文件并通过我们的工具上传任务以进行自定义测试，测试功能将尽快上线。
 
 
 -  注册自己的仓库
@@ -129,7 +129,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 	nterval: 5
 	```
 
-**了解更多job yaml相关知识**  [Job definition to execution](https://gitee.com/wu_fengguang/lkp-tests/blob/master/jobs/README.md)
+**了解更多 job yaml 相关知识**  [Job definition to execution](https://gitee.com/wu_fengguang/lkp-tests/blob/master/jobs/README.md)
 
 
 ###  提交测试任务
@@ -286,16 +286,16 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 
 #### 准备工作      
 - 硬件
-        服务器类型：ThaiShan200-2280 (建议)
-        架构：aarch64
-        内存：>= 8GB
-        CPU：64 nuclear (建议)
+        服务器类型：ThaiShan200-2280 (建议)  
+        架构：aarch64  
+        内存：>= 8GB  
+        CPU：64 nuclear (建议)  
         硬盘：>= 500G
         
 - 软件
-        OS：openEuler-aarch64-20.03 LTS
-        git：2.23.0版本 (建议)
-        预留空间：>= 300G
+        OS：openEuler-aarch64-20.03 LTS  
+        git：2.23.0版本 (建议)  
+        预留空间：>= 300G  
         网络：可以访问互联网
 		    							
 	>**说明：**   
