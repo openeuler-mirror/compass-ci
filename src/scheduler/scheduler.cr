@@ -40,7 +40,8 @@ module Scheduler
   end
 
   # echo alive
-  get "/" do |_|
+  get "/" do |env|
+    debug_message(env, "Env= {\n#{`export`}}")
     "LKP Alive! The time is #{Time.local}, version = #{VERSION}"
   end
 
