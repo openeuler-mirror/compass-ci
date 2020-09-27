@@ -17,6 +17,7 @@ pkgs=(
 	docker-engine
 	dmidecode
 	redis
+	wget
 )
 
 yum install -y "${pkgs[@]}"
