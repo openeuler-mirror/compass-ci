@@ -50,7 +50,6 @@ Then read through documents
 
 	lkp-tests/doc/INSTALL.md
 	compass-ci/doc/INSTALL.md
-	compass-ci/doc/develop-flow.md
 	compass-ci/doc/learning-resources.md
 
 # crystal compiler
