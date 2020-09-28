@@ -200,14 +200,13 @@ module Jobfile::Operate
     return target_path
   end
 
-  def self.auto_submit_job(job_file, override_parameter)
+  def self.auto_submit_job(job_file, override_parameter, other_parameters = nil)
     job_fields = ["SCHED_HOST=#{ENV["SCHED_HOST"]}",
                   "SCHED_PORT=#{ENV["SCHED_PORT"]}",
-                  "FLUENTD_SERVER_HOST=#{ENV["FLUENTD_SERVER_HOST"]}",
-                  "FLUENTD_SERVER_PORT=#{ENV["FLUENTD_SERVER_PORT"]}",
                   "GIT_SERVER=#{ENV["GIT_SERVER"]}",
                   "lab=#{ENV["lab"]}"]
 
+    job_fields.concat(other_parameters) if other_parameters
     cmd = "#{ENV["LKP_SRC"]}/sbin/submit "
     cmd += job_fields.join(" ")
     cmd += " -s '#{override_parameter}' #{job_file}"
