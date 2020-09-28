@@ -16,3 +16,7 @@ cd /c || exit
 [ -d "lkp-tests/.git" ] || {
 	git clone https://gitee.com/wu_fengguang/lkp-tests.git
 }
+
+[ -d "upstream-repos/.git" ] || {
+	git clone https://gitee.com/wu_fengguang/upstream-repos.git
+}

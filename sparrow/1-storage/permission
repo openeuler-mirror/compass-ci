@@ -6,6 +6,7 @@ chown -R lkp:lkp /srv/es
 chown lkp:lkp /srv/cache/netdata_cache
 chown lkp:lkp /srv/cache/netdata_lib
 chown lkp:lkp /srv/cci/serial/fluentd-pos
+chown lkp:committer /srv/git
 chgrp team /srv/cci/serial/logs
 chmod 775 /srv/result
 chmod 775 /srv/es/logging-es
