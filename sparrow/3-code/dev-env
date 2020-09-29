@@ -32,3 +32,6 @@ export REPO_SRC=/c/upstream-repos
 export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
 EOF
 
+source /etc/os-release
+
+. $(dirname ${BASH_SOURCE[0]})/os/${ID}

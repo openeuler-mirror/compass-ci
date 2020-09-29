@@ -1,0 +1,4 @@
+#!/bin/bash
+cat >> /etc/default/docker <<EOF
+DOCKER_OPTS="--dns 114.114.114.114"
+EOF
