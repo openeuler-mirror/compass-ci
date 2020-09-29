@@ -4,7 +4,6 @@
 
 require_relative './constants'
 require_relative './es_query'
-require_relative './params_group'
 
 def query_commit_status(job, error_id)
   items = {
@@ -29,8 +28,8 @@ end
 def query_jobs_from_es(items)
   es = ESQuery.new(ES_HOST, ES_PORT)
   result = es.multi_field_query items
-  jobs = result['hits']['hits']
-  jobs_list = extract_jobs_list(jobs)
+  jobs_list = result['hits']['hits']
+  jobs_list.map! { |job| job['_source'] }
   return jobs_list
 end
 
