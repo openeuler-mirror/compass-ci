@@ -15,6 +15,7 @@ names = Set.new %w[
   FLUENTD_PORT
   MAIL_HOST
   MAIL_PORT
+  LAB
 ]
 
 defaults = relevant_defaults(names)
