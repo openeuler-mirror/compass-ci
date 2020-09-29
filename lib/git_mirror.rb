@@ -147,6 +147,8 @@ class MirrorMain
   end
 
   def send_message(feedback_info)
+    feedback_info.merge!(@git_info[feedback_info[:git_repo]])
+    feedback_info.delete(:cur_refs)
     message = feedback_info.to_json
     @message_queue.publish(message)
   end
@@ -158,12 +160,12 @@ class MirrorMain
     @fork_stat[feedback_info[:git_repo]][:queued] = false
     return unless feedback_info[:possible_new_refs]
 
+    return reload_fork_info if feedback_info[:git_repo] == 'upstream-repos/upstream-repos'
+
     new_refs = check_new_refs(feedback_info[:git_repo])
     return if new_refs[:heads].empty?
 
     feedback_info[:new_refs] = new_refs
-    feedback_info.merge!(@git_info[feedback_info[:git_repo]])
-    feedback_info.delete(:cur_refs)
     send_message(feedback_info)
   end
 
@@ -218,5 +220,28 @@ class MirrorMain
     new_refs = compare_refs(cur_refs, @git_info[git_repo][:cur_refs])
     @git_info[git_repo][:cur_refs] = cur_refs
     return new_refs
+  end
+
+  def reload_fork_info
+    upstream_repos = 'upstream-repos/upstream-repos'
+    if @git_info[upstream_repos][:cur_refs].empty?
+      @git_info[upstream_repos][:cur_refs] = get_cur_refs(upstream_repos)
+    else
+      old_commit = @git_info[upstream_repos][:cur_refs][:heads]['refs/heads/master']
+      new_refs = check_new_refs(upstream_repos)
+      new_commit = new_refs[:heads]['refs/heads/master']
+      changed_files = %x(git -C /srv/git/#{upstream_repos}.git diff --name-only #{old_commit}...#{new_commit})
+      reload(changed_files)
+    end
+  end
+
+  def reload(file_list)
+    system("git -C #{REPO_DIR} pull")
+    file_list.each_line do |file|
+      next if File.basename(file) == '.ignore'
+
+      repo_dir = "#{REPO_DIR}/#{file}"
+      load_repo_file(repo_dir, File.dirname(file), File.basename(file)) if File.file?(repo_dir)
+    end
   end
 end
