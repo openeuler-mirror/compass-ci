@@ -13,7 +13,6 @@ pkgs=(
 	docker.io
 	ruby-full
 	ruby-dev
-	bridge-utils
 	qemu
 	dmidecode
 	lockfile-progs
