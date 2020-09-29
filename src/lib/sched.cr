@@ -468,9 +468,16 @@ class Sched
 
   def auto_submit_idle_job(tbox_group)
     full_path_patterns = "#{ENV["CCI_REPOS"]}/lab-#{ENV["lab"]}/allot/idle/#{tbox_group}/*.yaml"
+    extra_job_fields = [
+      "idle_job=true",
+      "FLUENTD_SERVER_HOST=#{ENV["FLUENTD_SERVER_HOST"]}",
+      "FLUENTD_SERVER_PORT=#{ENV["FLUENTD_SERVER_PORT"]}",
+    ]
+
     Jobfile::Operate.auto_submit_job(
       full_path_patterns,
-      "testbox: #{tbox_group}") if Dir.glob(full_path_patterns).size > 0
+      "testbox: #{tbox_group}",
+      extra_job_fields) if Dir.glob(full_path_patterns).size > 0
   end
 
   private def add_kernel_console_param(arch_tmp)
@@ -520,7 +527,7 @@ class Sched
                   "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/vmlinuz")}"
     else
       response += "kernel #{os_http_prefix}" +
-                "#{JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/vmlinuz")}"
+                  "#{JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/vmlinuz")}"
     end
     response += " user=lkp"
     response += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
