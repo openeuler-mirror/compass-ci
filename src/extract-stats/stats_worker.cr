@@ -76,7 +76,8 @@ class StatsWorker
     unless new_error_ids.empty?
       STDOUT.puts "send a delimiter task: job_id is #{job_id}"
       @tq.add_task(DELIMITER_TASK_QUEUE, JSON.parse({"error_id" => new_error_ids.sample,
-                                                     "job_id"   => job_id}.to_json))
+                                                     "job_id" => job_id,
+                                                     "lab" => LAB}.to_json))
     end
     msg = %({"job_id": "#{job_id}", "job_state": "extract_finished"})
     system "echo '#{msg}'"
