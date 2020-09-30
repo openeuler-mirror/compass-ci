@@ -18,40 +18,50 @@ class StatsWorker
   def consume_sched_queue(queue_path : String)
     loop do
       begin
-        response = @tq.consume_task(queue_path)
+        job_id = get_job_id(queue_path)
+        if job_id # will consume the job by post-processing
+          job = @es.get_job_content(job_id)
+          result_root = job["result_root"]?
+          result_post_processing(job_id, result_root.to_s, queue_path)
+          @tq.delete_task(queue_path + "/in_process", "#{job_id}")
+        end
       rescue e
         STDERR.puts e.message
-        # incase of many error message when task-queue is busy
+        # incase of many error message when task-queue, ES does not work
         sleep(10)
-        next
-      end
-
-      if response[0] == 200
-        job_id = JSON.parse(response[1].to_json)["id"]
-        job = @es.get_job_content(job_id.to_s)
-        result_root = job["result_root"]
-        begin
-          # extract stats.json
-          system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
-          # storage stats to job in es
-          store_stats_es(result_root.to_s, job_id.to_s) if result_root
-          # send mail to submitter for job results
-          system "#{ENV["CCI_SRC"]}/sbin/mail-job #{job_id}"
-        rescue e
-          STDERR.puts e.message
-          next
-        end
-
-        @tq.delete_task(queue_path + "/in_process", "#{job_id}")
-      else
-        sleep(60)
       end
     end
   end
 
-  def store_stats_es(result_root : String, job_id : String)
+  # get job_id from task-queue
+  def get_job_id(queue_path : String)
+    response = @tq.consume_task(queue_path)
+    if response[0] == 200
+      JSON.parse(response[1].to_json)["id"].to_s
+    else
+      # will sleep 60s if no task in task-queue
+      sleep(60)
+      nil
+    end
+  end
+
+  def result_post_processing(job_id : String, result_root : String, queue_path : String)
+    return nil unless result_root && File.exists?(result_root)
+
+    # extract stats.json
+    system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
+    # storage stats to job in es
+    store_stats_es(result_root, job_id, queue_path)
+    # send mail to submitter for job results
+    system "#{ENV["CCI_SRC"]}/sbin/mail-job #{job_id}"
+  end
+
+  def store_stats_es(result_root : String, job_id : String, queue_path : String)
     stats_path = "#{result_root}/stats.json"
-    raise "#{stats_path} file not exists." unless File.exists?(stats_path)
+    unless File.exists?(stats_path)
+      @tq.delete_task(queue_path + "/in_process", "#{job_id}")
+      raise "#{stats_path} file not exists."
+    end
 
     stats = File.open(stats_path) do |file|
       JSON.parse(file)
