@@ -40,3 +40,16 @@ here:
 	2) 描述你的改动
 	3) 拆分你的改动
 	8）回复评审意见
+
+文档与易用性
+============
+
+- 每个feature都应当有
+  - 用户文档
+  - 设计文档
+  - 指示对应的代码在哪里(class/func); 或者如果有多处代码互相配合, 指示用什么关键字grep能把它们串起来看
+
+- 每个有命令行参数的脚本, 都应当支持help output (-h|--help|参数不够时 显示帮助信息)
+  - dependencies/assumptions
+  - input parameters
+  - input/output example
