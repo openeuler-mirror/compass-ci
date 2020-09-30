@@ -6,17 +6,21 @@
 
 require_relative './force_delete'
 
-if ARGV.empty?
+if ARGV.empty? || ARGV.include?("-h") || ARGV.include?("--help")
   puts "Usage: #{__FILE__} task_id[|task_ids]"
   puts '       delete special task with [task_id]'
-  puts '    or delete special task form a [task_ids] file'
+  puts '    or delete special task from [task_ids] file'
+  puts "\n--- example ---"
+  puts " input: #{__FILE__} z9.11734 nolab.11342"
+  puts 'output: <none>'
+  puts '  # delete (z9.11734 nolab.11342) at taskqueue and scheduler'
   exit
 end
 
 task_ids = []
 ARGV.each do |id|
   task_ids += IO.readlines(id) if File.exist?(id)
-  task_ids << [id] unless File.exist?(id)
+  task_ids << id unless File.exist?(id)
 end
 
 i = 0
