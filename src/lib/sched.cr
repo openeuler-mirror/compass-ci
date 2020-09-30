@@ -266,7 +266,7 @@ class Sched
     }] unless tbox_group
 
     # only single job will has "idle job" and "execute rate limiter"
-    if %<job["job_origin"]>.includes?("allot/idle/")
+    unless job["idle_job"].empty?
       tbox_group = "#{tbox_group}/idle"
     else
       tbox_group += "#{job.get_uuid_tag}"
