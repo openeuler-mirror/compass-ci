@@ -7,7 +7,7 @@ MAINTAINER chief <taxcom@tom.com>
 
 ARG GITCACHE_HOST
 ARG GITCACHE_PORT
-RUN [ -n "$GITCACHE_HOST" ] && echo -e "[url \"http://$GITCACHE_HOST:${GITCACHE_PORT:-5000}/\"]\n\tinsteadOf = https://" >> /etc/gitconfig
+RUN [ -z "$GITCACHE_HOST" ] || echo -e "[url \"http://$GITCACHE_HOST:${GITCACHE_PORT:-5000}/\"]\n\tinsteadOf = https://" >> /etc/gitconfig
 
 copy shard.yml /usr/share/crystal/app/shard.yml
 
