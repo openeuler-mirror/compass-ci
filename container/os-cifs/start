@@ -13,9 +13,8 @@ docker_rm samba
 cmd=(
 	docker run -dt
 	-p 445:445
-	-v /srv/os:/srv/os:ro
+	-v /srv/os:/srv/os
 	-v /etc/localtime:/etc/localtime:ro
-	-v /srv/os:/srv/os-rw
 	-v /srv/initrd:/srv/initrd
 	-v /srv/result:/srv/result
 	--name samba
