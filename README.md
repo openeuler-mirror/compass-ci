@@ -5,7 +5,7 @@
 
 ### 概念
 
-Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上游开源软件（来自 Github,Gitee,Gitlab 等托管平台）的测试服务、登录服务、故障辅助定界服务和基于历史数据的分析服务。通过Compass-CI，社区开发者可以将开源软件快速引入openEuler社区，并补充更多的测试用例，共同构建一个开放、完整的开源软件生态系统。
+Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上游开源软件（来自 Github, Gitee, Gitlab 等托管平台）的测试服务、登录服务、故障辅助定界服务和基于历史数据的分析服务。通过 Compass-CI，社区开发者可以将开源软件快速引入 openEuler 社区，并补充更多的测试用例，共同构建一个开放、完整的开源软件生态系统。
 
 
 ### 功能描述
@@ -31,11 +31,11 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 ![Compass-CI架构](doc/pictures/compass-ci-architecture.png)
 - **接入层**
   
-  成为衔接Compass-CI 服务于开发者的纽带，同时提供内部设备管理的平台，提供web门户查阅测试结果、项目清单、ssh环境登录
+  成为衔接 Compass-CI 服务于开发者的纽带，同时提供内部设备管理的平台，提供 web 门户查阅测试结果、项目清单、ssh 环境登录。
 
 - **服务层**
   
-  提供测试服务、环境登录、结果分析、辅助定界、用户项目注册能力，为本项目的主要功能
+  提供测试服务、环境登录、结果分析、辅助定界、用户项目注册能力，为本项目的主要功能。
 
 - **支撑层**
   
@@ -43,7 +43,7 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 - **数据层**
   
-  为项目提供数据处理服务，包括测试结果格式化及归档
+  为项目提供数据处理服务，包括测试结果格式化及归档。
 
 - **资源层**
   
@@ -54,7 +54,7 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 - **聚合开发者测试用例**
 	
-	开发者向代码托管平台提交代码、测试用例、测试工具时，Compass-CI自动获取提交的代码开展构建测试，同时获取开发者编写到开源软件包的测试用例进行自动化测试，并反馈测试结果。
+	开发者向代码托管平台提交代码、测试用例、测试工具时，Compass-CI 自动获取提交的代码开展构建测试，同时获取开发者编写到开源软件包的测试用例进行自动化测试，并反馈测试结果。
 
 - **登录环境随时调测**
 
@@ -66,16 +66,16 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 	
 - **辅助定界**
 
-	测试过程中，发现有 Bug 时，自动触发 Regression 机制，找出首次引入问题 Commit 信息。
+	测试过程中，发现有 Bug 时，自动触发 Regression 机制，找出首次引入问题的 Commit 信息。
 	
 
 
-## 使用Compass-CI
-> 您只需要先注册自己的仓库，当您的仓库有commit提交时，构建测试会自动执行，并且可在我们的网站中查看结果。
+## 使用 Compass-CI
+> 您只需要先注册自己的仓库，当您的仓库有 commit 提交时，构建测试会自动执行，并且可在我们的网站中查看结果。
 
 -  注册自己的仓库
 
-	如果您想在 `git push` 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库[upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。   
+	如果您想在 `git push` 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库 [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。
 	```bash
 	git clone https://gitee.com/wu_fengguang/upstream-repos.git
 	less upstream-repos/README.md
@@ -83,7 +83,7 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 - `git push`
   
-  更新仓库，自动触发测试
+  更新仓库，自动触发测试。
 
 - 在网页中搜索并查看结果
   
@@ -93,62 +93,62 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 ## 高级功能
 
-### 添加OS支持
+### 添加 OS 支持
 
-制作一个initramfs启动的cgz镜像，当系统内核启动时，直接从打包的cgz镜像中导出rootfs，在内存中展开文件系统，利用磁盘的高速缓存机制让系统直接在内存中读写文件，以提升系统的I/O性能。
+制作一个 initramfs 启动的 cgz 镜像，当系统内核启动时，直接从打包的 cgz 镜像中导出 rootfs，在内存中展开文件系统，利用磁盘的高速缓存机制让系统直接在内存中读写文件，以提升系统的 I/O 性能。
 
 #### 操作步骤
 
-   1. 获取对应os版本的rootfs（以openEuler为例）
-        - 通过docker获取rootfs
+   1. 获取对应 os 版本的 rootfs（以 openEuler 为例）
+        - 通过 docker 获取 rootfs
 		
-            1) 下载openEuler官方提供的docker镜像压缩包
+            1) 下载 openEuler 官方提供的 docker 镜像压缩包
 		
                 ```bash
                 wget https://repo.openeuler.org/openEuler-20.03-LTS/docker_img/aarch64/openEuler-docker.aarch64.tar.xz
                 ```	
-            2) 加载docker镜像		   
+            2) 加载 docker 镜像
                 ```bash
                 docker load -i openEuler-docker.aarch64
                 ```
 
-            3) 启动openEuler容器			   
+            3) 启动 openEuler 容器
                 ```bash
                 docker run -id openeuler-20.03-lts
                 ```
-            4) 拷贝docker的rootfs			   
+            4) 拷贝 docker 的 rootfs
                 ```bash
                 docker cp -a  docker run -d openeuler-20.03-lts:/ openEuler-rootfs
                 ```
-        - 通过qemu.img(qcow2格式)获取rootfs (以openEuler为例)
+        - 通过 qemu.img(qcow2格式)获取 rootfs (以 openEuler 为例)
 		
 		
-            1) 下载openEuler官方网站提供的qcow2格式镜像		
+            1) 下载 openEuler 官方网站提供的 qcow2 格式镜像
                 ```bash
                 wget https://repo.openeuler.org/openEuler-20.03-LTS/virtual_machine_img/aarch64/openEuler-20.03-LTS.aarch64.qcow2.xz
                 ```
-            2) 使用{compass-ci}/container/qcow2rootfs 制作rootfs
+            2) 使用 {compass-ci}/container/qcow2rootfs 制作 rootfs
                 ```bash
                 cd {compass-ci}/container/qcow2rootfs
                 ./run  openEuler-20.03-LTS.aarch64.qcow2.xz   /tmp/openEuler-rootfs
                 ```
-   2. 定制rootfs
-        1. 使用chroot命令切换到rootfs中(此步骤需要root权限)         	
+   2. 定制 rootfs
+        1. 使用 chroot 命令切换到 rootfs 中(此步骤需要 root 权限)
             ```bash
             chroot openEuler-rootfs
             ```
         2. 根据个人需要安装并配置服务
             
-            a. 修改root密码
-            b. 配置ssh服务
+            a. 修改 root 密码
+            b. 配置 ssh 服务
             c. 检查系统时间
-            d. 如果使用docker制作osimage还需要以下操作：
+            d. 如果使用 docker 制作 osimage 还需要以下操作：
 			>	1. 安装所需版本内核
-			>	2. 从centos官方网站下载内核rpm包
-			>	3. 使用yum进行安装
-			>	4. 删除docker环境变量文件
+			>	2. 从 centos 官方网站下载内核 rpm 包
+			>	3. 使用 yum 进行安装
+			>	4. 删除 docker 环境变量文件
 
-   3. 退出rootfs，并打包
+   3. 退出 rootfs，并打包
         ```bash
         cd $rootfs
         find . | coip -o -Hnewc |gzip -9 > $os_name.cgz
@@ -167,16 +167,16 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 	- 解决方法
 		
 		1）启动内存不足，增加内存可解决。
-		2）内核文件权限不足，给予644权限。
+		2）内核文件权限不足，给予 644 权限。
 	
 2. 系统运行缓慢
 	
 	- 问题现象
 
-        打包镜像体积过大，会消耗很大内存
+        打包镜像体积过大，会消耗很大内存。
 	- 解决方法
 
-        建议用户根据具体需要对rootfs进行裁剪。
+        建议用户根据具体需要对 rootfs 进行裁剪。
 
 
 ## 呼吁合作
