@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require_relative '../defconfig.rb'
+
+DOCKER_CCI = '/c/compass-ci'
+DOCKER_LKP = '/c/lkp-tests'
+docker_rm "auto-submit"
+
+cmd = %W[
+  docker run
+  --restart=always
+  --name auto-submit
+  -u 1090:1090
+  -d
+  -e CCI_SRC=#{DOCKER_CCI}
+  -e LKP_SRC=#{DOCKER_LKP}
+  -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
+  -v #{ENV['LKP_SRC']}:#{DOCKER_LKP}
+  -v /etc/localtime:/etc/localtime:ro
+  -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
+  -v /srv/git:/srv/git
+  -w /c/compass-ci/sbin
+  alpine:auto-submit
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./auto_submit']
+system(*cmd)
