@@ -23,10 +23,10 @@ cmd=(
 	--rm
 	-m $memory
 	--mount type=tmpfs,destination=/tmp
-	-e CCI_SRC=/c/commpass-ci
+	-e CCI_SRC=/c/compass-ci
 	-v ${load_path}/lkp:/lkp
 	-v ${DIR}/bin:/root/bin:ro
-	-v $CCI_SRC:/c/commpass-ci
+	-v $CCI_SRC:/c/compass-ci
 	-v /srv/git:/srv/git:ro
 	--oom-score-adj="-1000"
 	${docker_image}
