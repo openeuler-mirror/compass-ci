@@ -72,11 +72,14 @@ class Job
     lab
     initrd_pkg
     initrd_deps
+    initrds_uri
     result_root
     access_key
     access_key_file
     lkp_initrd_user
+    kernel_uri
     kernel_append_root
+    kernel_params
     docker_image
   )
 
@@ -123,8 +126,11 @@ class Job
     set_result_root()
     set_result_service()
     set_os_mount()
-    set_kernel_append_root()
     set_pp_initrd()
+    set_initrds_uri()
+    set_kernel_uri()
+    set_kernel_append_root()
+    set_kernel_params()
     set_lkp_server()
   end
 
@@ -228,25 +234,115 @@ class Job
     end
   end
 
-  private def set_kernel_append_root
-    os_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}")
-    lkp_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}/initrd.lkp")
-    lkp_basename = File.basename(lkp_real_path)
+  private def vmlinuz
+    if os_mount == "initramfs"
+      return "#{INITRD_HTTP_PREFIX}" +
+        "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/vmlinuz")}"
+    else
+      return "#{OS_HTTP_PREFIX}" +
+        "#{JobHelper.service_path("#{SRV_OS}/#{os_dir}/vmlinuz")}"
+    end
+  end
 
-    current_basename = ""
+  private def set_kernel_uri
+    self["kernel_uri"] = "kernel #{vmlinuz()}"
+  end
+
+  private def kernel_common_params
+    return "user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
+  end
+
+  private def common_initrds
+    temp_initrds = [] of String
+
+    temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+                    "#{JobHelper.service_path("#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz")}"
+    temp_initrds << "#{SCHED_HTTP_PREFIX}/job_initrd_tmpfs/#{id}/job.cgz"
+
+    return temp_initrds
+  end
+
+  private def initramfs_initrds
+    temp_initrds = [] of String
+
+    temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+                    "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/current")}"
+    temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+                    "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/run-ipconfig.cgz")}"
+
+    temp_initrds.concat(initrd_deps.split(/ /)) unless initrd_deps.empty?
+    temp_initrds.concat(initrd_pkg.split(/ /)) unless initrd_pkg.empty?
+
+    return temp_initrds
+  end
+
+  private def nfs_cifs_initrds
+    temp_initrds = [] of String
+
+    temp_initrds << "#{OS_HTTP_PREFIX}" +
+                    "#{JobHelper.service_path("#{SRV_OS}/#{os_dir}/initrd.lkp")}"
+
+    return temp_initrds
+  end
+
+  private def get_initrds
+    temp_initrds = [] of String
+
     if "#{os_mount}" == "initramfs"
-      current_real_path = JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/current")
-      current_basename = File.basename(current_real_path)
+      temp_initrds.concat(initramfs_initrds())
+    else
+      temp_initrds.concat(nfs_cifs_initrds())
     end
 
+    temp_initrds.concat(common_initrds())
+
+    return temp_initrds
+  end
+
+  private def initrds_basename
+    basenames = ""
+
+    get_initrds().each do |initrd|
+      basenames += "initrd=#{File.basename(initrd)} "
+    end
+
+    return basenames
+  end
+
+  private def set_initrds_uri
+    uris = ""
+
+    get_initrds().each do |initrd|
+      uris += "initrd #{initrd}\n"
+    end
+
+    self["initrds_uri"] = uris
+  end
+
+  private def set_kernel_append_root
+    os_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}")
+
     fs2root = {
-      "nfs"  => "root=#{OS_HTTP_HOST}:#{os_real_path} initrd=#{lkp_basename}",
+      "nfs"  => "root=#{OS_HTTP_HOST}:#{os_real_path} #{initrds_basename()}",
       "cifs" => "root=cifs://#{OS_HTTP_HOST}#{os_real_path}" +
-                ",guest,ro,hard,vers=1.0,noacl,nouser_xattr initrd=#{lkp_basename}",
-      "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0 initrd=#{current_basename}",
-      "container" => ""
+                ",guest,ro,hard,vers=1.0,noacl,nouser_xattr #{initrds_basename()}",
+      "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0 #{initrds_basename()}",
+      "container" => "",
     }
+
     self["kernel_append_root"] = fs2root[os_mount]
+  end
+
+  private def kernel_console
+    if os_arch == "x86_64"
+      return "console=ttyS0,115200 console=tty0"
+    else
+      return ""
+    end
+  end
+
+  private def set_kernel_params
+    self["kernel_params"] = " #{kernel_common_params()} #{kernel_append_root} #{kernel_console()}"
   end
 
   private def set_pp_initrd
@@ -270,6 +366,7 @@ class Job
         end
       end
     end
+
     self["initrd_deps"] = initrd_deps_arr.join(" ")
     self["initrd_pkg"] = initrd_pkg_arr.join(" ")
   end

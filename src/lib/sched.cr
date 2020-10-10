@@ -480,69 +480,12 @@ class Sched
       extra_job_fields) if Dir.glob(full_path_patterns).size > 0
   end
 
-  private def add_kernel_console_param(arch_tmp)
-    returned = ""
-    if arch_tmp == "x86_64"
-      returned = " console=ttyS0,115200 console=tty0"
-    end
-    return returned
-  end
-
-  private def get_pp_initrd(job : Job)
-    initrd_deps = ""
-    initrd_pkg = ""
-    if job.os_mount == "initramfs"
-      initrd_deps += job.initrd_deps.split.join() { |item| "initrd #{item}\n" }
-      initrd_pkg += job.initrd_pkg.split.join() { |item| "initrd #{item}\n" }
-    end
-    return initrd_deps, initrd_pkg
-  end
-
   private def get_boot_ipxe(job : Job)
-    initrd_lkp_cgz = "lkp-#{job.os_arch}.cgz"
-
-    initrd_deps, initrd_pkg = get_pp_initrd(job)
-
-    initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
-    sched_http_prefix = "http://#{SCHED_HOST}:#{SCHED_PORT}"
-    os_http_prefix = "http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}"
-
     response = "#!ipxe\n\n"
-    if job.os_mount == "initramfs"
-      response += "initrd #{initrd_http_prefix}" +
-                  "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/current")}\n"
-      response += "initrd #{initrd_http_prefix}" +
-                  "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/run-ipconfig.cgz")}\n"
-    else
-      response += "initrd #{os_http_prefix}" +
-                  "#{JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/initrd.lkp")}\n"
-    end
-    response += "initrd #{initrd_http_prefix}" +
-                "#{JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}")}\n"
-    response += "initrd #{sched_http_prefix}/job_initrd_tmpfs/#{job.id}/job.cgz\n"
-    response += initrd_deps
-    response += initrd_pkg
-    if job.os_mount == "initramfs"
-      response += "kernel #{initrd_http_prefix}" +
-                  "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/vmlinuz")}"
-    else
-      response += "kernel #{os_http_prefix}" +
-                  "#{JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/vmlinuz")}"
-    end
-    response += " user=lkp"
-    response += " job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
-    response += " #{job.kernel_append_root}"
-    response += add_kernel_console_param(job.os_arch)
-    if job.os_mount == "initramfs"
-      response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz"
-      job.initrd_deps.split.each do |initrd_dep|
-        response += " initrd=#{File.basename(initrd_dep)}"
-      end
-      response += " initrd=#{File.basename(JobHelper.service_path("#{SRV_INITRD}/osimage/#{job.os_dir}/run-ipconfig.cgz"))}\n"
-    else
-      response += " initrd=#{initrd_lkp_cgz} initrd=job.cgz\n"
-    end
-    response += "boot\n"
+    response += job.initrds_uri
+    response += job.kernel_uri
+    response += job.kernel_params
+    response += "\nboot\n"
 
     puts %({"job_id": "#{job.id}", "job_state": "boot"})
     return response
