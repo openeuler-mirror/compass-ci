@@ -9,10 +9,15 @@ docker_rm dnsmasq
 kill $(ps -ef| grep dnsmasq| grep libvirt| awk '{print $2}') 2> /dev/null
 
 WORKSPACE=$(dirname "$(realpath "$0")")
+DNSMASQ_CONF_DIR="/etc/compass-ci/dnsmasq"
 
 # load custom dnsmasq.conf
-[ -d "/etc/compass-ci/dnsmasq.d/" ] &&
-	cp -a /etc/compass-ci/dnsmasq.d/* ${WORKSPACE}/dnsmasq.d/
+[ -d "${DNSMASQ_CONF_DIR}/dnsmasq.d/" ] &&
+	cp -a ${DNSMASQ_CONF_DIR}/dnsmasq.d/* ${WORKSPACE}/dnsmasq.d/
+
+# persist the dhcp lease file
+[ -d "${DNSMASQ_CONF_DIR}/lease_dir" ] ||
+	mkdir -p ${DNSMASQ_CONF_DIR}/lease_dir
 
 cmd=(
 	docker run
@@ -22,6 +27,7 @@ cmd=(
 	--publish 67:67/udp
 	--publish 69:69/udp
 	-v ${WORKSPACE}/dnsmasq.d:/etc/dnsmasq.d
+	-v ${DNSMASQ_CONF_DIR}/lease_dir:/var/lib/misc # persist the dhcp lease file
 	-v /etc/localtime:/etc/localtime:ro
 	-v /tftpboot:/tftpboot:ro
 	--detach
