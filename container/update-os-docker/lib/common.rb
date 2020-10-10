@@ -6,14 +6,14 @@
 require_relative 'dc-image'
 require 'pathname'
 
-OS_PATH ||= ENV['OS_PATH'] || '/os/'
+OS_PATH ||= ENV['OS_PATH'] || '/srv/os/'
 
 # Parse the parameters and make use of them
 class ParseParam
   attr_reader :dc_name, :local_dc_img
 
   def initialize(rootdir)
-    _, _, @os_name, _, @os_version = rootdir.split('/')
+    _, _, _, @os_name, _, @os_version = rootdir.split('/')
   end
 
   def prepare_env
