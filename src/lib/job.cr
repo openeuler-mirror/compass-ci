@@ -202,7 +202,7 @@ class Job
   end
 
   # defaults to the 1st value
-  VALID_OS_MOUNTS = ["nfs", "initramfs", "cifs", "container"]
+  VALID_OS_MOUNTS = ["initramfs", "nfs", "cifs", "container"]
 
   private def set_os_mount
     if @hash["os_mount"]?
