@@ -18,6 +18,7 @@ pkgs=(
 	dmidecode
 	redis
 	wget
+	busybox
 )
 
 yum install -y "${pkgs[@]}"

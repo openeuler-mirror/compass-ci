@@ -17,6 +17,7 @@ pkgs=(
 	dmidecode
 	lockfile-progs
 	bridge-utils
+	busybox
 )
 
 apt-get install -y "${pkgs[@]}"
