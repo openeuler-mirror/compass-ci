@@ -8,6 +8,12 @@ docker_rm dnsmasq
 
 kill $(ps -ef| grep dnsmasq| grep libvirt| awk '{print $2}') 2> /dev/null
 
+WORKSPACE=$(dirname "$(realpath "$0")")
+
+# load custom dnsmasq.conf
+[ -d "/etc/compass-ci/dnsmasq.d/" ] &&
+	cp -a /etc/compass-ci/dnsmasq.d/* ${WORKSPACE}/dnsmasq.d/
+
 cmd=(
 	docker run
 	--restart=always
@@ -15,7 +21,7 @@ cmd=(
 	--net=host
 	--publish 67:67/udp
 	--publish 69:69/udp
-	-v $PWD/dnsmasq.d:/etc/dnsmasq.d
+	-v ${WORKSPACE}/dnsmasq.d:/etc/dnsmasq.d
 	-v /etc/localtime:/etc/localtime:ro
 	-v /tftpboot:/tftpboot:ro
 	--detach
