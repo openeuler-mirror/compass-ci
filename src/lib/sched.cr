@@ -451,6 +451,7 @@ class Sched
 
     if job
       job.update({"testbox" => testbox})
+      job.set_result_root
       @redis.set_job(job)
     end
     return job

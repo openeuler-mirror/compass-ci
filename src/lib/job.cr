@@ -50,10 +50,13 @@ class Job
     @hash = job_content.as_h
 
     # init job with "-1", or use the original job_content["id"]
-    if "#{id}" == ""
-      @hash["id"] = JSON::Any.new("-1")
+    id == "-1" if "#{id}" == ""
+
+    if initialized?
+      return if @hash["id"] == "#{id}"
     end
 
+    @hash["id"] = JSON::Any.new("#{id}")
     check_required_keys()
     set_defaults()
   end
@@ -165,7 +168,7 @@ class Job
     self["os_dir"] = "#{os}/#{os_arch}/#{os_version}"
   end
 
-  private def set_result_root
+  def set_result_root
     update_tbox_group_from_testbox # id must exists, need update tbox_group
     date = Time.local.to_s("%F")
     self["result_root"] = "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
@@ -232,6 +235,37 @@ class Job
         raise "Missing required job key: '#{key}'"
       end
     end
+  end
+
+  private def initialized?
+    initialized_keys = [] of String
+
+    REQUIRED_KEYS.each do |key|
+      initialized_keys << key.to_s
+    end
+
+    METHOD_KEYS.each do |key|
+      initialized_keys << key.to_s
+    end
+
+    INIT_FIELD.each do |key, _value|
+      initialized_keys << key.to_s
+    end
+
+    initialized_keys += ["result_service",
+                         "LKP_SERVER",
+                         "LKP_CGI_PORT",
+                         "SCHED_HOST",
+                         "SCHED_PORT"]
+
+    initialized_keys.each do |key|
+      if @hash.has_key?(key) == false
+        return false
+      end
+    end
+
+    return false if "#{@hash["id"]}" == ""
+    return true
   end
 
   private def vmlinuz
