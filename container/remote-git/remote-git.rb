@@ -41,7 +41,7 @@ post '/git_command' do
   # execute git command
   Dir.chdir(repo_path)
   _stdin, stdout, _stderr, wait_thr = Open3.popen3(*data['git_command'])
-  out = stdout.read.force_encoding('ISO-8859-1').encode('UTF-8')
+  out = stdout.read
   exit_code = wait_thr.value.to_i
 
   [200, headers.update({ 'errcode' => '0', 'exit_code' => exit_code.to_s }), out]
