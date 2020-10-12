@@ -18,6 +18,7 @@ host=${tbox_group%%--*}
 create_yaml_variables "$LKP_SRC/hosts/${host}"
 
 DIR=$(dirname $(realpath $0))
+busybox_path=$(command -v busybox)
 cmd=(
 	docker run
 	--rm
@@ -28,6 +29,7 @@ cmd=(
 	-v ${DIR}/bin:/root/bin:ro
 	-v $CCI_SRC:/c/compass-ci
 	-v /srv/git:/srv/git:ro
+	-v ${busybox_path}:/usr/local/bin/busybox
 	--oom-score-adj="-1000"
 	${docker_image}
 	/root/bin/entrypoint.sh
