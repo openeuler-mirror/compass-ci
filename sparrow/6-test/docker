@@ -1,7 +1,13 @@
-#!/bin/bash -e
+#!/usr/bin/env ruby
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
 
-## TODO
-# 1.submit a job
-# 2.run docker.sh
+require_relative '../../providers/docker/docker'
+
+def run_job(hostname)
+  system "submit -s 'testbox: #{hostname}' #{ENV['CCI_SRC']}/user-client/jobs/iperf-sparrow.yaml"
+  main "#{hostname}"
+end
+
+run_job "dc-1g"
