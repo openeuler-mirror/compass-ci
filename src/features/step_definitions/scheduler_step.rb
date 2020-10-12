@@ -22,7 +22,7 @@ Then('return with job id') do
 end
 
 # set_host_mac
-# host_mac => "vm-hi1620-2p8g-chief => ef-01-02-03-04-05"
+# host_mac => "vm-2p8g--chief => ef-01-02-03-04-05"
 Given('call with API: put {string} {string}') do |url, host_mac|
   host_mac_params = host_mac.split(' ')
   url_with_params = "#{url}?hostname=#{host_mac_params[0]}\\&mac=#{host_mac_params[2]}"

@@ -236,7 +236,7 @@ class TaskQueue
   private def get_uuid_keys(queue_name)
     return nil unless queue_name[0..5] == "sched/"
 
-    # search = "queues/sched/vm-hi1620-2p8g/ee44b164-90e3-49a7-9798-5e7cc9bc7451"
+    # search = "queues/sched/vm-2p8g/ee44b164-90e3-49a7-9798-5e7cc9bc7451"
     # only 3 matchs keyword: * [] ?
     search = "#{QUEUE_NAME_BASE}/#{queue_name}/[0-9a-eA-F\-]*"
     lua_script = "return redis.call('keys', KEYS[1])"

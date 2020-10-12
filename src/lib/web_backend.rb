@@ -41,8 +41,8 @@ def es_count(query)
   ES_CLIENT.count(index: 'jobs*', body: query)['count']
 end
 
-# "vm-hi1620-2p8g-212" remove "-212"
-# "vm-hi1620-2p8g-zzz" remove "-zzz"
+# "vm-2p8g--212" remove "--212"
+# "vm-2p8g--zzz" remove "--zzz"
 # "vm-git-bisect" don't remove "-bisect"
 def filter_tbox_group(es_result)
   result = Set.new

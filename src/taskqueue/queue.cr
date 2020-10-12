@@ -183,7 +183,7 @@ class TaskQueue
 
   private def move_uuid_task2ready(queue_name)
     # get uuid lists
-    # uuid_keys ["queues/sched/vm-hi1620-2p8g/ee44b164-90e3-49a7-9798-5e7cc9bc7451", ]
+    # uuid_keys ["queues/sched/vm-2p8g/ee44b164-90e3-49a7-9798-5e7cc9bc7451", ]
     uuid_keys = get_uuid_keys("#{queue_name}")
     return unless uuid_keys # nil
     return unless uuid_keys.size > 0

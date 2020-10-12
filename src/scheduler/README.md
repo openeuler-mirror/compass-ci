@@ -413,7 +413,7 @@ you can simply call the scheduler's build and run script.
      vim $CCI_SRC/user-client/helper/iperf.yaml
      runtime: 30                    # unit in seconds, the time can be shortened
      arch: aarch64
-     testbox: vm-hi1620-2p8g-$USER  # echo $USER for your own user name
+     testbox: vm-2p8g--$USER  # echo $USER for your own user name
 
 ## 2.Submit job
      submit-job $_CCI_SRC/user-client/helper/iperf.yaml
