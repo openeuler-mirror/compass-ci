@@ -24,6 +24,7 @@ module Monitoring
 
     socket.on_close do
       next unless query.as_h?
+
       filter.remove_filter_rule(query, socket)
     end
   end

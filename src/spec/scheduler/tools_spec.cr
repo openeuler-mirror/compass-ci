@@ -8,16 +8,16 @@ require "file_utils"
 describe Public do
   describe "hash replace" do
     it "can replace k:v" do
-      hash_old = {"name" => "OldValue"}
-      hash_new = {"name" => "NewValue"}
+      hash_old = { "name" => "OldValue" }
+      hash_new = { "name" => "NewValue" }
       hash_result = Public.hash_replace_with(hash_old, hash_new)
 
       (hash_result["name"]).should eq("NewValue")
     end
 
     it "can add k:v" do
-      hash_old = {"name2" => "OldValue"}
-      hash_new = {"name" => "NewValue"}
+      hash_old = { "name2" => "OldValue" }
+      hash_new = { "name" => "NewValue" }
       hash_result = Public.hash_replace_with(hash_old, hash_new)
 
       (hash_result["name"]).should eq("NewValue")

@@ -15,7 +15,7 @@ end
 module Jobfile::Operate
   def self.prepare_dir(file_path : String)
     file_path_dir = File.dirname(file_path)
-    if !File.exists?(file_path_dir)
+    unless File.exists?(file_path_dir)
       FileUtils.mkdir_p(file_path_dir)
     end
   end
@@ -59,11 +59,12 @@ module Jobfile::Operate
       if val.as_h?
         return false
       end
-      if val.as_a?
-        value = shell_escape(val.as_a)
-      else
-        value = shell_escape(val.to_s)
-      end
+
+      value = if val.as_a?
+                shell_escape(val.as_a)
+              else
+                shell_escape(val.to_s)
+              end
       script_lines << "\texport #{key}=" + value if value
     end
   end
@@ -78,7 +79,7 @@ module Jobfile::Operate
     script_lines << "\texport LKP_SRC=/lkp/${user:-lkp}/src"
     script_lines << "}\n\n"
 
-    script_lines = "#{script_lines}"
+    script_lines = script_lines.to_s
     script_lines = JSON.parse(script_lines)
   end
 
@@ -121,7 +122,7 @@ module Jobfile::Operate
 
     if job_sh_array.empty?
       lkp_src = prepare_lkp_tests(job_content["lkp_initrd_user"],
-        job_content["os_arch"])
+                                  job_content["os_arch"])
 
       cmd = "#{lkp_src}/sbin/create-job-cpio.sh #{temp_yaml}"
       idd = `#{cmd}`
@@ -158,8 +159,8 @@ module Jobfile::Operate
 
     # update lkp-xxx.cgz if they are different
     target_path = update_lkp_when_different(expand_dir_base,
-      lkp_initrd_user,
-      os_arch)
+                                            lkp_initrd_user,
+                                            os_arch)
 
     # delete oldest lkp, if exists too much
     del_lkp_if_too_much(expand_dir_base)

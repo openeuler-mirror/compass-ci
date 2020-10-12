@@ -7,15 +7,15 @@ require "./stats_worker"
 module ExtractStats
   # Consume scheduler queue
   def self.in_extract_stats
-    self.back_fill_task
+    back_fill_task
     STATS_WORKER_COUNT.times do
-      Process.fork {
-        self.consume_task
-      }
+      Process.fork do
+        consume_task
+      end
     end
 
     # keep main-process alive
-    sleep()
+    sleep
   end
 
   def self.consume_task
