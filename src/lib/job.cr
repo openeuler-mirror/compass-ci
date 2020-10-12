@@ -382,9 +382,13 @@ class Job
   def update_id(id)
     @hash["id"] = JSON::Any.new(id)
 
-    # "result_root" is based on "id"
+    # "result_root" => "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
+    # set_initrds_uri -> get_initrds -> common_initrds => ".../#{id}/job.cgz"
+    #
+    # "result_root, common_initrds" is associate with "id"
     #  so when update id, we need redo set_
     set_result_root()
+    set_initrds_uri()
   end
 
   def get_uuid_tag
