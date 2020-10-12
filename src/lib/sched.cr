@@ -188,6 +188,7 @@ class Sched
 
       return submit_single_job(job)
     rescue ex
+      puts ex.inspect_with_backtrace
       return [{
         "job_id"    => "0",
         "message"   => ex.to_s,
@@ -444,6 +445,7 @@ class Sched
         job = @es.get_job(job_id.to_s)
       rescue ex
         puts "Invalid job (id=#{job_id}) in es. Info: #{ex}"
+        puts ex.inspect_with_backtrace
       end
     end
 
