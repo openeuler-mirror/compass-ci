@@ -5,7 +5,7 @@
 require 'json'
 require_relative 'es_query'
 require_relative 'sched_client'
-require_relative "../src/delimiter/utils"
+require_relative '../src/delimiter/utils'
 require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 
 # find the first bad commit
