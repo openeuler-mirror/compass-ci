@@ -50,7 +50,7 @@ class Job
     @hash = job_content.as_h
 
     # init job with "-1", or use the original job_content["id"]
-    id == "-1" if "#{id}" == ""
+    id = "-1" if "#{id}" == ""
 
     if initialized?
       return if @hash["id"] == "#{id}"
