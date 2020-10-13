@@ -387,16 +387,13 @@ class Job
     if @hash["pp"]?
       program_params = @hash["pp"].as_h
       program_params.keys.each do |program|
-        dest_file = "#{mount_type}/#{os_dir}/#{program}"
-        if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") &&
-           File.exists?("#{SRV_INITRD}/deps/#{dest_file}.cgz")
-          initrd_deps_arr << "#{initrd_http_prefix}" +
-                             JobHelper.service_path("#{SRV_INITRD}/deps/#{dest_file}.cgz")
+        deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}.cgz"
+        pkg_dest_file  = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
+        if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") && File.exists?(deps_dest_file)
+          initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
         end
-        if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") &&
-           File.exists?("#{SRV_INITRD}/pkg/#{dest_file}.cgz")
-          initrd_pkg_arr << "#{initrd_http_prefix}" +
-                            JobHelper.service_path("#{SRV_INITRD}/pkg/#{dest_file}.cgz")
+        if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") && File.exists?(pkg_dest_file)
+          initrd_pkg_arr << "#{initrd_http_prefix}" + JobHelper.service_path(pkg_dest_file)
         end
       end
     end
