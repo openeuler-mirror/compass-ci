@@ -324,7 +324,7 @@ class Job
 
     if "#{os_mount}" == "initramfs"
       temp_initrds.concat(initramfs_initrds())
-    else
+    elsif "#{os_mount}" == "nfs" or "#{os_mount}" == "cifs"
       temp_initrds.concat(nfs_cifs_initrds())
     end
 
