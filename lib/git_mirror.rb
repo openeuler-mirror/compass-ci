@@ -45,8 +45,8 @@ class GitMirror
 
   def git_fetch(mirror_dir)
     fetch_info = %x(git -C #{mirror_dir} fetch 2>&1)
-    # Check whether mirror_dir is a good git repository by 3 conditions. If not, delete it.
-    if ($CHILD_STATUS.exitstatus == ERR_CODE) && fetch_info.include?(ERR_MESSAGE) && Dir.empty?(mirror_dir)
+    # Check whether mirror_dir is a good git repository by 2 conditions. If not, delete it.
+    if fetch_info.include?(ERR_MESSAGE) && Dir.empty?(mirror_dir)
       FileUtils.rmdir(mirror_dir)
     end
     return fetch_info.include? '->'
@@ -89,6 +89,7 @@ class MirrorMain
     connection.start
     channel = connection.create_channel
     @message_queue = channel.queue('new_refs')
+    Signal.trap(:SIGCHLD, 'SIG_IGN')
   end
 
   def fork_stat_init(stat_key)
