@@ -9,4 +9,7 @@ ES_HOST = config['ES_HOST'] || '172.17.0.1'
 ES_PORT = config['ES_PORT'] || 9200
 
 MAIL_HOST = config['MAIL_HOST'] || '172.17.0.1'
-MAIL_PORT = config['MAIL_PORT'] || 11_311
+MAIL_PORT = config['MAIL_PORT'] || 11311
+
+SRV_HTTP_HOST = config['SRV_HTTP_HOST'] || ENV['SRV_HTTP_HOST'] || '172.17.0.1'
+SRV_HTTP_PORT = config['SRV_HTTP_PORT'] || ENV['SRV_HTTP_PORT'] || 11300

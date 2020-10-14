@@ -9,8 +9,10 @@ require 'json'
 
 # compose and send email for job result
 class MailJobResult
-  def initialize(job_id)
+  def initialize(job_id, result_host = SRV_HTTP_HOST, result_port = SRV_HTTP_PORT)
     @job_id = job_id
+    @result_host = result_host
+    @result_port = result_port
   end
 
   def send_mail
@@ -25,7 +27,7 @@ class MailJobResult
     body = "Hi,
     Thanks for your participation in Kunpeng and software ecosystem!
     Your Job: #{@job_id} had finished.
-    Please check job result: \n\n#{signature}"
+    Please check job result: http://#{@result_host}:#{@result_port}#{@result_root}\n\n#{signature}"
     { 'to' => @submitter_email, 'body' => body, 'subject' => subject }
   end
 
@@ -34,6 +36,7 @@ class MailJobResult
     exit unless job['email']
 
     @submitter_email = job['email']
+    @result_root = job['result_root']
   end
 
   def query_job
