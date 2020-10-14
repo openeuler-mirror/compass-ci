@@ -69,7 +69,7 @@ end
 
 def run(hostname, load_path, hash)
   docker_image = hash['docker_image']
-  system "docker pull #{docker_image}"
+  system "docker-pull #{docker_image}"
   system(
     { 'hostname' => hostname, 'docker_image' => docker_image, 'load_path' => load_path },
     ENV['CCI_SRC'] + '/providers/docker/run.sh'
