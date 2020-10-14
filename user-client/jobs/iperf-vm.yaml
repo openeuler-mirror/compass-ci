@@ -16,7 +16,7 @@ if role client:
   iperf:
     protocol: tcp
 job_origin: jobs/iperf.yaml
-testbox: vm-hi1620-2p8g-1
+testbox: vm-2p8g-1
 arch: x86_64
 node_roles: server client
 

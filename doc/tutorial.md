@@ -101,7 +101,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 
 	SUT/schduler/部署等资源相关变量。	
 	```yaml
-	    testbox: vm-hi1620-2p8g
+	    testbox: vm-2p8g
 	    os: openeuler
 	    os_version: 20.03
 	    os_arch: aarch64

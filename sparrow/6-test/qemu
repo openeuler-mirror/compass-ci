@@ -12,5 +12,5 @@ run_job()
 }
 
 dmidecode -s system-product-name | grep -iq "virtual" && exit
-run_job vm-hi1620-2p8g
-run_job vm-pxe-hi1620-2p8g
+run_job vm-2p8g
+run_job vm-pxe-2p8g

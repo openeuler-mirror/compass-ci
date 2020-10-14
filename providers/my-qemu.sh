@@ -3,7 +3,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 [[ $tbox_group ]] ||
-tbox_group=vm-hi1620-2p8g
+tbox_group=vm-2p8g
 export hostname=$tbox_group--$USER-$$
 
 $CCI_SRC/providers/qemu.sh

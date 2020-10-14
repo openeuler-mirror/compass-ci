@@ -35,7 +35,7 @@ puts "options: #{options.inspect}"
 #   it records all "task id" and task's current redis key value
 # like:
 #   25536
-#   {"add_time":1596876735.944146, "queue":"sched/vm-hi1620-2p8g--$USER/ready"}
+#   {"add_time":1596876735.944146, "queue":"sched/vm-2p8g--$USER/ready"}
 cmd = "#{CMD_BASE} queues/id2content , hgetall"
 result = `#{cmd}`.chomp
 results = result.split("\n")

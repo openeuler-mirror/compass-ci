@@ -8,7 +8,7 @@ require 'fileutils'
 PWD = Dir.pwd
 
 # Run multiple QEMU in parallel
-HOSTNAME = ARGV[0] || "vm-hi1620-2p8g--#{ENV['USER']}"
+HOSTNAME = ARGV[0] || "vm-2p8g--#{ENV['USER']}"
 NR_VM = ARGV[1] || 1
 
 def run(seqno)

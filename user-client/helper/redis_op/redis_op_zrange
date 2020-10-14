@@ -4,14 +4,14 @@
 
 if [ $# -gt 1 ]; then
   echo "USAGE: $0 # find all your job"
-  echo "e.g.: $0 queues/sched/vm-hi1620-2p8g/in_process # find jobs in queue"
+  echo "e.g.: $0 queues/sched/vm-2p8g/in_process # find jobs in queue"
   exit 1
 fi
 
 if [[ $1 ]]; then
   key_name=$1
 else
-  [[ $tbox_group ]] || tbox_group=vm-hi1620-2p8g
+  [[ $tbox_group ]] || tbox_group=vm-2p8g
   key_name=queues/sched/$tbox_group-$USER/ready
 fi
 

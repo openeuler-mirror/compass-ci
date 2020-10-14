@@ -58,9 +58,9 @@ describe Public do
       result.should eq testgroup_name
     end
 
-    it "instance: vm-pxe-hi1620-1p1g-chief-1338976" do
-      testbox = "vm-pxe-hi1620-1p1g-chief-1338976"
-      tbox_group = "vm-pxe-hi1620-1p1g-chief"
+    it "instance: vm-pxe-1p1g--chief-1338976" do
+      testbox = "vm-pxe-1p1g--chief-1338976"
+      tbox_group = "vm-pxe-1p1g--chief"
       result = Public.get_tbox_group_name(testbox)
 
       result.should eq tbox_group

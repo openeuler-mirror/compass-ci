@@ -12,10 +12,10 @@ if !ARGV.empty?
   puts "input: #{__FILE__}"
   puts 'output: taskqueue_snap_yyyymmdd.md'
   puts '  #    id,   first add time, current queue'
-  puts '  # 14703, 2020-07-22 14:33, sched/vm-hi1620-2p8g-xxx/in_process'
-  puts '  # 14831, 2020-07-22 17:51, sched/vm-hi1620-2p8g-xxx/in_process'
-  puts '  # crystal.89630, 2020-09-23 11:19, sched/vm-hi1620-2p8g/in_process'
-  puts '  # crystal.89667, 2020-09-23 11:20, sched/vm-hi1620-2p8g/in_process'
+  puts '  # 14703, 2020-07-22 14:33, sched/vm-2p8g--xxx/in_process'
+  puts '  # 14831, 2020-07-22 17:51, sched/vm-2p8g--xxx/in_process'
+  puts '  # crystal.89630, 2020-09-23 11:19, sched/vm-2p8g/in_process'
+  puts '  # crystal.89667, 2020-09-23 11:20, sched/vm-2p8g/in_process'
   exit
 end
 

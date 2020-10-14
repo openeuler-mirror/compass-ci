@@ -7,7 +7,7 @@ if role server:
 if role client:
   iperf:
     protocol: tcp
-testbox: vm-hi1620-2p8g--USER
+testbox: vm-2p8g--USER
 os: OS
 os_arch: OS_ARCH
 os_version: OS_VER
