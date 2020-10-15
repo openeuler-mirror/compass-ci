@@ -21,7 +21,7 @@ RUN chown -R sshr:sshr /home/sshr/.ssh/authorized_keys \
   && chmod 600 /home/sshr/.ssh/authorized_keys \
   && passwd -u sshr
 
-EXPOSE 20000-22000
+EXPOSE 50000-51999
 EXPOSE 22
 
 COPY entry.sh /entry.sh
