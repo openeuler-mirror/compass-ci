@@ -418,7 +418,7 @@ class Sched
 
   private def find_job(testbox : String, count = 1)
     tbox_group = JobHelper.match_tbox_group(testbox)
-    tbox = tbox.partition("--")[0]
+    tbox = tbox_group.partition("--")[0]
 
     boxes = [testbox, tbox_group, tbox]
     boxes.each do |box|
