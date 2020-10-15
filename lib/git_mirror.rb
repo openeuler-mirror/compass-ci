@@ -54,7 +54,7 @@ class GitMirror
 
   def mirror_sync
     fork_info = @queue.pop
-    mirror_dir = "/srv/git/#{fork_info['forkdir']}.git"
+    mirror_dir = "/srv/git/#{fork_info['git_repo']}.git"
     possible_new_refs = false
     if File.directory?(mirror_dir)
       possible_new_refs = git_fetch(mirror_dir)
@@ -62,7 +62,7 @@ class GitMirror
       FileUtils.mkdir_p(mirror_dir)
       possible_new_refs = git_clone(fork_info['url'], mirror_dir)
     end
-    feedback(fork_info['forkdir'], possible_new_refs)
+    feedback(fork_info['git_repo'], possible_new_refs)
   end
 
   def git_mirror
@@ -109,11 +109,12 @@ class MirrorMain
   end
 
   def load_repo_file(repodir, project, fork_name)
-    @git_info["#{project}/#{fork_name}"] = YAML.safe_load(File.open(repodir))
-    @git_info["#{project}/#{fork_name}"]['forkdir'] = "#{project}/#{fork_name}"
-    @git_info["#{project}/#{fork_name}"].merge!(@defaults[project]) if @defaults[project]
-    fork_stat_init("#{project}/#{fork_name}")
-    @priority_queue.push "#{project}/#{fork_name}", @priority
+    git_repo = "#{project}/#{fork_name}"
+    @git_info[git_repo] = YAML.safe_load(File.open(repodir))
+    @git_info[git_repo]['git_repo'] = git_repo
+    @git_info[git_repo].merge!(@defaults[project]) if @defaults[project]
+    fork_stat_init(git_repo)
+    @priority_queue.push git_repo, @priority
     @priority += 1
   end
 
