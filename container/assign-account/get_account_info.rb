@@ -33,7 +33,7 @@ setup_jumper_account_info
     build_account_name
   read_jumper_info
   setup_authorized_key
- 
+
 the returned data for setup_jumper_account_info like:
 {
   "account" => "guest",
@@ -93,15 +93,15 @@ class AccountStorage
   def setup_jumper_account_info
     account_info = read_account_info
     jumper_info = read_jumper_info
-    pub_key = @data['pub_key']
+    pub_key = @data['pub_key'] unless @data.nil?
 
     jumper_ip   = jumper_info[0].chomp
     jumper_port = jumper_info[1].chomp
     account     = account_info[0]
-    passwd      = if pub_key
-                    'Use pub_key to login'
-                  else
+    passwd      = if pub_key.nil?
                     account_info[1]
+                  else
+                    'Use pub_key to login'
                   end
     jumper_account_info = {
       'account' => account,
