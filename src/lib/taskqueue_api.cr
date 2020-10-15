@@ -12,7 +12,9 @@ class TaskQueueAPI
 
   def add_task(service_queue_path : String, task : JSON::Any)
     params = HTTP::Params.encode({"queue" => service_queue_path})
-    response = HTTP::Client.post("http://#{@host}:#{@port}/add?" + params, body: task.to_json)
+    client = HTTP::Client.new(@host, port: @port)
+    response = client.post("/add?" + params, body: task.to_json)
+    client.close
     arrange_response(response)
   end
 
@@ -32,7 +34,9 @@ class TaskQueueAPI
   end
 
   private def response_put_api(cmd : String, params : String)
-    response = HTTP::Client.put("http://#{@host}:#{@port}/#{cmd}?" + params)
+    client = HTTP::Client.new(@host, port: @port)
+    response = client.put("/#{cmd}?" + params)
+    client.close
     arrange_response(response)
   end
 
