@@ -9,6 +9,8 @@ require 'json'
 # gem install PriorityQueue
 require 'priority_queue'
 require 'English'
+require 'elasticsearch'
+require_relative 'constants.rb'
 
 # worker threads
 class GitMirror
@@ -84,6 +86,7 @@ class MirrorMain
     @git_info = {}
     @defaults = {}
     @git_queue = Queue.new
+    @es_client = Elasticsearch::Client.new(url: "http://#{ES_HOST}:#{ES_PORT}")
     load_fork_info
     connection = Bunny.new('amqp://172.17.0.1:5672')
     connection.start
@@ -106,16 +109,6 @@ class MirrorMain
 
     project = repodir.delete_prefix("#{REPO_DIR}/")
     @defaults[project] = YAML.safe_load(File.open(defaults_file))
-  end
-
-  def load_repo_file(repodir, project, fork_name)
-    git_repo = "#{project}/#{fork_name}"
-    @git_info[git_repo] = YAML.safe_load(File.open(repodir))
-    @git_info[git_repo]['git_repo'] = git_repo
-    @git_info[git_repo].merge!(@defaults[project]) if @defaults[project]
-    fork_stat_init(git_repo)
-    @priority_queue.push git_repo, @priority
-    @priority += 1
   end
 
   def traverse_repodir(repodir)
@@ -194,6 +187,17 @@ end
 
 # main thread
 class MirrorMain
+  def load_repo_file(repodir, project, fork_name)
+    git_repo = "#{project}/#{fork_name}"
+    @git_info[git_repo] = YAML.safe_load(File.open(repodir))
+    @git_info[git_repo]['git_repo'] = git_repo
+    @git_info[git_repo].merge!(@defaults[project]) if @defaults[project]
+    es_repo_update(git_repo, @git_info[git_repo])
+    fork_stat_init(git_repo)
+    @priority_queue.push git_repo, @priority
+    @priority += 1
+  end
+
   def compare_refs(cur_refs, old_refs)
     new_refs = { heads: {} }
     cur_refs[:heads].each do |ref, commit_id|
@@ -245,5 +249,13 @@ class MirrorMain
       repo_dir = "#{REPO_DIR}/#{file}"
       load_repo_file(repo_dir, File.dirname(file), File.basename(file)) if File.file?(repo_dir)
     end
+  end
+
+  def es_repo_update(git_repo, repo_info)
+    body = {
+      "doc": repo_info,
+      "doc_as_upsert": true
+    }
+    @es_client.update(index: 'repo', type: '_doc', id: git_repo, body: body)
   end
 end
