@@ -89,7 +89,6 @@ class MirrorMain
     connection.start
     channel = connection.create_channel
     @message_queue = channel.queue('new_refs')
-    Signal.trap(:SIGCHLD, 'SIG_IGN')
   end
 
   def fork_stat_init(stat_key)
@@ -187,6 +186,7 @@ class MirrorMain
     loop do
       push_git_queue
       handle_feedback
+      Signal.trap(:SIGCHLD, 'SIG_IGN')
     end
   end
 end
