@@ -108,12 +108,13 @@ class Job
 
   def update(hash : Hash)
     hash_dup = hash.dup
-    if hash_dup.has_key?("id")
-      hash_dup.delete("id")
-      puts "Should not direct update id, use update_id, ignore this"
-    end
-    if hash_dup.has_key?("tbox_group")
-      raise "Should not direct update tbox_group, use update_tbox_group"
+    ["id", "tbox_group"].each do |key|
+      if hash_dup.has_key?(key)
+        unless hash_dup[key] == @hash[key]
+          raise "Should not direct update #{key}, use update_#{key}"
+        end
+        hash_dup.delete(key)
+      end
     end
 
     @hash.any_merge!(hash_dup)
@@ -205,7 +206,7 @@ class Job
 
   def []=(key : String, value : String | Nil)
     if key == "id" || key == "tbox_group"
-      raise "Should not []= id and tbox_group, use update_#{key}"
+      raise "Should not use []= update #{key}, use update_#{key}"
     end
     @hash[key] = JSON::Any.new(value) if value
   end
@@ -388,7 +389,7 @@ class Job
       program_params = @hash["pp"].as_h
       program_params.keys.each do |program|
         deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}.cgz"
-        pkg_dest_file  = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
+        pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
 
         if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}")
           initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
