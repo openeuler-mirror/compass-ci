@@ -6,6 +6,7 @@ require "yaml"
 require "any_merge"
 
 require "scheduler/constants.cr"
+require "scheduler/jobfile_operate.cr"
 
 struct JSON::Any
   def []=(key : String, value : String)
@@ -80,6 +81,7 @@ class Job
     access_key
     access_key_file
     lkp_initrd_user
+    user_lkp_src
     kernel_uri
     kernel_append_root
     kernel_params
@@ -126,6 +128,7 @@ class Job
 
   private def set_defaults
     append_init_field()
+    set_user_lkp_src()
     set_os_dir()
     set_result_root()
     set_result_service()
@@ -381,6 +384,13 @@ class Job
     self["kernel_params"] = " #{kernel_common_params()} #{kernel_append_root} #{kernel_console()}"
   end
 
+  private def set_user_lkp_src
+    lkp_arch_cgz = "#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz"
+    raise "The #{lkp_arch_cgz} does not exist." unless File.exists?(lkp_arch_cgz)
+
+    self["user_lkp_src"] = Jobfile::Operate.prepare_lkp_tests(lkp_initrd_user, os_arch)
+  end
+
   private def set_pp_initrd
     initrd_deps_arr = Array(String).new
     initrd_pkg_arr = Array(String).new
@@ -392,11 +402,11 @@ class Job
         deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}.cgz"
         pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
 
-        if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}")
+        if File.exists?("#{user_lkp_src}/distro/depends/#{program}")
           initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
         end
 
-        if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}")
+        if File.exists?("#{user_lkp_src}/pkg/#{program}")
           initrd_pkg_arr << "#{initrd_http_prefix}" + JobHelper.service_path(pkg_dest_file)
         end
       end
