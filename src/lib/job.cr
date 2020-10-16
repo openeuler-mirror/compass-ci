@@ -300,10 +300,11 @@ class Job
   private def initramfs_initrds
     temp_initrds = [] of String
 
+    osimage_dir = "#{SRV_INITRD}/osimage/#{os_dir}"
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/current")}"
+                    "#{JobHelper.service_path("#{osimage_dir}/current")}"
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/run-ipconfig.cgz")}"
+                    "#{JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")}"
 
     temp_initrds.concat(initrd_deps.split(/ /)) unless initrd_deps.empty?
     temp_initrds.concat(initrd_pkg.split(/ /)) unless initrd_pkg.empty?
