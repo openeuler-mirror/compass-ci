@@ -389,10 +389,12 @@ class Job
       program_params.keys.each do |program|
         deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}.cgz"
         pkg_dest_file  = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
-        if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}") && File.exists?(deps_dest_file)
+
+        if File.exists?("#{ENV["LKP_SRC"]}/distro/depends/#{program}")
           initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
         end
-        if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}") && File.exists?(pkg_dest_file)
+
+        if File.exists?("#{ENV["LKP_SRC"]}/pkg/#{program}")
           initrd_pkg_arr << "#{initrd_http_prefix}" + JobHelper.service_path(pkg_dest_file)
         end
       end
