@@ -133,7 +133,7 @@ class Job
     set_result_root()
     set_result_service()
     set_os_mount()
-    set_pp_initrd()
+    set_depends_initrd()
     set_initrds_uri()
     set_kernel_uri()
     set_kernel_append_root()
@@ -391,7 +391,7 @@ class Job
     self["user_lkp_src"] = Jobfile::Operate.prepare_lkp_tests(lkp_initrd_user, os_arch)
   end
 
-  private def set_pp_initrd
+  private def set_depends_initrd
     initrd_deps_arr = Array(String).new
     initrd_pkg_arr = Array(String).new
     initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
