@@ -18,16 +18,16 @@ else
 					"my_commit_url": {
 						"type": "keyword"
 					},
-					"uuid": {
+					"my_uuid": {
 						"type": "keyword"
 					},
-					"email": {
+					"my_email": {
 						"type": "keyword"
 					},
-					"name": {
+					"my_name": {
 						"type": "keyword"
 					},
-					"user": {
+					"my_login_name": {
 						"type": "keyword"
 					}
 				}
