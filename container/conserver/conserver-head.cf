@@ -1,0 +1,16 @@
+# This is a fairly basic configuration file that interacts with one
+
+default * {
+	logfile /srv/cci/serial/logs/&;	# '&' is replaced with console name
+	timestamp 1hab;			# write timestamps
+	rw *;				# allow all users
+	type exec;
+	master localhost;
+	portbase 2000;			# port numbers start at 2001 and
+	portinc 100;			# go up by 1 (port #1 == 2001, etc)
+}
+
+access * {
+	trusted 127.0.0.1;
+}
+
