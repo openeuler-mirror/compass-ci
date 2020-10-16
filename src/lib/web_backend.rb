@@ -95,7 +95,7 @@ def compare_candidates_body
       OS: [
         { os: 'openeuler', os_version: ['1.0', '20.03'] },
         { os: 'centos', os_version: ['7.6', '7.8', '8.1', 'sid'] },
-        { os: 'debian', os_version: ['10', 'sid'] },
+        { os: 'debian', os_version: %w[10 sid] },
         { os: 'archlinux', os_version: ['5.5.0-1'] }
       ],
       os_arch: %w[aarch64 x86_64],
@@ -304,7 +304,7 @@ def get_jobs_body(params)
     banner: get_banner(git_repo, branches),
     jobs: jobs,
     fields: FIELDS
-  }
+  }.to_json
 end
 
 def get_jobs(params)
@@ -314,66 +314,70 @@ def get_jobs(params)
     warn e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get jobs error']
   end
-  [200, headers.merge('Access-Control-Allow-Origin' => '*'), JSON.dump(body)]
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
 
-def get_repo_url(repo_file)
-  return unless File.file? repo_file
+def get_repo_url(urls)
+  return unless urls.is_a?(Array)
 
-  urls = YAML.load_file(repo_file)['url']
   urls.each do |url|
     return url if url[0, 4] == 'http'
   end
   urls[0]
 end
 
-def get_repo(git_repo, repo_file = nil)
-  repo = {
-    git_repo: git_repo,
-    git_url: nil
+def get_repo(git_repo)
+  repo = nil
+  if git_repo
+    must = [{ regexp: { git_repo: ".*#{git_repo}.*" } }]
+    repo = query_repos(must, from: 0, size: 1)[0]
+  end
+  repo || {}
+end
+
+def query_repos(must, from: 0, size: 1)
+  query = {
+    query: { bool: { must: must } },
+    size: size,
+    from: from,
+    sort: [{
+      git_repo: { order: 'asc' }
+    }]
   }
-  return repo if !git_repo && !repo_file
-
-  if !git_repo
-    git_repo = repo_file[UPSTREAM_REPOS_PATH.size + 1, repo_file.size - 1]
-    repo[:git_repo] = git_repo
-  elsif !repo_file
-    repo_file = File.join(UPSTREAM_REPOS_PATH, git_repo)
+  result = ES_CLIENT.search index: 'repo', body: query
+  repos = []
+  result['hits']['hits'].each do |r|
+    r = r['_source']
+    repos << {
+      git_url: get_repo_url(r['url']),
+      git_repo: r['git_repo']
+    }
   end
-
-  repo[:git_url] = get_repo_url(repo_file)
-  repo
+  repos
 end
 
-def repo_files_list
-  Dir["#{UPSTREAM_REPOS_PATH}/*/*/*"].sort
-end
+def search_repos(git_repo, page_size, page_num)
+  size = page_size
+  from = size * page_num
+  must = git_repo ? [{ regexp: { git_repo: ".*#{git_repo}.*" } }] : []
+  count_query = { query: { bool: { must: must } } }
+  total = ES_CLIENT.count(index: 'repo', body: count_query)['count']
+  return [], total if wrong_size?(size, from)
 
-def get_repos_list(repo_files, from, finish, total)
-  repos_list = []
-
-  total.times do |index|
-    next if index < from
-    break if index >= finish
-
-    repos_list << get_repo(nil, repo_files[index])
-  end
-  repos_list
+  return query_repos(must, from: from, size: size), total
 end
 
 def get_repos_body(params)
-  repo_files = repo_files_list
   page_size = get_positive_number(params[:page_size], 20)
   page_num = get_positive_number(params[:page_num], 1) - 1
+  git_repo = params[:git_repo]
 
-  from = page_num * page_size
-  finish = from + page_size
-  total = repo_files.size
+  repos, total = search_repos(git_repo, page_size, page_num)
 
   {
     total: total,
-    repos: get_repos_list(repo_files, from, finish, total)
-  }
+    repos: repos
+  }.to_json
 end
 
 def get_repos(params)
@@ -383,5 +387,5 @@ def get_repos(params)
     warn e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get repos error']
  end
-  [200, headers.merge('Access-Control-Allow-Origin' => '*'), JSON.dump(body)]
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end

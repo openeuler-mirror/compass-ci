@@ -9,6 +9,7 @@ require "#{CCI_SRC}/src/lib/web_backend.rb"
 set :bind, '0.0.0.0'
 set :port, 32767
 set :show_exceptions, false
+set :environment, :production
 
 # GET /compare_candidates
 # return: {"query_conditions": {...}, "dimension": [...]}
@@ -48,7 +49,10 @@ get '/get_jobs' do
   get_jobs(params)
 end
 
-# GET /get_repos?page_size=12&page_num=3
+# GET /get_repos?git_repo=a&page_size=12&page_num=3
+# git_repo:
+#   > optional
+#
 # page_size:
 #   > optional
 #   - default: 20
