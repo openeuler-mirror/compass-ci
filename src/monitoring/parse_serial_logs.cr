@@ -43,7 +43,7 @@ class SerialParser
   def host_in_msg(msg)
     return unless msg["serial_path"]?
 
-    host = File.basename(msg["serial_path"].to_s)
+    File.basename(msg["serial_path"].to_s)
   end
 
   def detect_start_or_end(msg, host, pattern_list)
@@ -92,13 +92,13 @@ class SerialParser
     matched = msg["message"].to_s.match(/.*\/job_initrd_tmpfs\/(?<job_id>.*?)\//)
     return unless matched
 
-    job_id = matched.named_captures["job_id"]
+    matched.named_captures["job_id"]
   end
 
   def find_job(job_id)
     return unless job_id
 
-    job = Elasticsearch::Client.new.get_job_content(job_id)
+    Elasticsearch::Client.new.get_job_content(job_id)
   end
 
   def dump_cache(job, msg, host)
