@@ -272,18 +272,9 @@ class Job
     return true
   end
 
-  private def vmlinuz
-    if os_mount == "initramfs"
-      return "#{INITRD_HTTP_PREFIX}" +
-        "#{JobHelper.service_path("#{SRV_INITRD}/osimage/#{os_dir}/vmlinuz")}"
-    else
-      return "#{OS_HTTP_PREFIX}" +
-        "#{JobHelper.service_path("#{SRV_OS}/#{os_dir}/vmlinuz")}"
-    end
-  end
-
   private def set_kernel_uri
-    self["kernel_uri"] = "kernel #{vmlinuz()}"
+    self["kernel_uri"] = "kernel #{OS_HTTP_PREFIX}" + 
+                         "#{JobHelper.service_path("#{SRV_OS}/#{os_dir}/vmlinuz")}"
   end
 
   private def kernel_common_params
