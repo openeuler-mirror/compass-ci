@@ -18,16 +18,22 @@ class TaskQueue
   @@rate_limiter.bucket(:l1pms, 1_u32, 0.001.seconds)
   @@rate_limiter.bucket(:l100pms, 1_u32, 0.00001.seconds)
 
+  # logs example:
+  #  from: {172.17.0.1:6952} body {"domain":"compass-ci"} <-- ack: {"id":"z9.134780"}
+  #  | from: {172.17.0.1:6952} <-- ack: {}
+  #  2020-10-19 03:25:01 UTC 201 PUT /consume?queue=sched%2Fdc-2g%2Fidle 356.51µs
+  #
+  # "from" is puts by this debug_message
+  # "2020-10..." auto puts by kemal frame, time in {2020-10-19 03:25:01 UTC} and span {356.51us}
   def debug_message(env, response, time_in)
-    puts("\n")
+    logs = "from: {#{env.request.remote_address}}"
 
-    from_message = "#{time_in} --> #{env.request.remote_address}"
-    if env.request.body != nil
-      from_message += " #{env.request.body}"
-    end
-    puts(from_message)
+    logs += " body: #{env.request.body}" if env.request.body
 
-    puts("#{Time.utc} <-- #{response}")
+    logs += " <-- ack: "
+    logs += response ? "#{response}" : "{}"
+
+    puts(logs)
   end
 
   def run
