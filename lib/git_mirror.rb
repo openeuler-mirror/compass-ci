@@ -155,6 +155,7 @@ class MirrorMain
     @fork_stat[git_repo][:queued] = false
     return unless feedback_info[:possible_new_refs]
 
+    @fork_stat[git_repo][:priority] += 1
     return reload_fork_info if git_repo == 'upstream-repos/upstream-repos'
 
     new_refs = check_new_refs(git_repo)
@@ -164,16 +165,18 @@ class MirrorMain
     send_message(feedback_info)
   end
 
+  def do_push(fork_key)
+    @fork_stat[fork_key][:queued] = true
+    @git_info[fork_key][:cur_refs] = get_cur_refs(fork_key) if @git_info[fork_key][:cur_refs].nil?
+    @git_queue.push(@git_info[fork_key])
+  end
+
   def push_git_queue
     return if @git_queue.size >= 1
 
     fork_key = @priority_queue.delete_min_return_key
-    unless @fork_stat[fork_key][:queued]
-      @fork_stat[fork_key][:queued] = true
-      @git_info[fork_key][:cur_refs] = get_cur_refs(fork_key) if @git_info[fork_key][:cur_refs].nil?
-      @git_queue.push(@git_info[fork_key])
-    end
-    @priority_queue.push fork_key, @priority
+    do_push(fork_key) unless @fork_stat[fork_key][:queued]
+    @priority_queue.push fork_key, (@priority - @fork_stat[fork_key][:priority])
     @priority += 1
   end
 
