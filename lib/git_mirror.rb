@@ -151,12 +151,13 @@ class MirrorMain
     return if @feedback_queue.empty?
 
     feedback_info = @feedback_queue.pop(true)
-    @fork_stat[feedback_info[:git_repo]][:queued] = false
+    git_repo = feedback_info[:git_repo]
+    @fork_stat[git_repo][:queued] = false
     return unless feedback_info[:possible_new_refs]
 
-    return reload_fork_info if feedback_info[:git_repo] == 'upstream-repos/upstream-repos'
+    return reload_fork_info if git_repo == 'upstream-repos/upstream-repos'
 
-    new_refs = check_new_refs(feedback_info[:git_repo])
+    new_refs = check_new_refs(git_repo)
     return if new_refs[:heads].empty?
 
     feedback_info[:new_refs] = new_refs
