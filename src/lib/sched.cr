@@ -139,22 +139,12 @@ class Sched
     return node_state
   end
 
-  # EXAMPLE:
-  # cluster_file: "cs-lkp-hsw-ep5"
-  # return: Hash(YAML::Any, YAML::Any) | Nil, 0 | <hosts_size>
-  #   {"lkp-hsw-ep5" => {"roles" => ["server"], "macs" => ["ec:f4:bb:cb:7b:92"]},
-  #    "lkp-hsw-ep2" => {"roles" => ["client"], "macs" => ["ec:f4:bb:cb:54:92"]}}, 2
+  # get cluster config using own lkp_src cluster file,
+  # a hash type will be returned
   def get_cluster_config(cluster_file, lkp_initrd_user, os_arch)
     lkp_src = Jobfile::Operate.prepare_lkp_tests(lkp_initrd_user, os_arch)
     cluster_file_path = Path.new(lkp_src, "cluster", cluster_file)
-
-    if File.file?(cluster_file_path)
-      cluster_config = YAML.parse(File.read(cluster_file_path)).as_h
-      hosts_size = cluster_config.values.size
-      return cluster_config, hosts_size
-    end
-
-    return nil, 0
+    return YAML.parse(File.read(cluster_file_path)).as_h
   end
 
   def get_commit_date(job)
@@ -177,16 +167,17 @@ class Sched
       job = Job.new(job_content, job_content["id"]?)
       job["commit_date"] = get_commit_date(job)
 
+      # it is not a cluster job if cluster field is empty or
+      # field's prefix is 'cs-localhost'
       cluster_file = job["cluster"]
-      if cluster_file != ""
-        cluster_config, hosts_size = get_cluster_config(
-          cluster_file, job.lkp_initrd_user, job.os_arch)
-
-        return submit_cluster_job(
-          job, cluster_config.not_nil!) if hosts_size >= 2
+      if cluster_file.empty? || cluster_file.starts_with?("cs-localhost")
+        return submit_single_job(job)
+      else
+        cluster_config = get_cluster_config(cluster_file,
+          job.lkp_initrd_user,
+          job.os_arch)
+        return submit_cluster_job(job, cluster_config)
       end
-
-      return submit_single_job(job)
     rescue ex
       puts ex.inspect_with_backtrace
       return [{
