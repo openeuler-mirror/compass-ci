@@ -139,6 +139,7 @@ class Job
     set_kernel_append_root()
     set_kernel_params()
     set_lkp_server()
+    set_sshr_port()
   end
 
   private def append_init_field
@@ -166,6 +167,14 @@ class Job
         raise "Missing uuid for remote job"
       end
     end
+  end
+
+  private def set_sshr_port
+    return unless self["sshd"]?
+
+    self["sshr_port"] = ENV["SSHR_PORT"]
+    self["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
+    self["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
   end
 
   private def set_os_dir

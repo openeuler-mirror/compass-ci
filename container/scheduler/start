@@ -24,10 +24,16 @@ names = Set.new %w[
   GIT_SERVER
   FLUENTD_SERVER_HOST
   FLUENTD_SERVER_PORT
+  SSHR_PORT
+  SSHR_PORT_BASE
+  SSHR_PORT_LEN
   lab
 ]
 
 defaults = relevant_defaults(names)
+defaults['SSHR_PORT'] ||= 5050
+defaults['SSHR_PORT_BASE'] ||= 50000
+defaults['SSHR_PORT_LEN'] ||= 2000
 env = docker_env(defaults)
 
 CCI_REPOS = ENV['CCI_REPOS'] || '/c'
