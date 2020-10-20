@@ -16,6 +16,7 @@ defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
 DEFAULT_CCI = '/c/cci'
+DEFAULT_LKP = '/c/lkp-tests'
 MONITOR_PORT = defaults['MONITOR_PORT'] || '11310'
 docker_rm "monitoring-#{MONITOR_PORT}"
 
@@ -28,7 +29,9 @@ cmd = %W[
   -p #{MONITOR_PORT}:#{MONITOR_PORT}
 ] + env + %W[
   -e CCI_SRC=#{DEFAULT_CCI}
+  -e LKP_SRC=#{DEFAULT_LKP}
   -v /etc/localtime:/etc/localtime:ro
+  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v /srv/result:/srv/result
   monitoring-#{MONITOR_PORT}
 ]
