@@ -399,6 +399,9 @@ class Job
     if @hash["pp"]?
       program_params = @hash["pp"].as_h
       program_params.keys.each do |program|
+        if program =~ /^(.*)-\d+$/
+          program = $1
+        end
         deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}.cgz"
         pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
 
@@ -412,8 +415,8 @@ class Job
       end
     end
 
-    self["initrd_deps"] = initrd_deps_arr.join(" ")
-    self["initrd_pkg"] = initrd_pkg_arr.join(" ")
+    self["initrd_deps"] = initrd_deps_arr.uniq.join(" ")
+    self["initrd_pkg"] = initrd_pkg_arr.uniq.join(" ")
   end
 
   def update_tbox_group(tbox_group)
