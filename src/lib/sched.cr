@@ -267,10 +267,10 @@ class Sched
     }] unless tbox_group
 
     # only single job will has "idle job" and "execute rate limiter"
-    unless job["idle_job"].empty?
-      tbox_group = "#{tbox_group}/idle"
-    else
+    if job["idle_job"].empty?
       tbox_group += "#{job.get_uuid_tag}"
+    else
+      tbox_group = "#{tbox_group}/idle"
     end
 
     job_id = add_task(tbox_group, job.lab)
