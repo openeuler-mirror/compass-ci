@@ -22,9 +22,8 @@ end
 module JobHelper
   def self.match_tbox_group(testbox : String)
     tbox_group = testbox
-    find = testbox.match(/(.*)(\-\d{1,}$)/)
-    if find != nil
-      tbox_group = find.not_nil![1]
+    if testbox =~ /(.*)-\d+$/
+      tbox_group = $1
     end
     return tbox_group
   end
