@@ -191,7 +191,7 @@ class Job
   end
 
   private def set_access_key
-    self["access_key"] = "#{Random::Secure.hex(10)}" unless @hash["access_key"]?
+    self["access_key"] = "#{Random::Secure.hex(10)}-#{id}" unless @hash["access_key"]?
     self["access_key_file"] = File.join("/srv/", "#{result_root}", ".#{access_key}")
   end
 
