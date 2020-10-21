@@ -18,6 +18,14 @@ class TaskQueueAPI
     arrange_response(response)
   end
 
+  def query_keys(service_key_with_wild_char : String)
+    params = HTTP::Params.encode({"queue" => service_key_with_wild_char})
+    client = HTTP::Client.new(@host, port: @port)
+    response = client.get("/keys?" + params)
+    client.close
+    arrange_response(response)
+  end
+
   def consume_task(service_queue_path : String)
     params = HTTP::Params.encode({"queue" => service_queue_path})
     response_put_api("consume", params)

@@ -261,6 +261,28 @@ class TaskQueue
     return keys
   end
 
+  private def get_keys(queue_name)
+    query_prefix = QUEUE_NAME_BASE + "/"
+    query_prefix_len = query_prefix.size
+    search = query_prefix + queue_name
+    response = [] of String
+
+    cursor = "0"
+    loop do
+      cursor, keys = @redis.scan(cursor, search, 256)
+      case keys
+      when Array(Redis::RedisValue)
+        keys.each do |key|
+          response << "#{key}"[query_prefix_len..-1]
+        end
+      end
+
+      break if cursor == "0"
+    end
+
+    return response
+  end
+
   private def move_first_task_in_redis_with_score(from : String, to : String)
     # result was ["crystal.87230", "1600782938.9017849"]
     result = @redis.zrange("#{QUEUE_NAME_BASE}/#{from}", 0, 0, with_scores: true)

@@ -104,6 +104,21 @@ class TaskQueue
       nil
     end
 
+    # -------------------
+    # request: curl http://localhost:3060/keys?
+    #          queue=sched*
+    #   wild match: *, ?, [-]
+    #
+    # response: 200 ["scheda", "schedb", ...]
+    #           201 ## when no find
+    #           400 "Missing parameter <queue>"
+    #           413 "Query results too large keys"
+    get "/keys" do |env|
+      response = queue_respond_keys(env)
+      # debug_message(env, response, Time.utc) # maybe too large
+      response.to_json unless env.response.status_code == 201
+    end
+
     @port = (ENV.has_key?("TASKQUEUE_PORT") ? ENV["TASKQUEUE_PORT"].to_i32 : TASKQUEUE_PORT)
     Kemal.run(@port)
   end

@@ -146,6 +146,16 @@ class TaskQueue
     end
   end
 
+  def queue_respond_keys(env)
+    queue_name_pattern, ext_set = queue_check_params(env, ["queue"])
+    return ext_set if ext_set
+
+    response = get_keys(queue_name_pattern[0])
+    env.response.status_code = 201 if response.empty?
+
+    return response
+  end
+
   # loop try: when there has no task, return until get one or timeout
   # default timeout is 0.015ms, we delay for 10ms at each time
   private def operate_with_timeout(timeout)
@@ -195,7 +205,7 @@ class TaskQueue
         # prefix is start with "queues", need delete it
         s_name = prefix.sub("#{QUEUE_NAME_BASE}/", "")
         move_first_task_in_redis_with_score("#{s_name}/#{uuid}",
-                                            "#{s_name}/ready")
+          "#{s_name}/ready")
       end
     end
   end
