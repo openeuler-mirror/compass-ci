@@ -88,6 +88,20 @@ def main(hostname)
   run(hostname, load_path, hash)
 end
 
+def loop_main(hostname)
+  loop do
+    begin
+      main(hostname)
+    rescue StandardError => e
+      puts e.backtrace
+      # if an exception happend, request the next time after 30 seconds
+      sleep 25
+    ensure
+      sleep 5
+    end
+  end
+end
+
 def save_pid(pids)
   FileUtils.cd("#{ENV['CCI_SRC']}/providers")
   f = File.new('dc.pid', 'a')
@@ -99,10 +113,7 @@ def multi_docker(hostname, nr_container)
   pids = []
   nr_container.to_i.times do |i|
     pid = Process.fork do
-      loop do
-        main("#{hostname}-#{i}")
-        sleep 5
-      end
+      loop_main("#{hostname}-#{i}")
     end
     pids << pid
   end
