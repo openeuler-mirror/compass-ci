@@ -38,10 +38,10 @@ class Job
   getter hash : Hash(String, JSON::Any)
 
   INIT_FIELD = {
-    os:              "debian",
+    os:              "openeuler",
     lab:             LAB,
     os_arch:         "aarch64",
-    os_version:      "sid",
+    os_version:      "20.03",
     lkp_initrd_user: "latest",
     docker_image:    "centos:7",
   }
