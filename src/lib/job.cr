@@ -281,7 +281,7 @@ class Job
   end
 
   private def set_kernel_uri
-    self["kernel_uri"] = "kernel #{OS_HTTP_PREFIX}" + 
+    self["kernel_uri"] = "kernel #{OS_HTTP_PREFIX}" +
                          "#{JobHelper.service_path("#{SRV_OS}/#{os_dir}/vmlinuz")}"
   end
 
@@ -393,29 +393,45 @@ class Job
   private def set_depends_initrd
     initrd_deps_arr = Array(String).new
     initrd_pkg_arr = Array(String).new
-    initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
-    mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
-    if @hash["pp"]?
-      program_params = @hash["pp"].as_h
-      program_params.keys.each do |program|
-        if program =~ /^(.*)-\d+$/
-          program = $1
-        end
-        deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}.cgz"
-        pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
 
-        if File.exists?("#{user_lkp_src}/distro/depends/#{program}")
-          initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
-        end
-
-        if File.exists?("#{user_lkp_src}/pkg/#{program}")
-          initrd_pkg_arr << "#{initrd_http_prefix}" + JobHelper.service_path(pkg_dest_file)
-        end
-      end
-    end
+    get_depends_initrd(get_program_params(), initrd_deps_arr, initrd_pkg_arr)
 
     self["initrd_deps"] = initrd_deps_arr.uniq.join(" ")
     self["initrd_pkg"] = initrd_pkg_arr.uniq.join(" ")
+  end
+
+  private def get_program_params
+    program_params = Hash(String, JSON::Any).new
+    if @hash["monitors"]?
+      program_params.merge!(@hash["monitors"].as_h)
+    end
+
+    if @hash["pp"]?
+      program_params.merge!(@hash["pp"].as_h)
+    end
+
+    return program_params
+  end
+
+  private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkg_arr)
+    initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
+    mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
+
+    program_params.keys.each do |program|
+      if program =~ /^(.*)-\d+$/
+        program = $1
+      end
+
+      deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}.cgz"
+      pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
+
+      if File.exists?(deps_dest_file)
+        initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
+      end
+      if File.exists?(pkg_dest_file)
+        initrd_pkg_arr << "#{initrd_http_prefix}" + JobHelper.service_path(pkg_dest_file)
+      end
+    end
   end
 
   def update_tbox_group(tbox_group)
