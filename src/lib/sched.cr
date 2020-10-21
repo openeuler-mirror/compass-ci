@@ -317,7 +317,6 @@ class Sched
                       JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz")
     response["job"] = "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
 
-    puts %({"job_id": "#{job.id}", "job_state": "boot"})
     return response.to_json
   end
 
@@ -339,7 +338,6 @@ class Sched
 
     response += "boot\n"
 
-    puts %({"job_id": "#{job.id}", "job_state": "boot"})
     return response
   end
 
@@ -481,7 +479,6 @@ class Sched
     response += job.kernel_params
     response += "\nboot\n"
 
-    puts %({"job_id": "#{job.id}", "job_state": "boot"})
     return response
   end
 
@@ -512,7 +509,7 @@ class Sched
     # json log
     log = job_content.dup
     log["job_id"] = log.delete("id").not_nil!
-    puts log.to_json
+    return log.to_json
   end
 
   def update_tbox_wtmp(env : HTTP::Server::Context)
@@ -541,7 +538,7 @@ class Sched
 
     # json log
     hash["testbox"] = testbox
-    puts hash.to_json
+    return hash.to_json
   end
 
   def report_ssh_port(testbox : String, ssh_port : String)
@@ -572,6 +569,6 @@ class Sched
 
     @redis.remove_finished_job(job_id)
 
-    puts %({"job_id": "#{job_id}", "job_state": "complete"})
+    return %({"job_id": "#{job_id}", "job_state": "complete"})
   end
 end
