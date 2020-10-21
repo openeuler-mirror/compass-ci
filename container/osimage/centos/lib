@@ -1,0 +1,37 @@
+#!/bin/bash 
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+DIR="$(pwd)"
+os_name="$(echo $DIR |awk -F "/" '{print $(NF - 2)}')"
+os_version="$(echo $DIR |awk -F "/" '{print $NF}')"
+image="${os_name}:${os_version}"
+IMAGE_NAME="${os_name}-${os_version}-$(date +"%Y%m%d").cgz"
+
+export_root_passwd() {
+	local root_pwd_file="$HOME/.config/compass-ci/rootfs-passwd"
+	[ -f "$root_pwd_file" ] || {
+		echo "[INFO] Please set the password file."
+		echo "$HOME/.config/compass-ci/rootfs-passwd"
+		exit 1
+        }
+
+        export ROOT_PASSWD=$(cat "$root_pwd_file")
+}
+
+pull_docker_image()
+{
+	docker pull $image
+	if [ $? = 0 ]; then
+		echo "finish downloading image"
+	else
+		echo "[ERROR] Pull docker image failed."
+		exit 1
+	fi
+}
+
+docker_cp_image()
+{
+	docker cp -a init_docker:/tmp/${IMAGE_NAME} $HOME/ 
+	echo "result: $(ls $HOME/${IMAGE_NAME})"
+}

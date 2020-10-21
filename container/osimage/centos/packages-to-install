@@ -1,0 +1,9 @@
+openssh-server
+openssl
+cifs-utils
+hostname
+curl
+iproute
+iputils
+which
+time
