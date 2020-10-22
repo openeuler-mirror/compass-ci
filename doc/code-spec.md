@@ -19,6 +19,13 @@ code注意事项
 
 - 如果注释仅仅是代码的简单重复, 不提供额外信息量, 不要写.
 
+- puts/printf字符串应当容易搜索(grep)。特别注意包含足够长的固定内容substring.
+例如：
+	die "test yaml\(${test_yaml}\) not exist in ${LKP_SRC}/jobs !!!"
+==>
+	die "cannot find test yaml ($test_yaml) in $LKP_SRC/jobs"
+	     ^^^^^^^^^^^^^^^^^^^^^ grep-friendly fixed substring
+
 重构友好编码
 ============
 
