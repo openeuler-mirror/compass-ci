@@ -227,6 +227,7 @@ class Sched
         "job_id"    => job_id,
         "message"   => message.to_s,
         "job_state" => "submit",
+        "result_root" => "/srv#{job.result_root}"
       }
       return job_messages if response["error"]?
     end
@@ -278,6 +279,7 @@ class Sched
       "job_id"    => job_id,
       "message"   => message.to_s,
       "job_state" => "submit",
+      "result_root" => "/srv#{job.result_root}"
     }]
   end
 
@@ -441,6 +443,7 @@ class Sched
     if job
       job.update({"testbox" => testbox})
       job.set_result_root
+      puts %({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state": "set result root"})
       @redis.set_job(job)
     end
     return job
