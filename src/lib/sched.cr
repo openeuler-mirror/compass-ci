@@ -411,19 +411,26 @@ class Sched
     tbox_group = JobHelper.match_tbox_group(testbox)
     tbox = tbox_group.partition("--")[0]
 
-    boxes = [testbox, tbox_group, tbox]
+    queue_list = query_consumable_keys(tbox)
+
+    boxes = ["sched/" + testbox,
+             "sched/" + tbox_group,
+             "sched/" + tbox,
+             "sched/" + tbox_group + "/idle"]
     boxes.each do |box|
+      next if queue_list.select(box).size == 0
       count.times do
-        job = prepare_job("sched/#{box}", testbox)
+        job = prepare_job(box, testbox)
         return job if job
 
         sleep(1) unless count == 1
       end
     end
 
-    # when find no job at "sched/#{tbox_group}"
-    #   try to get from "sched/#{tbox_group}/idle"
-    return get_idle_job(tbox_group, testbox)
+    # when find no job, auto submit idle job at background
+    spawn { auto_submit_idle_job(tbox_group) }
+
+    return nil
   end
 
   private def prepare_job(queue_name, testbox)
@@ -573,5 +580,40 @@ class Sched
     @redis.remove_finished_job(job_id)
 
     return %({"job_id": "#{job_id}", "job_state": "complete"})
+  end
+
+  private def query_consumable_keys(shortest_queue_name)
+    keys = [] of String
+    search = "sched/" + shortest_queue_name + "*"
+    response = @task_queue.query_keys(search)
+
+    return keys unless response[0] == 200
+
+    key_list = JSON.parse(response[1].to_json).as_a
+
+    # add consumable keys
+    key_list.each do |key|
+      queue_name = consumable_key?("#{key}")
+      keys << queue_name if queue_name
+    end
+
+    return keys
+  end
+
+  private def consumable_key?(key_name)
+    if key_name =~ /(.*)\/(.*)$/
+      case $2
+      when "in_process"
+        return nil
+      when "ready"
+        return $1
+      when "idle"
+        return key_name
+      else
+        return key_name
+      end
+    end
+
+    return nil
   end
 end
