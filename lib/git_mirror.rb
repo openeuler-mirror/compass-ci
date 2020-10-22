@@ -98,8 +98,10 @@ class MirrorMain
     @fork_stat[stat_key] = {
       queued: false,
       priority: 0,
-      fetch_time: nil,
-      new_refs_time: nil
+      fetch_time: [],
+      offset_fetch: 0,
+      new_refs_time: [],
+      offset_new_refs: 0
     }
   end
 
@@ -152,10 +154,9 @@ class MirrorMain
 
     feedback_info = @feedback_queue.pop(true)
     git_repo = feedback_info[:git_repo]
-    @fork_stat[git_repo][:queued] = false
+    update_fork_stat(git_repo, feedback_info[:possible_new_refs])
     return unless feedback_info[:possible_new_refs]
 
-    @fork_stat[git_repo][:priority] += 1
     return reload_fork_info if git_repo == 'upstream-repos/upstream-repos'
 
     new_refs = check_new_refs(git_repo)
@@ -196,8 +197,8 @@ class MirrorMain
     @git_info[git_repo] = YAML.safe_load(File.open(repodir))
     @git_info[git_repo]['git_repo'] = git_repo
     @git_info[git_repo].merge!(@defaults[project]) if @defaults[project]
-    es_repo_update(git_repo, @git_info[git_repo])
     fork_stat_init(git_repo)
+    es_repo_update(git_repo)
     @priority_queue.push git_repo, @priority
     @priority += 1
   end
@@ -255,11 +256,35 @@ class MirrorMain
     end
   end
 
-  def es_repo_update(git_repo, repo_info)
+  def es_repo_update(git_repo)
+    repo_info = @git_info[git_repo].merge(@fork_stat[git_repo])
+    repo_info.delete(:cur_refs) if repo_info.key?(:cur_refs)
     body = {
       "doc": repo_info,
       "doc_as_upsert": true
     }
     @es_client.update(index: 'repo', type: '_doc', id: git_repo, body: body)
+  end
+
+  def update_stat_fetch(git_repo)
+    @fork_stat[git_repo][:queued] = false
+    offset_fetch = @fork_stat[git_repo][:offset_fetch]
+    offset_fetch = 0 if offset_fetch >= 10
+    @fork_stat[git_repo][:fetch_time][offset_fetch] = Time.now.to_s
+    @fork_stat[git_repo][:offset_fetch] = offset_fetch + 1
+  end
+
+  def update_stat_new_refs(git_repo)
+    @fork_stat[git_repo][:priority] += 1
+    offset_new_refs = @fork_stat[git_repo][:offset_new_refs]
+    offset_new_refs = 0 if offset_new_refs >= 10
+    @fork_stat[git_repo][:new_refs_time][offset_new_refs] = Time.now.to_s
+    @fork_stat[git_repo][:offset_new_refs] = offset_new_refs + 1
+  end
+
+  def update_fork_stat(git_repo, possible_new_refs)
+    update_stat_fetch(git_repo)
+    update_stat_new_refs(git_repo) if possible_new_refs
+    es_repo_update(git_repo)
   end
 end
