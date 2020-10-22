@@ -248,23 +248,32 @@ def es_search(must, size, from)
   return es_query(query)['hits']['hits'], total
 end
 
-def get_job(result)
-  job = {}
-  ALL_FIELDS.each do |f|
-    job[f] = result[f]
+def get_jobs_result(result)
+  jobs = []
+  result.each do |r|
+    job = {}
+    ALL_FIELDS.each do |f|
+      job[f] = r['_source'][f]
+    end
+    jobs << job
   end
-  job
+  jobs
 end
 
-def search_job(git_repo, page_size, page_num)
+def search_job(condition_fields, page_size, page_num)
   must = []
-  must << { regexp: { upstream_repo: ".*#{git_repo}.*" } } if git_repo
-  jobs = []
-  result, total = es_search(must, page_size, page_num * page_size)
-  result.each do |r|
-    jobs << get_job(r['_source'])
+  FIELDS.each do |field|
+    value = space_to_nil(condition_fields[field])
+    next unless value
+
+    must << if field.to_s == 'upstream_repo'
+              { regexp: { field => ".*#{value}.*" } }
+            else
+              { term: { field => value } }
+            end
   end
-  return jobs, total
+  result, total = es_search(must, page_size, page_num * page_size)
+  return get_jobs_result(result), total
 end
 
 def get_banner(git_repo, branches)
@@ -291,17 +300,14 @@ def get_optimize_jobs_braches(jobs)
 end
 
 def get_jobs_body(params)
-  git_repo = space_to_nil(params[:upstream_repo])
-  page_size = get_positive_number(params[:page_size], 20)
-  page_num = get_positive_number(params[:page_num], 1) - 1
-  jobs, total = search_job(git_repo, page_size, page_num)
+  page_size = get_positive_number(params.delete(:page_size), 20)
+  page_num = get_positive_number(params.delete(:page_num), 1) - 1
+  jobs, total = search_job(params, page_size, page_num)
   jobs, branches = get_optimize_jobs_braches(jobs)
   {
     total: total,
-    filter: {
-      upstream_repo: git_repo
-    },
-    banner: get_banner(git_repo, branches),
+    filter: params,
+    banner: get_banner(params[:upstream_repo], branches),
     jobs: jobs,
     fields: FIELDS
   }.to_json
