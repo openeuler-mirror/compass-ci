@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig'
+
+docker_rm 'send-internet-mail'
+
+names = Set.new %w[
+  ROBOT_EMAIL_ADDRESS
+  ROBOT_EMAIL_PASSWORD
+  SEND_MAIL_PORT
+]
+
+defaults = relevant_defaults(names)
+
+defaults['CCI_SRC'] = '/c/compass-ci'
+
+env = docker_env(defaults)
+
+cmd = %W[
+  docker run
+  --restart=always
+  --name=send-internet-mail
+  -d
+] + env + %W[
+  -p #{defaults['SEND_MAIL_PORT']}:#{defaults['SEND_MAIL_PORT']}
+  -v #{ENV['CCI_SRC']}:#{defaults['CCI_SRC']}
+  -v /etc/localtime:/etc/localtime:ro
+  -w #{defaults['CCI_SRC']}/container/send-internet-mail
+  --log-driver json-file
+  send-internet-mail
+]
+
+cmd += ['ruby', 'send-internet-mail.rb']
+
+system(*cmd)
