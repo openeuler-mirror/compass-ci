@@ -144,7 +144,7 @@ class Sched
   def get_cluster_config(cluster_file, lkp_initrd_user, os_arch)
     lkp_src = Jobfile::Operate.prepare_lkp_tests(lkp_initrd_user, os_arch)
     cluster_file_path = Path.new(lkp_src, "cluster", cluster_file)
-    return YAML.parse(File.read(cluster_file_path)).as_h
+    return YAML.parse(File.read(cluster_file_path))
   end
 
   def get_commit_date(job)
@@ -198,8 +198,16 @@ class Sched
     # collect all job ids
     job_ids = [] of String
 
+    net_id = "192.168.222"
+    ip0 = cluster_config["ip0"]?
+    if ip0
+      ip0 = ip0.as_i
+    else
+      ip0 = 1
+    end
+
     # steps for each host
-    cluster_config.each do |host, config|
+    cluster_config["nodes"].as_h.each do |host, config|
       tbox_group = host.to_s
       job_id = add_task(tbox_group, lab)
 
@@ -219,7 +227,15 @@ class Sched
       job["testbox"] = tbox_group
       job.update_tbox_group(tbox_group)
       job["node_roles"] = config["roles"].as_a.join(" ")
-      job["node_macs"] = config["macs"].as_a.join(" ")
+      direct_macs = config["macs"].as_a
+      direct_ips = [] of String
+      direct_macs.size.times do
+        raise "Host id is greater than 254, host_id: #{ip0}" if ip0 > 254
+        direct_ips << "#{net_id}.#{ip0}"
+        ip0 += 1
+      end
+      job["direct_macs"] = direct_macs.join(" ")
+      job["direct_ips"] = direct_ips.join(" ")
 
       response = add_job(job, job_id)
       message = (response["error"]? ? response["error"]["root_cause"] : "")
