@@ -47,14 +47,19 @@ FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 FLUENTD_SERVER_PORT = defaults['FLUENTD_SERVER_PORT'] || '24224'
 docker_rm "s001-alpine-#{SCHED_PORT}"
 
+bind_list = []
+[SCHED_HOST, '172.17.0.1'].uniq.each do |ip|
+  bind_list << '-p'
+  bind_list << "#{ip}:#{SCHED_PORT}:#{SCHED_PORT}"
+end
+
 cmd = %W[
   docker run
   --restart=always
   --name s001-alpine-#{SCHED_PORT}
   -d
   -u 1090:1090
-  -p #{SCHED_PORT}:#{SCHED_PORT}
-] + env + %W[
+] + bind_list + env + %W[
   -e CCI_REPOS=#{CCI_REPOS}
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}

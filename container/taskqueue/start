@@ -16,10 +16,17 @@ defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
 service_port = defaults['TASKQUEUE_PORT'] || '3060'
+service_host = defaults['TASKQUEUE_HOST'] || '172.17.0.1'
 service_name = 'taskqueue'
 service_image = "#{service_name}-alpine:v0.001-#{service_port}"
 
 docker_rm "#{service_name}-#{service_port}"
+
+bind_list = []
+[service_host, '172.17.0.1'].uniq.each do |ip|
+  bind_list << '-p'
+  bind_list << "#{ip}:#{service_port}:#{service_port}"
+end
 
 cmd = %W[
   docker run
@@ -27,8 +34,8 @@ cmd = %W[
   --restart=always
   -d
   -u 1090:1090
-  -p #{service_port}:#{service_port}
 ]
+cmd += bind_list
 cmd += env
 cmd += %W[
   -v /etc/localtime:/etc/localtime:ro
