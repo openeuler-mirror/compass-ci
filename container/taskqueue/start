@@ -8,6 +8,7 @@ require_relative '../defconfig.rb'
 
 names = Set.new %w[
   TASKQUEUE_PORT
+  TASKQUEUE_HOST
   REDIS_HOST
   REDIS_PORT
 ]
