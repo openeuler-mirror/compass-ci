@@ -4,25 +4,33 @@
 require "json"
 require "http/client"
 
+def loop_till_connectable
+  loop do
+    begin
+      return yield
+    rescue ex
+      puts "#{ex}, retrying in 5s..."
+      sleep(5)
+    end
+  end
+end
+
 class TaskQueueAPI
   def initialize
-    @port = ENV.has_key?("TASKQUEUE_PORT") ? ENV["TASKQUEUE_PORT"].to_i32 : 3060
-    @host = ENV.has_key?("TASKQUEUE_HOST") ? ENV["TASKQUEUE_HOST"] : "172.17.0.1"
+    port = ENV.has_key?("TASKQUEUE_PORT") ? ENV["TASKQUEUE_PORT"].to_i32 : 3060
+    host = ENV.has_key?("TASKQUEUE_HOST") ? ENV["TASKQUEUE_HOST"] : "172.17.0.1"
+    @client = HTTP::Client.new(host, port: port)
   end
 
   def add_task(service_queue_path : String, task : JSON::Any)
     params = HTTP::Params.encode({"queue" => service_queue_path})
-    client = HTTP::Client.new(@host, port: @port)
-    response = client.post("/add?" + params, body: task.to_json)
-    client.close
+    response = loop_till_connectable { @client.post("/add?" + params, body: task.to_json) }
     arrange_response(response)
   end
 
   def query_keys(service_key_with_wild_char : String)
     params = HTTP::Params.encode({"queue" => service_key_with_wild_char})
-    client = HTTP::Client.new(@host, port: @port)
-    response = client.get("/keys?" + params)
-    client.close
+    response = loop_till_connectable { @client.get("/keys?" + params) }
     arrange_response(response)
   end
 
@@ -42,9 +50,7 @@ class TaskQueueAPI
   end
 
   private def response_put_api(cmd : String, params : String)
-    client = HTTP::Client.new(@host, port: @port)
-    response = client.put("/#{cmd}?" + params)
-    client.close
+    response = loop_till_connectable { @client.put("/#{cmd}?" + params) }
     arrange_response(response)
   end
 
