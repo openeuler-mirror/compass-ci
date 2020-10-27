@@ -45,6 +45,8 @@ SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'
 FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 FLUENTD_SERVER_PORT = defaults['FLUENTD_SERVER_PORT'] || '24224'
+DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
+
 docker_rm "s001-alpine-#{SCHED_PORT}"
 
 bind_list = []
@@ -70,6 +72,7 @@ cmd = %W[
   -e FLUENTD_SERVER_PORT=#{FLUENTD_SERVER_PORT}
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
   -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
   -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
   -v /etc/localtime:/etc/localtime:ro
