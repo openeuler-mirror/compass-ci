@@ -39,6 +39,7 @@ module Scheduler
 
   # echo alive
   get "/" do |env|
+    env.response.headers["Connection"] = "close"
     debug_message(env, "Env= {\n#{`export`}}")
     "LKP Alive! The time is #{Time.local}, version = #{VERSION}"
   end
@@ -49,6 +50,7 @@ module Scheduler
   # /boot.xxx/host/${hostname}
   # /boot.yyy/mac/${mac}
   get "/boot.:boot_type/:parameter/:value" do |env|
+    env.response.headers["Connection"] = "close"
     response = sched.find_job_boot(env)
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
@@ -59,6 +61,7 @@ module Scheduler
 
   # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
   get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
+    env.response.headers["Connection"] = "close"
     response = sched.find_next_job_boot(env)
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
@@ -71,6 +74,7 @@ module Scheduler
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
   post "/submit_job" do |env|
+    env.response.headers["Connection"] = "close"
     job_messages = sched.submit_job(env)
 
     job_messages.each do |job_message|
@@ -82,6 +86,7 @@ module Scheduler
 
   # file download server
   get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
+    env.response.headers["Connection"] = "close"
     job_id = env.params.url["job_id"]
     job_package = env.params.url["job_package"]
     file_path = ::File.join [Kemal.config.public_folder, job_id, job_package]
@@ -98,6 +103,7 @@ module Scheduler
   #
   # curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg&mac=00-01-02-03-04-05"
   put "/set_host_mac" do |env|
+    env.response.headers["Connection"] = "close"
     if (client_hostname = env.params.query["hostname"]?) && (client_mac = env.params.query["mac"]?)
       sched.set_host_mac(client_mac, client_hostname)
 
@@ -109,6 +115,7 @@ module Scheduler
 
   # curl -X PUT "http://localhost:3000/del_host_mac?mac=00-01-02-03-04-05"
   put "/del_host_mac" do |env|
+    env.response.headers["Connection"] = "close"
     if client_mac = env.params.query["mac"]?
       sched.del_host_mac(client_mac)
 
@@ -124,6 +131,7 @@ module Scheduler
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
   get "/~lkp/cgi-bin/lkp-jobfile-append-var" do |env|
+    env.response.headers["Connection"] = "close"
     puts sched.update_job_parameter(env)
 
     "Done"
@@ -147,6 +155,7 @@ module Scheduler
   #    response: get "server ip" from cluster state,
   #              return "server=<server ip>".
   get "/~lkp/cgi-bin/lkp-cluster-sync" do |env|
+    env.response.headers["Connection"] = "close"
     response = sched.request_cluster_state(env)
 
     debug_message(env, response)
@@ -158,6 +167,7 @@ module Scheduler
   # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
   get "/~lkp/cgi-bin/lkp-post-run" do |env|
+    env.response.headers["Connection"] = "close"
     # get job_id from request
     job_id = env.params.query["job_id"]?
     if job_id
@@ -168,12 +178,14 @@ module Scheduler
   end
 
   get "/~lkp/cgi-bin/lkp-wtmp" do |env|
+    env.response.headers["Connection"] = "close"
     puts sched.update_tbox_wtmp(env)
 
     "Done"
   end
 
   get "/~lkp/cgi-bin/report_ssh_port" do |env|
+    env.response.headers["Connection"] = "close"
     testbox = env.params.query["tbox_name"]
     ssh_port = env.params.query["ssh_port"].to_s
     job_id = env.params.query["job_id"].to_s
