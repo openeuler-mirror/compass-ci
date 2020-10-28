@@ -7,14 +7,14 @@ require 'set'
 require_relative '../defconfig.rb'
 
 names = Set.new %w[
-  FLUENTD_SERVER_HOST
-  FLUENTD_SERVER_PORT
+  MASTER_FLUENTD_HOST
+  MASTER_FLUENTD_PORT
 ]
 
 defaults = relevant_defaults(names)
-defaults['FLUENTD_SERVER_PORT'] ||= '24224'
+defaults['MASTER_FLUENTD_PORT'] ||= '24224'
 env = docker_env(defaults)
-raise 'must config FLUENTD_SERVER_HOST' unless defaults['FLUENTD_SERVER_HOST']
+raise 'must config MASTER_FLUENTD_HOST' unless defaults['MASTER_FLUENTD_HOST']
 
 docker_rm 'sub-fluentd'
 

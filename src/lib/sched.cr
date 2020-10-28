@@ -493,8 +493,8 @@ class Sched
     full_path_patterns = "#{ENV["CCI_REPOS"]}/lab-#{ENV["lab"]}/allot/idle/#{tbox_group}/*.yaml"
     extra_job_fields = [
       "idle_job=true",
-      "FLUENTD_SERVER_HOST=#{ENV["FLUENTD_SERVER_HOST"]}",
-      "FLUENTD_SERVER_PORT=#{ENV["FLUENTD_SERVER_PORT"]}",
+      "MASTER_FLUENTD_HOST=#{ENV["MASTER_FLUENTD_HOST"]}",
+      "MASTER_FLUENTD_PORT=#{ENV["MASTER_FLUENTD_PORT"]}",
     ]
 
     Jobfile::Operate.auto_submit_job(
