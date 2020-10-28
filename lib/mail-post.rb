@@ -22,7 +22,7 @@ post '/send_mail_yaml' do
     'body' => data['body']
   }
 
-  check_send_mail(mail_info)
+  send_mail(mail_info)
 end
 
 post '/send_mail_text' do
