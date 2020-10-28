@@ -13,6 +13,7 @@ cmd=(
 	-v /srv/pub:/srv/pub:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result:/srv/result:ro
+	-v /srv/initrd/qemu-image:/srv/initrd/qemu-image:ro
 	-d
 	srv-http
 )
