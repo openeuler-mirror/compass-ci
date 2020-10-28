@@ -165,32 +165,30 @@ class Sched
   end
 
   def submit_job(env : HTTP::Server::Context)
-    begin
-      body = env.request.body.not_nil!.gets_to_end
+    body = env.request.body.not_nil!.gets_to_end
 
-      job_content = JSON.parse(body)
-      job = Job.new(job_content, job_content["id"]?)
-      job["commit_date"] = get_commit_date(job)
+    job_content = JSON.parse(body)
+    job = Job.new(job_content, job_content["id"]?)
+    job["commit_date"] = get_commit_date(job)
 
-      # it is not a cluster job if cluster field is empty or
-      # field's prefix is 'cs-localhost'
-      cluster_file = job["cluster"]
-      if cluster_file.empty? || cluster_file.starts_with?("cs-localhost")
-        return submit_single_job(job)
-      else
-        cluster_config = get_cluster_config(cluster_file,
-          job.lkp_initrd_user,
-          job.os_arch)
-        return submit_cluster_job(job, cluster_config)
-      end
-    rescue ex
-      puts ex.inspect_with_backtrace
-      return [{
-        "job_id"    => "0",
-        "message"   => ex.to_s,
-        "job_state" => "submit",
-      }]
+    # it is not a cluster job if cluster field is empty or
+    # field's prefix is 'cs-localhost'
+    cluster_file = job["cluster"]
+    if cluster_file.empty? || cluster_file.starts_with?("cs-localhost")
+      return submit_single_job(job)
+    else
+      cluster_config = get_cluster_config(cluster_file,
+        job.lkp_initrd_user,
+        job.os_arch)
+      return submit_cluster_job(job, cluster_config)
     end
+  rescue ex
+    puts ex.inspect_with_backtrace
+    return [{
+      "job_id"    => "0",
+      "message"   => ex.to_s,
+      "job_state" => "submit",
+    }]
   end
 
   # return:
