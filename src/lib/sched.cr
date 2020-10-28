@@ -99,25 +99,30 @@ class Sched
     when "write_state"
       node_roles = env.params.query["node_roles"]
       node_ip = env.params.query["ip"]
+      direct_ips = env.params.query["direct_ips"]
+      direct_macs = env.params.query["direct_macs"]
+
       update_cluster_state(cluster_id, job_id, "roles", node_roles)
       update_cluster_state(cluster_id, job_id, "ip", node_ip)
+      update_cluster_state(cluster_id, job_id, "direct_ips", direct_ips)
+      update_cluster_state(cluster_id, job_id, "direct_macs", direct_macs)
     when "roles_ip"
       role = "server"
-      server_ip = get_ip(cluster_id, role)
-      return "server=#{server_ip}"
+      role_state = get_role_state(cluster_id, role)
+      raise "Missing #{role} state in cluster state" unless role_state
+      return "server=#{role_state["ip"]}\n" \
+             "direct_server_ips=#{role_state["direct_ips"]}"
     end
 
     # show cluster state
     return @redis.hash_get("sched/cluster_state", cluster_id)
   end
 
-  # get the ip of role from cluster_state
-  def get_ip(cluster_id, role)
+  # get the node state of role from cluster_state
+  private def get_role_state(cluster_id, role)
     cluster_state = get_cluster_state(cluster_id)
-    cluster_state.each_value do |config|
-      if %(#{config["roles"]}) == role
-        return config["ip"]
-      end
+    cluster_state.each_value do |role_state|
+      return role_state if role_state["roles"] == role
     end
   end
 
