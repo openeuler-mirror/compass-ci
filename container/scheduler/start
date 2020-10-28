@@ -17,8 +17,6 @@ names = Set.new %w[
   OS_HTTP_PORT
   INITRD_HTTP_HOST
   INITRD_HTTP_PORT
-  FLUENTD_HOST
-  FLUENTD_PORT
   TASKQUEUE_PORT
   TASKQUEUE_HOST
   GIT_SERVER
@@ -42,8 +40,6 @@ DEFAULT_CCI = "#{CCI_REPOS}/compass-ci"
 LAB = defaults['lab'] || 'z9'
 SCHED_PORT = defaults['SCHED_PORT'] || '3000'
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
-FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'
-FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 FLUENTD_SERVER_PORT = defaults['FLUENTD_SERVER_PORT'] || '24224'
 DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
 
@@ -79,8 +75,6 @@ cmd = %W[
   -v /srv/result:/srv/result
   -v /srv/initrd:/srv/initrd:ro
   -v /srv/os:/srv/os:ro
-  --log-driver=fluentd
-  --log-opt fluentd-address=#{FLUENTD_HOST}:#{FLUENTD_PORT}
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
   --log-opt tag=scheduler-#{SCHED_PORT}

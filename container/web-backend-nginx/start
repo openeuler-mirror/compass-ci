@@ -3,8 +3,6 @@
 
 
 [[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
-[[ $FLUENTD_HOST ]] || FLUENTD_HOST=localhost
-[[ $FLUENTD_PORT ]] || FLUENTD_PORT=24224
 
 . $CCI_SRC/container/defconfig.sh
 docker_rm web-backend-nginx
@@ -17,11 +15,8 @@ cmd=(
 
 	-v /etc/ssl/certs:/opt/cert
 
-	--log-driver=fluentd
-	--log-opt fluentd-address=$FLUENTD_HOST:$FLUENTD_PORT
 	--log-opt mode=non-blocking
 	--log-opt max-buffer-size=4m
-	--log-opt tag=web-backend-nginx
 
 	web-backend-nginx
 )

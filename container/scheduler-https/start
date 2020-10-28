@@ -19,8 +19,6 @@ names = Set.new %w[
   OS_HTTP_PORT
   INITRD_HTTP_HOST
   INITRD_HTTP_PORT
-  FLUENTD_HOST
-  FLUENTD_PORT
   TASKQUEUE_PORT
   TASKQUEUE_HOST
 ]
@@ -34,8 +32,6 @@ SCHED_PORT = defaults['SCHED_PORT'] || '3000'
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 SCHED_HTTPS_PORT = defaults['SCHED_HTTPS_PORT'] || 11306
 SCHED_HTTPS_HOST = defaults['SCHED_HTTPS_HOST'] || 'api.compass-ci.openeuler.org'
-FLUENTD_HOST = defaults['FLUENTD_HOST'] || '172.17.0.1'
-FLUENTD_PORT = defaults['FLUENTD_PORT'] || '24224'
 
 docker_rm "s001-alpine-#{SCHED_HTTPS_PORT}"
 
@@ -59,8 +55,6 @@ cmd = %W[
   -v /srv/initrd:/srv/initrd:ro
   -v /srv/os:/srv/os:ro
   -v /etc/compass-ci/ca:/ca
-  --log-driver=fluentd
-  --log-opt fluentd-address=#{FLUENTD_HOST}:#{FLUENTD_PORT}
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
   --log-opt tag=scheduler-#{SCHED_HTTPS_PORT}
