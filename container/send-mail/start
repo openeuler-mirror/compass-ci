@@ -1,60 +1,36 @@
-#!/bin/bash
+#!/usr/bin/env ruby
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
 
-. $CCI_SRC/container/defconfig.sh
+require 'set'
+require_relative '../defconfig'
 
-docker_rm send-mail
+docker_rm 'send-mail'
 
-cmd=(
-	docker run
-	--restart=always
-	--name=send-mail
-	-u nobody
-	-d
-	-p 11311:11311
-	-v /etc/localtime:/etc/localtime:ro
-	send-mail
-)
+names = Set.new %w[
+  LOCAL_SEND_MAIL_PORT
+  LOCAL_ROBOT_EMAIL_ADDRESS
+]
 
-"${cmd[@]}"
+defaults = relevant_defaults(names)
 
-cat<<EOF
-port: 11311
----
-data='{
-"from": "email_from_addr" # default: team@crystal.ci
-"subject": "email subject",
-"to": "email_to_addr",
-"body": "email message"
-}'
+cmd = %W[
+  docker run
+  --restart=always
+  --name=send-mail
+  -u nobody
+  -d
+  -e CCI_SRC=/c/compass-ci
+  -e SEND_MAIL_PORT=#{defaults['LOCAL_SEND_MAIL_PORT']}
+  -e ROBOT_EMAIL_ADDRESS=#{defaults['LOCAL_ROBOT_EMAIL_ADDRESS']}
+  -p #{defaults['LOCAL_SEND_MAIL_PORT']}:#{defaults['LOCAL_SEND_MAIL_PORT']}
+  -v #{ENV['CCI_SRC']}:/c/compass-ci
+  -v /etc/localtime:/etc/localtime:ro
+  -w /c/compass-ci/container/send-mail
+  send-mail
+]
 
-or
+cmd += ['ruby', 'send-mail.rb']
 
-data="
-from: email_from_addr # default: team@crystal.ci
-subject: email subject
-to: email_to_addr
-body: email message"
-
-when compass-ci:
-	curl -XPOST 'localhost:11311/send_mail_yaml' -d "$data"
-when other server:
-	curl -XPOST '124.90.34.227:11311/send_mail_yaml' -d "$data"
-
----
-data="
-From: email_from_addr # default: team@crystal.ci
-To: email_to_addr
-Subject: email_subject
-
-mail_msg_line1
-mail_msg_line2
-...
-"
-
-when compass-ci:
-	curl -XPOST 'localhost:11311/send_mail_text' -d "$data"
-when other server:
-	curl -XPOST '124.90.34.227:11311/send_mail_text' -d "$data"
-EOF
+system(*cmd)
