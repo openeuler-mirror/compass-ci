@@ -10,18 +10,16 @@ require_relative "#{ENV['CCI_SRC']}/src/delimiter/utils"
 
 # git bisect run
 class GitBisectRun
-  def initialize(job_id, error_id, tbox_group, work_dir)
+  def initialize(job_id, error_id, work_dir)
     @es = ESQuery.new
     @job_id = job_id
     @error_id = error_id
-    @tbox_group = tbox_group
     @work_dir = work_dir
   end
 
   def git_bisect
     job = @es.query_by_id @job_id
     job.delete('stats') if job.key?('stats')
-    job['tbox_group'] = @tbox_group
     commit = `git -C #{@work_dir} log --pretty=format:"%H" -1`
     job['upstream_commit'] = commit
     get_bisect_status job
@@ -41,8 +39,7 @@ end
 
 job_id = ARGV[0]
 error_id = ARGV[1]
-tbox_group = ARGV[2]
-work_dir = ARGV[3]
+work_dir = ARGV[2]
 
-run = GitBisectRun.new job_id, error_id, tbox_group, work_dir
+run = GitBisectRun.new job_id, error_id, work_dir
 run.git_bisect
