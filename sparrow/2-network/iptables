@@ -25,3 +25,4 @@ DOCKER0_SUBNET=172.17.0.0/16
 firewall-cmd --zone=public --add-rich-rule="rule family=ipv4 source address=$DOCKER0_SUBNET accept"
 firewall-cmd --zone=public --add-rich-rule="rule family=ipv4 source address=$BR0_SUBNET accept"
 firewall-cmd --zone=public --add-rich-rule="rule family=ipv4 source address=0.0.0.0/32 accept"
+firewall-cmd --zone=public --add-masquerade
