@@ -17,6 +17,8 @@ cmd=(
 	-v /var/run/docker.sock:/var/run/docker.sock:ro
 	-v /srv/cache/netdata_cache:/var/cache/netdata
 	-v /srv/cache/netdata_lib:/var/lib/netdata
+	--log-driver json-file
+	--log-opt max-size=1g
 	--cap-add SYS_PTRACE
 	--security-opt apparmor=unconfined
 	netdata/netdatalkp
