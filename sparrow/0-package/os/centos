@@ -22,4 +22,4 @@ pkgs=(
 	busybox
 )
 
-yum install -y "${pkgs[@]}"
+yum install -y --skip-broken "${pkgs[@]}"

@@ -20,4 +20,4 @@ pkgs=(
 	busybox
 )
 
-apt-get install -y "${pkgs[@]}"
+apt-get install -y --fix-missing "${pkgs[@]}"
