@@ -36,12 +36,27 @@ class ESQuery
   end
 end
 
+# Range Query Example:
+# range = {
+#   start_time: {
+#     gte: '2020-09-10 01:50:00',
+#     lte: '2020-09-10 01:53:00'
+#   },
+#   end_time: {
+#     gt: '2020-09-10 01:52:00',
+#     lt: '2020-09-10 01:54:00'
+#   }
+# }
+# items['range'] = range
+# build_mutli_field_subquery_body(items)
 def build_mutli_field_subquery_body(items)
   query_fields = []
   items.each do |key, value|
     if value.is_a?(Array)
       inner_query = build_multi_field_or_query_body(key, value)
       query_fields.push({ bool: { should: inner_query } })
+    elsif key.to_s == 'range'
+      query_fields.concat(value.map { |k, v| { range: { k => v } } })
     else
       query_fields.push({ term: { key => value } })
     end
