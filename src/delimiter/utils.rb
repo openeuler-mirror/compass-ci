@@ -87,5 +87,23 @@ module Utils
 
       return 'good'
     end
+
+    def init_job_content(job_id)
+      es = ESQuery.new
+      job = es.query_by_id(job_id)
+      raise "es query job id: #{job_id} failed!" unless job
+
+      job['bad_job_id'] = job_id
+      job['suite'] = 'bisect'
+
+      job.delete('id')
+      job.delete('uuid')
+      job.delete('error_ids')
+      job.delete('start_time')
+      job.delete('end_time')
+      job.delete('loadavg')
+
+      return job
+    end
   end
 end

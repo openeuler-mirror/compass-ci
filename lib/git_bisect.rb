@@ -35,13 +35,7 @@ class GitBisect
   end
 
   def set_bad_job
-    @bad_job = @es.query_by_id @bad_job_id
-    raise "es query job id: #{@bad_job_id} failed!" unless @bad_job
-
-    @bad_job.delete('uuid')
-    @bad_job.delete('stats')
-    @bad_job.delete('id')
-    @bad_job.delete('error_ids')
+    @bad_job = Utils.init_job_content(@bad_job_id)
   end
 
   def set_upstream

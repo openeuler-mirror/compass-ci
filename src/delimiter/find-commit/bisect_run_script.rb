@@ -18,8 +18,7 @@ class GitBisectRun
   end
 
   def git_bisect
-    job = @es.query_by_id @job_id
-    job.delete('stats') if job.key?('stats')
+    job = Utils.init_job_content(@job_id)
     commit = `git -C #{@work_dir} log --pretty=format:"%H" -1`
     job['upstream_commit'] = commit
     get_bisect_status job
