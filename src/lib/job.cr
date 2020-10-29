@@ -73,6 +73,7 @@ class Job
     tbox_group
     testbox
     lab
+    queue
     initrd_pkg
     initrd_deps
     initrds_uri
@@ -139,6 +140,7 @@ class Job
     set_kernel_params()
     set_lkp_server()
     set_sshr_port()
+    set_queue()
   end
 
   private def append_init_field
@@ -197,6 +199,16 @@ class Job
 
   private def set_result_service
     self["result_service"] = "raw_upload"
+  end
+
+  private def set_queue
+    return if @hash.has_key?("queue")
+
+    # set default value
+    self["queue"] = tbox_group
+    if tbox_group.to_s.starts_with?(/(vm|dc)-/)
+      self["queue"] = "#{tbox_group}.#{arch}"
+    end
   end
 
   # if not assign tbox_group, set it to a match result from testbox
