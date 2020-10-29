@@ -68,6 +68,36 @@ PATCH注意事项
 - 论述问题的时候，引用必要的代码或output，帮助明确逻辑流/数据流。
   引文加TAB缩进显示。
 
+PATCH格式
+=========
+
+## patch title/subject
+
+一般形式为
+
+        area: ...
+其中area为模块名、目录、文件名。
+
+如果是bug fix，就写成
+
+        area: fix ...
+
+如果是文档，可以写成
+
+        doc: ...
+        doc/file.md: ...
+
+如果是重构，就写成
+
+        area: refactor xxx
+        area: simplify xxx
+
+首字母不必大写
+勿以'.'结尾
+
+一般别写 "improve ..."
+特别别写 "modify ..." 因为这个词没啥信息量。
+
 PATCH参考材料
 =============
 
