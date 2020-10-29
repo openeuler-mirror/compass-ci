@@ -31,12 +31,10 @@ class AutoSubmit
   def submit(newrefs_info, submit_argv)
     newrefs_info['new_refs']['heads'].each do |branch, commit_id|
       real_argvs = Array.new(submit_argv)
-      commit_date = `git -C /srv/git/#{newrefs_info['git_repo']}.git log  --format=%ct -1 #{commit_id}`
       real_argvs.push("upstream_branch=#{branch.delete_prefix('refs/heads/')}")
       real_argvs.push("upstream_commit=#{commit_id}")
       tag = %x(git -C /srv/git/#{newrefs_info['git_repo']}.git tag --points-at #{commit_id})
       real_argvs.push("upstream_tag=#{tag}") unless tag.empty?
-      real_argvs.push("commit_date=#{commit_date}")
 
       system(real_argvs.join(' '))
     end
