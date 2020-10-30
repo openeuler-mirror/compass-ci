@@ -1,0 +1,16 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm ntp-server
+cmd=(
+	docker run 
+	-id
+	--name=ntp-server 
+	-p 123:123/udp
+	ntp-server
+)
+
+"${cmd[@]}"
