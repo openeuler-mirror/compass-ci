@@ -3,6 +3,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 CONTAINER_PATH="$CCI_SRC/container"
+export action=$1
 
 build_depends()
 {
@@ -30,8 +31,10 @@ do_one()
 	(
 		cd $container
 		[ "$container_name" == 'sub-fluentd' ] && exit
-		[ -x build ] && ./build
-		[ -x install ] && ./install
+		if [ "$action" != "reboot" ]; then
+			[ -x build ] && ./build
+			[ -x install ] && ./install
+		fi
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
 	)
