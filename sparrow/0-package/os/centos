@@ -20,6 +20,7 @@ pkgs=(
 	liblockfile
 	lockfile-progs
 	busybox
+	iproute
 )
 
 yum install -y --skip-broken "${pkgs[@]}"

@@ -19,6 +19,7 @@ pkgs=(
 	redis
 	wget
 	busybox
+	iproute
 )
 
 yum install -y --skip-broken "${pkgs[@]}"

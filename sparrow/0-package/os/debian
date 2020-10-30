@@ -18,6 +18,7 @@ pkgs=(
 	lockfile-progs
 	bridge-utils
 	busybox
+	iproute2
 )
 
 apt-get install -y --fix-missing "${pkgs[@]}"
