@@ -1,8 +1,8 @@
 AvxToNeon/AvxToNeon:
-- testbox=vm-2p8g os=centos      os_version=7.6    os_mount=initramfs  os_arch=aarch64  api-avx2neon.yaml
+- testbox=vm-2p8g os=centos      os_version=7.6.1810    os_mount=initramfs  os_arch=aarch64  api-avx2neon.yaml
 compass-ci/compass-ci:
-- testbox=vm-2p8g os=openeuler   os_version=20.03  os_mount=initramfs  os_arch=aarch64  deploy-cci.yaml
-- testbox=vm-2p8g os=centos      os_version=7.6    os_mount=initramfs  os_arch=aarch64  deploy-cci.yaml
-- testbox=vm-2p8g os=debian      os_version=sid    os_mount=initramfs  os_arch=aarch64  deploy-cci.yaml
+- testbox=vm-2p8g os=openeuler   os_version=20.03       os_mount=initramfs  os_arch=aarch64  deploy-cci.yaml
+- testbox=vm-2p8g os=centos      os_version=7.6.1810    os_mount=initramfs  os_arch=aarch64  deploy-cci.yaml
+- testbox=vm-2p8g os=debian      os_version=sid         os_mount=initramfs  os_arch=aarch64  deploy-cci.yaml
 archlinux:
-- testbox=vm-2p16g os=openeuler   os_version=20.03  os_mount=initramfs  os_arch=aarch64  build-pkg.yaml
+- testbox=vm-2p16g os=openeuler   os_version=20.03      os_mount=initramfs  os_arch=aarch64  build-pkg.yaml
