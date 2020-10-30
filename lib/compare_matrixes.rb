@@ -689,11 +689,11 @@ def get_field_str(field)
 end
 
 # Print
-def get_theme(matrixes_values, matrixes_title, theme)
+def get_theme(matrixes_values, matrixes_titles, theme)
   theme = theme.to_sym if theme.is_a?(String)
   if theme == :html
-    print_html_result(matrixes_values, matrixes_title, false)
-    print_html_result(matrixes_values, matrixes_title, true)
+    print_html_result(matrixes_values, matrixes_titles, false)
+    print_html_result(matrixes_values, matrixes_titles, true)
     return
   elsif theme == :json
     return print_json_result(matrixes_values, matrixes_titles)
