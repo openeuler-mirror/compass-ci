@@ -117,7 +117,6 @@ class MirrorMain
     if File.directory? repodir
       load_defaults(repodir)
       entry_list = Dir.entries(repodir) - Array['.', '..', 'DEFAULTS', '.ignore', '.git']
-      entry_list = Array['linus'] if File.basename(repodir) == 'linux'
       entry_list.each do |entry|
         traverse_repodir("#{repodir}/#{entry}")
       end
