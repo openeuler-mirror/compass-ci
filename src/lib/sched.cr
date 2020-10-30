@@ -251,10 +251,10 @@ class Sched
       response = add_job(job, job_id)
       message = (response["error"]? ? response["error"]["root_cause"] : "")
       job_messages << {
-        "job_id"    => job_id,
-        "message"   => message.to_s,
-        "job_state" => "submit",
-        "result_root" => "/srv#{job.result_root}"
+        "job_id"      => job_id,
+        "message"     => message.to_s,
+        "job_state"   => "submit",
+        "result_root" => "/srv#{job.result_root}",
       }
       return job_messages if response["error"]?
     end
@@ -303,10 +303,10 @@ class Sched
     message = (response["error"]? ? response["error"]["root_cause"] : "")
 
     return [{
-      "job_id"    => job_id,
-      "message"   => message.to_s,
-      "job_state" => "submit",
-      "result_root" => "/srv#{job.result_root}"
+      "job_id"      => job_id,
+      "message"     => message.to_s,
+      "job_state"   => "submit",
+      "result_root" => "/srv#{job.result_root}",
     }]
   end
 
@@ -389,31 +389,83 @@ class Sched
     end
   end
 
-  def find_job_boot(env : HTTP::Server::Context)
-    api_param = env.params.url["value"]
+  def rand_queues(queues)
+    return queues if queues.empty?
 
-    case env.params.url["boot_type"]
-    when "ipxe"
-      hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
-    when "grub"
-      hostname = @redis.hash_get("sched/mac2host", normalize_mac(api_param))
-      if hostname.nil? # auto name new/unknown machine
-        hostname = "sut-#{api_param}"
-        set_host_mac(api_param, hostname)
+    queues_size = queues.size
+    base = Random.rand(queues_size)
+    temp_queues = [] of String
 
-        # auto submit a job to collect the host information
-        # grub hostname is link with ":", like "00:01:02:03:04:05"
-        # remind: if like with "-", last "-05" is treated as host number
-        #   then hostname will be "sut-00-01-02-03-04" !!!
-        Jobfile::Operate.auto_submit_job(
-          "#{ENV["LKP_SRC"]}/jobs/host-info.yaml",
-          "testbox: #{hostname}")
-      end
-    when "container"
-      hostname = api_param
+    (0..queues_size - 1).each do |index|
+      temp_queues << queues[(index + base) % queues_size]
     end
 
-    get_testbox_boot_content(hostname, env.params.url["boot_type"])
+    return temp_queues
+  end
+
+  def get_queues(host)
+    queues = [] of String
+
+    queues_str = @redis.hash_get("sched/host2queues", host)
+    return queues unless queues_str
+
+    queues_str.split(',', remove_empty: true) do |item|
+      queues << item.strip
+    end
+
+    return rand_queues(queues)
+  end
+
+  def get_job_from_queues(queues, testbox)
+    job = nil
+
+    queues.each do |queue|
+      job = prepare_job("sched/#{queue}", testbox)
+      return job if job
+    end
+
+    return job
+  end
+
+  def get_job_boot(host, boot_type)
+    queues = get_queues(host)
+    job = get_job_from_queues(queues, host)
+
+    if job
+      Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
+    end
+
+    return boot_content(job, boot_type)
+  end
+
+  # auto submit a job to collect the host information
+  # grub hostname is link with ":", like "00:01:02:03:04:05"
+  # remind: if like with "-", last "-05" is treated as host number
+  #   then hostname will be "sut-00-01-02-03-04" !!!
+  def submit_host_info_job(mac)
+    host = "sut-#{mac}"
+    set_host_mac(mac, host)
+
+    Jobfile::Operate.auto_submit_job(
+      "#{ENV["LKP_SRC"]}/jobs/host-info.yaml",
+      "testbox: #{host}")
+  end
+
+  def find_job_boot(env : HTTP::Server::Context)
+    value = env.params.url["value"]
+    boot_type = env.params.url["boot_type"]
+
+    case boot_type
+    when "ipxe"
+      host = @redis.hash_get("sched/mac2host", normalize_mac(value))
+    when "grub"
+      host = @redis.hash_get("sched/mac2host", normalize_mac(value))
+      submit_host_info_job(value) unless host
+    when "container"
+      host = value
+    end
+
+    get_job_boot(host, boot_type)
   end
 
   def find_next_job_boot(env)
@@ -423,7 +475,7 @@ class Sched
       hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
     end
 
-    get_testbox_boot_content(hostname, "ipxe")
+    get_job_boot(hostname, "ipxe")
   end
 
   def get_testbox_boot_content(testbox, boot_type)
