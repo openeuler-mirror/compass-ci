@@ -12,8 +12,19 @@ class Filter
   end
 
   def add_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
+    query = convert_hash_value_to_array(query)
+
     @hash[query] = Array(HTTP::WebSocket).new unless @hash[query]?
     @hash[query] << socket
+  end
+
+  private def convert_hash_value_to_array(query)
+    new_query = Hash(String, Array(JSON::Any)).new
+
+    query.as_h.each do |key, value|
+      new_query[key] = value.as_a? || [value]
+    end
+    JSON.parse(new_query.to_json)
   end
 
   def remove_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
@@ -45,10 +56,11 @@ class Filter
 
   def match_query(query : Hash(String, JSON::Any), msg : Hash(String, JSON::Any))
     query.each do |key, value|
-      if value == nil
+      value = value.as_a
+      if value.includes?(nil)
         return false unless msg.has_key?(key)
       else
-        return false unless value == msg[key]?
+        return false unless value.includes?(msg[key]?)
       end
     end
     return true

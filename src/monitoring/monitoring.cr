@@ -15,7 +15,8 @@ module Monitoring
     query = JSON::Any.new("")
 
     socket.on_message do |msg|
-      # query like {"job_id": 1}
+      # query like {"job_id": "1"}
+      # also can be {"job_id": ["1", "2"]}
       query = JSON.parse(msg)
       if query.as_h?
         filter.add_filter_rule(query, socket)
