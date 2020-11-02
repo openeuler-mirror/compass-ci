@@ -9,9 +9,9 @@ cmd=(
 	docker run 
 	-id
 	--name=rsync_server 
-	-v /srv/result:/result
+	-v /srv/result/upload:/srv/result/upload
 	-v /etc/localtime:/etc/localtime:ro
-	-p 873:873
+	-p 11387:11387
 	rsync_server:latest
 )
 
