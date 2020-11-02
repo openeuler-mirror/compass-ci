@@ -278,24 +278,24 @@ class Sched
   #   success: [{"job_id" => job_id, "message" => "", job_state => "submit"}]
   #   failure: [{"job_id" => "0", "message" => err_msg, job_state => "submit"}]
   def submit_single_job(job)
-    tbox_group = job.tbox_group
+    queue = job.queue
     return [{
       "job_id"    => "0",
-      "message"   => "get tbox group failed",
+      "message"   => "get queue failed",
       "job_state" => "submit",
-    }] unless tbox_group
+    }] unless queue
 
     # only single job will has "idle job" and "execute rate limiter"
     if job["idle_job"].empty?
-      tbox_group += "#{job.get_uuid_tag}"
+      queue += "#{job.get_uuid_tag}"
     else
-      tbox_group = "#{tbox_group}/idle"
+      queue = "#{queue}/idle"
     end
 
-    job_id = add_task(tbox_group, job.lab)
+    job_id = add_task(queue, job.lab)
     return [{
       "job_id"    => "0",
-      "message"   => "add task queue sched/#{tbox_group} failed",
+      "message"   => "add task queue sched/#{queue} failed",
       "job_state" => "submit",
     }] unless job_id
 
@@ -311,9 +311,9 @@ class Sched
   end
 
   # return job_id
-  def add_task(tbox_group, lab)
+  def add_task(queue, lab)
     task_desc = JSON.parse(%({"domain": "compass-ci", "lab": "#{lab}"}))
-    response = @task_queue.add_task("sched/#{tbox_group}", task_desc)
+    response = @task_queue.add_task("sched/#{queue}", task_desc)
     JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
   end
 
