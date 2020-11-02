@@ -113,11 +113,35 @@ module Scheduler
     end
   end
 
+  # curl -X PUT "http://localhost:3000/set_host2queues?queues=vm-2p8g.aarch64&host=vm-2p8g.aarch64"
+  put "/set_host2queues" do |env|
+    env.response.headers["Connection"] = "close"
+    if (client_queues = env.params.query["queues"]?) && (client_host = env.params.query["host"]?)
+      sched.set_host2queues(client_host, client_queues)
+
+      "Done"
+    else
+      "No yet"
+    end
+  end
+
   # curl -X PUT "http://localhost:3000/del_host_mac?mac=00-01-02-03-04-05"
   put "/del_host_mac" do |env|
     env.response.headers["Connection"] = "close"
     if client_mac = env.params.query["mac"]?
       sched.del_host_mac(client_mac)
+
+      "Done"
+    else
+      "No yet!"
+    end
+  end
+
+  # curl -X PUT "http://localhost:3000/del_host2queues?host=vm-2p8g.aarch64"
+  put "/del_host2queues" do |env|
+    env.response.headers["Connection"] = "close"
+    if client_host = env.params.query["host"]?
+      sched.del_host2queues(client_host)
 
       "Done"
     else

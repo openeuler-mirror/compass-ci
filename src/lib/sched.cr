@@ -38,6 +38,14 @@ class Sched
     @redis.hash_del("sched/mac2host", normalize_mac(mac))
   end
 
+  def set_host2queues(hostname : String, queues : String)
+    @redis.hash_set("sched/host2queues", hostname, queues)
+  end
+
+  def del_host2queues(hostname : String)
+    @redis.hash_del("sched/host2queues", hostname)
+  end
+
   # return:
   #     Hash(String, Hash(String, String))
   def get_cluster_state(cluster_id)
