@@ -19,3 +19,15 @@ cmd=(
 )
 
 "${cmd[@]}"
+
+echo "Please wait 60s for setting index"
+sleep 60
+
+curl -H "Content-Type: application/json" -XPUT "localhost:9202/_settings" -d '
+{
+	"index": {
+	"refresh_interval": "120s",
+	"translog.durability": "async",
+	"translog.sync_interval": "120s",
+	"translog.flush_threshold_size": "1024mb"}
+}'
