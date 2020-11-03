@@ -17,7 +17,7 @@ cmd=(
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/initrd:/srv/initrd
 	-v /srv/result:/srv/result
-	--name samba
+	--name os-cifs
 	--restart=always
 	alpine/samba
 )
