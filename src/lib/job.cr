@@ -87,6 +87,10 @@ class Job
     kernel_append_root
     kernel_params
     docker_image
+    kernel_version
+    linux_vmlinuz_path
+    linux_modules_initrd
+    linux_headers_initrd
   )
 
   macro method_missing(call)
@@ -135,6 +139,7 @@ class Job
     set_result_service()
     set_os_mount()
     set_depends_initrd()
+    set_kernel_version()
     set_initrds_uri()
     set_kernel_uri()
     set_kernel_append_root()
@@ -293,9 +298,17 @@ class Job
     return true
   end
 
+  private def set_kernel_version
+    boot_dir = "#{SRV_OS}/#{os_dir}/boot"
+    suffix = "-#{kernel_version}" if self["kernel_version"]?
+    self["linux_vmlinuz_path"]   = File.real_path("#{boot_dir}/vmlinuz#{suffix}")
+    self["linux_modules_initrd"] = File.real_path("#{boot_dir}/modules#{suffix}.cgz")
+    self["linux_headers_initrd"] = File.real_path("#{boot_dir}/headers#{suffix}.cgz")
+  end
+
   private def set_kernel_uri
     self["kernel_uri"] = "kernel #{OS_HTTP_PREFIX}" +
-                         "#{JobHelper.service_path("#{SRV_OS}/#{os_dir}/vmlinuz")}"
+                         "#{JobHelper.service_path("#{linux_vmlinuz_path}")}"
   end
 
   private def common_initrds
@@ -316,6 +329,10 @@ class Job
                     "#{JobHelper.service_path("#{osimage_dir}/current")}"
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
                     "#{JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")}"
+    temp_initrds << "#{OS_HTTP_PREFIX}" +
+                    "#{JobHelper.service_path("#{linux_modules_initrd}")}"
+    temp_initrds << "#{OS_HTTP_PREFIX}" +
+                    "#{JobHelper.service_path("#{linux_headers_initrd}")}"
 
     temp_initrds.concat(initrd_deps.split(/ /)) unless initrd_deps.empty?
     temp_initrds.concat(initrd_pkg.split(/ /)) unless initrd_pkg.empty?
