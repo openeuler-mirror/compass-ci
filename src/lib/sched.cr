@@ -650,7 +650,7 @@ class Sched
     end
 
     response = @task_queue.hand_over_task(
-      "sched/#{job.tbox_group}", "extract_stats", job_id
+      "sched/#{job.queue}", "extract_stats", job_id
     )
     if response[0] != 201
       raise "#{response}"
