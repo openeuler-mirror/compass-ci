@@ -42,6 +42,7 @@ class TaskQueue
     #
     # response: TaskQueue@v0.0.1 is alive.
     get "/" do |env|
+      env.response.headers["Connection"] = "close"
       response = "TaskQueue@v#{VERSION} is alive."
       debug_message(env, response, Time.utc)
 
@@ -60,6 +61,7 @@ class TaskQueue
     #           400 "Missing parameter <queue>"
     #           400 "Missing http body"
     post "/add" do |env|
+      env.response.headers["Connection"] = "close"
       response = queue_respond_add(env)
       debug_message(env, response, Time.utc)
       response if env.response.status_code == 200
@@ -73,6 +75,7 @@ class TaskQueue
     #           201 ## when there has no task in queue (scheduler/$tbox_group)
     #           400 "Missing parameter <queue>"
     put "/consume" do |env|
+      env.response.headers["Connection"] = "close"
       response = queue_respond_consume(env)
       debug_message(env, response, Time.utc)
       response if env.response.status_code == 200
@@ -86,6 +89,7 @@ class TaskQueue
     #           400 "Missing parameter <from|to|id>"
     #           409 "Can not find id <$id> in queue <scheduler/$tbox_group>"
     put "/hand_over" do |env|
+      env.response.headers["Connection"] = "close"
       response = queue_respond_hand_over(env)
       debug_message(env, response, Time.utc)
       nil
@@ -99,6 +103,7 @@ class TaskQueue
     #           400 "Missing parameter <queue|id>"
     #           409 "Can not find id <$id> in queue <scheduler/$tbox_group>"
     put "/delete" do |env|
+      env.response.headers["Connection"] = "close"
       response = queue_respond_delete(env)
       debug_message(env, response, Time.utc)
       nil
@@ -114,6 +119,7 @@ class TaskQueue
     #           400 "Missing parameter <queue>"
     #           413 "Query results too large keys"
     get "/keys" do |env|
+      env.response.headers["Connection"] = "close"
       response = queue_respond_keys(env)
       # debug_message(env, response, Time.utc) # maybe too large
       response.to_json unless env.response.status_code == 201
