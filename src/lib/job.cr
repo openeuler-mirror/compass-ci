@@ -405,8 +405,8 @@ class Job
         program = $1
       end
 
-      deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}.cgz"
-      pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}.cgz"
+      deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}/#{program}.cgz"
+      pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}/latest.cgz"
 
       if File.exists?(deps_dest_file)
         initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
