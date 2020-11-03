@@ -4,6 +4,8 @@
 
 [[ $tbox_group ]] ||
 tbox_group=vm-2p8g
-export hostname=$tbox_group--$USER-$$
+export hostname=$tbox_group.$USER-$$
+# specify which queues will be request, use " " to separate more than 2 values
+export queues="$tbox_group~$USER"
 
 $CCI_SRC/providers/qemu.sh
