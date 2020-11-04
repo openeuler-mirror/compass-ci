@@ -27,5 +27,5 @@ echo "result: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz"
 
 # rsync lkp-${ARCH}.cgz if needed
 if [ -x /usr/local/bin/rsync-lkp-cgz ]; then
-	 /usr/local/bin/rsync-lkp-cgz
+	/usr/local/bin/rsync-lkp-cgz "${lkp_initrd_user:-latest}" "${ARCH}"
 fi
