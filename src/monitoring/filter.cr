@@ -56,13 +56,20 @@ class Filter
 
   def match_query(query : Hash(String, JSON::Any), msg : Hash(String, JSON::Any))
     query.each do |key, value|
-      value = value.as_a
-      if value.includes?(nil)
-        return false unless msg.has_key?(key)
-      else
-        return false unless value.includes?(msg[key]?)
-      end
+      return false unless msg.has_key?(key)
+
+      values = value.as_a
+      next if values.includes?(nil) || values.includes?(msg[key]?)
+
+      return false unless regular_match(values, msg[key]?.to_s)
     end
     return true
+  end
+
+  private def regular_match(rules, string)
+    rules.each do |rule|
+      return true if string =~ /#{rule}/
+    end
+    return false
   end
 end
