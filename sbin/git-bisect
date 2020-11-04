@@ -12,10 +12,9 @@ require_relative '../lib/mail_bisect_result'
 def parse_argv
   items = {}
   ARGV.each do |item|
-    key, value = item.split('=')
+    key, value = item.split('=', 2)
     if key && value
-      value_list = value.split(',')
-      items[key] = value_list.length > 1 ? value_list : value
+      items[key] = value
     end
   end
   items
