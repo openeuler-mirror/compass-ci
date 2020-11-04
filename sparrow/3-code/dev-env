@@ -13,6 +13,8 @@ server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 : ${MASTER_FLUENTD_PORT:=24224}
 : ${DOCKER_REGISTRY_HOST:=$server_ip}
 : ${DOCKER_REGISTRY_PORT:=5001}
+: ${LOGGING_ES_HOST:=$server_ip}
+: ${LOGGING_ES_PORT:=9202}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -28,9 +30,11 @@ MASTER_FLUENTD_HOST: $MASTER_FLUENTD_HOST
 MASTER_FLUENTD_PORT: $MASTER_FLUENTD_PORT
 DOCKER_REGISTRY_HOST: $DOCKER_REGISTRY_HOST
 DOCKER_REGISTRY_PORT: $DOCKER_REGISTRY_PORT
+LOGGING_ES_HOST: $LOGGING_ES_HOST
+LOGGING_ES_PORT: $LOGGING_ES_PORT
 EOF
 
-cat > /etc/profile.d/compass.sh <<'EOF'
+cat > /etc/profile.d/compass.sh <<EOF
 export LKP_SRC=/c/lkp-tests
 export CCI_SRC=/c/compass-ci
 export REPO_SRC=/c/upstream-repos
