@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-# Exammple:
+# Example:
 #   Input: jobs_list. The results of ES query.
 #
 #     eg: [ jobs1, jobs2, ...... ]
@@ -112,4 +112,124 @@ end
 
 def remove_singleton(groups)
   groups.delete_if { |_k, v| v.length < 2 }
+end
+
+# --------------------------------------------------------------------------------------------------
+# auto_group_by_template: auto group job_list by user's template
+# Example:
+#   Input:
+#     1. jobs_list.
+#     2. params from user's template that include:
+#       groups_params(x_params):
+#         eg: ['block_size', 'package_size']
+#       dimensions:
+#         eg: [
+#               {'os' => 'openeuler', 'os_version' => '20.03'},
+#               {'os' => 'centos', 'os_version' => '7.6'}
+#            ]
+#       metrics:
+#         eg: ['fio.read_iops', 'fio_write_iops']
+#   Output:
+#     eg:
+#       {
+#         '4K|1G' => {
+#           'openeuler 20.03' => [
+#             {'stats' => {'fio.write_iops' => 312821.002387, 'fio.read_iops' => 212821.2387}},
+#             {'stats' => {'fio.write_iops' => 289661.878453}},
+#             ...
+#           ],
+#           'centos 7.6' => [...]
+#         },
+#         '16K|1G' => {...},
+#         ...
+#       }
+
+def auto_group_by_template(jobs_list, group_params, dimensions, metrics)
+  jobs_list = extract_jobs_list(jobs_list)
+  get_group_by_template(jobs_list, group_params, dimensions, metrics)
+end
+
+def get_group_by_template(job_list, group_params, dimensions, metrics)
+  groups = {}
+  job_list.each do |job|
+    new_job = get_new_job(job, metrics)
+    next if new_job.empty?
+
+    group_key = get_user_group_key(job, group_params)
+    dimension = get_user_dimension(job, dimensions)
+    next unless group_key && dimension
+
+    groups[group_key] ||= {}
+    groups[group_key][dimension] ||= []
+    groups[group_key][dimension] << new_job
+  end
+
+  groups
+end
+
+# @group_params Array(String)
+# eg:
+#   ['block_size', 'package_size']
+# return eg:
+#   '4K|1G'
+def get_user_group_key(job, group_params)
+  group_key_list = []
+  group_params.each do |param|
+    value = find_param_in_job(job, param)
+    group_key_list << value if value
+  end
+  return nil if group_key_list.size < group_params.size || group_key_list.empty?
+
+  group_key_list.join('|')
+end
+
+def find_param_in_job(job, param)
+  return job[param] if job.key?(param)
+
+  job.each_value do |v|
+    return v[param] if v.is_a?(Hash) && v.key?(param)
+  end
+end
+
+# @dimension Array(Hash)
+# eg:
+#   [
+#     {os => openeuler, os_version => 20.03},
+#     {os => centos, os_version => 7.6}
+#   ]
+#  return eg:
+#    'openeuler 20.03'
+def get_user_dimension(job, dimensions)
+  dimension_list = []
+  dimensions.each do |dim|
+    dim.each do |key, value|
+      if job[key] == value
+        dimension_list << value
+      end
+    end
+    return nil if !dimension_list.empty? && dimension_list.size < dim.size
+  end
+  return nil if dimension_list.empty?
+
+  dimension_list.join(' ')
+end
+
+# @metrics Array(String)
+# eg:
+#   ["fio.read_iops", "fio.write_iops"]
+# return new_job
+# eg:
+#   {'stats' => {'fio.write_iops' => 312821.002387, 'fio.read_iops' => 212821.2387}},
+def get_new_job(job, metrics)
+  return {} unless job['stats']
+
+  new_job = {}
+  metrics.each do |metric|
+    if job['stats'].key?(metric)
+      new_job['stats'] ||= {}
+      new_job['stats'][metric] = job['stats'][metric]
+    end
+  end
+
+  new_job
 end
