@@ -302,8 +302,10 @@ class Job
     boot_dir = "#{SRV_OS}/#{os_dir}/boot"
     suffix = "-#{kernel_version}" if self["kernel_version"]?
     self["linux_vmlinuz_path"]   = File.real_path("#{boot_dir}/vmlinuz#{suffix}")
-    self["linux_modules_initrd"] = File.real_path("#{boot_dir}/modules#{suffix}.cgz")
-    self["linux_headers_initrd"] = File.real_path("#{boot_dir}/headers#{suffix}.cgz")
+    if "#{os_mount}" == "initramfs"
+      self["linux_modules_initrd"] = File.real_path("#{boot_dir}/modules#{suffix}.cgz")
+      self["linux_headers_initrd"] = File.real_path("#{boot_dir}/headers#{suffix}.cgz")
+    end
   end
 
   private def set_kernel_uri
