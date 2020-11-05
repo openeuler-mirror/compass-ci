@@ -6,6 +6,7 @@
 # Usage:
 #       compare "conditions_1" "conditions_2" ... -c "common_conditions"
 #       compare "conditions" -d "dimensions"
+#       compare -t template.yaml
 # Eg:
 #       compare "id=6000,6001" "id=7000,7001"
 #       compare "commit=a12d232e" "commit=b3bacc31"
@@ -21,6 +22,7 @@ is_group = false
 dimensions = nil
 colorful = nil
 options = {}
+template = nil
 
 opt_parser = OptionParser.new do |opts|
   opts.banner = 'Usage: compare "conditions" ... [option]'
@@ -45,6 +47,10 @@ opt_parser = OptionParser.new do |opts|
     colorful = color
   end
 
+  opts.on('-t', '--template template', 'compare with user-defined template') do |t|
+    template = t
+  end
+
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     exit
@@ -60,7 +66,9 @@ opt_parser.parse!(argv)
 
 options = { theme: colorful } if colorful
 
-if is_group
+if template
+  compare_by_template(template)
+elsif is_group
   compare_group(argv, dimensions, options)
 else
   compare_matrices_list(argv, common_conditions, options)

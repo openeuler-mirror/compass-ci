@@ -6,6 +6,7 @@ require_relative './es_query.rb'
 require_relative './matrix2.rb'
 require_relative './compare_matrixes.rb'
 require_relative './constants.rb'
+require 'yaml'
 
 # -------------------------------------------------------------------------------------------
 # compare_matrices_list
@@ -65,4 +66,70 @@ def create_groups_matrices_list(conditions, dims)
   es = ESQuery.new(ES_HOST, ES_PORT)
   query_results = es.multi_field_query(conditions)
   combine_group_query_data(query_results, dims)
+end
+
+# -------------------------------------------------------------------------------------------
+# compare with user-defined compare_template.yaml
+# compare_temlpate.yaml sample:
+#   compare_metrics:
+#        - fio.write_iops
+#        - fio.read_iops
+#   filter:
+#        suite:
+#                - fio-basic
+#        os_arch:
+#                - aarch64
+#                - x86
+#   compare_dimensions:
+#        - os: debian
+#          os_version: sid
+#        - os: openeuler
+#          os_version: 20.03
+#   x_params:
+#        - bs
+#        - test_size
+#   title: Hackbench Performance Testing
+#   unit: KB/s
+#
+
+def compare_by_template(template)
+  template_params = load_template(template)
+  groups_matrices = create_groups_matrices(template_params)
+  compare_results = compare_metrics_values(groups_matrices)
+  show_compare_result(compare_results, template_params)
+end
+
+def load_template(template)
+  unless File.file?(template)
+    warn 'template does not exist'
+    exit
+  end
+  YAML.load_file(template)
+end
+
+# input: template_params: Hash
+# eg:
+# {
+#   "compare_metrics"=>["fio.write_iops", "fio.read_iops"],
+#   "filter"=>[
+#     {"suite"=>["fio-bisic"]},
+#     {"os_arch"=>["aarch_64"]}
+#   ],
+#   "compare_dimensions"=>[
+#     {"os"=>"openeuler", "os_version"=>20.03},
+#     {"os"=>"centos", "os_version"=>7.6}
+#   ],
+#   "x_params"=>["block_size", "package_size"],
+#   "title"=>"Hackbench Performance Testing",
+#   "unit"=>"KB/s"
+# }
+def create_groups_matrices(template_params)
+  es = ESQuery.new
+  query_results = es.multi_field_query(template_params['filter'])
+  combine_group_jobs_list(
+    query_results,
+    template_params['x_params'],
+    template_params['compare_dimensions'],
+    template_params['compare_metrics']
+  )
 end
