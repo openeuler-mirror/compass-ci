@@ -174,8 +174,9 @@ create_links_vmlinuz_initrd() {
 		bash -c "
 			cd $EXTRACT_ROOT/rootfs-dir
 			chmod a+r $ROOTFS_INITRD_LKP
-			ln -sf $ROOTFS_VMLINUZ_FILE vmlinuz
 			ln -sf $ROOTFS_INITRD_LKP initrd.lkp
+			cd $EXTRACT_ROOT/rootfs-dir/boot
+			ln -sf $ROOTFS_VMLINUZ vmlinuz
 		"
 	)
 	if "${cmds[@]}" ; then
