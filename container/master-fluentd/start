@@ -3,9 +3,20 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'set'
 require_relative '../defconfig.rb'
 
-docker_rm "master-fluentd"
+names = Set.new %w[
+  LOGGING_ES_HOST
+  LOGGING_ES_PORT
+]
+
+defaults = relevant_defaults(names)
+defaults['LOGGING_ES_HOST'] ||= '172.17.0.1'
+defaults['LOGGING_ES_PORT'] ||= '9202'
+env = docker_env(defaults)
+
+docker_rm 'master-fluentd'
 
 cmd = %w[
   docker run
@@ -13,6 +24,7 @@ cmd = %w[
   --name master-fluentd
   -v /etc/localtime:/etc/localtime:ro
   -d
+] + env + %w[
   -u 1090:1090
   -p 24224:24224/tcp
   -p 24224:24224/udp
