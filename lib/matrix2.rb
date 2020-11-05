@@ -120,3 +120,28 @@ def combine_group_query_data(query_data, dims)
   end
   groups
 end
+
+# input:
+#   1. query results(job_list) from es_query that will be auto group by auto_group_by_template()
+#   2. params from user's template include:
+#       groups_params(x_params):
+#         eg: ['block_size', 'package_size']
+#       dimensions:
+#         eg: [
+#               {'os' => 'openeuler', 'os_version' => '20.03'},
+#               {'os' => 'centos', 'os_version' => '7.6'}
+#            ]
+#       metrics:
+#         eg: ['fio.read_iops', 'fio_write_iops']
+# return: group_matrix of Hash(String, Hash(String, matrix))
+def combine_group_jobs_list(query_data, groups_params, dimensions, metrics)
+  job_list = query_data['hits']['hits']
+  groups = auto_group_by_template(job_list, groups_params, dimensions, metrics)
+  groups.each do |group_key, dims|
+    dims.each do |dim_key, jobs|
+      groups[group_key][dim_key] = create_matrix(jobs)
+    end
+  end
+
+  groups
+end
