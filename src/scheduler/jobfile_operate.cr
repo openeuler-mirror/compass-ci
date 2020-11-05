@@ -8,8 +8,9 @@ require "yaml"
 # require from '/c/lkp-tests/lib/'
 require "shellwords"
 
-if ENV["LKP_SRC"] != "/c/lkp-tests"
-  raise "ENV LKP_SRC mismatch: #{ENV["LKP_SRC"]} '/c/lkp-tests'"
+LKP_PATH = "/c/lkp-tests"
+if ENV["LKP_SRC"] != LKP_PATH
+  raise "ENV LKP_SRC mismatch: #{ENV["LKP_SRC"]} #{LKP_PATH}"
 end
 
 module Jobfile::Operate
