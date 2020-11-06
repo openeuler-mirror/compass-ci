@@ -56,11 +56,9 @@ module Jobfile::Operate
   end
 
   def self.parse_one(script_lines, key, val)
-    if valid_shell_variable?(key)
-      if val.as_h?
-        return false
-      end
+    return false if val.as_h?
 
+    if valid_shell_variable?(key)
       value = if val.as_a?
                 shell_escape(val.as_a)
               else
@@ -133,9 +131,7 @@ module Jobfile::Operate
     end
 
     # if the create job cpio failed, what to do?
-    if idd.match(/ERROR/)
-      puts idd
-    end
+    puts idd if idd.match(/ERROR/)
     # create result dir and copy job.sh, job.yaml and job.cgz to result dir
     src_dir = File.dirname(temp_yaml)
     dst_dir = File.join("/srv", job_content["result_root"].to_s)
@@ -204,9 +200,7 @@ module Jobfile::Operate
 
   def self.auto_submit_job(job_file, override_parameter, other_parameters = nil)
     cmd = "#{ENV["LKP_SRC"]}/sbin/submit "
-    if other_parameters
-      cmd += other_parameters.join(" ")
-    end
+    cmd += other_parameters.join(" ") if other_parameters
     cmd += " -s '#{override_parameter}' #{job_file}"
     puts `#{cmd}`
   end
