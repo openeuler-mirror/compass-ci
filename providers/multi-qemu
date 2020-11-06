@@ -4,46 +4,94 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'optparse'
 
-PWD = Dir.pwd
+opt = {}
+options = OptionParser.new do |opts|
+  opts.banner = 'Usage: multi-qemu -n -c -q'
+
+  opts.separator ''
+  opts.on('-n HOSTNAME_PREFIX', '--name HOSTNAME_PREFIX', 'format: $tbox_group.$HOSTNAME') do |name|
+    opt['hostname_prefix'] = name
+  end
+
+  opts.on('-c count', '--count count', 'how many VM do you need') do |num|
+    opt['nr_vm'] = num
+  end
+
+  opts.on('-q queues', '--queues queues', 'separated by ","') do |queues|
+    opt['queues'] = queues
+  end
+
+  opts.on_tail('-h', '--help', 'show this message') do
+    puts opts
+    exit
+  end
+end
+
+if ARGV.size.zero?
+  puts options
+  exit 1
+end
+
+options.parse!(ARGV)
 
 # Run multiple QEMU in parallel
-HOSTNAME = ARGV[0] || "vm-2p8g--#{ENV['USER']}"
-NR_VM = ARGV[1] || 1
+PWD      = Dir.pwd
+HOSTNAME = opt['hostname_prefix'] || "vm-2p8g.#{ENV['HOSTNAME']}"
+NR_VM    = opt['nr_vm'] || 1
+QUEUES   = opt['queues'] || "#{ENV['HOSTNAME']}.#{RUBY_PLATFORM.split('-')[0]}"
+LOG_DIR  = '/srv/cci/serial/logs'
 
-def run(seqno)
-  loop do
-    start_time = Time.new
-    hostname = "#{HOSTNAME}-#{seqno}"
-    log_file = "/srv/cci/serial/logs/#{hostname}"
+def main(hostname)
+  start_time = record_runtime_log(hostname)
+  start_qemu(hostname)
+  record_runtime_log(hostname, start_time: start_time, is_start: false)
+end
 
+def record_runtime_log(hostname, start_time: Time.new, is_start: true)
+  log_file = "#{LOG_DIR}/#{hostname}"
+  if is_start
     File.open(log_file, 'w') do |f|
       # fluentd refresh time is 1s
       # let fluentd to monitor this file first
       sleep(2)
       f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting QEMU"
     end
+    return start_time
+  end
 
-    pwd_hostname = File.join(PWD, hostname)
-    FileUtils.mkdir_p(pwd_hostname) unless File.exist?(pwd_hostname)
-    FileUtils.cd(pwd_hostname)
-    system(
-      { 'hostname' => hostname },
-      ENV['CCI_SRC'] + '/providers/qemu.sh'
-    )
+  duration = ((Time.new - start_time) / 60).round(2)
+  File.open(log_file, 'a') do |f|
+    f.puts "\nTotal QEMU duration:  #{duration} minutes"
+  end
+end
 
-    duration = ((Time.new - start_time) / 60).round(2)
-    File.open(log_file, 'a') do |f|
-      f.puts "\nTotal QEMU duration:  #{duration} minutes"
+def start_qemu(hostname)
+  pwd_hostname = File.join(PWD, hostname)
+  FileUtils.mkdir_p(pwd_hostname) unless File.exist?(pwd_hostname)
+  FileUtils.cd(pwd_hostname)
+  system(
+    { 'hostname' => hostname, 'queues' => QUEUES },
+    ENV['CCI_SRC'] + '/providers/qemu.sh'
+  )
+end
+
+def loop_main(hostname)
+  loop do
+    begin
+      main(hostname)
+    rescue StandardError => e
+      puts e.backtrace
+      # if an exception occurs, request the next time after 30 seconds
+      sleep 25
+    ensure
+      sleep 5
     end
-
-    # sleep 5s is for fluentd to collect it's log
-    sleep(5)
   end
 end
 
 def save_pid(arr)
-  FileUtils.rm('pid') if File.exist?('pid')
   f = File.new('pid', 'a')
   arr.each do |i|
     f.puts(i)
@@ -55,7 +103,7 @@ def multiqemu
   pids = []
   NR_VM.to_i.times do |i|
     pid = Process.fork do
-      run i
+      loop_main("#{HOSTNAME}-#{i}")
     end
     pids << pid
   end
