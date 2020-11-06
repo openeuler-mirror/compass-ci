@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-[ -L "$1/vmlinuz" -a -n "$2" ] || {
+[ -L "$1/boot/vmlinuz" -a -n "$2" ] || {
 	cat << 'EOF'
 	Example usage:
 	1> ./run /os/centos/aarch64/7.6.1810 pack1 pack2 ...
