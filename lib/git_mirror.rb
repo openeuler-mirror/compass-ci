@@ -88,10 +88,16 @@ class MirrorMain
     @git_queue = Queue.new
     @es_client = Elasticsearch::Client.new(url: "http://#{ES_HOST}:#{ES_PORT}")
     load_fork_info
+    connection_init
+    handle_webhook
+  end
+
+  def connection_init
     connection = Bunny.new('amqp://172.17.0.1:5672')
     connection.start
     channel = connection.create_channel
     @message_queue = channel.queue('new_refs')
+    @webhook_queue = channel.queue('web_hook')
   end
 
   def fork_stat_init(stat_key)
@@ -285,5 +291,41 @@ class MirrorMain
     update_stat_fetch(git_repo)
     update_stat_new_refs(git_repo) if possible_new_refs
     es_repo_update(git_repo)
+  end
+end
+
+# main thread
+class MirrorMain
+  def check_git_repo(git_repo, webhook_url)
+    return @git_info.key?(git_repo) && Array(@git_info[git_repo]['url'])[0] == webhook_url
+  end
+
+  # example
+  # url: https://gitee.com/theprocess/oec-hardware   git_repo: oec-hardware/oec-hardware
+  # url: https://github.com/berkeley-abc/abc         git_repo: a/abc/abc
+  # url: https://github.com/Siguyi/AvxToNeon         git_repo: AvxToNeon/Siguyi
+  def get_git_repo(webhook_url)
+    fork_name, project = webhook_url.split('/')[-2, 2]
+
+    git_repo = "#{project}/#{project}"
+    return git_repo if check_git_repo(git_repo, webhook_url)
+
+    git_repo = "#{project}/#{fork_name}"
+    return git_repo if check_git_repo(git_repo, webhook_url)
+
+    git_repo = "#{project[0]}/#{project}/#{project}"
+    return git_repo if check_git_repo(git_repo, webhook_url)
+
+    puts "webhook: #{webhook_url} is not found!"
+  end
+
+  def handle_webhook
+    Thread.new do
+      @webhook_queue.subscribe(block: true) do |_delivery, _properties, webhook_url|
+        git_repo = get_git_repo(webhook_url)
+        do_push(git_repo) if git_repo
+        sleep(0.1)
+      end
+    end
   end
 end
