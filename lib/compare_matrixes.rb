@@ -6,6 +6,7 @@ LKP_SRC ||= ENV['LKP_SRC'] || File.dirname(__dir__)
 require 'set'
 require 'json/ext'
 require_relative 'themes'
+require_relative './compare_data_format.rb'
 require "#{LKP_SRC}/lib/stats"
 
 FAILURE_PATTERNS = IO.read("#{LKP_SRC}/etc/failure").split("\n")
@@ -397,6 +398,108 @@ def compare_group_matrices(group_matrices, options)
     end
   end
   result_str
+end
+
+# input: groups_matrices
+# {
+#   group_key_1 => {
+#     dimension_1 => matrix_1, (openeuler 20.03)
+#     dimension_2 => matrix_2, (openeuler 20.09)
+#     dimension_3 => matrix_3, (centos 7.6)
+#   },
+#   group_key_2 => {...}
+# }
+#
+# output: compare_metrics_values
+# {
+#   group_key_1 => {
+#     metric_1 => {
+#       'average' => {
+#         'dimension_1' => xxx
+#         'dimension_2' => xxx
+#         'dimension_3' => xxx
+#       },
+#       'standard_deviation' => {
+#         'dimension_1' => xxx
+#         'dimension_2' => xxx
+#         'dimension_3' => xxx
+#       },
+#       'change' => {
+#         'dimension_2 vs dimension_1' => xxx
+#         'dimension_3 vs dimension_1' => xxx
+#         'dimension_3 vs dimension_2' => xxx
+#       }
+#     },
+#     metric_2 => {...}
+#   }
+# }
+def compare_metrics_values(groups_matrices)
+  metrics_compare_values = {}
+  groups_matrices.each do |group_key, dimensions|
+    metrics_compare_values[group_key] = get_metric_values(dimensions)
+  end
+
+  metrics_compare_values
+end
+
+def get_metric_values(dimensions)
+  metrics_values = {}
+  dimensions.each do |dim, matrix|
+    matrix.each do |metric, values|
+      assign_metric_values(metrics_values, dim, metric, values)
+    end
+  end
+  assign_metric_change(metrics_values)
+
+  metrics_values
+end
+
+def assign_metric_values(metrics_values, dim, metric, values)
+  metrics_values[metric] ||= {}
+  metrics_values[metric]['average'] ||= {}
+  metrics_values[metric]['standard_deviation'] ||= {}
+  metric_value = get_values(values, true)
+  metrics_values[metric]['average'][dim] = metric_value[:average]
+  metrics_values[metric]['standard_deviation'][dim] = metric_value[:stddev]
+end
+
+def assign_metric_change(metrics_values)
+  metrics_values.each do |metric, values|
+    metrics_values[metric]['change'] = {}
+    next if values['average'].size < 2
+
+    dimension_list = values['average'].keys
+    dimension_groups = get_dimensions_combination(dimension_list)
+    dimension_groups.each do |base_dimension, challenge_dimension|
+      change = get_compare_value(values['average'][base_dimension], values['average'][challenge_dimension], true)
+      values['change'] = { "#{challenge_dimension} vs #{base_dimension}" => change }
+    end
+  end
+end
+
+# input: dimension_list
+#  eg: ['openeuler 20.03', 'debian sid', 'centos 7.6']
+# output: Array(base_dimension: String, challenge_dimension: String)
+#  [
+#    ['openeuler 20.03', 'debian sid'],
+#    ['openeuler 20.03', 'centos 7.6'],
+#    ['debian sid', 'centos 7.6']
+#  ]
+def get_dimentions_combination(dimension_list)
+  dims = []
+  dimension_list_size = dimension_list.size
+  (1..dimension_list_size - 1).each do |i|
+    (i..dimension_list_size - 1).each do |j|
+      dims << [dimension_list[i - 1], dimension_list[j]]
+    end
+  end
+
+  dims
+end
+
+def show_compare_result(metrics_compare_results, template_params)
+  echart_results = format_for_echart(metrics_compare_results, template_params)
+  print JSON.pretty_generate(echart_results)
 end
 
 # Format Fields
