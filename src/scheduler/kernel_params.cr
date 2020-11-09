@@ -7,6 +7,10 @@ class Job
     return "user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
   end
 
+  private def kernel_custom_params
+    return @hash["kernel_custom_params"] if @hash["kernel_custom_params"]?
+  end
+
   private def set_kernel_append_root
     os_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}")
 
@@ -30,7 +34,7 @@ class Job
   end
 
   private def set_kernel_params
-    self["kernel_params"] = " #{kernel_common_params()} #{kernel_append_root} #{kernel_console()}"
+    self["kernel_params"] = " #{kernel_common_params()} #{kernel_custom_params()} #{kernel_append_root} #{kernel_console()}"
   end
 
 end
