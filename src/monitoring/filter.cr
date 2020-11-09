@@ -56,7 +56,8 @@ class Filter
 
   def match_query(query : Hash(String, JSON::Any), msg : Hash(String, JSON::Any))
     query.each do |key, value|
-      return false unless msg.has_key?(key)
+      key = find_real_key(key, msg.keys) unless msg.has_key?(key)
+      return false unless key
 
       values = value.as_a
       next if values.includes?(nil) || values.includes?(msg[key]?)
@@ -64,6 +65,12 @@ class Filter
       return false unless regular_match(values, msg[key]?.to_s)
     end
     return true
+  end
+
+  private def find_real_key(rule, keys)
+    keys.each do |key|
+      return key if key.to_s =~ /#{rule}/
+    end
   end
 
   private def regular_match(rules, string)
