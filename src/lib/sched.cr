@@ -58,11 +58,11 @@ class Sched
     return cluster_state
   end
 
-  # get -> modify -> set
-  def update_cluster_state(cluster_id, job_id, property, value)
+  # Update job info according to cluster id.
+  def update_cluster_state(cluster_id, job_id, job_info : Hash(String, String))
     cluster_state = get_cluster_state(cluster_id)
     if cluster_state[job_id]?
-      cluster_state[job_id].merge!({property => value})
+      cluster_state[job_id].merge!(job_info)
       @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
     end
   end
@@ -86,9 +86,9 @@ class Sched
     case request_state
     when "abort", "finished", "failed"
       # update node state only
-      update_cluster_state(cluster_id, job_id, "state", states[request_state])
+      update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
     when "wait_ready"
-      update_cluster_state(cluster_id, job_id, "state", states[request_state])
+      update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
       @block_helper.block_until_finished(cluster_id) {
         cluster_state = sync_cluster_state(cluster_id, job_id, states[request_state])
         cluster_state == "ready" || cluster_state == "abort"
@@ -96,7 +96,7 @@ class Sched
 
       return cluster_state
     when "wait_finish"
-      update_cluster_state(cluster_id, job_id, "state", states[request_state])
+      update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
       while 1
         sleep(10)
         cluster_state = sync_cluster_state(cluster_id, job_id, states[request_state])
@@ -110,10 +110,11 @@ class Sched
       direct_ips = env.params.query["direct_ips"]
       direct_macs = env.params.query["direct_macs"]
 
-      update_cluster_state(cluster_id, job_id, "roles", node_roles)
-      update_cluster_state(cluster_id, job_id, "ip", node_ip)
-      update_cluster_state(cluster_id, job_id, "direct_ips", direct_ips)
-      update_cluster_state(cluster_id, job_id, "direct_macs", direct_macs)
+      job_info = {"roles"       => node_roles,
+                  "ip"          => node_ip,
+                  "direct_ips"  => direct_ips,
+                  "direct_macs" => direct_macs}
+      update_cluster_state(cluster_id, job_id, job_info)
     when "roles_ip"
       role = "server"
       role_state = get_role_state(cluster_id, role)
