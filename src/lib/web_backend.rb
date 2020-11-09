@@ -47,7 +47,7 @@ end
 def filter_tbox_group(es_result)
   result = Set.new
   es_result.each do |r|
-    if r =~ /(^.+--.+$)|(^vm-.*-\d\w*-([a-zA-Z]+)|(\d+)$)/
+    if r =~ /(^.+--.+$)|(^vm-.*-\d\w*-(([a-zA-Z]+)|(\d+))$)/
       index = r.index('--') || r.rindex('-')
       r = r[0, index]
     end
