@@ -16,6 +16,8 @@ class Filter
 
     @hash[query] = Array(HTTP::WebSocket).new unless @hash[query]?
     @hash[query] << socket
+
+    return query
   end
 
   private def convert_hash_value_to_array(query)

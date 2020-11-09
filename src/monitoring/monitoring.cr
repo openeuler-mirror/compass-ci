@@ -19,7 +19,7 @@ module Monitoring
       # also can be {"job_id": ["1", "2"]}
       query = JSON.parse(msg)
       if query.as_h?
-        filter.add_filter_rule(query, socket)
+        query = filter.add_filter_rule(query, socket)
       end
     end
 
