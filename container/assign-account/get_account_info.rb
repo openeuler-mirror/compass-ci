@@ -7,17 +7,17 @@
 
 ACCOUNT_DIR dir layout:
 tree
-├── assigned-users
-│   ├── user1
-│   ├── user2
-│   ├── user3
-│   ├── ...
-├── available-users
-│   ├── user11
-│   ├── user12
-│   ├── user13
-│   ├── ...
-└── jumper-info
+|-- assigned-users
+|   |-- user1
+|   |-- user2
+|   |-- user3
+|   |-- ...
+|-- available-users
+|   |-- user11
+|   |-- user12
+|   |-- user13
+|   |-- ...
+|-- jumper-info
 
 assigned-users: store assigned user files
 available-users: store available user files
@@ -30,9 +30,10 @@ API:
 call graph:
 setup_jumper_account_info
   read_account_info
-    build_account_name
+    build_account_info
   read_jumper_info
-  setup_authorized_key
+  config_default_yaml
+  config_authorized_key
 
 the returned data for setup_jumper_account_info like:
 {
@@ -43,6 +44,8 @@ the returned data for setup_jumper_account_info like:
 }
 
 =end
+
+require 'fileutils'
 
 # get jumper and account info
 class AccountStorage
@@ -93,35 +96,50 @@ class AccountStorage
   def setup_jumper_account_info
     account_info = read_account_info
     jumper_info = read_jumper_info
-    pub_key = @data['pub_key'] unless @data.nil?
+    pub_key = @data['my_ssh_pubkey'] unless @data['my_ssh_pubkey'].nil?
 
-    jumper_ip   = jumper_info[0].chomp
-    jumper_port = jumper_info[1].chomp
-    account     = account_info[0]
-    passwd      = if pub_key.nil?
-                    account_info[1]
-                  else
-                    'Use pub_key to login'
-                  end
+    login_name    = account_info[0]
+    password      = if pub_key.nil?
+                      account_info[1]
+                    else
+                      'Use pub_key to login'
+                    end
+
     jumper_account_info = {
-      'account' => account,
-      'passwd' => passwd,
-      'jumper_ip' => jumper_ip,
-      'jumper_port' => jumper_port
+      'my_login_name' => login_name,
+      'my_password' => password,
+      'jumper_host' => jumper_info[0].chomp,
+      'jumper_port' => jumper_info[1].chomp
     }
 
-    setup_authorized_key(account, pub_key)
+    config_authorized_key(login_name, pub_key) unless pub_key.nil?
+    config_default_yaml(login_name)
+
     return jumper_account_info
   end
 
-  def setup_authorized_key(account, pub_key)
-    ssh_dir = File.join('/home/', account, '.ssh')
+  def config_default_yaml(login_name)
+    default_yaml_dir = File.join('/home', login_name, '.config/compass-ci/defaults')
+    FileUtils.mkdir_p default_yaml_dir
+
+    # my_email, my_name, my_uuid is required to config default yaml file
+    # they are added along with 'my_ssh_pubkey' when sending assign account request
+    File.open("#{default_yaml_dir}/account.yaml", 'a') do |file|
+      file.puts "my_email: #{@data['my_email']}"
+      file.puts "my_name: #{@data['my_name']}"
+      file.puts "my_uuid: #{@data['my_uuid']}"
+    end
+    %x(chown -R #{login_name}:#{login_name} "/home/#{login_name}/.config")
+  end
+
+  def config_authorized_key(login_name, pub_key)
+    ssh_dir = File.join('/home/', login_name, '.ssh')
     Dir.mkdir ssh_dir, 0o700
     Dir.chdir ssh_dir
     f = File.new('authorized_keys', 'w')
     f.puts pub_key
     f.close
     File.chmod 0o600, 'authorized_keys'
-    %x(chown -R #{account}:#{account} #{ssh_dir})
+    %x(chown -R #{login_name}:#{login_name} #{ssh_dir})
   end
 end
