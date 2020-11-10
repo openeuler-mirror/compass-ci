@@ -13,7 +13,7 @@ if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
 else
 	tbox_group=$hostname
 fi
-host=${tbox_group%%--*}
+host=${tbox_group%.*}
 
 create_yaml_variables "$LKP_SRC/hosts/${host}"
 
