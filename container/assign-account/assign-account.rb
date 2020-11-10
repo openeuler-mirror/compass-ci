@@ -7,7 +7,7 @@ require 'sinatra'
 require 'open3'
 require 'json'
 require 'yaml'
-require_relative 'get_account_info.rb'
+require_relative 'get_account_info'
 
 set :bind, '0.0.0.0'
 set :port, 29999
@@ -17,7 +17,16 @@ get '/assign_account' do
     data = YAML.safe_load request.body.read
   rescue StandardError => e
     puts e.message
+    puts e.backtrace
   end
+
+  assign_jumper_account(data)
+end
+
+def assign_jumper_account(data)
+  lacked_info = %w[my_email my_name my_uuid] - data.keys
+  error_message = "lack of my infos: #{lacked_info.join(', ')}."
+  raise error_message unless lacked_info.empty?
 
   ref_account_info = AccountStorage.new(data)
   account_info = ref_account_info.setup_jumper_account_info
