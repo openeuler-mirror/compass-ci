@@ -17,6 +17,7 @@ require "../scheduler/find_job_boot"
 require "../scheduler/find_next_job_boot"
 require "../scheduler/close_job"
 require "../scheduler/request_cluster_state"
+require "../scheduler/update_job_parameter"
 
 class Sched
   property es
@@ -234,36 +235,6 @@ class Sched
       full_path_patterns,
       "testbox: #{tbox_group}",
       extra_job_fields) if Dir.glob(full_path_patterns).size > 0
-  end
-
-  def update_job_parameter(env : HTTP::Server::Context)
-    job_id = env.params.query["job_id"]?
-    if !job_id
-      return false
-    end
-
-    # try to get report value and then update it
-    job_content = {} of String => String
-    job_content["id"] = job_id
-
-    (%w(start_time end_time loadavg job_state)).each do |parameter|
-      value = env.params.query[parameter]?
-      if !value || value == ""
-        next
-      end
-      if parameter == "start_time" || parameter == "end_time"
-        value = Time.unix(value.to_i).to_local.to_s("%Y-%m-%d %H:%M:%S")
-      end
-
-      job_content[parameter] = value
-    end
-
-    @redis.update_job(job_content)
-
-    # json log
-    log = job_content.dup
-    log["job_id"] = log.delete("id").not_nil!
-    return log.to_json
   end
 
   def update_tbox_wtmp(env : HTTP::Server::Context)
