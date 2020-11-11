@@ -424,8 +424,14 @@ class Job
         program = $1
       end
 
+      if @hash["#{program}_version"]?
+        program_version = @hash["#{program}_version"]
+      else
+        program_version = "latest"
+      end
+      
       deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}/#{program}.cgz"
-      pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}/latest.cgz"
+      pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}/#{program_version}.cgz"
 
       if File.exists?(deps_dest_file)
         initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
