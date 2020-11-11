@@ -11,15 +11,26 @@ require_relative '../../container/defconfig'
 
 BASE_DIR = '/srv/dc'
 
+names = Set.new %w[
+  SCHED_HOST
+  SCHED_PORT
+]
+defaults = relevant_defaults(names)
+SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
+SCHED_PORT = defaults['SCHED_PORT'] || 3000
+
 def get_url(hostname)
-  names = Set.new %w[
-    SCHED_HOST
-    SCHED_PORT
-  ]
-  defaults = relevant_defaults(names)
-  host = defaults['SCHED_HOST'] || '172.17.0.1'
-  port = defaults['SCHED_PORT'] || 3000
-  "http://#{host}:#{port}/boot.container/hostname/#{hostname}"
+  "http://#{SCHED_HOST}:#{SCHED_PORT}/boot.container/hostname/#{hostname}"
+end
+
+def set_host2queues(hostname, queues)
+  cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/set_host2queues?host=#{hostname}&queues=#{queues}'"
+  system cmd
+end
+
+def del_host2queues(hostname)
+  cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host2queues?host=#{hostname}'"
+  system cmd
 end
 
 def parse_response(url)
@@ -67,7 +78,7 @@ def load_initrds(load_path, hash)
   wget_cmd(load_path, lkp_url, "lkp-#{arch}.cgz")
 end
 
-def run(hostname, load_path, hash)
+def start_container(hostname, load_path, hash)
   docker_image = hash['docker_image']
   system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
   system(
@@ -77,24 +88,26 @@ def run(hostname, load_path, hash)
   clean_dir(load_path)
 end
 
-def main(hostname)
+def main(hostname, queues)
+  set_host2queues(hostname, queues)
   url = get_url hostname
   puts url
   hash = parse_response url
-  return if hash.nil?
+  return del_host2queues(hostname) if hash.nil?
 
   load_path = build_load_path(hostname)
   load_initrds(load_path, hash)
-  run(hostname, load_path, hash)
+  start_container(hostname, load_path, hash)
+  del_host2queues(hostname)
 end
 
-def loop_main(hostname)
+def loop_main(hostname, queues)
   loop do
     begin
-      main(hostname)
+      main(hostname, queues)
     rescue StandardError => e
       puts e.backtrace
-      # if an exception happend, request the next time after 30 seconds
+      # if an exception occurs, request the next time after 30 seconds
       sleep 25
     ensure
       sleep 5
@@ -109,11 +122,11 @@ def save_pid(pids)
   f.close
 end
 
-def multi_docker(hostname, nr_container)
+def multi_docker(hostname, nr_container, queues)
   pids = []
   nr_container.to_i.times do |i|
     pid = Process.fork do
-      loop_main("#{hostname}-#{i}")
+      loop_main("#{hostname}-#{i}", queues)
     end
     pids << pid
   end
