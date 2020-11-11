@@ -3,4 +3,10 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-system 'docker build -t kibana:7.6.2 .'
+BASE_IMAGE_DICT = {
+  'aarch64' => 'gagara/kibana-oss-arm64:7.6.2',
+  'x86_64' => 'kibana:7.6.2' }.freeze
+
+BASE_IMAGE = BASE_IMAGE_DICT[%x(arch).chomp]
+
+system "docker build -t kibana:7.6.2 --build-arg BASE_IMAGE=#{BASE_IMAGE} ."
