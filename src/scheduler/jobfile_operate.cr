@@ -56,16 +56,10 @@ module Jobfile::Operate
   end
 
   def self.parse_one(script_lines, key, val)
-    return false if val.as_h?
+    return false if val.as_h? || !valid_shell_variable?(key)
 
-    if valid_shell_variable?(key)
-      value = if val.as_a?
-                shell_escape(val.as_a)
-              else
-                shell_escape(val.to_s)
-              end
-      script_lines << "\texport #{key}=" + value if value
-    end
+    value = shell_escape(val.as_a? || val.to_s)
+    script_lines << "\texport #{key}=" + value if value
   end
 
   def self.sh_export_top_env(job_content : Hash)
