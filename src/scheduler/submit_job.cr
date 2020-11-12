@@ -49,8 +49,8 @@ class Sched
 
     # steps for each host
     cluster_config["nodes"].as_h.each do |host, config|
-      tbox_group = host.to_s
-      job_id = add_task(tbox_group, lab)
+      queue = host.to_s
+      job_id = add_task(queue, lab)
 
       # return when job_id is '0'
       # 2 Questions:
@@ -58,15 +58,16 @@ class Sched
       #   - may consume job before all jobs done
       return job_messages << {
         "job_id"    => "0",
-        "message"   => "add task queue sched/#{tbox_group} failed",
+        "message"   => "add task queue sched/#{queue} failed",
         "job_state" => "submit",
       } unless job_id
 
       job_ids << job_id
 
       # add to job content when multi-test
-      job["testbox"] = tbox_group
-      job.update_tbox_group(tbox_group)
+      job["testbox"] = queue
+      job["queue"] = queue
+      job.update_tbox_group(queue)
       job["node_roles"] = config["roles"].as_a.join(" ")
       direct_macs = config["macs"].as_a
       direct_ips = [] of String
