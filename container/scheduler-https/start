@@ -6,6 +6,13 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+ca_path = '/etc/compass-ci/ca'
+crt_path = "#{ca_path}/server.crt"
+key_path = "#{ca_path}/server.key"
+
+warn_msg = 'CA certificate is missing. Ignore if the HTTPS scheduler is not required'
+raise warn_msg unless File.exist?(crt_path) && File.exist?(key_path)
+
 names = Set.new %w[
   SCHED_HOST
   SCHED_PORT
