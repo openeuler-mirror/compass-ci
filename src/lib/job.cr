@@ -289,9 +289,7 @@ class Job
                          "SCHED_PORT"]
 
     initialized_keys.each do |key|
-      if @hash.has_key?(key) == false
-        return false
-      end
+      return false unless @hash.has_key?(key)
     end
 
     return false if "#{@hash["id"]}" == ""
