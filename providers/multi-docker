@@ -9,15 +9,19 @@ require_relative './docker/docker'
 opt = {}
 
 options = OptionParser.new do |opts|
-  opts.banner = 'Usage: multi-qemu [-t] [-n]'
+  opts.banner = 'Usage: multi-docker -n -c -q'
 
   opts.separator ''
-  opts.on('-n HOSTNAME_PREFIX', '--name HOSTNAME_PREFIX', 'specify used hostname_prefix') do |name|
+  opts.on('-n HOSTNAME_PREFIX', '--name HOSTNAME_PREFIX', 'format: $tbox_group.$HOSTNAME') do |name|
     opt['hostname_prefix'] = name
   end
 
-  opts.on('-c count', '--count count', 'how much container do you need') do |num|
+  opts.on('-c count', '--count count', 'how many containers do you need') do |num|
     opt['nr_container'] = num
+  end
+
+  opts.on('-q queues', '--queues queues', 'separated by ","') do |queues|
+    opt['queues'] = queues
   end
 
   opts.on_tail('-h', '--help', 'show this message') do
@@ -28,13 +32,14 @@ end
 
 if ARGV.size.zero?
   puts options
-  exit
+  exit 1
 end
 
 options.parse!(ARGV)
 
-hostname = opt['hostname_prefix'] || 'dc-1g'
+hostname = opt['hostname_prefix'] || "dc-1g.#{ENV['HOSTNAME']}"
 nr_container = opt['nr_container'] || 1
+queues = opt['queues'] || "dc-1g.#{ENV['HOSTNAME']}"
 
-pids = multi_docker(hostname, nr_container)
+pids = multi_docker(hostname, nr_container, queues)
 save_pid pids
