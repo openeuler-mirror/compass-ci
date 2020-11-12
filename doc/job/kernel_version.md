@@ -34,6 +34,7 @@ Related files:
 ├── modules-4.19.90-2003.cgz
 ├── modules.cgz -> modules-4.19.90-2003.cgz
 ├── vmlinuz-4.19.90-2003
+└── vmlinuz     -> vmlinuz-4.19.90-2003
 
 Usage example:
-- submit iperf.yaml testbox=vm-2p8g--$USER os=openeuler os_arch=aarch64 os_version=20.03 runtime=20 kernel_version=4.19.90-2003
+- submit iperf.yaml testbox=vm-2p8g queue=vm-2p8g~$USER os=openeuler os_arch=aarch64 os_version=20.03 runtime=20 kernel_version=4.19.90-2003
