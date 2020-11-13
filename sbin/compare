@@ -12,7 +12,7 @@
 #       compare "commit=a12d232e" "commit=b3bacc31"
 #       compare "os=debian" "os=centos" -c "suite=iperf"
 #       compare "os=centos" -d "os_version os_arch"
-#       compare "os=centos" -d "os_version os_arch" --color "classic"
+#       compare "os=centos" -d "os_version os_arch" --theme="classic"
 
 require 'optparse'
 require_relative '../lib/compare.rb'
@@ -42,9 +42,9 @@ opt_parser = OptionParser.new do |opts|
     is_group = true
   end
 
-  opts.on('--color color', 'turn on colorful display with theme: classic|focus_good|focus_bad',
-          '|striking|light|none') do |color|
-    colorful = color
+  opts.on('--theme theme', 'turn on colorful display with theme: classic|focus_good|focus_bad',
+          '|striking|light|json|html') do |theme|
+    colorful = theme
   end
 
   opts.on('-t', '--template template', 'compare with user-defined template') do |t|
