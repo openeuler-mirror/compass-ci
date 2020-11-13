@@ -4,8 +4,8 @@ types {
     text/css                                         css;
     text/xml                                         xml;
     text/yaml                                        yaml;
-    text/plain                                       txt time data sh;
+    text/plain                                       txt time data sh log;
 
     application/json                                 json;
-    application/x-gzip                               gz tgz;
+    application/x-gzip                               gz tgz cgz;
 }
