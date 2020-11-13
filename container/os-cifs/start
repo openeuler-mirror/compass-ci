@@ -8,7 +8,7 @@ lsmod | grep -q "^cifs\s" || {
 	sudo modprobe cifs
 }
 
-docker_rm samba
+docker_rm os-cifs
 
 cmd=(
 	docker run -dt
