@@ -19,7 +19,7 @@ cmd=(
 	-v /srv/result:/srv/result
 	--name os-cifs
 	--restart=always
-	alpine/samba
+	os-cifs
 )
 
 "${cmd[@]}"
