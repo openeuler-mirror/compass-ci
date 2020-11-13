@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
 require 'json'
@@ -260,6 +262,17 @@ def get_jobs_result(result)
   jobs
 end
 
+def get_job_query_range(condition_fields)
+  range = { start_time: {} }
+  start_date = condition_fields[:start_date]
+  end_date = condition_fields[:end_date]
+
+  range[:start_time][:gte] = "#{start_date} 00:00:00" if start_date
+  range[:start_time][:lte] = "#{end_date} 23:59:59" if end_date
+
+  { range: range }
+end
+
 def search_job(condition_fields, page_size, page_num)
   must = []
   FIELDS.each do |field|
@@ -272,6 +285,8 @@ def search_job(condition_fields, page_size, page_num)
               { term: { field => value } }
             end
   end
+  range = get_job_query_range(condition_fields)
+  must << range if range[:range][:start_time]
   result, total = es_search(must, page_size, page_num * page_size)
   return get_jobs_result(result), total
 end

@@ -1,4 +1,6 @@
 #!/usr/bin/ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
 require 'sinatra'
@@ -12,56 +14,59 @@ set :show_exceptions, false
 set :environment, :production
 
 # GET /compare_candidates
-# return: {"query_conditions": {...}, "dimension": [...]}
+# Response:
+# - {"query_conditions": {...}, "dimension": [...]}
 get '/compare_candidates' do
   compare_candidates
 end
 
 # GET /compare?suite=borrow&dimension=tbox_group
-# query_conditions:
-#   > must
+# must:
+# - query_conditions
 #   - os / os_version / suite / os_arch / tbox_group
-#
-# dimension:
-#   > must
+# - dimension
 #   - os / os_version / os_arch / suite / tbox_group
 #
-# return: compare result string / "No Data." / "No Difference."
+# Response:
+#   - compare result string / "No Data." / "No Difference."
 get '/compare' do
   compare(params)
 end
 
-# GET /get_jobs?upstream_repo=AvxToNeon/AvxToNeon&page_size=12&page_num=3
-# upstream_repo:
-#   > optional
-#
-# page_size:
-#   > optional
+# GET /get_jobs?upstream_repo=a&page_size=12&start_date=2020-11-03&end_date=2020-11-03
+# optional:
+# - upstream_repo
+#   - regex search
+# - os
+# - os_version
+# - os_arch
+# - suite
+# - category
+# - testbox
+# - job_state
+# - id
+# - start_date
+# - end_date
+# - page_size
 #   - default: 20
-#
-# page_num:
-#   > optional
+# - page_num
 #   - default: 1
 #
-# return:
+# Response:
 #   - default: 20 jobs
 get '/get_jobs' do
   get_jobs(params)
 end
 
 # GET /get_repos?git_repo=a&page_size=12&page_num=3
-# git_repo:
-#   > optional
-#
-# page_size:
-#   > optional
+# optional:
+# - git_repo
+# - page_size
 #   - default: 20
-#
-# page_num:
-#   > optional
+# - page_num
 #   - default: 1
 #
-# return:
+# Response:
 #   - default: 20 repos
 get '/get_repos' do
   get_repos(params)
