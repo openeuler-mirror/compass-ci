@@ -3,7 +3,7 @@
 
 ARG BASE_IMAGE
 
-FROM BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 # docker image borrowed from hub.docker.com/r/gagara/kibana-oss-arm64
 
