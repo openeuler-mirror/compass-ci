@@ -8,6 +8,7 @@ require "any_merge"
 require "scheduler/constants.cr"
 require "scheduler/jobfile_operate.cr"
 require "scheduler/kernel_params.cr"
+require "scheduler/pp_params.cr"
 
 struct JSON::Any
   def []=(key : String, value : String)
@@ -78,6 +79,9 @@ class Job
     initrd_pkg
     initrd_deps
     initrds_uri
+    rootfs
+    pp_params
+    submit_date
     result_root
     access_key
     access_key_file
@@ -135,6 +139,9 @@ class Job
     append_init_field()
     set_user_lkp_src()
     set_os_dir()
+    set_submit_date()
+    set_pp_params()
+    set_rootfs()
     set_result_root()
     set_result_service()
     set_os_mount()
@@ -188,10 +195,17 @@ class Job
     self["os_dir"] = "#{os}/#{os_arch}/#{os_version}"
   end
 
+  private def set_submit_date
+    self["submit_date"] = Time.local.to_s("%F")
+  end
+
+  private def set_rootfs
+    self["rootfs"] = "#{os}-#{os_version}-#{os_arch}"
+  end
+
   def set_result_root
     update_tbox_group_from_testbox # id must exists, need update tbox_group
-    date = Time.local.to_s("%F")
-    self["result_root"] = "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
+    self["result_root"] = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{pp_params}", "#{id}")
 
     # access_key has information based on "result_root"
     #  so when set result_root, we need redo set_ to update it
