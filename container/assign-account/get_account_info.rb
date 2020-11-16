@@ -30,16 +30,17 @@ API:
 call graph:
 setup_jumper_account_info
   read_account_info
-    build_account_info
+    build_account_name
   read_jumper_info
   config_default_yaml
   config_authorized_key
+  generate_ssh_key
 
 the returned data for setup_jumper_account_info like:
 {
-  "account" => "guest",
-  "passwd" => "Use pub_key to login",
-  "jumper_ip" => "10.10.10.10",
+  "my_login_name" => "login_name",
+  "password" => "password",
+  "jumper_host" => "0.0.0.0",
   "jumper_port" => "10000"
 }
 
@@ -94,28 +95,31 @@ class AccountStorage
   end
 
   def setup_jumper_account_info
-    account_info = read_account_info
-    jumper_info = read_jumper_info
-    pub_key = @data['my_ssh_pubkey'] unless @data['my_ssh_pubkey'].nil?
+    login_name, password = read_account_info
+    jumper_host, jumper_port = read_jumper_info
+    pub_key = @data['my_ssh_pubkey'][0]
 
-    login_name    = account_info[0]
-    password      = if pub_key.nil?
-                      account_info[1]
-                    else
-                      'Use pub_key to login'
-                    end
+    ssh_dir = File.join('/home/', login_name, '.ssh')
+    config_authorized_key(login_name, pub_key, ssh_dir) unless pub_key.nil?
+    config_default_yaml(login_name)
+    my_jumper_pubkey = generate_ssh_key(login_name, ssh_dir) if @data['gen_sshkey'].eql? true
 
     jumper_account_info = {
       'my_login_name' => login_name,
       'my_password' => password,
-      'jumper_host' => jumper_info[0].chomp,
-      'jumper_port' => jumper_info[1].chomp
+      'jumper_host' => jumper_host,
+      'jumper_port' => jumper_port,
+      'my_jumper_pubkey' => my_jumper_pubkey
     }
 
-    config_authorized_key(login_name, pub_key) unless pub_key.nil?
-    config_default_yaml(login_name)
-
     return jumper_account_info
+  end
+
+  def generate_ssh_key(login_name, ssh_dir)
+    Dir.mkdir ssh_dir, 0o700 unless File.exist? ssh_dir
+    %x(ssh-keygen -f "#{ssh_dir}/id_rsa" -N '' -C "#{login_name}@account-vm")
+    %x(chown -R #{login_name}:#{login_name} #{ssh_dir})
+    File.read("/home/#{login_name}/.ssh/id_rsa.pub")
   end
 
   def config_default_yaml(login_name)
@@ -132,8 +136,7 @@ class AccountStorage
     %x(chown -R #{login_name}:#{login_name} "/home/#{login_name}/.config")
   end
 
-  def config_authorized_key(login_name, pub_key)
-    ssh_dir = File.join('/home/', login_name, '.ssh')
+  def config_authorized_key(login_name, pub_key, ssh_dir)
     Dir.mkdir ssh_dir, 0o700
     Dir.chdir ssh_dir
     f = File.new('authorized_keys', 'w')
