@@ -9,11 +9,14 @@ DOCKER_CCI = '/c/compass-ci'
 DOCKER_REPO = '/c/upstream-repos'
 docker_rm "git-mirror"
 
+lkp = %x(id -u lkp)
+committer = %x(id -u committer)
+
 cmd = %W[
   docker run
   --restart=always
   --name git-mirror
-  -u 1090:1999
+  -u #{lkp}:#{committer}
   -d
   -e CCI_SRC=#{DOCKER_CCI}
   -e REPO_SRC=#{DOCKER_REPO}
