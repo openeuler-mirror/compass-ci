@@ -13,6 +13,7 @@ require 'set'
 require 'optparse'
 require_relative '../defconfig'
 require_relative '../../lib/es_client'
+require_relative 'build-send-account-email'
 
 names = Set.new %w[
   JUMPER_HOST
@@ -31,41 +32,46 @@ SEND_MAIL_PORT = defaults['SEND_MAIL_PORT'] || 49000
 my_info = {
   'my_email' => nil,
   'my_name' => nil,
+  'my_commit_url' => nil,
   'my_uuid' => %x(uuidgen).chomp,
-  'my_ssh_pubkey' => nil
+  'my_ssh_pubkey' => [],
+  'gen_sshkey' => false
 }
 
-def init_info(email_file, my_info)
-  mail_content = Mail.read(email_file)
+def init_info(mail_content, my_info)
   my_info['my_email'] = mail_content.from[0]
   my_info['my_name'] = mail_content.From.unparsed_value.gsub(/ <[^<>]*>/, '')
-  my_info['my_ssh_pubkey'] = if mail_content.part[1].filename == 'id_rsa.pub'
-                               mail_content.part[1].body.decoded
-                             end
+  return if mail_content.attachments.empty?
+
+  my_info['my_ssh_pubkey'] << mail_content.attachments[0].body.decoded
 end
 
 options = OptionParser.new do |opts|
   opts.banner = 'Usage: answerback-mail.rb [-e|--email email] '
-  opts.banner += "[-s|--ssh-pubkey pub_key_file] [-f|--raw-email email_file]\n"
+  opts.banner += "[-s|--ssh-pubkey pub_key_file] [-f|--raw-email email_file] [-g|--gen-sshkey]\n"
   opts.banner += "       -e or -f is required\n"
-  opts.banner += '       -s is optional when use -e'
+  opts.banner += "       -s is optional when use -e\n"
+  opts.banner += '       -g is optional, used to generate sshkey for user'
 
   opts.separator ''
   opts.separator 'options:'
 
   opts.on('-e email_address', '--email email_address', 'appoint email address') do |email_address|
     my_info['my_email'] = email_address
-    # when apply account with email address, will get no user name
-    my_info['my_name'] = ''
   end
 
   opts.on('-s pub_key_file', '--ssh-pubkey pub_key_file', \
           'ssh pub_key file, enable password-less login') do |pub_key_file|
-    my_info['my_ssh_pubkey'] = File.read(pub_key_file)
+    my_info['my_ssh_pubkey'] << File.read(pub_key_file).chomp
   end
 
   opts.on('-f email_file', '--raw-email email_file', 'email file') do |email_file|
-    init_info(email_file, my_info)
+    mail_content = Mail.read(email_file)
+    init_info(mail_content, my_info)
+  end
+
+  opts.on('-g', '--gen-sshkey', 'generate jumper ras public/private key and return pubkey') do
+    my_info['gen_sshkey'] = true
   end
 
   opts.on_tail('-h', '--help', 'show this message') do
@@ -75,32 +81,6 @@ options = OptionParser.new do |opts|
 end
 
 options.parse!(ARGV)
-
-def build_message(email, account_info)
-  message = <<~EMAIL_MESSAGE
-    To: #{email}
-    Subject: [compass-ci] jumper account is ready
-
-    Dear user:
-
-      Thank you for joining us.
-      You can use the following command to login the jumper server:
-
-      Login command:
-        ssh -p #{account_info['jumper_port']} #{account_info['my_login_name']}@#{account_info['jumper_host']}
-
-      Account password:
-        #{account_info['my_password']}
-
-      Suggest:
-        If you use the password to login, change it in time.
-
-    regards
-    compass-ci
-  EMAIL_MESSAGE
-
-  return message
-end
 
 def apply_account(my_info)
   account_info_str = %x(curl -XGET '#{JUMPER_HOST}:#{JUMPER_PORT}/assign_account' -d '#{my_info.to_json}')
@@ -114,12 +94,19 @@ def send_account(my_info)
   raise message if my_info['my_email'].nil?
 
   account_info = apply_account(my_info)
-  # for manually assign account, there will be no my_commit_url
-  # but the key my_commit_url is required for es
-  my_info['my_commit_url'] = ''
   my_info['my_login_name'] = account_info['my_login_name']
-  my_info.delete 'my_ssh_pubkey'
+
+  unless account_info['my_jumper_pubkey'].nil?
+    my_info['my_ssh_pubkey'] << account_info['my_jumper_pubkey'].chomp
+  end
+
+  my_info.delete 'gen_sshkey'
   store_account_info(my_info)
+
+  send_mail(my_info, account_info)
+end
+
+def send_mail(my_info, account_info)
   message = build_message(my_info['my_email'], account_info)
 
   %x(curl -XPOST '#{SEND_MAIL_HOST}:#{SEND_MAIL_PORT}/send_mail_text' -d "#{message}")
