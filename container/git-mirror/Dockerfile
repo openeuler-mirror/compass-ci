@@ -2,6 +2,9 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 FROM alpine:3.8
+MAINTAINER Li Yuanchao <lyc163mail@163.com>
+
+ADD kill-parent.sh /
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
