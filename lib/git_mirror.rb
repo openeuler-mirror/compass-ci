@@ -31,12 +31,18 @@ class GitMirror
     @feedback_queue.push(@feedback_info)
   end
 
-  def git_clone(url, mirror_dir)
-    ret = false
-    url = Array(url)[0]
+  def get_url(url)
     if url.include?('gitee.com/') && File.exist?("/srv/git/#{url.delete_prefix('https://')}")
       url = "/srv/git/#{url.delete_prefix('https://')}"
+    elsif url.include?('://github.com')
+      url = "https://gitclone.com/#{url.split('://')[1]}"
     end
+    return url
+  end
+
+  def git_clone(url, mirror_dir)
+    ret = false
+    url = get_url(Array(url)[0])
     10.times do
       stderr = %x(git clone --mirror #{url} #{mirror_dir} 2>&1)
       ret = !stderr.include?('fatal')
