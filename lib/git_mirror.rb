@@ -38,7 +38,8 @@ class GitMirror
       url = "/srv/git/#{url.delete_prefix('https://')}"
     end
     10.times do
-      ret = system("git clone --mirror #{url} #{mirror_dir}")
+      stderr = %x(git clone --mirror #{url} #{mirror_dir} 2>&1)
+      ret = !stderr.include?('fatal')
       break if ret
     end
     FileUtils.rm_r(mirror_dir) unless ret
