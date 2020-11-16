@@ -1,0 +1,18 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. ../defconfig.sh
+docker_rm minio
+
+cmd=(
+	docker run -d
+	-p 11321:9000
+	--name minio
+	-v /srv/minio/:/srv/minio/
+	-e "MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}"
+	-e "MINIO_SECRET_KEY=${MINIO_SECRET_KEY}"
+	jessestuart/minio server /srv/minio/
+)
+
+"${cmd[@]}"
