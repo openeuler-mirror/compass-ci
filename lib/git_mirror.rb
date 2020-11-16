@@ -56,7 +56,8 @@ class GitMirror
 
   def mirror_sync
     fork_info = @queue.pop
-    mirror_dir = "/srv/git/#{fork_info['git_repo']}.git"
+    mirror_dir = "/srv/git/#{fork_info['git_repo']}"
+    mirror_dir = "#{mirror_dir}.git" unless fork_info['is_submodule']
     possible_new_refs = false
     if File.directory?(mirror_dir)
       possible_new_refs = git_fetch(mirror_dir)
@@ -159,6 +160,8 @@ class MirrorMain
 
     feedback_info = @feedback_queue.pop(true)
     git_repo = feedback_info[:git_repo]
+    return if check_submodule(git_repo)
+
     update_fork_stat(git_repo, feedback_info[:possible_new_refs])
     return unless feedback_info[:possible_new_refs]
 
@@ -219,6 +222,8 @@ class MirrorMain
   end
 
   def get_cur_refs(git_repo)
+    return if @git_info[git_repo]['is_submodule']
+
     mirror_dir = "/srv/git/#{git_repo}.git"
     show_ref_out = %x(git -C #{mirror_dir} show-ref --heads)
     cur_refs = { heads: {} }
@@ -327,5 +332,33 @@ class MirrorMain
         sleep(0.1)
       end
     end
+  end
+
+  def handle_submodule(submodule, parent_project)
+    submodule.each_line do |line|
+      next unless line.include?('url = ')
+
+      url = line.split(' = ')[1].chomp
+      git_repo = url.split('://')[1] if url.include?('://')
+      return unless git_repo
+
+      @git_info[git_repo] = { 'url' => url, 'git_repo' => git_repo, 'is_submodule' => true }
+      fork_stat_init(git_repo)
+      @priority_queue.push git_repo, @priority
+      @priority += 1
+    end
+  end
+
+  def check_submodule(git_repo)
+    if @git_info[git_repo]['is_submodule']
+      @fork_stat[git_repo][:queued] = false
+      return true
+    end
+
+    mirror_dir = "/srv/git/#{git_repo}.git"
+    submodule = %x(git -C #{mirror_dir} show HEAD:.gitmodules 2>/dev/null)
+    return if submodule.empty?
+
+    handle_submodule(submodule, File.basename(git_repo))
   end
 end
