@@ -30,7 +30,6 @@ proc-vmstat:
 proc-stat:
 meminfo:
 
-LKP_SERVER: 172.168.131.113
 LKP_CGI_PORT: 3000
 result_root: /result/iperf
 LKP_DEBUG_PREFIX: bash -x

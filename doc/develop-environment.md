@@ -1,31 +1,3 @@
-# ssh
-
-## setup in your local laptop
-
-	cat >> ~/.ssh/config <<-EOF
-	Host crystal
-	  Hostname 124.90.34.227
-	  Port 22113
-	EOF
-
-	# password-less login
-	[ -f ~/.ssh/id_rsa.pub ] || ssh-keygen
-	ssh-copy-id crystal
-
-## setup in crystal server
-
-	cat >> ~/.ssh/config <<-EOF
-	Host alpine
-	  Hostname localhost
-	  Port 2200
-	  User team
-
-	Host debian
-	  Hostname localhost
-	  Port 2201
-	  User team
-	EOF
-
 # git
 
 ## user setting

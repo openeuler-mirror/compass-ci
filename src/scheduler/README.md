@@ -6,7 +6,7 @@
 - And set the environment variables needed for running (modify "/etc/compass-ci/defaults/crystal.yaml", and run $CCI_SRC/container/defconfig.rb | defconfig.sh)
   LKP_SRC: ~/code/lkp-tests    # path to your lkp-tests repo
   CCI_SRC: ~/code/compass-ci   # path to your compass-ci repo
-  SCHED_HOST: 172.168.131.131  # hostname or ip of the scheduler
+  SCHED_HOST: 172.17.0.1       # hostname or ip of the scheduler
   SCHED_PORT: 3000             # port of the scheduler
   JOB_INDEX_TYPE: "jobs/_doc"  # es job document index and type
 - '$'{variable} is used at shell command, means the value of variable
