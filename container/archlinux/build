@@ -2,4 +2,4 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-docker build -t archlinux:testbed .
+docker build --build-arg ARCH=$(arch) -t archlinux:testbed .
