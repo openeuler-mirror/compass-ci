@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+# fix files permissions cause container service start failed
+umask 002
+
 # download git trees
 
 cd /c || exit
