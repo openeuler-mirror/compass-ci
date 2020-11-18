@@ -2,4 +2,5 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+umask 0002
 conserver -o -O1 -C /etc/conserver.cf
