@@ -1,0 +1,37 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative "#{ENV['CCI_SRC']}/container/defconfig"
+
+docker_rm 'mail-robot'
+
+names = Set.new %w[
+  JUMPER_HOST
+  JUMPER_PORT
+  SEND_MAIL_PORT
+]
+
+defaults = relevant_defaults(names)
+defaults['MAILDIR'] = '/srv/cci/Maildir/.compass-ci'
+
+env = docker_env(defaults)
+
+cmd = %w[
+  docker run
+  --restart=always
+  --name=mail-robot
+  -d
+] + env + %W[
+  -v /c/upstream-repos:/c/upstream-repos:ro
+  -v #{defaults['MAILDIR']}:#{defaults['MAILDIR']}:rw
+  -v #{ENV['CCI_SRC']}:/c/compass-ci:rw
+  -w /c/compass-ci/container/mail-robot
+  mail-robot
+]
+
+cmd += ['ruby', 'mail-robot.rb']
+
+system(*cmd)
