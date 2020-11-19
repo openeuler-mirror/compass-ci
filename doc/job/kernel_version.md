@@ -30,11 +30,9 @@ Related files:
 - In initramfs boot process, every kernel version is related with a vmlinuz, module and headers.
 - Files like below under $boot_dir, an example $boot_dir can be "/srv/os/openeuler/aarch64/20.03/boot".
 ├── headers-4.19.90-2003.cgz
-├── headers.cgz -> headers-4.19.90-2003.cgz
 ├── modules-4.19.90-2003.cgz
-├── modules.cgz -> modules-4.19.90-2003.cgz
 ├── vmlinuz-4.19.90-2003
-└── vmlinuz     -> vmlinuz-4.19.90-2003
+└── vmlinuz -> vmlinuz-4.19.90-2003
 
 Usage example:
 - submit iperf.yaml testbox=vm-2p8g queue=vm-2p8g~$USER os=openeuler os_arch=aarch64 os_version=20.03 runtime=20 kernel_version=4.19.90-2003
