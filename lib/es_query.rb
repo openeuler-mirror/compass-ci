@@ -18,6 +18,10 @@ class ESQuery
   # Example @items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # means to query: key1 == value1 && (key2 in [value2, value3, ..])
   def multi_field_query(items, size: 10_000)
+    unless items
+      warn 'empty filter!'
+      exit
+    end
     query_fields = build_mutli_field_subquery_body items
     query = {
       query: {
