@@ -5,7 +5,6 @@
 . $CCI_SRC/container/defconfig.sh
 
 docker_rm rabbitmq
-docker pull rabbitmq:3-management
 
 cmd=(
 	docker run
