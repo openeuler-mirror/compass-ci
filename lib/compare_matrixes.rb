@@ -498,7 +498,8 @@ def get_dimentions_combination(dimension_list)
 end
 
 def show_compare_result(metrics_compare_results, template_params)
-  echart_results = format_for_echart(metrics_compare_results, template_params)
+  formatter = FormatEchartData.new(metrics_compare_results, template_params)
+  echart_results = formatter.format_for_echart
   print JSON.pretty_generate(echart_results)
 end
 
