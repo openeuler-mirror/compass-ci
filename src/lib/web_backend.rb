@@ -220,7 +220,9 @@ end
 
 def wrong_size?(size, from)
   return true if from.negative? || size.negative?
+
   return true if from > 1000000 || size > 1000000
+
   return true if size + from > 1000000
 end
 
@@ -344,6 +346,7 @@ def get_repo_url(urls)
   urls.each do |url|
     return url if url[0, 4] == 'http'
   end
+
   urls[0]
 end
 
