@@ -85,6 +85,7 @@ module Jobfile::Operate
 
       job_sh_array = [] of JSON::Any
       tmp_job_sh_content.as_h.each do |_key, val|
+        next if val == nil
         job_sh_array += val.as_a
       end
     else
