@@ -38,6 +38,7 @@ else
 	curl -H 'Content-Type: Application/json' -XPUT 'http://localhost:9200/jobs' -d '{
 		    "mappings": {
 		      "_doc": {
+		      "dynamic": false,
 		      "dynamic_templates": [
 		          {
 		            "pp": {
@@ -61,6 +62,10 @@ else
 		          }
 		        ],
 		        "properties": {
+		          "pp": {
+		            "dynamic": true,
+		            "properties": {}
+		          },
 		          "suite": {
 		            "type": "keyword"
 		          },
