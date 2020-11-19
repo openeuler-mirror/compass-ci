@@ -12,6 +12,7 @@ require "#{CCI_SRC}/lib/compare.rb"
 require "#{CCI_SRC}/lib/constants.rb"
 require "#{CCI_SRC}/lib/es_query.rb"
 require "#{CCI_SRC}/lib/matrix2.rb"
+require "#{CCI_SRC}/lib/compare_data_format.rb"
 
 UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
 
@@ -412,4 +413,21 @@ def get_repos(params)
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get repos error']
  end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+def compare_template(data)
+  begin
+    body = template_body(JSON.parse(data))
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'compare error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+def template_body(request_body)
+  groups_matrices = create_groups_matrices(request_body)
+  compare_results = compare_metrics_values(groups_matrices)
+  formatter = FormatEchartData.new(compare_results, request_body)
+  formatter.format_for_echart.to_json
 end

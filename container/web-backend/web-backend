@@ -71,3 +71,35 @@ end
 get '/get_repos' do
   get_repos(params)
 end
+
+# POST /compare_template
+# - header: "Content-Type: Application/json"
+# - body: json
+#   eg:
+#     {
+#       "compare_metrics": ["fio.write_iops", "fio.read_iops"],
+#       "filter":{
+#           "suite": ["fio-basic"],
+#           "os_arch": ["aarch64", "x86"]
+#         },
+#       "compare_dimensions": [
+#           {
+#             "os": "debian",
+#             "os_version": "sid"
+#           },
+#           {
+#             "os": "openeuler",
+#             "os_version: 20.03
+#           }
+#         ],
+#       "x_params": ["bs", "test_size"],
+#       "title": "Hackbench Performance Testing",
+#       "unit": "KB/s"
+#     }
+#
+# Response:
+#   - compare result
+post '/compare_template' do
+  request.body.rewind # in case someone already read it
+  compare_template(request.body.read)
+end
