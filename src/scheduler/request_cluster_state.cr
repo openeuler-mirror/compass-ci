@@ -13,13 +13,14 @@ class Sched
     cluster_state = ""
 
     states = {"abort"       => "abort",
+              "started"     => "start",
               "finished"    => "finish",
               "failed"      => "abort",
               "wait_ready"  => "ready",
               "wait_finish" => "finish"}
 
     case request_state
-    when "abort", "finished", "failed"
+    when "abort", "started", "failed"
       # update node state only
       update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
     when "wait_ready"
@@ -30,7 +31,7 @@ class Sched
       }
 
       return cluster_state
-    when "wait_finish"
+    when "wait_finish", "finished"
       update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
       while 1
         sleep(10)
