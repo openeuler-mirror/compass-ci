@@ -1,5 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-docker build -t logging-es:7.6.2 .
+declare -A BASE_IMAGE_DICT
+
+BASE_IMAGE_DICT=(
+  ["aarch64"]="gagara/elasticsearch-oss-arm64:7.6.2"
+  ["x86_64"]="elasticsearch:7.6.2"
+)
+
+BASE_IMAGE=${BASE_IMAGE_DICT[$(arch)]}
+
+docker build -t logging-es:7.6.2 --build-arg BASE_IMAGE="$BASE_IMAGE" .
