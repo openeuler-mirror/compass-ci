@@ -55,6 +55,9 @@ https://github.com/DocSpring/ruby_crystal_codemod
 shell
 =====
 
+Linux 的概念与体系
+https://www.cnblogs.com/vamei/archive/2012/10/10/2718229.html
+
 man bash
 https://devhints.io/bash
 https://github.com/denysdovhan/bash-handbook/blob/master/translations/zh-CN/README.md
