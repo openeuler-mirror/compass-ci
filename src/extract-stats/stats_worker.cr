@@ -103,6 +103,7 @@ class StatsWorker
         next
       end
       next if is_exists
+
       new_error_ids << error_id
       @rc.store_error_info error_id, job_id
     end
@@ -114,6 +115,7 @@ class StatsWorker
     ERROR_ID_FILES.each do |filename|
       filepath = File.join(result_root, filename)
       next unless File.exists?(filepath)
+
       content = File.open(filepath) do |file|
         JSON.parse(file)
       end
