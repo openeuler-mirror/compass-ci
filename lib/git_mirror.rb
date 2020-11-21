@@ -135,6 +135,8 @@ class MirrorMain
         traverse_repodir("#{repodir}/#{entry}")
       end
     else
+      return if File.dirname(repodir) == REPO_DIR
+
       project = File.dirname(repodir).delete_prefix("#{REPO_DIR}/")
       fork_name = File.basename(repodir)
       load_repo_file(repodir, project, fork_name)
