@@ -10,13 +10,13 @@ DOCKER_REPO = '/c/upstream-repos'
 docker_rm "git-mirror"
 
 lkp = %x(id -u lkp)
-committer = %x(id -g committer)
+group_id = %x(cat /etc/group | grep '^committer' | awk -F ':' '{print $3}')
 
 cmd = %W[
   docker run
   --restart=always
   --name git-mirror
-  -u #{lkp.to_i}:#{committer.to_i}
+  -u #{lkp.to_i}:#{group_id.to_i}
   -d
   -e CCI_SRC=#{DOCKER_CCI}
   -e REPO_SRC=#{DOCKER_REPO}
