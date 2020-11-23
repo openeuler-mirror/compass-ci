@@ -52,11 +52,16 @@ class Sched
                   "direct_macs" => direct_macs}
       update_cluster_state(cluster_id, job_id, job_info)
     when "roles_ip"
-      role = "server"
-      role_state = get_role_state(cluster_id, role)
-      raise "Missing #{role} state in cluster state" unless role_state
-      return "server=#{role_state["ip"]}\n" \
-             "direct_server_ips=#{role_state["direct_ips"]}"
+      cluster_state = get_cluster_state(cluster_id)
+      roles_ip = [] of String
+
+      cluster_state.each_value do |host_state|
+        roles = host_state["roles"]
+        direct_ips = host_state["direct_ips"]
+        roles_ip << "#{roles}=#{direct_ips}"
+      end
+
+      return roles_ip.join('\n')
     end
 
     # show cluster state
