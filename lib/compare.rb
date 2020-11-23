@@ -20,8 +20,8 @@ require 'yaml'
 
 def compare_matrices_list(argv, common_conditions, options)
   condition_list = parse_argv(argv, common_conditions)
-  matrices_list = create_matrices_list(condition_list)
-  compare_matrixes(matrices_list, options: options)
+  matrices_list, suite_list = create_matrices_list(condition_list)
+  compare_matrixes(matrices_list, suite_list, options: options)
 end
 
 def parse_argv(argv, common_conditions)
@@ -37,12 +37,16 @@ end
 
 def create_matrices_list(conditions)
   matrices_list = []
+  suite_list = []
   es = ESQuery.new(ES_HOST, ES_PORT)
   conditions.each do |condition|
     query_results = es.multi_field_query(condition)
-    matrices_list << combine_query_data(query_results)
+    matrix, suites = combine_query_data(query_results)
+    matrices_list << matrix
+    suite_list.concat(suites)
   end
-  matrices_list
+
+  return matrices_list, suite_list
 end
 
 # -------------------------------------------------------------------------------------------
@@ -58,8 +62,8 @@ end
 def compare_group(argv, dimensions, options)
   conditions = parse_conditions(argv)
   dims = dimensions.split(' ')
-  groups_matrices = create_groups_matrices_list(conditions, dims)
-  compare_group_matrices(groups_matrices, options)
+  groups_matrices, suites_list = create_groups_matrices_list(conditions, dims)
+  compare_group_matrices(groups_matrices, suites_list, options)
 end
 
 def create_groups_matrices_list(conditions, dims)

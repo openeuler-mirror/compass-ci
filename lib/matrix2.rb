@@ -76,7 +76,9 @@ end
 #               }
 def create_matrix(job_list)
   matrix = {}
+  suites = []
   job_list.each do |job|
+    suites << job['suite'] if job['suite']
     stats = job['stats']
     next unless stats
 
@@ -89,7 +91,7 @@ def create_matrix(job_list)
   matrix.each_value do |value|
     samples_fill_missing_zeros(value, col_size)
   end
-  matrix
+  return matrix, suites
 end
 
 # input: query results from es_query
@@ -110,15 +112,23 @@ end
 #                 ...
 #               }
 def combine_group_query_data(query_data, dims)
+  suites_list = []
   job_list = query_data['hits']['hits']
   groups = auto_group(job_list, dims)
   groups.each do |group_key, value|
+    suite_list = []
     value.each do |dimension_key, jobs|
-      groups[group_key][dimension_key] = create_matrix(jobs)
+      groups[group_key][dimension_key], suites = create_matrix(jobs)
+      suite_list.concat(suites)
     end
-    groups.delete(group_key) if value.size < 2
+    if value.size < 2
+      groups.delete(group_key)
+      next
+    end
+    suites_list << suite_list
   end
-  groups
+
+  return groups, suites_list
 end
 
 # input:
@@ -139,7 +149,7 @@ def combine_group_jobs_list(query_data, groups_params, dimensions, metrics)
   groups = auto_group_by_template(job_list, groups_params, dimensions, metrics)
   groups.each do |group_key, dims|
     dims.each do |dim_key, jobs|
-      groups[group_key][dim_key] = create_matrix(jobs)
+      groups[group_key][dim_key], _ = create_matrix(jobs)
     end
   end
 

@@ -128,7 +128,7 @@ def set_compare_values(index, values, field, success, options)
 end
 
 def get_values_by_field(matrixes_list, field, matrixes_size, success, options)
-  # get values by field, values struce example: values[0][:average]
+  # get values by field, values struct example: values[0][:average]
   #
   values = {}
   matrixes_list.length.times do |index|
@@ -193,7 +193,7 @@ def matrixes_empty?(matrixes_list)
   return matrixes_list.any?(&:empty?)
 end
 
-def compare_matrixes(matrixes_list, matrixes_titles = nil, group_key = nil, options: {})
+def compare_matrixes(matrixes_list, suite_list, matrixes_titles = nil, group_key = nil, options: {})
   # compare matrix in matrixes_list and print info
   # @matrixes_list: list consisting of matrix
   # @matrixes_titles: number or dimension of matrix
@@ -208,6 +208,7 @@ def compare_matrixes(matrixes_list, matrixes_titles = nil, group_key = nil, opti
   result_str = group_key ? "\n\n\n\n\n" + group_key : ''
   result_str += get_all_result_str(
     matrixes_values,
+    suite_list,
     matrixes_titles,
     matrixes_list.size,
     options[:theme]
@@ -382,7 +383,7 @@ end
 # compare each matrices_list within pre dimension of group matrices
 # input: group matrices
 # output: pre compare result of each group
-def compare_group_matrices(group_matrices, options)
+def compare_group_matrices(group_matrices, suites_list, options)
   result_str = ''
   group_matrices.each do |k, v|
     matrices_list = []
@@ -392,9 +393,9 @@ def compare_group_matrices(group_matrices, options)
       matrices_list << matrix
     end
     if options[:no_print]
-      result_str += compare_matrixes(matrices_list, matrices_titles, k, options: options)
+      result_str += compare_matrixes(matrices_list, suites_list.shift, matrices_titles, k, options: options)
     else
-      print compare_matrixes(matrices_list, matrices_titles, k, options: options)
+      print compare_matrixes(matrices_list, suites_list.shift, matrices_titles, k, options: options)
     end
   end
   result_str
@@ -808,26 +809,40 @@ def get_theme(matrixes_values, matrixes_titles, theme)
   return THEMES[:none]
 end
 
-def get_all_result_str(matrixes_values, matrixes_titles, matrixes_number, theme)
+def get_all_result_str(matrixes_values, suite_list, matrixes_titles, matrixes_number, theme)
   matrixes_titles ||= matrixes_number.times.to_a.map(&:to_s)
   theme = get_theme(matrixes_values, matrixes_titles, theme)
   return '' unless theme
 
-  failure_str = get_result_str(matrixes_values[false].sort, matrixes_titles, false, theme)
-  success_str = get_result_str(matrixes_values[true].sort, matrixes_titles, true, theme)
+  failure_str = get_result_str(matrixes_values[false].sort, suite_list, matrixes_titles, false, theme)
+  success_str = get_result_str(matrixes_values[true].sort, suite_list, matrixes_titles, true, theme)
   failure_str + success_str
 end
 
-def get_result_str(values, matrixes_titles, success, theme)
+def get_result_str(values, suite_list, matrixes_titles, success, theme)
   return '' if values.empty?
 
+  suite_set = Set.new(suite_list)
   result_str = "\n\n\n"
   common_title, compare_title = get_title_name(success)
   result_str += get_header(matrixes_titles, success, common_title, compare_title)
-  values.each do |field, matrixes|
-    result_str += get_values_str(matrixes, success, theme)
-    result_str += get_field_str(field)
-    result_str += "\n"
-  end
+  ranked_str = get_ranked_str(values, suite_set, success, theme)
+  result_str += ranked_str
   result_str
+end
+
+def get_ranked_str(values, suite_set, success, theme)
+  suite_str = ''
+  common_str = ''
+  values.each do |field, matrixes|
+    row = get_values_str(matrixes, success, theme)
+    row += get_field_str(field) + "\n"
+    field_start_with_suite = suite_set.any? { |suite| field.start_with?(suite) }
+    if field_start_with_suite
+      suite_str += row
+    else
+      common_str += row
+    end
+  end
+  suite_str + common_str
 end
