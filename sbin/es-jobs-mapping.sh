@@ -149,5 +149,9 @@ else
 	  if [ $? -ne 0 ]
 	  then
 		  echo "create jobs index failed."
+	  else
+		  echo "set index.mapping.total_fields.limit: 10000"
+		  curl -XPUT 127.0.0.1:9200/jobs/_settings -H 'Content-Type: application/json' \
+		       -d '{"index.mapping.total_fields.limit": 10000}'
 	  fi
 fi
