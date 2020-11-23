@@ -14,6 +14,7 @@ cmd=(
 	-p 3080:3080
 	-v $PWD/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
 	-v /srv/result/:/srv/result/
+	-v /srv/initrd/:/srv/initrd/
 	result-webdav
 )
 
