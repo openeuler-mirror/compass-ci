@@ -4,16 +4,16 @@
 
 FROM alpine:edge
 
+MAINTAINER Xiao Shenwei <xiaoshenwei96@163.com>
+
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
-
 RUN adduser -u 1090 -D lkp
-
 RUN apk add --update \
     samba-common-tools \
     samba-client \
     samba-server \
-    bash \
-    && rm -rf /var/cache/apk/*
+    bash
+RUN rm -rf /var/cache/apk/*
 
 COPY ./smb.conf /etc/samba/
 

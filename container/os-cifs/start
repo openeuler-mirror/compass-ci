@@ -11,12 +11,11 @@ lsmod | grep -q "^cifs\s" || {
 docker_rm os-cifs
 
 cmd=(
-	docker run -dt
+	docker run
+	-d
 	-p 445:445
-	-v /srv/os:/srv/os
 	-v /etc/localtime:/etc/localtime:ro
-	-v /srv/initrd:/srv/initrd
-	-v /srv/result:/srv/result
+	-v /srv/os:/srv/os
 	--name os-cifs
 	--restart=always
 	os-cifs
