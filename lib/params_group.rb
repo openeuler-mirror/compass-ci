@@ -34,8 +34,7 @@ def auto_group(jobs_list, dimensions)
   return [] if dimensions.empty?
 
   jobs_list = extract_jobs_list(jobs_list)
-  groups = group(jobs_list, dimensions)
-  return remove_singleton(groups)
+  group(jobs_list, dimensions)
 end
 
 def extract_jobs_list(jobs_list)

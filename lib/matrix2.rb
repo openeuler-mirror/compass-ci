@@ -116,7 +116,7 @@ def combine_group_query_data(query_data, dims)
   job_list = query_data['hits']['hits']
   groups = auto_group(job_list, dims)
   groups.each do |group_key, value|
-    if value.size < 2
+    if value.empty?
       groups.delete(group_key)
       next
     end
