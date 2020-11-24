@@ -9,6 +9,7 @@ require "scheduler/constants.cr"
 require "scheduler/jobfile_operate.cr"
 require "scheduler/kernel_params.cr"
 require "scheduler/pp_params.cr"
+require "../scheduler/elasticsearch_client"
 
 struct JSON::Any
   def []=(key : String, value : String)
@@ -58,8 +59,11 @@ class Job
       return if @hash["id"] == "#{id}"
     end
 
+    @es = Elasticsearch::Client.new
     @hash["id"] = JSON::Any.new("#{id}")
+    @account_info = Hash(String, JSON::Any).new
     check_required_keys()
+    check_account_info()
     set_defaults()
   end
 
@@ -152,7 +156,7 @@ class Job
     set_kernel_append_root()
     set_kernel_params()
     set_lkp_server()
-    set_sshr_port()
+    set_sshr_info()
     set_queue()
   end
 
@@ -183,12 +187,34 @@ class Job
     end
   end
 
-  private def set_sshr_port
+  private def set_sshr_info
     return unless self["sshd"]?
 
     self["sshr_port"] = ENV["SSHR_PORT"]
     self["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
     self["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
+
+    return if @account_info["found"]? == false
+
+    update_sshd
+  end
+
+  private def update_sshd
+    sshd = @hash["sshd"].as_h? || Hash(String, JSON::Any).new()
+    pub_key = sshd["pub_key"]?.to_s
+    update_account_my_pub_key(pub_key)
+
+    sshd["pub_key"] = @account_info["my_ssh_pubkey"]
+    @hash["sshd"] = JSON.parse(sshd.to_json)
+  end
+
+  private def update_account_my_pub_key(pub_key)
+    my_ssh_pubkey = @account_info["my_ssh_pubkey"].as_a
+    return if pub_key.empty? || my_ssh_pubkey.includes?(pub_key)
+
+    my_ssh_pubkey << JSON::Any.new(pub_key)
+    @account_info["my_ssh_pubkey"] = JSON.parse(my_ssh_pubkey.to_json)
+    @es.update_account(JSON.parse(@account_info.to_json), self["my_email"].to_s)
   end
 
   private def set_os_dir
@@ -271,6 +297,9 @@ class Job
     id
     suite
     testbox
+    my_email
+    my_name
+    my_uuid
   ]
 
   private def check_required_keys
@@ -279,6 +308,20 @@ class Job
         raise "Missing required job key: '#{key}'"
       end
     end
+  end
+
+  private def check_account_info
+    error_msg = "Failed to verify the account. Please check your configuration"
+    account_info = @es.get_account(self["my_email"])
+    raise account_info unless account_info.is_a?(JSON::Any)
+
+    @account_info = account_info.as_h
+
+    raise error_msg if @account_info["found"]? == false
+    raise error_msg unless self["my_name"] == @account_info["my_name"].to_s
+    raise error_msg unless self["my_uuid"] == @account_info["my_uuid"]
+
+    @hash.delete("my_uuid")
   end
 
   private def initialized?
@@ -301,6 +344,8 @@ class Job
                          "LKP_CGI_PORT",
                          "SCHED_HOST",
                          "SCHED_PORT"]
+
+    initialized_keys -= ["my_uuid"]
 
     initialized_keys.each do |key|
       return false unless @hash.has_key?(key)
@@ -441,7 +486,7 @@ class Job
       else
         program_version = "latest"
       end
-      
+
       deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}/#{program}.cgz"
       pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}/#{program_version}.cgz"
 
