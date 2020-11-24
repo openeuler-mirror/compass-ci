@@ -36,20 +36,12 @@ for external user
        email subject:
          apply account
        email body:
-         my oss commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+         example:
+           my oss commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
        attachment:
          ssh pubkey file
-     it will return email with my_email, my_name, my_uuid if successfully applied account
 
-2. prepare to submit job
-   execute on user's local host
-   - config default yaml file:
-       ~/.config/compass-ci/default/account.yaml
-   - prepare job.yaml
-   - submit job
-
-3. apply account email format
-   example:
+   - email example:
 
         To: compass-ci@qq.com
         Subject: apply account
@@ -58,5 +50,19 @@ for external user
         # We'll validate whether the URL contains your email. 
         # for example,
         my oss commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
-
         # attach your ssh pub key to the email as attachment
+ 
+2. successfully applied account email
+   it will return an email with following information:
+     - my_email
+     - my_name
+     - my_uuid
+     - SCHED_HOST
+     - SCHED_PORT
+
+3. environment configuration
+   follow steps in the email to finish the following configuration
+   - setup default yaml
+       ~/.config/compass-ci/default/account.yaml
+   - download and install lkp-tests
+   - prepare to submit jobs
