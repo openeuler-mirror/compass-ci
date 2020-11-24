@@ -6,7 +6,7 @@ require 'logger'
 require 'json'
 
 # print logs in JSON format
-class Log < Logger
+class JSONLogger < Logger
   LEVEL_INFO = {
     'DEBUG' => 0,
     'INFO' => 1,
@@ -18,21 +18,19 @@ class Log < Logger
 
   FORMATTER = proc { |severity, datetime, progname, msg|
     level_num = LEVEL_INFO[severity]
-    begin
-      message = JSON.parse(msg)
-    rescue JSON::ParserError
-      message = { 'message' => msg }
-    end
-    h = {
+    logger_hash = {
       'level' => severity.to_s,
       'level_num' => level_num,
-      'datetime' => datetime,
-      'progname' => progname,
-      'message' => ''
+      'time' => datetime
     }
-    h.merge!(message)
-    h.merge!({ 'caller' => caller }) if level_num >= 2
-    h.to_json
+
+    logger_hash['progname'] = progname if progname
+    logger_hash['caller'] = caller if level_num >= 2
+
+    msg = { 'message' => msg } unless msg.is_a?(Hash)
+    logger_hash.merge!(msg)
+
+    logger_hash.to_json
   }
 
   def initialize(logdev = STDOUT, formatter = FORMATTER)
