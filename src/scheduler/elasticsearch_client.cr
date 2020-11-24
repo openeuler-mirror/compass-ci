@@ -69,6 +69,24 @@ class Elasticsearch::Client
     return job
   end
 
+  def get_account(my_email : String)
+    query = {:index => "accounts", :type => "_doc", :id => my_email}
+    response = JSON.parse({"_id" => my_email, "found" => false}.to_json)
+    return response unless @client.exists(query)
+
+    @client.get_source(query)
+  end
+
+  def update_account(account_content : JSON::Any, my_email : String)
+    return @client.update(
+      {
+        :index => "accounts", :type => "_doc",
+        :id => my_email,
+        :body => {:doc => account_content}
+      }
+    )
+  end
+
   private def create(job_content : JSON::Any, job_id : String)
     return @client.create(
       {
