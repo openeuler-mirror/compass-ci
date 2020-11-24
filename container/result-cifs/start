@@ -1,0 +1,24 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+lsmod | grep -q "^cifs\s" || {
+	sudo modprobe cifs
+}
+
+docker_rm result-cifs
+
+cmd=(
+	docker run
+	-d
+	-p 447:445
+	-v /etc/localtime:/etc/localtime:ro
+	-v /srv/result:/srv/result
+	--name result-cifs
+	--restart=always
+	result-cifs
+)
+
+"${cmd[@]}"
