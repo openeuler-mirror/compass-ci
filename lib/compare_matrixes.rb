@@ -467,6 +467,7 @@ end
 def assign_metric_change(metrics_values)
   metrics_values.each do |metric, values|
     next if values['average'].size < 2
+
     metrics_values[metric]['change'] = {}
 
     dimension_list = values['average'].keys
