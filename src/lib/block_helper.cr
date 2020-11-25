@@ -28,9 +28,7 @@ class BlockHelper
       @block_helper[uuid] = fiber
     end
 
-    if yield == true
-      spawn fiber.run
-    end
+    spawn fiber.run if yield == true
 
     until fiber.dead?
       Fiber.yield
