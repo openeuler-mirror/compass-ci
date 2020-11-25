@@ -21,12 +21,12 @@ class GiteeCommitUrlCheck
   end
 
   def gitee_commit_check
-    repo_dir = @url.split('/')[-3]
     repo_url = [@base_url, 'git'].join('.')
+    repo_dir = repo_url.split('/')[-1]
     commit_id = @url.split('/')[-1]
 
     Dir.chdir '/tmp'
-    %x(/usr/bin/git clone #{repo_url} #{repo_dir})
+    %x(/usr/bin/git clone --bare  #{repo_url} #{repo_dir})
 
     email_index = %x(/usr/bin/git -C #{repo_dir} show #{commit_id}).index @my_info['my_email']
 
