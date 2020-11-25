@@ -97,8 +97,6 @@ class Job
     docker_image
     kernel_version
     linux_vmlinuz_path
-    linux_modules_initrd
-    linux_headers_initrd
   )
 
   macro method_missing(call)
@@ -390,9 +388,9 @@ class Job
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
                     "#{JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")}"
     temp_initrds << "#{OS_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path("#{linux_modules_initrd}")}"
+                    "#{JobHelper.service_path(self["linux_modules_initrd"])}"
     temp_initrds << "#{OS_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path("#{linux_headers_initrd}")}"
+                    "#{JobHelper.service_path(self["linux_headers_initrd"])}"
 
     temp_initrds.concat(initrd_deps.split(/ /)) unless initrd_deps.empty?
     temp_initrds.concat(initrd_pkg.split(/ /)) unless initrd_pkg.empty?
