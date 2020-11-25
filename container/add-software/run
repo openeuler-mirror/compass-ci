@@ -9,6 +9,8 @@
 	2> ./run /os/centos/aarch64/7.6.1810 $(show-depends-packages centos)
 	centos is an adaption file contain packages mapping from debian to centos,
 	the whole path is '$LKP_SRC/distro/adaptation/centos'.
+	[Remind]
+	This tool also works for openEuler.
 EOF
 	exit
 }
