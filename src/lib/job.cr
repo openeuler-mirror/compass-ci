@@ -206,6 +206,7 @@ class Job
 
     sshd["pub_key"] = @account_info["my_ssh_pubkey"]
     @hash["sshd"] = JSON.parse(sshd.to_json)
+    @hash["my_ssh_pubkey"] = @account_info["my_ssh_pubkey"]
   end
 
   private def update_account_my_pub_key(pub_key)
