@@ -358,11 +358,11 @@ class Job
 
   private def set_kernel_version
     boot_dir = "#{SRV_OS}/#{os_dir}/boot"
-    suffix = "-#{kernel_version}" if self["kernel_version"]?
-    self["linux_vmlinuz_path"]   = File.real_path("#{boot_dir}/vmlinuz#{suffix}")
+    self["kernel_version"] ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
+    self["linux_vmlinuz_path"] = File.real_path("#{boot_dir}/vmlinuz-#{kernel_version}")
     if "#{os_mount}" == "initramfs"
-      self["linux_modules_initrd"] = File.real_path("#{boot_dir}/modules#{suffix}.cgz")
-      self["linux_headers_initrd"] = File.real_path("#{boot_dir}/headers#{suffix}.cgz")
+      self["linux_modules_initrd"] = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
+      self["linux_headers_initrd"] = File.real_path("#{boot_dir}/headers-#{kernel_version}.cgz")
     end
   end
 
