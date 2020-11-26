@@ -148,7 +148,7 @@ def get_es_must(params)
   must
 end
 
-def _get_group_matrices(query, dimension)
+def _get_groups_matrices(query, dimension)
   result = es_query(query)
   matrices, suites_list = combine_group_query_data(result, dimension)
   while matrices.empty?
