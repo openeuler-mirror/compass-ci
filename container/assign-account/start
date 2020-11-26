@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-. $CCI_SRC/container/defconfig.sh
+. ../defconfig.sh
 
 docker_rm assign-account
 
@@ -11,8 +11,7 @@ cmd=(
 	--restart=always
 	--name=assign-account
 	-d
-	-v /etc/passwd:/etc/passwd:ro
-	-v /etc/group:/etc/group:ro
+	-v /etc:/etc:rw
 	-v /srv/account-info:/opt/account_data/:rw
 	-v /home:/home:rw
 	-p 29999:29999
@@ -20,14 +19,3 @@ cmd=(
 )
 
 "${cmd[@]}"
-
-cat << EOF
-port: 29999
----
-Client:
-./assign-tool.rb email_file
-
-email subject: "apply ssh account"
-
-Refer to compass-ci/doc/apply-ssh-account.md for more information.
-EOF
