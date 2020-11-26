@@ -2,4 +2,13 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-docker build -t manjaro:testbed .
+declare -A BASE_IMAGE_DICT
+
+BASE_IMAGE_DICT=(
+  ["aarch64"]="manjaroarm/manjaro-aarch64-base"
+  ["x86_64"]="manjarolinux/base"
+)
+
+BASE_IMAGE=${BASE_IMAGE_DICT[$(arch)]}
+
+docker build -t manjaro:testbed --build-arg ARCH=$(arch) --build-arg BASE_IMAGE="${BASE_IMAGE}" .
