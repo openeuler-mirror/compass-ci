@@ -148,6 +148,20 @@ def get_es_must(params)
   must
 end
 
+def _get_group_matrices(query, dimension)
+  result = es_query(query)
+  matrices, suites_list = combine_group_query_data(result, dimension)
+  while matrices.empty?
+    from += size
+    break if from > total
+
+    query[:from] = from
+    result = es_query(query)
+    matrices, suites_list = combine_group_query_data(result, dimension)
+  end
+  [matrices, suites_list]
+end
+
 def get_groups_matrices(conditions, dimension, must, size, from)
   must += build_mutli_field_subquery_body(conditions)
   count_query = { query: { bool: { must: must } } }
@@ -167,27 +181,17 @@ def get_groups_matrices(conditions, dimension, must, size, from)
     }]
   }
 
-  result = es_query(query)
-  matrices = combine_group_query_data(result, dimension)
-  while matrices.empty?
-    from += size
-    break if from > total
-
-    query[:from] = from
-    result = es_query(query)
-    matrices = combine_group_query_data(result, dimension)
-  end
-  matrices
+  matrices, suites_list = _get_groups_matrices(query, dimension)
 end
 
 def get_compare_body(params)
   dimension, conditions = get_dimension_conditions(params)
   must = get_es_must(params)
-  groups_matrices = get_groups_matrices(conditions, dimension, must, COMPARE_RECORDS_NUMBER, 0)
+  groups_matrices, suites_list = get_groups_matrices(conditions, dimension, must, COMPARE_RECORDS_NUMBER, 0)
   if !groups_matrices || groups_matrices.empty?
     body = 'No Data.'
   else
-    body = compare_group_matrices(groups_matrices, { no_print: true })
+    body = compare_group_matrices(groups_matrices, suites_list, { no_print: true })
     body = 'No Difference.' if !body || body.empty?
   end
   return body
