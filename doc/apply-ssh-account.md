@@ -17,11 +17,9 @@
         To: compass-ci@qq.com
         Subject: apply account
 
-        # Show a commit URL that you contributed to an OSS project
-        # We'll validate whether the URL contains your email. 
-        # for example,
         my oss commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
-        # attach your ssh pub key to the email as attachment
+
+        attach your ssh pub key to the email as attachment
  
 2. receive email from compass-ci@qq.com
    the email contains following information:
