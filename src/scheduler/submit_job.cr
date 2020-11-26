@@ -9,10 +9,8 @@ class Sched
     job = Job.new(job_content, job_content["id"]?)
     job["commit_date"] = get_commit_date(job)
 
-    # it is not a cluster job if cluster field is empty or
-    # field's prefix is 'cs-localhost'
     cluster_file = job["cluster"]
-    if cluster_file.empty? || cluster_file.starts_with?("cs-localhost")
+    if cluster_file.empty? || cluster_file == "cs-localhost"
       return submit_single_job(job)
     else
       cluster_config = get_cluster_config(cluster_file,
