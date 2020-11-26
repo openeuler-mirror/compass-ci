@@ -366,14 +366,14 @@ class Job
 
   private def set_kernel_uri
     self["kernel_uri"] = "kernel #{OS_HTTP_PREFIX}" +
-                         "#{JobHelper.service_path("#{linux_vmlinuz_path}")}"
+                         JobHelper.service_path("#{linux_vmlinuz_path}")
   end
 
   private def common_initrds
     temp_initrds = [] of String
 
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path("#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz")}"
+                    JobHelper.service_path("#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz")
     temp_initrds << "#{SCHED_HTTP_PREFIX}/job_initrd_tmpfs/#{id}/job.cgz"
 
     return temp_initrds
@@ -384,13 +384,13 @@ class Job
 
     osimage_dir = "#{SRV_INITRD}/osimage/#{os_dir}"
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path("#{osimage_dir}/current")}"
+                    JobHelper.service_path("#{osimage_dir}/current")
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")}"
+                    JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
     temp_initrds << "#{OS_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path(self["linux_modules_initrd"])}"
+                    JobHelper.service_path(self["linux_modules_initrd"])
     temp_initrds << "#{OS_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path(self["linux_headers_initrd"])}"
+                    JobHelper.service_path(self["linux_headers_initrd"])
 
     temp_initrds.concat(initrd_deps.split(/ /)) unless initrd_deps.empty?
     temp_initrds.concat(initrd_pkg.split(/ /)) unless initrd_pkg.empty?
@@ -402,7 +402,7 @@ class Job
     temp_initrds = [] of String
 
     temp_initrds << "#{OS_HTTP_PREFIX}" +
-                    "#{JobHelper.service_path("#{SRV_OS}/#{os_dir}/initrd.lkp")}"
+                    JobHelper.service_path("#{SRV_OS}/#{os_dir}/initrd.lkp")
 
     return temp_initrds
   end
