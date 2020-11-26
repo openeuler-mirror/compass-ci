@@ -35,4 +35,4 @@
        ~/.config/compass-ci/default/account.yaml
 
 for more information: how to use submit 
-  https://gitee.com/openeuler/compass-ci/blob/master/doc/compass-ci测试平台使用教程--submit命令详解.md
+  https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compass-ci测试平台使用教程--submit命令详解.md
