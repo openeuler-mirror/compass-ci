@@ -29,11 +29,14 @@ API:
 
 call graph:
 setup_jumper_account_info
-  read_account_info
-    build_account_name
+  read account
+    read_account_info
+      build_account_info
+    reread_account_info
   read_jumper_info
   config_default_yaml
   config_authorized_key
+  permit_login_config
   generate_ssh_key
 
 the returned data for setup_jumper_account_info like:
@@ -41,12 +44,14 @@ the returned data for setup_jumper_account_info like:
   "my_login_name" => "login_name",
   "password" => "password",
   "jumper_host" => "0.0.0.0",
-  "jumper_port" => "10000"
+  "jumper_port" => "10000",
+  "my_jumper_pubkey" => my_jumper_pubkey
 }
 
 =end
 
 require 'fileutils'
+require 'yaml'
 
 # get jumper and account info
 class AccountStorage
@@ -95,14 +100,21 @@ class AccountStorage
   end
 
   def setup_jumper_account_info
-    login_name, password = read_account_info
-    jumper_host, jumper_port = read_jumper_info
-    pub_key = @data['my_ssh_pubkey'][0]
+    if @data.key?('is_update_account') && @data['is_update_account']
+      login_name = @data['my_login_name']
+      password = reread_account_info
+    else
+      login_name, password = read_account_info
+    end
 
-    ssh_dir = File.join('/home/', login_name, '.ssh')
-    config_authorized_key(login_name, pub_key, ssh_dir) unless pub_key.nil?
+    jumper_host, jumper_port = read_jumper_info
+
+    config_authorized_key(login_name)
     config_default_yaml(login_name)
-    my_jumper_pubkey = generate_ssh_key(login_name, ssh_dir) if @data['gen_sshkey'].eql? true
+    permit_login_config(login_name)
+    if @data.key?('gen_sshkey') && @data['gen_sshkey']
+      my_jumper_pubkey = generate_ssh_key(login_name)
+    end
 
     jumper_account_info = {
       'my_login_name' => login_name,
@@ -115,34 +127,89 @@ class AccountStorage
     return jumper_account_info
   end
 
-  def generate_ssh_key(login_name, ssh_dir)
+  def permit_login_config(login_name)
+    if @data.key?('enable_login') && @data['enable_login']
+      %x(usermod -s /usr/bin/zsh #{login_name})
+    else
+      %x(usermod -s /sbin/nologin #{login_name})
+    end
+  end
+
+  def generate_ssh_key(login_name)
+    ssh_dir = File.join('/home/', login_name, '.ssh')
     Dir.mkdir ssh_dir, 0o700 unless File.exist? ssh_dir
+    pub_key_file = File.join(ssh_dir, 'id_rsa.pub')
+
+    return if File.exist?(pub_key_file) && \
+              @data['my_ssh_pubkey'].include?(File.read(pub_key_file).strip)
+
     %x(ssh-keygen -f "#{ssh_dir}/id_rsa" -N '' -C "#{login_name}@account-vm")
-    %x(chown -R #{login_name}:#{login_name} #{ssh_dir})
-    File.read("/home/#{login_name}/.ssh/id_rsa.pub")
+
+    FileUtils.chown_R(login_name, login_name, ssh_dir)
+    File.read("/home/#{login_name}/.ssh/id_rsa.pub").strip
+  end
+
+  def touch_default_yaml(login_name)
+    default_yaml_dir = File.join('/home', login_name, '.config/compass-ci/defaults')
+    FileUtils.mkdir_p default_yaml_dir unless File.exist? default_yaml_dir
+
+    default_yaml = File.join(default_yaml_dir, 'account.yaml')
+    FileUtils.touch default_yaml unless File.exist? default_yaml
+    default_yaml
   end
 
   def config_default_yaml(login_name)
-    default_yaml_dir = File.join('/home', login_name, '.config/compass-ci/defaults')
-    FileUtils.mkdir_p default_yaml_dir
+    default_yaml = touch_default_yaml(login_name)
 
+    account_yaml = YAML.load_file(default_yaml) || {}
     # my_email, my_name, my_uuid is required to config default yaml file
     # they are added along with 'my_ssh_pubkey' when sending assign account request
-    File.open("#{default_yaml_dir}/account.yaml", 'a') do |file|
-      file.puts "my_email: #{@data['my_email']}"
-      file.puts "my_name: #{@data['my_name']}"
-      file.puts "my_uuid: #{@data['my_uuid']}"
-    end
-    %x(chown -R #{login_name}:#{login_name} "/home/#{login_name}/.config")
+    account_yaml['my_email'] = @data['my_email']
+    account_yaml['my_name'] = @data['my_name']
+    account_yaml['my_uuid'] = @data['my_uuid']
+
+    f = File.new(default_yaml, 'w')
+    f.puts account_yaml.to_yaml
+    f.close
+    FileUtils.chown_R(login_name, login_name, "/home/#{login_name}/.config")
   end
 
-  def config_authorized_key(login_name, pub_key, ssh_dir)
-    Dir.mkdir ssh_dir, 0o700
-    Dir.chdir ssh_dir
-    f = File.new('authorized_keys', 'w')
+  def config_authorized_key(login_name)
+    pub_key = @data['my_ssh_pubkey'][0]
+
+    return if pub_key.nil?
+    return if pub_key.strip.end_with?('account-vm')
+
+    ssh_dir = File.join('/home/', login_name, '.ssh')
+    Dir.mkdir ssh_dir, 0o700 unless File.exist? ssh_dir
+
+    authorized_file = File.join(ssh_dir, 'authorized_keys')
+    FileUtils.touch authorized_file unless File.exist? authorized_file
+
+    store_pubkey(ssh_dir, login_name, authorized_file, pub_key)
+  end
+
+  def store_pubkey(ssh_dir, login_name, authorized_file, pub_key)
+    authorized_keys = File.read(authorized_file).split("\n")
+
+    return if authorized_keys.include?(pub_key.strip)
+
+    f = File.new(authorized_file, 'a')
     f.puts pub_key
     f.close
-    File.chmod 0o600, 'authorized_keys'
-    %x(chown -R #{login_name}:#{login_name} #{ssh_dir})
+
+    FileUtils.chown_R(login_name, login_name, ssh_dir)
+    File.chmod 0o600, authorized_file
+  end
+
+  def reread_account_info
+    my_login_name_file = File.join(@account_dir, 'assigned-users', @data['my_login_name'])
+
+    message = "No such assigned account exists: #{my_login_name_file}."
+    raise message unless File.exist? my_login_name_file
+
+    password = File.readlines(my_login_name_file)[0].chomp
+
+    return password
   end
 end
