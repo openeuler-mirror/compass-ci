@@ -460,11 +460,11 @@ class Job
 
   private def get_program_params
     program_params = Hash(String, JSON::Any).new
-    if @hash["monitors"]?
+    if @hash["monitors"]? != nil
       program_params.merge!(@hash["monitors"].as_h)
     end
 
-    if @hash["pp"]?
+    if @hash["pp"]? != nil
       program_params.merge!(@hash["pp"].as_h)
     end
 
