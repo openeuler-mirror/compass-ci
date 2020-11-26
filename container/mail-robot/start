@@ -12,6 +12,8 @@ names = Set.new %w[
   JUMPER_HOST
   JUMPER_PORT
   SEND_MAIL_PORT
+  SCHED_HTTPS_HOST
+  SCHED_HTTPS_PORT
 ]
 
 defaults = relevant_defaults(names)
