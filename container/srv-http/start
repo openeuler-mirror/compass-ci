@@ -14,6 +14,7 @@ cmd=(
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result:/srv/result:ro
 	-v /srv/initrd/qemu-image:/srv/initrd/qemu-image:ro
+	-v /srv/os:/srv/os:ro
 	-d
 	srv-http
 )
