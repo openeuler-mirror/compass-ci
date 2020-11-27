@@ -7,9 +7,5 @@ if role server:
 if role client:
   iperf:
     protocol: tcp
-testbox: vm-2p8g--USER
-os: OS
-os_arch: OS_ARCH
-os_version: OS_VER
 node_roles: server client
 LKP_DEBUG_PREFIX: bash -x
