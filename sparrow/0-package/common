@@ -12,6 +12,7 @@ cat >> /etc/sysctl.conf <<EOF
 net.ipv4.ip_forward=1
 net.ipv6.bindv6only=1
 vm.max_map_count=262144
+net.ipv4.ip_local_port_range = 1024 48999
 EOF
 
 sysctl -p
