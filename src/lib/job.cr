@@ -247,7 +247,7 @@ class Job
   end
 
   private def set_queue
-    return if @hash.has_key?("queue")
+    return unless self["queue"].empty?
 
     # set default value
     self["queue"] = tbox_group
