@@ -48,6 +48,6 @@ b/backlight/backlight:
 并通过Pull Request的方式提交。相关参数含义见参考文档
 
 参考文档：
-- [compass-ci测试平台使用教程--submit命令详解](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc)
+- [submit命令详解](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/manual/submit命令详解.md)
 - [如何适配测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
 
