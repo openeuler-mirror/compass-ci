@@ -26,11 +26,7 @@ class Job
   end
 
   private def kernel_console
-    if os_arch == "x86_64"
-      return "console=ttyS0,115200 console=tty0"
-    else
-      return ""
-    end
+    return "console=ttyS0,115200 console=tty0" if os_arch == "x86_64"
   end
 
   private def set_kernel_params
