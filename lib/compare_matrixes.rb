@@ -34,7 +34,7 @@ end
 
 def fill_missing_with_zeros(value_list, matrix_size)
   value_list ||= [0] * matrix_size
-  value_list << 0 while value_list.size < matrix_size
+  value_list.concat([0] * (matrix_size - value_list.size))
   value_list
 end
 
