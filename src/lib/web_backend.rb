@@ -148,7 +148,7 @@ def get_es_must(params)
   must
 end
 
-def _get_groups_matrices(query, dimension)
+def do_get_groups_matrices(query, dimension, total, size, from)
   result = es_query(query)
   matrices, suites_list = combine_group_query_data(result, dimension)
   while matrices.empty?
@@ -181,7 +181,7 @@ def get_groups_matrices(conditions, dimension, must, size, from)
     }]
   }
 
-  matrices, suites_list = _get_groups_matrices(query, dimension)
+  do_get_groups_matrices(query, dimension, total, size, from)
 end
 
 def get_compare_body(params)
