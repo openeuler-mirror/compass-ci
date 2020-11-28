@@ -98,6 +98,7 @@ def get_group_dimension_params(job, dimensions)
   dimension_list = []
   dimensions.each do |dimension|
     dimension_list << all_group_params.delete(dimension) if all_group_params.key?(dimension)
+    all_group_params.delete('os_version') if dimension == 'os'
   end
   [all_group_params, dimension_list.join('|')]
 end
