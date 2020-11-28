@@ -61,9 +61,7 @@ def create_stats(result_root)
 end
 
 def samples_fill_missing_zeros(value, size)
-  samples = value || [0] * size
-  samples << 0 while samples.size < size
-  samples
+  value.concat([0] * (size - value.size))
 end
 
 # input: job_list
