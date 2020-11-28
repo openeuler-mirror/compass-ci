@@ -88,16 +88,24 @@ module Utils
       return 'good'
     end
 
+    def get_account_info
+      ESQuery.new(index: 'accounts').query_by_id(DELIMITER_ACCONUT)
+    end
+
     def init_job_content(job_id)
       es = ESQuery.new
       job = es.query_by_id(job_id)
       raise "es query job id: #{job_id} failed!" unless job
 
-      job['bad_job_id'] = job_id
-      job['suite'] = 'bisect'
+      account_info = get_account_info
+      raise "query #{DELIMITER_ACCONUT} account info failed!" unless account_info
 
-      job.delete('id')
-      job.delete('uuid')
+      job['suite'] = 'bisect'
+      job['my_uuid'] = account_info['my_uuid']
+      job['my_name'] = account_info['my_name']
+      job['my_email'] = account_info['my_email']
+      job['bad_job_id'] = job_id
+
       job.delete('error_ids')
       job.delete('start_time')
       job.delete('end_time')
