@@ -15,8 +15,8 @@ def build_apply_account_email(my_info)
     You can use the following info to submit jobs:
 
     notice:
-      the followings are ONE-TIME setup
-      
+      (1-2) are ONE-TIME setup
+
     1) setup default config
        run the following command to add the below setup to default config file
 
@@ -30,7 +30,7 @@ def build_apply_account_email(my_info)
          EOF
 
     2) download lkp-tests and dependencies
-       run the following command to install the lkp-test and effect the configuration
+       run the following command to install and setup lkp-test
 
          git clone https://gitee.com/wu_fengguang/lkp-tests.git
          cd lkp-tests
@@ -44,8 +44,8 @@ def build_apply_account_email(my_info)
        you can also reference to files in lkp-tests/jobs as example.
 
        submit jobs, for example:
-            
-         submit -m iperf.yaml testbox=vm-2p8g queue=vm-2p8g~\\$USER
+
+         submit -m iperf.yaml testbox=vm-2p8g
 
     regards
     compass-ci
