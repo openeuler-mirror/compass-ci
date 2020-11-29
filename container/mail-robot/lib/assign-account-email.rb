@@ -25,8 +25,6 @@ def build_apply_account_email(my_info)
              my_email: #{my_info['my_email']}
              my_name: #{my_info['my_name']}
              my_uuid: #{my_info['my_uuid']}
-             SCHED_HTTPS_HOST: #{ENV['SCHED_HTTPS_HOST']}
-             SCHED_HTTPS_PORT: #{ENV['SCHED_HTTPS_PORT']}
          EOF
 
     2) download lkp-tests and dependencies
