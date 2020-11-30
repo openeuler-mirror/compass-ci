@@ -80,7 +80,7 @@ end
 
 options = OptionParser.new do |opts|
   opts.banner = 'Usage: answerback-mail.rb [-e|--email email] [-n|--name name] '
-  opts.banner += "[-s|--ssh-pubkey pub_key_file] [-g|--gen-sshkey] [--login y|n] [--update]\n"
+  opts.banner += "[-s|--ssh-pubkey pub_key_file] [-g|--gen-sshkey] [-l|--login y|n] [-u|--update]\n"
   opts.banner += '       answerback-mail.rb [-f|--raw-email email_file] '
   opts.banner += "[-g|--gen-sshkey] [--login y|n] [--update]\n"
   opts.banner += "       -e|-f is required when applying account or updating account\n"
@@ -94,19 +94,45 @@ options = OptionParser.new do |opts|
   opts.separator 'options:'
 
   opts.on('-e email_address', '--email email_address', 'appoint email address') do |email_address|
+    unless email_address =~ /[^@]+@[\d\w]+\.[\w\d]+/
+      message = "Not a standard format email: #{email_address}.\n\n"
+      puts message
+
+      return false
+    end
+
     my_info['my_email'] = email_address
   end
 
   opts.on('-n name', '--name name', 'appoint name') do |name|
+    unless name =~ /^\w[\w\d ]+/
+      message = "Name should only contains letters, digits and spaces\n\n"
+      puts message
+
+      return false
+    end
+
     stdin_info['my_name'] = name
   end
 
   opts.on('-s pub_key_file', '--ssh-pubkey pub_key_file', \
           'ssh pub_key file, enable password-less login') do |pub_key_file|
+    unless File.exist? pub_key_file
+      message = "File not found: #{pub_key_file}.\n\n"
+      puts message
+
+      return false
+    end
     stdin_info['new_ssh_pubkey'] = File.read(pub_key_file).strip
   end
 
   opts.on('-f email_file', '--raw-email email_file', 'email file') do |email_file|
+    unless File.exist? email_file
+      message = "Email file not found: #{email_file}.\n\n"
+      puts message
+
+      return false
+    end
     mail_content = Mail.read(email_file)
     init_info(mail_content, email_info, my_info)
   end
@@ -121,12 +147,16 @@ options = OptionParser.new do |opts|
   end
 
   opts.on('-l value', '--login value', 'enable/disable login, value: y|n') do |value|
-    if value.downcase == 'y'
+    case value
+    when 'y', 'Y'
       conf_info['enable_login'] = true
-    elsif value.downcase == 'n'
+    when 'n', 'N'
       conf_info['enable_login'] = false
     else
-      raise 'invalid parameter, please use y|n'
+      message = "-l: bad value #{value}, please use y|n\n\n"
+      puts message
+
+      return false
     end
   end
 
@@ -136,6 +166,15 @@ options = OptionParser.new do |opts|
   end
 end
 
+# if no option specified, set default option '-h'
+# if both '-e' and '-f' are not specified, will clear the ARGV,
+# and use '-h' instead
+if ARGV.empty?
+  ARGV << '-h'
+elsif (['-e', '-f'] - ARGV).eql? ['-e', '-f']
+  ARGV.clear
+  ARGV << '-h'
+end
 options.parse!(ARGV)
 
 def apply_account(my_info, conf_info)
@@ -152,7 +191,7 @@ def check_my_email(my_info)
   message += "use -e to add an email address for applying account\n"
   message += 'or use -f to add an email file'
 
-  raise message if my_info['my_email'].empty?
+  raise message if my_info['my_email'].nil?
 end
 
 def build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
