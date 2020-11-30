@@ -4,9 +4,9 @@
 
 ### 添加待测试仓库 URL 到 upstream-repos 仓库
 
-执行以下步骤，将想要测试的代码仓信息以 yaml 文件的方式添加到 upstream-repos 仓库（https://gitee.com/wu_fengguang/upstream-repos）。
+执行以下步骤，将想要测试的代码仓信息以 yaml 文件的方式添加到 upstream-repos 仓库（https://gitee.com/wu_fengguang/upstream-repos ）。
 
-1. Fork 要测试的代码仓库并 git clone 到本地，本文以 blacklight 仓库（https://github.com/baskerville/backlight）为例说明。
+1. Fork 要测试的代码仓库并 git clone 到本地，本文以 blacklight 仓库（https://github.com/baskerville/backlight ）为例说明。
 
 ![](./../pictures/fork_blacklight.png)
 
