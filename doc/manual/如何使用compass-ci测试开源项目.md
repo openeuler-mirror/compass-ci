@@ -46,7 +46,7 @@
 
 1. 准备测试用例
 
-    测试用例可以自己编写并添加到 lkp-tests 仓库，也可以直接使用 lkp-tests 仓库（https://gitee.com/wu_fengguang/lkp-tests）的 jobs 目录下已有的测试用例。
+    测试用例可以自己编写并添加到 lkp-tests 仓库，也可以直接使用 lkp-tests 仓库（https://gitee.com/wu_fengguang/lkp-tests ）的 jobs 目录下已有的测试用例。
 
     * 使用仓库中已经适配好的测试用例
 	如果 lkp-tests 仓库中正好有你想要的测试用例，你可以直接使用。以 iperf.yaml 文件为例说明如下：
@@ -54,7 +54,7 @@
 
     * 编写测试用例并添加到仓库
 
-        请参考：[如何添加测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
+        请参考：[如何添加测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md )
 
 2. 配置 auto_submit.yaml 文件，提交测试任务 
 
