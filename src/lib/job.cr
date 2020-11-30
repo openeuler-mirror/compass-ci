@@ -92,7 +92,6 @@ class Job
     lkp_initrd_user
     user_lkp_src
     kernel_uri
-    kernel_append_root
     kernel_params
     docker_image
     kernel_version
@@ -151,7 +150,6 @@ class Job
     set_kernel_version()
     set_initrds_uri()
     set_kernel_uri()
-    set_kernel_append_root()
     set_kernel_params()
     set_lkp_server()
     set_sshr_info()

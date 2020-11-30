@@ -11,7 +11,7 @@ class Job
     return @hash["kernel_custom_params"] if @hash["kernel_custom_params"]?
   end
 
-  private def set_kernel_append_root
+  def kernel_append_root
     os_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}")
 
     fs2root = {
@@ -22,7 +22,7 @@ class Job
       "container" => "",
     }
 
-    self["kernel_append_root"] = fs2root[os_mount]
+    fs2root[os_mount]
   end
 
   private def kernel_console
@@ -30,7 +30,7 @@ class Job
   end
 
   private def set_kernel_params
-    self["kernel_params"] = " #{kernel_common_params()} #{kernel_custom_params()} #{kernel_append_root} #{kernel_console()}"
+    self["kernel_params"] = " #{kernel_common_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
   end
 
 end
