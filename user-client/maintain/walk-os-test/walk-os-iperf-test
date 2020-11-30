@@ -36,6 +36,17 @@ OS_MOUNT = %w[cifs initramfs].freeze
 
 EMAIL_ADDRESS = (ENV['USER']).to_s.freeze
 
+def mail_report
+  message = File.read(LOG).chomp
+  data = "
+  subject: os rootfs test report
+  to: #{EMAIL_ADDRESS}
+  body: #{message}"
+
+  email = MailClient.new
+  email.send_mail(data)
+end
+
 def write_report(report_all)
   File.open(LOG, 'a') do |f|
     log = Logger.new(f, 'weekly')
