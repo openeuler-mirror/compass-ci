@@ -2,9 +2,9 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def find_job_boot(env : HTTP::Server::Context)
-    value = env.params.url["value"]
-    boot_type = env.params.url["boot_type"]
+  def find_job_boot
+    value = @env.params.url["value"]
+    boot_type = @env.params.url["boot_type"]
 
     case boot_type
     when "ipxe"

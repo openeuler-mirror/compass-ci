@@ -30,10 +30,15 @@ require "../lib/sched"
 module Scheduler
   VERSION = "0.2.0"
 
-  sched = Sched.new
+  add_context_storage_type(Sched)
 
   before_all do |env|
+    env.set "sched", Sched.new(env)
     env.response.headers["Connection"] = "close"
+  end
+
+  def self.get_sched_from_env(env)
+    env.get("sched").as(Sched)
   end
 
   # for debug (maybe kemal debug|logger does better)
@@ -53,7 +58,7 @@ module Scheduler
   # /boot.xxx/host/${hostname}
   # /boot.yyy/mac/${mac}
   get "/boot.:boot_type/:parameter/:value" do |env|
-    response = sched.find_job_boot(env)
+    response = get_sched_from_env(env).find_job_boot
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     puts %({"job_id": "#{job_id}", "job_state": "boot"}) if job_id
@@ -63,7 +68,7 @@ module Scheduler
 
   # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
   get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
-    response = sched.find_next_job_boot(env)
+    response = get_sched_from_env(env).find_next_job_boot
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     puts %({"job_id": "#{job_id}", "job_state": "boot"}) if job_id
@@ -75,7 +80,7 @@ module Scheduler
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
   post "/submit_job" do |env|
-    job_messages = sched.submit_job(env)
+    job_messages = get_sched_from_env(env).submit_job
 
     job_messages.each do |job_message|
       puts job_message.to_json
@@ -103,7 +108,7 @@ module Scheduler
   # curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg&mac=00-01-02-03-04-05"
   put "/set_host_mac" do |env|
     if (client_hostname = env.params.query["hostname"]?) && (client_mac = env.params.query["mac"]?)
-      sched.set_host_mac(client_mac, client_hostname)
+      get_sched_from_env(env).set_host_mac(client_mac, client_hostname)
 
       "Done"
     else
@@ -114,7 +119,7 @@ module Scheduler
   # curl -X PUT "http://localhost:3000/set_host2queues?queues=vm-2p8g.aarch64&host=vm-2p8g.aarch64"
   put "/set_host2queues" do |env|
     if (client_queues = env.params.query["queues"]?) && (client_host = env.params.query["host"]?)
-      sched.set_host2queues(client_host, client_queues)
+      get_sched_from_env(env).set_host2queues(client_host, client_queues)
 
       "Done"
     else
@@ -125,7 +130,7 @@ module Scheduler
   # curl -X PUT "http://localhost:3000/del_host_mac?mac=00-01-02-03-04-05"
   put "/del_host_mac" do |env|
     if client_mac = env.params.query["mac"]?
-      sched.del_host_mac(client_mac)
+      get_sched_from_env(env).del_host_mac(client_mac)
 
       "Done"
     else
@@ -136,7 +141,7 @@ module Scheduler
   # curl -X PUT "http://localhost:3000/del_host2queues?host=vm-2p8g.aarch64"
   put "/del_host2queues" do |env|
     if client_host = env.params.query["host"]?
-      sched.del_host2queues(client_host)
+      get_sched_from_env(env).del_host2queues(client_host)
 
       "Done"
     else
@@ -150,7 +155,7 @@ module Scheduler
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
   get "/~lkp/cgi-bin/lkp-jobfile-append-var" do |env|
-    puts sched.update_job_parameter(env)
+    puts get_sched_from_env(env).update_job_parameter
 
     "Done"
   end
@@ -173,7 +178,7 @@ module Scheduler
   #    response: get "server ip" from cluster state,
   #              return "server=<server ip>".
   get "/~lkp/cgi-bin/lkp-cluster-sync" do |env|
-    response = sched.request_cluster_state(env)
+    response = get_sched_from_env(env).request_cluster_state
 
     debug_message(env, response)
 
@@ -187,14 +192,14 @@ module Scheduler
     # get job_id from request
     job_id = env.params.query["job_id"]?
     if job_id
-      puts sched.close_job(job_id)
+      puts get_sched_from_env(env).close_job(job_id)
     end
 
     "Done"
   end
 
   get "/~lkp/cgi-bin/lkp-wtmp" do |env|
-    puts sched.update_tbox_wtmp(env)
+    puts get_sched_from_env(env).update_tbox_wtmp
 
     "Done"
   end
@@ -205,7 +210,7 @@ module Scheduler
     job_id = env.params.query["job_id"].to_s
 
     if testbox && ssh_port
-      sched.report_ssh_port(testbox, ssh_port)
+      get_sched_from_env(env).report_ssh_port(testbox, ssh_port)
     end
 
     puts %({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"})

@@ -6,9 +6,9 @@ class Sched
   # all request states:
   #     wait_ready | abort | failed | finished | wait_finish |
   #     write_state | roles_ip
-  def request_cluster_state(env)
-    request_state = env.params.query["state"]
-    job_id = env.params.query["job_id"]
+  def request_cluster_state
+    request_state = @env.params.query["state"]
+    job_id = @env.params.query["job_id"]
     cluster_id = @redis.hash_get("sched/id2cluster", job_id).not_nil!
     cluster_state = ""
 
@@ -41,10 +41,10 @@ class Sched
 
       return cluster_state
     when "write_state"
-      node_roles = env.params.query["node_roles"]
-      node_ip = env.params.query["ip"]
-      direct_ips = env.params.query["direct_ips"]
-      direct_macs = env.params.query["direct_macs"]
+      node_roles = @env.params.query["node_roles"]
+      node_ip = @env.params.query["ip"]
+      direct_ips = @env.params.query["direct_ips"]
+      direct_macs = @env.params.query["direct_macs"]
 
       job_info = {"roles"       => node_roles,
                   "ip"          => node_ip,

@@ -25,12 +25,13 @@ class Sched
   property redis
   property block_helper
 
-  def initialize
+  def initialize(env : HTTP::Server::Context)
     @es = Elasticsearch::Client.new
     @redis = Redis::Client.new
     @task_queue = TaskQueueAPI.new
     @block_helper = BlockHelper.new
     @rgc = RemoteGitClient.new
+    @env = env
   end
 
   def normalize_mac(mac : String)
@@ -67,7 +68,7 @@ class Sched
       extra_job_fields) if Dir.glob(full_path_patterns).size > 0
   end
 
-  def update_tbox_wtmp(env : HTTP::Server::Context)
+  def update_tbox_wtmp
     testbox = ""
     hash = Hash(String, String).new
 
@@ -75,7 +76,7 @@ class Sched
     hash["time"] = time
 
     %w(mac ip job_id tbox_name tbox_state).each do |parameter|
-      if (value = env.params.query[parameter]?)
+      if (value = @env.params.query[parameter]?)
         case parameter
         when "tbox_name"
           testbox = value

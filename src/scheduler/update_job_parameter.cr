@@ -2,8 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def update_job_parameter(env : HTTP::Server::Context)
-    job_id = env.params.query["job_id"]?
+  def update_job_parameter
+    job_id = @env.params.query["job_id"]?
     if !job_id
       return false
     end
@@ -13,7 +13,7 @@ class Sched
     job_content["id"] = job_id
 
     (%w(start_time end_time loadavg job_state)).each do |parameter|
-      value = env.params.query[parameter]?
+      value = @env.params.query[parameter]?
       if !value || value == ""
         next
       end

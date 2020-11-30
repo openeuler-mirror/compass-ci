@@ -2,8 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def submit_job(env : HTTP::Server::Context)
-    body = env.request.body.not_nil!.gets_to_end
+  def submit_job
+    body = @env.request.body.not_nil!.gets_to_end
 
     job_content = JSON.parse(body)
     job = Job.new(job_content, job_content["id"]?)
