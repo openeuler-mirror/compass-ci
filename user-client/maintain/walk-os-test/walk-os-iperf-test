@@ -36,6 +36,16 @@ OS_MOUNT = %w[cifs initramfs].freeze
 
 EMAIL_ADDRESS = (ENV['USER']).to_s.freeze
 
+def write_report(report_all)
+  File.open(LOG, 'a') do |f|
+    log = Logger.new(f, 'weekly')
+    log.formatter = proc { |_severity, datetime, _progname, msg|
+      "[#{datetime}]: #{msg}\n"
+    }
+    log.info(report_all)
+  end
+end
+
 def monitor(query, actions, timeout)
   monitor = Monitor.new
   monitor.overrides = query
