@@ -1,12 +1,10 @@
-# PKGBUILD是什么？
------------------
+# PKGBUILD是什么
 
-PKGBUILD是一个shell脚本，makepkg通过PKGBUILD中包含的指令，生成包含二进制文件和安装指令的软件包。
+PKGBUILD 是一个 shell 脚本，makepkg 通过 PKGBUILD 中包含的指令，生成包含二进制文件和安装指令的软件包。
 
-# PKGBUILD包含什么？
--------------------
+# PKGBUILD包含什么
 
-PKGBUILD包含两部分内容：变量和函数
+PKGBUILD包含两部分内容：变量和函数。
 
 ## 定义变量
 
@@ -29,55 +27,55 @@ PKGBUILD包含两部分内容：变量和函数
 - check函数
   定义可选的check函数，用于运行程序包的测试套件。
 
-> 注意：
-> srcdir 和 pkgdir
-> - srcdir: 提取或复制源文件的目录，所有打包功能都在srcdir目录内部运行；
-> - pkgdir: 构建软件包的根目录，仅在package函数中使用。
+>![](./../public_sys-resources/icon-notice.gif) **注意：** 
+>
+> srcdir 是提取或复制源文件的目录，所有打包功能都在 srcdir 目录内部运行；pkgdir 是构建软件包的根目录，仅在 package 函数中使用。
 
-# 如何编写PKGBUILD？
--------------------
 
-## 创建PKGBUILD，文件名必须以“PKGBUILD”命名。
+# 如何编写PKGBUILD
 
-`touch PKGBUILD`
 
-## 使用vim打开PKGBUILD，编写PKGBUILD文件内容。
+1. 执行如下命令创建PKGBUILD，文件名必须以“PKGBUILD”命名。
+    
+    ```shell
+    touch PKGBUILD
+    ```
 
-如下我们给出一个PKGBUILD例子：
 
-```shell
-pkgname=zstd
-pkgver=1.4.4
-pkgrel=2
-arch=('i686' 'x86_64' 'aarch64')
-url='https://github.com/facebook/zstd'
-license=('custom:BSD3' 'GPL2')
-depends=('xz' 'zlib' 'lz4')
-makedepends=('git')
-source=('git://github.com/facebook/zstd.git#branch=dev')
-md5sums=('SKIP')
+2. 使用 vim 打开 PKGBUILD，编写 PKGBUILD 文件内容，一个 PKGBUILD 示例如下：
 
-pkgver() {
-	cd "$srcdir/$pkgname"
-	git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g;s/^v//g'
-}
-
-build() {
-	cd "$srcdir/$pkgname"
-	make
-	make -C contrib/pzstd
-}
-
-package() {
-	cd "$srcdir/$pkgname"
-	make PREFIX="/usr" DESTDIR="$pkgdir/" install
-	install -D -m755 contrib/pzstd/pzstd "$pkgdir/usr/bin/pzstd"
-	install -D -m644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
-}
-```
+    ```shell
+    pkgname=zstd
+    pkgver=1.4.4
+    pkgrel=2
+    arch=('i686' 'x86_64' 'aarch64')
+    url='https://github.com/facebook/zstd'
+    license=('custom:BSD3' 'GPL2')
+    depends=('xz' 'zlib' 'lz4')
+    makedepends=('git')
+    source=('git://github.com/facebook/zstd.git#branch=dev')
+    md5sums=('SKIP')
+    
+    pkgver() {
+    	cd "$srcdir/$pkgname"
+    	git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g;s/^v//g'
+    }
+    
+    build() {
+    	cd "$srcdir/$pkgname"
+    	make
+    	make -C contrib/pzstd
+    }
+    
+    package() {
+    	cd "$srcdir/$pkgname"
+    	make PREFIX="/usr" DESTDIR="$pkgdir/" install
+    	install -D -m755 contrib/pzstd/pzstd "$pkgdir/usr/bin/pzstd"
+    	install -D -m644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    }
+    ```
 
 # 参考
-------
 
 - [PKGBUILD(5) Manual Page](https://www.archlinux.org/pacman/PKGBUILD.5.html)
 - [pkgbuild demo文件](https://git.archlinux.org/pacman.git/plain/proto/PKGBUILD.proto)

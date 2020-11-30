@@ -1,53 +1,68 @@
-使用compass-ci平台测试开源仓库，需要完成
-1. 将仓库url添加到upstream-repos仓库中
-2. 添加自己的测试case
+# 使用 compass-ci 平台测试开源项目
 
-### 首先，将想要测试的代码仓信息以yaml格式文件的形式添加到upstream-repos仓库
+本文介绍了使用 compass-ci 平台测试开源项目的操作。
 
-仓库地址为：https://gitee.com/wu_fengguang/upstream-repos
+### 添加待测试仓库 URL 到 upstream-repos 仓库
 
-你可以先fork这个仓库，新建文件之后，通过Pull Request的方式完成添加。
+执行以下步骤，将想要测试的代码仓信息以 yaml 文件的方式添加到 upstream-repos 仓库（https://gitee.com/wu_fengguang/upstream-repos）。
 
-以仓库backlight为例：
+1. Fork 要测试的代码仓库并 git clone 到本地，本文以 blacklight 仓库（https://github.com/baskerville/backlight）为例说明。
 
-它的url为：https://github.com/baskerville/backlight
-1. 以首字母和仓库名创建路径
-```
-mkdir -p b/backlight
-```
-2. 在该目录下新建同名文件backlight：
-```
-cd b/backlight
-touch backlight
-```
-3. 使用vim写入url：
-```
-vim backlight
-```
-内容格式为
-```
----
-url:
-- https://github.com/baskerville/backlight
-```
-请保持格式一致，若不确定，可参考upstream-repos仓库中已有文件。
+![](./../pictures/fork_blacklight.png)
 
-### 然后，将测试case以yaml文件的形式添加到lkp-tests仓库的jobs目录
+2. 执行以下命令，以首字母和仓库名创建文件路径。
 
-仓库地址为 https://gitee.com/wu_fengguang/lkp-tests
+    ```
+    mkdir -p b/backlight
+    ```
+	
+3. 执行以下命令，在该目录下新建同名文件 backlight。
+    ```
+    cd b/backlight
+    touch backlight
+    ```
+	
+4. 执行以下命令，将 backlight 仓库 url 信息写入 backlight 文件。
 
-这其中有一些已经适配好的测试case，如果你想要测试的case其中正好有，那就可以直接使用。使用方式以iperf为例。
+    ```
+    vim backlight
+    ```
+    内容格式为
 
-iperf是已经适配的一个测试case，在lkp-tests仓库的jobs下有一个iperf.yaml文件，里面有一些测试的基本参数。
+    ```
+    ---
+    url:
+    - https://github.com/baskerville/backlight
+    ```
+	
+    >![](./../public_sys-resources/icon-notice.gif) **注意：**   
+	>
+    >可参考 upstream-repos 仓库中已有文件格式,请保持格式一致。
+	
+5. 通过 Pull Request 命令将新增的 backlight 文件提交到 blacklight 仓库。
 
-然后，你要在compass-ci仓库下面的 sbin/auto_submit.yaml 文件中添加
-```
-b/backlight/backlight:
-- testbox=vm-2p8g os=openEuler os_version=20.03 os_mount=initramfs os_arch=aarch64 iperf.yaml
-```
-并通过Pull Request的方式提交。相关参数含义见参考文档
 
-参考文档：
-- [submit命令详解](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/manual/submit命令详解.md)
-- [如何适配测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
+### 提交测试任务到 compass-ci 平台
 
+1. 准备测试用例
+
+    测试用例可以自己编写并添加到 lkp-tests 仓库，也可以直接使用 lkp-tests 仓库（https://gitee.com/wu_fengguang/lkp-tests）的 jobs 目录下已有的测试用例。
+
+    * 使用仓库中已经适配好的测试用例
+	如果 lkp-tests 仓库中正好有你想要的测试用例，你可以直接使用。以 iperf.yaml 文件为例说明如下：
+	iperf.yaml 是一个已经适配好的测试用例，它位于 lkp-tests 仓库的 jobs 目录下，其中有一些基本的测试参数。
+
+    * 编写测试用例并添加到仓库
+
+        请参考：[如何添加测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
+
+2. 配置 auto_submit.yaml 文件，提交测试任务 
+
+    你只需要在 compass-ci 仓库下面的 sbin/auto_submit.yaml 文件中添加配置信息，如：
+    ```
+    b/backlight/backlight:
+    - testbox=vm-2p8g os=openEuler os_version=20.03 os_mount=initramfs os_arch=aarch64 iperf.yaml
+    ```
+	通过 Pull Request 的方式将修改好的 auto_submit.yaml 文件提交到 compass-ci 仓库，就可以使用 compass-ci 测试你的项目了。
+	
+    auto_submit.yaml 文件的参数配置请参考 https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job 。
