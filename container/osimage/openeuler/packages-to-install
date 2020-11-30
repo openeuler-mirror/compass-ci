@@ -1,0 +1,10 @@
+cpio
+systemd-udev.aarch64
+cifs-utils
+nfs-utils
+hostname
+curl
+openssh-server
+openssl
+iputils
+wget

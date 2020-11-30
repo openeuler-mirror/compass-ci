@@ -1,0 +1,11 @@
+/.dockerenv
+/lib/modules
+/usr/lib/modules
+/usr/share/doc
+/usr/share/man
+/usr/share/info
+/usr/share/i18n
+/usr/share/locale
+/usr/share/terminfo
+/tmp/files-to-exclude
+/tmp/packages-to-install
