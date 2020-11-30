@@ -1,62 +1,90 @@
-#!/bin/bash -e
+#!/usr/bin/env ruby
 # SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
 
-# os test rounds
-test_times=1
+# rootfs test via job, including cifs, initramfs files
+# boot way kvm.
+# input: job yaml, os, os_version, os_arch, os_mount, testbox.
+# output: a test report, including log print time, job ID, os, runtime, job state and url to check logs, and send mail.
+# Eg: test report format:
+# [2020-11-26 19:22:22 +0800]: ["crystal.143338", "centos", "aarch64", "7.6.1810", "cifs", 2020-11-26 19:21:12 +0800,
+# 2020-11-26 19:22:21 +0800, 69, "finished", "/result/iperf-walk-os-test/vm-2p8g/2020-11-26/crystal.143338"]
 
-test_logs=walk-test.report
-test_yaml=iperf-walk-os.yaml
-test_os=(
-	'openeuler aarch64 20'
-	'openeuler aarch64 20.03'
-	'centos aarch64 7.6'
-	'centos aarch64 7.8'
-	'centos aarch64 8.1.1911'
-	'debian aarch64 sid'
-)
+require "#{ENV['CCI_SRC']}/lib/es_query"
+require "#{ENV['LKP_SRC']}/lib/monitor"
+require "#{ENV['CCI_SRC']}/lib/mail_client"
 
-trap 'echo User Cancelled! && exit' SIGINT
+require 'time'
+require 'logger'
+require 'rufus-scheduler'
 
-sec2date() {
-	date -d@$1 +"%Y%m%d_%H:%M:%S"
-}
+TEST_OS = ['openeuler aarch64 20.03',
+           'centos aarch64 7.6.1810',
+           'centos aarch64 7.8.2003',
+           'centos aarch64 8.1.1911',
+           'debian aarch64 sid',
+           'archlinux aarch64 2020-11-12'].freeze
 
-logging() {
-	if [ 'new' == "$1" ] ; then
-		printf "%-5s %-8s %-25s %-20s %-20s %-8s %-10s\n" ${@:2} > $test_logs
-	else
-		printf "%-5s %-8s %-25s %-20s %-20s %-8s %-10s\n" $@ >> $test_logs
-	fi
-}
+TEST_YAML = 'iperf-walk-os.yaml'
 
-create_test_yaml() {
-	local hwarch os os_arch os_ver cur_os
-	hwarch=$(arch)
-	cur_os="$@"
-	os=$(echo $cur_os |cut -d' ' -f1)
-	os_arch=$(echo $cur_os |cut -d' ' -f2)
-	os_ver=$(echo $cur_os |cut -d' ' -f3)
-	sed "s/USER/$USER/" $test_yaml > test.yaml
-	sed -i "s/OS_ARCH/$os_arch/" test.yaml
-	sed -i "s/OS_VER/$os_ver/" test.yaml
-	sed -i "s/OS/$os/" test.yaml
-	echo "$hwarch $os/$os_arch/$os_ver"
-}
+TESTBOX = 'vm-2p8g'
 
-job_test() {
-	local job_id bef aft
-	job_id=$(submit test.yaml |awk '{print $NF}')
-	bef=$(date +%s)
-	./my-qemu.sh
-	aft=$(date +%s)
-	logging "$1" "$2" "$3" "$(sec2date $bef)" "$(sec2date $aft)" "$((aft - bef))" "$job_id"
-}
+LOG = 'walk-test.report'
 
-logging new "Index" "hwArch" "OS" "Begin" "End" "Cost/sec" "Job_ID"
-for round in $(seq $test_times)
-do
-	for idx in "${!test_os[@]}"
-	do
-		job_test $round $(create_test_yaml "${test_os[$idx]}")
-	done
-done
+OS_MOUNT = %w[cifs initramfs].freeze
+
+EMAIL_ADDRESS = (ENV['USER']).to_s.freeze
+
+def run_qemu
+  Process.fork do
+    %x(#{ENV['CCI_SRC']}/providers/my-qemu.sh >/dev/null 2>&1)
+  end
+end
+
+def submit_job(os_str, os_mount)
+  `submit --my-queue 'os os_arch os_version=#{os_str}' 'testbox=#{TESTBOX}' 'os_mount=#{os_mount}' #{TEST_YAML}`
+end
+
+def traversal_os_mount
+  OS_MOUNT.each do |os_mount|
+    traversal_test_os(os_mount)
+  end
+end
+
+def traversal_test_os(os_mount)
+  TEST_OS.each do |os_str|
+    test_rootfs(os_str, os_mount)
+  end
+end
+
+def test_rootfs(os_str, os_mount)
+  message = submit_job(os_str, os_mount).chomp
+  job_id = message.split('=')[1]
+  run_qemu
+
+  job_result = if message.include? 'error'
+                 []
+               else
+                 find_by_id(job_id)
+               end
+
+  report_all = job_id.split(', ') + os_str.split + os_mount.split + job_result
+  write_report(report_all)
+end
+
+def cron_job
+  test = Rufus::Scheduler.new
+  test.cron '0 8-22 * * *' do
+    traversal_os_mount
+  end
+
+  mail = Rufus::Scheduler.new
+  mail.cron '0 8 * * 1' do
+    mail_report
+  end
+
+  [test, mail].each(&:join)
+end
+
+cron_job
