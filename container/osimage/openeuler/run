@@ -1,0 +1,28 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. ${CCI_SRC}/container/osimage/openeuler/lib
+. ${CCI_SRC}/container/defconfig.sh
+
+export_root_passwd 
+DIR=$(dirname $(realpath $0))
+
+cmd=(
+       docker run
+       --name initramfs_${image}
+       -v $DIR/create-image:/root/bin/create-image
+       -v $DIR/packages-to-install:/tmp/packages-to-install
+       -v $DIR/files-to-exclude:/tmp/files-to-exclude
+       -v $DIR/${image}.repo:/etc/yum.repos.d/openEuler.repo
+       -e ROOT_PASSWD=$ROOT_PASSWD
+       -e IMAGE_NAME=$IMAGE_NAME
+       $image
+       /root/bin/create-image
+)
+
+load_docker_image
+"${cmd[@]}"
+cp_image_to_host
+docker_rm init_docker &> /dev/null
+echo "build finished"
