@@ -36,6 +36,44 @@ OS_MOUNT = %w[cifs initramfs].freeze
 
 EMAIL_ADDRESS = (ENV['USER']).to_s.freeze
 
+def monitor(query, actions, timeout)
+  monitor = Monitor.new
+  monitor.overrides = query
+  monitor.action = actions
+  monitor.run(timeout)
+  monitor
+end
+
+def monitor_state(job_id)
+  time_list = []
+
+  %w[boot extract_finished].each do |state|
+    result_array = monitor({ 'job_id' => job_id, 'job_state' => state }, { 'stop' => true }, '1800').result
+    time_list.push(Time.parse(result_dict[0]['time'])) unless result_array.empty?
+  end
+  time_list
+end
+
+def es_search(job_id)
+  es_list = []
+
+  es = ESQuery.new
+  result_dict = es.query_by_id(job_id)
+  %w[job_state result_root].each do |field|
+    es_list.push(result_dict[field]) unless result_dict.nil?
+  end
+  es_list
+end
+
+def find_by_id(job_id)
+  start_time, end_time = monitor_state(job_id)
+  cost_time = end_time - start_time unless end_time.nil?
+
+  job_state, result_root = es_search(job_id)
+
+  return start_time, end_time, cost_time.to_i.floor, job_state, result_root
+end
+
 def run_qemu
   Process.fork do
     %x(#{ENV['CCI_SRC']}/providers/my-qemu.sh >/dev/null 2>&1)
