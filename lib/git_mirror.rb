@@ -174,7 +174,7 @@ class MirrorMain
     update_fork_stat(git_repo, feedback_info[:possible_new_refs])
     return unless feedback_info[:possible_new_refs]
 
-    return reload_fork_info if git_repo == 'upstream-repos/upstream-repos'
+    return reload_fork_info if git_repo == 'u/upstream-repos/upstream-repos'
 
     new_refs = check_new_refs(git_repo)
     return if new_refs[:heads].empty?
@@ -254,7 +254,7 @@ class MirrorMain
   end
 
   def reload_fork_info
-    upstream_repos = 'upstream-repos/upstream-repos'
+    upstream_repos = 'u/upstream-repos/upstream-repos'
     if @git_info[upstream_repos][:cur_refs].empty?
       @git_info[upstream_repos][:cur_refs] = get_cur_refs(upstream_repos)
     else
