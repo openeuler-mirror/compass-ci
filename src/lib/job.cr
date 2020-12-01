@@ -192,16 +192,14 @@ class Job
 
     return if @account_info["found"]? == false
 
-    update_sshd
+    set_my_ssh_pubkey
   end
 
-  private def update_sshd
+  private def set_my_ssh_pubkey
     sshd = @hash["sshd"].as_h? || Hash(String, JSON::Any).new()
     pub_key = sshd["pub_key"]?.to_s
     update_account_my_pub_key(pub_key)
 
-    sshd["pub_key"] = @account_info["my_ssh_pubkey"]
-    @hash["sshd"] = JSON.parse(sshd.to_json)
     @hash["my_ssh_pubkey"] = @account_info["my_ssh_pubkey"]
   end
 
