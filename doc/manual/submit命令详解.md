@@ -36,7 +36,7 @@ submit iperf.yaml failed, got job_id=0, error: Missing required job key: 'testbo
 submit iperf.yaml testbox=vm-2p8g
 ```
 
-testbox 字段的值指定需要的测试机，可以使用 `ls` 命令查看 `lkp-tests/hosts` 路径下的可选测试机。如下图所示：
+testbox 字段的值指定需要的测试机，可以使用 `ll` 命令查看 `lkp-tests/hosts` 路径下的可选测试机。如下所示：
 
 ```shell
 hi8109@account-vm ~/lkp-tests/hosts% ll
@@ -83,7 +83,7 @@ total 120K
 
 ### 高级用法
 
-submit 命令的选项如下图所示：
+submit 命令的选项如下所示：
 
 ```shell
 hi8109@account-vm ~% submit
