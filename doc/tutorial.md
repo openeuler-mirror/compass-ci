@@ -288,9 +288,13 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 - 硬件
         服务器类型：ThaiShan200-2280 (建议)  
         架构：aarch64  
-        内存：>= 8GB  
+        内存：>= 32GB  
         CPU：64 nuclear (建议)  
-        硬盘：>= 500G
+        硬盘：>= 500G (建议划分独立分区)
+
+	>**说明：**
+	>划分较小独立分区详细操作请参考[添加测试用例](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/1-storage/small)
+	>划分较大独立分区详细操作请参考[添加测试用例](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/1-storage/large)
         
 - 软件
         OS：openEuler-aarch64-20.03 LTS  
