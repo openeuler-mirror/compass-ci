@@ -64,7 +64,6 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 
 您可以通过以下的方式加入我们：
   - 您可以加入我们的 [mailing list](https://mailweb.openeuler.org/postorius/lists/compass-ci.openeuler.org/)
-  - 您可以加入我们每周四下午四点 16：00 的项目例会 （会议链接将会通过邮件发送给您）
 
 欢迎您跟我们一起：
   - 增强 git bisect 能力
