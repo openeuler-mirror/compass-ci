@@ -19,3 +19,5 @@ cmd=(
 )
 
 "${cmd[@]}"
+
+set_es_indices
