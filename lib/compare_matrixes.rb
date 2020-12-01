@@ -177,7 +177,7 @@ def get_matrixes_values(matrixes_list, options)
 end
 
 def remove_unchanged_field(matrixes_values)
-  # remove unchanged field from matrixes valus and remove :changed key
+  # remove unchanged field from matrixes values and remove :changed key
   #
   matrixes_values.each_key do |success|
     matrixes_values[success].delete_if do |field|
@@ -316,21 +316,20 @@ def get_decimal_length(number, length)
 end
 
 def get_suitable_number_str(number, length, format_pattern)
-  # if number string length can't < target length,
+  # if number string length is no less than target length,
   # transform number string to scientific notation string
 
   format_str = format(format_pattern, number)
   return format_str if format_str.length <= length
 
   decimal_length = get_decimal_length(number, length)
-  unless decimal_length.negative?
-    scientific_str = format("%.#{decimal_length}e", number).sub('e+0', 'e+').sub('e-0', 'e-')
-    lack_length = length - scientific_str.length
-    unless lack_length.negative?
-      return scientific_str + ' ' * lack_length
-    end
-  end
-  format_str
+  return format_str if decimal_length.negative?
+
+  scientific_str = format("%.#{decimal_length}e", number).sub('e+0', 'e+').sub('e-0', 'e-')
+  lack_length = length - scientific_str.length
+  return format_str if lack_length.negative?
+
+  return scientific_str + ' ' * lack_length
 end
 
 # Colorize
