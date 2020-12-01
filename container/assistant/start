@@ -1,0 +1,21 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm assistant 
+
+cmd=(
+	docker run
+	--restart=always
+	--name assistant
+	-u nobody
+	-d
+	-p 8101:8101
+	-v /srv/initrd:/srv/initrd
+	-v /etc/localtime:/etc/localtime:ro
+	debian:assistant
+)
+
+"${cmd[@]}"
