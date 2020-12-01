@@ -10,50 +10,43 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 - **测试服务**
 
-	使用Compass-CI 基于开源软件 PR 触发[自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md)或[手动提交测试job](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3.md)。
+使用Compass-CI 基于开源软件 PR 触发[自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md)或[手动提交测试job](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3.md)。
 	
 - **调测环境登录**
 
-	使用 SSH [登录测试环境进行调测](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%94%B3%E8%AF%B7%E6%B5%8B%E8%AF%95%E6%9C%BA.md)。
+使用 SSH [登录测试环境进行调测](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%94%B3%E8%AF%B7%E6%B5%8B%E8%AF%95%E6%9C%BA.md)。
 
 - **测试结果分析**
 
-	通过 [web](https://compass-ci.openeuler.org) 接口，对历史测试结果进行分析和比较。
+通过 [Web](https://compass-ci.openeuler.org) 接口，对历史测试结果进行分析和比较。
 
 - **测试结果复现**
 
-        Compass-CI 把测试过程中的各项环境参数保存在任务结果输出的job.yaml文件中，开发者可以通过重新提交job.yaml复现测试结果。
+Compass-CI 把测试过程中的各项环境参数保存在任务结果输出的job.yaml文件中，开发者可以通过重新提交job.yaml复现测试结果。
 
 - **辅助定位**
 
-	Compass-CI 可以识别自动化构建测试过程中的错误，触发基于 git tree 的测试，找出引入问题的commit。
+Compass-CI 可以识别自动化构建测试过程中的错误，触发基于 git tree 的测试，找出引入问题的commit。
 
-## 使用 Compass-CI
-> 您只需要先注册自己的仓库，当您的仓库有 commit 提交时，构建测试会自动执行，并且可在我们的网站中查看结果。
+## Getting started
 
--  注册自己的仓库
+- **自动化测试**
 
-	如果您想在 `git push` 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库 [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。
-	```bash
-	git clone https://gitee.com/wu_fengguang/upstream-repos.git
-	less upstream-repos/README.md
-	```
+1. 添加待测试仓库 URL 到 [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos.git) 仓库，[编写测试用例并添加到仓库](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md), 详细流程请查看[这篇文档](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md)。
 
-- `git push`
-  
-  更新仓库，自动触发测试。
+2. git push 更新仓库，自动触发测试。
 
-- 在网页中搜索并查看结果
-  
-    web: https://compass-ci.openeuler.org/jobs
+3. 在网页中搜索并查看结果 web: https://compass-ci.openeuler.org/jobs
 
-## Source
+- **手动提交测试任务**
 
-我们最新的，最完整的源码都存放在 [Gitee](https://gitee.com/wu_fengguang/compass-ci.git) 上，Fork 我们吧！
+1. [安装Compass-CI客户端](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md)
+2. [编写测试用例](https/blob/master/doc/add-testcase.md), [手动提交测试任务](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3.md)
+3. 在网页中搜索并查看结果 web: https://compass-ci.openeuler.org/jobs
 
 ## Contributing to Compass-CI
 
-我们非常欢迎有新的贡献者，我们也很乐意为我们的贡献者提供一些指导
+我们非常欢迎有新的贡献者，我们也很乐意为我们的贡献者提供一些指导，Compass-CI 主要是使用 Ruby 和 Crystal 开发的一个项目，我们使用 rubocop和 ameba 来规范我d的代码风格，具体说明可以查看 [rococop源码仓](https://github.com/rubocop-hq/rubocop)和[ameba源码仓](https://github.com/crystal-ameba/ameba)。
 
 ## Website
 
