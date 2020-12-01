@@ -2,7 +2,7 @@
 
 ### 前提条件
 
-已经按照[本地安装compass-ci客户端.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/本地安装compass-ci客户端.md)完成安装
+已经按照[本地安装compass-ci客户端.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/本地安装compass-ci客户端.md )完成安装
 
 ### 概述
 
