@@ -23,7 +23,7 @@ cmd=(
 	docker run
 	--rm
 	-m $memory
-	--mount type=tmpfs,destination=/tmp
+	--tmpfs /tmp:rw,exec,nosuid,nodev
 	-e CCI_SRC=/c/compass-ci
 	-v ${load_path}/lkp:/lkp
 	-v ${DIR}/bin:/root/bin:ro
