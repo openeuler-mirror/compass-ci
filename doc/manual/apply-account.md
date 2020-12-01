@@ -22,18 +22,16 @@ Email template:
 
 Which contains account information for you:
 
-	- my_email
-	- my_name
-	- my_uuid
-	- SCHED_HOST
-	- SCHED_PORT
+	my_email
+	my_name
+	my_uuid
 
 ## step 3: one-time setup
 
-Follow the email to setup your local environment:
+**Follow the email** to setup your local environment:
 
-	- clone git repos
-	- write ~/.config/compass-ci/default/account.yaml
+	git clone https://gitee.com/wu_fengguang/lkp-tests.git
+	setup ~/.config/compass-ci/defaults/account.yaml
 
 ## step 4: try it out
 
