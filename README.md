@@ -10,7 +10,8 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 **测试服务**
 
-使用Compass-CI 基于开源软件 PR 触发[自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md)或[手动提交测试 job](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3.md)。
+Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，会自动触发[自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md)
+开发者也可以[手动提交测试 job](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3.md)。
 	
 **调测环境登录**
 
@@ -22,11 +23,12 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 **测试结果复现**
 
-通过历史测试生成 job.yaml 文件，重新提交 job.yaml 还原测试环境，复现测试结果。
+一次测试运行的所有决定性参数会在 job.yaml 文件中保留完整记录。
+重新提交该 job.yaml 即可在一样的软硬件环境下，重跑同一测试。
 
 **辅助定位**
 
-Compass-CI 可以识别自动化构建测试过程中的错误，触发基于 git tree 的测试，找出引入问题的 commit。
+如果出现新的 error id，就会自动触发bisect，定位引入该 error id 的 commit。
 
 ## Getting started
 
@@ -46,7 +48,7 @@ Compass-CI 可以识别自动化构建测试过程中的错误，触发基于 gi
 
 **登录测试环境**
 
-1. 向 Compass-CI@qq.com 发送邮件[申请账号](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md)。
+1. 向 compass-ci@qq.com 发送邮件[申请账号](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md)。
 2. 根据邮件反馈内容[完成环境配置](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md)。
 3. 在测试任务中添加 sshd 字段，提交相应的任务，[登录测试环境](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%94%B3%E8%AF%B7%E6%B5%8B%E8%AF%95%E6%9C%BA.md)。
 
