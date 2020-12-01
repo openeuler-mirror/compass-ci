@@ -460,7 +460,7 @@ def assign_metric_values(metrics_values, dim, metric, values)
   metrics_values[metric]['standard_deviation'] ||= {}
   metric_value = get_values(values, true)
   metrics_values[metric]['average'][dim] = metric_value[:average]
-  metrics_values[metric]['standard_deviation'][dim] = metric_value[:stddev] || 0
+  metrics_values[metric]['standard_deviation'][dim] = metric_value[:stddev_percent] || 0
 end
 
 def assign_metric_change(metrics_values)
