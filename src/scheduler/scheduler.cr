@@ -31,8 +31,10 @@ module Scheduler
   VERSION = "0.2.0"
 
   add_context_storage_type(Sched)
+  add_context_storage_type(Time::Span)
 
   before_all do |env|
+    env.set "start_time", Time.monotonic
     env.set "sched", Sched.new(env)
     env.response.headers["Connection"] = "close"
   end
