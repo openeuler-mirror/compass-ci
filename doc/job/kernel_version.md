@@ -26,6 +26,7 @@ Meaning:
 	centos/aarch64/8.1.1911
 	- 4.18.0-147.el8(default)
 
+```bash
 Related files:
 - In initramfs boot process, every kernel version is related with a vmlinuz, module and headers.
 - Files like below under $boot_dir, an example $boot_dir can be "/srv/os/openeuler/aarch64/20.03/boot".
@@ -33,6 +34,7 @@ Related files:
 ├── modules-4.19.90-2003.4.0.0036.oe1.aarch64.cgz
 ├── vmlinuz-4.19.90-2003.4.0.0036.oe1.aarch64
 └── vmlinuz -> vmlinuz-4.19.90-2003.4.0.0036.oe1.aarch64
+```
 
 Usage example:
 - submit iperf.yaml testbox=vm-2p8g queue=vm-2p8g~$USER os=openeuler os_arch=aarch64 os_version=20.03 runtime=20 kernel_version=4.19.90-2003.4.0.0036.oe1.aarch64
