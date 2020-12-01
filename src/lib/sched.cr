@@ -5,6 +5,7 @@ require "kemal"
 require "yaml"
 
 require "./job"
+require "./json_logger"
 require "./block_helper"
 require "./taskqueue_api"
 require "./remote_git_client"
@@ -32,6 +33,8 @@ class Sched
     @block_helper = BlockHelper.new
     @rgc = RemoteGitClient.new
     @env = env
+    @log = JSONLogger.new
+    @log.set_env(env)
   end
 
   def normalize_mac(mac : String)
