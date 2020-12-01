@@ -146,14 +146,20 @@ class Job
     set_result_root()
     set_result_service()
     set_os_mount()
+    set_kernel()
     set_depends_initrd()
-    set_kernel_version()
     set_initrds_uri()
-    set_kernel_uri()
-    set_kernel_params()
     set_lkp_server()
     set_sshr_info()
     set_queue()
+  end
+
+  private def set_kernel
+    return if os_mount == "container"
+
+    set_kernel_version()
+    set_kernel_uri()
+    set_kernel_params()
   end
 
   private def append_init_field
