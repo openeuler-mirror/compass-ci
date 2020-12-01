@@ -21,3 +21,8 @@ docker_rm()
 	docker stop $container
 	docker rm -f $container
 }
+
+set_es_indices()
+{
+	find $CCI_SRC/sbin/ -name "es-*-mapping.sh" -exec sh {} \;
+}
