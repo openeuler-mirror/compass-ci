@@ -1,6 +1,13 @@
 
 # send mail
 
+
+
+
+
+
+
+
 ## purpose
 
 The service is used to send mails with formatted mail data
