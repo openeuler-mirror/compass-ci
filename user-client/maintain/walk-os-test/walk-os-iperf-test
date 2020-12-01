@@ -70,7 +70,7 @@ def monitor_state(job_id)
 
   %w[boot extract_finished].each do |state|
     result_array = monitor({ 'job_id' => job_id, 'job_state' => state }, { 'stop' => true }, '1800').result
-    time_list.push(Time.parse(result_dict[0]['time'])) unless result_array.empty?
+    time_list.push(Time.parse(result_array[0]['time'])) unless result_array.empty?
   end
   time_list
 end
