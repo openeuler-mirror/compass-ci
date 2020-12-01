@@ -382,22 +382,31 @@ end
 # compare each matrices_list within pre dimension of group matrices
 # input: group matrices
 # output: pre compare result of each group
+# the result with more comparison objects first
 def compare_group_matrices(group_matrices, suites_list, options)
   result_str = ''
-  group_matrices.each do |k, v|
-    matrices_list = []
-    matrices_titles = []
-    v.each do |dim, matrix|
-      matrices_titles << dim
-      matrices_list << matrix
-    end
-    if options[:no_print]
-      result_str += compare_matrixes(matrices_list, suites_list.shift, matrices_titles, k, options: options)
-    else
-      print compare_matrixes(matrices_list, suites_list.shift, matrices_titles, k, options: options)
-    end
+  group_matrices_array = sort_by_matrix_size(group_matrices)
+  group_matrices_array.each do |matrice_kv|
+    result_str += get_matrix_str(matrice_kv[0], matrice_kv[1], suites_list, options)
   end
   result_str
+end
+
+def get_matrix_str(matrice_key, matrice_value, suites_list, options)
+  m_list = []
+  m_titles = []
+  matrice_value.each do |dim, matrix|
+    m_titles << dim
+    m_list << matrix
+  end
+  return compare_matrixes(m_list, suites_list.shift, m_titles, matrice_key, options: options) if options[:no_print]
+
+  print compare_matrixes(m_list, suites_list.shift, m_titles, matrice_key, options: options)
+end
+
+# big size first
+def sort_by_matrix_size(group_matrices)
+  group_matrices.sort { |a, b| b[1].size <=> a[1].size }
 end
 
 # input: groups_matrices
