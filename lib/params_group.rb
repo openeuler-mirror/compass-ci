@@ -67,10 +67,15 @@ def filter_groups(groups)
   end
 end
 
+def get_tbox_group(tbox_group)
+  return tbox_group.gsub(/(--|\.).*$/, '')
+end
+
 def get_all_params(job)
   all_params = {}
   job.each_key do |param|
     all_params[param] = job[param] if COMMON_PARAMS.include?(param)
+    all_params[param] = get_tbox_group(job[param]) if param == 'tbox_group'
     next unless param == 'pp'
 
     pp_params = get_pp_params(job[param])
