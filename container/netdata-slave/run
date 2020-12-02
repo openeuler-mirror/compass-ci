@@ -1,0 +1,34 @@
+#!/bin/bash
+# Origin: https://hub.docker.com/r/netdata/netdata
+# SPDX-License-Identifier: GPL-3.0+
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm netdata-slave
+
+DIR=$(dirname $(realpath $0))
+
+cmd=(
+	docker run -d
+	--restart=unless-stopped
+	--hostname=$HOSTNAME
+	--name netdata-slave
+	-p 19999:19999
+	-v $DIR/config/netdata.conf:/etc/netdata/netdata.conf
+	-v $DIR/config/stream.conf:/etc/netdata/stream.conf
+	-v /etc/passwd:/host/etc/passwd:ro
+	-v /etc/group:/host/etc/group:ro
+	-v /proc:/host/proc:ro
+	-v /sys:/host/sys:ro
+	-v /etc/localtime:/etc/localtime:ro
+	-v /etc/os-release:/host//etc/os-release:ro
+	-v /var/run/docker.sock:/var/run/docker.sock:ro
+	-v /srv/cache/netdata_cache:/var/cache/netdata
+	-v /srv/cache/netdata_lib:/var/lib/netdata
+	--log-driver json-file
+	--log-opt max-size=1g
+	--cap-add SYS_PTRACE
+	--security-opt apparmor=unconfined
+	netdata/netdata-slave
+)
+"${cmd[@]}"
