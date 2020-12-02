@@ -12,25 +12,28 @@ names = Set.new %w[
   ROBOT_EMAIL_ADDRESS
   ROBOT_EMAIL_PASSWORD
   SEND_MAIL_PORT
+  MAILDIR
 ]
 
 defaults = relevant_defaults(names)
 
 defaults['CCI_SRC'] = '/c/compass-ci'
+defaults['MAILDIR'] ||= '/srv/cci/Maildir/.compass-ci'
+defaults['HOST_SERVER'] = ENV['HOSTNAME']
 
 env = docker_env(defaults)
 
-cmd = %W[
+cmd = %w[
   docker run
   --restart=always
   --name=send-internet-mail
   -d
 ] + env + %W[
   -p #{defaults['SEND_MAIL_PORT']}:#{defaults['SEND_MAIL_PORT']}
+  -v #{defaults['MAILDIR']}:#{defaults['MAILDIR']}:rw
   -v #{ENV['CCI_SRC']}:#{defaults['CCI_SRC']}
   -v /etc/localtime:/etc/localtime:ro
   -w #{defaults['CCI_SRC']}/container/send-internet-mail
-  --log-driver json-file
   send-internet-mail
 ]
 
