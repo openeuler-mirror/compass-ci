@@ -19,3 +19,13 @@ smtp = {
 }
 
 Mail.defaults { delivery_method :smtp, smtp }
+
+def store_email(mail)
+  time_now = Time.new.strftime('%Y%m%d%H%M%S')
+  file_name = [mail.to[0], time_now].join('_')
+  file_full_name = File.join(ENV['MAILDIR'], 'sent', file_name)
+  File.open(file_full_name, 'w') do |f|
+    f.puts mail
+  end
+  FileUtils.chown_R(1144, 1110, file_full_name)
+end
