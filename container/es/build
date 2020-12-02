@@ -1,6 +1,10 @@
-#!/bin/sh
+#!/usr/bin/env ruby
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
 
-docker build -t es643b:alpine311 . --network=host
+require_relative '../defconfig.rb'
 
+available_memory = get_available_memory
+
+system "docker build -t es643b:alpine311 --build-arg MEMORY=#{available_memory} --network=host ."
