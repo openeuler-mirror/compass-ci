@@ -49,12 +49,14 @@ class FormatEchartData
 
   def assign_echart_source(metric, value_type, dimensions)
     source = []
-    source << @x_params
+    source << @x_params.clone
     dimensions.each do |dimension|
       dimension_values = [dimension]
       @x_params.each do |x_param|
         if @metrics_compare_results[x_param][metric]
           dimension_values << @metrics_compare_results[x_param][metric][value_type][dimension]
+        else
+          source[0].delete(x_param)
         end
       end
       source << dimension_values
