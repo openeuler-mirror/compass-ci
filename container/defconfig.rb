@@ -20,9 +20,7 @@ end
 
 def set_local_env
   hash = cci_defaults
-  hash.map { |k, v|
-    system "export #{k}=#{v}"
-  }
+  hash.map { |k, v| system "export #{k}=#{v}" }
 end
 
 def docker_env(hash)
