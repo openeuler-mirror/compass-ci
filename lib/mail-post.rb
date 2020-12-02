@@ -51,5 +51,11 @@ def send_mail(mail_info)
     to mail_info['to']
     body mail_info['body']
   end
+
   mail.deliver!
+
+  return if ENV['SEND_MAIL_PORT'].to_s != '49000'
+  return if ENV['HOST_SERVER'] != 'z9'
+
+  store_email(mail)
 end
