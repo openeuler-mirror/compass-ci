@@ -435,3 +435,29 @@ def template_body(request_body)
   formatter = FormatEchartData.new(compare_results, request_body)
   formatter.format_for_echart.to_json
 end
+
+def search_testboxes
+  query = { size: 0, aggs: { testboxes: { terms: { size: 10000, field: 'testbox' } } } }
+  buckets = es_query(query)['aggregations']['testboxes']['buckets']
+  testboxes = []
+  buckets.each { |tbox_agg| testboxes << tbox_agg['key'] }
+  return testboxes, testboxes.length
+end
+
+def testboxes_body
+  testboxes, total = search_testboxes
+  {
+    total: total,
+    testboxes: testboxes
+  }.to_json
+end
+
+def query_testboxes
+  begin
+    body = testboxes_body
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get repos error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
