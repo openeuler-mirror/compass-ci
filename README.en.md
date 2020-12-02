@@ -1,36 +1,69 @@
-# compass-ci
+## Compass-CI
 
-#### Description
-Compass CI
+### Overview
 
-#### Software Architecture
-Software architecture description
+Compass-CI is a software platform supporting continuous integration. It provides developers with a wide range of services for upstream open source software from hosting platforms, such as GitHub, Gitee, and GitLab. These services include test, login, fault demarcation, and historical data analytics. Compass-CI performs automated tests based on the open source software PR, including tests of build and cases provided by software packages. Compass-CI and projects submitted by developers form an open and complete test system.
 
-#### Installation
+### Functions
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+**Test Service**
 
-#### Instructions
+Compass-CI monitors git repos of a large amount of open source software. Once Compass-CI detects code update, it automatically triggers [automated tests](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md), and developers can also [manually submit test jobs](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3.md).
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+**Login to the Test Environment**
 
-#### Contribution
+The SSH is used to log in to the test environment for commissioning.
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
+**Test Result Analysis**
 
+The historical test results are analyzed and compared using the Web interface.
 
-#### Gitee Feature
+**Test Result Reproduction**
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+All deterministic parameters for a test are recorded in the **job.yaml** file. You can submit the **job.yaml** file again to run the same test in the same hardware and software environments.
+
+**Error Locating**
+
+If a new error ID is generated, the bisect is automatically triggered to locate the commit of the error ID.
+
+## Getting Started
+
+**Performing an Automated Test**
+
+1. Add the URL of the repository to be tested to the [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos.git), [compile test cases, and add them to the repository](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md). For details, see [this document](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md).
+
+2. Run the **git push** command to update the repository and automatically trigger the test.
+
+3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E4%BB%BB%E5%8A%A1%E7%BB%93%E6%9E%9C.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E6%AF%94%E8%BE%83%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C.md) test results on the web page: https://compass-ci.openeuler.org/jobs.
+
+**Manually Submitting a Test Task**
+
+1. [Install the Compass-CI client](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md).
+2. [Compile test cases and manually submit test tasks](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md).
+3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E4%BB%BB%E5%8A%A1%E7%BB%93%E6%9E%9C.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E6%AF%94%E8%BE%83%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C.md) test results on the web page: https://compass-ci.openeuler.org/jobs.
+
+**Logging in to the Test Environment**
+
+1. Send an email to the compass-ci@qq.com to [apply for an account](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md).
+2. [Complete the environment configuration](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md) as instructed by the email.
+3. Add the **sshd** field to the test task, submit the task, and [log in to the test environment](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%94%B3%E8%AF%B7%E6%B5%8B%E8%AF%95%E6%9C%BA.md).
+
+## Contributing to Compass-CI
+
+We are glad to have new contributors and provide them with guidance. Compass-CI is a project developed using Ruby, and the project follows the [Ruby Code Style](https://ruby-china.org/wiki/coding-style). If you want to join the community and contribute to the Compass-CI project, [this page](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/learning-resources.md) will provide you with more information, including all the languages and tools used by Compass-CI.
+
+## Website
+
+All test results, the list of open source software that has been added to Compass-CI, and historical test result comparisons can be found on our [official website](https://compass-ci.openeuler.org).
+
+## Joining Us
+
+You can join us by
+
+- Joining our [mailing list](https://mailweb.openeuler.org/postorius/lists/compass-ci.openeuler.org/)
+
+Together, we can enhance the capabilities of
+
+- git bisect
+- Data analytics
+- Data analytics result visualization
