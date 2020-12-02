@@ -413,7 +413,7 @@ class Job
   end
 
   private def get_initrds
-    temp_initrds = [] of String
+    temp_initrds = [] of String 
 
     if "#{os_mount}" == "initramfs"
       temp_initrds.concat(initramfs_initrds())
@@ -437,13 +437,13 @@ class Job
   end
 
   private def set_initrds_uri
-    uris = ""
+    initrds_uri_values = [] of JSON::Any
 
     get_initrds().each do |initrd|
-      uris += "initrd #{initrd}\n"
+      initrds_uri_values << JSON::Any.new("initrd #{initrd}")
     end
 
-    self["initrds_uri"] = uris
+    @hash["initrds_uri"] = JSON::Any.new(initrds_uri_values)
   end
 
   private def set_user_lkp_src
