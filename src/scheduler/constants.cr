@@ -21,6 +21,9 @@ INITRD_HTTP_PORT = (ENV.has_key?("INITRD_HTTP_PORT") ? ENV["INITRD_HTTP_PORT"] :
 OS_HTTP_HOST = (ENV.has_key?("OS_HTTP_HOST") ? ENV["OS_HTTP_HOST"] : "172.17.0.1")
 OS_HTTP_PORT = (ENV.has_key?("OS_HTTP_PORT") ? ENV["OS_HTTP_PORT"] : 8000).to_i32
 
+CCI_REPOS = (ENV.has_key?("CCI_REPOS") ? ENV["CCI_REPOS"] : "/c")
+LAB_REPO  = "lab-z9"
+
 SRV_OS     = "/srv/os"
 SRV_INITRD = "/srv/initrd"
 

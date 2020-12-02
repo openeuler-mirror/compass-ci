@@ -15,7 +15,7 @@ class Sched
     else
       cluster_config = get_cluster_config(cluster_file,
         job.lkp_initrd_user,
-        job.os_arch)
+        job.os_arch).not_nil!
       return submit_cluster_job(job, cluster_config)
     end
   rescue ex
@@ -147,12 +147,16 @@ class Sched
     @es.set_job_content(job)
   end
 
-  # get cluster config using own lkp_src cluster file,
-  # a hash type will be returned
   def get_cluster_config(cluster_file, lkp_initrd_user, os_arch)
     lkp_src = Jobfile::Operate.prepare_lkp_tests(lkp_initrd_user, os_arch)
-    cluster_file_path = Path.new(lkp_src, "cluster", cluster_file)
-    return YAML.parse(File.read(cluster_file_path))
+
+    cluster_file_paths = [
+      Path.new(CCI_REPOS, LAB_REPO, "cluster", cluster_file),
+      Path.new(lkp_src, "cluster", cluster_file)
+    ]
+    cluster_file_paths.each do |f|
+      return YAML.parse(File.read(f)) if File.file?(f)
+    end
   end
 
   def get_commit_date(job)
