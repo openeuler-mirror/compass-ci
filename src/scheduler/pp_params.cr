@@ -51,8 +51,8 @@ class Job
   private def format_string(original_str)
     temp = [] of String
     original_str.each_char do |char|
-      if "#{char}" =~ /-|\w/
-        temp << "#{char}"
+      if "#{char}" =~ /-|\.|\/|\w/
+        temp << "#{char}".gsub("\/", "-")
       end
     end
 
