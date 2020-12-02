@@ -103,3 +103,10 @@ post '/compare_template' do
   request.body.rewind # in case someone already read it
   compare_template(request.body.read)
 end
+
+# GET /get_testboxes
+# Response:
+#   - { total: total, testboxes[ 'testbox1', 'testbox2', ... ] }
+get '/get_testboxes' do
+  query_testboxes
+end
