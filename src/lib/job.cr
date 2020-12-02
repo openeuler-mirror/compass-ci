@@ -146,8 +146,8 @@ class Job
     set_result_root()
     set_result_service()
     set_os_mount()
-    set_kernel()
     set_depends_initrd()
+    set_kernel()
     set_initrds_uri()
     set_lkp_server()
     set_sshr_info()
@@ -345,7 +345,11 @@ class Job
                          "SCHED_HOST",
                          "SCHED_PORT"]
 
-    initialized_keys -= ["my_uuid"]
+    initialized_keys -= ["my_uuid",
+                         "kernel_version",
+                         "kernel_uri",
+                         "kernel_params",
+                         "linux_vmlinuz_path"]
 
     initialized_keys.each do |key|
       return false unless @hash.has_key?(key)
