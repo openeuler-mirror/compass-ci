@@ -40,7 +40,7 @@ LOCAL_SEND_MAIL_PORT: $LOCAL_SEND_MAIL_PORT
 LOCAL_ROBOT_EMAIL_ADDRESS: $LOCAL_ROBOT_EMAIL_ADDRESS
 EOF
 
-cat > /etc/profile.d/compass.sh <<EOF
+cat > /etc/profile.d/compass.sh <<'EOF'
 export LKP_SRC=/c/lkp-tests
 export CCI_SRC=/c/compass-ci
 export REPO_SRC=/c/upstream-repos
