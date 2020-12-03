@@ -26,7 +26,9 @@ cat >> /etc/modules-load.d/cifs <<EOF
 cifs
 EOF
 
-: ${DOCKER_REGISTRY_HOST:="127.0.0.1"}
+server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
+
+: ${DOCKER_REGISTRY_HOST:=$server_ip}
 : ${DOCKER_REGISTRY_PORT:=5001}
 cat > /etc/docker/daemon.json <<EOF
 {
