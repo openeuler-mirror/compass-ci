@@ -27,7 +27,7 @@ end
 def check_argv(argv)
   usage(argv)
   rootfs_dir = Pathname.new(OS_PATH + argv[0]).realpath.to_s
-  raise 'Wrong vmlinuz path' unless File.exist?(rootfs_dir + '/vmlinuz')
+  raise 'Wrong vmlinuz path' unless File.exist?(rootfs_dir + '/boot/vmlinuz')
 
   return rootfs_dir
 end
