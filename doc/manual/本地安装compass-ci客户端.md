@@ -2,7 +2,7 @@
 
 Compass-CI 将 [lkp-tests](https://gitee.com/wu_fengguang/lkp-tests) 作为客户端，通过本地安装 lkp-tests 可以手动提交测试任务
 
-:exclamation: 前提条件：按照 [apply-ssh-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md) 完成如下动作：
+:exclamation: 前提条件：按照 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md) 完成如下动作：
 - send apply account email
 - receive email from compass-ci@qq.com
 

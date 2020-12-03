@@ -15,7 +15,7 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 	
 **调测环境登录**
 
-使用 SSH [登录测试环境进行调测](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%94%B3%E8%AF%B7%E6%B5%8B%E8%AF%95%E6%9C%BA.md)。
+使用 SSH [登录测试环境进行调测](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%99%BB%E5%BD%95%E6%B5%8B%E8%AF%95%E6%9C%BA%E8%B0%83%E6%B5%8B%E4%BB%BB%E5%8A%A1.md)。
 
 **测试结果分析**
 
@@ -50,7 +50,7 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 
 1. 向 compass-ci@qq.com 发送邮件[申请账号](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md)。
 2. 根据邮件反馈内容[完成环境配置](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md)。
-3. 在测试任务中添加 sshd 字段，提交相应的任务，[登录测试环境](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%94%B3%E8%AF%B7%E6%B5%8B%E8%AF%95%E6%9C%BA.md)。
+3. 在测试任务中添加 sshd 字段，提交相应的任务，[登录测试环境](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%99%BB%E5%BD%95%E6%B5%8B%E8%AF%95%E6%9C%BA%E8%B0%83%E6%B5%8B%E4%BB%BB%E5%8A%A1.md)。
 
 ## Contributing to Compass-CI
 
