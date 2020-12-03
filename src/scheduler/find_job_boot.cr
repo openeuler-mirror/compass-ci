@@ -135,8 +135,8 @@ class Sched
   private def get_boot_ipxe(job : Job)
     response = "#!ipxe\n\n"
     response += Array(String).from_json(job.initrds_uri).join("\n") + "\n"
-    response += job.kernel_uri
-    response += job.kernel_params
+    response += job.kernel_uri + " "
+    response += Array(String).from_json(job.kernel_params).join(" ")
     response += "\nboot\n"
 
     return response

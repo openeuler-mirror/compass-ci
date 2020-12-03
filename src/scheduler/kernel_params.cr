@@ -30,7 +30,9 @@ class Job
   end
 
   private def set_kernel_params
-    self["kernel_params"] = " #{kernel_common_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
+    kernel_params_values = "#{kernel_common_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
+    kernel_params_values = kernel_params_values.split(" ").map(&.strip()).reject!(&.empty?)
+    @hash["kernel_params"] = JSON.parse(kernel_params_values.to_json)
   end
 
 end
