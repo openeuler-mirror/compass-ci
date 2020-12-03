@@ -33,7 +33,7 @@ class MailJobResult
 
   def set_submitter_info
     job = query_job
-    exit unless job['email']
+    exit unless job && job['email']
 
     @submitter_email = job['email']
     @result_root = job['result_root']
@@ -42,6 +42,11 @@ class MailJobResult
   def query_job
     es = ESQuery.new
     query_result = es.multi_field_query({ 'id' => @job_id })
+    if query_result['hits']['hits'].empty?
+      warn "Non-existent job: #{@job_id}"
+      return nil
+    end
+
     query_result['hits']['hits'][0]['_source']
   end
 end
