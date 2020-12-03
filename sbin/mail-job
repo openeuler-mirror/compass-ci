@@ -3,11 +3,28 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-# Usage:
-#       mail-job job_id
-
+require 'optparse'
 require_relative '../lib/mail_job_result.rb'
 
-job_id = ARGV[0]
+# mail job results to job submitter
+# require the job had submitted job.yaml include email
+
+opt_parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: mail-job  job_id'
+  opts.separator 'eg: mail-job crystal.123012'
+  opts.separator ''
+  opts.separator 'options:'
+
+  opts.on_tail('-h', '--help', 'show this message') do
+    puts opts
+    exit
+  end
+end
+
+argv = ARGV.empty? ? ['-h'] : ARGV
+
+opt_parser.parse!(argv)
+
+job_id = argv[0]
 mail = MailJobResult.new(job_id)
 mail.send_mail
