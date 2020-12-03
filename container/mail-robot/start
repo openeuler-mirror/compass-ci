@@ -14,10 +14,11 @@ names = Set.new %w[
   SEND_MAIL_PORT
   SCHED_HTTPS_HOST
   SCHED_HTTPS_PORT
+  ES_PORT
+  MAILDIR
 ]
 
 defaults = relevant_defaults(names)
-defaults['MAILDIR'] = '/srv/cci/Maildir/.compass-ci'
 
 env = docker_env(defaults)
 
