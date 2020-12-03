@@ -11,6 +11,7 @@ class ESQuery
   PORT = (ENV.key?('ES_PORT') ? ENV['ES_PORT'] : ES_PORT).to_i
   def initialize(host = HOST, port = PORT, index: 'jobs')
     @index = index
+    @scroll_id = ''
     @client = Elasticsearch::Client.new url: "http://#{host}:#{port}"
     raise 'Connect Elasticsearch  error!' unless @client.ping
   end
@@ -31,6 +32,25 @@ class ESQuery
       }, size: size
     }
     @client.search index: 'jobs*', body: query
+  end
+
+  def traverse_field(size)
+    if @scroll_id.empty?
+      query = {
+        query: {
+          bool: {
+            must: {
+              match_all: {}
+            }
+          }
+        }, size: size
+      }
+      result = @client.search index: @index, scroll: '10m', body: query
+      @scroll_id = result['_scroll_id']
+      return result
+    else
+      @client.scroll scroll: '10m', scroll_id: @scroll_id
+    end
   end
 
   def query_by_id(id)
