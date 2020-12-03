@@ -187,11 +187,14 @@ def apply_account(my_info, conf_info)
 end
 
 def check_my_email(my_info)
+  return true if my_info['my_email']
+
   message = "No email address specified\n"
   message += "use -e to add an email address for applying account\n"
   message += 'or use -f to add an email file'
+  puts message
 
-  raise message if my_info['my_email'].nil?
+  return false
 end
 
 def build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
@@ -219,13 +222,32 @@ def build_my_info_from_account_info(my_info, account_info, conf_info)
   my_info['my_login_name'] = account_info['my_login_name'] unless conf_info['is_update_account']
 end
 
+def check_server
+  return true if ENV['HOSTNAME'] == 'z9'
+
+  message = 'please run the tool on z9 server'
+  puts message
+
+  return false
+end
+
+def check_my_name_exist(my_info)
+  return true if my_info['my_name']
+
+  message = 'No my_name found, please use -n to add one'
+  puts message
+
+  return false
+end
+
 def send_account(my_info, conf_info, email_info, my_info_es, stdin_info)
-  check_my_email(my_info)
+  return unless check_server
+  return unless check_my_email(my_info)
+
   my_info['my_uuid'] = %x(uuidgen).chomp unless conf_info['is_update_account']
   build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
 
-  message = 'No my_name found, please use -n to add one'
-  raise message if my_info['my_name'].nil?
+  return unless check_my_name_exist(my_info)
 
   account_info = apply_account(my_info, conf_info)
   build_my_info_from_account_info(my_info, account_info, conf_info)
@@ -241,6 +263,7 @@ def send_mail(my_info, account_info, conf_info)
             else
               build_message(my_info['my_email'], account_info)
             end
+
   %x(curl -XPOST '#{SEND_MAIL_HOST}:#{SEND_MAIL_PORT}/send_mail_text' -d "#{message}")
 end
 
