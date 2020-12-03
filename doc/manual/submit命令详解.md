@@ -129,6 +129,12 @@ options:
     submit -a iperf.yaml
     ```
 
+    ```
+    可添加的文件及目录：lkp-tests/*/$program ， lkp-tests/*/$program/* ， lkp-tests/*/*/$program ， lkp-tests/*/*/$program/* 。
+    $program 的值是 $suite ， $suite-dev ， $suite.aarch64 或 $suite.x86_64 。
+    当 suite 为 makepkg ， makepkg-deps ， pack-deps ， cci-makepkg 或 cci-depends 时，$program = $benchmark 。
+    ```
+
 * **-m的用法**
 
     使用 -m 参数可以启动任务监控功能，并将任务执行过程中的各种状态信息打印到控制台上，方便用户实时监控测试任务的执行过程。
