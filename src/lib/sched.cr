@@ -34,8 +34,7 @@ class Sched
     @block_helper = BlockHelper.new
     @rgc = RemoteGitClient.new
     @env = env
-    @log = JSONLogger.new
-    @log.set_env(env)
+    @log = env.get("log").as(JSONLogger)
   end
 
   def normalize_mac(mac : String)

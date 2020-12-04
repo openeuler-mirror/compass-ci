@@ -192,15 +192,15 @@ class Sched
       begin
         job = @es.get_job(job_id.to_s)
       rescue ex
-        puts "Invalid job (id=#{job_id}) in es. Info: #{ex}"
-        puts ex.inspect_with_backtrace
+        @log.warn("Invalid job (id=#{job_id}) in es. Info: #{ex}")
+        @log.warn(ex.inspect_with_backtrace)
       end
     end
 
     if job
       job.update({"testbox" => testbox})
       job.set_result_root
-      puts %({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state": "set result root"})
+      @log.info(%({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state": "set result root"}))
       @redis.set_job(job)
     end
     return job

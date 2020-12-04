@@ -19,7 +19,7 @@ class Sched
       return submit_cluster_job(job, cluster_config)
     end
   rescue ex
-    puts ex.inspect_with_backtrace
+    @log.warn(ex.inspect_with_backtrace)
     return [{
       "job_id"    => "0",
       "message"   => ex.to_s,
