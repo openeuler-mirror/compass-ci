@@ -6,8 +6,7 @@ require "json"
 require "any_merge"
 
 class JSONLogger < Logger
-  def initialize(logdev = STDOUT, formatter = my_formatter)
-    @env = nil
+  def initialize(logdev = STDOUT, formatter = my_formatter, @env = nil)
     @env_info = Hash(String, String | Int32).new
     super(logdev, formatter: formatter)
   end
