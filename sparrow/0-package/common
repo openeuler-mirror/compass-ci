@@ -5,6 +5,7 @@
 gem install git activesupport rest-client cucumber json faye-websocket elasticsearch
 
 grep -q '^lkp:' /etc/passwd || useradd -u 1090 lkp
+grep -q '^mailer:' /etc/passwd || useradd -u 1144 mailer
 grep -q '^team:' /etc/group || groupadd team
 grep -q '^committer:' /etc/group || groupadd -g 1999 committer
 
