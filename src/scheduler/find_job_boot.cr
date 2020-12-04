@@ -75,7 +75,7 @@ class Sched
     job = get_job_from_queues(queues, host)
 
     if job
-      Jobfile::Operate.create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
+      create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
     end
 
     return boot_content(job, boot_type)

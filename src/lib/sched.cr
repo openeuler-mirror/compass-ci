@@ -20,6 +20,7 @@ require "../scheduler/find_next_job_boot"
 require "../scheduler/close_job"
 require "../scheduler/request_cluster_state"
 require "../scheduler/update_job_parameter"
+require "../scheduler/create_job_cpio"
 
 class Sched
   property es
