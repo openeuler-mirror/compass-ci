@@ -4,6 +4,7 @@
 
 require 'json'
 require_relative 'es_query'
+require_relative 'error_messages'
 require_relative 'sched_client'
 require_relative '../src/delimiter/utils'
 require_relative "#{ENV['LKP_SRC']}/lib/monitor"
@@ -19,6 +20,7 @@ class GitBisect
     # set object property
     set_ids
     set_bad_job
+    set_build_pkg_dir
     set_upstream
     set_work_dir
     set_good_commit
@@ -36,6 +38,10 @@ class GitBisect
 
   def set_bad_job
     @bad_job = Utils.init_job_content(@bad_job_id)
+  end
+
+  def set_build_pkg_dir
+    @build_pkg_dir = File.join('/srv', @bad_job['result_root'], 'build-pkg')
   end
 
   def set_upstream
@@ -80,9 +86,10 @@ class GitBisect
     return nil unless temp[0].include?('is the first bad commit') || temp[-1].include?('bisect run success')
 
     first_bad_commit = Utils.parse_first_bad_commit(result)
+    error_messages = ErrorMessages.new(@build_pkg_dir).obtain_error_messages_by_errorid(@error_id)
 
     return Hash['repo' => @upstream_repo, 'commit' => first_bad_commit,
-                'job_id' => @bad_job_id, 'error_id' => @error_id]
+                'job_id' => @bad_job_id, 'error_messages' => error_messages.join("\n")]
   end
 
   # first search the good commit in db
