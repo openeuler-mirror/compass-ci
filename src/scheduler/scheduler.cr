@@ -4,6 +4,7 @@
 require "kemal"
 
 require "../lib/sched"
+require "../lib/json_logger"
 
 # -------------------------------------------------------------------------------------------
 # end_user:
@@ -31,10 +32,12 @@ module Scheduler
   VERSION = "0.2.0"
 
   add_context_storage_type(Sched)
+  add_context_storage_type(JSONLogger)
   add_context_storage_type(Time::Span)
 
   before_all do |env|
     env.set "start_time", Time.monotonic
+    env.set "log", JSONLogger.new(env: env)
     env.set "sched", Sched.new(env)
     env.response.headers["Connection"] = "close"
   end
@@ -43,9 +46,13 @@ module Scheduler
     env.get("sched").as(Sched)
   end
 
+  def self.log(env)
+    env.get("log").as(JSONLogger)
+  end
+
   # for debug (maybe kemal debug|logger does better)
   def self.debug_message(env, response)
-    puts %({"from": "#{env.request.remote_address}", "response": #{response.to_json}})
+    log(env).info(%({"from": "#{env.request.remote_address}", "response": #{response.to_json}}))
   end
 
   # echo alive
@@ -63,7 +70,7 @@ module Scheduler
     response = get_sched_from_env(env).find_job_boot
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    puts %({"job_id": "#{job_id}", "job_state": "boot"}) if job_id
+    log(env).info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
 
     response
   end
@@ -73,7 +80,7 @@ module Scheduler
     response = get_sched_from_env(env).find_next_job_boot
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    puts %({"job_id": "#{job_id}", "job_state": "boot"}) if job_id
+    log(env).info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
 
     response
   end
@@ -85,7 +92,7 @@ module Scheduler
     job_messages = get_sched_from_env(env).submit_job
 
     job_messages.each do |job_message|
-      puts job_message.to_json
+      log(env).info(job_message.to_json)
     end
 
     job_messages.to_json
@@ -97,7 +104,7 @@ module Scheduler
     job_package = env.params.url["job_package"]
     file_path = ::File.join [Kemal.config.public_folder, job_id, job_package]
 
-    puts %({"job_id": "#{job_id}", "job_state": "download"})
+    log(env).info(%({"job_id": "#{job_id}", "job_state": "download"}))
 
     send_file env, file_path
   end
@@ -157,7 +164,7 @@ module Scheduler
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
   get "/~lkp/cgi-bin/lkp-jobfile-append-var" do |env|
-    puts get_sched_from_env(env).update_job_parameter
+    log(env).info(get_sched_from_env(env).update_job_parameter)
 
     "Done"
   end
@@ -194,14 +201,14 @@ module Scheduler
     # get job_id from request
     job_id = env.params.query["job_id"]?
     if job_id
-      puts get_sched_from_env(env).close_job(job_id)
+      log(env).info(get_sched_from_env(env).close_job(job_id))
     end
 
     "Done"
   end
 
   get "/~lkp/cgi-bin/lkp-wtmp" do |env|
-    puts get_sched_from_env(env).update_tbox_wtmp
+    log(env).info(get_sched_from_env(env).update_tbox_wtmp)
 
     "Done"
   end
@@ -215,7 +222,7 @@ module Scheduler
       get_sched_from_env(env).report_ssh_port(testbox, ssh_port)
     end
 
-    puts %({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"})
+    log(env).info(%({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"}))
 
     "Done"
   end
