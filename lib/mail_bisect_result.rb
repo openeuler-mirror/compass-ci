@@ -7,7 +7,7 @@ require 'json'
 # compose and send email for bisect result
 class MailBisectResult
   def initialize(bisect_info)
-    @error_id = bisect_info['error_id']
+    @error_messages = bisect_info['error_messages']
     @repo = bisect_info['repo']
     @commit_id = bisect_info['commit']
     @git_commit = GitCommit.new(@repo, @commit_id)
@@ -32,7 +32,8 @@ class MailBisectResult
       After submitting a job we noticed an error response due to the commit:
 
       commit: #{@commit_id[0..11]} ("#{@git_commit.subject}")
-      error_id: #{@error_id}
+      error_messages:
+      #{@error_messages}
 
     https://gitee.com/openeuler/compass-ci
     BODY
