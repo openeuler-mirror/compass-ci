@@ -235,7 +235,7 @@ class MirrorMain
     return if @git_info[git_repo]['is_submodule']
 
     mirror_dir = "/srv/git/#{git_repo}.git"
-    show_ref_out = %x(git -C #{mirror_dir} show-ref --heads)
+    show_ref_out = %x(git -C #{mirror_dir} show-ref --heads 2>/dev/null)
     cur_refs = { heads: {} }
     show_ref_out.each_line do |line|
       next if line.start_with? '#'
