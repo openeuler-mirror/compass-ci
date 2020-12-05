@@ -58,7 +58,9 @@ class Sched
       cluster_state.each_value do |host_state|
         roles = host_state["roles"]
         direct_ips = host_state["direct_ips"]
-        roles_ip << "#{roles}=#{direct_ips}"
+        node_ip = host_state["ip"]
+        roles_ip << "direct_#{roles}_ips=#{direct_ips}"
+        roles_ip << "#{roles}=#{node_ip}"
       end
 
       return roles_ip.join('\n')
