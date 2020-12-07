@@ -495,7 +495,7 @@ end
 #    ['openeuler 20.03', 'centos 7.6'],
 #    ['debian sid', 'centos 7.6']
 #  ]
-def get_dimentions_combination(dimension_list)
+def get_dimensions_combination(dimension_list)
   dims = []
   dimension_list_size = dimension_list.size
   (1..dimension_list_size - 1).each do |i|
