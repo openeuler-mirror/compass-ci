@@ -5,15 +5,15 @@
 require 'fileutils'
 require 'yaml'
 
-lab = ENV['lab']
-system 'git clone file:///$CCI_REPOS/lab-$lab.git'
+lab = ENV['LAB'] || 'z9'
+CCI_REPOS = ENV['CCI_REPOS'] || '/c'
 
 def generate_conserver(lab)
   return unless File.exist?('conserver-head.cf')
 
   FileUtils.cp('conserver-head.cf', 'conserver.cf')
 
-  host_dir = "lab-#{lab}/hosts/"
+  host_dir = "#{CCI_REPOS}/lab-#{lab}/hosts/"
   return unless Dir.exist?(host_dir)
 
   Dir.each_child(host_dir) do |host|
