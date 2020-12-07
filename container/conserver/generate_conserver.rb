@@ -22,7 +22,7 @@ def generate_conserver(lab)
 
     console = <<~HEREDOC
     console #{host} {
-      exec /usr/local/bin/ipmi.sh #{ipmi_ip};
+      exec /usr/local/bin/ipmi-sol #{ipmi_ip};
     }
     HEREDOC
     File.open('conserver.cf', 'a') { |f| f << console }
