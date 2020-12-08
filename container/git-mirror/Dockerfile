@@ -5,6 +5,7 @@ FROM alpine:3.8
 MAINTAINER Li Yuanchao <lyc163mail@163.com>
 
 ADD kill-parent.sh /
+RUN adduser -u 1090 -D lkp
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
