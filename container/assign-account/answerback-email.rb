@@ -61,21 +61,19 @@ conf_info = {
   'is_update_account' => false
 }
 
-def init_info(mail_content, email_info, my_info)
+def init_info(mail_content, email_info, my_info, my_info_es)
   my_info['my_email'] = mail_content.from[0]
-  email_info['my_name'] = mail_content.From.unparsed_value.gsub(/ <[^<>]*>/, '')
-  return if mail_content.attachments.empty?
 
-  email_info['new_email_pubkey'] = mail_content.attachments[0].body.decoded.strip
+  read_my_login_name(my_info['my_email'], my_info_es)
+  email_info['my_name'] = mail_content.From.unparsed_value.gsub(/ <[^<>]*>/, '')
+
+  email_info['new_email_pubkey'] = mail_content.attachments[0].body.decoded.strip || nil
 end
 
 def read_my_login_name(my_email, my_info_es)
-  my_account_info_str = %x(curl -XGET localhost:9200/accounts/_doc/#{my_email})
-  my_account_info = YAML.safe_load my_account_info_str
-  message = "No such email found from the ES: #{my_email}"
-  raise message unless my_account_info['found']
+  my_account_info = ESQuery.new(index: 'accounts').query_by_id(my_email)
 
-  my_info_es.update my_account_info['_source']
+  my_info_es.update my_account_info || {}
 end
 
 options = OptionParser.new do |opts|
@@ -102,6 +100,7 @@ options = OptionParser.new do |opts|
     end
 
     my_info['my_email'] = email_address
+    read_my_login_name(email_address, my_info_es)
   end
 
   opts.on('-n name', '--name name', 'appoint name') do |name|
@@ -134,7 +133,7 @@ options = OptionParser.new do |opts|
       return false
     end
     mail_content = Mail.read(email_file)
-    init_info(mail_content, email_info, my_info)
+    init_info(mail_content, email_info, my_info, my_info_es)
   end
 
   opts.on('-g', '--gen-sshkey', 'generate jumper rsa public/private key and return pubkey') do
@@ -142,7 +141,6 @@ options = OptionParser.new do |opts|
   end
 
   opts.on('-u', '--update', 'updata configurations') do
-    read_my_login_name(my_info['my_email'], my_info_es)
     conf_info['is_update_account'] = true
   end
 
@@ -240,9 +238,27 @@ def check_my_name_exist(my_info)
   return false
 end
 
+def check_email_assigned_account(conf_info, my_info_es)
+  if conf_info['is_update_account']
+    return true unless my_info_es.empty?
+
+    message = "The email has not assigned an account yet.\n"
+    message += "Delete the '-u' option to assign a new account."
+  else
+    return true if my_info_es.empty?
+
+    message = "The email has already assigned an account.\n"
+    message += "You can use option '-u' to update the account."
+  end
+  puts message
+
+  return false
+end
+
 def send_account(my_info, conf_info, email_info, my_info_es, stdin_info)
   return unless check_server
   return unless check_my_email(my_info)
+  return unless check_email_assigned_account(conf_info, my_info_es)
 
   my_info['my_uuid'] = %x(uuidgen).chomp unless conf_info['is_update_account']
   build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
