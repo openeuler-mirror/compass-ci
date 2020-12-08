@@ -23,7 +23,7 @@ Mail.defaults { delivery_method :smtp, smtp }
 def store_email(mail)
   time_now = Time.new.strftime('%Y%m%d%H%M%S')
   file_name = [mail.to[0], time_now].join('_')
-  file_full_name = File.join(ENV['MAILDIR'], 'sent', file_name)
+  file_full_name = File.join(ENV['SENT_MAILDIR'], 'new', file_name)
   File.open(file_full_name, 'w') do |f|
     f.puts mail
   end
