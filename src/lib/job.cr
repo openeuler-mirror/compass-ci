@@ -333,7 +333,7 @@ class Job
     @hash.delete("my_uuid")
   end
 
-  private def get_initialized_keys()
+  private def get_initialized_keys
     initialized_keys = [] of String
 
     REQUIRED_KEYS.each do |key|
@@ -425,7 +425,7 @@ class Job
   end
 
   private def get_initrds
-    temp_initrds = [] of String 
+    temp_initrds = [] of String
 
     if "#{os_mount}" == "initramfs"
       temp_initrds.concat(initramfs_initrds())
