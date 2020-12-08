@@ -136,6 +136,15 @@ class Job
     update(json.as_h)
   end
 
+  def delete(key : String)
+    initialized_keys = get_initialized_keys
+    if initialized_keys.includes?(key)
+      raise "Should not delete #{key}"
+    else
+      @hash.delete(key)
+    end
+  end
+
   private def set_defaults
     append_init_field()
     set_user_lkp_src()
@@ -324,7 +333,7 @@ class Job
     @hash.delete("my_uuid")
   end
 
-  private def initialized?
+  private def get_initialized_keys()
     initialized_keys = [] of String
 
     REQUIRED_KEYS.each do |key|
@@ -350,7 +359,10 @@ class Job
                          "kernel_uri",
                          "kernel_params",
                          "linux_vmlinuz_path"]
+  end
 
+  private def initialized?
+    initialized_keys = get_initialized_keys
     initialized_keys.each do |key|
       return false unless @hash.has_key?(key)
     end
