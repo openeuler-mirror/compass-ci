@@ -3,17 +3,27 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'set'
 require_relative '../defconfig.rb'
 
-docker_rm "kibana"
+names = Set.new %w[
+  LOGGING_ES_HOST
+  LOGGING_ES_PORT
+]
 
-cmd = %w[
+defaults = relevant_defaults(names)
+LOGGING_ES_HOST = defaults['LOGGING_ES_HOST'] || '172.17.0.1'
+LOGGING_ES_PORT = defaults['LOGGING_ES_PORT'] || '9202'
+
+docker_rm 'kibana'
+
+cmd = %W[
   docker run
   --restart=always
   --name kibana
   -v /etc/localtime:/etc/localtime:ro
   -d
-  --link logging-es:elasticsearch
+  -e ELASTICSEARCH_HOSTS=http://#{LOGGING_ES_HOST}:#{LOGGING_ES_PORT}
   -p 11309:5601
   kibana:7.6.2
 ]
