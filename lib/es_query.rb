@@ -31,7 +31,7 @@ class ESQuery
         }
       }, size: size
     }
-    @client.search index: 'jobs*', body: query
+    @client.search index: @index << '*', body: query
   end
 
   def traverse_field(size)
