@@ -8,6 +8,7 @@ docker_rm rsync_server
 cmd=(
 	docker run 
 	-id
+	--restart=always
 	--name=rsync_server 
 	-v /srv/result/upload:/srv/result/upload
 	-v /etc/localtime:/etc/localtime:ro
