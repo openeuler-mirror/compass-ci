@@ -12,13 +12,13 @@ names = Set.new %w[
   ROBOT_EMAIL_ADDRESS
   ROBOT_EMAIL_PASSWORD
   SEND_MAIL_PORT
-  MAILDIR
+  SENT_MAILDIR
 ]
 
 defaults = relevant_defaults(names)
 
 defaults['CCI_SRC'] = '/c/compass-ci'
-defaults['MAILDIR'] ||= '/srv/cci/Maildir/.compass-ci'
+defaults['SENT_MAILDIR'] ||= '/srv/cci/Maildir/.sent'
 defaults['HOST_SERVER'] = ENV['HOSTNAME']
 
 env = docker_env(defaults)
@@ -30,7 +30,7 @@ cmd = %w[
   -d
 ] + env + %W[
   -p #{defaults['SEND_MAIL_PORT']}:#{defaults['SEND_MAIL_PORT']}
-  -v #{defaults['MAILDIR']}:#{defaults['MAILDIR']}:rw
+  -v #{defaults['SENT_MAILDIR']}:#{defaults['SENT_MAILDIR']}:rw
   -v #{ENV['CCI_SRC']}:#{defaults['CCI_SRC']}
   -v /etc/localtime:/etc/localtime:ro
   -w #{defaults['CCI_SRC']}/container/send-internet-mail
