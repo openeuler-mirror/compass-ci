@@ -43,9 +43,9 @@ class ErrorMessages
   def obtain_error_messages_by_errorid(errorid)
     error_messages_by_errorid = []
     error_messages = obtain_error_messages
-    error_messages.each do | k, v |
-      if ("build-pkg." + build_pkg_error_id(k)) == errorid
-        error_messages_by_errorid << v
+    error_messages.each do |k, v|
+      if ('build-pkg.' + build_pkg_error_id(k)) == errorid
+        error_messages_by_errorid += v.to_a
       end
     end
     error_messages_by_errorid
