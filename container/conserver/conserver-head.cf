@@ -12,5 +12,6 @@ default * {
 
 access * {
 	trusted 127.0.0.1;
+	trusted 172.168.0.0/16;
 }
 
