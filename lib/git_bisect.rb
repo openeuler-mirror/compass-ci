@@ -23,6 +23,7 @@ class GitBisect
     set_build_pkg_dir
     set_upstream
     set_work_dir
+    set_bad_commit
     set_good_commit
 
     start_bisect
@@ -60,6 +61,10 @@ class GitBisect
     raise "checkout repo: #{@upstream_repo} to commit: #{@upstream_commit} failed!" unless @work_dir
   end
 
+  def set_bad_commit
+    @bad_commit = @upstream_commit
+  end
+
   def set_good_commit
     @good_commit = find_good_commit
     raise 'can not find a good commit' unless @good_commit
@@ -68,10 +73,10 @@ class GitBisect
   # run git bisect start use upstream_commit and good_commit
   # run bisect script get the bisect info
   def start_bisect
-    puts "bad_commit: #{@upstream_commit}"
+    puts "bad_commit: #{@bad_commit}"
     puts "good_commit: #{@good_commit}"
 
-    result = `git -C #{@work_dir} bisect start #{@upstream_commit} #{@good_commit}`
+    result = `git -C #{@work_dir} bisect start #{@bad_commit} #{@good_commit}`
     temp = result.split(/\n/)
     if temp[0].include? 'Bisecting'
       result = `git -C #{@work_dir} bisect run #{BISECT_RUN_SCRIPT} #{@bad_job_id} "#{@error_id}" #{@work_dir}`
@@ -116,6 +121,12 @@ class GitBisect
     commits.each do |commit|
       commit_status = get_commit_status_by_job(commit)
       next unless commit_status
+
+      if commit_status == 'bad'
+        @bad_commit = commit
+        next
+      end
+
       return commit if commit_status == 'good'
     end
 
