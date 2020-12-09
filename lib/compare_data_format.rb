@@ -53,7 +53,7 @@ class FormatEchartData
     dimensions.each do |dimension|
       dimension_values = [dimension]
       @x_params.each do |x_param|
-        if @metrics_compare_results[x_param][metric]
+        if @metrics_compare_results[x_param][metric] && @metrics_compare_results[x_param][metric][value_type]
           dimension_values << @metrics_compare_results[x_param][metric][value_type][dimension]
         else
           source[0].delete(x_param)
