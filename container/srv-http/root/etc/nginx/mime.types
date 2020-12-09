@@ -6,6 +6,17 @@ types {
     text/yaml                                        yaml;
     text/plain                                       txt time data sh log;
 
+    image/gif                                        gif;
+    image/jpeg                                       jpeg jpg;
+    image/png                                        png;
+    image/svg+xml                                    svg svgz;
+    image/tiff                                       tif tiff;
+    image/vnd.wap.wbmp                               wbmp;
+    image/webp                                       webp;
+    image/x-icon                                     ico;
+    image/x-jng                                      jng;
+    image/x-ms-bmp                                   bmp;
+
     application/json                                 json;
     application/x-gzip                               gz tgz cgz;
 }
