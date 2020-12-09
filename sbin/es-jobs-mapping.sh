@@ -49,6 +49,15 @@ else
 		              }
 		            }
 		          },
+			  {
+			    "ss": {
+		              "path_match": "ss.*",
+		              "mapping": {
+		                "type": "keyword",
+		                "enabled": true
+		              }
+		            }
+			  },
 		          {
 		            "default": {
 		              "match": "*",
@@ -62,6 +71,10 @@ else
 		          }
 		        ],
 		        "properties": {
+			  "ss": {
+		            "dynamic": true,
+		            "properties": {}
+		          },
 		          "pp": {
 		            "dynamic": true,
 		            "properties": {}
