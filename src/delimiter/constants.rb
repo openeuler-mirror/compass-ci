@@ -10,3 +10,4 @@ DELIMITER_ACCONUT = ENV['DELIMITER_ACCONUT'] || 'compass-ci@qq.com'
 TMEP_GIT_BASE = '/c/public_git'
 DELIMITER_TASK_QUEUE = 'delimiter'
 BISECT_RUN_SCRIPT = "#{ENV['CCI_SRC']}/src/delimiter/find-commit/bisect_run_script.rb"
+RESULT_WEBDAV_URL = ENV['RESULT_WEBDAV_URL'] || "http://172.17.0.1:3080"

@@ -113,5 +113,27 @@ module Utils
 
       return job
     end
+
+    def parse_bisect_log(git_dir)
+      bisect_log = %x(git -C #{git_dir} bisect log)
+      bisect_log_arr = bisect_log.split(/\n/)
+      bisect_log_arr.keep_if { |item| item.start_with?('#') }
+
+      return bisect_log_arr
+    end
+
+    def create_bisect_log(job_id, git_dir)
+      log_file = File.join(git_dir, "#{job_id}_bisect.log")
+      log_content = parse_bisect_log(git_dir)
+      File.open(log_file, 'w') do |f|
+        log_content.each { |line| f.puts(line) }
+      end
+
+      return log_file
+    end
+
+    def upload_bisect_log(log_file, dest_dir, access_key)
+      %x(curl -sSf -T "#{log_file}" #{RESULT_WEBDAV_URL}/#{dest_dir} --cookie "ACCESSKEY=#{access_key}")
+    end
   end
 end
