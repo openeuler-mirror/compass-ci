@@ -51,6 +51,8 @@ class ApplyAccount
     @send_mail_host = %x(/sbin/ip route | awk '/default/ {print $3}').chomp
     @send_mail_port = SEND_MAIL_PORT
     @mail_content = mail_content
+    @es_host = @send_mail_host
+    @es_port = ES_PORT
 
     @my_info = {}
   end
@@ -61,9 +63,7 @@ class ApplyAccount
     # firstly get my_email before execute parse_mail_content is needed
     @my_info['my_email'] = @mail_content.from[0]
     parse_mail_content
-    acct_info = apply_my_account
-
-    @my_info['my_login_name'] = acct_info['my_login_name']
+    apply_my_account
 
     store_account_info
     send_mail('')
@@ -82,15 +82,38 @@ class ApplyAccount
     @my_info.update parsed_email_info
   end
 
+  def read_my_account_es
+    accountx_es = ESQuery.new(index: 'accounts')
+    accountx_es.query_by_id(@my_info['my_email'])
+  end
+
   def apply_my_account
-    my_uuid = %x(uuidgen).chomp
+    my_account_es = read_my_account_es
+    apply_info = {}
+    if my_account_es
+      my_ssh_pubkey_new = @my_info.delete('my_ssh_pubkey')
+      apply_info.update my_account_es
+      apply_info.update @my_info
+      apply_info['my_ssh_pubkey'] = (apply_info['my_ssh_pubkey'] + my_ssh_pubkey_new).uniq
+      @my_info.update apply_info
+      apply_info['is_update_account'] = true
+    else
+      my_uuid = %x(uuidgen).chomp
+      @my_info['my_uuid'] = my_uuid
+      apply_info.update @my_info
+    end
+    apply_new_account(apply_info, my_account_es)
+  end
 
-    @my_info['my_uuid'] = my_uuid
-
-    apply_account = ApplyJumperAccount.new(@my_info)
+  def apply_new_account(apply_info, my_account_es)
+    apply_account = ApplyJumperAccount.new(apply_info)
     acct_info = apply_account.apply_jumper_account
 
-    return acct_info
+    @my_info['my_login_name'] = acct_info['my_login_name'] unless my_account_es
+  end
+
+  def check_account_es
+    ESQuery.new(index: 'accounts').query_by_id(@my_info['my_email'])
   end
 
   def store_account_info
