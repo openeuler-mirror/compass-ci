@@ -81,6 +81,7 @@ class GitBisect
     if temp[0].include? 'Bisecting'
       result = `git -C #{@work_dir} bisect run #{BISECT_RUN_SCRIPT} #{@bad_job_id} "#{@error_id}" #{@work_dir}`
     end
+    Utils.create_bisect_log(@work_dir)
     FileUtils.rm_r(@work_dir) if Dir.exist?(@work_dir)
     puts "\nbisect result: #{result}"
     analyse_result(result)
