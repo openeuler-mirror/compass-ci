@@ -25,7 +25,7 @@ cmd=(
 	-e "IPMI_PASSWORD=${passwd}"
 	--name conserver_server
 	-v /etc/localtime:/etc/localtime:ro
-	-v /srv/cci/serial/logs/:/var/consoles/
+	-v /srv/cci/serial/logs/:/srv/cci/serial/logs/
 	-p 782:782
 	conserver_server
 )
