@@ -4,6 +4,9 @@
 require "logger"
 require "json"
 require "any_merge"
+require "kemal"
+
+add_context_storage_type(Time::Span)
 
 class JSONLogger < Logger
   def initialize(logdev = STDOUT, formatter = my_formatter, @env = nil)
