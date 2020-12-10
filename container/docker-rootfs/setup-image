@@ -1,0 +1,36 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+install_packages()
+{
+	yum install -y --skip-broken $(</tmp/packages-to-install)
+	yum clean all
+}
+
+remove_file()
+{
+	rm -rf /.dockerenv
+}
+
+setup_login()
+{
+	[ -n "$ROOT_PASSWD" ] || return
+	echo "Changing root password"
+	passwd_md5=$(openssl passwd -1 "$ROOT_PASSWD")
+	sed -i -r "s/^root:[^:]*:(.*)/root:${passwd_md5//\//\\/}:\1/" "/etc/shadow"
+	
+	sed -i 's/[# ]PermitRootLogin.*/PermitRootLogin yes/' "$ROOTFS_DIR/etc/ssh/sshd_config"
+}
+
+pack_cgz()
+{
+	echo "Packing package. Please wait."
+	find ./ ! -path "./tmp/${IMAGE_PACK}" | cpio -o -Hnewc | gzip -9 >./tmp/$IMAGE_PACK
+	chmod 644 /tmp/${IMAGE_PACK}
+}
+
+install_packages
+remove_file
+setup_login
+pack_cgz
