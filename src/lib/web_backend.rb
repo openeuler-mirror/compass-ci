@@ -163,7 +163,7 @@ def do_get_groups_matrices(query, dimension, total, size, from)
 end
 
 def get_groups_matrices(conditions, dimension, must, size, from)
-  must += build_mutli_field_subquery_body(conditions)
+  must += build_multi_field_subquery_body(conditions)
   count_query = { query: { bool: { must: must } } }
   total = es_count(count_query)
   return {} if total < 1

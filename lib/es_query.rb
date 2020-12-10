@@ -23,7 +23,7 @@ class ESQuery
       warn 'empty filter!'
       exit
     end
-    query_fields = build_mutli_field_subquery_body items
+    query_fields = build_multi_field_subquery_body items
     query = {
       query: {
         bool: {
@@ -72,8 +72,7 @@ end
 #   }
 # }
 # items['range'] = range
-# build_mutli_field_subquery_body(items)
-def build_mutli_field_subquery_body(items)
+def build_multi_field_subquery_body(items)
   query_fields = []
   items.each do |key, value|
     if value.is_a?(Array)
