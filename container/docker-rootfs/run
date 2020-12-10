@@ -1,0 +1,32 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+source "$(dirname $(realpath $0))/common"
+
+root_pwd_file="$HOME/.config/compass-ci/rootfs-passwd"
+
+get_host_aarch
+check_cmd_input "$@"
+check_passwd_file "$root_pwd_file"
+load_docker_img "$1"
+echo $docker_name_tag
+IMAGE_PACK=$(echo ${docker_name_tag%%:*}.cgz)
+
+start=(
+	docker run
+	--privileged=true
+	-v $RUN_DIR/setup-image:/usr/bin/setup-image
+	-v $RUN_DIR/packages-to-install:/tmp/packages-to-install 
+	-e ROOT_NEW_PASSWD=$ROOT_NEW_PASSWD
+	-e IMAGE_PACK=$IMAGE_PACK
+	--name rootfs-docker
+	$docker_name_tag
+	/usr/bin/setup-image
+)
+
+"${start[@]}"
+
+cp_rootfs $IMAGE_PACK $2
+docker rm -f rootfs-docker
+create_links_vmlinuz_initrd $2
