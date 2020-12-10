@@ -10,7 +10,18 @@
 
 docker_rm redis507s01
 
-docker run --restart=always -d -p 6379:6379 -v /srv/redis/alpine/server01:/srv/redis -v /etc/localtime:/etc/localtime:ro --name redis507s01 redis507n:alpine311
+cmd=(
+	docker run
+	--restart=always
+	--name redis507s01
+	-d
+	-p 6379:6379
+	-v /srv/redis/alpine/server01:/srv/redis
+	-v /etc/localtime:/etc/localtime:ro
+	redis507n:alpine311
+)
+
+"${cmd[@]}"
 
 # test
 echo you can use cmd: redis-cli to start a redis client
