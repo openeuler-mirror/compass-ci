@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+require "../taskqueue/constants"
+
 JOB_REDIS_HOST       = "172.17.0.1"
 JOB_REDIS_PORT       = 6379
 JOB_REDIS_PORT_DEBUG = 6380

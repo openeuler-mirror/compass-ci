@@ -16,6 +16,10 @@ class Redis::Client
     @client = Redis::PooledClient.new(host: host, port: port, pool_size: 25, pool_timeout: 0.01)
   end
 
+  def keys(pattern)
+    @client.keys(pattern)
+  end
+
   def hash_set(key : String, field, value)
     @client.hset(key, field.to_s, value.to_s)
   end

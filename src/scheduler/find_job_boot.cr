@@ -56,7 +56,16 @@ class Sched
       queues << item.strip
     end
 
-    return rand_queues(queues)
+    sub_queues = [] of String
+    queues.each do |queue|
+      matched_queues =  @redis.keys("#{QUEUE_NAME_BASE}/sched/#{queue}/*/ready")
+      matched_queues.each do |mq|
+        match_data = "#{mq}".match(%r(^#{QUEUE_NAME_BASE}/sched/(#{queue}/.+)/ready$))
+        sub_queues << match_data[1] if match_data
+      end
+    end
+
+    return rand_queues(sub_queues)
   end
 
   def get_job_from_queues(queues, testbox)
