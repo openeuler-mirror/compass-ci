@@ -207,14 +207,14 @@
     suite: borrow
     testcase: borrow
 
+    pub_key: <%=
+             begin
+               File.read("#{ENV['HOME']}/.ssh/id_rsa.pub").chomp
+             rescue
+               nil
+             end
+             %>
     sshd:
-            pub_key: <%=
-            begin
-              File.read("#{ENV['HOME']}/.ssh/id_rsa.pub").chomp
-            rescue
-              nil
-            end
-            %>
     # sleep at the bottom
     sleep: 1h
     hi684@account-vm ~/lkp-tests/jobs% grep sleep: borrow-1h.yaml
