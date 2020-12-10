@@ -13,7 +13,7 @@ RUN apk update && \
     echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
     apk upgrade && \
     apk add --no-cache git && \
-    apk add ruby-dev make gcc g++
+    apk add ruby-dev make gcc g++ openssh
 
 RUN umask 002 && \
     gem install bunny json PriorityQueue elasticsearch --no-rdoc --no-ri
