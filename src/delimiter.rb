@@ -2,18 +2,11 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-require_relative './delimiter/constants'
 require_relative './delimiter/delimiter'
 
-START_PROCESS_COUNT.times do
-  begin
-    Process.fork do
-      delimiter = Delimiter.new
-      delimiter.start_delimit
-    end
-  rescue StandardError => e
-    puts e
-  end
+begin
+  delimiter = Delimiter.new
+  delimiter.start_delimit
+rescue StandardError => e
+  puts e
 end
-
-sleep()

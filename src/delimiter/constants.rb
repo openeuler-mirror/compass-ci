@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-START_PROCESS_COUNT = 10
+LKP_SRC = ENV['LKP_SRC'] || '/c/lkp-tests'
 GIT_MIRROR_HOST = ENV['GIT_MIRROR_HOST'] || '172.17.0.1'
 MONITOR_HOST = ENV['MONITOR_HOST'] || '172.17.0.1'
 MONITOR_PORT = ENV['MONITOR_PORT'] || '11310'

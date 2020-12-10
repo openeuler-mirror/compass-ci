@@ -21,20 +21,14 @@ class Delimiter
         # consume delimiter task queue
         task = consume_delimiter_queue
         unless task
-          sleep(2)
+          sleep(60)
           next
         end
 
-        # find first bad commit based on the task
-        git_bisect = GitBisect.new task
-        result = git_bisect.find_first_bad_commit
-
-        # send mail
-        mbr = MailBisectResult.new result
-        mbr.create_send_email
+        %x(#{LKP_SRC}/sbin/submit job_id=#{task['job_id']} error_id=#{task['error_id']})
       rescue StandardError => e
         puts e
-        sleep(30)
+        sleep(60)
       end
     end
   end
