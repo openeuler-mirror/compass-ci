@@ -1,0 +1,156 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+# This file is called by script run running on host
+# define functions and set host environment variables
+
+get_host_aarch()
+{
+	aarch=$(arch)
+}
+
+check_cmd_input()
+{
+	( [ $# -eq 2 ] && [ -f "$1" ] ) || {
+                usage
+                exit 1
+	}
+
+	check_docker_img_file "$1"
+	init_rootfs_dir "$2"
+
+	export RUN_DIR=$(dirname $(realpath "$0"))
+}
+
+usage()
+{
+	echo "
+	Usage:
+                ./run <src_docker_file_abspath> <dst_rootfs_new_abspath>
+
+                src_docker_file_abspath: source .tar.xz file absolute path with suffix: [ tar.xz ].
+                dst_rootfs_new_abspath: destination absolute path to create for rootfs
+
+	Example:
+                ./run /tmp/openEuler-docker/openEuler-docker.${aarch}.tar.xz /tmp/openeuler-rootfs/
+	"
+}
+
+check_docker_img_file()
+{
+	local allow_docker_img_suffix
+	local docker_img_name
+	local docker_img_suffix
+	
+	allow_docker_img_suffix='tar.xz'
+	docker_img_name=$(basename "$1")
+	docker_img_suffix=${docker_img_name##*.}
+
+	[ "$docker_img_suffix" == 'tar.xz' ] || {
+		docker_img_suffix=$(echo "$docker_img_name" |awk -F '.' '{print $(NF-1)"."$NF}')
+	        echo "${allow_docker_img_suffix}" |grep -wq "$docker_img_suffix" || {
+                        echo "[ERROR] Only support: .tar.xz file!"
+                        exit 2
+        	}
+	}
+}
+
+init_rootfs_dir()
+{
+	[ -d "$1" ] && return 1
+	
+	local limit_prompt_times
+	local current_prompt_time
+	
+	limit_prompt_times=3
+	current_prompt_time=0
+
+	while true
+	do
+                read -r -p "[WARNING] Do you want to create \"$1\"? [y|n]> " if_create
+
+                [ "$if_create" == 'y' ] && break
+                [ "$if_create" == 'n' ] && echo "[ERROR] User cancelled running." && exit
+	done
+	mkdir -p $1
+}
+
+check_passwd_file()
+{
+	[ -f "$1" ] || {
+		echo "[INFO] No password file specified and root password kept."
+		return 2
+	}
+	export ROOT_NEW_PASSWD=$(cat "$1")
+}
+
+load_docker_img()
+{
+	echo "Loading docker image..."
+	docker_repos_tag=$(docker load -i $1)
+	docker_name_tag=${docker_repos_tag#*:}
+}
+
+cp_rootfs()
+{
+	docker cp -a rootfs-docker:/tmp/$1 /tmp/
+	cd $2
+	zcat /tmp/$1 |cpio -idmv
+}
+
+create_get_initrd() {
+        echo "Creating initrd.lkp via container/dracut-initrd..."
+        cd "$CCI_SRC/container/dracut-initrd" || {
+                echo "Failed to change into $CCI_SRC/container/dracut-initrd"
+                exit 6
+        }
+        ./run "$ROOTFS_DIR/lib/modules/$ROOTFS_KERNEL"
+
+        echo "Finding initrd.lkp under $ROOTFS_DIR/boot ..."
+        cd "$ROOTFS_DIR" || {
+                echo "Failed to change into dir \"$ROOTFS_DIR\""
+                exit 7
+        }
+        local initrd_lkp=$(find ./boot -name "initramfs.lkp*") && export ROOTFS_INITRD_LKP=$initrd_lkp
+
+        [ -f "$ROOTFS_INITRD_LKP" ] || {
+                echo "Failed to generate \"$ROOTFS_INITRD_LKP\""
+                exit 8
+        }
+
+        echo "initrd_lkp: $ROOTFS_INITRD_LKP"
+}
+
+get_rootfs_kernel()
+{
+	echo "Finding vmlinuz under $ROOTFS_DIR/boot ..."
+	cd "$ROOTFS_DIR" || {
+                echo "Failed to change into dir \"$ROOTFS_DIR\""
+                exit 5
+	}
+
+	local vmlinuz_file
+	local vmlinuz kernel
+	vmlinuz_file=$(find ./boot -name "vmlinuz-*" | grep -v rescue) && export ROOTFS_VMLINUZ_FILE=$vmlinuz_file
+	vmlinuz=$(basename "$vmlinuz_file") && export ROOTFS_VMLINUZ=$vmlinuz
+	kernel=${vmlinuz:8} && export ROOTFS_KERNEL=$kernel
+	
+	echo "vmlinuz: $ROOTFS_VMLINUZ_FILE"
+	echo "kernel:  $ROOTFS_KERNEL"
+} 
+
+create_links_vmlinuz_initrd()
+{
+	export	ROOTFS_DIR=$1
+	get_rootfs_kernel
+	create_get_initrd
+
+	echo "Creating links to initrd.lkp and vmlinuz..."
+	cd $ROOTFS_DIR
+	ln -fs $ROOTFS_INITRD_LKP initrd.lkp
+	cd $ROOTFS_DIR/boot
+	ln -fs $ROOTFS_VMLINUZ vmlinuz
+
+	echo "[INFO] Create links to initrd.lkp and vmlinuz success!"
+}
