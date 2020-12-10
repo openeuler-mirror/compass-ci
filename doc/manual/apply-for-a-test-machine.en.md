@@ -9,7 +9,7 @@ Ensure that you have performed the following operations according to the [apply-
 # Applying for a Test Machine (VM)
 
 1. Generate a local RSA private-public key pair.
-   
+
    ```shell
    hi684@account-vm ~% ssh-keygen -t rsa
    Generating public/private rsa key pair.
@@ -42,9 +42,9 @@ Ensure that you have performed the following operations according to the [apply-
    ```
 
 2. Select the YAML file as required.
-   
+
    A **lkp-tests** folder is stored in each user directory `/home/${USER}`.
-   
+
    ```shell
    hi684@account-vm ~% cd lkp-tests/jobs
    hi684@account-vm ~/lkp-tests/jobs% ls -hl borrow-*
@@ -54,7 +54,7 @@ Ensure that you have performed the following operations according to the [apply-
    ```
 
 3. Submit the YAML file and connect to the test machine (VM).
-   
+
    ```shell
    hi684@account-vm ~/lkp-tests/jobs% submit -c -m testbox=vm-2p8g borrow-1h.yaml
    submit borrow-1h.yaml, got job_id=z9.170593
@@ -70,12 +70,12 @@ Ensure that you have performed the following operations according to the [apply-
    Host 172.168.131.2 not found in /home/hi684/.ssh/known_hosts
    Warning: Permanently added '[172.168.131.2]:51840' (ECDSA) to the list of known hosts.
    Last login: Wed Sep 23 11:10:58 2020
-   
-   
+
+
    Welcome to 4.19.90-2003.4.0.0036.oe1.aarch64
-   
+
    System information as of time:  Thu Nov 26 06:44:18 CST 2020
-   
+
    System load:    0.83
    Processes:      107
    Memory used:    6.1%
@@ -83,16 +83,16 @@ Ensure that you have performed the following operations according to the [apply-
    Usage On:       89%
    IP address:     172.18.156.13
    Users online:   1
-   
-   
-   
+
+
+
    root@vm-2p8g ~#
    ```
-   
+
    For more information about how to use the **submit** command, testbox options, and how to borrow the specified operating system, see the FAQ at the end of this document.
 
 4. Return the test machine (VM) after use.
-   
+
    ```shell
    root@vm-2p8g ~# reboot
    Connection to 172.168.131.2 closed by remote host.
@@ -103,7 +103,7 @@ Ensure that you have performed the following operations according to the [apply-
 # Applying for a Test Machine (Physical Machine)
 
 1. Generate a local RSA private-public key pair.
-   
+
    ```shell
    hi684@account-vm ~% ssh-keygen -t rsa
    Generating public/private rsa key pair.
@@ -136,9 +136,9 @@ Ensure that you have performed the following operations according to the [apply-
    ```
 
 2. Select the YAML file as required.
-   
+
    A **lkp-tests** folder is stored in each user directory `/home/${USER}`.
-   
+
    ```shell
    hi684@account-vm ~% cd lkp-tests/jobs
    hi684@account-vm ~/lkp-tests/jobs% ls -hl borrow-*
@@ -148,7 +148,7 @@ Ensure that you have performed the following operations according to the [apply-
    ```
 
 3. Submit the YAML file and connect to the test machine (physical machine).
-   
+
    ```shell
    hi684@account-vm ~/lkp-tests/jobs% submit -c -m testbox=taishan200-2280-2s64p-256g borrow-1h.yaml
    submit borrow-1h.yaml, got job_id=z9.170594
@@ -164,12 +164,12 @@ Ensure that you have performed the following operations according to the [apply-
    Host 172.168.131.2 not found in /home/hi684/.ssh/known_hosts
    Warning: Permanently added '[172.168.131.2]:50420' (ECDSA) to the list of known hosts.
    Last login: Wed Sep 23 11:10:58 2020
-   
-   
+
+
    Welcome to 4.19.90-2003.4.0.0036.oe1.aarch64
-   
+
    System information as of time:  Thu Nov 26 14:51:59 CST 2020
-   
+
    System load:    1.31
    Processes:      1020
    Memory used:    5.1%
@@ -177,16 +177,16 @@ Ensure that you have performed the following operations according to the [apply-
    Usage On:       3%
    IP address:     172.168.178.48
    Users online:   1
-   
-   
-   
+
+
+
    root@taishan200-2280-2s64p-256g--a5 ~#
    ```
-   
+
    For more information about how to use the **submit** command, testbox options, and how to borrow the specified operating system, see the FAQ at the end of this document.
 
 4. Return the test machine (physical machine) after use.
-   
+
    ```shell
    root@taishan200-2280-2s64p-256g--a5 ~# reboot
    Connection to 172.168.131.2 closed by remote host.
@@ -197,12 +197,12 @@ Ensure that you have performed the following operations according to the [apply-
 # FAQ
 
 * How Do I Change the Duration of Keeping the Test Machine when Applying for It?
-  
+
   ```shell
   hi684@account-vm ~/lkp-tests/jobs% cat borrow-1h.yaml
   suite: borrow
   testcase: borrow
-  
+
   pub_key: <%=
    begin
    File.read("#{ENV['HOME']}/.ssh/id_rsa.pub").chomp
@@ -222,24 +222,24 @@ Ensure that you have performed the following operations according to the [apply-
   ```
 
 * Guide to the **submit** Command
-  
+
   Reference: [submit Command Description.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submitå‘½ä»¤è¯¦è§£.md)
 
 * What Are the testbox Options?
-  
+
   For details about the testbox options, visit https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts.
-  
+
   > ![](./../public_sys-resources/icon-note.gif) **Note**
   >
-  > VM testbox: vm-xxx 
+  > VM testbox: vm-xxx
   >
   > PM testbox: taishan200-2280-xxx
-  
+
   > ![](./../public_sys-resources/icon-notice.gif) **Notice**
-  > 
+  >
 > - If the testbox of a physical machine ends with `--axx`, a physical machine is specified. If a task is already in the task queue of the physical machine, the borrow task you submitted will not be processed until the previous task in the queue is completed.
   > - If the testbox of a physical machine does not end with `-axx`, no physical machine is specified. In this case, the borrow task you submitted will be immediately allocated to idle physical machines in the cluster for execution.
-  
+
 * How Do I Borrow the Specified Operating System?
-  
+
   For details about the supported `os`, `os_arch`, and `os_version`, see [os-os\_verison-os\_arch.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/os-os_verison-os_arch.md).

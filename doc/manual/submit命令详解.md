@@ -73,7 +73,7 @@ total 120K
 -rw-r--r--. 1 root root  74 2020-11-02 14:54 vm-snb-i386
 ```
 
->![](./../public_sys-resources/icon-note.gif) **说明：** 
+>![](./../public_sys-resources/icon-note.gif) **说明：**
 >
 >使用 "=" 更新 yaml 中的字段，"=" 在命令行中的位置不同优先级不同：.
 > * submit iperf.yaml testbox=vm-2p8g  命令中 "=" 定义在 yaml 文件之后，则 "=" 的优先级高于 yaml 文件,testbox=vm-2p8g 会覆盖 yaml 文件中已经定义的 testbox 字段。
@@ -105,7 +105,7 @@ options:
     ```
     submit -s 'testbox: vm-2p8g' iperf.yaml
     ```
-	
+
 
     * 如果 iperf.yaml 中不存在 testbox：vm-2p8g ，最终提交的任务将会加上该信息。
     * 如果 iperf.yaml 中存在 testbox 字段，但是值不为 vm-2p8g ，最终提交的任务中 testbox 的值将会被替换为vm-2p8g。
@@ -119,12 +119,12 @@ options:
     ```
 
     运行命令之后会在指定目录生成经过 submit 处理过的 yaml 文件。
-	
+
 * **-a的用法**
 
     如果你的测试用例对客户端的lkp-tests 做了更改，需要使用 -a 选项来适配。将客户端的 lkp-tests 下做的更改，同步到服务端，并在测试机上生成你的测试脚本。
     示例命令如下：
-	
+
     ```
     submit -a iperf.yaml
     ```
@@ -139,15 +139,15 @@ options:
 
     使用 -m 参数可以启动任务监控功能，并将任务执行过程中的各种状态信息打印到控制台上，方便用户实时监控测试任务的执行过程。
     示例命令如下：
-	
+
     ```
     submit -m iperf.yaml
     ```
-    
+
     控制台显示如下：
-	
+
     ```shell
-    hi8109@account-vm ~% submit -m iperf.yaml       
+    hi8109@account-vm ~% submit -m iperf.yaml
     submit iperf.yaml, got job_id=z9.173923
     query=>{"job_id":["z9.173923"]}
     connect to ws://172.168.131.2:11310/filter
@@ -171,14 +171,14 @@ options:
     -c 参数需要搭配 -m 参数来使用，可以使申请设备的任务实现自动登入功能。
 
     示例命令如下：
-	
+
     ```
     submit -m -c borrow-1h.yaml
     ```
     当我们提交一个申请设备的任务后，会获取到返回的登陆信息，如 `ssh ip -p port`，添加 -c 参数之后不需要我们手动输入 ssh 登陆命令来进入执行机。
 
 	控制台显示如下：
-	
+
     ```shell
     hi8109@account-vm ~% submit -m -c borrow-1h.yaml
     submit borrow-1h.yaml, got job_id=z9.173925
@@ -195,7 +195,7 @@ options:
     Warning: Permanently added '[172.168.131.2]:50200' (ECDSA) to the list of known hosts.
     Last login: Wed Sep 23 11:10:58 2020
 
-    
+
     Welcome to 4.19.90-2003.4.0.0036.oe1.aarch64
 
     System information as of time:  Mon Nov 30 12:32:04 CST 2020
@@ -210,7 +210,7 @@ options:
 
 
 
-    root@vm-2p8g ~# 
+    root@vm-2p8g ~#
     ```
 
     已经成功登陆执行机。

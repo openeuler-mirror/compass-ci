@@ -22,13 +22,13 @@ mail content
     my oss commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
 attahcment
   ssh pub_key
-    
+
 ## steps overview
 
 1. mail-robot
      monitor_new_email
      - the monitor will listen to the mailbox for new email files
-       handle_new_email: 
+       handle_new_email:
          read email file content
          apply_account
            invoke AssignAccount for new account
@@ -51,7 +51,7 @@ attahcment
                clone the repo and check the commit
              - non_gitee_commit(url)
                check the commit with curl
-     
+
          parse_pub_key
            check whether there has an attachment file to the email file
              attachment:
@@ -88,7 +88,7 @@ attahcment
          - build success email
          - build failed email
        send mail
-       
+
 3. continue the monitor
      continue to monitor the mailbox for new email file
      cycle run step 1 and 2 if matched email files

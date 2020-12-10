@@ -18,35 +18,35 @@ PKGBUILD includes variables and functions.
 
 ## Defining a Function
 
-- package function 
+- package function
 
   Mandatory. It is used for installing files to the directory that will be the root directory of the build package.
 
-- prepare function 
+- prepare function
 
   Optional. It is used for executing the operation of building source code.
 
-- build function 
+- build function
 
   Optional. It is used for compiling and/or building source code.
 
-- check function 
+- check function
 
   Optional. It is used for running the test suite of the program package.
 
 > ![](./../public_sys-resources/icon-notice.gif) **Notice**
-> 
+>
 > **srcdir** is the directory for extracting or copying source files. All packaging functions run in the **srcdir** directory. **pkgdir** is the root directory for building software packages and is used only in the package function.
 
 # How do i write PKGBUILD?
 
 1. Read official documents:
-   
+
 - [PKGBUILD(5) Manual Page](https://www.archlinux.org/pacman/PKGBUILD.5.html)
 - [pkgbuild demo](https://git.archlinux.org/pacman.git/plain/proto/PKGBUILD.proto)
 
 2. Create **PKGBUILD** file with vim or other editor. The following is an example of the **PKGBUILD** file:
-   
+
 ```shell
 pkgname=zstd
 pkgver=1.4.4

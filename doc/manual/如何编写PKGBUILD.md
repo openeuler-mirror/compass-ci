@@ -27,7 +27,7 @@ PKGBUILD包含两部分内容：变量和函数。
 - check函数
   定义可选的check函数，用于运行程序包的测试套件。
 
->![](./../public_sys-resources/icon-notice.gif) **注意：** 
+>![](./../public_sys-resources/icon-notice.gif) **注意：**
 >
 > srcdir 是提取或复制源文件的目录，所有打包功能都在 srcdir 目录内部运行；pkgdir 是构建软件包的根目录，仅在 package 函数中使用。
 
@@ -36,7 +36,7 @@ PKGBUILD包含两部分内容：变量和函数。
 
 
 1. 执行如下命令创建PKGBUILD，文件名必须以“PKGBUILD”命名。
-    
+
     ```shell
     touch PKGBUILD
     ```
@@ -55,18 +55,18 @@ PKGBUILD包含两部分内容：变量和函数。
     makedepends=('git')
     source=('git://github.com/facebook/zstd.git#branch=dev')
     md5sums=('SKIP')
-    
+
     pkgver() {
     	cd "$srcdir/$pkgname"
     	git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g;s/^v//g'
     }
-    
+
     build() {
     	cd "$srcdir/$pkgname"
     	make
     	make -C contrib/pzstd
     }
-    
+
     package() {
     	cd "$srcdir/$pkgname"
     	make PREFIX="/usr" DESTDIR="$pkgdir/" install

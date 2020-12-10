@@ -15,13 +15,13 @@
     ```
     mkdir -p b/backlight
     ```
-	
+
 3. 执行以下命令，在该目录下新建同名文件 backlight。
     ```
     cd b/backlight
     touch backlight
     ```
-	
+
 4. 执行以下命令，将 backlight 仓库 url 信息写入 backlight 文件。
 
     ```
@@ -34,11 +34,11 @@
     url:
     - https://github.com/baskerville/backlight
     ```
-	
-    >![](./../public_sys-resources/icon-notice.gif) **注意：**   
+
+    >![](./../public_sys-resources/icon-notice.gif) **注意：**
 	>
     >可参考 upstream-repos 仓库中已有文件格式,请保持格式一致。
-	
+
 5. 通过 Pull Request 命令将新增的 backlight 文件提交到 blacklight 仓库。
 
 
@@ -56,7 +56,7 @@
 
         请参考：[如何添加测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md )
 
-2. 配置 auto_submit.yaml 文件，提交测试任务 
+2. 配置 auto_submit.yaml 文件，提交测试任务
 
     你只需要在 compass-ci 仓库下面的 sbin/auto_submit.yaml 文件中添加配置信息，如：
     ```
@@ -64,5 +64,5 @@
     - testbox=vm-2p8g os=openEuler os_version=20.03 os_mount=initramfs os_arch=aarch64 iperf.yaml
     ```
 	通过 Pull Request 的方式将修改好的 auto_submit.yaml 文件提交到 compass-ci 仓库，就可以使用 compass-ci 测试你的项目了。
-	
+
     auto_submit.yaml 文件的参数配置请参考 https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job 。

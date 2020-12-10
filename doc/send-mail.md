@@ -58,7 +58,7 @@ The service is used to send mails with formatted mail data
 	data = "
 	To: test_email@163.com
 	Subject: test mail 10
- 
+
 	test msg 1010
 	"
 

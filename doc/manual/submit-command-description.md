@@ -74,9 +74,9 @@ total 120K
 ```
 
 > ![](./../public_sys-resources/icon-note.gif) **Note**
-> 
+>
 > Use the equal sign (=) to update the fields in the YAML file. The priority of the ***=*** varies with its position in the command line.
-> 
+>
 > * In the **submit iperf.yaml testbox=vm-2p8g** command, the **=** is defined after the YAML file. As a result, the priority of the **=** is higher than that of the YAML file. **testbox=vm-2p8g** overrides the **testbox** field defined in the YAML file.
 > * In the **submit testbox=vm-2p8g iperf.yaml** command, the **=** is defined before the YAML file. As a result, the priority of **=** is lower than that of the YAML file. **testbox=vm-2p8g** does not override the **testbox** field defined in the YAML file. A value is assigned only when the YAML file does not contain the **testbox** field.
 
@@ -99,46 +99,46 @@ options:
 ```
 
 * **Usage of -s**
-  
+
   You can use the **-s'KEY:VALUE'** parameter to update the key-value pair to the submitted task. An example is shown in the following figure:
-  
+
   ```
   submit -s 'testbox: vm-2p8g' iperf.yaml
   ```
-  
+
   * If the **iperf.yaml** file does not contain **testbox: vm-2p8g**, the field will be added to the submitted task.
   * If the **iperf.yaml** file contains the **testbox** field but the value is not **vm-2p8g**, the value of **testbox** in the submitted task will be updated as **vm-2p8g**.
 
 * **Usage of -o**
-  
+
   You can run the **-o DIR** command to save the generated YAML file to the specified directory **DIR**. An example is shown in the following figure:
-  
+
   ```
   submit -o ~/iperf.yaml
   ```
-  
+
   After the command is executed, the YAML file that has been processed by the **submit** command is generated in the specified directory.
 
 * **Usage of -a**
-  
+
   If the **lkp-tests** on the client is changed in the test case, you need to use the **-a** option for adaptation. Synchronize the modification made in the **lkp-tests** on the client to the server, and generate a customized test script on the test machine. An example is shown in the following figure:
-  
+
   ```
   submit -a iperf.yaml
   ```
 
 * **Usage of -m**
-  
+
   You can use the **-m** parameter to enable the task monitoring function and print the status information during the task execution on the console. In this way, you can monitor the execution process of the test task in real time. An example is shown in the following figure:
-  
+
   ```
   submit -m iperf.yaml
   ```
-  
+
   The following information is displayed on the console:
-  
+
   ```shell
-  hi8109@account-vm ~% submit -m iperf.yaml       
+  hi8109@account-vm ~% submit -m iperf.yaml
   submit iperf.yaml, got job_id=z9.173923
   query=>{"job_id":["z9.173923"]}
   connect to ws://172.168.131.2:11310/filter
@@ -158,19 +158,19 @@ options:
   ```
 
 * **Usage of -c**
-  
+
   The **-c** parameter must be used together with the **-m** parameter to implement the automatic login function in the task of applying for a device.
-  
+
   An example is shown in the following figure:
-  
+
   ```
   submit -m -c borrow-1h.yaml
   ```
-  
+
   After submitting a task of applying for a device, you will receive the returned login information, such as `ssh ip -p port`. After adding the **-c** parameter, you can log in to the executor without manually entering the SSH login command.
-  
+
   The following information is displayed on the console:
-  
+
   ```shell
   hi8109@account-vm ~% submit -m -c borrow-1h.yaml
   submit borrow-1h.yaml, got job_id=z9.173925
@@ -186,12 +186,12 @@ options:
   Host 172.168.131.2 not found in /home/hi8109/.ssh/known_hosts
   Warning: Permanently added '[172.168.131.2]:50200' (ECDSA) to the list of known hosts.
   Last login: Wed Sep 23 11:10:58 2020
-  
-  
+
+
   Welcome to 4.19.90-2003.4.0.0036.oe1.aarch64
-  
+
   System information as of time:  Mon Nov 30 12:32:04 CST 2020
-  
+
   System load:    0.50
   Processes:      105
   Memory used:    6.1%
@@ -199,10 +199,10 @@ options:
   Usage On:       89%
   IP address:     172.17.0.1
   Users online:   1
-  
-  
-  
-  root@vm-2p8g ~# 
+
+
+
+  root@vm-2p8g ~#
   ```
-  
+
   You log in to the executor successfully.
