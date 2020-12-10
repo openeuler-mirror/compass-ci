@@ -227,7 +227,7 @@
 
 * Submit命令指导
 
-    参考文档：[submit命令详解.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit命令详解.md)
+    参考文档：[submit命令详解](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)
 
 * testbox有什么可选项
 

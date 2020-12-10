@@ -1,6 +1,6 @@
 # Prerequisites
 
-Ensure that you have performed the following operations according to the [apply-for-an-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md):
+Ensure that you have performed the following operations according to the [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md):
 
 - Send an email to apply for an account.
 - Receive an email from compass-ci@qq.com.
@@ -223,7 +223,7 @@ Ensure that you have performed the following operations according to the [apply-
 
 * Guide to the **submit** Command
 
-  Reference: [submit Command Description.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submitå‘½ä»¤è¯¦è§£.md)
+  Reference: [submit-job.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.en.md)
 
 * What Are the testbox Options?
 
