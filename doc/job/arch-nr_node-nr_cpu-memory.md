@@ -3,7 +3,7 @@
 Meaning:
 - Each test machine has some basic configurations, such as arch, nr_node, nr_cpu, memory
   these fields mean:
-```SHELL
+```YAML
   arch:    the architecture of the machine.
   nr_node: number of NUMA nodes.
   nr_cpu:  number of logical CPUs.
@@ -12,7 +12,7 @@ Meaning:
 
 - These fields are from the file which in $LAB_SRC/hosts.
 - Here is an example of these fields in the host file:
-```SHELL
+```YAML
   arch:    aarch64
   nr_node: 4
   nr_cpu:  96
