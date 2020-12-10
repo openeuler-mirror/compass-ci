@@ -3,12 +3,12 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 # Check if "repo" index already exists.
-status_code=$(curl -sIL -w "%{http_code}\n" -o /dev/null http://localhost:9200/repo)
+status_code=$(curl -sSIL -w "%{http_code}\n" -o /dev/null http://localhost:9200/repo)
 [ $status_code -eq 200 ] && echo '"repo" index already exists.' && exit
 
 # Create "repo" index.
 echo 'Start to create "repo" index.'
-curl -H 'Content-Type: Application/json' -XPUT 'http://localhost:9200/repo' -d '
+curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/repo' -d '
 {
     "mappings": {
         "_doc": {

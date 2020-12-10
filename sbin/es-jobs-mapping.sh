@@ -28,14 +28,14 @@ then
 fi
 
 # Determine whether jobs index has created
-status_code=$(curl -sIL -w "%{http_code}\n" -o /dev/null http://localhost:9200/jobs)
+status_code=$(curl -sSIL -w "%{http_code}\n" -o /dev/null http://localhost:9200/jobs)
 
 if [ $status_code -eq 200 ]
 then
 	echo "jobs index has create, exit."
 else
 	echo "jobs index not exists, begin create index."
-	curl -H 'Content-Type: Application/json' -XPUT 'http://localhost:9200/jobs' -d '{
+	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/jobs' -d '{
 		    "mappings": {
 		      "_doc": {
 		      "dynamic": false,
@@ -164,7 +164,7 @@ else
 		  echo "create jobs index failed."
 	  else
 		  echo "set index.mapping.total_fields.limit: 10000"
-		  curl -XPUT 127.0.0.1:9200/jobs/_settings -H 'Content-Type: application/json' \
+		  curl -sS -XPUT 127.0.0.1:9200/jobs/_settings -H 'Content-Type: application/json' \
 		       -d '{"index.mapping.total_fields.limit": 10000}'
 	  fi
 fi
