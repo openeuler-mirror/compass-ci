@@ -199,7 +199,7 @@ class Job
   end
 
   private def set_sshr_info
-    return unless @hash["pub_key"]?
+    return unless @hash["ssh_pub_key"]?
 
     self["sshr_port"] = ENV["SSHR_PORT"]
     self["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
@@ -211,7 +211,7 @@ class Job
   end
 
   private def set_my_ssh_pubkey
-    pub_key = @hash["pub_key"]?.to_s
+    pub_key = @hash["ssh_pub_key"]?.to_s
     update_account_my_pub_key(pub_key)
 
     @hash["my_ssh_pubkey"] = @account_info["my_ssh_pubkey"]

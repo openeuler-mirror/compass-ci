@@ -203,7 +203,7 @@ Ensure that you have performed the following operations according to the [apply-
   suite: borrow
   testcase: borrow
 
-  pub_key: <%=
+  ssh_pub_key: <%=
    begin
    File.read("#{ENV['HOME']}/.ssh/id_rsa.pub").chomp
    rescue
