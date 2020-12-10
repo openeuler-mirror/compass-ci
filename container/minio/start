@@ -9,6 +9,7 @@ cmd=(
 	docker run -d
 	-p 11321:9000
 	--name minio
+	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/minio/:/srv/minio/
 	-e "MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}"
 	-e "MINIO_SECRET_KEY=${MINIO_SECRET_KEY}"
