@@ -12,9 +12,12 @@ def generate_conserver(lab)
   return unless File.exist?('conserver-head.cf')
 
   FileUtils.cp('conserver-head.cf', 'conserver.cf')
-
+  
   host_dir = "#{CCI_REPOS}/lab-#{lab}/hosts/"
-  return unless Dir.exist?(host_dir)
+  unless Dir.exist?(host_dir)
+    puts "please check whether the #{host_dir} directory exists "
+    return
+  end
 
   Dir.each_child(host_dir) do |host|
     ipmi_ip = YAML.load_file("#{host_dir}#{host}")['ipmi_ip']
