@@ -34,10 +34,14 @@ def docker_rm(container)
   system "docker stop #{container} && docker rm -f #{container}"
 end
 
+def meminfo_hash
+  File.readlines('/proc/meminfo').map { |s| k, v, kb = s.split; { k.chomp(':') => v } }
+end
+
 def get_available_memory
-  memory = File.readlines('/proc/meminfo')[0].chomp.split[1].to_f / 1048576
+  memtotal = meminfo_hash[0]['MemTotal'].to_f / 1048576
 
   # set container available memory size, minimum size is 1024m, maximum size is 30720m,
   # take the middle value according to the system memory size.
-  [1024, 30720, Math.sqrt(memory) * 1024].sort[1].to_i
+  [1024, 30720, Math.sqrt(memtotal) * 1024].sort[1].to_i
 end
