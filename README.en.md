@@ -8,7 +8,7 @@ Compass-CI is a software platform supporting continuous integration. It provides
 
 **Test Service**
 
-Compass-CI monitors git repos of a large amount of open source software. Once Compass-CI detects code update, it automatically triggers [automated tests](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md), and developers can also [manually submit test jobs](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3.md).
+Compass-CI monitors git repos of a large amount of open source software. Once Compass-CI detects code update, it automatically triggers [automated tests](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/test-oss-project.en.md), and developers can also [manually submit test jobs](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.en.md).
 
 **Login to the Test Environment**
 
@@ -30,17 +30,17 @@ If a new error ID is generated, the bisect is automatically triggered to locate 
 
 **Performing an Automated Test**
 
-1. Add the URL of the repository to be tested to the [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos.git), [compile test cases, and add them to the repository](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md). For details, see [this document](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8compass-ci%E6%B5%8B%E8%AF%95%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE.md).
+1. Add the URL of the repository to be tested to the [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos.git), [compile test cases](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md), and [add them to the repository](https://gitee.com/wu_fengguang/lkp-tests). For details, see [this document](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/test-oss-project.en.md).
 
 2. Run the **git push** command to update the repository and automatically trigger the test.
 
-3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E4%BB%BB%E5%8A%A1%E7%BB%93%E6%9E%9C.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E6%AF%94%E8%BE%83%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C.md) test results on the web page: https://compass-ci.openeuler.org/jobs.
+3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.en.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.en.md) test results on the web page: https://compass-ci.openeuler.org/jobs.
 
 **Manually Submitting a Test Task**
 
 1. [Install the Compass-CI client](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md).
 2. [Compile test cases and manually submit test tasks](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md).
-3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E4%BB%BB%E5%8A%A1%E7%BB%93%E6%9E%9C.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E6%AF%94%E8%BE%83%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C.md) test results on the web page: https://compass-ci.openeuler.org/jobs.
+3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.en.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.en.md) test results on the web page: https://compass-ci.openeuler.org/jobs.
 
 **Logging in to the Test Environment**
 
