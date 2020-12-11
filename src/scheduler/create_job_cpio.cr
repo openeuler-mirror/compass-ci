@@ -80,7 +80,7 @@ class Sched
     # put job2sh in an array
     if job_content.has_key?("job2sh")
       tmp_job_sh_content = job_content["job2sh"]
-      job_content.delete("job2sh") 
+      job_content.delete("job2sh")
 
       job_sh_array = [] of JSON::Any
       tmp_job_sh_content.as_h.each do |_key, val|
