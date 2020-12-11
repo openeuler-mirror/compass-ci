@@ -107,7 +107,7 @@ class Sched
   #   success: [{"job_id" => job_id, "message" => "", job_state => "submit"}]
   #   failure: [{"job_id" => "0", "message" => err_msg, job_state => "submit"}]
   def submit_single_job(job)
-    queue = job.queue
+    queue = "#{job.queue}/#{job.subqueue}"
 
     # only single job will has "idle job" and "execute rate limiter"
     if job["idle_job"].empty?

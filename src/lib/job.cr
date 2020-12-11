@@ -80,6 +80,7 @@ class Job
     testbox
     lab
     queue
+    subqueue
     initrd_pkg
     initrd_deps
     initrds_uri
@@ -161,6 +162,7 @@ class Job
     set_lkp_server()
     set_sshr_info()
     set_queue()
+    set_subqueue()
   end
 
   private def set_kernel
@@ -264,6 +266,10 @@ class Job
     if tbox_group.to_s.starts_with?(/(vm|dc)-/)
       self["queue"] = "#{tbox_group}.#{arch}"
     end
+  end
+
+  private def set_subqueue
+    self["subqueue"] = self["my_email"]
   end
 
   # if not assign tbox_group, set it to a match result from testbox
