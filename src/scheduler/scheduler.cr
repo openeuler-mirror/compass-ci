@@ -41,15 +41,9 @@ module Scheduler
     env.create_sched
   end
 
-  # for debug (maybe kemal debug|logger does better)
-  def self.debug_message(env, response)
-    env.log.info(%({"from": "#{env.request.remote_address}", "response": #{response.to_json}}))
-  end
-
   # echo alive
   get "/" do |env|
-    debug_message(env, "Env= {\n#{`export`}}")
-    "LKP Alive! The time is #{Time.local}, version = #{VERSION}"
+    env.sched.alive(VERSION)
   end
 
   # for XXX_runner get job
@@ -58,46 +52,24 @@ module Scheduler
   # /boot.xxx/host/${hostname}
   # /boot.yyy/mac/${mac}
   get "/boot.:boot_type/:parameter/:value" do |env|
-    response = env.sched.find_job_boot
-
-    job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    env.log.info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
-
-    response
+    env.sched.find_job_boot
   end
 
   # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
   get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
-    response = env.sched.find_next_job_boot
-
-    job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    env.log.info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
-
-    response
+    env.sched.find_next_job_boot
   end
 
   # enqueue
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
   post "/submit_job" do |env|
-    job_messages = env.sched.submit_job
-
-    job_messages.each do |job_message|
-      env.log.info(job_message.to_json)
-    end
-
-    job_messages.to_json
+    env.sched.submit_job.to_json
   end
 
   # file download server
   get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
-    job_id = env.params.url["job_id"]
-    job_package = env.params.url["job_package"]
-    file_path = ::File.join [Kemal.config.public_folder, job_id, job_package]
-
-    env.log.info(%({"job_id": "#{job_id}", "job_state": "download"}))
-
-    send_file env, file_path
+    env.sched.download_file
   end
 
   # client(runner) report its hostname and mac
@@ -155,7 +127,7 @@ module Scheduler
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
   get "/~lkp/cgi-bin/lkp-jobfile-append-var" do |env|
-    env.log.info(env.sched.update_job_parameter)
+    env.sched.update_job_parameter
 
     "Done"
   end
@@ -178,42 +150,26 @@ module Scheduler
   #    response: get "server ip" from cluster state,
   #              return "server=<server ip>".
   get "/~lkp/cgi-bin/lkp-cluster-sync" do |env|
-    response = env.sched.request_cluster_state
-
-    debug_message(env, response)
-
-    response
+    env.sched.request_cluster_state
   end
 
   # client(runner) report job post_run finished
   # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
   get "/~lkp/cgi-bin/lkp-post-run" do |env|
-    # get job_id from request
-    job_id = env.params.query["job_id"]?
-    if job_id
-      env.log.info(env.sched.close_job(job_id))
-    end
+    env.sched.close_job
 
     "Done"
   end
 
   get "/~lkp/cgi-bin/lkp-wtmp" do |env|
-    env.log.info(env.sched.update_tbox_wtmp)
+    env.sched.update_tbox_wtmp
 
     "Done"
   end
 
   get "/~lkp/cgi-bin/report_ssh_port" do |env|
-    testbox = env.params.query["tbox_name"]
-    ssh_port = env.params.query["ssh_port"].to_s
-    job_id = env.params.query["job_id"].to_s
-
-    if testbox && ssh_port
-      env.sched.report_ssh_port(testbox, ssh_port)
-    end
-
-    env.log.info(%({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"}))
+    env.sched.report_ssh_port
 
     "Done"
   end

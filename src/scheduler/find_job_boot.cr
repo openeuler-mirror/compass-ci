@@ -16,7 +16,11 @@ class Sched
       host = value
     end
 
-    get_job_boot(host, boot_type)
+    response = get_job_boot(host, boot_type)
+    job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
+    @log.info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
+
+    response
   end
 
   # auto submit a job to collect the host information

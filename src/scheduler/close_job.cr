@@ -2,7 +2,10 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def close_job(job_id : String)
+  def close_job
+    job_id = @env.params.query["job_id"]?
+    return unless job_id
+
     job = @redis.get_job(job_id)
 
     delete_access_key_file(job) if job
@@ -22,7 +25,7 @@ class Sched
 
     @redis.remove_finished_job(job_id)
 
-    return %({"job_id": "#{job_id}", "job_state": "complete"})
+    @log.info(%({"job_id": "#{job_id}", "job_state": "complete"}))
   end
 
   def delete_access_key_file(job : Job)

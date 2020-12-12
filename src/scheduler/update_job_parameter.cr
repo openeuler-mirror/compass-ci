@@ -29,6 +29,6 @@ class Sched
     # json log
     log = job_content.dup
     log["job_id"] = log.delete("id").not_nil!
-    return log.to_json
+    @log.info(log.to_json)
   end
 end

@@ -9,6 +9,10 @@ class Sched
       hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
     end
 
-    get_job_boot(hostname, "ipxe")
+    response = get_job_boot(hostname, "ipxe")
+    job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
+    @log.info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
+
+    response
   end
 end

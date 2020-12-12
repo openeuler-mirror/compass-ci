@@ -21,6 +21,7 @@ require "../scheduler/close_job"
 require "../scheduler/request_cluster_state"
 require "../scheduler/update_job_parameter"
 require "../scheduler/create_job_cpio"
+require "../scheduler/download_file"
 
 class Sched
   property es
@@ -35,6 +36,15 @@ class Sched
     @rgc = RemoteGitClient.new
     @env = env
     @log = env.log.as(JSONLogger)
+  end
+
+  def debug_message(response)
+    @log.info(%({"from": "#{@env.request.remote_address}", "response": #{response.to_json}}))
+  end
+
+  def alive(version)
+    debug_message("Env= {\n#{`export`}}")
+    "LKP Alive! The time is #{Time.local}, version = #{version}"
   end
 
   def normalize_mac(mac : String)
@@ -97,11 +107,19 @@ class Sched
 
     # json log
     hash["testbox"] = testbox
-    return hash.to_json
+    @log.info(hash.to_json)
   end
 
-  def report_ssh_port(testbox : String, ssh_port : String)
-    @redis.hash_set("sched/tbox2ssh_port", testbox, ssh_port)
+  def report_ssh_port
+    testbox = @env.params.query["tbox_name"]
+    ssh_port = @env.params.query["ssh_port"].to_s
+    job_id = @env.params.query["job_id"].to_s
+
+    if testbox && ssh_port
+      @redis.hash_set("sched/tbox2ssh_port", testbox, ssh_port)
+    end
+
+    @log.info(%({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"}))
   end
 
   private def query_consumable_keys(shortest_queue_name)

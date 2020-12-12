@@ -11,20 +11,24 @@ class Sched
 
     cluster_file = job["cluster"]
     if cluster_file.empty? || cluster_file == "cs-localhost"
-      return submit_single_job(job)
+      response = submit_single_job(job)
     else
       cluster_config = get_cluster_config(cluster_file,
         job.lkp_initrd_user,
         job.os_arch).not_nil!
-      return submit_cluster_job(job, cluster_config)
+      response = submit_cluster_job(job, cluster_config)
     end
   rescue ex
     @log.warn(ex.inspect_with_backtrace)
-    return [{
+    response = [{
       "job_id"    => "0",
       "message"   => ex.to_s,
       "job_state" => "submit",
     }]
+  ensure
+    response.each do |job_message|
+      @log.info(job_message.to_json)
+    end
   end
 
   # return:
