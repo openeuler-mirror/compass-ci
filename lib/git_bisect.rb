@@ -34,7 +34,7 @@ class GitBisect
   def set_ids
     puts "task content: #{@task}"
     @error_id = @task['error_id']
-    @bad_job_id = @task['job_id']
+    @bad_job_id = @task['bad_job_id']
   end
 
   def set_bad_job
@@ -95,7 +95,7 @@ class GitBisect
     error_messages = ErrorMessages.new(@build_pkg_dir).obtain_error_messages_by_errorid(@error_id)
 
     return Hash['repo' => @upstream_repo, 'commit' => first_bad_commit,
-                'job_id' => @bad_job_id, 'error_messages' => error_messages.join("\n")]
+                'error_messages' => error_messages.join("\n")]
   end
 
   # first search the good commit in db

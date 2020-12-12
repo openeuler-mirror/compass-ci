@@ -21,10 +21,10 @@ def parse_argv
 end
 
 op = OptionParser.new do |opts|
-  opts.banner = 'Usage: git-bisect job_id=$job_id, error_id=$error_id'
+  opts.banner = 'Usage: git-bisect bad_job_id=$bad_job_id, error_id=$error_id'
 
   opts.separator ''
-  opts.separator 'job_id: you submit a job to compass-ci and the job has some errors'
+  opts.separator 'bad_job_id: you submit a job to compass-ci and the job has some errors'
   opts.separator 'error_id: you want git bisect a error from the errors that you got'
   opts.separator ''
 
@@ -36,7 +36,7 @@ end
 
 op.parse!(ARGV)
 items = parse_argv
-unless items['job_id'] || items['error_id']
+unless items['bad_job_id'] || items['error_id']
   system 'git-bisect -h'
   exit
 end
