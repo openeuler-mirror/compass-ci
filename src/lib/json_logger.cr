@@ -18,7 +18,7 @@ class JSONLogger < Logger
     Logger::Formatter.new do | severity, datetime, progname, msg, io|
       get_env_info(@env.as(HTTP::Server::Context)) if @env
       level_num = severity.to_i32
-      datetime = datetime.to_s("%Y-%m-%dT%H:%M:%S")
+      datetime = datetime.to_s("%Y-%m-%dT%H:%M:%S.%3N+0800")
       logger_hash = JSON.parse(%({"level_num": #{level_num},
                                   "level": "#{severity}",
                                   "time": "#{datetime}"
