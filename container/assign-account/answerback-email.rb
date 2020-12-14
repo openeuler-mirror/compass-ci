@@ -21,6 +21,7 @@ names = Set.new %w[
   JUMPER_PORT
   SEND_MAIL_HOST
   SEND_MAIL_PORT
+  lab
 ]
 
 defaults = relevant_defaults(names)
@@ -29,12 +30,14 @@ JUMPER_HOST = defaults['JUMPER_HOST']
 JUMPER_PORT = defaults['JUMPER_PORT'] || 29999
 SEND_MAIL_HOST = defaults['SEND_MAIL_HOST'] || 'localhost'
 SEND_MAIL_PORT = defaults['SEND_MAIL_PORT'] || 49000
+LAB = defaults['lab']
+TOOL_SERVER = 'z9'
 
 my_info = {
   'my_email' => nil,
   'my_name' => nil,
   'my_commit_url' => nil,
-  'my_uuid' => nil,
+  'my_token' => nil,
   'my_login_name' => nil,
   'my_ssh_pubkey' => []
 }
@@ -51,6 +54,8 @@ my_info = {
 #   stdin_info > email_info > my_info_es
 # when assigning account or update conf for account
 # if they have the same key, my_info will use the value with higher priority.
+# if execute update operations, if there are new key in stdin_info and email_info
+# it will use the one with higher priority, and merge it with the the keys in my_info_es
 # conf_info is used to store keys used to config the account
 stdin_info = {}
 email_info = {}
@@ -179,6 +184,7 @@ def apply_account(my_info, conf_info)
   apply_info = {}
   apply_info.update my_info
   apply_info.update conf_info
+  apply_info['lab'] = LAB
 
   account_info_str = %x(curl -XGET '#{JUMPER_HOST}:#{JUMPER_PORT}/assign_account' -d '#{apply_info.to_json}')
   JSON.parse account_info_str
@@ -200,14 +206,19 @@ def build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
   new_stdin_pubkey = stdin_info.delete 'new_ssh_pubkey'
   new_pubkey = new_stdin_pubkey || new_email_pubkey
 
-  my_info.update my_info_es unless my_info_es.empty?
-  my_info.update email_info unless email_info.empty?
-  my_info.update stdin_info unless stdin_info.empty?
+  update_my_info(my_info, my_info_es, email_info, stdin_info)
 
   return if new_pubkey.nil?
   return if my_info['my_ssh_pubkey'].include? new_pubkey
 
   my_info['my_ssh_pubkey'].insert(0, new_pubkey)
+end
+
+def update_my_info(my_info, my_info_es, email_info, stdin_info)
+  my_info['my_token'] = my_info_es['my_uuid'] if my_info['my_token'].nil?
+  my_info.update my_info_es
+  my_info.update email_info
+  my_info.update stdin_info
 end
 
 def build_my_info_from_account_info(my_info, account_info, conf_info)
@@ -221,9 +232,9 @@ def build_my_info_from_account_info(my_info, account_info, conf_info)
 end
 
 def check_server
-  return true if ENV['HOSTNAME'] == 'z9'
+  return true if ENV['HOSTNAME'] == TOOL_SERVER
 
-  message = 'please run the tool on z9 server'
+  message = "please run the tool on #{TOOL_SERVER} server"
   puts message
 
   return false
@@ -260,7 +271,7 @@ def send_account(my_info, conf_info, email_info, my_info_es, stdin_info)
   return unless check_my_email(my_info)
   return unless check_email_assigned_account(conf_info, my_info_es)
 
-  my_info['my_uuid'] = %x(uuidgen).chomp unless conf_info['is_update_account']
+  my_info['my_token'] = %x(uuidgen).chomp unless conf_info['is_update_account']
   build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
 
   return unless check_my_name_exist(my_info)
