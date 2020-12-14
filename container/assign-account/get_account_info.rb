@@ -64,7 +64,7 @@ class AccountStorage
 
   def read_account_info
     available_dir = File.join(@account_dir, 'available-users')
-    files = Dir.open(available_dir).to_a
+    files = Dir.entries(available_dir)
     files -= ['.', '..']
 
     message = 'no more available users'
