@@ -41,6 +41,13 @@ LOCAL_ROBOT_EMAIL_ADDRESS: $LOCAL_ROBOT_EMAIL_ADDRESS
 MAILDIR: /srv/cci/Maildir/.compass-ci
 EOF
 
+mkdir -p /etc/compass-ci/account
+cat > /etc/compass-ci/account/autosubmit.yaml <<EOF
+my_name: Auto Submit Robot
+my_email: autosubmit@localhost
+my_token: $(uuidgen)
+EOF
+
 cat > /etc/profile.d/compass.sh <<'EOF'
 export LKP_SRC=/c/lkp-tests
 export CCI_SRC=/c/compass-ci
