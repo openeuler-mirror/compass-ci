@@ -30,14 +30,14 @@ SEND_MAIL_PORT = ENV['SEND_MAIL_PORT'] || 49000
 #       my_info:
 #         - my_email
 #         - my_name
-#         - my_uuid
+#         - my_token
 #       my_ssh_pubkey
 #   store_account_info
 #     call ESClient to store my_info
 #       my_info:
 #         - my_email
 #         - my_name
-#         - my_uuid
+#         - my_token
 #         - my_commit_url
 #         - my_login_name
 #         - my_ssh_pubkey
@@ -87,21 +87,28 @@ class ApplyAccount
     accountx_es.query_by_id(@my_info['my_email'])
   end
 
+  def build_apply_info(apply_info, my_account_es)
+    my_ssh_pubkey_new = @my_info.delete('my_ssh_pubkey')
+    apply_info['my_token'] = my_account_es['my_uuid'] if my_account_es['my_token'].nil?
+    apply_info.update my_account_es
+    apply_info.update @my_info
+    apply_info['my_ssh_pubkey'] = (apply_info['my_ssh_pubkey'] + my_ssh_pubkey_new).uniq
+    @my_info.update apply_info
+    apply_info['is_update_account'] = true
+    apply_info
+  end
+
   def apply_my_account
     my_account_es = read_my_account_es
     apply_info = {}
     if my_account_es
-      my_ssh_pubkey_new = @my_info.delete('my_ssh_pubkey')
-      apply_info.update my_account_es
-      apply_info.update @my_info
-      apply_info['my_ssh_pubkey'] = (apply_info['my_ssh_pubkey'] + my_ssh_pubkey_new).uniq
-      @my_info.update apply_info
-      apply_info['is_update_account'] = true
+      build_apply_info(apply_info, my_account_es)
     else
-      my_uuid = %x(uuidgen).chomp
-      @my_info['my_uuid'] = my_uuid
+      my_token = %x(uuidgen).chomp
+      @my_info['my_token'] = my_token
       apply_info.update @my_info
     end
+    apply_info['lab'] = ENV['lab']
     apply_new_account(apply_info, my_account_es)
   end
 
@@ -110,10 +117,6 @@ class ApplyAccount
     acct_info = apply_account.apply_jumper_account
 
     @my_info['my_login_name'] = acct_info['my_login_name'] unless my_account_es
-  end
-
-  def check_account_es
-    ESQuery.new(index: 'accounts').query_by_id(@my_info['my_email'])
   end
 
   def store_account_info
