@@ -24,7 +24,7 @@ get '/assign_account' do
 end
 
 def assign_jumper_account(data)
-  lacked_info = %w[my_email my_name my_uuid] - data.keys
+  lacked_info = %w[my_email my_name my_token] - data.keys
   error_message = "lack of my infos: #{lacked_info.join(', ')}."
   raise error_message unless lacked_info.empty?
 
