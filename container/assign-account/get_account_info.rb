@@ -110,7 +110,7 @@ class AccountStorage
     jumper_host, jumper_port = read_jumper_info
 
     config_authorized_key(login_name)
-    config_default_yaml(login_name)
+    config_yaml(login_name)
     permit_login_config(login_name)
     if @data.key?('gen_sshkey') && @data['gen_sshkey']
       my_jumper_pubkey = generate_ssh_key(login_name)
@@ -125,6 +125,14 @@ class AccountStorage
     }
 
     return jumper_account_info
+  end
+
+  def config_yaml(login_name)
+    default_yaml = touch_default_yaml(login_name)
+    config_default_yaml(login_name, default_yaml)
+
+    lab_yaml = touch_lab_yaml(login_name)
+    config_lab_yaml(login_name, lab_yaml)
   end
 
   def permit_login_config(login_name)
@@ -151,26 +159,47 @@ class AccountStorage
 
   def touch_default_yaml(login_name)
     default_yaml_dir = File.join('/home', login_name, '.config/compass-ci/defaults')
+    # before create the file, the directory need to be exists
     FileUtils.mkdir_p default_yaml_dir unless File.exist? default_yaml_dir
 
     default_yaml = File.join(default_yaml_dir, 'account.yaml')
+    # for we need to read the file before we open it
+    # need to firstly create the file
     FileUtils.touch default_yaml unless File.exist? default_yaml
     default_yaml
   end
 
-  def config_default_yaml(login_name)
-    default_yaml = touch_default_yaml(login_name)
-
+  def config_default_yaml(login_name, default_yaml)
     account_yaml = YAML.load_file(default_yaml) || {}
-    # my_email, my_name, my_uuid is required to config default yaml file
+    # my_email, my_name is required to config default yaml file
     # they are added along with 'my_ssh_pubkey' when sending assign account request
     account_yaml['my_email'] = @data['my_email']
     account_yaml['my_name'] = @data['my_name']
-    account_yaml['my_uuid'] = @data['my_uuid']
 
-    f = File.new(default_yaml, 'w')
-    f.puts account_yaml.to_yaml
-    f.close
+    File.open(default_yaml, 'w') do |f|
+      f.puts account_yaml.to_yaml
+    end
+
+    FileUtils.chown_R(login_name, login_name, "/home/#{login_name}/.config")
+  end
+
+  def touch_lab_yaml(login_name)
+    lab_yaml_dir = File.join('/home', login_name, '.config/compass-ci/include/lab')
+    FileUtils.mkdir_p lab_yaml_dir unless File.exist? lab_yaml_dir
+
+    lab_yaml = File.join(lab_yaml_dir, "#{@data['lab']}.yaml")
+    FileUtils.touch lab_yaml unless File.exist? lab_yaml
+    lab_yaml
+  end
+
+  def config_lab_yaml(login_name, lab_yaml)
+    lab_yaml_info = YAML.load_file(lab_yaml) || {}
+    lab_yaml_info['my_token'] = @data['my_token']
+
+    File.open(lab_yaml, 'w') do |f|
+      f.puts lab_yaml_info.to_yaml
+    end
+
     FileUtils.chown_R(login_name, login_name, "/home/#{login_name}/.config")
   end
 
