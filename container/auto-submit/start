@@ -21,6 +21,7 @@ cmd = %W[
   -v #{ENV['LKP_SRC']}:#{DOCKER_LKP}
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
+  -v /etc/compass-ci/account:/etc/compass-ci/account:ro
   -v /srv/git:/srv/git
   -w /c/compass-ci/sbin
   alpine:auto-submit
