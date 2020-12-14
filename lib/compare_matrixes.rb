@@ -402,6 +402,7 @@ def get_matrix_str(matrice_key, matrice_value, suites_list, options)
   return compare_matrixes(m_list, suites_list.shift, m_titles, matrice_key, options: options) if options[:no_print]
 
   print compare_matrixes(m_list, suites_list.shift, m_titles, matrice_key, options: options)
+  return ''
 end
 
 # big size first
