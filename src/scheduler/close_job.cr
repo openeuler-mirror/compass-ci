@@ -8,8 +8,6 @@ class Sched
 
     job = @redis.get_job(job_id)
 
-    delete_access_key_file(job) if job
-
     response = @es.set_job_content(job)
     if response["_id"] == nil
       # es update fail, raise exception
@@ -26,9 +24,5 @@ class Sched
     @redis.remove_finished_job(job_id)
 
     @log.info(%({"job_id": "#{job_id}", "job_state": "complete"}))
-  end
-
-  def delete_access_key_file(job : Job)
-    File.delete(job.access_key_file) if File.exists?(job.access_key_file)
   end
 end

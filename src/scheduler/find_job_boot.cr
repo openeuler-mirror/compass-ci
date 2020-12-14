@@ -141,10 +141,6 @@ class Sched
     return response
   end
 
-  def touch_access_key_file(job : Job)
-    FileUtils.touch(job.access_key_file)
-  end
-
   private def get_boot_ipxe(job : Job)
     response = "#!ipxe\n\n"
     response += Array(String).from_json(job.initrds_uri).join("\n") + "\n"
@@ -155,8 +151,12 @@ class Sched
     return response
   end
 
+  def set_id2upload_dirs(job)
+    @redis.hash_set("sched/id2upload_dirs", job.id, job.upload_dirs)
+  end
+
   def boot_content(job : Job | Nil, boot_type : String)
-    touch_access_key_file(job) if job
+    set_id2upload_dirs(job) if job
 
     case boot_type
     when "ipxe"

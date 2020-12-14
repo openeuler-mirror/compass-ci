@@ -88,8 +88,7 @@ class Job
     pp_params
     submit_date
     result_root
-    access_key
-    access_key_file
+    upload_dirs
     lkp_initrd_user
     user_lkp_src
     kernel_uri
@@ -243,15 +242,21 @@ class Job
   def set_result_root
     update_tbox_group_from_testbox # id must exists, need update tbox_group
     self["result_root"] = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{pp_params}", "#{id}")
-
-    # access_key has information based on "result_root"
-    #  so when set result_root, we need redo set_ to update it
-    set_access_key()
+    set_upload_dirs()
   end
 
-  private def set_access_key
-    self["access_key"] = "#{Random::Secure.hex(10)}-#{id}"
-    self["access_key_file"] = File.join("/srv/", "#{result_root}", ".#{access_key}")
+  def set_upload_dirs
+    if @hash["cci-makepkg"]?
+      package_dir = ",/initrd/pkg"
+    elsif @hash["cci-depends"]?
+      package_dir = ",/initrd/deps"
+    elsif @hash["build-pkg"]?
+      package_dir = ",/initrd/build-pkg"
+    else
+      package_dir = ""
+    end
+
+    self["upload_dirs"] = "#{result_root}#{package_dir}"
   end
 
   private def set_result_service
