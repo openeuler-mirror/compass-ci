@@ -95,7 +95,7 @@ class GitBisect
     error_messages = ErrorMessages.new(@build_pkg_dir).obtain_error_messages_by_errorid(@error_id)
 
     return Hash['repo' => @upstream_repo, 'commit' => first_bad_commit,
-                'error_messages' => error_messages.join("\n")]
+                'error_messages' => error_messages]
   end
 
   # first search the good commit in db

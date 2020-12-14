@@ -19,23 +19,21 @@ class MailBisectResult
   end
 
   def compose_mail
-    subject = "[Compass-CI] #{@repo}.git: bisect result"
+    subject = "[Compass-CI][#{@repo.split('/')[1]}]: #{@error_messages[0]}"
+    job_url = "job url: #{ENV['SRV_HTTP_HOST']}:#{ENV['SRV_HTTP_PORT']}/#{ENV['result_root']}\n" ? ENV['result_root'] : ''
     body = <<~BODY
     Hi #{@git_commit.author_name},
 
-      Bisect completed for
+      git url: #{@git_commit.url}
+      git commit: #{@commit_id[0..11]} ("#{@git_commit.subject}")
 
-      url: #{@git_commit.url}
-
-      This is a bisect email from compass-ci. We met some problems when test with new commits.
-      Would you help to check what happend?
-      After submitting a job we noticed an error response due to the commit:
-
-      commit: #{@commit_id[0..11]} ("#{@git_commit.subject}")
+      gcc version: 7.3.0
       error_messages:
-      #{@error_messages}
+      #{@error_messages.join("\n")}
 
-    https://gitee.com/openeuler/compass-ci
+      #{job_url}
+    Regards,
+    Compass CI team
     BODY
     to = 'caoxl@crystal.ci'
     @hash = { 'to' => to, 'body' => body, 'subject' => subject }
