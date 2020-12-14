@@ -27,7 +27,7 @@ def build_apply_account_email(my_info)
          EOF
          mkdir -p ~/.config/compass-ci/include/lab
          cat   >> ~/.config/compass-ci/include/lab/#{ENV['lab']}.yaml <<-EOF
-             my_uuid: #{my_info['my_uuid']}
+             my_token: #{my_info['my_token']}
          EOF
 
     2) download lkp-tests and dependencies
