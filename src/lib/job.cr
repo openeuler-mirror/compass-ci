@@ -326,7 +326,8 @@ class Job
   end
 
   private def check_account_info
-    error_msg = "Failed to verify the account. Please check your configuration"
+    error_msg = "Failed to verify the account.\n"
+    error_msg += "Please refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md"
     account_info = @es.get_account(self["my_email"])
     raise account_info unless account_info.is_a?(JSON::Any)
 
