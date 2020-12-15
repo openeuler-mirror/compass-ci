@@ -27,5 +27,5 @@ yum install -y --skip-broken "${pkgs[@]}"
 wget http://rpmfind.net/linux/openmandriva/cooker/repository/$(arch)/main/release/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
 wget http://rpmfind.net/linux/openmandriva/cooker/repository/$(arch)/main/release/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
 
-rpm -i lib64lockfile1-1.16-1-omv4002.$(arch).rpm lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
+rpm -i --replacepkgs lib64lockfile1-1.16-1-omv4002.$(arch).rpm lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
 rm -rf *.rpm
