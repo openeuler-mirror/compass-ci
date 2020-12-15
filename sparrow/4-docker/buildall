@@ -8,18 +8,14 @@ export action=$1
 build_depends()
 {
 	local container=$1
-	local should_wait=$2
 
 	for dep in $(cat $container/*-depends 2> /dev/null)
 	do
-		build_depends $CONTAINER_PATH/$dep block_wait
+		build_depends $CONTAINER_PATH/$dep &
 	done
+	wait
 
-	if [ -n "$should_wait" ]; then
-		do_one $container
-	else
-		do_one $container &
-	fi
+	do_one $container
 }
 
 do_one()
@@ -44,8 +40,8 @@ tmpdir=$(mktemp -d)
 
 for dir in $CONTAINER_PATH/*/
 do
-	build_depends $dir
+	build_depends $dir &
 done
-
 wait
+
 rm -fr $tmpdir
