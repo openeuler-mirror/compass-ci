@@ -5,6 +5,8 @@
 CONTAINER_PATH="$CCI_SRC/container"
 export action=$1
 
+[ -n "$LKP_SRC" ] && source "${LKP_SRC}/lib/log.sh"
+
 build_depends()
 {
 	local container=$1
@@ -23,6 +25,7 @@ do_one()
 	local container=$1
 	local container_name=$(basename $container)
 	lockfile-create -q --use-pid --retry 100 --lock-name "$container_name".lock
+	[ -n "$LKP_SRC" ] && log_info "start build $container."
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
 		cd $container
@@ -33,6 +36,7 @@ do_one()
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
 	)
+	[ -n "$LKP_SRC" ] && log_info "finish build $container."
 	lockfile-remove --lock-name "$container_name".lock
 }
 
