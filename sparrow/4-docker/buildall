@@ -25,6 +25,8 @@ do_one()
 	local container=$1
 	local container_name=$(basename $container)
 	lockfile-create -q --use-pid --retry 100 --lock-name "$container_name".lock
+	echo "$started_containers" | grep -w -q "$container_name" && return 0
+
 	[ -n "$LKP_SRC" ] && log_info "start build $container."
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
@@ -37,6 +39,7 @@ do_one()
 		[ -x start ] && ./start
 	)
 	[ -n "$LKP_SRC" ] && log_info "finish build $container."
+	started_containers+="$container_name"
 	lockfile-remove --lock-name "$container_name".lock
 }
 
