@@ -130,6 +130,8 @@ class MirrorMain
       load_defaults(repodir)
       entry_list = Dir.entries(repodir) - Array['.', '..', 'DEFAULTS', '.ignore', '.git']
       entry_list.each do |entry|
+        next if entry.start_with? '.'
+
         traverse_repodir("#{repodir}/#{entry}")
       end
     else
