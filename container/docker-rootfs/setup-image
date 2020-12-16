@@ -13,6 +13,11 @@ remove_file()
 	rm -rf /.dockerenv
 }
 
+set_localtime()
+{
+	ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+}
+
 setup_login()
 {
 	[ -n "$ROOT_PASSWD" ] || return
@@ -32,5 +37,6 @@ pack_cgz()
 
 install_packages
 remove_file
+set_localtime
 setup_login
 pack_cgz
