@@ -1,3 +1,4 @@
 kernel
 kernel-devel
 openssh-server
+ntpdate
