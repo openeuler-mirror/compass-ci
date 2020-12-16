@@ -67,20 +67,6 @@ class Sched
     @redis.hash_del("sched/host2queues", hostname)
   end
 
-  def auto_submit_idle_job(tbox_group)
-    full_path_patterns = "#{ENV["CCI_REPOS"]}/lab-#{ENV["lab"]}/allot/idle/#{tbox_group}/*.yaml"
-    extra_job_fields = [
-      "idle_job=true",
-      "MASTER_FLUENTD_HOST=#{ENV["MASTER_FLUENTD_HOST"]}",
-      "MASTER_FLUENTD_PORT=#{ENV["MASTER_FLUENTD_PORT"]}",
-    ]
-
-    Jobfile::Operate.auto_submit_job(
-      full_path_patterns,
-      "testbox: #{tbox_group}",
-      extra_job_fields) if Dir.glob(full_path_patterns).size > 0
-  end
-
   def update_tbox_wtmp
     testbox = ""
     hash = Hash(String, String).new
