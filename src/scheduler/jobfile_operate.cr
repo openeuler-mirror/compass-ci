@@ -61,10 +61,11 @@ module Jobfile::Operate
     return target_path
   end
 
-  def self.auto_submit_job(job_file, override_parameter, other_parameters = nil)
+  # *fields* should be: ["field01=value01", "field02=value02", ...]
+  def self.auto_submit_job(job_file, fields : Array(String) = ["testbox=vm-2p8g"])
     cmd = "#{ENV["LKP_SRC"]}/sbin/submit "
-    cmd += other_parameters.join(" ") if other_parameters
-    cmd += " -s '#{override_parameter}' #{job_file}"
+    cmd += "#{job_file} "
+    cmd += fields.join(" ")
     puts `#{cmd}`
   end
 end

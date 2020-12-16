@@ -33,7 +33,7 @@ class Sched
 
     Jobfile::Operate.auto_submit_job(
       "#{ENV["LKP_SRC"]}/jobs/host-info.yaml",
-      "testbox: #{host}")
+      ["testbox=#{host}"])
   end
 
   def rand_queues(queues)
