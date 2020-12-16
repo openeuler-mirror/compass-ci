@@ -20,6 +20,7 @@ fi
 
 cmd=(
 	docker run
+	--restart=always
 	-d
 	-e "IPMI_USER=${user}"
 	-e "IPMI_PASSWORD=${passwd}"
