@@ -34,8 +34,6 @@ class GitMirror
   def get_url(url)
     if url.include?('gitee.com/') && File.exist?("/srv/git/#{url.delete_prefix('https://')}")
       url = "/srv/git/#{url.delete_prefix('https://')}"
-    elsif url.include?('://github.com')
-      url = "https://gitclone.com/#{url.split('://')[1]}"
     end
     return url
   end
