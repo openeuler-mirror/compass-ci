@@ -61,7 +61,6 @@ stdin_info = {}
 email_info = {}
 my_info_es = {}
 conf_info = {
-  'gen_sshkey' => false,
   'enable_login' => true,
   'is_update_account' => false
 }
@@ -83,13 +82,12 @@ end
 
 options = OptionParser.new do |opts|
   opts.banner = 'Usage: answerback-mail.rb [-e|--email email] [-n|--name name] '
-  opts.banner += "[-s|--ssh-pubkey pub_key_file] [-g|--gen-sshkey] [-l|--login y|n] [-u|--update]\n"
+  opts.banner += "[-s|--ssh-pubkey pub_key_file] [-l|--login y|n] [-u|--update]\n"
   opts.banner += '       answerback-mail.rb [-f|--raw-email email_file] '
-  opts.banner += "[-g|--gen-sshkey] [--login y|n] [--update]\n"
+  opts.banner += "[--login y|n] [--update]\n"
   opts.banner += "       -e|-f is required when applying account or updating account\n"
   opts.banner += "       -n is required when assigning account with -e\n"
   opts.banner += "       -s is optional when use -e\n"
-  opts.banner += "       -g is optional, used to generate sshkey for user\n"
   opts.banner += "       -u is required when updating an account\n"
   opts.banner += '       -l is optional, used to enable/disable login permission'
 
@@ -139,10 +137,6 @@ options = OptionParser.new do |opts|
     end
     mail_content = Mail.read(email_file)
     init_info(mail_content, email_info, my_info, my_info_es)
-  end
-
-  opts.on('-g', '--gen-sshkey', 'generate jumper rsa public/private key and return pubkey') do
-    conf_info['gen_sshkey'] = true
   end
 
   opts.on('-u', '--update', 'updata configurations') do

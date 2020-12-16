@@ -112,9 +112,7 @@ class AccountStorage
     config_authorized_key(login_name)
     config_yaml(login_name)
     permit_login_config(login_name)
-    if @data.key?('gen_sshkey') && @data['gen_sshkey']
-      my_jumper_pubkey = generate_ssh_key(login_name)
-    end
+    my_jumper_pubkey = generate_ssh_key(login_name)
 
     jumper_account_info = {
       'my_login_name' => login_name,
