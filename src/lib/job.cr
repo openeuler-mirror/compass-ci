@@ -503,6 +503,7 @@ class Job
   private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkg_arr)
     initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
     mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
+    program_params["initramfs-common"] = JSON::Any.new("") if os_mount == "initramfs"
 
     program_params.keys.each do |program|
       if program =~ /^(.*)-\d+$/
