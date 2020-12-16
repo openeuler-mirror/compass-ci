@@ -457,7 +457,7 @@ def query_testboxes
     body = testboxes_body
   rescue StandardError => e
     warn e.message
-    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get repos error']
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get testboxes error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
