@@ -5,6 +5,9 @@
 
 . $CCI_SRC/container/defconfig.sh
 
+: ${REDIS_HOST:=172.17.0.1}
+: ${REDIS_PORT:=6379}
+
 docker_rm result-webdav
 
 cmd=(
@@ -12,6 +15,8 @@ cmd=(
 	--name result-webdav
 	--restart=always
 	-p 3080:3080
+	-e REDIS_HOST=$REDIS_HOST
+	-e REDIS_PORT=$REDIS_PORT
 	-v $PWD/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result/:/srv/result/
