@@ -1,0 +1,5 @@
+poll imap.qq.com with proto IMAP
+username "FETCH_MAIL_ADDRESS"
+password "FETCH_MAIL_AUTH_CODE"
+mda "/usr/bin/procmail -f %F -d %T"
+nokeep
