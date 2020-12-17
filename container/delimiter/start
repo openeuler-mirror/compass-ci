@@ -23,6 +23,7 @@ env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'
+DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
 docker_rm 'delimiter'
 
 cmd = %w[
@@ -34,8 +35,9 @@ cmd = %w[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
-  -v /etc/localtime:/etc/localtime:ro
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
+  -v /etc/localtime:/etc/localtime:ro
   -v /srv/git:/srv/git:ro
   -w #{DEFAULT_CCI}/src
   delimiter
