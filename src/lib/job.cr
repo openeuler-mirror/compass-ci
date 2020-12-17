@@ -274,7 +274,7 @@ class Job
   end
 
   private def set_subqueue
-    self["subqueue"] = self["my_email"]
+    self["subqueue"] = self["my_email"] unless self["subqueue"] == "idle"
   end
 
   # if not assign tbox_group, set it to a match result from testbox
