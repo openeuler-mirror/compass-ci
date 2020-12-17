@@ -76,11 +76,11 @@ class AccountStorage
   end
 
   def build_account_name(available_dir, files)
-    files.sort
+    files.sort!
     account_info = []
-    account_info.push files[0]
-    source_file = File.join(available_dir, files[0])
-    account_info.push File.readlines(source_file)[0].chomp
+    account_info.push files.first
+    source_file = File.join(available_dir, files.first)
+    account_info.push File.readlines(source_file).first.chomp
 
     dest_dir = File.join(@account_dir, 'assigned-users')
     FileUtils.mv(source_file, dest_dir)
