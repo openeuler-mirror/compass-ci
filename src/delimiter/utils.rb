@@ -108,8 +108,11 @@ module Utils
 
       job.delete('error_ids')
       job.delete('start_time')
+      job.delete('job_state')
       job.delete('end_time')
       job.delete('loadavg')
+      job.delete('stats')
+      job.delete('id')
 
       return job
     end
@@ -123,6 +126,7 @@ module Utils
     end
 
     def create_bisect_log(git_dir)
+      FileUtils.mkdir_p TMP_RESULT_ROOT unless File.exist? TMP_RESULT_ROOT
       log_file = File.join(TMP_RESULT_ROOT, "bisect.log")
       log_content = parse_bisect_log(git_dir)
       File.open(log_file, 'w') do |f|
