@@ -29,6 +29,7 @@ cmd=(
 	-v ${DIR}/bin:/root/bin:ro
 	-v $CCI_SRC:/c/compass-ci
 	-v /srv/git:/srv/git:ro
+	-v /srv/result:/srv/result:ro
 	-v ${busybox_path}:/usr/local/bin/busybox
 	--oom-score-adj="-1000"
 	${docker_image}
