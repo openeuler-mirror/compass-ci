@@ -79,7 +79,7 @@ class GitBisect
     result = `git -C #{@work_dir} bisect start #{@bad_commit} #{@good_commit}`
     temp = result.split(/\n/)
     if temp[0].include? 'Bisecting'
-      result = `git -C #{@work_dir} bisect run #{BISECT_RUN_SCRIPT} #{@bad_job_id} "#{@error_id}" #{@work_dir}`
+      result = `git -C #{@work_dir} bisect run #{BISECT_RUN_SCRIPT} #{@bad_job_id} #{@error_id.inspect} #{@work_dir}`
     end
     Utils.create_bisect_log(@work_dir)
     FileUtils.rm_r(@work_dir) if Dir.exist?(@work_dir)
