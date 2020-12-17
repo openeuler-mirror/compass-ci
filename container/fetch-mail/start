@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig'
+
+docker_rm 'fetch-mail'
+
+names = Set.new %w[
+  FETCH_MAIL_ADDRESS
+  FETCH_MAIL_AUTH_CODE
+  FETCH_MAIL_DIR
+  FETCH_MAIL_BOX
+]
+
+defaults = relevant_defaults(names)
+
+env = docker_env(defaults)
+
+cmd = %w[
+  docker run
+  --restart=always
+  -u mailer
+  --name=fetch-mail
+  -d
+] + env + %W[
+  -v #{defaults['FETCH_MAIL_DIR']}:#{defaults['FETCH_MAIL_DIR']}:rw
+  -w /home/mailer/
+  fetch-mail
+]
+
+cmd += ['sh', '-c', './run.sh']
+
+system(*cmd)
