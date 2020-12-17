@@ -511,7 +511,8 @@ end
 def show_compare_result(metrics_compare_results, template_params)
   formatter = FormatEchartData.new(metrics_compare_results, template_params)
   echart_results = formatter.format_for_echart
-  print JSON.pretty_generate(echart_results)
+  table_results = FormatTableData.new(echart_results)
+  table_results.show_table
 end
 
 # Format Fields

@@ -2,6 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'terminal-table'
+
 # ----------------------------------------------------------------------------------------------------
 # format compare results for a specific format
 #
@@ -63,6 +65,77 @@ class FormatEchartData
     end
 
     source
+  end
+end
+
+# ----------------------------------------------------------------------------------------------------
+# format compare template results into a table format
+#
+class FormatTableData
+  def initialize(result_hash)
+    @title = result_hash['title']
+    @tables = result_hash['tables']
+    @unit = result_hash['unit']
+    @x_name = result_hash['x_name']
+  end
+
+  def show_table
+    @tables.each do |table_title, table|
+      @tb = Terminal::Table.new
+      set_table_title
+      set_field_names(table_title, table)
+      add_rows(table)
+      set_align_column
+      print_table
+    end
+  end
+
+  def set_table_title
+    @tb.title = "#{@title} (unit: #{@unit}, x_name: #{@x_name})"
+  end
+
+  def set_field_names(table_title, table)
+    field_names = [table_title]
+    field_names.concat(table['average']['source'][0])
+    @tb.add_row(field_names)
+    @tb.add_separator
+  end
+
+  def add_rows(table)
+    row_names = %w[average standard_deviation change]
+    max_size = row_names.map(&:size).max
+    row_names.each do |row_name|
+      next unless table[row_name]
+
+      dimensions_size = table[row_name]['dimensions'].size
+      (1...dimensions_size).each do |index|
+        add_row(table, row_name, index, max_size)
+      end
+    end
+  end
+
+  def add_row(table, row_name, index, max_size)
+    row = table[row_name]['source'][index]
+    row_title = [row_name + ' ' * (max_size - row_name.size), row[0]].join(' ')
+    format_data_row = row[1..-1]
+    if row_name == 'change'
+      format_data_row.map! { |data| format('%.1f%%', data) }
+    else
+      format_data_row.map! { |data| format('%.2f', data) }
+    end
+    @tb.add_row([row_title, *format_data_row])
+  end
+
+  def set_align_column
+    @tb.number_of_columns.times do |index|
+      @tb.align_column(index + 1, :right)
+    end
+    @tb.align_column(0, :left)
+  end
+
+  def print_table
+    puts @tb
+    puts
   end
 end
 
