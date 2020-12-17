@@ -37,6 +37,7 @@ class Sched
   def submit_cluster_job(job, cluster_config)
     job_messages = Array(Hash(String, String)).new
     lab = job.lab
+    subqueue = job.subqueue
 
     # collect all job ids
     job_ids = [] of String
@@ -52,7 +53,7 @@ class Sched
     # steps for each host
     cluster_config["nodes"].as_h.each do |host, config|
       queue = host.to_s
-      job_id = add_task(queue, lab)
+      job_id = add_task("#{queue}/#{subqueue}", lab)
 
       # return when job_id is '0'
       # 2 Questions:
