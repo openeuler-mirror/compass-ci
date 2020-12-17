@@ -67,7 +67,7 @@ opt_parser.parse!(argv)
 options = { theme: colorful } if colorful
 
 if template
-  compare_by_template(template)
+  compare_by_template(template, options)
 elsif is_group
   compare_group(argv, dimensions, options)
 else

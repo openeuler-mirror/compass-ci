@@ -508,11 +508,15 @@ def get_dimensions_combination(dimension_list)
   dims
 end
 
-def show_compare_result(metrics_compare_results, template_params)
+def show_compare_result(metrics_compare_results, template_params, options)
   formatter = FormatEchartData.new(metrics_compare_results, template_params)
   echart_results = formatter.format_for_echart
-  table_results = FormatTableData.new(echart_results)
-  table_results.show_table
+  if options[:theme] == 'json'
+    print JSON.pretty_generate(echart_results)
+  else
+    table_results = FormatTableData.new(echart_results)
+    table_results.show_table
+  end
 end
 
 # Format Fields
