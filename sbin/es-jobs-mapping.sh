@@ -79,6 +79,10 @@ else
 		            "dynamic": true,
 		            "properties": {}
 		          },
+			  "pp.sleep":{
+		            "type": "object",
+		            "enabled": false
+			  },
 		          "suite": {
 		            "type": "keyword"
 		          },
