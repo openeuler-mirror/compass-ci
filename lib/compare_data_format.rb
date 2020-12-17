@@ -72,19 +72,20 @@ end
 # format compare template results into a table format
 #
 class FormatTableData
-  def initialize(result_hash)
+  def initialize(result_hash, row_size = 8)
     @title = result_hash['title']
     @tables = result_hash['tables']
     @unit = result_hash['unit']
     @x_name = result_hash['x_name']
+    @row_size = row_size
   end
 
   def show_table
     @tables.each do |table_title, table|
       @tb = Terminal::Table.new
       set_table_title
-      set_field_names(table_title, table)
-      add_rows(table)
+      row_num = get_row_num(table)
+      split_data_column(table_title, table, row_num)
       set_align_column
       print_table
     end
@@ -94,14 +95,36 @@ class FormatTableData
     @tb.title = "#{@title} (unit: #{@unit}, x_name: #{@x_name})"
   end
 
-  def set_field_names(table_title, table)
+  def get_row_num(table)
+    data_column_size = table['average']['source'][0].size
+    unless @row_size.positive?
+      warn('row size must be positive!')
+      exit
+    end
+    (data_column_size / @row_size.to_f).ceil
+  end
+
+  def split_data_column(table_title, table, row_num)
+    row_num.times do |row|
+      starts = 1 + row * @row_size
+      ends = starts + @row_size
+      set_field_names(table_title, table, starts, ends)
+      add_rows(table, starts, ends)
+      break if row == row_num - 1
+
+      @tb.add_separator
+      @tb.add_separator
+    end
+  end
+
+  def set_field_names(table_title, table, starts, ends)
     field_names = [table_title]
-    field_names.concat(table['average']['source'][0])
+    field_names.concat(table['average']['source'][0][starts - 1...ends - 1])
     @tb.add_row(field_names)
     @tb.add_separator
   end
 
-  def add_rows(table)
+  def add_rows(table, starts, ends)
     row_names = %w[average standard_deviation change]
     max_size = row_names.map(&:size).max
     row_names.each do |row_name|
@@ -109,15 +132,15 @@ class FormatTableData
 
       dimensions_size = table[row_name]['dimensions'].size
       (1...dimensions_size).each do |index|
-        add_row(table, row_name, index, max_size)
+        add_row(table, row_name, index, max_size, starts, ends)
       end
     end
   end
 
-  def add_row(table, row_name, index, max_size)
+  def add_row(table, row_name, index, max_size, starts, ends)
     row = table[row_name]['source'][index]
     row_title = [row_name + ' ' * (max_size - row_name.size), row[0]].join(' ')
-    format_data_row = row[1..-1]
+    format_data_row = row[starts...ends]
     if row_name == 'change'
       format_data_row.map! { |data| format('%.1f%%', data) }
     else
