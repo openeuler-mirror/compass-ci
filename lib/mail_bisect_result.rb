@@ -19,8 +19,8 @@ class MailBisectResult
   end
 
   def compose_mail
-    subject = "[Compass-CI][#{@repo.split('/')[1]}]: #{@error_messages[0]}"
-    job_url = "job url: #{ENV['SRV_HTTP_HOST']}:#{ENV['SRV_HTTP_PORT']}/#{ENV['result_root']}\n" ? ENV['result_root'] : ''
+    subject = "[Compass-CI][#{@repo.split('/')[1]}]: #{@error_messages[0].split("\n")[0]}"
+    job_url = ENV['result_root'] ? "job url: http://#{ENV['SRV_HTTP_HOST']}:#{ENV['SRV_HTTP_PORT']}#{ENV['result_root']}\n" : ''
     body = <<~BODY
     Hi #{@git_commit.author_name},
 
@@ -28,6 +28,7 @@ class MailBisectResult
       git commit: #{@commit_id[0..11]} ("#{@git_commit.subject}")
 
       gcc version: 7.3.0
+
       error_messages:
       #{@error_messages.join("\n")}
 
