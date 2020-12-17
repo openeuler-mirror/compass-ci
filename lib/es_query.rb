@@ -54,9 +54,12 @@ class ESQuery
   end
 
   def query_by_id(id)
-    @client.get_source({ index: @index, type: '_doc', id: id })
-  rescue Elasticsearch::Transport::Transport::Errors::NotFound
-    nil
+    result = @client.search(index: @index + '*',
+                            body: { query: { bool: { must: { term: { '_id' => id } } } },
+                                    size: 1 })['hits']['hits']
+    return nil unless result.size == 1
+
+    return result[0]['_source']
   end
 end
 
