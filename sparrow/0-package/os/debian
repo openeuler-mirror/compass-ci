@@ -19,6 +19,7 @@ pkgs=(
 	bridge-utils
 	busybox
 	iproute2
+	hostname
 )
 
 apt-get install -y --fix-missing "${pkgs[@]}"
