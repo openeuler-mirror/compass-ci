@@ -1,0 +1,25 @@
+DROPPRIVS=yes
+PATH=$HOME/bin:/usr/local/bin:/usr/bin:/bin
+MAILDIR=FETCH_MAIL_DIR
+MAILLIST=${MAILDIR}
+DEFAULT=${MAILDIR}/FETCH_MAIL_BOX/
+ORGMAIL=${DEFAULT}/FETCH_MAIL_BOX/
+LOGFILE=${MAILDIR}/log/procmail         # recommended
+
+UMASK=002
+
+DISPLAY=:0
+XAUTHORITY=$HOME/.Xauthority
+
+# One often receives duplicate messages for cross-postings to mailing
+# lists, or explicit replies to a post from you in addition to the
+# mailing list message.
+#
+# The following recipe eliminates all duplicate messages.  It tells
+# formail(1) to keep a cache file of the Message-IDs of the most recent
+# messages you've received.  Since Message-IDs are guaranteed unique for
+# distinct messages, they are ideally suited to weed out duplicates.
+
+#  LOCKFILE=$MAILDIR/.msgid.lock
+:0 Wh: $MAILDIR/.msgid.lock
+| formail -D 655360 $MAILDIR/log/msgid
