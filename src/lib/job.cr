@@ -325,7 +325,11 @@ class Job
   private def check_required_keys
     REQUIRED_KEYS.each do |key|
       if !@hash[key]?
-        raise "Missing required job key: '#{key}'"
+        error_msg = "Missing required job key: '#{key}'."
+        if ["my_email", "my_name", "my_token"].includes?(key)
+          error_msg += "\nPlease refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md"
+        end
+        raise error_msg
       end
     end
   end
