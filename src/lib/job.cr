@@ -319,7 +319,7 @@ class Job
     testbox
     my_email
     my_name
-    my_uuid
+    my_token
   ]
 
   private def check_required_keys
@@ -340,9 +340,10 @@ class Job
 
     raise error_msg if @account_info["found"]? == false
     raise error_msg unless self["my_name"] == @account_info["my_name"].to_s
-    raise error_msg unless self["my_uuid"] == @account_info["my_uuid"]
+    raise error_msg unless self["my_token"] == @account_info["my_token"]
 
     @hash.delete("my_uuid")
+    @hash.delete("my_token")
   end
 
   private def get_initialized_keys
@@ -366,7 +367,7 @@ class Job
                          "SCHED_HOST",
                          "SCHED_PORT"]
 
-    initialized_keys -= ["my_uuid",
+    initialized_keys -= ["my_token",
                          "kernel_version",
                          "kernel_uri",
                          "kernel_params",
