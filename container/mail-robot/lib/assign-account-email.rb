@@ -24,6 +24,7 @@ def build_apply_account_email(my_info)
          cat >> ~/.config/compass-ci/defaults/account.yaml <<-EOF
              my_email: #{my_info['my_email']}
              my_name: #{my_info['my_name']}
+             lab: #{ENV['lab']}
          EOF
          mkdir -p ~/.config/compass-ci/include/lab
          cat   >> ~/.config/compass-ci/include/lab/#{ENV['lab']}.yaml <<-EOF
