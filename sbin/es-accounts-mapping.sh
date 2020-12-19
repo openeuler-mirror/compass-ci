@@ -18,7 +18,7 @@ else
 					"my_commit_url": {
 						"type": "keyword"
 					},
-					"my_uuid": {
+					"my_token": {
 						"type": "keyword"
 					},
 					"my_email": {

@@ -58,14 +58,14 @@ attahcment
                first attachment
 
      - apply_my_account
-         my_uuid
+         my_token
            generate uuid
          apply_account
            invoke ApplyJumperAccount to apply new account with my_info and pub_key
              my_info:
-               - my_email
                - my_name
-               - my_uuid
+               - my_email
+               - my_token
              apply_jumper_account
                required data: pub_key
          complete my_info

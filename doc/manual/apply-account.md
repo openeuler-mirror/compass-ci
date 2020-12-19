@@ -23,9 +23,9 @@ Email template:
 
 Which contains account information for you:
 
-	my_email
 	my_name
-	my_uuid
+	my_email
+	my_token
 
 ## step 3: one-time setup
 

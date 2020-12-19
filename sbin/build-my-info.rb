@@ -12,12 +12,12 @@ print 'email: '
 my_email = $stdin.echo = gets.chomp
 print 'name: '
 my_name = $stdin.echo = gets.chomp
-my_uuid = %x(uuidgen).chomp
+my_token = %x(uuidgen).chomp
 
 my_info = {
-  'my_email' => my_email,
   'my_name' => my_name,
-  'my_uuid' => my_uuid
+  'my_email' => my_email,
+  'my_token' => my_token
 }
 
 def store_account_info(my_info)

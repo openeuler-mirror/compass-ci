@@ -101,9 +101,9 @@ module Utils
       raise "query #{DELIMITER_ACCONUT} account info failed!" unless account_info
 
       job['suite'] = 'bisect'
-      job['my_uuid'] = account_info['my_uuid']
       job['my_name'] = account_info['my_name']
       job['my_email'] = account_info['my_email']
+      job['my_token'] = account_info['my_token']
       job['bad_job_id'] = job_id
 
       job.delete('error_ids')
@@ -127,7 +127,7 @@ module Utils
 
     def create_bisect_log(git_dir)
       FileUtils.mkdir_p TMP_RESULT_ROOT unless File.exist? TMP_RESULT_ROOT
-      log_file = File.join(TMP_RESULT_ROOT, "bisect.log")
+      log_file = File.join(TMP_RESULT_ROOT, 'bisect.log')
       log_content = parse_bisect_log(git_dir)
       File.open(log_file, 'w') do |f|
         log_content.each { |line| f.puts(line) }
