@@ -5,6 +5,7 @@ FROM centos:latest
 MAINTAINER Luan Shengde <shdluan@163.com>
 ENV DEBIAN_FRONTEND noninteractive
 
+RUN groupadd -g 1147 mailer
 RUN useradd -u 1144 -g 1147 mailer 
 RUN yum update -y
 RUN yum install -y procmail fetchmail
