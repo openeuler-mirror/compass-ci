@@ -28,17 +28,32 @@ names = Set.new %w[
   INITRD_HTTP_PORT
   TASKQUEUE_PORT
   TASKQUEUE_HOST
+  GIT_SERVER
+  MASTER_FLUENTD_HOST
+  MASTER_FLUENTD_PORT
+  SSHR_PORT
+  SSHR_PORT_BASE
+  SSHR_PORT_LEN
+  lab
 ]
 
 defaults = relevant_defaults(names)
+defaults['SSHR_PORT'] ||= 5050
+defaults['SSHR_PORT_BASE'] ||= 50000
+defaults['SSHR_PORT_LEN'] ||= 2000
+defaults['SCHED_PORT'] ||= '3000'
+defaults['SCHED_HOST'] ||= '172.17.0.1'
+defaults['MASTER_FLUENTD_PORT'] ||= '24224'
+defaults['SCHED_HTTPS_PORT'] ||= 11306
+defaults['SCHED_HTTPS_HOST'] ||= 'api.compass-ci.openeuler.org'
 env = docker_env(defaults)
 
-DEFAULT_LKP = '/c/lkp-tests'
-DEFAULT_CCI = '/c/compass-ci'
-SCHED_PORT = defaults['SCHED_PORT'] || '3000'
-SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
-SCHED_HTTPS_PORT = defaults['SCHED_HTTPS_PORT'] || 11306
-SCHED_HTTPS_HOST = defaults['SCHED_HTTPS_HOST'] || 'api.compass-ci.openeuler.org'
+CCI_REPOS = ENV['CCI_REPOS'] || '/c'
+DEFAULT_LKP = "#{CCI_REPOS}/lkp-tests"
+DEFAULT_CCI = "#{CCI_REPOS}/compass-ci"
+LAB = defaults['lab'] || 'z9'
+SCHED_HTTPS_PORT = defaults['SCHED_HTTPS_PORT']
+SCHED_HTTPS_HOST = defaults['SCHED_HTTPS_HOST']
 
 docker_rm "s001-alpine-#{SCHED_HTTPS_PORT}"
 
@@ -48,14 +63,13 @@ cmd = %W[
   --name s001-alpine-#{SCHED_HTTPS_PORT}
   -d
   -u 1090:1090
-  -p #{SCHED_HTTPS_PORT}:#{SCHED_PORT}
+  -p #{SCHED_HTTPS_PORT}:#{defaults['SCHED_PORT']}
 ] + env + %W[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
-  -e SCHED_HOST=#{SCHED_HOST}
-  -e SCHED_PORT=#{SCHED_PORT}
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
   -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/result:/srv/result
@@ -65,7 +79,7 @@ cmd = %W[
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
   --log-opt tag=scheduler-#{SCHED_HTTPS_PORT}
-  sch-ruby-a:v0.00d-#{SCHED_PORT}
+  sch-ruby-a:v0.00d-#{defaults['SCHED_PORT']}
 ]
 
 cmd += ['sh', '-c', 'umask 002 && ./scheduler --ssl --ssl-key-file /ca/server.key --ssl-cert-file /ca/server.crt']
