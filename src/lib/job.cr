@@ -233,18 +233,33 @@ class Job
     set_upload_dirs()
   end
 
-  def set_upload_dirs
+  def get_package_dir
+    if @hash["cci-makepkg"]? || @hash["cci-depends"]? || @hash["build-pkg"]?
+      mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
+      common_dir = "#{mount_type}/#{os}/#{os_arch}/#{os_version}"
+    end
+
     if @hash["cci-makepkg"]?
-      package_dir = ",/initrd/pkg"
+      package_dir = ",/initrd/pkg/#{common_dir}/#{@hash["cci-makepkg"]["benchmark"]}"
     elsif @hash["cci-depends"]?
-      package_dir = ",/initrd/deps"
+      package_dir = ",/initrd/deps/#{common_dir}/#{@hash["cci-depends"]["benchmark"]}"
     elsif @hash["build-pkg"]?
-      package_dir = ",/initrd/build-pkg"
+      if @hash["pkgbuild_repo"].to_s =~ /(packages|community)\/\//
+        package_name = @hash["pkgbuild_repo"].to_s.split("/")[-2]
+      else
+        package_name = @hash["pkgbuild_repo"].to_s.split("/")[-1]
+      end
+      package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
+      package_dir += ",/cci/build-config" if @hash["config"]?
     else
       package_dir = ""
     end
 
-    self["upload_dirs"] = "#{result_root}#{package_dir}"
+    return package_dir
+  end
+
+  def set_upload_dirs
+    self["upload_dirs"] = "#{result_root}#{get_package_dir}"
   end
 
   private def set_result_service
