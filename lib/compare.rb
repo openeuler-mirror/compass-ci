@@ -69,7 +69,7 @@ end
 def create_groups_matrices_list(conditions, dims)
   es = ESQuery.new(ES_HOST, ES_PORT)
   query_results = es.multi_field_query(conditions)
-  combine_group_query_data(query_results, dims)
+  combine_group_query_data(query_results['hits']['hits'], dims)
 end
 
 # -------------------------------------------------------------------------------------------

@@ -34,7 +34,7 @@ ALL_FIELDS = FIELDS + NOT_SHOW_FIELDS
 NOT_NEED_EXIST_FIELDS = %w[error_ids upstream_repo].freeze
 PREFIX_SEARCH_FIELDS = ['tbox_group'].freeze
 ES_CLIENT = Elasticsearch::Client.new(url: "http://#{ES_HOST}:#{ES_PORT}")
-COMPARE_RECORDS_NUMBER = 50
+COMPARE_RECORDS_NUMBER = 100
 
 def es_query(query)
   ES_CLIENT.search index: 'jobs*', body: query
@@ -148,16 +148,51 @@ def get_es_must(params)
   must
 end
 
-def do_get_groups_matrices(query, dimension, total, size, from)
-  result = es_query(query)
-  matrices, suites_list = combine_group_query_data(result, dimension)
+def get_dimension_list(dimension)
+  query = { size: 0, aggs: { dims: { terms: { size: 10000, field: dimension[0] } } } }
+  buckets = es_query(query)['aggregations']['dims']['buckets']
+  dimension_list = []
+  buckets.each { |dims_agg| dimension_list << dims_agg['key'] }
+  return dimension_list
+end
+
+def query_dimension(dim_field, dim_value, must, size, from)
+  must_dim = Array.new(must)
+  must_dim << { term: { dim_field => dim_value } }
+  query = {
+    query: {
+      bool: {
+        must: must_dim
+      }
+    },
+    size: size,
+    from: from,
+    sort: [{
+      start_time: { order: 'desc' }
+    }]
+  }
+  es_query(query)['hits']['hits']
+end
+
+def get_dimension_job_list(dimension, must, size, from)
+  dimension_list = get_dimension_list(dimension)
+  job_list = []
+  dimension_list.each do |dim|
+    job_list += query_dimension(dimension[0], dim, must, size, from)
+  end
+  job_list
+end
+
+def do_get_groups_matrices(must, dimension, total, size, from)
+  job_list = get_dimension_job_list(dimension, must, size, from)
+
+  matrices, suites_list = combine_group_query_data(job_list, dimension)
   while matrices.empty?
     from += size
     break if from > total
 
-    query[:from] = from
-    result = es_query(query)
-    matrices, suites_list = combine_group_query_data(result, dimension)
+    job_list = get_dimension_job_list(dimension, must, size, from)
+    matrices, suites_list = combine_group_query_data(job_list, dimension)
   end
   [matrices, suites_list]
 end
@@ -168,20 +203,7 @@ def get_groups_matrices(conditions, dimension, must, size, from)
   total = es_count(count_query)
   return {} if total < 1
 
-  query = {
-    query: {
-      bool: {
-        must: must
-      }
-    },
-    size: size,
-    from: from,
-    sort: [{
-      start_time: { order: 'desc' }
-    }]
-  }
-
-  do_get_groups_matrices(query, dimension, total, size, from)
+  do_get_groups_matrices(must, dimension, total, size, from)
 end
 
 def get_compare_body(params)
