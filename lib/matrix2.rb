@@ -87,6 +87,8 @@ def create_matrix(job_list)
     next unless stats
 
     stats.each do |key, value|
+      next if key.include?('timestamp')
+
       matrix[key] = [] unless matrix[key]
       matrix[key] << value
     end
