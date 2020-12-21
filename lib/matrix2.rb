@@ -82,9 +82,14 @@ def create_matrix(job_list)
   matrix = {}
   suites = []
   job_list.each do |job|
-    suites << job['suite'] if job['suite']
     stats = job['stats']
     next unless stats
+
+    if job['suite']
+      next unless stats.keys.any? { |stat| stat.start_with?(job['suite']) }
+
+      suites << job['suite']
+    end
 
     stats.each do |key, value|
       next if key.include?('timestamp')
