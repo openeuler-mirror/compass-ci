@@ -121,7 +121,7 @@ end
 #                 ...
 #               }
 def combine_group_query_data(job_list, dims)
-  suites_list = []
+  suites_hash = {}
   groups = auto_group(job_list, dims)
   groups.each do |group_key, value|
     if value.empty?
@@ -133,10 +133,10 @@ def combine_group_query_data(job_list, dims)
       groups[group_key][dimension_key], suites = create_matrix(jobs)
       suite_list.concat(suites)
     end
-    suites_list << suite_list
+    suites_hash[group_key] = suite_list
   end
 
-  return groups, suites_list
+  return groups, suites_hash
 end
 
 # input:

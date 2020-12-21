@@ -387,25 +387,25 @@ end
 # input: group matrices
 # output: pre compare result of each group
 # the result with more comparison objects first
-def compare_group_matrices(group_matrices, suites_list, options)
+def compare_group_matrices(group_matrices, suites_hash, options)
   result_str = ''
   group_matrices_array = sort_by_matrix_size(group_matrices)
   group_matrices_array.each do |matrice_kv|
-    result_str += get_matrix_str(matrice_kv[0], matrice_kv[1], suites_list, options)
+    result_str += get_matrix_str(matrice_kv[0], matrice_kv[1], suites_hash[matrice_kv[0]], options)
   end
   result_str
 end
 
-def get_matrix_str(matrice_key, matrice_value, suites_list, options)
+def get_matrix_str(matrice_key, matrice_value, suite_list, options)
   m_list = []
   m_titles = []
   matrice_value.each do |dim, matrix|
     m_titles << dim
     m_list << matrix
   end
-  return compare_matrixes(m_list, suites_list.shift, m_titles, matrice_key, options: options) if options[:no_print]
+  return compare_matrixes(m_list, suite_list, m_titles, matrice_key, options: options) if options[:no_print]
 
-  print compare_matrixes(m_list, suites_list.shift, m_titles, matrice_key, options: options)
+  print compare_matrixes(m_list, suite_list, m_titles, matrice_key, options: options)
   return ''
 end
 
