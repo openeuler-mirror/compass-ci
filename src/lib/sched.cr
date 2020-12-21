@@ -125,6 +125,7 @@ class Sched
     end
 
     @redis.update_wtmp(testbox, hash)
+    @es.update_tbox(testbox, hash)
 
     # json log
     hash["testbox"] = testbox

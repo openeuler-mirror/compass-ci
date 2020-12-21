@@ -87,6 +87,27 @@ class Elasticsearch::Client
     )
   end
 
+  def update_tbox(testbox : String, wtmp_hash : Hash)
+    query = {:index => "testbox", :type => "_doc", :id => testbox}
+    result = @client.get_source(query) if @client.exists(query)
+    history = result["history"].as_a? if result.is_a?(JSON::Any)
+    history ||= [] of JSON::Any
+    history << JSON.parse(wtmp_hash.to_json)
+
+    @client.create(
+      {
+        :index => "testbox",
+        :type => "_doc",
+        :id => testbox,
+        :body => {
+          :state => wtmp_hash["state"],
+          :job_id => wtmp_hash["job_id"],
+          :history => history
+        }
+      }
+    )
+  end
+
   private def create(job_content : JSON::Any, job_id : String)
     return @client.create(
       {
