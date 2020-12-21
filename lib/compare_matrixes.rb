@@ -176,11 +176,15 @@ def get_matrixes_values(matrixes_list, options)
   matrixes_values
 end
 
-def remove_unchanged_field(matrixes_values)
+def remove_unchanged_field(matrixes_values, suite_list)
   # remove unchanged field from matrixes values and remove :changed key
   #
   matrixes_values.each_key do |success|
     matrixes_values[success].delete_if do |field|
+      if suite_list.any? { |suite| field.start_with?(suite) }
+        matrixes_values[success][field][:changed] = true
+      end
+
       !matrixes_values[success][field].delete(:changed)
     end
   end
@@ -203,7 +207,7 @@ def compare_matrixes(matrixes_list, suite_list, matrixes_titles = nil, group_key
 
   options = { 'perf-profile': 5, theme: :none, no_print: false }.merge(options)
   matrixes_values = get_matrixes_values(matrixes_list, options)
-  remove_unchanged_field(matrixes_values) if matrixes_list.length > 1
+  remove_unchanged_field(matrixes_values, suite_list) if matrixes_list.length > 1
   no_print = options[:no_print]
   result_str = group_key ? "\n\n\n\n\n" + group_key : ''
   result_str += get_all_result_str(
