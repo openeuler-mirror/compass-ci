@@ -110,3 +110,26 @@ end
 get '/get_testboxes' do
   query_testboxes
 end
+
+# GET /get_tbox_state?testbox=$testbox
+# Response:
+#   - {
+#       testbox: $testbox,
+#       states: {
+#         "state": "$current_state",
+#         "job_id": "$current_job_id",
+#         "history": [
+#           {
+#             "time": "$history_time",
+#             "mac": "$mac",
+#             "ip": "$ip",
+#             "job_id": "$history_job_id",
+#             "state": "$history_state"
+#           },
+#           ...
+#         ]
+#       }
+#     }
+get '/get_tbox_state' do
+  get_tbox_state(params)
+end
