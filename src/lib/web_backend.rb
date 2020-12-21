@@ -483,3 +483,29 @@ def query_testboxes
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
+
+def get_tbox_state_body(params)
+  query = {
+    "query": {
+      "match": {
+        "_id": params[:testbox]
+      }
+    }
+  }
+  body = ES_CLIENT.search(index: 'testbox', body: query)['hits']['hits'][0]['_source']
+
+  {
+    testbox: params[:testbox],
+    states: body
+  }.to_json
+end
+
+def get_tbox_state(params)
+  begin
+    body = get_tbox_state_body(params)
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get testbox state error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
