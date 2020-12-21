@@ -79,46 +79,22 @@ module Scheduler
   #
   # curl -X PUT "http://localhost:3000/set_host_mac?hostname=wfg&mac=00-01-02-03-04-05"
   put "/set_host_mac" do |env|
-    if (client_hostname = env.params.query["hostname"]?) && (client_mac = env.params.query["mac"]?)
-      env.sched.set_host_mac(client_mac, client_hostname)
-
-      "Done"
-    else
-      "No yet!"
-    end
+    env.sched.set_host_mac
   end
 
   # curl -X PUT "http://localhost:3000/set_host2queues?queues=vm-2p8g.aarch64&host=vm-2p8g.aarch64"
   put "/set_host2queues" do |env|
-    if (client_queues = env.params.query["queues"]?) && (client_host = env.params.query["host"]?)
-      env.sched.set_host2queues(client_host, client_queues)
-
-      "Done"
-    else
-      "No yet"
-    end
+    env.sched.set_host2queues
   end
 
   # curl -X PUT "http://localhost:3000/del_host_mac?mac=00-01-02-03-04-05"
   put "/del_host_mac" do |env|
-    if client_mac = env.params.query["mac"]?
-      env.sched.del_host_mac(client_mac)
-
-      "Done"
-    else
-      "No yet!"
-    end
+    env.sched.del_host_mac
   end
 
   # curl -X PUT "http://localhost:3000/del_host2queues?host=vm-2p8g.aarch64"
   put "/del_host2queues" do |env|
-    if client_host = env.params.query["host"]?
-      env.sched.del_host2queues(client_host)
-
-      "Done"
-    else
-      "No yet!"
-    end
+    env.sched.del_host2queues
   end
 
   # client(runner) report job's status

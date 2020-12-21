@@ -51,20 +51,44 @@ class Sched
     mac.gsub(":", "-")
   end
 
-  def set_host_mac(mac : String, hostname : String)
-    @redis.hash_set("sched/mac2host", normalize_mac(mac), hostname)
+  def set_host_mac
+    if (hostname = @env.params.query["hostname"]?) && (mac = @env.params.query["mac"]?)
+      @redis.hash_set("sched/mac2host", normalize_mac(mac), hostname)
+
+      "Done"
+    else
+      "No yet!"
+    end
   end
 
-  def del_host_mac(mac : String)
-    @redis.hash_del("sched/mac2host", normalize_mac(mac))
+  def del_host_mac
+    if mac = @env.params.query["mac"]?
+      @redis.hash_del("sched/mac2host", normalize_mac(mac))
+
+      "Done"
+    else
+      "No yet!"
+    end
   end
 
-  def set_host2queues(hostname : String, queues : String)
-    @redis.hash_set("sched/host2queues", hostname, queues)
+  def set_host2queues
+    if (queues = @env.params.query["queues"]?) && (hostname = @env.params.query["host"]?)
+      @redis.hash_set("sched/host2queues", hostname, queues)
+
+      "Done"
+    else
+      "No yet!"
+    end
   end
 
-  def del_host2queues(hostname : String)
-    @redis.hash_del("sched/host2queues", hostname)
+  def del_host2queues
+    if hostname = @env.params.query["host"]?
+      @redis.hash_del("sched/host2queues", hostname)
+
+      "Done"
+    else
+      "No yet!"
+    end
   end
 
   def update_tbox_wtmp

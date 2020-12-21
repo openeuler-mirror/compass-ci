@@ -29,7 +29,7 @@ class Sched
   #   then hostname will be "sut-00-01-02-03-04" !!!
   def submit_host_info_job(mac)
     host = "sut-#{mac}"
-    set_host_mac(mac, host)
+    @redis.hash_set("sched/mac2host", normalize_mac(mac), host)
 
     Jobfile::Operate.auto_submit_job(
       "#{ENV["LKP_SRC"]}/jobs/host-info.yaml",
