@@ -8,6 +8,7 @@ require 'json'
 require 'yaml'
 require 'open3'
 require 'mail'
+require 'base64'
 
 set :bind, '0.0.0.0'
 set :port, ENV['SEND_MAIL_PORT']
@@ -27,6 +28,19 @@ end
 
 post '/send_mail_text' do
   data = Mail.read_from_string(request.body.read)
+
+  mail_info = {
+    'subject' => data.subject,
+    'to' => data.to,
+    'body' => data.body.decoded
+  }
+
+  send_mail(mail_info)
+end
+
+post '/send_mail_encode' do
+  data_decode = Base64.decode64(request.body.read)
+  data = Mail.read_from_string(data_decode)
 
   mail_info = {
     'subject' => data.subject,
