@@ -37,13 +37,13 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 
 2. 执行 git push 命令更新仓库，自动触发测试。
 
-3. 在网页中[查看](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)和[比较](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.zh.md)测试结果 web: https://compass-ci.openeuler.org/jobs。
+3. 在网页中[查看](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)和[比较](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.zh.md)测试结果 web: https://compass-ci.openeuler.org/jobs
    
 **手动提交测试任务**
 
 1. [安装 Compass-CI 客户端](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md)。
 2. [编写测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md), [手动提交测试任务](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)。
-3. 在网页中[查看](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)和[比较](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.zh.md)测试结果 web: https://compass-ci.openeuler.org/jobs。
+3. 在网页中[查看](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)和[比较](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.zh.md)测试结果 web: https://compass-ci.openeuler.org/jobs
 
 **登录测试环境**
 

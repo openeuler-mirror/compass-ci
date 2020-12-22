@@ -34,13 +34,13 @@ If a new error ID is generated, the bisect is automatically triggered to locate 
 
 2. Run the **git push** command to update the repository and automatically trigger the test.
 
-3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.en.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.en.md) test results on the web page: https://compass-ci.openeuler.org/jobs.
+3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.en.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.en.md) test results on the web page: https://compass-ci.openeuler.org/jobs
 
 **Manually Submitting a Test Task**
 
 1. [Install the Compass-CI client](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md).
 2. [Compile test cases and manually submit test tasks](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md).
-3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.en.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.en.md) test results on the web page: https://compass-ci.openeuler.org/jobs.
+3. You can [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.en.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.en.md) test results on the web page: https://compass-ci.openeuler.org/jobs
 
 **Logging in to the Test Environment**
 
