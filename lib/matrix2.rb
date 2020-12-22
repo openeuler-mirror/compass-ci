@@ -157,7 +157,7 @@ def combine_group_jobs_list(query_data, groups_params, dimensions, metrics)
   groups = auto_group_by_template(job_list, groups_params, dimensions, metrics)
   groups.each do |group_key, dims|
     dims.each do |dim_key, jobs|
-      groups[group_key][dim_key], _ = create_matrix(jobs)
+      groups[group_key][dim_key], = create_matrix(jobs)
     end
   end
 
