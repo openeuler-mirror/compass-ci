@@ -2,6 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'base64'
 require 'rest-client'
 require_relative 'constants.rb'
 
@@ -17,5 +18,10 @@ class MailClient
   def send_mail(mail_json)
     resource = RestClient::Resource.new("http://#{@host}:#{@port}/send_mail_yaml")
     resource.post(mail_json)
+  end
+
+  def send_mail_encode(mail_data)
+    resource = RestClient::Resource.new("http://#{@host}:#{@port}/send_mail_encode")
+    resource.post(Base64.encode64(mail_data))
   end
 end
