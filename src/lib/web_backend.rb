@@ -186,15 +186,15 @@ end
 def do_get_groups_matrices(must, dimension, total, size, from)
   job_list = get_dimension_job_list(dimension, must, size, from)
 
-  matrices, suites_list = combine_group_query_data(job_list, dimension)
+  matrices, suites_hash = combine_group_query_data(job_list, dimension)
   while matrices.empty?
     from += size
     break if from > total
 
     job_list = get_dimension_job_list(dimension, must, size, from)
-    matrices, suites_list = combine_group_query_data(job_list, dimension)
+    matrices, suites_hash = combine_group_query_data(job_list, dimension)
   end
-  [matrices, suites_list]
+  [matrices, suites_hash]
 end
 
 def get_groups_matrices(conditions, dimension, must, size, from)
@@ -209,11 +209,11 @@ end
 def get_compare_body(params)
   dimension, conditions = get_dimension_conditions(params)
   must = get_es_must(params)
-  groups_matrices, suites_list = get_groups_matrices(conditions, dimension, must, COMPARE_RECORDS_NUMBER, 0)
+  groups_matrices, suites_hash = get_groups_matrices(conditions, dimension, must, COMPARE_RECORDS_NUMBER, 0)
   if !groups_matrices || groups_matrices.empty?
     body = 'No Data.'
   else
-    body = compare_group_matrices(groups_matrices, suites_list, { no_print: true })
+    body = compare_group_matrices(groups_matrices, suites_hash, { no_print: true })
     body = 'No Difference.' if !body || body.empty?
   end
   return body
