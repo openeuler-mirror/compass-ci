@@ -390,7 +390,10 @@ end
 def compare_group_matrices(group_matrices, suites_hash, options)
   result_str = ''
   group_matrices_array = sort_by_matrix_size(group_matrices)
+  have_multi_member = group_matrices_array[0][1].size > 1
   group_matrices_array.each do |matrice_kv|
+    next if have_multi_member && matrice_kv[1].size < 2
+
     result_str += get_matrix_str(matrice_kv[0], matrice_kv[1], suites_hash[matrice_kv[0]], options)
   end
   result_str
