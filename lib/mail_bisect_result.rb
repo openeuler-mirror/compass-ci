@@ -1,48 +1,69 @@
 # frozen_string_literal: true
 
-require_relative 'mail_client'
-require_relative 'git'
 require 'json'
+require 'base64'
+require_relative 'git'
+require_relative 'mail_client'
+require_relative 'auto_tool'
 
 # compose and send email for bisect result
 class MailBisectResult
   def initialize(bisect_info)
-    @error_messages = bisect_info['error_messages']
+    @bisect_error = bisect_info['bisect_error']
+    @all_errors = bisect_info['all_errors']
     @repo = bisect_info['repo']
     @commit_id = bisect_info['commit']
+    @first_bad_commit_result_root = bisect_info['first_bad_commit_result_root']
     @git_commit = GitCommit.new(@repo, @commit_id)
+    # now send mail to review
+    @to = 'caoxl@crystal.ci, caoxl78320@163.com, huming15@163.com'
   end
 
   def create_send_email
-    compose_mail
-    send_mail
+    send_report_mail(compose_mail)
+    send_account_mail
   end
 
   def compose_mail
-    subject = "[Compass-CI][#{@repo.split('/')[1]}]: #{@error_messages[0].split("\n")[0]}"
-    job_url = ENV['result_root'] ? "job url: http://#{ENV['SRV_HTTP_HOST']}:#{ENV['SRV_HTTP_PORT']}#{ENV['result_root']}\n" : ''
-    body = <<~BODY
+    subject = "[Compass-CI][#{@repo.split('/')[1]}] #{@commit_id[0..9]} #{@bisect_error[0].split("\n")[0]}"
+    prefix_srv = "http://#{ENV['SRV_HTTP_HOST']}:#{ENV['SRV_HTTP_PORT']}"
+    bisect_job_url = ENV['result_root'] ? "bisect job info: #{prefix_srv}#{ENV['result_root']}\n" : ''
+    first_bad_commit_job_url = "first bad commit job info: #{prefix_srv}#{@first_bad_commit_result_root}\n"
+
+    data = <<~BODY
+    To: #{@to}
+    Subject: #{subject}
+
     Hi #{@git_commit.author_name},
 
-      git url: #{@git_commit.url}
-      git commit: #{@commit_id[0..11]} ("#{@git_commit.subject}")
+    url: #{@git_commit.url}
+    commit: #{@commit_id} ("#{@git_commit.subject}")
+    compiler: gcc (GCC) 7.3.0
 
-      gcc version: 7.3.0
+    all errors/warnings:
+    #{@all_errors}
 
-      error_messages:
-      #{@error_messages.join("\n")}
-
-      #{job_url}
+    #{bisect_job_url}
+    #{first_bad_commit_job_url}
     Regards,
     Compass CI team
     BODY
-    to = 'caoxl@crystal.ci'
-    @hash = { 'to' => to, 'body' => body, 'subject' => subject }
-    # @hash = { 'to' => @git_commit.author_email, 'body' => body, 'subject' => subject }
+
+    return data
   end
 
-  def send_mail
-    json = @hash.to_json
-    MailClient.new.send_mail(json)
+  def send_report_mail(mail_data)
+    MailClient.new.send_mail_encode(mail_data)
+  end
+
+  def send_account_mail
+    user_info = {
+      'my_email' => @to,
+      'my_name' => @git_commit.author_name,
+      'my_commit_url' => "#{@git_commit.url}/commit/#{@commit_id}"
+    }
+
+    apply_account = AutoAssignAccount.new(user_info)
+    apply_account.send_account
   end
 end
