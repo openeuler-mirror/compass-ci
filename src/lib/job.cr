@@ -51,17 +51,23 @@ class Job
 
   def initialize(job_content : JSON::Any, id)
     @hash = job_content.as_h
+    @es = Elasticsearch::Client.new
+    @account_info = Hash(String, JSON::Any).new
 
     # init job with "-1", or use the original job_content["id"]
     id = "-1" if "#{id}" == ""
 
     if initialized?
-      return if @hash["id"] == "#{id}"
+      if @hash["id"] == "#{id}"
+        return unless @hash.has_key?("my_uuid") || @hash.has_key?("my_token")
+
+        check_account_info()
+        return
+      end
     end
 
-    @es = Elasticsearch::Client.new
     @hash["id"] = JSON::Any.new("#{id}")
-    @account_info = Hash(String, JSON::Any).new
+
     check_required_keys()
     check_account_info()
     set_defaults()
