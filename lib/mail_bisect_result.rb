@@ -4,7 +4,7 @@ require 'json'
 require 'base64'
 require_relative 'git'
 require_relative 'mail_client'
-require_relative 'auto_tool'
+require_relative 'assign_account_client'
 
 # compose and send email for bisect result
 class MailBisectResult
