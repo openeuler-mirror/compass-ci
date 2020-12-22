@@ -4,10 +4,12 @@
 
 require 'set'
 require 'json'
+require 'yaml'
 require 'fileutils'
 
 require_relative './constants'
 require_relative '../../lib/sched_client'
+require_relative '../../lib/compare_error_messages'
 require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 
 # a utils module for delimiter service
@@ -83,9 +85,20 @@ module Utils
 
       es = ESQuery.new
       new_job = es.query_by_id(new_job_id)
-      return 'bad' if new_job['stats'].key?(error_id)
 
-      return 'good'
+      status =  new_job['stats'].key?(error_id) ? 'bad' : 'good'
+      puts "new_job_id: #{new_job_id}"
+      puts "upstream_commit: #{job['upstream_commit']}"
+      record_jobs(new_job_id, job['upstream_commit'])
+
+      return status
+    end
+
+    def record_jobs(job_id, job_commit)
+      FileUtils.mkdir_p TMP_RESULT_ROOT unless File.exist? TMP_RESULT_ROOT
+      commit_jobs = File.join(TMP_RESULT_ROOT, 'commit_jobs')
+      content = "#{job_commit}: #{job_id}"
+      File.open(commit_jobs, 'a+') { |f| f.puts content }
     end
 
     def get_account_info
@@ -99,6 +112,8 @@ module Utils
 
       account_info = get_account_info
       raise "query #{DELIMITER_ACCONUT} account info failed!" unless account_info
+
+      record_jobs(job['id'], job['upstream_commit'])
 
       job['suite'] = 'bisect'
       job['my_name'] = account_info['my_name']
@@ -132,6 +147,35 @@ module Utils
       File.open(log_file, 'w') do |f|
         log_content.each { |line| f.puts(line) }
       end
+    end
+
+    def find_parent_commit(git_dir, commit)
+      response = %x(git -C #{git_dir} rev-parse #{commit}~1)
+      return response.chomp
+    end
+
+    def obt_id_by_commit(commit)
+      puts "#{TMP_RESULT_ROOT}/commit_jobs"
+      content = YAML.load(File.open("#{TMP_RESULT_ROOT}/commit_jobs"))
+      puts content
+      content[commit]
+    end
+
+    def obt_errors(git_dir, commit)
+      pre_commit = find_parent_commit(git_dir, commit)
+      obt_errors_by_commits(commit, pre_commit)
+    end
+
+    def obt_errors_by_commits(cur_commit, pre_commit)
+      cur_id = obt_id_by_commit(cur_commit)
+      pre_id = obt_id_by_commit(pre_commit)
+      _, errors = get_compare_result(pre_id, cur_id)
+      return errors
+    end
+
+    def obt_result_root_by_commit(commit)
+      id = obt_id_by_commit(commit)
+      ESQuery.new.query_by_id(id)['result_root']
     end
   end
 end
