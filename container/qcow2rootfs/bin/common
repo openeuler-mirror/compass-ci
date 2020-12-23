@@ -127,7 +127,7 @@ get_rootfs_kernel() {
 		exit 5
 	}
 	local vmlinuz_file vmlinuz kernel
-	vmlinuz_file=$(find ./boot -name "vmlinuz-*" |grep -v rescue) && export ROOTFS_VMLINUZ_FILE=$vmlinuz_file
+	vmlinuz_file=$(find ./boot -name "vmlinu[z|x]-*" | grep -v rescue) && export ROOTFS_VMLINUZ_FILE=$vmlinuz_file
 	vmlinuz=$(basename "$vmlinuz_file") && export ROOTFS_VMLINUZ=$vmlinuz
 	kernel=${vmlinuz:8} && export ROOTFS_KERNEL=$kernel
 
