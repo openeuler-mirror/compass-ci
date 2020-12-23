@@ -30,5 +30,7 @@ class Sched
     log = job_content.dup
     log["job_id"] = log.delete("id").not_nil!
     @log.info(log.to_json)
+  rescue e
+    @log.warn(e)
   end
 end

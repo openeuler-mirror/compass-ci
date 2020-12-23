@@ -45,6 +45,8 @@ class Sched
   def alive(version)
     debug_message("Env= {\n#{`export`}}")
     "LKP Alive! The time is #{Time.local}, version = #{version}"
+  rescue e
+    @log.warn(e)
   end
 
   def normalize_mac(mac : String)
@@ -59,6 +61,8 @@ class Sched
     else
       "No yet!"
     end
+  rescue e
+    @log.warn(e)
   end
 
   def del_host_mac
@@ -69,6 +73,8 @@ class Sched
     else
       "No yet!"
     end
+  rescue e
+    @log.warn(e)
   end
 
   def set_host2queues
@@ -79,6 +85,8 @@ class Sched
     else
       "No yet!"
     end
+  rescue e
+    @log.warn(e)
   end
 
   def del_host2queues
@@ -89,6 +97,8 @@ class Sched
     else
       "No yet!"
     end
+  rescue e
+    @log.warn(e)
   end
 
   def update_tbox_wtmp
@@ -118,6 +128,8 @@ class Sched
     # json log
     hash["testbox"] = testbox
     @log.info(hash.to_json)
+  rescue e
+    @log.warn(e)
   end
 
   def report_ssh_port
@@ -130,6 +142,8 @@ class Sched
     end
 
     @log.info(%({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"}))
+  rescue e
+    @log.warn(e)
   end
 
   private def query_consumable_keys(shortest_queue_name)

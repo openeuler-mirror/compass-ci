@@ -24,5 +24,7 @@ class Sched
     @redis.remove_finished_job(job_id)
 
     @log.info(%({"job_id": "#{job_id}", "job_state": "complete"}))
+  rescue e
+    @log.warn(e)
   end
 end

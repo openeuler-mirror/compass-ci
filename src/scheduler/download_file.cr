@@ -10,5 +10,7 @@ class Sched
     @log.info(%({"job_id": "#{job_id}", "job_state": "download"}))
 
     send_file @env, file_path
+  rescue e
+    @log.warn(e)
   end
 end

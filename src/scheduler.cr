@@ -3,7 +3,14 @@
 
 require "scheduler/scheduler"
 require "./scheduler/constants.cr"
+require "./lib/json_logger"
 
 module Scheduler
-  Kemal.run(SCHED_PORT)
+  log = JSONLogger.new
+
+  begin
+    Kemal.run(SCHED_PORT)
+  rescue e
+    log.error(e)
+  end
 end

@@ -14,5 +14,7 @@ class Sched
     @log.info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
 
     response
+  rescue e
+    @log.warn(e)
   end
 end
