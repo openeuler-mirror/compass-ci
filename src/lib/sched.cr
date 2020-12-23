@@ -28,11 +28,12 @@ class Sched
   property redis
   property block_helper
 
+  @@block_helper = BlockHelper.new
+
   def initialize(env : HTTP::Server::Context)
     @es = Elasticsearch::Client.new
     @redis = Redis::Client.new
     @task_queue = TaskQueueAPI.new
-    @block_helper = BlockHelper.new
     @rgc = RemoteGitClient.new
     @env = env
     @log = env.log.as(JSONLogger)

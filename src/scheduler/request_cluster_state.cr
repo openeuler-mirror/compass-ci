@@ -25,7 +25,7 @@ class Sched
       update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
     when "wait_ready"
       update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
-      @block_helper.block_until_finished(cluster_id) {
+      @@block_helper.block_until_finished(cluster_id) {
         cluster_state = sync_cluster_state(cluster_id, job_id, states[request_state])
         cluster_state == "ready" || cluster_state == "abort"
       }
