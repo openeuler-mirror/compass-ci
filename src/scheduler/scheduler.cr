@@ -3,7 +3,7 @@
 
 require "kemal"
 
-require "../lib/env"
+require "../lib/web_env"
 require "../lib/sched"
 require "../lib/json_logger"
 

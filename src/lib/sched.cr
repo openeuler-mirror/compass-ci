@@ -5,7 +5,7 @@ require "kemal"
 require "yaml"
 
 require "./job"
-require "./env"
+require "./web_env"
 require "./block_helper"
 require "./taskqueue_api"
 require "./remote_git_client"
