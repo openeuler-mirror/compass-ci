@@ -13,11 +13,18 @@ cd /c || exit
 # modify and manual run for now:
 [ -d "compass-ci/.git" ] || {
 	git clone https://gitee.com/wu_fengguang/compass-ci.git
-	ln -s compass-ci cci
+
+	cd /c/compass-ci || exit
+	[ -n "$compass_commitid" ] && git reset --hard "$compass_commitid"
+
+	ln -s compass-ci /c/cci
 }
 
 [ -d "lkp-tests/.git" ] || {
 	git clone https://gitee.com/wu_fengguang/lkp-tests.git
+
+	cd /c/lkp-tests || exit
+	[ -n "$lkp_commitid" ] && git reset --hard "$lkp_commitid"
 }
 
 [ -d "upstream-repos/.git" ] || {
