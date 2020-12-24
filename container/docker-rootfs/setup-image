@@ -4,8 +4,15 @@
 
 install_packages()
 {
-	yum install -y --skip-broken $(</tmp/packages-to-install)
-	yum clean all
+	if [ $(command -v yum) >/dev/null ]; then
+		yum install -y --skip-broken $(</tmp/packages-to-install)
+		yum clean all
+	elif [ $(command -v apt-get) >/dev/null ]; then
+		apt update
+		apt-get install -y --fix-missing $(</tmp/packages-to-install)
+	elif [ $(command -v pacman) >/dev/null ]; then
+		pacman -Syu --noconfirm $(</tmp/packages-to-install)
+	fi
 }
 
 remove_file()
