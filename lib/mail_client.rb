@@ -24,4 +24,9 @@ class MailClient
     resource = RestClient::Resource.new("http://#{@host}:#{@port}/send_mail_encode")
     resource.post(Base64.encode64(mail_data))
   end
+
+  def send_mail_text(mail_text)
+    resource = RestClient::Resource.new("http://#{@host}:#{@port}/send_mail_text")
+    resource.post(mail_text)
+  end
 end
