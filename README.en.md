@@ -44,7 +44,7 @@ If a new error ID is generated, the bisect is automatically triggered to locate 
 
 **Logging in to the Test Environment**
 
-1. Send an email to the compass-ci@qq.com to [apply for an account](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md).
+1. Send an email to the compass-ci-reply@qq.com to [apply for an account](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md).
 2. [Complete the environment configuration](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E6%9C%AC%E5%9C%B0%E5%AE%89%E8%A3%85compass-ci%E5%AE%A2%E6%88%B7%E7%AB%AF.md) as instructed by the email.
 3. Add the **sshd** field to the test task, submit the task, and [log in to the test environment](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%99%BB%E5%BD%95%E6%B5%8B%E8%AF%95%E6%9C%BA%E8%B0%83%E6%B5%8B%E4%BB%BB%E5%8A%A1.md).
 
