@@ -38,9 +38,21 @@ def auto_group(jobs_list, dimensions)
 end
 
 def extract_jobs_list(jobs_list)
-  jobs_list.map do |job|
-    job['_source']
+  jobs_list.map! do |job|
+    job['_source'] if job_is_useful?(job)
   end
+
+  jobs_list.compact
+end
+
+def job_is_useful?(job)
+  stats = job['_source']['stats']
+  return unless stats
+
+  suite = job['_source']['suite']
+  return unless suite && stats.keys.any? { |stat| stat.start_with?(suite) }
+
+  true
 end
 
 def group(jobs_list, dimensions)

@@ -83,7 +83,7 @@ def create_matrix(job_list)
   suites = []
   job_list.each do |job|
     stats = job['stats']
-    next unless stats && assign_suites(suites, job, stats)
+    suites << job['suite'] if job['suite']
 
     stats.each do |key, value|
       next if key.include?('timestamp')
@@ -97,17 +97,10 @@ def create_matrix(job_list)
   return matrix, suites
 end
 
-def assign_suites(suites, job, stats)
-  return unless job['suite'] && stats.keys.any? { |stat| stat.start_with?(job['suite']) }
-
-  suites << job['suite']
-end
-
 # input: query results from es_query
 # return: matrix
 def combine_query_data(query_data)
-  job_list = query_data['hits']['hits']
-  job_list.map! { |job| job['_source'] }
+  job_list = extract_jobs_list(query_data['hits']['hits'])
   create_matrix(job_list)
 end
 
