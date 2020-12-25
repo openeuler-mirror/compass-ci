@@ -61,6 +61,31 @@ class ESQuery
 
     return result[0]['_source']
   end
+
+  # select doc_field from index
+  # input:
+  #   eg: suite (@index: jobs)
+  # output:
+  #   [
+  #     {"key"=>"build-pkg", "doc_count"=>90841},
+  #     {"key"=>"cci-depends", "doc_count"=>4636},
+  #     {"key"=>"cci-makepkg", "doc_count"=>3647},
+  #     ...
+  #   ]
+  def query_specific_fields(field)
+    query = {
+      aggs: {
+        "all_#{field}" => {
+          terms: { field: field, size: 1000 }
+        }
+      },
+      size: 0
+    }
+    result = @client.search(index: @index + '*', body: query)['aggregations']["all_#{field}"]['buckets']
+    return nil if result.empty?
+
+    result
+  end
 end
 
 # Range Query Example:
