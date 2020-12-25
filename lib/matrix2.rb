@@ -124,10 +124,6 @@ def combine_group_query_data(job_list, dims)
   suites_hash = {}
   groups = auto_group(job_list, dims)
   groups.each do |group_key, value|
-    if value.empty?
-      groups.delete(group_key)
-      next
-    end
     suite_list = []
     value.each do |dimension_key, jobs|
       groups[group_key][dimension_key], suites = create_matrix(jobs)
