@@ -11,6 +11,7 @@ require 'json'
 require 'mail'
 require 'set'
 require 'optparse'
+require 'rest-client'
 require_relative '../defconfig'
 require_relative '../../lib/es_client'
 require_relative 'build-send-account-email'
@@ -180,7 +181,8 @@ def apply_account(my_info, conf_info)
   apply_info.update conf_info
   apply_info['lab'] = LAB
 
-  account_info_str = %x(curl -XGET '#{JUMPER_HOST}:#{JUMPER_PORT}/assign_account' -d '#{apply_info.to_json}')
+  assign_account_url = "#{JUMPER_HOST}:#{JUMPER_PORT}/assign_account"
+  account_info_str = RestClient.post assign_account_url, apply_info.to_json
   JSON.parse account_info_str
 end
 
@@ -285,7 +287,8 @@ def send_mail(my_info, account_info, conf_info)
               build_message(my_info['my_email'], account_info)
             end
 
-  %x(curl -XPOST '#{SEND_MAIL_HOST}:#{SEND_MAIL_PORT}/send_mail_text' -d "#{message}")
+  send_mail_url = "#{SEND_MAIL_HOST}:#{SEND_MAIL_PORT}/send_mail_text"
+  RestClient.post send_mail_url, message
 end
 
 def store_account_info(my_info)
