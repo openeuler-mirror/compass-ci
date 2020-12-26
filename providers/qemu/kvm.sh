@@ -51,6 +51,11 @@ do
 #done < /tftpboot/boot.ipxe-centos
 done < $ipxe_script
 
+[ -s "$kernel" ] || {
+	echo "can't get kernel or kernel size is 0"
+	exit
+}
+
 [ -n "$initrds" ] || {
 	exit
 }
