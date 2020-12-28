@@ -15,7 +15,7 @@ cd /c || exit
 	git clone https://gitee.com/wu_fengguang/compass-ci.git
 
 	cd /c/compass-ci || exit
-	[ -n "$compass_commitid" ] && git reset --hard "$compass_commitid"
+	[ -n "$compass_commit_id" ] && git reset --hard "$compass_commit_id"
 
 	ln -s compass-ci /c/cci
 }
@@ -24,9 +24,12 @@ cd /c || exit
 	git clone https://gitee.com/wu_fengguang/lkp-tests.git
 
 	cd /c/lkp-tests || exit
-	[ -n "$lkp_commitid" ] && git reset --hard "$lkp_commitid"
+	[ -n "$lkp_commit_id" ] && git reset --hard "$lkp_commit_id"
 }
 
 [ -d "upstream-repos/.git" ] || {
 	git clone https://gitee.com/wu_fengguang/upstream-repos.git
+
+	cd /c/upstream-repos || exit
+	[ -n "$upstream_commit_id" ] && git reset --hard "$upstream_commit_id"
 }
