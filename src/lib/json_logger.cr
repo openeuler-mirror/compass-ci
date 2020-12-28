@@ -25,7 +25,6 @@ class JSONLogger < Logger
                                   })).as_h
 
       logger_hash.any_merge!({"progname" => progname}) unless progname.empty?
-      logger_hash.merge!(JSON.parse(%({"caller": #{caller}})).as_h) if level_num >= 2
 
       begin
         message = JSON.parse(msg).as_h

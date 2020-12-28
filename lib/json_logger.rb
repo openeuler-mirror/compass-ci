@@ -25,7 +25,6 @@ class JSONLogger < Logger
     }
 
     logger_hash['progname'] = progname if progname
-    logger_hash['caller'] = caller if level_num >= 2
 
     msg = { 'message' => msg } unless msg.is_a?(Hash)
     logger_hash.merge!(msg)
