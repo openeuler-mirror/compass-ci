@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  ES_HOST
+  ES_PORT
+  ASSIST_RESULT_HOST
+  ASSIST_RESULT_PORT
+]
+
+defaults = relevant_defaults(names)
+env = docker_env(defaults)
+
+DEFAULT_LKP = '/c/lkp-tests'
+DEFAULT_CCI = '/c/compass-ci'
+DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
+ASSIST_RESULT_PORT = defaults['ASSIST_RESULT_PORT']
+docker_rm 'assist-result'
+
+cmd = %w[
+  docker run
+  --name assist-result
+  --restart=always
+  -d
+] + env + %W[
+  -e LKP_SRC=#{DEFAULT_LKP}
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -p #{ASSIST_RESULT_PORT}:#{ASSIST_RESULT_PORT}
+  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
+  -v /etc/localtime:/etc/localtime:ro
+  -v /srv/result:/srv/result:ro
+  -w #{DEFAULT_CCI}/container/assist-result/
+  assist-result
+]
+
+cmd += ['sh', '-c', 'umask 002 && ruby ./routes.rb']
+
+system(*cmd)
