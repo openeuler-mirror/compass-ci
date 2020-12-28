@@ -5,6 +5,7 @@
 
 require 'json'
 require 'mail'
+require 'rest-client'
 require_relative '../../../lib/es_client'
 require_relative 'assign-account-email'
 require_relative 'assign-account-fail-eamil'
@@ -131,6 +132,7 @@ class ApplyAccount
                       build_apply_account_fail_email(@my_info, error_message)
                     end
 
-    %x(curl -XPOST "#{@send_mail_host}:#{@send_mail_port}/send_mail_text" -d "#{email_message}")
+    send_mail_url = "#{@send_mail_host}:#{@send_mail_port}/send_mail_text"
+    RestClient.post send_mail_url, email_message
   end
 end
