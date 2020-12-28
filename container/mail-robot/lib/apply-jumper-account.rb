@@ -22,8 +22,8 @@ class ApplyJumperAccount
   end
 
   def apply_jumper_account
-    account_info_str = %x(curl -XGET "#{@jumper_host}:#{@jumper_port}/assign_account" \
-                               -d '#{@my_info.to_json}')
+    assign_account_url = "#{JUMPER_HOST}:#{JUMPER_PORT}/assign_account"
+    account_info_str = RestClient.post assign_account_url, @my_info.to_json
     account_info = JSON.parse account_info_str
 
     account_info_exist(account_info)
