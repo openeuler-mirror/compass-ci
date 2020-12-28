@@ -328,7 +328,7 @@ def get_banner(git_repo, branches)
   }
 end
 
-def get_optimize_jobs_braches(jobs)
+def get_optimize_jobs_branches(jobs)
   branch_set = Set.new
   jobs.size.times do |i|
     branch = jobs[i]['upstream_branch'].to_s
@@ -347,7 +347,7 @@ def get_jobs_body(params)
   page_size = get_positive_number(params.delete(:page_size), 20)
   page_num = get_positive_number(params.delete(:page_num), 1) - 1
   jobs, total = search_job(params, page_size, page_num)
-  jobs, branches = get_optimize_jobs_braches(jobs)
+  jobs, branches = get_optimize_jobs_branches(jobs)
   {
     total: total,
     filter: params,
