@@ -37,7 +37,7 @@ def build_apply_account_email(my_info)
          git clone https://gitee.com/wu_fengguang/lkp-tests.git
          cd lkp-tests
          make install
-         source \\${HOME}/.\\${SHELL##*/}rc
+         source ${HOME}/.${SHELL##*/}rc
 
     3) submit job
        reference: https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/tutorial.md
