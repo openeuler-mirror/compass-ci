@@ -25,10 +25,11 @@ class Sched
     @log.warn(e)
   end
 
-  # auto submit a job to collect the host information
-  # grub hostname is link with ":", like "00:01:02:03:04:05"
-  # remind: if like with "-", last "-05" is treated as host number
-  #   then hostname will be "sut-00-01-02-03-04" !!!
+  # auto submit a job to collect the host information.
+  #
+  # grub hostname is joined with ":", like "00:01:02:03:04:05".
+  # remind: if joined with "-", last "-05" is treated as host number
+  #         then hostname will be "sut-00-01-02-03-04" !!!
   def submit_host_info_job(mac)
     host = "sut-#{mac}"
     @redis.hash_set("sched/mac2host", normalize_mac(mac), host)
@@ -63,6 +64,7 @@ class Sched
 
     sub_queues = [] of String
     default_queues.each do |queue|
+      # TODO: this could be high cost and should be improved in future : keys(pattern).
       matched_queues = @redis.keys("#{QUEUE_NAME_BASE}/sched/#{queue}/*/ready")
       next if matched_queues.empty?
 
