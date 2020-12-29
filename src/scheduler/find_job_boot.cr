@@ -53,25 +53,33 @@ class Sched
   end
 
   def get_queues(host)
-    queues = [] of String
-
     queues_str = @redis.hash_get("sched/host2queues", host)
-    return queues unless queues_str
+    return [] of String unless queues_str
 
+    default_queues = [] of String
     queues_str.split(',', remove_empty: true) do |item|
-      queues << item.strip
+      default_queues << item.strip
     end
 
     sub_queues = [] of String
-    queues.each do |queue|
-      matched_queues =  @redis.keys("#{QUEUE_NAME_BASE}/sched/#{queue}/*/ready")
+    default_queues.each do |queue|
+      matched_queues = @redis.keys("#{QUEUE_NAME_BASE}/sched/#{queue}/*/ready")
+      next if matched_queues.empty?
+
       matched_queues.each do |mq|
         match_data = "#{mq}".match(%r(^#{QUEUE_NAME_BASE}/sched/(#{queue}/.+)/ready$))
         sub_queues << match_data[1] if match_data
       end
     end
 
-    return rand_queues(sub_queues)
+    return sub_queues unless sub_queues.empty?
+
+    idle_queues = [] of String
+    default_queues.each do |queue|
+      idle_queues << "#{queue}/idle"
+    end
+
+    return idle_queues
   end
 
   def get_job_from_queues(queues, testbox)
@@ -91,6 +99,9 @@ class Sched
 
     if job
       create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
+    else
+      # for physical machines
+      spawn { auto_submit_idle_job(host) }
     end
 
     return boot_content(job, boot_type)
