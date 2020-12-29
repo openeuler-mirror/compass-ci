@@ -12,9 +12,9 @@ require_relative 'get_account_info'
 set :bind, '0.0.0.0'
 set :port, 29999
 
-get '/assign_account' do
+post '/assign_account' do
   begin
-    data = YAML.safe_load request.body.read
+    data = JSON.parse request.body.read
   rescue StandardError => e
     puts e.message
     puts e.backtrace
