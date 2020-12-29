@@ -15,11 +15,25 @@ cd ipxe/src || exit
 
 cpus=$(nproc)
 
-make ARCH=arm64 bin-arm64-efi/ipxe.efi
-make ARCH=arm64 bin-arm64-efi/snponly.efi
-make ARCH=arm64 bin-arm64-efi/snp.efi
-make CONFIG=rpi bin-arm64-efi/rpi.efi
+build_ipxe()
+{
+	make ARCH=$1 bin-$1-efi/ipxe.efi
+	make ARCH=$1 bin-$1-efi/snponly.efi
+	make ARCH=$1 bin-$1-efi/snp.efi
+	make CONFIG=rpi bin-$1-efi/rpi.efi
 
-mkdir -p                  /tftpboot/ipxe/bin-arm64-efi/
-cp -a bin-arm64-efi/*.efi /tftpboot/ipxe/bin-arm64-efi/
-chmod 664 /tftpboot/ipxe/bin-arm64-efi/*.efi
+	mkdir -p /tftpboot/ipxe/bin-$1-efi/
+	cp -a bin-$1-efi/*.efi /tftpboot/ipxe/bin-$1-efi/
+	chmod 664 /tftpboot/ipxe/bin-$1-efi/*.efi
+}
+
+ARCH=$(arch)
+
+case "$ARCH" in
+	"aarch64")
+	        build_ipxe arm64
+	        ;;
+	"x86_64")
+		build_ipxe x86_64
+		;;
+esac
