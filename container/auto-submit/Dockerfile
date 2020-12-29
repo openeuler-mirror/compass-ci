@@ -3,6 +3,7 @@
 
 FROM alpine:3.11
 
+RUN adduser -u 1090 -D lkp
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk update && \
