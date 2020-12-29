@@ -51,7 +51,7 @@ class AutoSubmit
       return unless pkgbuild_repo
 
       submit_argv.push("pkgbuild_repo=#{pkgbuild_repo}")
-      repo2job_key = 'archlinux'
+      repo2job_key = @repo2job[git_repo] ? git_repo : 'archlinux'
     else
       return unless @repo2job[git_repo]
 
