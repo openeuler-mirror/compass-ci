@@ -72,14 +72,14 @@ class Sched
       end
     end
 
-    return sub_queues unless sub_queues.empty?
-
     idle_queues = [] of String
     default_queues.each do |queue|
       idle_queues << "#{queue}/idle"
     end
 
-    return idle_queues
+    all_queues = rand_queues(sub_queues) + idle_queues
+
+    return all_queues
   end
 
   def get_job_from_queues(queues, testbox)
