@@ -18,14 +18,9 @@ fi
 qemu=qemu-system-aarch64
 command -v $qemu >/dev/null || qemu=qemu-kvm
 
-echo $SCHED_PORT
 ipxe_script=ipxe_script
 curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
 cat $ipxe_script >> ${log_file}
-#echo -----
-#cat $ipxe_script
-#echo -----
-#exit
 
 append=
 initrds=
@@ -47,8 +42,6 @@ do
 		*)
 			;;
 	esac
-#done < /tftpboot/boot.ipxe-debian
-#done < /tftpboot/boot.ipxe-centos
 done < $ipxe_script
 
 [ -s "$kernel" ] || {
@@ -63,6 +56,7 @@ done < $ipxe_script
 initrd=initrd
 cat $initrds > $initrd
 
+echo $SCHED_PORT
 echo kernel: $kernel
 echo initrds: $initrds
 echo append: $append
@@ -78,7 +72,6 @@ kvm=(
 	-smp $nr_cpu
 	-m $memory
 	-cpu Kunpeng-920
-	-device virtio-gpu-pci
 	-bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd
 	-nic tap,model=virtio-net-pci,helper=/usr/libexec/qemu-bridge-helper,br=br0,mac=${mac}
 	-k en-us
