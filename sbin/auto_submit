@@ -20,7 +20,7 @@ class AutoSubmit
   def get_pkgbuild_repo(repo_array)
     pkgbuild_repo = "archlinux/#{repo_array[0]}"
     repo_array.each do |repo|
-      next unless repo =~ /-git$/
+      next unless repo =~ /(-git|linux)$/
 
       pkgbuild_repo = "archlinux/#{repo}"
       break
