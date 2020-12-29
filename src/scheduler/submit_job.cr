@@ -38,6 +38,7 @@ class Sched
     job_messages = Array(Hash(String, String)).new
     lab = job.lab
     subqueue = job.subqueue
+    roles = get_roles(job)
 
     # collect all job ids
     job_ids = [] of String
@@ -52,6 +53,9 @@ class Sched
 
     # steps for each host
     cluster_config["nodes"].as_h.each do |host, config|
+      # continue if role in cluster config matches role in job
+      next if (config["roles"].as_a.map(&.to_s) & roles).empty?
+
       queue = host.to_s
       job_id = add_task("#{queue}/#{subqueue}", lab)
 
@@ -155,6 +159,11 @@ class Sched
     cluster_file_paths.each do |f|
       return YAML.parse(File.read(f)) if File.file?(f)
     end
+  end
+
+  def get_roles(job)
+    roles = job.hash.keys.map { |key| $1 if key =~ /^if role (.*)/ }
+    roles.compact.map(&.strip)
   end
 
   def get_commit_date(job)
