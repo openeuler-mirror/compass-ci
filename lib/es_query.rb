@@ -18,7 +18,7 @@ class ESQuery
 
   # Example @items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # means to query: key1 == value1 && (key2 in [value2, value3, ..])
-  def multi_field_query(items, size: 10_000)
+  def multi_field_query(items, size: 10_000, desc_keyword: nil)
     unless items
       warn 'empty filter!'
       exit
@@ -31,6 +31,7 @@ class ESQuery
         }
       }, size: size
     }
+    query.merge!(assign_desc_body(desc_keyword)) if desc_keyword
     @client.search index: @index + '*', body: query
   end
 
@@ -136,4 +137,12 @@ def parse_conditions(items)
     end
   end
   items_hash
+end
+
+def assign_desc_body(keyword)
+  {
+    sort: [{
+      keyword => { order: 'desc' }
+    }]
+  }
 end
