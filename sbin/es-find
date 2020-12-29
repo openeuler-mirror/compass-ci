@@ -29,8 +29,8 @@ def parse_argv
   items
 end
 
-options = {}
-options[:nr_jobs] = 10
+options = { nr_jobs: 10, desc_keyword: nil }
+
 opt_parser = OptionParser.new do |opts|
   opts.banner = 'Usage: es-find [options] search_key1=val1[,val2..] ..'
 
@@ -45,6 +45,10 @@ opt_parser = OptionParser.new do |opts|
     options[:nr_jobs] = n.to_i
   end
 
+  opts.on('-d', '--desc-keyword KEYWORD', 'order by keyword: start_time|end_time|...') do |d|
+    options[:desc_keyword] = d
+  end
+
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     exit
@@ -54,6 +58,6 @@ end
 opt_parser.parse!(ARGV)
 items = parse_argv
 es = ESQuery.new(ES_HOST, ES_PORT)
-query_result = es.multi_field_query(items, size: options[:nr_jobs])
+query_result = es.multi_field_query(items, size: options[:nr_jobs], desc_keyword: options[:desc_keyword])
 json_string = JSON.pretty_generate(query_result)
 puts json_string
