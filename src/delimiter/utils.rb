@@ -83,15 +83,30 @@ module Utils
       extract_finished = monitor_run_stop(query)
       return nil unless extract_finished.zero?
 
-      es = ESQuery.new
-      new_job = es.query_by_id(new_job_id)
+      stats = query_stats(new_job_id, 10)
+      raise "es cant query #{new_job_id} stats field!" unless stats
 
-      status =  new_job['stats'].key?(error_id) ? 'bad' : 'good'
+      status = stats.key?(error_id) ? 'bad' : 'good'
       puts "new_job_id: #{new_job_id}"
       puts "upstream_commit: #{job['upstream_commit']}"
       record_jobs(new_job_id, job['upstream_commit'])
 
       return status
+    end
+
+    # sometimes the job_state is extract_finished
+    # but we cant query the job stats field in es, so, add many times query
+    # this is a temporary solution, the extract container will be improved in future.
+    def query_stats(job_id, times)
+      (1..times).each do |i|
+        new_job = ESQuery.new.query_by_id(job_id)
+        puts "query stats times: #{i}"
+        return new_job['stats'] if new_job['stats']
+
+        sleep 60
+      end
+
+      return nil
     end
 
     def record_jobs(job_id, job_commit)
