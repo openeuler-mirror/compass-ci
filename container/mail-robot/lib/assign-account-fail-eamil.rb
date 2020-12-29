@@ -3,32 +3,83 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+def email_err_message(message)
+  case message
+  when 'NO_COMMIT_URL'
+    err_message = <<~EMAIL_MESSAGE
+      No commit url found.
+      You should add a commit url for the 'apply account' email.
+
+      For example:
+        my oss commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+    EMAIL_MESSAGE
+  when 'URL_PREFIX_ERR'
+    err_message = <<~EMAIL_MESSAGE
+      Please add a correct prefix for the commit url.
+
+          my oss commit
+
+      For example:
+
+          my oss commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+    EMAIL_MESSAGE
+  when 'NOT_REGISTERED'
+    err_message = <<~EMAIL_MESSAGE
+      Your repo has not been registered to our upstream-repos yet.
+      You should register your repo to the upstream first.
+      Try again after you have done it.
+
+      Reference the following url to learn how to register the repo:
+
+          https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/test-oss-project.en.md
+    EMAIL_MESSAGE
+  when 'COMMIT_URL_NOT_AVAILABLE'
+    err_message = <<~EMAIL_MESSAGE
+      We cannot confirm the commit url matches your email.
+
+          Make sure the commit exists.
+          Make sure it is truely submitted with your email.
+
+      Go to the commit history and find your commit.
+      Enter the commit and you will get your commit url.
+
+      Try again after you have correctted the url
+    EMAIL_MESSAGE
+  when 'NO_PUBKEY'
+    err_message = <<~EMAIL_MESSAGE
+      No pub_key found.
+      Please add a pubkey to the email and then try again.
+    EMAIL_MESSAGE
+  when 'PUBKEY_NAME_ERR'
+    err_message = <<~EMAIL_MESSAGE
+      Pubkey file name error, keep its name as when it was generated.
+      The pubkey file name should like:
+
+          id_{{ xxx }}.pub
+    EMAIL_MESSAGE
+  end
+
+  err_message += <<~EMAIL_MESSAGE
+
+    Manual for how to apply account:
+
+        https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md
+  EMAIL_MESSAGE
+
+  err_message
+end
+
 def build_apply_account_fail_email(my_info, message)
+  err_message = email_err_message(message)
   email_msg = <<~EMAIL_MESSAGE
     To: #{my_info['my_email']}
     Subject: [compass-ci] apply account failed
 
     Dear user:
 
-    Your application for account failed with following error:
+    Your application for account failed.
 
-      #{message}
-
-    In order to successfully apply an account, please pay attention to the following points:
-
-    1. mail subject
-       The subject should exactly: apply account
-
-    2. commit url
-       When you writing the url, add prefix: my oss commit
-       example:
-         my oss commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
-
-       attention:
-         Ensure you commit url exist and available to access.
-
-    3. ssh pubkey
-       You need to add a pubkey as an attachment to the email.
+    #{err_message}
 
     regards
     compass-ci
