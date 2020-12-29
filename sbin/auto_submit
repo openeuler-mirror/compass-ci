@@ -42,6 +42,7 @@ class AutoSubmit
 
   def get_argvs(newrefs_info)
     git_repo = newrefs_info['git_repo']
+    puts "git_repo : #{git_repo}"
     url = Array(newrefs_info['url'])[0]
     submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit upstream_repo=#{git_repo} upstream_url=#{url}"]
 
