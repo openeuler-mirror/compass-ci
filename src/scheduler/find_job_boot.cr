@@ -183,32 +183,6 @@ class Sched
     end
   end
 
-  private def find_job(testbox : String, count = 1)
-    tbox_group = JobHelper.match_tbox_group(testbox)
-    tbox = tbox_group.partition("--")[0]
-
-    queue_list = query_consumable_keys(tbox)
-
-    boxes = ["sched/" + testbox,
-             "sched/" + tbox_group,
-             "sched/" + tbox,
-             "sched/" + tbox_group + "/idle"]
-    boxes.each do |box|
-      next if queue_list.select(box).size == 0
-      count.times do
-        job = prepare_job(box, testbox)
-        return job if job
-
-        sleep(1) unless count == 1
-      end
-    end
-
-    # when find no job, auto submit idle job at background
-    spawn { auto_submit_idle_job(tbox_group) }
-
-    return nil
-  end
-
   private def prepare_job(queue_name, testbox)
     response = @task_queue.consume_task(queue_name)
     job_id = JSON.parse(response[1].to_json)["id"] if response[0] == 200
@@ -229,18 +203,6 @@ class Sched
       @log.info(%({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state": "set result root"}))
       @redis.set_job(job)
     end
-    return job
-  end
-
-  private def get_idle_job(tbox_group, testbox)
-    job = prepare_job("sched/#{tbox_group}/idle", testbox)
-
-    # if there has no idle job, auto submit and get 1
-    if job.nil?
-      auto_submit_idle_job(tbox_group)
-      job = prepare_job("sched/#{tbox_group}/idle", testbox)
-    end
-
     return job
   end
 
