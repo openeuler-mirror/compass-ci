@@ -5,6 +5,7 @@
 
 require 'json'
 require 'mail'
+require 'rest-client'
 require_relative 'gitee-commit-url-check'
 
 # used to parse mail_content for my_commit_url and my_ssh_pubkey
@@ -27,7 +28,7 @@ require_relative 'gitee-commit-url-check'
 #         gitee.com:
 #           call GiteeCommitUrlCheck to check the commit
 #         non-gitee.com:
-#           execute curl to check the commit
+#           get request date for the commit url to check the commit
 #   parse_pub_key
 #     check my_ssh_pubkey exists and return it
 class ParseApplyAccountEmail
@@ -63,10 +64,8 @@ class ParseApplyAccountEmail
     # the commit url should be in a standart format, example:
     # my oss commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
     unless mail_content_line.match?(%r{my oss commit:\s*https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})
-      error_message = "No matched commit url found.\n"
-      error_message += 'Ensure that you have add a right commit url, '
-      error_message += "and with prefix 'my oss commit:'."
-      raise error_message
+      raise 'URL_PREFIX_ERR' unless mail_content_line.match?(%r{my oss commit:\s*https?://})
+      raise 'NO_COMMIT_URL' unless mail_content_line.match?(%r{https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})
     end
 
     mail_content_line.match(%r{https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})[0]
@@ -88,16 +87,13 @@ class ParseApplyAccountEmail
 
     return unless match_out.empty?
 
-    error_message = "The repo url for your commit is not in our upstream-repo list.\n"
-    error_message += 'Use a new one, or consulting the manager for available repo list.'
-
-    raise error_message
+    raise 'NOT_REGISTERED'
   end
 
   def commit_url_availability(url, base_url)
     hub_name = url.split('/')[2]
 
-    # it requires authentication when execute curl to get the commit information
+    # it requires authentication when sending request to get the commit information
     # clone the repo and then validate the commit for the email address
     if hub_name.eql? 'gitee.com'
       gitee_commit(url, base_url)
@@ -112,24 +108,17 @@ class ParseApplyAccountEmail
   end
 
   def non_gitee_commit(url)
-    url_fdback = %x(curl #{url})
+    url_fdback = RestClient.get(url).body
     email_index = url_fdback.index @my_info['my_email']
 
     return unless email_index.nil?
 
-    error_message = "We can not confirm the commit url matches your email.\n"
-    error_message += 'Make sure that the commit url is right,'
-    error_message += ' or it is truely submitted with you email.'
-
-    raise error_message
+    raise 'COMMIT_URL_NOT_AVAILABLE'
   end
 
   def parse_pub_key
-    error_message = "No pub_key found.\n"
-    error_message += 'Please add a pub_key as an attachment to your email.'
-
-    raise error_message if @mail_content.attachments.empty?
-    raise error_message unless @mail_content.attachments[0].filename =~ /^id_.*\.pub$/
+    raise 'NO_PUBKEY' if @mail_content.attachments.empty?
+    raise 'PUBKEY_NAME_ERR' unless @mail_content.attachments[0].filename =~ /^id_.*\.pub$/
 
     pub_key = @mail_content.attachments[0].body.decoded
 

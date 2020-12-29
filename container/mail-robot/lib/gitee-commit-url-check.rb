@@ -38,9 +38,7 @@ class GiteeCommitUrlCheck
   def gitee_commit_exist(email_index)
     return if email_index
 
-    error_message = "We can not confirm whether the commit url matches your email.\n"
-    error_message += 'Make sure that the commit url is right,'
-    error_message += ' or it is truely submitted with your email.'
+    error_message = 'COMMIT_URL_NOT_AVAILABLE'
 
     raise error_message
   end
