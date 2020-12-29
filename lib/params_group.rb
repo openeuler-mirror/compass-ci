@@ -72,10 +72,11 @@ end
 
 def filter_groups(groups)
   groups.each do |group_key, value|
-    value.each_key do |dim_key|
-      value.delete(dim_key) if value[dim_key].empty?
+    if value.empty?
+      groups.delete(group_key)
+      next
     end
-    groups.delete(group_key) if groups[group_key].empty?
+    value.delete_if { |_dim_key, job_list| job_list.empty? }
   end
 end
 
