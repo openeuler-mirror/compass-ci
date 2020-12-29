@@ -22,6 +22,7 @@ class GitBisect
     set_bad_job
     set_build_pkg_dir
     set_upstream
+    set_pkgbuild_repo
     set_work_dir
     set_bad_commit
     set_good_commit
@@ -59,6 +60,11 @@ class GitBisect
     @work_dir = Utils.clone_repo(@upstream_repo_git, @upstream_commit)
     puts "work_dir: #{@work_dir}"
     raise "checkout repo: #{@upstream_repo} to commit: #{@upstream_commit} failed!" unless @work_dir
+  end
+
+  def set_pkgbuild_repo
+    @pkgbuild_repo = @bad_job['pkgbuild_repo']
+    raise 'pkgbuild_repo is null' unless @pkgbuild_repo
   end
 
   def set_bad_commit
@@ -100,6 +106,7 @@ class GitBisect
                 'commit' => first_bad_commit,
                 'bisect_error' => bisect_error,
                 'all_errors' => all_errors,
+                'pkgbuild_repo' => @pkgbuild_repo,
                 'first_bad_commit_result_root' => first_bad_commit_result_root]
   end
 

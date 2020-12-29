@@ -9,10 +9,11 @@ require_relative 'assign_account_client'
 # compose and send email for bisect result
 class MailBisectResult
   def initialize(bisect_info)
-    @bisect_error = bisect_info['bisect_error']
-    @all_errors = bisect_info['all_errors']
     @repo = bisect_info['repo']
     @commit_id = bisect_info['commit']
+    @all_errors = bisect_info['all_errors']
+    @bisect_error = bisect_info['bisect_error']
+    @pkgbuild_repo = bisect_info['pkgbuild_repo']
     @first_bad_commit_result_root = bisect_info['first_bad_commit_result_root']
     @git_commit = GitCommit.new(@repo, @commit_id)
     # now send mail to review
@@ -28,6 +29,7 @@ class MailBisectResult
     subject = "[Compass-CI][#{@repo.split('/')[1]}] #{@commit_id[0..9]} #{@bisect_error[0].split("\n")[0]}"
     prefix_srv = "http://#{ENV['SRV_HTTP_HOST']}:#{ENV['SRV_HTTP_PORT']}"
     bisect_job_url = ENV['result_root'] ? "bisect job info: #{prefix_srv}#{ENV['result_root']}\n" : ''
+    pkgbuild_repo_url = "PKGBUILD info: #{prefix_srv}/#{@pkgbuild_repo}\n"
     first_bad_commit_job_url = "first bad commit job info: #{prefix_srv}#{@first_bad_commit_result_root}\n"
 
     data = <<~BODY
@@ -40,9 +42,11 @@ class MailBisectResult
     commit: #{@commit_id} ("#{@git_commit.subject}")
     compiler: gcc (GCC) 7.3.0
 
-    all errors/warnings:
+    all errors/warnings (new ones prefixed by >>):
     #{@all_errors}
 
+    reference information:
+    #{pkgbuild_repo_url}
     #{bisect_job_url}
     #{first_bad_commit_job_url}
     Regards,
