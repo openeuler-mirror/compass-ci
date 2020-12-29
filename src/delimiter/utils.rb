@@ -135,12 +135,14 @@ module Utils
       job['my_email'] = account_info['my_email']
       job['my_token'] = account_info['my_token']
       job['bad_job_id'] = job_id
+      job['testbox'] = job['config'] ? 'vm-2p32g' : 'vm-2p16g'
 
       job.delete('error_ids')
       job.delete('start_time')
       job.delete('job_state')
       job.delete('end_time')
       job.delete('loadavg')
+      job.delete('queue')
       job.delete('stats')
       job.delete('id')
 
