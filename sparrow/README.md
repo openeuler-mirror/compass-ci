@@ -52,10 +52,10 @@
 	submit iperf.yaml testbox=vm-2p8g
 	```
 
-   执行上述命令正常情况下会提示信息如下：
-   submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory
-   submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory
-   compass-ci搭建完毕，下面就可以开始进行测试了。
+	执行上述命令正常情况下会提示信息如下:
+	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory
+	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory
+	compass-ci搭建完毕，执行步骤8下载所需要的rootfs文件就可以开始进行测试了。
 
 8. 下载rootfs（以下载openeuler/aarch64/20.03为例，需要在哪个系统上测试就去对应的/srv/os/目录下使用wget命令下载cgz文件包）
 	```bash
@@ -81,7 +81,9 @@
 	cd /c/compass-ci/providers/ && ./my-qemu.sh
 	```
 
-14. [查看任务结果](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md),本地搭建compass-ci用户可在srv/result目录下根据job id查看output文件
+14. [查看任务结果](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)
+	本地搭建compass-ci用户可在srv/result目录下根据yaml名称/日期/$testbox/$os-$os-version-$os-arch/$job_id查看output文件(可用tab键自动补全多级目录方便查找)
+	以查看iperf任务结果为例操如下：
 	```bash
-	cd /srv/result/iperf/$job_id/output
+	cd /srv/result/iperf/2020-12-29/vm-2p8g/openeuler-20.09-aarch64/nolab.1/output
 	```
