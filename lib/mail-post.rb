@@ -20,6 +20,8 @@ post '/send_mail_yaml' do
   mail_info = {
     'subject' => data['subject'],
     'to' => data['to'],
+    'cc' => data['cc'],
+    'bcc' => data['bcc'],
     'body' => data['body']
   }
 
@@ -32,6 +34,8 @@ post '/send_mail_text' do
   mail_info = {
     'subject' => data.subject,
     'to' => data.to,
+    'cc' => data.cc,
+    'bcc' => data.bcc,
     'body' => data.body.decoded
   }
 
@@ -45,6 +49,8 @@ post '/send_mail_encode' do
   mail_info = {
     'subject' => data.subject,
     'to' => data.to,
+    'cc' => data.cc,
+    'bcc' => data.bcc,
     'body' => data.body.decoded
   }
 
@@ -63,10 +69,16 @@ def send_mail(mail_info)
     from ENV['ROBOT_EMAIL_ADDRESS']
     subject mail_info['subject']
     to mail_info['to']
+    cc mail_info['cc']
+    bcc mail_info['bcc']
     body mail_info['body']
   end
 
   mail.deliver!
+  check_to_store_email(mail)
+end
+
+def check_to_store_email(mail)
 
   return if ENV['SEND_MAIL_PORT'].to_s != '49000'
   return if ENV['HOST_SERVER'] != 'z9'
