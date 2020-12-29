@@ -14,8 +14,11 @@ class Sched
       raise "es set job content fail!"
     end
 
+    subqueue = job.subqueue
+    queue = (subqueue == "idle" ? job.queue : "#{job.queue}/#{subqueue}")
+
     response = @task_queue.hand_over_task(
-      "sched/#{job.queue}/#{job.subqueue}", "extract_stats", job_id
+      "sched/#{queue}", "extract_stats", job_id
     )
     if response[0] != 201
       raise "#{response}"
