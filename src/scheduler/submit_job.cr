@@ -114,13 +114,6 @@ class Sched
   def submit_single_job(job)
     queue = "#{job.queue}/#{job.subqueue}"
 
-    # only single job will has "idle job" and "execute rate limiter"
-    if job["idle_job"].empty?
-      queue += "#{job.get_uuid_tag}"
-    else
-      queue = "#{queue}/idle"
-    end
-
     job_id = add_task(queue, job.lab)
     return [{
       "job_id"    => "0",
