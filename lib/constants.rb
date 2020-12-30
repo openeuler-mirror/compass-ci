@@ -13,3 +13,5 @@ MAIL_PORT = config['SEND_MAIL_PORT'] || 49000
 
 SRV_HTTP_HOST = config['SRV_HTTP_HOST'] || ENV['SRV_HTTP_HOST'] || '172.17.0.1'
 SRV_HTTP_PORT = config['SRV_HTTP_PORT'] || ENV['SRV_HTTP_PORT'] || 11300
+
+SRV_HTTP_DOMAIN = config['SRV_HTTP_DOMAIN'] || ENV['SRV_HTTP_DOMAIN'] || 'api.compass-ci.openeuler.org'

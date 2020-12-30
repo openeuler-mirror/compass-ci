@@ -3,6 +3,8 @@
 require 'json'
 require 'base64'
 require_relative 'git'
+require_relative 'es_query'
+require_relative 'constants'
 require_relative 'mail_client'
 require_relative 'assign_account_client'
 
@@ -27,10 +29,11 @@ class MailBisectResult
 
   def compose_mail
     subject = "[Compass-CI][#{@repo.split('/')[1]}] #{@commit_id[0..9]} #{@bisect_error[0].split("\n")[0]}"
-    prefix_srv = "http://#{ENV['SRV_HTTP_HOST']}:#{ENV['SRV_HTTP_PORT']}"
-    bisect_job_url = ENV['result_root'] ? "bisect job info: #{prefix_srv}#{ENV['result_root']}\n" : ''
-    pkgbuild_repo_url = "PKGBUILD info: #{prefix_srv}/#{@pkgbuild_repo}\n"
-    first_bad_commit_job_url = "first bad commit job info: #{prefix_srv}#{@first_bad_commit_result_root}\n"
+    prefix_srv = "http://#{SRV_HTTP_DOMAIN}:#{SRV_HTTP_PORT}"
+    bisect_job_url = ENV['result_root'] ? "bisect job result directory:\n#{prefix_srv}#{ENV['result_root']}\n" : ''
+    bisect_report_doc = "bisect email doc:\nhttps://gitee.com/wu_fengguang/compass-ci/blob/master/doc/bisect_email.en.md\n"
+    pkgbuild_repo_url = "PKGBUILD:\n#{prefix_srv}/#{@pkgbuild_repo}\n"
+    first_bad_commit_job_url = "first bad commit job result directory:\n#{prefix_srv}#{@first_bad_commit_result_root}\n"
 
     data = <<~BODY
     To: #{@to}
@@ -38,17 +41,19 @@ class MailBisectResult
 
     Hi #{@git_commit.author_name},
 
-    url: #{@git_commit.url}
-    commit: #{@commit_id} ("#{@git_commit.subject}")
-    compiler: gcc (GCC) 7.3.0
+    We found some error/warning(s) and the first bad commit in the below project:
+    git url: #{@git_commit.url}
+    git commit: #{@commit_id} ("#{@git_commit.subject}")
 
-    all errors/warnings (new ones prefixed by >>):
+    All error/warning(s) (new ones prefixed by >>):
     #{@all_errors}
 
-    reference information:
+    Reference information:
+    compiler: gcc (GCC) 7.3.0
     #{pkgbuild_repo_url}
-    #{bisect_job_url}
     #{first_bad_commit_job_url}
+    #{bisect_job_url}
+    #{bisect_report_doc}
     Regards,
     Compass CI team
     BODY
@@ -66,6 +71,9 @@ class MailBisectResult
       'my_name' => @git_commit.author_name,
       'my_commit_url' => "#{@git_commit.url}/commit/#{@commit_id}"
     }
+
+    account_info = ESQuery.new(index: 'accounts').query_by_id(@to)
+    return if account_info
 
     apply_account = AutoAssignAccount.new(user_info)
     apply_account.send_account
