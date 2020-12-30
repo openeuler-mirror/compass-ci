@@ -1,0 +1,74 @@
+#!/bin/bash
+
+cci_makepkg_file="$LKP_SRC/jobs/cci-makepkg.yaml"
+grep "atomic" $cci_makepkg_file || sed -i 's|benchmark:|& atomic|g' $cci_makepkg_file
+
+submit_one_job()
+{
+	cmd=(
+		submit -m $yaml
+		os=${single_arg[0]}
+		os_arch=${single_arg[1]}
+		os_version=${single_arg[2]}
+		os_mount=${single_arg[3]}
+		docker_images=${single_arg[4]}
+		testbox=$testbox
+		queue="${tbox_group}.${HOSTNAME}"
+	)
+	output=$("${cmd[@]}")
+	echo "$output" | grep -o -E 'job_state=finished[^\"]*'
+}
+
+submit_job()
+{
+	yaml_args=("$cci_makepkg_file" "host-info.yaml")
+	for yaml in "${yaml_args[@]}"
+	do
+		submit_one_job &
+	done
+}
+
+run_qemu()
+{
+	local nr_vm=4
+	local testbox="vm-2p8g"
+	local tbox_group="vm-2p8g"
+	local hostname="${tbox_group}.${HOSTNAME}"
+	local queues="${tbox_group}.${HOSTNAME}"
+
+	$CCI_SRC/providers/multi-qemu -n "$hostname" -c "$nr_vm" -q "$queues"
+
+	qemu_args=(
+		"openeuler aarch64 20.03 cifs"
+		"centos aarch64 7.6.1810 initramfs"
+		)
+	for qemu_arg in "${qemu_args[@]}"
+	do
+		local single_arg=($(echo $qemu_arg))
+		submit_job
+	done
+}
+
+run_docker()
+{
+	local nr_container=2
+	local tbox_group="dc-8g"
+	local testbox="dc-8g"
+	local hostname="${tbox_group}.${HOSTNAME}"
+	local queues="${tbox_group}.${HOSTNAME}"
+
+	$CCI_SRC/providers/multi-docker -n $hostname -c $nr_container -q $queues
+
+	docker_args=(
+		"centos aarch64 7 container"
+		)
+	for docker_arg in "${docker_args[@]}"
+	do
+		local single_arg=($(echo $docker_arg))
+		submit_job
+	done
+}
+
+run_qemu
+run_docker
+wait
