@@ -18,6 +18,7 @@ server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 : ${SEND_MAIL_PORT:=49000}
 : ${LOCAL_SEND_MAIL_PORT:=11311}
 : ${LOCAL_ROBOT_EMAIL_ADDRESS:=Crystal TEAM}
+: ${ASSIST_RESULT_PORT:=8102}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -39,6 +40,7 @@ SEND_MAIL_PORT: $SEND_MAIL_PORT
 LOCAL_SEND_MAIL_PORT: $LOCAL_SEND_MAIL_PORT
 LOCAL_ROBOT_EMAIL_ADDRESS: $LOCAL_ROBOT_EMAIL_ADDRESS
 MAILDIR: /srv/cci/Maildir/.compass-ci
+ASSIST_RESULT_PORT: $ASSIST_RESULT_PORT
 EOF
 
 mkdir -p /etc/compass-ci/account
