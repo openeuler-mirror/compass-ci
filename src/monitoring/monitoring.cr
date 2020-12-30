@@ -9,7 +9,8 @@ module Monitoring
 
   message_queue_client = MessageQueueClient.new
 
-  spawn message_queue_client.monitoring_message_queue(filter, "logging-test", "logging-test")
+  spawn message_queue_client.monitoring_message_queue(filter, "serial-logging", "serial-logging")
+  spawn message_queue_client.monitoring_message_queue(filter, "docker-logging", "docker-logging")
 
   ws "/filter" do |socket|
     query = JSON::Any.new("")
