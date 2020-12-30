@@ -24,6 +24,8 @@ mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
 SCHED_HOST: $sched_host
 SCHED_PORT: $sched_port
+LKP_SERVER: $server_ip
+GIT_SERVER: $GIT_SERVER
 TASKQUEUE_HOST: $sched_host
 OS_HTTP_HOST: $os_http_host
 INITRD_HTTP_HOST: $initrd_http_host
