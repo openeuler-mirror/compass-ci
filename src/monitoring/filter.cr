@@ -41,6 +41,9 @@ class Filter
 
     @hash[query].each do |socket|
       socket.send msg.to_json
+    rescue e
+      puts "send msg failed: #{e}"
+      remove_filter_rule(query, socket)
     end
   end
 
