@@ -18,8 +18,9 @@ class MailBisectResult
     @pkgbuild_repo = bisect_info['pkgbuild_repo']
     @first_bad_commit_result_root = bisect_info['first_bad_commit_result_root']
     @git_commit = GitCommit.new(@repo, @commit_id)
+    @to = @git_commit.author_email
     # now send mail to review
-    @to = 'caoxl@crystal.ci, caoxl78320@163.com, huming15@163.com'
+    @bcc = 'caoxl@crystal.ci, caoxl78320@163.com, huming15@163.com, wfg@mail.ustc.edu.cn'
   end
 
   def create_send_email
@@ -37,6 +38,7 @@ class MailBisectResult
 
     data = <<~BODY
     To: #{@to}
+    Bcc: #{@bcc}
     Subject: #{subject}
 
     Hi #{@git_commit.author_name},
