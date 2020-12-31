@@ -7,6 +7,7 @@ require 'json'
 require 'mail'
 require 'set'
 require 'optparse'
+require 'rest-client'
 require_relative '../container/defconfig'
 require_relative 'es_client'
 require_relative '../container/mail-robot/lib/assign-account-email'
@@ -52,7 +53,8 @@ class AutoAssignAccount
     apply_info['is_update_account'] = true unless apply_info['my_login_name'].nil?
     apply_info['lab'] = LAB
 
-    account_info_str = %x(curl -XGET '#{JUMPER_HOST}:#{JUMPER_PORT}/assign_account' -d '#{apply_info.to_json}')
+    assign_account_url = "#{JUMPER_HOST}:#{JUMPER_PORT}/assign_account"
+    account_info_str = RestClient.post assign_account_url, apply_info.to_json
     JSON.parse account_info_str
   end
 
@@ -69,6 +71,7 @@ class AutoAssignAccount
   end
 
   def send_mail
+    @my_info['bisect'] = true
     message = build_apply_account_email(@my_info)
     %x(curl -XPOST "#{SEND_MAIL_HOST}:#{SEND_MAIL_PORT}/send_mail_text" -d "#{message}")
   end
