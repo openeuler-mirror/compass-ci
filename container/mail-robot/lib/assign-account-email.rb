@@ -4,13 +4,19 @@
 # frozen_string_literal: true
 
 def build_apply_account_email(my_info)
+  email_greeting = if my_info['bisect']
+                     'We have automatically created the following information for you.'
+                   else
+                     'Thank you for joining us.'
+                   end
+
   email_msg = <<~EMAIL_MESSAGE
     To: #{my_info['my_email']}
     Subject: [compass-ci] Account Ready
 
     Dear #{my_info['my_name']},
 
-    Thank you for joining us.
+    #{email_greeting}
 
     You can use the following info to submit jobs:
 
