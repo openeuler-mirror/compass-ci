@@ -32,7 +32,8 @@ do_one()
 	(
 		cd $container
 		[ "$container_name" == 'ssh-r' ] && exit
-		if [ "$action" != "reboot" ]; then
+		docker images | grep -wq "$container_name"
+		if [ "$?" == 0 ] && [ "$action" != "reboot" ]; then
 			[ -x build ] && ./build
 			[ -x install ] && ./install
 		fi
