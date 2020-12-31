@@ -203,6 +203,7 @@ Ensure that you have performed the following operations according to the [apply-
   suite: borrow
   testcase: borrow
 
+  runtime: 1h
   ssh_pub_key: <%=
    begin
    File.read("#{ENV['HOME']}/.ssh/id_rsa.pub").chomp
@@ -212,10 +213,10 @@ Ensure that you have performed the following operations according to the [apply-
    %>
   sshd:
   # sleep at the bottom
+  sleep:
+  hi684@account-vm ~/lkp-tests/jobs% grep runtime: borrow-1h.yaml
   sleep: 1h
-  hi684@account-vm ~/lkp-tests/jobs% grep sleep: borrow-1h.yaml
-  sleep: 1h
-  # Use the VIM editor to change the value of the sleep field.
+  # Use the VIM editor to change the value of the runtime field.
   hi684@account-vm ~/lkp-tests/jobs% vim borrow-1h.yaml
   # After changing the value, submit the request again.
   hi684@account-vm ~/lkp-tests/jobs% submit -c -m testbox=vm-2p8g borrow-1h.yaml

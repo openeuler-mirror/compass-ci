@@ -206,7 +206,8 @@
     hi684@account-vm ~/lkp-tests/jobs% cat borrow-1h.yaml
     suite: borrow
     testcase: borrow
-
+    
+    runtime: 1h
     ssh_pub_key: <%=
              begin
                File.read("#{ENV['HOME']}/.ssh/id_rsa.pub").chomp
@@ -216,10 +217,10 @@
              %>
     sshd:
     # sleep at the bottom
+    sleep:
+    hi684@account-vm ~/lkp-tests/jobs% grep runtime: borrow-1h.yaml
     sleep: 1h
-    hi684@account-vm ~/lkp-tests/jobs% grep sleep: borrow-1h.yaml
-    sleep: 1h
-    # 使用vim来修改你的sleep字段的值
+    # 使用vim来修改你的runtime字段的值
     hi684@account-vm ~/lkp-tests/jobs% vim borrow-1h.yaml
     # 修改完毕后重新submit即可
     hi684@account-vm ~/lkp-tests/jobs% submit -c -m testbox=vm-2p8g borrow-1h.yaml
