@@ -135,10 +135,16 @@ module Utils
       job['my_email'] = account_info['my_email']
       job['my_token'] = account_info['my_token']
       job['bad_job_id'] = job_id
-      job['testbox'] = job['config'] ? 'vm-2p32g' : 'vm-2p16g'
+      job['testbox'] = job['config'] ? 'dc-16g' : 'dc-8g'
+      job['os'] = 'openeuler'
+      job['os_arch'] = 'aarch64'
+      job['os_mount'] = 'container'
+      job['os_version'] = '20.03-pre'
+      job['docker_image'] = 'openeuler:20.03-pre'
 
-      job.delete('error_ids')
       job.delete('start_time')
+      job.delete('tbox_group')
+      job.delete('error_ids')
       job.delete('job_state')
       job.delete('end_time')
       job.delete('loadavg')

@@ -25,7 +25,7 @@ class Delimiter
           next
         end
 
-        %x(#{LKP_SRC}/sbin/submit bad_job_id=#{task['job_id']} error_id=#{task['error_id'].inspect} bisect.yaml)
+        %x(#{LKP_SRC}/sbin/submit bad_job_id=#{task['job_id']} error_id=#{task['error_id'].inspect} bisect.yaml queue='dc-bisect')
       rescue StandardError => e
         puts e
         sleep(60)
