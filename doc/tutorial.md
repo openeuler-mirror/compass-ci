@@ -258,7 +258,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 
     4) 备注
           目前提供 archlinux 下已有 PKGBUILD 项目构建测试，暂不支持自主导入 PKGBUILD 文件。
-          PKGBUILD 存放路径： /srv/git/archlinux/*/*/PKGBUILD。
+          PKGBUILD 存放路径： `/srv/git/archlinux/*/*/PKGBUILD`。
 
 
 ### depends
