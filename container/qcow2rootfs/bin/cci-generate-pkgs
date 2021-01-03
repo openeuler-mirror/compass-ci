@@ -1,0 +1,15 @@
+#!/bin/bash
+
+RESULT_FILE=/etc/pkgs-$(date "+%Y-%m-%d-%H-%M-%S").list
+
+command -v rpm >/dev/null && {
+        rpm -qa > $RESULT_FILE
+}
+
+command -v dpkg >/dev/null && {
+        dpkg -l > $RESULT_FILE
+}
+
+chmod 644 $RESULT_FILE
+
+exit 0

@@ -74,6 +74,12 @@ pre_config_rootfs() {
 	if [ -f ${ROOTFS_DIR}/etc/selinux/config ]; then
 		sed -i -r 's/SELINUX=enforcing/SELINUX=disabled/g' "$ROOTFS_DIR/etc/selinux/config"
 	fi
+
+	# generate /etc/pkgs-$(date "+%Y-%m-%d-%H-%M-%S").list file for result rootfs
+	echo "generate /etc/pkgs-$(date "+%Y-%m-%d-%H-%M-%S").list"
+	cp $EXTRACT_ROOT/bin/cci-generate-pkgs $ROOTFS_DIR
+	chroot $ROOTFS_DIR /cci-generate-pkgs
+	rm /$ROOTFS_DIR/cci-generate-pkgs
 }
 
 clean_environment() {
