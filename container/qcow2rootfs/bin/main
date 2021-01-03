@@ -34,7 +34,7 @@ unzip_qcow2_xz() {
 extract_rootfs() {
 	echo "[WARNNING] Temporarily change owner of qcow2 file"
 	chown "$EXTRACT_USER":"$EXTRACT_USER" "$QCOW2_FILE"
-	chmod 775 "$ROOTFS_DIR"
+	chmod 777 "$ROOTFS_DIR"
 
 	echo "[$(date +'%D %T')] Converting .qcow2 to .tar.gz, please wait several minutes..."
 	su - "$EXTRACT_USER" -c "
