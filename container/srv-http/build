@@ -2,4 +2,11 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+: ${H5AI_SRC:=/c/h5ai}
+
+cp -r $H5AI_SRC ./
+
 docker build -t srv-http .
+
+# clean h5ai folder
+rm -rf ./h5ai
