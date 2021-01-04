@@ -140,7 +140,7 @@ options = OptionParser.new do |opts|
     init_info(mail_content, email_info, my_info, my_info_es)
   end
 
-  opts.on('-u', '--update', 'updata configurations') do
+  opts.on('-u', '--update', 'update configurations') do
     conf_info['is_update_account'] = true
   end
 
