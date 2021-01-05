@@ -33,7 +33,8 @@ usage()
                 dst_rootfs_new_abspath: destination absolute path to create for rootfs
 
 	Example:
-                ./run /tmp/openEuler-docker/openEuler-docker.${aarch}.tar.xz /tmp/openeuler-rootfs/
+		./run /tmp/openEuler-docker/openEuler-docker.${aarch}.tar.xz /tmp/openeuler-rootfs/
+		# Please ensure $HOME/.config/compass-ci/rootfs-passwd exists.
 	"
 }
 
