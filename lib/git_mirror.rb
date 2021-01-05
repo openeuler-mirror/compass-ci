@@ -42,7 +42,7 @@ class GitMirror
     ret = false
     url = get_url(Array(url)[0])
     10.times do
-      stderr = %x(git clone --mirror #{url} #{mirror_dir} 2>&1)
+      stderr = %x(git clone --mirror --depth 1 #{url} #{mirror_dir} 2>&1)
       ret = !stderr.include?('fatal')
       break if ret
     end
@@ -51,6 +51,11 @@ class GitMirror
   end
 
   def git_fetch(mirror_dir)
+    if File.exist?("#{mirror_dir}/shallow")
+      %x(git -C #{mirror_dir} fetch --unshallow 2>&1)
+      return false
+    end
+
     fetch_info = %x(git -C #{mirror_dir} fetch 2>&1)
     # Check whether mirror_dir is a good git repository by 2 conditions. If not, delete it.
     if fetch_info.include?(ERR_MESSAGE) && Dir.empty?(mirror_dir)
