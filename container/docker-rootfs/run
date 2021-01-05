@@ -11,7 +11,8 @@ check_cmd_input "$@"
 check_passwd_file "$root_pwd_file"
 load_docker_img "$1"
 echo $docker_name_tag
-IMAGE_PACK=$(echo ${docker_name_tag%%:*}.cgz)
+IMAGE_NAME=${docker_name_tag%%:*}
+IMAGE_PACK=${IMAGE_NAME##*/}.cgz
 
 start=(
 	docker run
