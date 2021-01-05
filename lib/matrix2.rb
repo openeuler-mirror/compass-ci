@@ -83,7 +83,7 @@ def create_matrix(job_list)
   suites = []
   job_list.each do |job|
     stats = job['stats']
-    suites << job['suite'] if job['suite']
+    suites << job['suite']
 
     stats.each do |key, value|
       next if key.include?('timestamp')
