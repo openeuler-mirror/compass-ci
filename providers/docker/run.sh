@@ -27,7 +27,7 @@ cmd=(
 	-e CCI_SRC=/c/compass-ci
 	-v ${load_path}/lkp:/lkp
 	-v ${DIR}/bin:/root/bin:ro
-	-v $CCI_SRC:/c/compass-ci
+	-v $CCI_SRC:/c/compass-ci:ro
 	-v /srv/git:/srv/git:ro
 	-v /srv/result:/srv/result:ro
 	-v ${busybox_path}:/usr/local/bin/busybox
