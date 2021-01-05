@@ -3,10 +3,12 @@ require "amqp-client"
 require "./monitoring"
 require "./filter"
 require "./constants"
+require "../lib/json_logger"
 
 class MessageQueueClient
   def initialize(host = MQ_HOST, port = MQ_PORT)
     @client = AMQP::Client.new("amqp://#{host}:#{port}")
+    @log = JSONLogger.new
   end
 
   private def start
@@ -24,7 +26,7 @@ class MessageQueueClient
         begin
           filter.filter_msg(msg.body_io)
         rescue e
-          puts "filter message error: #{e}"
+          @log.warn("filter message failed: #{e}")
         end
       end
     end
@@ -37,7 +39,7 @@ class MessageQueueClient
           filter_msg(conn, filter, exchange_name, queue_name)
         end
       rescue e
-        puts "monitoring_message_queue error: #{e}"
+        @log.warn("monitoring_message_queue failed: #{e}")
         sleep 5
       end
     end

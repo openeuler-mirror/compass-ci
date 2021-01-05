@@ -2,6 +2,7 @@ require "set"
 require "json"
 
 require "./parse_serial_logs"
+require "../lib/json_logger"
 
 class Filter
   def initialize
@@ -9,6 +10,7 @@ class Filter
     # like {query => [socket1, socket2]}
     @hash = Hash(JSON::Any, Array(HTTP::WebSocket)).new
     @sp = SerialParser.new
+    @log = JSONLogger.new
   end
 
   def add_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
@@ -42,7 +44,7 @@ class Filter
     @hash[query].each do |socket|
       socket.send msg.to_json
     rescue e
-      puts "send msg failed: #{e}"
+      @log.warn("send msg failed: #{e}")
       remove_filter_rule(query, socket)
     end
   end
