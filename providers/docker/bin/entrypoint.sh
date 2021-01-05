@@ -4,4 +4,5 @@
 
 mkdir -p /root/.ssh
 cp /lkp/lkp/src/rootfs/addon/root/.ssh/id_rsa /root/.ssh/
+cp -r /lkp/lkp/src/rootfs/addon/usr/* /usr
 sh /lkp/lkp/src/rootfs/addon/etc/init.d/lkp-bootstrap
