@@ -333,7 +333,7 @@ class MirrorMain
     git_repo = "#{project}/#{fork_name}"
     return git_repo if check_git_repo(git_repo, webhook_url)
 
-    git_repo = "#{project[0]}/#{project}/#{project}"
+    git_repo = "#{project[0].downcase}/#{project}/#{project}"
     return git_repo if check_git_repo(git_repo, webhook_url)
 
     puts "webhook: #{webhook_url} is not found!"
