@@ -374,6 +374,6 @@ class MirrorMain
     submodule = %x(git -C #{mirror_dir} show HEAD:.gitmodules 2>/dev/null)
     return if submodule.empty?
 
-    handle_submodule(submodule, File.basename(git_repo))
+    handle_submodule(submodule)
   end
 end
