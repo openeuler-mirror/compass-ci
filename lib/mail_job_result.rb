@@ -22,8 +22,8 @@ class MailJobResult
 
   def compose_mail
     set_submitter_info
-    subject = "[Compass-ci] job: #{@job_id} result"
-    signature = "Regards\nCompass-ci\nhttps://gitee.com/openeuler/compass-ci"
+    subject = "[Compass-CI] job: #{@job_id} result"
+    signature = "Regards\nCompass-CI\nhttps://gitee.com/openeuler/compass-ci"
     body = "Hi,
     Thanks for your participation in Kunpeng and software ecosystem!
     Your Job: #{@job_id} had finished.
