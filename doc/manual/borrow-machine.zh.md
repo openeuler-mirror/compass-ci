@@ -2,7 +2,7 @@
 
 请确认您已按照 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md)完成如下操作：
 - send apply account email.
-- receive email from compass-ci-reply@qq.com.
+- receive email from compass-ci-robot@qq.com.
 - local environment configuration.
 
 

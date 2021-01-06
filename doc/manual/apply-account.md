@@ -6,7 +6,7 @@ Email template:
 
 ---
 	From: {{ David Rientjes <rientjes@google.com> }}
-	To: compass-ci-reply@qq.com
+	To: compass-ci-robot@qq.com
 	Subject: apply account
 
 	my oss commit: {{ https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03 }}

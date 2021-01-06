@@ -6,7 +6,7 @@ Compass-CI 将 [lkp-tests](https://gitee.com/wu_fengguang/lkp-tests) 作为客�
 
 :exclamation: 前提条件：按照 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md) 完成如下动作：
 - send apply account email
-- receive email from compass-ci-reply@qq.com
+- receive email from compass-ci-robot@qq.com
 - get reply email and follow its instructions to
   - setup default config
 

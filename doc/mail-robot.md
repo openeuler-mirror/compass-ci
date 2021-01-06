@@ -11,7 +11,7 @@ apply account/uuid for user
 ## usage
 
 build email as the following section: allowed email format
-send mail to: compass-ci-reply@qq.com
+send mail to: compass-ci-robot@qq.com
 
 ## allowed email format:
 

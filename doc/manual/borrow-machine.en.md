@@ -3,7 +3,7 @@
 Ensure that you have performed the following operations according to the [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md):
 
 - Send an email to apply for an account.
-- Receive an email from compass-ci-reply@qq.com.
+- Receive an email from compass-ci-robot@qq.com.
 - Configure the local environment.
 
 # Applying for a Test Machine (VM)
