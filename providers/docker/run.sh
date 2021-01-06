@@ -22,18 +22,19 @@ busybox_path=$(command -v busybox)
 cmd=(
 	docker run
 	--rm
+	--hostname $host
 	-m $memory
 	--tmpfs /tmp:rw,exec,nosuid,nodev
 	-e CCI_SRC=/c/compass-ci
 	-v ${load_path}/lkp:/lkp
-	-v ${DIR}/bin:/root/bin:ro
+	-v ${DIR}/bin:/root/sbin:ro
 	-v $CCI_SRC:/c/compass-ci:ro
 	-v /srv/git:/srv/git:ro
 	-v /srv/result:/srv/result:ro
 	-v ${busybox_path}:/usr/local/bin/busybox
 	--oom-score-adj="-1000"
 	${docker_image}
-	/root/bin/entrypoint.sh
+	/root/sbin/entrypoint.sh
 )
 
 "${cmd[@]}"
