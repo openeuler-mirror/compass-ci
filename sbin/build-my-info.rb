@@ -3,16 +3,26 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-require 'io/console'
 require_relative '../lib/es_client'
 require_relative '../lib/build_my_info_client'
+require 'optparse'
 
-print 'email: '
-my_email = $stdin.echo = gets.chomp
-print 'name: '
-my_name = $stdin.echo = gets.chomp
-print 'lab: '
-lab = $stdin.echo = gets.chomp
+option = {}
+options= OptionParser.new do |opts|
+  opts.on('-e email', 'my_email') do |email|
+    option[:email] = email
+  end
 
-build_my_info = BuildMyInfo.new(my_email, my_name, lab)
+  opts.on('-n name', 'my_name') do |name|
+    option[:name] = name
+  end
+
+  opts.on('-l lab', 'lab') do |lab|
+    option[:lab] = lab
+  end
+end
+
+options.parse!
+
+build_my_info = BuildMyInfo.new(option[:my_email], option[:my_name], option[:lab])
 build_my_info.config_my_info
