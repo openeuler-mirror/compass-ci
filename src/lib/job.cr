@@ -62,6 +62,7 @@ class Job
         return unless @hash.has_key?("my_uuid") || @hash.has_key?("my_token")
 
         check_account_info()
+        set_sshr_info()
         return
       end
     end
@@ -203,7 +204,7 @@ class Job
   end
 
   private def set_sshr_info
-    return unless @hash["ssh_pub_key"]?
+    return unless @hash.has_key?("ssh_pub_key")
 
     self["sshr_port"] = ENV["SSHR_PORT"]
     self["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
