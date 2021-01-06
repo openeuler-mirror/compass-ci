@@ -153,6 +153,7 @@ class Job
 
   private def set_defaults
     append_init_field()
+    set_docker_os()
     set_user_lkp_src()
     set_os_dir()
     set_submit_date()
@@ -168,6 +169,14 @@ class Job
     set_sshr_info()
     set_queue()
     set_subqueue()
+  end
+
+  private def set_docker_os
+    return unless is_docker_job?
+
+    os_info = docker_image.split(":")
+    self["os"] = os_info[0]
+    self["os_version"] = os_info[1]
   end
 
   private def set_kernel
@@ -309,10 +318,23 @@ class Job
     @hash[key] = JSON::Any.new(value) if value
   end
 
+  private def is_docker_job?
+    if testbox =~ /^dc/
+      return true
+    else
+      return false
+    end
+  end
+
   # defaults to the 1st value
   VALID_OS_MOUNTS = ["initramfs", "nfs", "cifs", "container"]
 
   private def set_os_mount
+    if is_docker_job?
+      self["os_mount"] = "container"
+      return
+    end
+
     if @hash["os_mount"]?
       if !VALID_OS_MOUNTS.includes?(@hash["os_mount"].to_s)
         raise "Invalid os_mount: #{@hash["os_mount"]}, should be in #{VALID_OS_MOUNTS}"
