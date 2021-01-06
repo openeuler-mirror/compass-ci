@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-gem install git activesupport rest-client cucumber json faye-websocket elasticsearch
+gem install --no-user-install git activesupport rest-client cucumber json faye-websocket elasticsearch
 
 grep -q '^lkp:' /etc/passwd || useradd -u 1090 lkp
 grep -q '^mailer:' /etc/passwd || useradd -u 1144 mailer

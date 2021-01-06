@@ -10,4 +10,4 @@ cd overcommit
 
 oc_build_out=$(gem build overcommit.gemspec | grep "overcommit-.*\.gem")
 
-gem install "$oc_build_out"
+gem install --no-user-install "$oc_build_out"
