@@ -40,7 +40,11 @@ install_cmds=(
 	--rm
 	-v "$rootdir":/mnt/root
 	addsoftware:auto
-	yum install -y --skip-broken --installroot=/mnt/root $packages
+	bash -c "
+		yum install -y --skip-broken --installroot=/mnt/root $packages
+		cd /mnt/root 
+		rm -rf srv/* opt/* mnt/* media/* home/* lost+found/* dev/* proc/* run/* sys/*
+	"
 )
 
 echo "rsync rootfs from $basever to $newver..."
