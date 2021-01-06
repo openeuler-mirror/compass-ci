@@ -344,13 +344,13 @@ class MirrorMain
     end
   end
 
-  def handle_submodule(submodule, parent_project)
+  def handle_submodule(submodule)
     submodule.each_line do |line|
       next unless line.include?('url = ')
 
       url = line.split(' = ')[1].chomp
       git_repo = url.split('://')[1] if url.include?('://')
-      return unless git_repo
+      break unless git_repo
 
       @git_info[git_repo] = { 'url' => url, 'git_repo' => git_repo, 'is_submodule' => true }
       fork_stat_init(git_repo)
