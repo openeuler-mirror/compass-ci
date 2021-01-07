@@ -62,8 +62,8 @@ end
 def compare_group(argv, dimensions, options)
   conditions = parse_conditions(argv)
   dims = dimensions.split(' ')
-  groups_matrices, suites_hash = create_groups_matrices_list(conditions, dims)
-  compare_group_matrices(groups_matrices, suites_hash, options)
+  groups_matrices, suites_hash, latest_jobs_hash = create_groups_matrices_list(conditions, dims)
+  compare_group_matrices(groups_matrices, suites_hash, latest_jobs_hash, options)
 end
 
 def create_groups_matrices_list(conditions, dims)

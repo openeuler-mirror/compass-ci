@@ -115,27 +115,37 @@ end
 #               }
 def combine_group_query_data(job_list, dims)
   suites_hash = {}
+  latest_jobs_hash = {}
   groups = auto_group(job_list, dims)
   have_multi_member = multi_member?(groups)
   one_size_count = 0
   groups.each do |group_key, value|
     if value.size < 2
       one_size_count += 1
-      if have_multi_member || one_size_count > 3
-        groups.delete(group_key)
-        next
-      end
+      next if group_deleted?(groups, group_key, have_multi_member, one_size_count)
     end
-    get_groups_matrix(groups, group_key, value, suites_hash)
+    get_groups_matrix(groups, group_key, value, suites_hash, latest_jobs_hash)
   end
-  return groups, suites_hash
+  return groups, suites_hash, latest_jobs_hash
 end
 
-def get_groups_matrix(groups, group_key, value, suites_hash)
+def group_deleted?(groups, group_key, have_multi_member, one_size_count)
+  was_deleted = false
+  if have_multi_member || one_size_count > 3
+    groups.delete(group_key)
+    was_deleted = true
+  end
+
+  was_deleted
+end
+
+def get_groups_matrix(groups, group_key, value, suites_hash, latest_jobs_hash)
   suite_list = []
+  latest_jobs_hash[group_key] = []
   value.each do |dimension_key, jobs|
     groups[group_key][dimension_key], suites = create_matrix(jobs)
     suite_list.concat(suites)
+    latest_jobs_hash[group_key] << jobs[0]
   end
   suites_hash[group_key] = suite_list
 end

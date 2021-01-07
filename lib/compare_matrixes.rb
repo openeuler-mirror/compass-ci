@@ -159,7 +159,7 @@ def get_matrixes_fields(matrixes_list)
   matrixes_fields
 end
 
-def get_matrixes_values(matrixes_list, options)
+def get_matrixes_values(matrixes_list, latest_jobs, options)
   # get all matrixes all field values
   #
   matrixes_values = { false => {}, true => {} }
@@ -168,12 +168,18 @@ def get_matrixes_values(matrixes_list, options)
     next if field == 'stats_source'
 
     success = successful?(field)
+    next unless success || latest_failure?(field, latest_jobs)
+
     matrixes_values[success][field] = get_values_by_field(
       matrixes_list, field,
       matrixes_size, success, options
     )
   end
   matrixes_values
+end
+
+def latest_failure?(field, latest_jobs)
+  latest_jobs.any? { |job| job['stats'][field] }
 end
 
 def remove_unchanged_field(matrixes_values, suite_list)
@@ -197,7 +203,7 @@ def matrixes_empty?(matrixes_list)
   return matrixes_list.any?(&:empty?)
 end
 
-def compare_matrixes(matrixes_list, suite_list, matrixes_titles = nil, group_key = nil, options: {})
+def compare_matrixes(matrixes_list, suite_list, latest_jobs, matrixes_titles = nil, group_key = nil, options: {})
   # compare matrix in matrixes_list and print info
   # @matrixes_list: list consisting of matrix
   # @matrixes_titles: number or dimension of matrix
@@ -206,7 +212,7 @@ def compare_matrixes(matrixes_list, suite_list, matrixes_titles = nil, group_key
   return warn('Matrix cannot be empty!') || '' if matrixes_empty?(matrixes_list)
 
   options = { 'perf-profile': 5, theme: :none, no_print: false }.merge(options)
-  matrixes_values = get_matrixes_values(matrixes_list, options)
+  matrixes_values = get_matrixes_values(matrixes_list, latest_jobs, options)
   remove_unchanged_field(matrixes_values, suite_list) if matrixes_list.length > 1
   no_print = options[:no_print]
   result_str = group_key ? "\n\n\n\n\n" + group_key : ''
@@ -387,28 +393,28 @@ end
 # input: group matrices
 # output: pre compare result of each group
 # the result with more comparison objects first
-def compare_group_matrices(group_matrices, suites_hash, options)
+def compare_group_matrices(group_matrices, suites_hash, latest_jobs_hash, options)
   result_str = ''
   group_matrices_array = sort_by_matrix_size(group_matrices)
   have_multi_member = group_matrices_array[0][1].size > 1
   group_matrices_array.each do |matrice_kv|
     next if have_multi_member && matrice_kv[1].size < 2
 
-    result_str += get_matrix_str(matrice_kv[0], matrice_kv[1], suites_hash[matrice_kv[0]], options)
+    result_str += get_matrix_str(matrice_kv[0], matrice_kv[1], suites_hash[matrice_kv[0]], latest_jobs_hash[matrice_kv[0]], options)
   end
   result_str
 end
 
-def get_matrix_str(matrice_key, matrice_value, suite_list, options)
+def get_matrix_str(matrice_key, matrice_value, suite_list, latest_jobs, options)
   m_list = []
   m_titles = []
   matrice_value.each do |dim, matrix|
     m_titles << dim
     m_list << matrix
   end
-  return compare_matrixes(m_list, suite_list, m_titles, matrice_key, options: options) if options[:no_print]
+  return compare_matrixes(m_list, suite_list, latest_jobs, m_titles, matrice_key, options: options) if options[:no_print]
 
-  print compare_matrixes(m_list, suite_list, m_titles, matrice_key, options: options)
+  print compare_matrixes(m_list, suite_list, latest_jobs, m_titles, matrice_key, options: options)
   return ''
 end
 
