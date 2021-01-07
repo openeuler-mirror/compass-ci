@@ -46,7 +46,6 @@ class GitMirror
       ret = !stderr.include?('fatal')
       break if ret
     end
-    FileUtils.rm_r(mirror_dir) unless ret
     return ret
   end
 
