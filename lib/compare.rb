@@ -40,7 +40,7 @@ def create_matrices_list(conditions)
   suite_list = []
   es = ESQuery.new(ES_HOST, ES_PORT)
   conditions.each do |condition|
-    query_results = es.multi_field_query(condition)
+    query_results = es.multi_field_query(condition, desc_keyword: 'start_time')
     matrix, suites = combine_query_data(query_results)
     matrices_list << matrix
     suite_list.concat(suites)
@@ -68,7 +68,7 @@ end
 
 def create_groups_matrices_list(conditions, dims)
   es = ESQuery.new(ES_HOST, ES_PORT)
-  query_results = es.multi_field_query(conditions)
+  query_results = es.multi_field_query(conditions, desc_keyword: 'start_time')
   combine_group_query_data(query_results['hits']['hits'], dims)
 end
 
