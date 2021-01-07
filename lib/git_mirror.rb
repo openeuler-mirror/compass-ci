@@ -72,7 +72,6 @@ class GitMirror
     if File.directory?(mirror_dir)
       possible_new_refs = git_fetch(mirror_dir)
     else
-      FileUtils.mkdir_p(mirror_dir)
       possible_new_refs = git_clone(fork_info['url'], mirror_dir)
     end
     feedback(fork_info['git_repo'], possible_new_refs)
