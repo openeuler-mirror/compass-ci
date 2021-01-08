@@ -12,8 +12,8 @@ names = Set.new %w[
   REDIS_PORT
   ES_HOST
   ES_PORT
-  MAIL_HOST
-  MAIL_PORT
+  SEND_MAIL_HOST
+  SEND_MAIL_PORT
   LAB
 ]
 

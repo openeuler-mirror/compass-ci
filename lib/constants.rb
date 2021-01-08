@@ -8,8 +8,8 @@ config = cci_defaults
 ES_HOST = config['ES_HOST'] || '172.17.0.1'
 ES_PORT = config['ES_PORT'] || 9200
 
-MAIL_HOST = config['SEND_MAIL_HOST'] || '172.17.0.1'
-MAIL_PORT = config['SEND_MAIL_PORT'] || 49000
+SEND_MAIL_HOST = config['SEND_MAIL_HOST'] || '172.17.0.1'
+SEND_MAIL_PORT = config['SEND_MAIL_PORT'] || 49000
 
 SRV_HTTP_HOST = config['SRV_HTTP_HOST'] || ENV['SRV_HTTP_HOST'] || '172.17.0.1'
 SRV_HTTP_PORT = config['SRV_HTTP_PORT'] || ENV['SRV_HTTP_PORT'] || 11300

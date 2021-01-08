@@ -9,8 +9,8 @@ require_relative '../defconfig.rb'
 names = Set.new %w[
   ES_HOST
   ES_PORT
-  MAIL_HOST
-  MAIL_PORT
+  SEND_MAIL_HOST
+  SEND_MAIL_PORT
   MONITOR_HOST
   MONITOR_PORT
   TASKQUEUE_HOST

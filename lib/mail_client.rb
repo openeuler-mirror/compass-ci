@@ -8,8 +8,8 @@ require_relative 'constants.rb'
 
 # mail client class
 class MailClient
-  HOST = (ENV.key?('MAIL_HOST') ? ENV['MAIL_HOST'] : MAIL_HOST)
-  PORT = (ENV.key?('MAIL_PORT') ? ENV['MAIL_PORT'] : MAIL_PORT).to_i
+  HOST = (ENV.key?('SEND_MAIL_HOST') ? ENV['SEND_MAIL_HOST'] : SEND_MAIL_HOST)
+  PORT = (ENV.key?('SEND_MAIL_PORT') ? ENV['SEND_MAIL_PORT'] : SEND_MAIL_PORT).to_i
   def initialize(host = HOST, port = PORT)
     @host = host
     @port = port
