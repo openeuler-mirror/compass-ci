@@ -1,0 +1,22 @@
+#!/bin/bash
+# Refer to: https://hub.docker.com/r/openresty/openresty
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm openresty-proxy-cache
+
+cmd=(
+	docker run -d
+	--name openresty-proxy-cache
+	--restart=always
+	-p 11333:80
+	-p 11334:443
+	-v $PWD/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+	-v /srv/initrd/tar:/srv/initrd/tar:ro
+	-v /etc/localtime:/etc/localtime:ro
+	openresty:proxy_cache
+)
+
+"${cmd[@]}"
