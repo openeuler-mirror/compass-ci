@@ -5,31 +5,21 @@
 # fix files permissions cause container service start failed
 umask 002
 
-# download git trees
+download_repo()
+{
+	local repo="$1"
+	local commit_id="$2"
 
-cd /c || exit
+	[ -d "/c/$repo/.git" ] || {
+		git clone https://gitee.com/wu_fengguang/"$repo".git /c/"$repo"
+		
+		[ "$repo" == "compass-ci" ] && ln -s /c/"$repo" /c/cci
+	}
 
-# git clone https://gitee.com/openeuler/compass-ci.git
-# modify and manual run for now:
-[ -d "compass-ci/.git" ] || {
-	git clone https://gitee.com/wu_fengguang/compass-ci.git
-
-	cd /c/compass-ci || exit
-	[ -n "$compass_commit_id" ] && git reset --hard "$compass_commit_id"
-
-	ln -s compass-ci /c/cci
+	cd /c/"$repo" || exit
+	[ -n "$commit_id" ] && git reset --hard "$commit_id"
 }
 
-[ -d "lkp-tests/.git" ] || {
-	git clone https://gitee.com/wu_fengguang/lkp-tests.git
-
-	cd /c/lkp-tests || exit
-	[ -n "$lkp_commit_id" ] && git reset --hard "$lkp_commit_id"
-}
-
-[ -d "upstream-repos/.git" ] || {
-	git clone https://gitee.com/wu_fengguang/upstream-repos.git
-
-	cd /c/upstream-repos || exit
-	[ -n "$upstream_commit_id" ] && git reset --hard "$upstream_commit_id"
-}
+download_repo "compass-ci" "$compass_commit_id"
+download_repo "lkp-tests" "$lkp_commit_id"
+download_repo "upstream-repos" "$upstream_commit_id"
