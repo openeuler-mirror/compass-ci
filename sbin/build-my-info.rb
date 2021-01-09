@@ -15,11 +15,11 @@ option = {
 
 options = OptionParser.new do |opts|
   opts.on('-e email', 'my_email') do |email|
-    option[:email] = email
+    option[:my_email] = email
   end
 
   opts.on('-n name', 'my_name') do |name|
-    option[:name] = name
+    option[:my_name] = name
   end
 
   opts.on('-l lab', 'lab') do |lab|
