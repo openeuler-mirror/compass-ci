@@ -7,7 +7,12 @@ require_relative '../lib/es_client'
 require_relative '../lib/build_my_info_client'
 require 'optparse'
 
-option = {}
+option = {
+  my_name: `git config --global user.name`.chomp,
+  my_email: `git config --global user.email`.chomp,
+  lab: `awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml`.chomp
+}
+
 options = OptionParser.new do |opts|
   opts.on('-e email', 'my_email') do |email|
     option[:email] = email
