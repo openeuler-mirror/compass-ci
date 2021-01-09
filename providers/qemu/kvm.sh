@@ -59,7 +59,7 @@ parse_ipxe_script()
 check_option_value()
 {
 	[ -s "$kernel" ] || {
-		echo "can't get kernel or kernel size is 0"
+		echo "The kernel does not exist"
 		exit
 	}
 	
