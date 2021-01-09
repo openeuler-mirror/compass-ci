@@ -8,7 +8,7 @@ require_relative '../lib/build_my_info_client'
 require 'optparse'
 
 option = {}
-options= OptionParser.new do |opts|
+options = OptionParser.new do |opts|
   opts.on('-e email', 'my_email') do |email|
     option[:email] = email
   end
