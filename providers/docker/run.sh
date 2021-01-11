@@ -31,6 +31,7 @@ cmd=(
 	-v $CCI_SRC:/c/compass-ci:ro
 	-v /srv/git:/srv/git:ro
 	-v /srv/result:/srv/result:ro
+	-v /etc/localtime:/etc/localtime:ro
 	-v ${busybox_path}:/usr/local/bin/busybox
 	--oom-score-adj="-1000"
 	${docker_image}
