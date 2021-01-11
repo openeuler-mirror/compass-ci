@@ -2,4 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-docker build -t debian:qemu-efi .
+[ $(arch) == "aarch64" ] && uefi=qemu-efi-aarch64
+[ $(arch) == "x86_64" ] && uefi=ovmf
+
+docker build -t debian:qemu-efi --build-arg UEFI=$uefi .

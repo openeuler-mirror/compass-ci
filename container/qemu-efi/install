@@ -11,5 +11,9 @@ cmd=(
 )
 
 "${cmd[@]}"
-docker cp qemu-efi:/usr/share/qemu-efi-aarch64 /usr/share/qemu-efi-aarch64
+
+[ $(arch) == "aarch64" ] && uefi=qemu-efi-aarch64
+[ $(arch) == "x86_64" ] && uefi=ovmf
+
+docker cp qemu-efi:/usr/share/$uefi /usr/share/$uefi
 docker_rm qemu-efi
