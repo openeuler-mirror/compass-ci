@@ -100,6 +100,7 @@ class Job
     user_lkp_src
     kernel_uri
     kernel_params
+    ipxe_kernel_params
     docker_image
     kernel_version
     linux_vmlinuz_path
@@ -488,14 +489,8 @@ class Job
     return temp_initrds
   end
 
-  private def initrds_basename
-    basenames = ""
-
-    get_initrds().each do |initrd|
-      basenames += "initrd=#{File.basename(initrd)} "
-    end
-
-    return basenames
+  private def initrds_basename : Array(String)
+    return os_mount == "container" ? [] of String : get_initrds.map { |initrd| "initrd=#{File.basename(initrd)}" }
   end
 
   private def set_initrds_uri
