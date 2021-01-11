@@ -104,6 +104,9 @@ else
 		          "submit_id": {
 		            "type": "keyword"
 		          },
+		          "group_id": {
+			    "type": "keyword"
+			  },
 		          "id": {
 		            "type": "keyword"
 		          },
