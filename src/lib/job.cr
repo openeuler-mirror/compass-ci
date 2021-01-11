@@ -433,8 +433,7 @@ class Job
   end
 
   private def set_kernel_uri
-    self["kernel_uri"] = "kernel #{OS_HTTP_PREFIX}" +
-                         JobHelper.service_path("#{linux_vmlinuz_path}")
+    self["kernel_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path("#{linux_vmlinuz_path}")
   end
 
   private def common_initrds
@@ -497,7 +496,7 @@ class Job
     initrds_uri_values = [] of JSON::Any
 
     get_initrds().each do |initrd|
-      initrds_uri_values << JSON::Any.new("initrd #{initrd}")
+      initrds_uri_values << JSON::Any.new("#{initrd}")
     end
 
     @hash["initrds_uri"] = JSON::Any.new(initrds_uri_values)
