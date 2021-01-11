@@ -7,7 +7,7 @@ class Sched
     boot_type = @env.params.url["boot_type"]
 
     case boot_type
-    when "ipxe"
+    when "ipxe", "libvirt"
       host = @redis.hash_get("sched/mac2host", normalize_mac(value))
     when "grub"
       host = @redis.hash_get("sched/mac2host", normalize_mac(value))
@@ -166,6 +166,22 @@ class Sched
     return response
   end
 
+  private def get_boot_libvirt(job : Job)
+    _kernel_params = job["kernel_params"]?
+    _kernel_params = _kernel_params.as_a.map(&.to_s).join(" ") if _kernel_params
+
+    return {
+      "job_id"             => job.id,
+      "kernel_uri"         => job.kernel_uri,
+      "initrds_uri"        => job["initrds_uri"]?,
+      "kernel_params"      => _kernel_params,
+      "result_root"        => job.result_root,
+      "LKP_SERVER"         => job["LKP_SERVER"]?,
+      "templates"          => job["templates"]?,
+      "RESULT_WEBDAV_PORT" => job["RESULT_WEBDAV_PORT"]? || "3080",
+    }.to_json
+  end
+
   def set_id2upload_dirs(job)
     @redis.hash_set("sched/id2upload_dirs", job.id, job.upload_dirs)
   end
@@ -180,6 +196,8 @@ class Sched
       return job ? get_boot_grub(job) : grub_msg("No job now")
     when "container"
       return job ? get_boot_container(job) : Hash(String, String).new.to_json
+    when "libvirt"
+      return job ? get_boot_libvirt(job) : {"job_id" => ""}.to_json
     else
       raise "Not defined boot type #{boot_type}"
     end
