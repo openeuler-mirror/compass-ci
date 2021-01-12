@@ -250,11 +250,30 @@ class Job
     set_upload_dirs()
   end
 
-  def get_package_dir
-    if @hash["cci-makepkg"]? || @hash["cci-depends"]? || @hash["build-pkg"]?
-      mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
-      common_dir = "#{mount_type}/#{os}/#{os_arch}/#{os_version}"
+  def get_pkg_common_dir
+    pkg_style = nil
+    ["cci-makepkg", "cci-depends", "build-pkg"].each do |item|
+      pkg_style = @hash[item]?
+      break if pkg_style
     end
+    return nil unless pkg_style && pkg_style != nil
+
+    tmp_os = pkg_style["os"]? == nil ? "#{os}" : pkg_style["os"]
+    tmp_os_arch = pkg_style["os_arch"]? == nil ? "#{os_arch}" : pkg_style["os_arch"]
+    tmp_os_version = pkg_style["os_version"]? == nil ? "#{os_version}" : pkg_style["os_version"]
+
+    tmp_os_mount = pkg_style["os_mount"]? == nil ? "#{os_mount}" : pkg_style["os_mount"]
+    mount_type = tmp_os_mount == "cifs" ? "nfs" : tmp_os_mount.dup
+
+    common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
+
+    return common_dir
+  end
+
+  def get_package_dir
+    package_dir = ""
+    common_dir = get_pkg_common_dir
+    return package_dir unless common_dir
 
     if @hash["cci-makepkg"]?
       package_dir = ",/initrd/pkg/#{common_dir}/#{@hash["cci-makepkg"]["benchmark"]}"
@@ -266,10 +285,9 @@ class Job
       else
         package_name = @hash["pkgbuild_repo"].to_s.split("/")[-1]
       end
+
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
       package_dir += ",/cci/build-config" if @hash["config"]?
-    else
-      package_dir = ""
     end
 
     return package_dir
