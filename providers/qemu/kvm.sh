@@ -113,7 +113,7 @@ set_qemu()
 
 print_message()
 {
-	echo $SCHED_PORT
+	echo SCHED_PORT: $SCHED_PORT
 	echo kernel: $kernel
 	echo initrds: $initrds
 	echo append: $append
