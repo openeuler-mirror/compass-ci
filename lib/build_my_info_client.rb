@@ -21,12 +21,13 @@ require_relative '../lib/es_client'
 #         build_my_info = BuildMyInfo.new(email, name, lab)
 #         build_my_info.config_my_info
 class BuildMyInfo
-  def initialize(my_email, my_name, lab)
+  def initialize(my_email, my_name, lab, my_token = nil)
     @lab = lab || 'nolab'
+    @my_token = my_token || %x(uuidgen).chomp
     @my_info = {
       'my_email' => my_email,
       'my_name' => my_name,
-      'my_token' => %x(uuidgen).chomp,
+      'my_token' => @my_token,
       'my_login_name' => nil,
       'my_commit_url' => nil,
       'my_ssh_pubkey' => []
