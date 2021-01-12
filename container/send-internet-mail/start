@@ -13,6 +13,7 @@ names = Set.new %w[
   ROBOT_EMAIL_PASSWORD
   SEND_MAIL_PORT
   SENT_MAILDIR
+  REDIS_PORT
 ]
 
 defaults = relevant_defaults(names)
