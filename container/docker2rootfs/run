@@ -12,7 +12,7 @@ check_passwd_file "$root_pwd_file"
 load_docker_img "$1"
 echo $docker_name_tag
 IMAGE_NAME=${docker_name_tag%%:*}
-IMAGE_PACK=${IMAGE_NAME##*/}.cgz
+IMAGE_PACK=$(echo ${IMAGE_NAME##*/}.cgz)
 
 start=(
 	docker run
