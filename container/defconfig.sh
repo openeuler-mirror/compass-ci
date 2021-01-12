@@ -8,7 +8,12 @@ load_cci_defaults()
 {
 	shopt -s nullglob
 
-	for i in /etc/compass-ci/defaults/*.yaml $HOME/.config/compass-ci/defaults/*.yaml
+        yaml_file=(
+                /etc/compass-ci/defaults/*.yaml
+                /etc/compass-ci/account/*.yaml
+                "$HOME"/.config/compass-ci/defaults/*.yaml
+        )
+	for i in "${yaml_file[@]}"
 	do
 		create_yaml_variables "$i"
 	done
