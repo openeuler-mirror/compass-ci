@@ -18,12 +18,6 @@ check_logfile()
 	}
 }
 
-qemu_command()
-{
-	qemu=qemu-system-aarch64
-	command -v $qemu >/dev/null || qemu=qemu-kvm
-}
-
 write_logfile()
 {
 	ipxe_script=ipxe_script
@@ -66,10 +60,55 @@ check_option_value()
 	[ -n "$initrds" ] || exit
 }
 
-get_initrd()
+set_initrd()
 {
 	initrd=initrd
 	cat $initrds > $initrd
+}
+
+set_bios()
+{
+       bios=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
+       [ -f "$bios" ] || bios=/usr/share/ovmf/OVMF.fd
+}
+
+set_helper()
+{
+       helper=/usr/libexec/qemu-bridge-helper
+       [ -f "$helper" ] || helper=/usr/lib/qemu/qemu-bridge-helper
+}
+
+set_nic()
+{
+       nic="tap,model=virtio-net-pci,helper=$helper,br=br0,mac=${mac}"
+}
+
+set_device()
+{
+	device="virtio-net-device,netdev=net0,mac=${mac}"
+}
+
+set_netdev()
+{
+	netdev="bridge,br=br0,id=net0,helper=${helper}"
+}
+
+set_qemu()
+{
+	qemus=(
+		qemu-system-aarch64
+		qemu-kvm
+		qemu-system-x86_64
+		qemu-system-riscv64
+	)
+
+	for qemu in "${qemus[@]}"
+	do
+		[ -n "$(command -v ${qemu})" ] && break
+	done
+
+	# debian has both qemu-system-x86_64 and qemu-system-riscv64 command
+	[[ $kernel =~ 'riscv64' ]] && qemu=qemu-system-riscv64
 }
 
 print_message()
@@ -83,36 +122,88 @@ print_message()
 	sleep 5
 }
 
-run_qemu()
+public_option()
 {
 	kvm=(
 		$qemu
-		-machine virt-4.0,accel=kvm,gic-version=3
 		-kernel $kernel
 		-initrd $initrd
 		-smp $nr_cpu
 		-m $memory
-		-cpu Kunpeng-920
-		-bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd
-		-nic tap,model=virtio-net-pci,helper=/usr/libexec/qemu-bridge-helper,br=br0,mac=${mac}
 		-k en-us
 		-no-reboot
 		-nographic
 		-serial file:${log_file}
 		-monitor null
 	)
+}
 
-	"${kvm[@]}" --append "${append}"
+individual_option()
+{
+	case "$qemu" in
+		qemu-system-aarch64)
+			arch_option=(
+					-machine virt-4.0,accel=kvm,gic-version=3
+					-cpu Kunpeng-920
+					-bios $bios
+					-nic $nic
+			)
+			;;
+		qemu-kvm)
+			[ "$(arch)" == "aarch64" ] && arch_option=(
+					-machine virt-4.0,accel=kvm,gic-version=3
+					-cpu Kunpeng-920
+					-bios $bios
+					-nic $nic
+			)
+			[ "$(arch)" == "x86_64" ] && arch_option=(
+					-bios $bios
+					-nic $nic
+			)
+			;;
+		qemu-system-x86_64)
+			arch_option=(
+					-bios $bios
+					-nic $nic
+			)
+			;;
+		qemu-system-riscv64)
+			arch_option=(
+					-machine virt
+					-device $device
+					-netdev $netdev
+			)
+			;;
+	esac
+}
+
+run_qemu()
+{
+	"${kvm[@]}" "${arch_option[@]}" --append "${append}"
+}
+
+set_options()
+{
+	set_initrd
+	set_bios
+	set_helper
+	set_nic
+	set_device
+	set_netdev
+	set_qemu
 }
 
 check_logfile
 write_logfile
 
-qemu_command
 parse_ipxe_script
 check_option_value
-get_initrd
+
+set_options
 
 print_message
+
+public_option
+individual_option
 
 run_qemu
