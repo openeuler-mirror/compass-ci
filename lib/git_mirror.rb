@@ -319,16 +319,12 @@ class MirrorMain
   end
 
   # example
-  # url: https://gitee.com/theprocess/oec-hardware   git_repo: oec-hardware/oec-hardware
   # url: https://github.com/berkeley-abc/abc         git_repo: a/abc/abc
-  # url: https://github.com/Siguyi/AvxToNeon         git_repo: AvxToNeon/Siguyi
+  # url: https://github.com/Siguyi/AvxToNeon         git_repo: a/AvxToNeon/Siguyi
   def get_git_repo(webhook_url)
     fork_name, project = webhook_url.split('/')[-2, 2]
 
-    git_repo = "#{project}/#{project}"
-    return git_repo if check_git_repo(git_repo, webhook_url)
-
-    git_repo = "#{project}/#{fork_name}"
+    git_repo = "#{project[0].downcase}/#{project}/#{fork_name}"
     return git_repo if check_git_repo(git_repo, webhook_url)
 
     git_repo = "#{project[0].downcase}/#{project}/#{project}"
