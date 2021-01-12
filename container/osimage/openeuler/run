@@ -24,5 +24,5 @@ cmd=(
 load_docker_image
 "${cmd[@]}"
 cp_image_to_host
-docker_rm init_docker &> /dev/null
+docker_rm initramfs_${image} &> /dev/null
 echo "build finished"

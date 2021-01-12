@@ -40,6 +40,6 @@ load_docker_image()
 
 cp_image_to_host()
 {
-	docker cp -a init_docker:/tmp/${IMAGE_NAME} $HOME/ 
+	docker cp -a initramfs_${image}:/tmp/${IMAGE_NAME} $HOME/ 
 	echo "result: $(ls $HOME/${IMAGE_NAME})"
 }
