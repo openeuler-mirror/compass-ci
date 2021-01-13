@@ -20,6 +20,8 @@ server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 : ${LOCAL_ROBOT_EMAIL_ADDRESS:=Crystal TEAM}
 : ${ASSIST_RESULT_PORT:=8102}
 : ${RESULT_WEBDAV_PORT:=3080}
+: ${ES_HOST:=$server_ip}
+: ${ES_PORT:=9200}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -45,6 +47,9 @@ LOCAL_ROBOT_EMAIL_ADDRESS: $LOCAL_ROBOT_EMAIL_ADDRESS
 MAILDIR: /srv/cci/Maildir/.compass-ci
 ASSIST_RESULT_PORT: $ASSIST_RESULT_PORT
 RESULT_WEBDAV_PORT: $RESULT_WEBDAV_PORT
+lab: nolab
+ES_HOST: $ES_HOST
+ES_PORT: $ES_PORT
 EOF
 
 mkdir -p /etc/compass-ci/account
