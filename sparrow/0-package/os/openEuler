@@ -21,6 +21,7 @@ pkgs=(
 	busybox
 	iproute
 	hostname
+	libvirt
 )
 
 yum install -y --skip-broken "${pkgs[@]}"

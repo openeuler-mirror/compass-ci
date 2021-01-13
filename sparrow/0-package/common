@@ -51,3 +51,4 @@ sed '/^Environment=/a\TimeoutSec=0' /usr/lib/systemd/system/docker.service
 
 systemctl daemon-reload
 systemctl restart docker
+systemctl start libvirtd
