@@ -96,10 +96,8 @@ set_netdev()
 set_qemu()
 {
 	qemus=(
-		qemu-system-aarch64
+		qemu-system-$(arch)
 		qemu-kvm
-		qemu-system-x86_64
-		qemu-system-riscv64
 	)
 
 	for qemu in "${qemus[@]}"
