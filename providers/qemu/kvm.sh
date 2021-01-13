@@ -130,6 +130,7 @@ public_option()
 		-initrd $initrd
 		-smp $nr_cpu
 		-m $memory
+		-rtc base=localtime
 		-k en-us
 		-no-reboot
 		-nographic

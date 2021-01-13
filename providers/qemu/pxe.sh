@@ -28,6 +28,7 @@ kvm=(
 	-cpu Kunpeng-920
 	-device virtio-gpu-pci
 	-bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd
+	-rtc base=localtime
 	-nic tap,model=virtio-net-pci,helper=/usr/libexec/qemu-bridge-helper,br=br0,mac=${mac}
 	-k en-us
 	-no-reboot
