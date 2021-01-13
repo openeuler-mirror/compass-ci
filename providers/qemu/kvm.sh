@@ -102,7 +102,7 @@ set_qemu()
 
 	for qemu in "${qemus[@]}"
 	do
-		[ -n "$(command -v ${qemu})" ] && break
+		command -v "$qemu" > /dev/null && break
 	done
 
 	# debian has both qemu-system-x86_64 and qemu-system-riscv64 command
