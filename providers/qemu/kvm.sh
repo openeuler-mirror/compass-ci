@@ -57,6 +57,9 @@ check_option_value()
 		exit
 	}
 	
+	# debian has both qemu-system-x86_64 and qemu-system-riscv64 command
+	[[ $kernel =~ 'riscv64' ]] && qemu=qemu-system-riscv64
+
 	[ -n "$initrds" ] || exit
 }
 
@@ -104,9 +107,6 @@ set_qemu()
 	do
 		command -v "$qemu" > /dev/null && break
 	done
-
-	# debian has both qemu-system-x86_64 and qemu-system-riscv64 command
-	[[ $kernel =~ 'riscv64' ]] && qemu=qemu-system-riscv64
 }
 
 print_message()
@@ -196,9 +196,9 @@ check_logfile
 write_logfile
 
 parse_ipxe_script
-check_option_value
 
 set_options
+check_option_value
 
 print_message
 
