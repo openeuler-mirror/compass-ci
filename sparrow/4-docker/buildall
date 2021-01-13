@@ -30,7 +30,7 @@ do_one()
 	[ -n "$LKP_SRC" ] && log_info "start build $container."
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
-		cd $container
+		cd "$container"
 		[ "$container_name" == 'ssh-r' ] && exit
 		docker images | grep -wq "$container_name"
 		if [ "$?" == 0 ] && [ "$action" != "reboot" ]; then

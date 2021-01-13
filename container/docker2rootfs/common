@@ -96,7 +96,7 @@ load_docker_img()
 cp_rootfs()
 {
 	docker cp -a rootfs-docker:/tmp/$1 /tmp/
-	cd $2
+	cd "$2"
 	zcat /tmp/$1 |cpio -idmv
 }
 
@@ -148,7 +148,7 @@ create_links_vmlinuz_initrd()
 	create_get_initrd
 
 	echo "Creating links to initrd.lkp and vmlinuz..."
-	cd $ROOTFS_DIR
+	cd "$ROOTFS_DIR"
 	ln -fs $ROOTFS_INITRD_LKP initrd.lkp
 	cd $ROOTFS_DIR/boot
 	ln -fs $ROOTFS_VMLINUZ vmlinuz
