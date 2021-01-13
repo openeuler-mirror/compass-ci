@@ -43,7 +43,7 @@ install_cmds=(
 	bash -c "
 		yum install -y --skip-broken --installroot=/mnt/root $packages
 		cd /mnt/root 
-		rm -rf srv/{*,.*} opt/{*,.*} mnt/{*,.*} media/{*,.*} home/{*,.*} lost+found/{*,.*} dev/{*,.*} proc/{*,.*} run/{*,.*} sys/{*,.*}
+		rm -rf srv/{*,.*} opt/{*,.*} mnt/{*,.*} media/{*,.*} home/{*,.*} lost+found/{*,.*} dev/{*,.*} proc/{*,.*} run/{*,.*} sys/{*,.*} > /dev/null 2>&1
 	"
 )
 
