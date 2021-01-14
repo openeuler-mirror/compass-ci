@@ -187,6 +187,8 @@ class MirrorMain
   end
 
   def do_push(fork_key)
+    return if @fork_stat[fork_key][:queued]
+
     @fork_stat[fork_key][:queued] = true
     @git_info[fork_key][:cur_refs] = get_cur_refs(fork_key) if @git_info[fork_key][:cur_refs].nil?
     @git_queue.push(@git_info[fork_key])
@@ -196,7 +198,7 @@ class MirrorMain
     return if @git_queue.size >= 1
 
     fork_key = @priority_queue.delete_min_return_key
-    do_push(fork_key) unless @fork_stat[fork_key][:queued]
+    do_push(fork_key)
     @priority_queue.push fork_key, (@priority - @fork_stat[fork_key][:priority])
     @priority += 1
   end
