@@ -128,7 +128,7 @@ class ESQuery
     result = @client.search(index: @index + '*', body: query)['aggregations']["all_#{field1}"]['buckets']
     return nil if result.empty?
 
-    result
+    parse_fields(result)
   end
 end
 
@@ -215,4 +215,48 @@ def build_aggs_from_fields(fields)
   sub_aggs = build_aggs_from_fields(fields)
   aggs_hash['aggs']["all_#{field}"].merge!(sub_aggs) if sub_aggs
   aggs_hash
+end
+
+# input:
+#   es_result =
+#     [{"key"=>"build-pkg",
+#       "doc_count"=>354526,
+#       "all_job_state"=>
+#        {"doc_count_error_upper_bound"=>0,
+#         "sum_other_doc_count"=>0,
+#         "buckets"=>
+#          [{"key"=>"failed", "doc_count"=>5708},
+#           {"key"=>"finished", "doc_count"=>1033},
+#           {"key"=>"incomplete", "doc_count"=>204},
+#           {"key"=>"submit", "doc_count"=>136},
+#           ...
+#
+# output:
+#   result_hash =
+#     {"build-pkg"=>
+#       {"failed"=>5708,
+#        "finished"=>1033,
+#        "incomplete"=>204,
+#        "submit"=>136,
+#        "OOM"=>11,
+#        "post_run"=>2},
+#      "cci-depends"=>
+#       {"finished"=>1785,
+#        "failed"=>675,
+#        ...
+def parse_fields(es_result)
+  result_hash = {}
+  es_result.each do |result|
+    key = result['key']
+    sub_field = result.keys.detect { |field| field.start_with?('all_') }
+
+    if sub_field
+      all_field = result[sub_field]['buckets']
+      result_hash[key] = parse_fields(all_field)
+    else
+      result_hash[key] = result['doc_count']
+    end
+  end
+
+  result_hash
 end
