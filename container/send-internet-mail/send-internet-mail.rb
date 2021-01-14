@@ -6,7 +6,10 @@
 require 'mail'
 require 'sinatra'
 
-require "#{ENV['CCI_SRC']}/lib/mail-post"
+REDIS_HOST = %x(/sbin/ip route | awk '/default/ {print $3}').chomp
+REDIS_PORT = ENV['REDIS_PORT']
+
+require_relative '../../lib/mail-post'
 
 smtp = {
   address: 'smtp.qq.com',
