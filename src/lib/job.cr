@@ -427,6 +427,7 @@ class Job
                          "kernel_version",
                          "kernel_uri",
                          "kernel_params",
+                         "ipxe_kernel_params",
                          "linux_vmlinuz_path"]
   end
 
