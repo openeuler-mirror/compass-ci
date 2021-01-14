@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'optparse'
+require 'json'
+
+require_relative '../lib/es_jobs'
+
+def parse_argv
+  items = {}
+  ARGV.each do |item|
+    key, value = item.split('=')
+    if key && value
+      value_list = value.split(',')
+      items[key] = value_list.length > 1 ? value_list : value
+    end
+  end
+  items
+end
+opt_refine = [-1]
+opt_fields = []
+opt_stats_filter = []
+opt_parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: es-jobs [options] search_key1=val1[,val2..] ..'
+
+  opts.separator 'search_key can be submit_id, group_id'
+  opts.separator 'How to use -r'
+  opts.separator 'Like es-jobs submit_id=xxx -r "0,1,2,3"'
+  opts.separator '-1 means not refine, is the default value'
+  opts.separator ' 0 means stats.succes, refine the jobs whose test cases are all successfully executed'
+  opts.separator ' 1 means stats.unknown, refine the jobs without the stats'
+  opts.separator ' 2 means stats.warning, refine the jobs with warnings in tese cases'
+  opts.separator ' 3 means stats.has_error, refine the jobs with errors in tese cases'
+
+  opts.on('-r fields', '--refine fields', 'refine jobs') do |fields|
+    opt_refine = fields.split(',').map(&:to_i)
+  end
+
+  opts.on('-f fields', '--fields fields', 'fields you want to see') do |fields|
+    opt_fields = fields.split(',')
+  end
+
+  opts.on('-s fields', '--stats-filter fields', 'return data contains fields in stats') do |fields|
+    opt_stats_filter = fields.split(',')
+  end
+end
+
+opt_parser.parse!(ARGV)
+items = parse_argv
+raise 'Please enter a query' if items.empty?
+
+es_jobs = ESJobs.new(items, opt_refine, opt_fields, opt_stats_filter)
+es_jobs.output
