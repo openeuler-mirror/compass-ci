@@ -6,6 +6,7 @@
 require 'bunny'
 require 'json'
 require 'yaml'
+require_relative '../lib/build_my_info_client'
 
 # receive message and auto submit job
 class AutoSubmit
@@ -81,6 +82,16 @@ class AutoSubmit
     end
   end
 end
+
+option = {
+  my_name: 'Auto Submit Robot',
+  my_email: 'autosubmit@localhost',
+  lab: 'autosubmit'
+}
+
+# fix verification problems when submit jobs by auto-submit service
+build_my_info = BuildMyInfo.new(option[:my_email], option[:my_name], option[:lab])
+build_my_info.config_my_info
 
 auto_submitter = AutoSubmit.new
 auto_submitter.listen
