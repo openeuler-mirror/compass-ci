@@ -9,6 +9,7 @@ require 'fileutils'
 
 require_relative './constants'
 require_relative '../../lib/sched_client'
+require_relative '../../lib/assist_result_client'
 require_relative '../../lib/compare_error_messages'
 require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 
@@ -121,9 +122,10 @@ module Utils
     end
 
     def init_job_content(job_id)
-      es = ESQuery.new
-      job = es.query_by_id(job_id)
-      raise "es query job id: #{job_id} failed!" unless job
+      job_yaml = AssistResult.new.get_job_yaml(job_id)
+      raise "get job yaml failed, job id: #{job_id} !" unless job_yaml
+
+      job = JSON.parse job_yaml
 
       account_info = get_account_info
       raise "query #{DELIMITER_ACCONUT} account info failed!" unless account_info
@@ -135,21 +137,9 @@ module Utils
       job['my_email'] = account_info['my_email']
       job['my_token'] = account_info['my_token']
       job['bad_job_id'] = job_id
-      job['testbox'] = job['config'] ? 'dc-16g' : 'dc-8g'
-      job['os'] = 'openeuler'
-      job['os_arch'] = 'aarch64'
-      job['os_mount'] = 'container'
-      job['os_version'] = '20.03-pre'
-      job['docker_image'] = 'openeuler:20.03-pre'
 
-      job.delete('start_time')
-      job.delete('tbox_group')
-      job.delete('error_ids')
-      job.delete('job_state')
-      job.delete('end_time')
-      job.delete('loadavg')
+      job.delete('subqueue')
       job.delete('queue')
-      job.delete('stats')
       job.delete('id')
 
       return job
