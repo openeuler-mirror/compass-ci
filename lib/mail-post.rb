@@ -10,6 +10,10 @@ require 'open3'
 require 'mail'
 require 'base64'
 
+require_relative 'mail-post/email_init'
+require_relative 'mail-post/email_limit_queue'
+require_relative 'mail-post/email_mapping'
+
 set :bind, '0.0.0.0'
 set :port, ENV['SEND_MAIL_PORT']
 
@@ -57,14 +61,32 @@ post '/send_mail_encode' do
   send_mail(mail_info)
 end
 
+def check_email_limit(mail_info)
+  email_limit = EmailRateLimit.new(mail_info)
+  email_limit.check_email_counts
+end
+
+def check_email_mapping(mail_info)
+  email_mapping = EmailAddrMapping.new(mail_info)
+  email_mapping.check_email_mapping
+end
+
 def check_send_mail(mail_info)
   raise 'no/empty subject.' if mail_info['subject'].nil? || mail_info['subject'].empty?
   raise 'no/empty email_to address.' if mail_info['to'].nil? || mail_info['to'].empty?
   raise 'no/empty email content.' if mail_info['body'].nil? || mail_info['body'].empty?
+
+  return mail_info unless ENV['SEND_MAIL_PORT'].to_s == '49000'
+
+  mail_info = check_email_mapping(mail_info.clone)
+  mail_info = check_email_limit(mail_info.clone)
+  return mail_info
 end
 
 def send_mail(mail_info)
-  check_send_mail(mail_info)
+  mail_info = check_send_mail(mail_info)
+  return if mail_info['to'].empty?
+
   mail = Mail.new do
     from ENV['ROBOT_EMAIL_ADDRESS']
     subject mail_info['subject']
@@ -79,7 +101,6 @@ def send_mail(mail_info)
 end
 
 def check_to_store_email(mail)
-
   return if ENV['SEND_MAIL_PORT'].to_s != '49000'
   return if ENV['HOST_SERVER'] != 'z9'
 
