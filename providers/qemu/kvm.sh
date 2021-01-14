@@ -53,7 +53,7 @@ parse_ipxe_script()
 check_option_value()
 {
 	[ -s "$kernel" ] || {
-		echo "The kernel does not exist"
+		echo "The kernel does not exist: $kernel"
 		exit
 	}
 	
