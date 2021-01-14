@@ -97,7 +97,7 @@ class GitBisect
     return nil unless temp[0].include?('is the first bad commit') || temp[-1].include?('bisect run success')
 
     first_bad_commit = Utils.parse_first_bad_commit(result)
-    bisect_error = ErrorMessages.new(@build_pkg_dir).obtain_error_messages_by_errorid(@error_id)
+    bisect_error = ErrorMessages.new(@build_pkg_dir).obtain_error_messages_by_error_id(@error_id)
     all_errors = Utils.obt_errors(@work_dir, first_bad_commit)
     first_bad_commit_result_root = Utils.obt_result_root_by_commit(first_bad_commit)
     FileUtils.rm_r(@work_dir) if Dir.exist?(@work_dir)
