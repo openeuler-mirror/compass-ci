@@ -87,6 +87,49 @@ class ESQuery
 
     result
   end
+
+  # input:
+  #   fields, query_items
+  #
+  #   fields => fields: Array(keyword)
+  #   eg:
+  #     ['suite', 'job_state']
+  #
+  #   query_items => query_items: Hash(keyword, value)
+  #   eg:
+  #     {
+  #       'os' => 'openeuler',
+  #       ...
+  #     }
+  #   (optional for query_items, default no scope limitation)
+  # output:
+  #   [{"key"=>"build-pkg",
+  #     "doc_count"=>186175,
+  #     "all_job_state"=>
+  #      {"doc_count_error_upper_bound"=>0,
+  #       "sum_other_doc_count"=>0,
+  #       "buckets"=>
+  #        [{"key"=>"failed", "doc_count"=>3830},
+  #         {"key"=>"finished", "doc_count"=>803},
+  #         {"key"=>"incomplete", "doc_count"=>196},
+  #         ...
+  def query_fields(fields, query_items = {})
+    field1 = fields.first
+    aggs_hash = build_aggs_from_fields(fields)
+    query = {
+      query: {
+        bool: {
+          must: build_multi_field_subquery_body(query_items)
+        }
+      },
+      aggs: aggs_hash['aggs'],
+      size: 0
+    }
+    result = @client.search(index: @index + '*', body: query)['aggregations']["all_#{field1}"]['buckets']
+    return nil if result.empty?
+
+    result
+  end
 end
 
 # Range Query Example:
@@ -145,4 +188,31 @@ def assign_desc_body(keyword)
       keyword => { order: 'desc' }
     }]
   }
+end
+
+# input:
+#   fields = ['os', 'os_version', 'job_state']
+# output:
+#   aggs_hash = {
+#     "aggs"=>
+#      {"all_os"=>
+#        {"terms"=>{:field=>"os", :size=>1000},
+#         "aggs"=>
+#          {"all_os_version"=>
+#            {"terms"=>{:field=>"os_version", :size=>1000},
+#             "aggs"=>
+#              {"all_job_state"=>{"terms"=>{:field=>"job_state", :size=>1000}}}}}}}
+#   }
+def build_aggs_from_fields(fields)
+  aggs_hash = {}
+  return if fields.empty?
+
+  field = fields.shift
+  aggs_hash['aggs'] ||= {}
+  aggs_hash['aggs']["all_#{field}"] = {
+    'terms' => { field: field, size: 1000 }
+  }
+  sub_aggs = build_aggs_from_fields(fields)
+  aggs_hash['aggs']["all_#{field}"].merge!(sub_aggs) if sub_aggs
+  aggs_hash
 end
