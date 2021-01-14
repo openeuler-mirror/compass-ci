@@ -9,9 +9,9 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 RUN apk update && \
     apk upgrade && \
     apk add --no-cache git && \
-    apk add ruby-dev make gcc g++
+    apk add ruby-dev make gcc g++ util-linux
 
 RUN echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc
 
 RUN umask 002 && \
-    gem install bunny json activesupport git rest-client
+    gem install bunny json activesupport git rest-client io-console elasticsearch
