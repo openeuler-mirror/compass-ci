@@ -86,7 +86,7 @@ end
 option = {
   my_name: 'Auto Submit Robot',
   my_email: 'autosubmit@localhost',
-  lab: 'autosubmit'
+  lab: `awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml`.chomp
 }
 
 # fix verification problems when submit jobs by auto-submit service
