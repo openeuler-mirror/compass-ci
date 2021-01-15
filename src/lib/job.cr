@@ -256,7 +256,9 @@ class Job
       pkg_style = @hash[item]?
       break if pkg_style
     end
-    return nil unless pkg_style && pkg_style != nil
+    return nil unless pkg_style
+
+    pkg_style = JSON.parse("{}") if pkg_style == nil
 
     tmp_os = pkg_style["os"]? == nil ? "#{os}" : pkg_style["os"]
     tmp_os_arch = pkg_style["os_arch"]? == nil ? "#{os_arch}" : pkg_style["os_arch"]
