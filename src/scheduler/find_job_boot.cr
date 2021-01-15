@@ -181,7 +181,7 @@ class Sched
       "kernel_params"      => _kernel_params,
       "result_root"        => job.result_root,
       "LKP_SERVER"         => job["LKP_SERVER"]?,
-      "templates"          => job["templates"]?,
+      "vt"                 => job["vt"]?,
       "RESULT_WEBDAV_PORT" => job["RESULT_WEBDAV_PORT"]? || "3080",
     }.to_json
   end
