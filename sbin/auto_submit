@@ -31,6 +31,9 @@ class AutoSubmit
 
   def submit(newrefs_info, submit_argv)
     newrefs_info['new_refs']['heads'].each do |branch, commit_id|
+      inactive_time = %x(git -C /srv/git/#{newrefs_info['git_repo']}.git log --pretty=format:"%cr" -1 #{commit_id})
+      next if inactive_time =~ /(month|year)/
+
       real_argvs = Array.new(submit_argv)
       real_argvs.push("upstream_branch=#{branch.delete_prefix('refs/heads/')}")
       real_argvs.push("upstream_commit=#{commit_id}")
