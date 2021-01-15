@@ -22,6 +22,7 @@ pkgs=(
 	iproute
 	hostname
 	libvirt
+	curl
 )
 
 yum install -y --skip-broken "${pkgs[@]}"

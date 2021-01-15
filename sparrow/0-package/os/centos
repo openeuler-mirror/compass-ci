@@ -22,6 +22,8 @@ pkgs=(
 	busybox
 	iproute
 	hostname
+	wget
+	curl
 )
 
 yum install -y --skip-broken "${pkgs[@]}"
