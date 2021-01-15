@@ -2,4 +2,10 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. ../defconfig.sh
+
+load_cci_defaults
+
 docker build -t delimiter .
+
+push_image delimiter:latest

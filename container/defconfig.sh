@@ -31,3 +31,13 @@ set_es_indices()
 {
 	find $CCI_SRC/sbin/ -name "es-*-mapping.sh" -exec sh {} \;
 }
+
+push_image()
+{
+        local local_docker_hub="$DOCKER_REGISTRY_HOST:$DOCKER_REGISTRY_PORT"
+        local src_tag=$1
+        local dst_tag="$local_docker_hub/$src_tag"
+
+        docker tag "$src_tag" "$dst_tag"
+        docker push "$dst_tag"
+}
