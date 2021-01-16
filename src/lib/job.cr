@@ -205,6 +205,8 @@ class Job
   end
 
   private def set_sshr_info
+    # ssh_pub_key will always be set (maybe empty) by submit,
+    # if sshd is defined anywhere in the job
     return unless @hash.has_key?("ssh_pub_key")
 
     self["sshr_port"] = ENV["SSHR_PORT"]
