@@ -25,6 +25,7 @@ require "json"
 class SerialParser
   START_PATTERNS = [
     "starting QEMU",
+    "starting DOCKER",
     "Start PXE over IPv4",
     "iPXE initialising devices",
     "Open Source Network Boot Firmware",
@@ -34,6 +35,7 @@ class SerialParser
 
   END_PATTERNS = [
     "Total QEMU duration: ",
+    "Total DOCKER duration: ",
     "No job now",
     "Restarting system",
   ]
