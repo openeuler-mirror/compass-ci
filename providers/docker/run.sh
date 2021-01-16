@@ -7,6 +7,7 @@
 : ${docker_image:="centos:7"}
 : ${load_path:="${HOME}/jobs"}
 : ${hostname:="dc-1g-1"}
+: ${log_dir:="/srv/cci/serial/logs/$hostname"}
 
 if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
 	tbox_group=${BASH_REMATCH[1]}
@@ -38,4 +39,4 @@ cmd=(
 	/root/sbin/entrypoint.sh
 )
 
-"${cmd[@]}"
+"${cmd[@]}" 2>&1 | tee -a "$log_dir"
