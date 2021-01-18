@@ -392,15 +392,16 @@ class Job
   private def check_account_info
     error_msg = "Failed to verify the account.\n"
     error_msg += "Please refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md"
+
     account_info = @es.get_account(self["my_email"])
-    # raise account_info unless account_info.is_a?(JSON::Any)
+    raise error_msg unless account_info.is_a?(JSON::Any)
 
-    # @account_info = account_info.as_h
-    @account_info = account_info.as_h if account_info.is_a?(JSON::Any)
+    @account_info = account_info.as_h
 
-    # raise error_msg if @account_info["found"]? == false
-    # raise error_msg unless self["my_name"] == @account_info["my_name"].to_s
-    # raise error_msg unless self["my_token"] == @account_info["my_token"]
+    # my_name can be nil in es
+    # my_token can't be nil in es
+    raise error_msg unless self["my_name"] == @account_info["my_name"]?.to_s
+    raise error_msg unless self["my_token"] == @account_info["my_token"]?
 
     @hash.delete("my_uuid")
     @hash.delete("my_token")
