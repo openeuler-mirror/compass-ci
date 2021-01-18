@@ -310,7 +310,7 @@ class Job
 
     # set default value
     self["queue"] = tbox_group
-    if tbox_group.to_s.starts_with?(/(vm|dc)-/)
+    if tbox_group.to_s.starts_with?(/(vm|dc|vt)-/)
       self["queue"] = "#{tbox_group}.#{arch}"
     end
   end
