@@ -14,7 +14,9 @@ names = Set.new %w[
   ES_PORT
   SEND_MAIL_HOST
   SEND_MAIL_PORT
-  LAB
+  SRV_HTTP_HOST
+  SRV_HTTP_PORT
+  lab
 ]
 
 defaults = relevant_defaults(names)
