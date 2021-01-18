@@ -16,6 +16,7 @@ cmd=(
 	-v /srv/initrd/qemu-image:/srv/initrd/qemu-image:ro
 	-v /srv/os:/srv/os:ro
 	-v /srv/git/archlinux:/srv/git/archlinux:ro
+	-v /srv/cci/libvirt-xml:/srv/cci/libvirt-xml:ro
 	-d
 	srv-http
 )
