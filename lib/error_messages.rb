@@ -40,12 +40,12 @@ class ErrorMessages
     return @error_messages
   end
 
-  def obtain_error_messages_by_error_id(error_id)
+  def obtain_error_messages_by_error_id(error_id, return_error_line = false)
     error_messages_by_error_id = []
     error_messages = obtain_error_messages
     error_messages.each do |k, v|
       if ('build-pkg.' + build_pkg_error_id(k)) == error_id
-        error_messages_by_error_id += v.to_a
+        error_messages_by_error_id += return_error_line ? [k] : v.to_a
       end
     end
     error_messages_by_error_id
