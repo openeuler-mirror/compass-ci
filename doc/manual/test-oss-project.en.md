@@ -6,7 +6,7 @@ This document describes how to use the Compass-CI platform to test open source p
 
 Perform the following steps to add the information of the code repository to be tested to the **upstream-repos** repository (https://gitee.com/wu_fengguang/upstream-repos) in YAML format:
 
-1. Fork the code repository to be tested and clone it to the local host. This document uses the **backlight** repository (https://github.com/baskerville/backlight) as an example.
+1. Fork the upstream-repos repository and clone it to the local host. This document uses the **backlight** repository (https://github.com/baskerville/backlight) as an example.
 
 ![](./../pictures/fork_blacklight.png)
 
@@ -41,7 +41,7 @@ Perform the following steps to add the information of the code repository to be 
    >
    > You can refer to the existing file format in the **upstream-repos** repository. Ensure that the formats are consistent.
 
-5. Run the **Pull Request** command to submit the new **backlight** file to the **backlight** repository.
+5. Run the **Pull Request** command to submit the new **backlight** file to the **upstream-repos** repository.
 
 ### Submitting the Test Task to the Compass-CI Platform
 
