@@ -8,6 +8,40 @@ require_relative 'es_query'
 require_relative 'error_messages'
 require_relative "#{ENV['LKP_SRC']}/lib/common"
 
+# previous_job_id's error_ids include error_id
+# If later_job_id's output include error filename that extract from error_id,
+# the later_job_id is credible.
+def credible?(previous_job_id, later_job_id, error_id)
+  es = ESQuery.new
+
+  previous_result_file = File.join('/srv', es.query_by_id(previous_job_id)['result_root'], 'build-pkg')
+  later_result_file = File.join('/srv', es.query_by_id(later_job_id)['result_root'], 'build-pkg')
+
+  return false if filenames_check(previous_result_file, later_result_file, error_id).value?(false)
+
+  return true
+end
+
+def filenames_check(previous_result_file, later_result_file, error_id)
+  filenames = Set.new
+  filenames_check = Hash.new { |h, k| h[k] = false }
+
+  error_lines = ErrorMessages.new(previous_result_file).obtain_error_messages_by_error_id(error_id, true)
+  error_lines.each do |error_line|
+    # "src/ssl_sock.c:1454:104: warning: unused parameter 'al' [-Wunused-parameter]" => "src/ssl_sock.c"
+    filenames << $1 if error_line =~ /(.*)(:\d+){2}: (error|warning):/
+  end
+
+  File.open(later_result_file).each_line do |line|
+    filenames.each do |filename|
+      filenames_check[filename]
+      filenames_check[filename] = true if line.include?(filename)
+    end
+  end
+
+  return filenames_check
+end
+
 def get_compare_result(previous_job_id, later_job_id)
   es = ESQuery.new
 
