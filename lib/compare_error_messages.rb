@@ -39,7 +39,7 @@ def format_error_messages(error_messages, new_error_ids)
   new_error_number = 0
 
   error_messages.each do |k, v|
-    if new_error_ids.include?('build-pkg.' + build_pkg_error_id(k))
+    if new_error_ids.include?("build-pkg.#{build_pkg_error_id(k)}")
       new_error_number += 1
       formatted_error_messages = add_sign(formatted_error_messages, '>>', v)
     else
