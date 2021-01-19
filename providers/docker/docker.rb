@@ -18,6 +18,7 @@ names = Set.new %w[
 defaults = relevant_defaults(names)
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT = defaults['SCHED_PORT'] || 3000
+LOG_DIR  = '/srv/cci/serial/logs'
 
 def get_url(hostname)
   "http://#{SCHED_HOST}:#{SCHED_PORT}/boot.container/hostname/#{hostname}"
@@ -82,10 +83,33 @@ def start_container(hostname, load_path, hash)
   docker_image = hash['docker_image']
   system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
   system(
-    { 'hostname' => hostname, 'docker_image' => docker_image, 'load_path' => load_path },
+    { 'hostname' => hostname,
+      'docker_image' => docker_image,
+      'load_path' => load_path,
+      'log_dir' => "#{LOG_DIR}/#{hostname}"
+    },
     ENV['CCI_SRC'] + '/providers/docker/run.sh'
   )
   clean_dir(load_path)
+end
+
+def record_start_log(log_file, hash: {})
+  start_time = Time.new
+  File.open(log_file, 'w') do |f|
+    # fluentd refresh time is 1s
+    # let fluentd to monitor this file first
+    sleep(2)
+    f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting DOCKER"
+    f.puts "\n#{hash['job']}"
+  end
+  return start_time
+end
+
+def record_end_log(log_file, start_time)
+  duration = ((Time.new - start_time) / 60).round(2)
+  File.open(log_file, 'a') do |f|
+    f.puts "\nTotal DOCKER duration:  #{duration} minutes"
+  end
 end
 
 def main(hostname, queues)
@@ -95,10 +119,15 @@ def main(hostname, queues)
   hash = parse_response url
   return del_host2queues(hostname) if hash.nil?
 
+  log_file = "#{LOG_DIR}/#{hostname}"
+  start_time = record_start_log(log_file, hash: hash)
+
   load_path = build_load_path(hostname)
   load_initrds(load_path, hash)
   start_container(hostname, load_path, hash)
+
   del_host2queues(hostname)
+  record_end_log(log_file, start_time)
 end
 
 def loop_main(hostname, queues)
