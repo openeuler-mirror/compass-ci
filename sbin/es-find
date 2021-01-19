@@ -5,6 +5,7 @@
 
 # Usage:
 #       es-find key=val ...
+#       es-find -r "start_time=2021-1-1 00:00:00,2021-1-1 23:59:59;..."
 # if given multi keys, they create AND conditions
 # if given val1,val2,... for a key, they create OR conditions
 # Eg: query (testbox is xxx or yyy) and (suite is aaa) and (user is bbb).
@@ -29,7 +30,50 @@ def parse_argv
   items
 end
 
+# output:
+#   eg:
+#   {
+#     start_time => {
+#       gte: '2020-09-10 01:50:00',
+#       lte: '2020-09-10 01:53:00'
+#     },
+#     ...
+#   }
+def prase_range(range)
+  range_hash = {}
+  keyword_list = range.split(';')
+  keyword_list.each do |keyword|
+    key, value = keyword.split('=')
+    check_range_args(key, value)
+    range_hash[key] = assign_range(value)
+  end
+
+  range_hash
+end
+
+def check_range_args(key, value)
+  return if key && value
+
+  warn "error: range value of \"#{key}\" missing", "tips: should give the input of -r like:
+  \"#{key}=2021-1-1 00:00:00,2021-1-1 23:59:59\" "
+  exit
+end
+
+def assign_range(value)
+  range_value = {}
+  value_list = value.split(',')
+  if value_list.length > 1
+    range_value[:gte] = value_list[0]
+    range_value[:lte] = value_list[1]
+  else
+    range_value[:gte] = value
+  end
+
+  range_value
+end
+
 options = { nr_jobs: 10, desc_keyword: nil }
+range = nil
 
 opt_parser = OptionParser.new do |opts|
   opts.banner = 'Usage: es-find [options] search_key1=val1[,val2..] ..'
@@ -49,6 +93,10 @@ opt_parser = OptionParser.new do |opts|
     options[:desc_keyword] = d
   end
 
+  opts.on('-r', '--range KEYWORD', 'range by keyword: start_time|end_time|...') do |r|
+    range = r
+  end
+
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     exit
@@ -57,6 +105,8 @@ end
 
 opt_parser.parse!(ARGV)
 items = parse_argv
+items[:range] = prase_range(range) if range
+
 es = ESQuery.new(ES_HOST, ES_PORT)
 query_result = es.multi_field_query(items, size: options[:nr_jobs], desc_keyword: options[:desc_keyword])
 json_string = JSON.pretty_generate(query_result)
