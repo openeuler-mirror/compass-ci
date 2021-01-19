@@ -23,6 +23,7 @@ pkgs=(
 	hostname
 	libvirt
 	curl
+	sudo
 )
 
 yum install -y --skip-broken "${pkgs[@]}"
