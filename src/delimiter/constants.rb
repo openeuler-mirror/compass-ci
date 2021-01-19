@@ -12,3 +12,4 @@ DELIMITER_TASK_QUEUE = 'delimiter'
 BISECT_RUN_SCRIPT = "#{ENV['CCI_SRC']}/src/delimiter/find-commit/bisect_run_script.rb"
 # The files which are in this dir can be uploaded by lkp-tests
 TMP_RESULT_ROOT = ENV['TMP_RESULT_ROOT'] || '/tmp/lkp/result'
+PROCESS_JOB_YAML = "/tmp/process.yaml"

@@ -61,15 +61,17 @@ module Utils
       return monitor.run
     end
 
-    def submit_job(job)
-      sched = SchedClient.new
-      response = sched.submit_job(job.to_json)
-      puts "submit job response: #{response}"
-      res_arr = JSON.parse(response)
-      return nil if res_arr.empty? || !res_arr[0]['message'].empty?
+    def save_job_to_yaml(job, yaml_file)
+      File.open(yaml_file, 'w') { |f| YAML.dump(job, f) }
+    end
 
-      # just consider build-pkg job
-      return res_arr[0]['job_id']
+    def submit_job(job)
+      save_job_to_yaml(job, PROCESS_JOB_YAML)
+      response = %x(#{LKP_SRC}/sbin/submit #{PROCESS_JOB_YAML})
+      puts "submit job response: #{response}"
+      return $1 if response =~ /job id=(.*)/
+
+      return nil
     end
 
     # submit the bad job
@@ -83,6 +85,8 @@ module Utils
       query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
       extract_finished = monitor_run_stop(query)
       return nil unless extract_finished.zero?
+
+      raise "the job is incredible for bisect: #{new_job_id}" unless credible?(job['bad_job_id'], new_job_id, error_id)
 
       stats = query_stats(new_job_id, 10)
       raise "es cant query #{new_job_id} stats field!" unless stats
@@ -138,6 +142,7 @@ module Utils
       job['my_token'] = account_info['my_token']
       job['bad_job_id'] = job_id
 
+      job.delete('tboxgroup')
       job.delete('subqueue')
       job.delete('queue')
       job.delete('id')
