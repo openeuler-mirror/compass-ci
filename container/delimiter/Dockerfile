@@ -9,5 +9,5 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'bash' 'grep' 'coreutils' 'curl' 'util-linux'
 
 RUN umask 002 && \
-    echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
-    gem install rest-client activesupport git json yaml threadpool elasticsearch faye-websocket terminal-table mail
+    gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
+    gem install rest-client activesupport git json yaml elasticsearch faye-websocket terminal-table mail io-console
