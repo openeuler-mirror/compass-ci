@@ -19,4 +19,5 @@ cd $CCI_SRC/sparrow || exit
 . /etc/profile.d/compass.sh
 4-docker/buildall
 5-build/ipxe
+5-build/register-accounts
 7-systemd/systemd-setup

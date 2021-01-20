@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'yaml'
+require_relative "#{ENV['CCI_SRC']}/lib/es_client"
+require_relative "#{ENV['CCI_SRC']}/lib/build_my_info_client"
+
+content = YAML.load_file('/etc/compass-ci/register/register.yaml')
+content.each do |key, value|
+  build_my_info = BuildMyInfo.new(value['my_email'], value['my_name'], ENV['lab'])
+  build_my_info.store_account_info
+end

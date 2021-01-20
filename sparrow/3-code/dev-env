@@ -60,6 +60,16 @@ export REPO_SRC=/c/upstream-repos
 export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
 EOF
 
+mkdir -p /etc/compass-ci/register
+cat > /etc/compass-ci/register/register.yaml <<'EOF'
+delimiter:
+  my_email: delimiter@localhost
+  my_name: delimiter
+auto-submit:
+  my_email: auto-submit@localhost
+  my_name: auto-submit
+EOF
+
 source /etc/os-release
 
 path=$(dirname ${BASH_SOURCE[0]})/os/${ID}
