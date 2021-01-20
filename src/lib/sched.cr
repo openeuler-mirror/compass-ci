@@ -134,6 +134,25 @@ class Sched
     @log.warn(e)
   end
 
+  def set_tbox_boot_wtmp(job : Job)
+    time = Time.local
+    booting_time = time.to_s("%Y-%m-%dT%H:%M:%S")
+
+    runtime = (job["timeout"]? || job["runtime"]?).to_s
+    runtime = 1800 if runtime.empty?
+
+    # reserve 300 seconds for system startup, hw machine will need such long time
+    deadline = (time + (runtime.to_i32 * 2 + 300).second).to_s("%Y-%m-%dT%H:%M:%S")
+    hash = {
+      "job_id" => job["id"],
+      "state" => "booting",
+      "booting_time" => booting_time,
+      "deadline" => deadline
+    }
+
+    @es.update_tbox(job["testbox"], hash)
+  end
+
   def report_ssh_port
     testbox = @env.params.query["tbox_name"]
     ssh_port = @env.params.query["ssh_port"].to_s

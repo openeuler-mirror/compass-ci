@@ -101,6 +101,7 @@ class Sched
 
     if job
       create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
+      set_tbox_boot_wtmp(job)
     else
       # for physical machines
       spawn { auto_submit_idle_job(host) }
