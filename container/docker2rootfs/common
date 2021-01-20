@@ -5,6 +5,8 @@
 # This file is called by script run running on host
 # define functions and set host environment variables
 
+. $CCI_SRC/container/qcow2rootfs/bin/common
+
 get_host_aarch()
 {
 	aarch=$(arch)
@@ -133,7 +135,7 @@ get_rootfs_kernel()
 
 	local vmlinuz_file
 	local vmlinuz kernel
-	vmlinuz_file=$(find ./boot -name "vmlinuz-*" | grep -v rescue) && export ROOTFS_VMLINUZ_FILE=$vmlinuz_file
+	vmlinuz_file=$(find ./boot -name "vmlinu[z|x]-*" | grep -v rescue) && export ROOTFS_VMLINUZ_FILE=$vmlinuz_file
 	vmlinuz=$(basename "$vmlinuz_file") && export ROOTFS_VMLINUZ=$vmlinuz
 	kernel=${vmlinuz:8} && export ROOTFS_KERNEL=$kernel
 	
@@ -154,4 +156,31 @@ create_links_vmlinuz_initrd()
 	ln -fs $ROOTFS_VMLINUZ vmlinuz
 
 	echo "[INFO] Create links to initrd.lkp and vmlinuz success!"
+}
+
+unzip_vmlinuz() {
+        get_rootfs_kernel
+
+        file ${ROOTFS_VMLINUZ_FILE} | grep -q gzip || return
+
+        get_vmlinuz_start_postion ${ROOTFS_VMLINUZ_FILE}
+        [ $VMLINUZ_START_POSTION -eq -1 ] && return
+
+        local unzip_str
+
+        if [ $VMLINUZ_START_POSTION -eq 0 ]; then
+                unzip_str="dd if=$ROOTFS_VMLINUZ bs=1 | zcat > $ROOTFS_VMLINUZ.tmp"
+        else
+                unzip_str="dd if=$ROOTFS_VMLINUZ bs=1 skip=$VMLINUZ_START_POSTION | zcat > $ROOTFS_VMLINUZ.tmp"
+        fi
+
+        echo "Unzipping vmlinuz..."
+        cd "$ROOTFS_DIR/boot"
+        $unzip_str && mv $ROOTFS_VMLINUZ.tmp $ROOTFS_VMLINUZ && chmod o+r $ROOTFS_VMLINUZ
+
+        if [ $? -eq 0 ]; then
+                echo "[INFO] Unzipping vmlinuz success!"
+        else
+                echo "[WARNING] Unzipping vmlinuz failed!"
+        fi
 }

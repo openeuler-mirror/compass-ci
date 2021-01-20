@@ -31,3 +31,4 @@ start=(
 cp_rootfs $IMAGE_PACK $2
 docker rm -f rootfs-docker
 create_links_vmlinuz_initrd $2
+unzip_vmlinuz

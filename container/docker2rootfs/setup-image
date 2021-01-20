@@ -38,7 +38,7 @@ setup_login()
 pack_cgz()
 {
 	echo "Packing package. Please wait."
-	find ./ ! -path "./tmp/${IMAGE_PACK}" | cpio -o -Hnewc | gzip -9 >./tmp/$IMAGE_PACK
+	find ./ ! -path "./tmp/$IMAGE_PACK" | cpio -o -Hnewc | gzip -9 > "./tmp/$IMAGE_PACK"
 	chmod 644 /tmp/${IMAGE_PACK}
 }
 
