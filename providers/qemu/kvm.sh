@@ -53,7 +53,7 @@ parse_ipxe_script()
 	done < $ipxe_script
 }
 
-check_option_value()
+check_kernel()
 {
 	[ -n "$kernel" ] || {
 		log_info "Can not find job for current hostname: $hostname."
@@ -64,10 +64,16 @@ check_option_value()
 		log_error "Can not find kernel file or kernel file is empty: $kernel."
 		exit 1
 	}
-	
+}
+
+check_qemu()
+{
 	# debian has both qemu-system-x86_64 and qemu-system-riscv64 command
 	[[ $kernel =~ 'riscv64' ]] && qemu=qemu-system-riscv64
+}
 
+check_initrds()
+{
 	[ -n "$initrds" ] || {
 		log_error "The current initrds is null."
 		exit 1
@@ -118,6 +124,8 @@ set_qemu()
 	do
 		command -v "$qemu" > /dev/null && break
 	done
+
+	check_qemu
 }
 
 print_message()
@@ -209,8 +217,10 @@ write_logfile
 
 parse_ipxe_script
 
+check_kernel
+check_initrds
+
 set_options
-check_option_value
 
 print_message
 
