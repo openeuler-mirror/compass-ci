@@ -109,15 +109,8 @@ class MirrorMain
     @webhook_queue = channel.queue('web_hook')
   end
 
-  def fork_stat_init(stat_key)
-    @fork_stat[stat_key] = {
-      queued: false,
-      priority: 0,
-      fetch_time: [],
-      offset_fetch: 0,
-      new_refs_time: [],
-      offset_new_refs: 0
-    }
+  def fork_stat_init(git_repo)
+    @fork_stat[git_repo] = get_fork_stat(git_repo)
   end
 
   def load_defaults(repodir)
@@ -371,5 +364,24 @@ class MirrorMain
     return if submodule.empty?
 
     handle_submodule(submodule)
+  end
+
+  def get_fork_stat(git_repo)
+    fork_stat = {
+      queued: false,
+      priority: 0,
+      fetch_time: [],
+      offset_fetch: 0,
+      new_refs_time: [],
+      offset_new_refs: 0
+    }
+    query = { query: { match: { git_repo: git_repo } } }
+    result = @es_client.search(index: 'repo', body: query)['hits']
+    return fork_stat unless result['total'].positive?
+
+    fork_stat.each_key do |key|
+      fork_stat[key] = result['hits'][0]['_source'][key.to_s]
+    end
+    return fork_stat
   end
 end
