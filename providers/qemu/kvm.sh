@@ -6,6 +6,9 @@
 
 : ${nr_cpu:=1}
 : ${memory:=1G}
+: ${LKP_SRC:="/c/lkp-tests"}
+
+source ${LKP_SRC}/lib/log.sh
 
 check_logfile()
 {
@@ -52,15 +55,23 @@ parse_ipxe_script()
 
 check_option_value()
 {
+	[ -n "$kernel" ] || {
+		log_info "Can not find job for current hostname: $hostname."
+		exit 0
+	}
+
 	[ -s "$kernel" ] || {
-		echo "The kernel does not exist: $kernel"
-		exit
+		log_error "Can not find kernel file or kernel file is empty: $kernel."
+		exit 1
 	}
 	
 	# debian has both qemu-system-x86_64 and qemu-system-riscv64 command
 	[[ $kernel =~ 'riscv64' ]] && qemu=qemu-system-riscv64
 
-	[ -n "$initrds" ] || exit
+	[ -n "$initrds" ] || {
+		log_error "The current initrds is null."
+		exit 1
+	}
 }
 
 set_initrd()
