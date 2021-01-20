@@ -3,6 +3,7 @@
 
 require "yaml"
 require "json"
+require "any_merge"
 require "elasticsearch-crystal/elasticsearch/api"
 require "./constants"
 require "../lib/job"
@@ -89,21 +90,30 @@ class Elasticsearch::Client
 
   def update_tbox(testbox : String, wtmp_hash : Hash)
     query = {:index => "testbox", :type => "_doc", :id => testbox}
-    result = @client.get_source(query) if @client.exists(query)
-    history = result["history"].as_a? if result.is_a?(JSON::Any)
+    if @client.exists(query)
+      result = @client.get_source(query)
+      raise result unless result.is_a?(JSON::Any)
+
+      history = result["history"].as_a?
+      result = result.as_h
+    else
+      result = wtmp_hash
+    end
+
     history ||= [] of JSON::Any
     history << JSON.parse(wtmp_hash.to_json)
+    history = JSON.parse(history.to_json)
+
+    body = { "history" => history}
+    body.any_merge!(result)
+    body.any_merge!(wtmp_hash)
 
     @client.create(
       {
         :index => "testbox",
         :type => "_doc",
         :id => testbox,
-        :body => {
-          :state => wtmp_hash["state"],
-          :job_id => wtmp_hash["job_id"],
-          :history => history
-        }
+        :body => body
       }
     )
   end
