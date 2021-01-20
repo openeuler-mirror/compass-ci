@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
 # transfer LKP dirs
-[  -d /lkp ] || return 0
+[ -d /lkp ] || return 0
 
 cp -a /lkp 				"$NEWROOT"/
 
@@ -11,8 +11,8 @@ do
 	dir=$(basename "$i")
 
 	[ "$i" != "${i%/\*}" ] && continue  # skip: i='dir/*'
-	[ -d "$NEWROOT/$dir" ] ||
-		mkdir -p "$NEWROOT/$dir"
+	
+	[ -d "$NEWROOT/$dir" ] || mkdir -p "$NEWROOT/$dir"
 
 	for j in "$i"/* "$i"/.??*
 	do
@@ -25,8 +25,7 @@ do
 
 		subdir=$(basename "$j")
 
-		[  -d "$NEWROOT/$dir/$subdir" ] ||
-			mkdir -p "$NEWROOT/$dir/$subdir"
+		[ -d "$NEWROOT/$dir/$subdir" ] || mkdir -p "$NEWROOT/$dir/$subdir"
 
 		for k in "$j"/*
 		do
@@ -37,7 +36,7 @@ do
 	done
 done
 
-[  -d /usr/src ] &&
+[ -d /usr/src ] &&
 	cp -a /usr/src			"$NEWROOT"/usr/
 
 kmdir=/lib/modules/$(uname -r)
