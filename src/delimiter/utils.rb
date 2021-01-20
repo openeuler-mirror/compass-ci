@@ -122,17 +122,17 @@ module Utils
     end
 
     def get_account_info
-      ESQuery.new(index: 'accounts').query_by_id(DELIMITER_ACCONUT)
+      ESQuery.new(index: 'accounts').query_by_id(DELIMITER_EMAIL)
     end
 
     def init_job_content(job_id)
       job_yaml = AssistResult.new.get_job_yaml(job_id)
-      raise "get job yaml failed, job id: #{job_id} !" unless job_yaml
+      raise "get job yaml failed, job id: #{job_id}" unless job_yaml
 
       job = JSON.parse job_yaml
 
       account_info = get_account_info
-      raise "query #{DELIMITER_ACCONUT} account info failed!" unless account_info
+      raise "query delimiter account info failed: #{DELIMITER_EMAIL}" unless account_info
 
       record_jobs(job['id'], job['upstream_commit'])
 
