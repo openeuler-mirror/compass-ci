@@ -4,6 +4,10 @@
 # - nr_cpu
 # - memory
 
+: ${LKP_SRC:="/c/lkp-tests"}
+
+source ${LKP_SRC}/lib/log.sh
+
 : ${nr_cpu:=1}
 : ${memory:=1G}
 
@@ -18,7 +22,7 @@ fi
 qemu=qemu-system-aarch64
 command -v $qemu >/dev/null || qemu=qemu-kvm
 
-echo less $serial_log
+[ "$DEBUG" == "true" ] || log_info less $serial_log
 
 kvm=(
 	$qemu
@@ -33,7 +37,9 @@ kvm=(
 	-k en-us
 	-no-reboot
 	-nographic
-	-serial file:${serial_log}
 	-monitor null
 )
+
+[ "$DEBUG" == "true" ] || kvm=("${kvm[@]}" -serial file:${serial_log})
+
 "${kvm[@]}"

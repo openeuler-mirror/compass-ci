@@ -122,11 +122,11 @@ set_qemu()
 
 print_message()
 {
-	echo SCHED_PORT: $SCHED_PORT
-	echo kernel: $kernel
-	echo initrds: $initrds
-	echo append: $append
-	echo less $log_file
+	log_info SCHED_PORT: $SCHED_PORT
+	log_info kernel: $kernel
+	log_info initrds: $initrds
+	log_info append: $append
+	[ "$DEBUG" == "true" ] || log_info less $log_file
 	
 	sleep 5
 }
@@ -143,9 +143,10 @@ public_option()
 		-k en-us
 		-no-reboot
 		-nographic
-		-serial file:${log_file}
 		-monitor null
 	)
+
+	[ "$DEBUG" == "true" ] || kvm=("${kvm[@]}" -serial file:${log_file})
 }
 
 individual_option()
