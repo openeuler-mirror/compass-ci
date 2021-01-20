@@ -174,6 +174,9 @@ class Sched
     _kernel_params = job["kernel_params"]?
     _kernel_params = _kernel_params.as_a.map(&.to_s).join(" ") if _kernel_params
 
+    _vt = job["vt"]?
+    _vt = Hash(String, String).new unless (_vt && _vt != nil)
+
     return {
       "job_id"             => job.id,
       "kernel_uri"         => job.kernel_uri,
@@ -181,7 +184,7 @@ class Sched
       "kernel_params"      => _kernel_params,
       "result_root"        => job.result_root,
       "LKP_SERVER"         => job["LKP_SERVER"]?,
-      "vt"                 => job["vt"]?,
+      "vt"                 => _vt,
       "RESULT_WEBDAV_PORT" => job["RESULT_WEBDAV_PORT"]? || "3080",
       "SRV_HTTP_HOST"      => SRV_HTTP_HOST,
       "SRV_HTTP_PORT"      => SRV_HTTP_PORT,
