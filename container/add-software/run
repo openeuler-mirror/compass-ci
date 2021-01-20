@@ -42,7 +42,7 @@ install_cmds=(
 	addsoftware:auto
 	bash -c "
 		yum install -y --skip-broken --installroot=/mnt/root $packages
-		cd /mnt/root 
+		cd /mnt/root &&
 		rm -rf srv/{*,.*} opt/{*,.*} mnt/{*,.*} media/{*,.*} home/{*,.*} lost+found/{*,.*} dev/{*,.*} proc/{*,.*} run/{*,.*} sys/{*,.*} > /dev/null 2>&1
 	"
 )
