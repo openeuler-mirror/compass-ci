@@ -27,11 +27,11 @@ names = Set.new %w[
 
 defaults = relevant_defaults(names)
 
-JUMPER_HOST = defaults['JUMPER_HOST']
-JUMPER_PORT = defaults['JUMPER_PORT'] || 29999
-SEND_MAIL_HOST = defaults['SEND_MAIL_HOST'] || 'localhost'
-SEND_MAIL_PORT = defaults['SEND_MAIL_PORT'] || 49000
-LAB = defaults['lab']
+JUMPER_HOST ||= defaults['JUMPER_HOST']
+JUMPER_PORT ||= defaults['JUMPER_PORT'] || 29999
+SEND_MAIL_HOST ||= defaults['SEND_MAIL_HOST'] || 'localhost'
+SEND_MAIL_PORT ||= defaults['SEND_MAIL_PORT'] || 49000
+LAB ||= defaults['lab']
 TOOL_SERVER = 'z9'
 
 my_info = {
