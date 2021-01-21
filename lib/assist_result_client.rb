@@ -3,6 +3,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'json'
+require 'base64'
 require 'rest-client'
 require_relative 'constants'
 
@@ -18,5 +20,18 @@ class AssistResult
     return nil unless response.code == 200
 
     return response.body
+  end
+
+  def check_job_credible(pre_job_id, cur_job_id, error_id)
+    data = {
+      'pre_job_id' => pre_job_id,
+      'cur_job_id' => cur_job_id,
+      'error_id' => error_id
+    }
+    resource = RestClient::Resource.new("http://#{@host}:#{@port}/check_job_credible")
+    response = resource.post(Base64.encode64(data.to_json))
+    return nil unless response.code == 200
+
+    return JSON.parse(response.body)
   end
 end

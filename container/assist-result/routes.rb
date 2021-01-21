@@ -7,6 +7,7 @@ require 'json'
 require 'sinatra'
 
 require_relative './views/get_job_yaml'
+require_relative './views/check_job_credible'
 
 configure do
   set :bind, '0.0.0.0'
@@ -21,4 +22,15 @@ get '/get_job_yaml/:job_id' do
   end
 
   return [200, result.to_json]
+end
+
+post '/check_job_credible' do
+  begin
+    data = JSON.parse(Base64.decode64(request.body.read))
+    result = check_job_credible(data['pre_job_id'], data['cur_job_id'], data['error_id'])
+  rescue StandardError => e
+    return [400, e.backtrace.inspect]
+  end
+
+  return [200, {'credible' => result}.to_json]
 end
