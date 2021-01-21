@@ -89,6 +89,7 @@ set_initrd()
 set_bios()
 {
        bios=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
+       # when arch='x86_64', use the following file: 
        [ -f "$bios" ] || bios=/usr/share/ovmf/OVMF.fd
 }
 
