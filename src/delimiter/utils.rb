@@ -78,6 +78,7 @@ module Utils
     # monitor the job id and job state query job stats when job state is extract_finished
     # according to the job stats return good/bad/nil
     def get_job_status(job, error_id)
+      bad_job_id = job['bad_job_id']
       new_job_id = submit_job(job)
       puts "new job id: #{new_job_id}"
       return nil unless new_job_id
@@ -86,7 +87,9 @@ module Utils
       extract_finished = monitor_run_stop(query)
       return nil unless extract_finished.zero?
 
-      raise "the job is incredible for bisect: #{new_job_id}" unless credible?(job['bad_job_id'], new_job_id, error_id)
+      check_result = AssistResult.new.check_job_credible(bad_job_id, new_job_id, error_id)
+      raise "check job credible failed:  #{bad_job_id}, #{new_job_id}, #{error_id}" if check_result == nil
+      raise "the job is incredible for bisect: #{new_job_id}" unless check_result['credible']
 
       stats = query_stats(new_job_id, 10)
       raise "es cant query #{new_job_id} stats field!" unless stats
