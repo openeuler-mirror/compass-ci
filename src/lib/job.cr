@@ -10,6 +10,7 @@ require "scheduler/jobfile_operate.cr"
 require "scheduler/kernel_params.cr"
 require "scheduler/pp_params.cr"
 require "../scheduler/elasticsearch_client"
+require "./json_logger"
 
 struct JSON::Any
   def []=(key : String, value : String)
@@ -53,6 +54,7 @@ class Job
     @hash = job_content.as_h
     @es = Elasticsearch::Client.new
     @account_info = Hash(String, JSON::Any).new
+    @log = JSONLogger.new
 
     # init job with "-1", or use the original job_content["id"]
     id = "-1" if "#{id}" == ""
@@ -394,17 +396,30 @@ class Job
     error_msg += "Please refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md"
 
     account_info = @es.get_account(self["my_email"])
-    raise error_msg unless account_info.is_a?(JSON::Any)
+
+    flag = is_valid_account?(account_info)
+    @log.warn({"msg" => "Invalid account",
+               "my_email" => self["my_email"],
+               "my_name" => self["my_name"],
+               "suite" => self["suite"],
+               "testbox" => self["testbox"]
+               }.to_json) unless flag
+    raise error_msg unless flag
+
+    @hash.delete("my_uuid")
+    @hash.delete("my_token")
+  end
+
+  private def is_valid_account?(account_info)
+    return false unless account_info.is_a?(JSON::Any)
 
     @account_info = account_info.as_h
 
     # my_name can be nil in es
     # my_token can't be nil in es
-    raise error_msg unless self["my_name"] == @account_info["my_name"]?.to_s
-    raise error_msg unless self["my_token"] == @account_info["my_token"]?
-
-    @hash.delete("my_uuid")
-    @hash.delete("my_token")
+    return false unless self["my_name"] == @account_info["my_name"]?.to_s
+    return false unless self["my_token"] == @account_info["my_token"]?
+    return true
   end
 
   private def get_initialized_keys
