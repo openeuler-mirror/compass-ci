@@ -13,6 +13,16 @@ setup_rootfs()
 	ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 	rm -f /etc/machine-id /var/lib/dbus/machine-id 
 	systemd-machine-id-setup
+	
+	echo "Disable selinux"
+	if [ -f /etc/selinux/config ]; then
+		sed -i -r 's/^.*SELINUX=enforcing.*$/SELINUX=disabled/g' "/etc/selinux/config"
+	else
+		cat > "/etc/selinux/config" <<-EOF
+		SELINUX=disabled
+		SELINUXTYPE=targeted
+		EOF
+	fi
 }
 
 setup_login() {
