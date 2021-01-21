@@ -3,137 +3,170 @@
 
 LKP_SRC = ENV['LKP_SRC'] || '/c/lkp-tests'
 
+KEYWORD = %w[suite os arch category job_state tbox_group upstream_repo summary.success
+             summary.any_fail summary.any_error summary.any_stderr summary.any_warning].freeze
+
+require 'json'
 require "#{LKP_SRC}/lib/stats"
 require_relative './es_query'
 
 # deal jobs search from es
 class ESJobs
   def initialize(es_query, my_refine = [], fields = [], stats_filter = [])
-    @es_query = es_query
-    @es = ESQuery.new(ES_HOST, ES_PORT)
+    @jobs = query_jobs_from_es(es_query)
     @refine = my_refine
     @fields = fields
     @stats_filter = stats_filter
-    @stats_filter_result = {}
     @refine_jobs = []
-    @jobs = {}
-    @stats_level = {
-      0 => 'stats.success',
-      1 => 'stats.unknown',
-      2 => 'stats.warning',
-      3 => 'stats.has_error'
-    }
-    set_defaults
-    deal_jobs
+    set_jobs_summary
   end
 
-  def set_defaults
-    query_result = @es.multi_field_query(@es_query)
-    query_result['hits']['hits'].each do |job|
-      @jobs[job['_id']] = job['_source']
-    end
+  def query_jobs_from_es(items)
+    es = ESQuery.new(ES_HOST, ES_PORT)
+    result = es.multi_field_query items
+    jobs = result['hits']['hits']
+    jobs.map! { |job| job['_source'] }
+    return jobs
+  end
 
-    @stats = {
-      'stats.count' => Hash.new(0),
-      'stats.sum' => Hash.new(0),
-      'stats.avg' => Hash.new(0)
-    }
-    @result = {}
-    @fields.each do |field|
-      @result[field] = []
+  def set_job_summary(stats, job)
+    summary_result = ''
+    stats.each_key do |stat|
+      # "stderr.warning:rubygems_will_be_installed_before_its_ruby_dependency": 1,
+      # "stderr._#warning_FORTIFY_SOURCE_requires_compiling_with_optimization(-O)": 1,
+      # "stderr.disk_src.c:#:#:warning:incompatible_implicit_declaration_of_built-in_function'strcpy'": 1,
+      if stat.match(/warning/i)
+        job['summary.any_warning'] = 1
+        summary_result = 'warning'
+      end
+      # "stderr.linux-perf": 1,
+      # "stderr.error:target_not_found:ruby-dev": 1,
+      # "stderr.error:could_not_open_file/var/lib/pacman/local/ldb-#:#-#/desc:Not_a_directory": 1,
+      if stat.match(/stderr\./i)
+        job['summary.any_stderr'] = 1
+        summary_result = 'stderr'
+      end
+      # "stderr.::Proceed_with_installation?[Y/n]error:target_not_found:liblzma-dev": 1,
+      # "stderr.==>ERROR:Failure_while_downloading_apache-cassandra": 1,
+      # "stderr.ftq.h:#:#:error:unknown_type_name'ticks'": 1,
+      # "last_state.test.iperf.exit_code.127": 1,
+      # "last_state.test.cci-makepkg.exit_code.1": 1,
+      if stat.match(/error|\.exit_code\./i)
+        job['summary.any_error'] = 1
+        summary_result = 'error'
+      end
+      if stat.match(/\.fail$/i)
+        job['summary.any_fail'] = 1
+        summary_result = 'fail'
+      end
+    end
+    return unless summary_result.empty?
+
+    job['summary.success'] = 1
+  end
+
+  # set jobs summary fields information in place
+  def set_jobs_summary
+    @jobs.each do |job|
+      stats = job['stats']
+      next unless stats
+
+      set_job_summary(stats, job)
     end
   end
 
-  def add_result_fields(job, level)
-    return unless @refine.include?(level) || @refine.include?(-1)
+  def get_all_metrics(jobs)
+    metrics = []
+    jobs.each do |job|
+      stats = job['stats']
+      next unless stats
 
-    @refine_jobs << job['id']
-    @fields.each do |field|
-      value = job[field]
-      if value
-        value = job['id'] + '.' + value if field == 'job_state'
-        @result[field] << value
+      metrics.concat(stats.keys)
+    end
+    metrics.uniq!
+  end
+
+  def initialize_result_hash(metrics)
+    result = {
+      'kvcount' => {},
+      'raw.id' => {},
+      'sum.stats' => {},
+      'raw.stats' => {},
+      'avg.stats' => {},
+      'max.stats' => {},
+      'min.stats' => {}
+    }
+    metrics.each { |metric| result['raw.stats'][metric] = [] }
+    result
+  end
+
+  def set_default_value(result, stats, metrics)
+    left_metrics = metrics - stats.keys
+    left_metrics.each { |metric| result['raw.stats'][metric] << nil }
+
+    stats.each do |key, value|
+      result['raw.stats'][key] << value
+    end
+  end
+
+  def kvcount(result, job)
+    KEYWORD.each do |keyword|
+      next unless job[keyword]
+
+      result['kvcount']["#{keyword}=#{job[keyword]}"] ||= 0
+      result['kvcount']["#{keyword}=#{job[keyword]}"] += 1
+      result['raw.id']["[#{keyword}=#{job[keyword]}]"] ||= []
+      result['raw.id']["[#{keyword}=#{job[keyword]}]"] << job['id']
+    end
+  end
+
+  def stats_count(result)
+    result['raw.stats'].each do |key, value|
+      if function_stat?(key)
+        result['sum.stats'][key] = value.compact.size
+      else
+        result['avg.stats'][key] = value.compact.sum / value.compact.size.to_f
+        result['max.stats'][key] = value.compact.max
+        result['min.stats'][key] = value.compact.min
+      end
+    end
+  end
+
+  def query_jobs_state(jobs)
+    metrics = get_all_metrics(jobs)
+    result = initialize_result_hash(metrics)
+    jobs.each do |job|
+      stats = job['stats']
+      next unless stats
+
+      set_default_value(result, stats, metrics)
+      kvcount(result, job)
+    end
+
+    stats_count(result)
+    result
+  end
+
+  def output_yaml(prefix, result)
+    result.each do |key, value|
+      if prefix.empty?
+        prefix_key = "#{key}"
+      else
+        prefix_key = "#{prefix}.#{key}"
       end
 
-      next unless job['stats']
-
-      @result[field] << job['stats'][field] if job['stats'][field]
+      if value.is_a? Hash
+        output_yaml(prefix_key, value)
+      else
+        puts "#{prefix_key}: #{value.to_json}"
+      end
     end
-  end
-
-  def deal_jobs
-    stats_count = Hash.new(0)
-    stats_jobs = {}
-
-    @jobs.each do |job_id, job|
-      level = deal_stats(job)
-      add_result_fields(job, level)
-
-      stat_key = @stats_level[level]
-      stat_jobs_key = stat_key + '_jobs'
-
-      stats_count[stat_key] += 1
-      stats_jobs[stat_jobs_key] ||= []
-      stats_jobs[stat_jobs_key] << job_id
-    end
-
-    @stats['stats.count'].merge!(stats_count)
-    @stats['stats.count'].merge!(stats_jobs)
-  end
-
-  def deal_stats(job, level = 0)
-    return 1 unless job['stats']
-
-    job['stats'].each do |key, value|
-      match_stats_filter(key, value, job['id'])
-      calculate_stat(key, value)
-      level = get_stat_level(key, level)
-    end
-    return level
-  end
-
-  def match_stats_filter(key, value, job_id)
-    @stats_filter.each do |filter|
-      next unless key.include?(filter)
-
-      key = job_id + '.' + key
-      @stats_filter_result[key] = value
-
-      break
-    end
-  end
-
-  def calculate_stat(key, value)
-    if function_stat?(key)
-      return unless @fields.include?('stats.sum')
-
-      @stats['stats.sum'][key] += value
-    else
-      return unless @fields.include?('stats.avg')
-
-      @stats['stats.avg'][key] = (@stats['stats.avg'][key] + value) / 2
-    end
-  end
-
-  def get_stat_level(stat, level)
-    return level if level >= 3
-    return 3 if stat.match(/error|fail/i)
-    return 2 if stat.match(/warn/i)
-
-    return 0
   end
 
   def output
-    result = {
-      'stats.count' => @stats['stats.count']
-    }
-
-    @stats.each do |key, value|
-      result[key] = value if @fields.include?(key)
-    end
-
-    @result['stats_filter_result'] = @stats_filter_result unless @stats_filter.empty?
-    @result.merge!(result)
-    puts JSON.pretty_generate(@result)
+    @result = query_jobs_state(@jobs)
+    @result['kvcount'] = @result['kvcount'].sort.to_h
+    @result['raw.id'] = @result['raw.id'].sort.to_h
+    output_yaml('', @result)
   end
 end
