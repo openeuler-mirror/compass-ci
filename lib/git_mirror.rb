@@ -298,6 +298,7 @@ class MirrorMain
     offset_new_refs = 0 if offset_new_refs >= 10
     @fork_stat[git_repo][:new_refs_time][offset_new_refs] = Time.now.to_s
     @fork_stat[git_repo][:offset_new_refs] = offset_new_refs + 1
+    @fork_stat[git_repo][:new_refs_count] = update_new_refs_count(@fork_stat[git_repo][:new_refs_count])
   end
 
   def update_fork_stat(git_repo, possible_new_refs)
@@ -373,15 +374,53 @@ class MirrorMain
       fetch_time: [],
       offset_fetch: 0,
       new_refs_time: [],
-      offset_new_refs: 0
+      offset_new_refs: 0,
+      new_refs_count: {}
     }
     query = { query: { match: { git_repo: git_repo } } }
     result = @es_client.search(index: 'repo', body: query)['hits']
     return fork_stat unless result['total'].positive?
 
     fork_stat.each_key do |key|
-      fork_stat[key] = result['hits'][0]['_source'][key.to_s]
+      fork_stat[key] = result['hits'][0]['_source'][key.to_s] || fork_stat[key]
     end
     return fork_stat
+  end
+
+  def create_year_hash(new_refs_count, year, month, day)
+    new_refs_count[year] = { 'year_count' => 1, month => { 'month_count' => 1, day => 1 } }
+    return new_refs_count
+  end
+
+  def update_year_hash(new_refs_count, year, month, day)
+    new_refs_count[year]['year_count'] += 1
+    return create_month_hash(new_refs_count, year, month, day) if new_refs_count[year][month].nil?
+
+    return update_month_hash(new_refs_count, year, month, day)
+  end
+
+  def create_month_hash(new_refs_count, year, month, day)
+    new_refs_count[year][month] = { 'month_count' => 1, day => 1 }
+    return new_refs_count
+  end
+
+  def update_month_hash(new_refs_count, year, month, day)
+    new_refs_count[year][month]['month_count'] += 1
+    if new_refs_count[year][month][day].nil?
+      new_refs_count[year][month][day] = 1
+    else
+      new_refs_count[year][month][day] += 1
+    end
+    return new_refs_count
+  end
+
+  def update_new_refs_count(new_refs_count)
+    t = Time.now
+    year = t.year.to_s
+    month = t.month.to_s
+    day = t.day.to_s
+    return create_year_hash(new_refs_count, year, month, day) if new_refs_count[year].nil?
+
+    return update_year_hash(new_refs_count, year, month, day)
   end
 end
