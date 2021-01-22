@@ -8,32 +8,22 @@
 
 submit 命令的作用是提交测试任务。该命令提供了多个选项帮助用户更灵活的提交任务，您可以在命令行直接输入 summit 命令来查看帮助信息，并根据实际需求灵活使用。
 
-
 ### 基本用法
 
-测试任务以 yaml 文件的方式提交，因此，您需要事先准备好测试任务的 yaml 文件（本文以 iperf.yaml 为例）。使用如下命令提交测试任务：
+测试任务以 yaml 文件的方式提交，因此，您需要事先准备好测试任务的 yaml 文件（本文以 iperf.yaml 为例）。
 
-```
-submit iperf.yaml
-```
-如下所示：
-
-```shell
-hi8109@account-vm ~% submit iperf.yaml
-submit iperf.yaml, got job_id=z9.173924
-```
-
-本文所示的 yaml 文件均已添加 testbox 字段，若您提交的 yaml 文件不包含该字段将报错：
+若您的yaml文件不包含testbox字段，直接提交将会报错：
 
 ```shell
 hi8109@account-vm ~% submit iperf.yaml
 submit iperf.yaml failed, got job_id=0, error: Missing required job key: 'testbox'
 ```
 
-您可以在 yaml 文件中添加 testbox 字段，或使用如下命令：
+因为testbox是必填字段，您可以在 yaml 文件中添加 testbox 字段，或使用如下命令：
 
-```
-submit iperf.yaml testbox=vm-2p8g
+```shell
+hi8109@account-vm ~% submit iperf.yaml testbox=vm-2p8g
+submit iperf.yaml, got job_id=z9.173924
 ```
 
 testbox 字段的值指定需要的测试机，可以使用 `ll` 命令查看 `lkp-tests/hosts` 路径下的可选测试机。如下所示：
@@ -115,7 +105,7 @@ options:
     使用-o DIR 命令可以将最终生成的yaml文件保存到指定目录 DIR 下。示例如下所示：
 
     ```
-    submit -o ~/iperf.yaml
+    submit -o ~/iperf.yaml testbox=vm-2p8g
     ```
 
     运行命令之后会在指定目录生成经过 submit 处理过的 yaml 文件。
@@ -126,7 +116,7 @@ options:
     示例命令如下：
 
     ```
-    submit -a iperf.yaml
+    submit -a iperf.yaml testbox=vm-2p8g
     ```
 
     ```
@@ -141,13 +131,13 @@ options:
     示例命令如下：
 
     ```
-    submit -m iperf.yaml
+    submit -m iperf.yaml testbox=vm-2p8g
     ```
 
     控制台显示如下：
 
     ```shell
-    hi8109@account-vm ~% submit -m iperf.yaml
+    hi8109@account-vm ~% submit -m iperf.yaml testbox=vm-2p8g
     submit iperf.yaml, got job_id=z9.173923
     query=>{"job_id":["z9.173923"]}
     connect to ws://172.168.131.2:11310/filter
@@ -173,14 +163,14 @@ options:
     示例命令如下：
 
     ```
-    submit -m -c borrow-1h.yaml
+    submit -m -c borrow-1h.yaml testbox=vm-2p8g
     ```
     当我们提交一个申请设备的任务后，会获取到返回的登陆信息，如 `ssh ip -p port`，添加 -c 参数之后不需要我们手动输入 ssh 登陆命令来进入执行机。
 
 	控制台显示如下：
 
     ```shell
-    hi8109@account-vm ~% submit -m -c borrow-1h.yaml
+    hi8109@account-vm ~% submit -m -c borrow-1h.yaml testbox=vm-2p8g
     submit borrow-1h.yaml, got job_id=z9.173925
     query=>{"job_id":["z9.173925"]}
     connect to ws://172.168.131.2:11310/filter
