@@ -28,8 +28,8 @@ def filenames_check(previous_result_file, later_result_file, error_id)
 
   error_lines = ErrorMessages.new(previous_result_file).obtain_error_messages_by_error_id(error_id, true)
   error_lines.each do |error_line|
-    # "src/ssl_sock.c:1454:104: warning: unused parameter 'al' [-Wunused-parameter]" => "src/ssl_sock.c"
-    filenames << $1 if error_line =~ /(.*)(:\d+){2}: (error|warning):/
+    # "src/ssl_sock.c:1454:104: warning: unused parameter 'al' [-Wunused-parameter]" => "src/ssl_sock"
+    filenames << $1.chomp(File.extname($1)) if error_line =~ /(.*)(:\d+){2}: (error|warning):/
   end
 
   File.open(later_result_file).each_line do |line|
