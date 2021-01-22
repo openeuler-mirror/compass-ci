@@ -194,6 +194,10 @@ individual_option()
 					-netdev $netdev
 			)
 			;;
+		*)
+			echo "qemu not found: $qemu"
+			exit
+			;;
 	esac
 }
 
