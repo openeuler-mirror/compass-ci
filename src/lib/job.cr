@@ -55,25 +55,6 @@ class Job
     @es = Elasticsearch::Client.new
     @account_info = Hash(String, JSON::Any).new
     @log = JSONLogger.new
-
-    # init job with "-1", or use the original job_content["id"]
-    id = "-1" if "#{id}" == ""
-
-    if initialized?
-      if @hash["id"] == "#{id}"
-        return unless @hash.has_key?("my_uuid") || @hash.has_key?("my_token")
-
-        check_account_info()
-        set_sshr_info()
-        return
-      end
-    end
-
-    @hash["id"] = JSON::Any.new("#{id}")
-
-    check_required_keys()
-    check_account_info()
-    set_defaults()
   end
 
   METHOD_KEYS = %w(
@@ -153,6 +134,16 @@ class Job
     else
       @hash.delete(key)
     end
+  end
+
+  def submit(id = nil)
+    # init job with "-1", or use the original job_content["id"]
+    id = "-1" if "#{id}" == ""
+    @hash["id"] = JSON::Any.new("#{id}")
+
+    check_required_keys()
+    check_account_info()
+    set_defaults()
   end
 
   private def set_defaults

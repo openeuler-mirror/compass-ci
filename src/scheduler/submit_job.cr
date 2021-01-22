@@ -7,6 +7,7 @@ class Sched
 
     job_content = JSON.parse(body)
     job = Job.new(job_content, job_content["id"]?)
+    job.submit(job_content["id"]?)
     job["commit_date"] = get_commit_date(job)
 
     cluster_file = job["cluster"]
