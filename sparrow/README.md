@@ -3,24 +3,24 @@
 在 openEuler 系统一键部署 compass-ci 环境，当前已支持 openEuler-aarch64-20.03-LTS 系统环境，以下配置仅供参考。
 
 ## 准备工作
-- 硬件
-	服务器类型：ThaiShan200-2280 (建议)
-	架构：aarch64
-	内存：>= 32GB
-	CPU：64 nuclear (建议)
-	硬盘：>= 500G (建议划分独立分区)
+- 硬件    
+	服务器类型：ThaiShan200-2280 (建议)    
+	架构：aarch64    
+	内存：>= 32GB    
+	CPU：64 nuclear (建议)    
+	硬盘：>= 500G (建议划分独立分区)    
 	
-	>**说明：**
-	>[划分较小独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/1-storage/small)
-	>[划分较大独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/1-storage/large)
+	>**说明：**    
+	>[划分较小独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/1-storage/small)    
+	>[划分较大独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/1-storage/large)    
 
-- 软件
-	OS：openEuler-aarch64-20.03 LTS
-	git：2.23.0版本 (建议)
-	预留空间：>= 300G
-	网络：可以访问互联网
+- 软件    
+	OS：openEuler-aarch64-20.03 LTS    
+	git：2.23.0版本 (建议)    
+	预留空间：>= 300G    
+	网络：可以访问互联网    
 	
-	>**说明：**
+	>**说明：**    
 	>[openEuler 系统安装](https://openeuler.org/zh/docs/20.03_LTS/docs/Installation/%E5%AE%89%E8%A3%85%E5%87%86%E5%A4%87.html)
 
 ### 操作指导
@@ -31,8 +31,8 @@
 
 2. 配置git账号
 	```bash
-	git config --golbal user.name "XXX"
-	git config --golbal user.email "xxx@aa.com"
+	git config --global user.name "xxx"
+	git config --global user.email "xxx@xxx.com"
 	```
 
 3. 设置文件权限并关闭SELINUX
@@ -40,8 +40,8 @@
 	umask 002 && setenforce 0
 	```
 
-	>**说明：**
-	>setenforce 0 只是暂时禁用SELINUX，需要修改/etc/selinux/config中的SELINUX=enforcing改为SELINUX=permissive或disabled才能长期有效
+	>**说明：**   
+	>setenforce 0 只是暂时禁用SELINUX，需要修改/etc/selinux/config中的SELINUX=enforcing改为SELINUX=permissive或disabled才能长期有效    
 	>umask 002 只是暂时设置umask值，需要修改/etc/bashrc中的umask值为002才能长期有效
 
 4. 创建工作目录并克隆 compass-ci 项目代码
@@ -71,9 +71,9 @@
 	submit iperf.yaml testbox=vm-2p8g
 	```
 
-	执行上述命令正常情况下会提示信息如下:
-	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory
-	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory
+	执行上述命令正常情况下会提示信息如下:    
+	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory    
+	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory    
 	compass-ci搭建完毕，执行步骤4下载所需要的rootfs文件就可以开始进行测试了。
 
 4. 下载rootfs文件（根据所需要的rootfs在[该目录](http://124.90.34.227:11300/os/)下获取对应版本的cgz文件）
@@ -107,7 +107,7 @@
 	cd /c/compass-ci/providers/ && ./my-qemu.sh
 	```
 
-2. 在本地/srv/result/目录下根据测试用例名称/日期/[testbox](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)/[os-os_verison-os_arch](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job)/job_id[查看任务结果](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)(可用tab键自动补全多级目录方便查找)
+2. 在本地/srv/result/目录下根据测试用例名称/日期/[testbox](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)/[os-os_version-os_arch](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job)/job_id[查看任务结果](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)(可用tab键自动补全多级目录方便查找)
 	```bash
 	cd /srv/result/iperf/2020-12-29/vm-2p8g/openeuler-20.03-aarch64/nolab.1
 	cat output
