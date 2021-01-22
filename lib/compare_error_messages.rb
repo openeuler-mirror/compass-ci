@@ -17,7 +17,9 @@ def credible?(previous_job_id, later_job_id, error_id)
   previous_result_file = File.join('/srv', es.query_by_id(previous_job_id)['result_root'], 'build-pkg')
   later_result_file = File.join('/srv', es.query_by_id(later_job_id)['result_root'], 'build-pkg')
 
-  return false if filenames_check(previous_result_file, later_result_file, error_id).value?(false)
+  filenames_check = filenames_check(previous_result_file, later_result_file, error_id)
+
+  return false if filenames_check.empty? || filenames_check.value?(false)
 
   return true
 end
