@@ -26,6 +26,3 @@ dirs=(
 )
 
 mkdir -p "${dirs[@]}"
-
-mount -t cifs //$LKP_SERVER/os /srv/os -o guest,ro,hard,vers=1.0,noacl,nouser_xattr
-mount -t cifs //$LKP_SERVER/initrd /srv/initrd -o port=446,guest,ro,hard,vers=1.0,noacl,nouser_xattr
