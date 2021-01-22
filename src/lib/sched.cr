@@ -104,7 +104,7 @@ class Sched
 
   def update_tbox_wtmp
     testbox = ""
-    hash = Hash(String, String).new
+    hash = Hash(String, String | Nil).new
 
     time = Time.local.to_s("%Y-%m-%d %H:%M:%S")
     hash["time"] = time
@@ -116,6 +116,7 @@ class Sched
           testbox = value
         when "tbox_state"
           hash["state"] = value
+          hash["deadline"] = nil if value == "rebooting"
         when "mac"
           hash["mac"] = normalize_mac(value)
         else
