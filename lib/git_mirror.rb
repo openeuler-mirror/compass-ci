@@ -318,6 +318,8 @@ class MirrorMain
   # url: https://github.com/berkeley-abc/abc         git_repo: a/abc/abc
   # url: https://github.com/Siguyi/AvxToNeon         git_repo: a/AvxToNeon/Siguyi
   def get_git_repo(webhook_url)
+    return webhook_url.split(':')[1].gsub(' ', '') if webhook_url =~ /^(git_repo:)/
+
     fork_name, project = webhook_url.split('/')[-2, 2]
 
     git_repo = "#{project[0].downcase}/#{project}/#{fork_name}"
