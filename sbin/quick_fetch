@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'bunny'
+
+# usage: quick_fetch git_repo:$git_repo
+# or: quick_fetch $url
+# quick_fetch https://github.com/Siguyi/AvxToNeon
+# quick_fetch git_repo:u/upstream-repos/upstream-repos
+def send_url_of_repo
+  connection = Bunny.new('amqp://172.17.0.1:5672')
+  connection.start
+  channel = connection.create_channel
+
+  queue = channel.queue('web_hook')
+  message = ARGV[0]
+  queue.publish(message)
+  connection.close
+end
+
+send_url_of_repo
