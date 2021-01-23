@@ -72,8 +72,10 @@
 	```
 
 	执行上述命令正常情况下会提示信息如下:    
+	```
 	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory    
 	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory    
+	```
 	compass-ci搭建完毕，执行步骤4下载所需要的rootfs文件就可以开始进行测试了。
 
 4. 下载rootfs文件（根据所需要的rootfs在[该目录](http://124.90.34.227:11300/os/)下获取对应版本的cgz文件）
