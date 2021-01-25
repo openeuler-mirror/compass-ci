@@ -5,7 +5,6 @@
 
 require 'optparse'
 require 'json'
-
 require_relative '../lib/es_jobs'
 
 def parse_argv
@@ -19,6 +18,7 @@ def parse_argv
   end
   items
 end
+
 opt_refine = [-1]
 opt_fields = []
 opt_stats_filter = []
