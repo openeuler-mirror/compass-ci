@@ -10,6 +10,8 @@ require "#{LKP_SRC}/lib/matrix"
 require_relative './params_group.rb'
 
 def set_pre_value(item, value, sample_size)
+  return value if value.is_a?(String)
+
   if value.size == 1
     value[0]
   elsif independent_counter? item
