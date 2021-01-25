@@ -10,7 +10,7 @@ RUN adduser -u 1090 -D lkp
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk update && \
-    echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
+    gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
     apk upgrade && \
     apk add --no-cache git && \
     apk add ruby-dev make gcc g++ openssh

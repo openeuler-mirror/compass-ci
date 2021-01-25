@@ -11,5 +11,5 @@ RUN        apt-get update && \
            apt-get install -y git uuid-runtime ruby-listen ruby-json ruby-mail ruby-rest-client
 
 
-RUN        echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
+RUN        gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
            gem install fileutils elasticsearch activesupport

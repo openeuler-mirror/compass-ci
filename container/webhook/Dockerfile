@@ -13,7 +13,7 @@ RUN apk update && \
     apk add --no-cache git && \
     apk add npm ruby-dev
 
-RUN echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc
+RUN gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 
 RUN npm install git-webhook-handler && \
     gem install bunny

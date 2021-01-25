@@ -11,7 +11,7 @@ RUN apk update && \
     apk add --no-cache git && \
     apk add ruby-dev make gcc g++ util-linux
 
-RUN echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc
+RUN gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 
 RUN umask 002 && \
     gem install bunny json activesupport git rest-client io-console elasticsearch

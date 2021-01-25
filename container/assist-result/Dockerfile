@@ -11,5 +11,5 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'bash' 'grep' 'coreutils' 'curl' 'util-linux'
 
 RUN umask 002 && \
-    echo ':sources: ["http://rubygems.org"]' >> ~/.gemrc && \
+    gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
     gem install rest-client activesupport json yaml elasticsearch sinatra puma terminal-table
