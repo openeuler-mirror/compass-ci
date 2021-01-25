@@ -78,6 +78,10 @@ class Elasticsearch::Client
     @client.get_source(query)
   end
 
+  def search(index, query)
+    @client.search({:index => index, :body => query})
+  end
+
   def update_account(account_content : JSON::Any, my_email : String)
     return @client.update(
       {
