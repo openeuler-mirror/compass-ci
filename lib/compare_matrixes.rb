@@ -179,6 +179,7 @@ def get_matrixes_values(matrixes_list, latest_jobs, options)
 end
 
 def latest_failure?(field, latest_jobs)
+  return true unless latest_jobs
   latest_jobs.any? { |job| job['stats'][field] }
 end
 
@@ -203,7 +204,7 @@ def matrixes_empty?(matrixes_list)
   return matrixes_list.any?(&:empty?)
 end
 
-def compare_matrixes(matrixes_list, suite_list, latest_jobs, matrixes_titles = nil, group_key = nil, options: {})
+def compare_matrixes(matrixes_list, suite_list, latest_jobs=nil, matrixes_titles = nil, group_key = nil, options: {})
   # compare matrix in matrixes_list and print info
   # @matrixes_list: list consisting of matrix
   # @matrixes_titles: number or dimension of matrix
