@@ -13,9 +13,12 @@ require_relative "#{ENV['LKP_SRC']}/lib/common"
 # the later_job_id is credible.
 def credible?(previous_job_id, later_job_id, error_id)
   es = ESQuery.new
+  later_es_result = es.query_by_id(later_job_id)
+
+  return true if later_es_result['job_state'] == 'finished'
 
   previous_result_file = File.join('/srv', es.query_by_id(previous_job_id)['result_root'], 'build-pkg')
-  later_result_file = File.join('/srv', es.query_by_id(later_job_id)['result_root'], 'build-pkg')
+  later_result_file = File.join('/srv', later_es_result['result_root'], 'build-pkg')
 
   filenames_check = filenames_check(previous_result_file, later_result_file, error_id)
 
