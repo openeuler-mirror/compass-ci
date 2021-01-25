@@ -3,12 +3,11 @@
 # frozen_string_literal: true
 
 require 'rest-client'
+require_relative 'constants'
 
 # sched client class
 class SchedClient
-  HOST = (ENV.key?('SCHED_HOST') ? ENV['SCHED_HOST'] : '172.17.0.1')
-  PORT = (ENV.key?('SCHED_PORT') ? ENV['SCHED_PORT'] : 3000).to_i
-  def initialize(host = HOST, port = PORT)
+  def initialize(host = SCHED_HOST, port = SCHED_PORT)
     @host = host
     @port = port
   end
