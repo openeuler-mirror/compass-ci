@@ -1,0 +1,23 @@
+#!/bin/bash
+# Refer to: https://hub.docker.com/r/openresty/openresty
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+. $CCI_SRC/container/defconfig.sh
+
+: ${UPLOAD_LIBVIRT_PORT:=3081}
+
+docker_rm upload-libvirt-xml
+
+cmd=(
+	docker run -d
+	--name upload-libvirt-xml
+	--restart=always
+	-p ${UPLOAD_LIBVIRT_PORT}:3081
+	-v $PWD/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+	-v /etc/localtime:/etc/localtime:ro
+	-v /srv/cci/libvirt-xml:/srv/cci/libvirt-xml
+	upload-libvirt-xml
+)
+
+"${cmd[@]}"
