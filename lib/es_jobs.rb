@@ -84,7 +84,7 @@ class ESJobs
 
       metrics.concat(stats.keys)
     end
-    metrics.uniq!
+    metrics.uniq
   end
 
   def initialize_result_hash(metrics)
@@ -137,11 +137,11 @@ class ESJobs
     metrics = get_all_metrics(jobs)
     result = initialize_result_hash(metrics)
     jobs.each do |job|
+      kvcount(result, job)
       stats = job['stats']
       next unless stats
 
       set_default_value(result, stats, metrics)
-      kvcount(result, job)
     end
 
     stats_count(result)
