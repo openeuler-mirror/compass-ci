@@ -22,6 +22,7 @@ server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 : ${RESULT_WEBDAV_PORT:=3080}
 : ${ES_HOST:=$server_ip}
 : ${ES_PORT:=9200}
+: ${SRV_HTTP_PORT:=11300}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -50,6 +51,7 @@ RESULT_WEBDAV_PORT: $RESULT_WEBDAV_PORT
 lab: nolab
 ES_HOST: $ES_HOST
 ES_PORT: $ES_PORT
+SRV_HTTP_PORT: $SRV_HTTP_PORT
 EOF
 
 cat > /etc/profile.d/compass.sh <<'EOF'
