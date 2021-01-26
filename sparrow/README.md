@@ -78,11 +78,11 @@
 	```
 	compass-ci搭建完毕，执行步骤4下载所需要的rootfs文件就可以开始进行测试了。
 
-4. 下载rootfs文件（根据所需要的rootfs在[该目录](http://124.90.34.227:11300/os/)下获取对应版本的cgz文件）
+4. 下载rootfs文件（根据所需要的rootfs在[该目录](http://124.160.11.58:11300/os/)下获取对应版本的cgz文件）
 	```bash
 	mkdir -p /srv/os/openeuler/aarch64/20.03
 	cd /srv/os/openeuler/aarch64/20.03
-	wget http://124.90.34.227:11300/os/openeuler/aarch64/20.03.cgz
+	wget http://api.compass-ci.openeuler.org:11300/os/openeuler/aarch64/20.03.cgz
 	```
 
 5. 解压rootfs cgz 文件
@@ -109,7 +109,7 @@
 	cd /c/compass-ci/providers/ && ./my-qemu.sh
 	```
 
-2. 在本地/srv/result/目录下根据测试用例名称/日期/[testbox](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)/[os-os_version-os_arch](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job)/job_id[查看任务结果](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)(可用tab键自动补全多级目录方便查找)
+2. 在本地/srv/result/目录下根据测试用例名称/日期/[testbox](https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts)/[os-os_version-os_arch](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job/os-os_version-os_arch.md)/job_id [查看任务结果](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)(可用tab键自动补全多级目录方便查找)
 	```bash
 	cd /srv/result/iperf/2020-12-29/vm-2p8g/openeuler-20.03-aarch64/nolab.1
 	cat output
