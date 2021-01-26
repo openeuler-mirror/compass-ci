@@ -2,6 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 require "./sched"
+require "./lifecycle"
 require "./json_logger"
 
 class HTTP::Server
@@ -21,6 +22,14 @@ class HTTP::Server
 
     def log
       @log ||= create_log
+    end
+
+    def lifecycle
+      @lifecycle ||= create_lifecycle
+    end
+
+    def create_lifecycle
+      @lifecycle = Lifecycle.new(self)
     end
   end
 end
