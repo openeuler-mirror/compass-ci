@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new ['LIFECYCLE_PORT']
+defaults = relevant_defaults(names)
+
+LIFECYCLE_PORT = defaults['LIFECYCLE_PORT'] || '11311'
+
+CCI_SRC = ENV['CCI_SRC']
+system "bash #{CCI_SRC}/container/compile ."
+system "docker build -t lifecycle-#{LIFECYCLE_PORT} ."
+
+system 'rm lifecycle'
