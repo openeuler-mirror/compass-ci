@@ -13,7 +13,8 @@ require_relative './es_query'
 # deal jobs search from es
 class ESJobs
   def initialize(es_query, my_refine = [], fields = [], stats_filter = [])
-    @jobs = query_jobs_from_es(es_query)
+    @es_query = es_query
+    @jobs = query_jobs_from_es
     @refine = my_refine
     @fields = fields
     @stats_filter = stats_filter
@@ -21,9 +22,9 @@ class ESJobs
     set_jobs_summary
   end
 
-  def query_jobs_from_es(items)
+  def query_jobs_from_es
     es = ESQuery.new(ES_HOST, ES_PORT)
-    result = es.multi_field_query items
+    result = es.multi_field_query @es_query
     jobs = result['hits']['hits']
     jobs.map! { |job| job['_source'] }
     return jobs
@@ -164,6 +165,10 @@ class ESJobs
   end
 
   def output
+    if @jobs.empty?
+      puts "No query result is found: #{@es_query}"
+      return
+    end
     @result = query_jobs_state(@jobs)
     @result['kvcount'] = @result['kvcount'].sort.to_h
     @result['raw.id'] = @result['raw.id'].sort.to_h
