@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 FROM debian
-MAINTAINER shdluan@163.com
+MAINTAINER Luan Shengde <shdluan@163.com>
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \

@@ -3,6 +3,6 @@
 
 FROM nginx:alpine
 
-MAINTAINER Zhang Yuhang <o0OiIl@hotmail.com>
+MAINTAINER Lu Weitao <luweitaobe@163.com>
 
 COPY nginx.conf /etc/nginx/

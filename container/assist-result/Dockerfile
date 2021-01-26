@@ -3,7 +3,7 @@
 
 FROM alpine:3.11
 
-MAINTAINER caoxl78320@163.com
+MAINTAINER Cao Xueliang <caoxl78320@163.com>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories && \
     apk update && \

@@ -3,7 +3,7 @@
 
 FROM debian
 
-MAINTAINER caoxl78320@163.com
+MAINTAINER Cao Xueliang <caoxl78320@163.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 

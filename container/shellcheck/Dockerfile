@@ -3,7 +3,7 @@
 
 FROM debian
 
-MAINTAINER 18509160991@163.com
+MAINTAINER Bai Jing <799286817@qq.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 

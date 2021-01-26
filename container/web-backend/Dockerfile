@@ -2,7 +2,7 @@
 
 FROM debian
 
-MAINTAINER Zhang Yuhang <o0OiIl@hotmail.com>
+MAINTAINER Lu Weitao <luweitaobe@163.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
