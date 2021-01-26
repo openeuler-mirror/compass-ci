@@ -1,0 +1,10 @@
+#!/bin/bash
+# Origin: https://hub.docker.com/r/openresty/openresty
+# Copyright (C) 2016-2020  Eric D. Evan Wies
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+# The libvirt xml upload has nothing to do with the job. It renames the uploaded file and does not currently have permission to upload.
+# it is a transitional service. Two different functions use the same port service,
+
+docker build -t upload-libvirt-xml .
