@@ -12,12 +12,13 @@ require_relative 'assign_account_client'
 class MailBisectResult
   def initialize(bisect_info)
     @repo = bisect_info['repo']
+    @work_dir = bisect_info['work_dir']
     @commit_id = bisect_info['commit']
     @all_errors = bisect_info['all_errors']
     @bisect_error = bisect_info['bisect_error']
     @pkgbuild_repo = bisect_info['pkgbuild_repo']
     @first_bad_commit_result_root = bisect_info['first_bad_commit_result_root']
-    @git_commit = GitCommit.new(@repo, @commit_id)
+    @git_commit = GitCommit.new(@work_dir, @commit_id)
     @to = @git_commit.author_email
     # now send mail to review
     @bcc = 'caoxl@crystal.ci, caoxl78320@163.com, huming15@163.com, wfg@mail.ustc.edu.cn'
@@ -26,6 +27,7 @@ class MailBisectResult
   def create_send_email
     send_report_mail(compose_mail)
     send_account_mail
+    rm_work_dir
   end
 
   def compose_mail
@@ -79,5 +81,9 @@ class MailBisectResult
 
     apply_account = AutoAssignAccount.new(user_info)
     apply_account.send_account
+  end
+
+  def rm_work_dir
+    FileUtils.rm_r(@work_dir) if Dir.exist?(@work_dir)
   end
 end

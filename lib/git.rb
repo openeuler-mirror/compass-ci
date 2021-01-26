@@ -2,8 +2,8 @@
 
 # wrap common git commands
 class GitCommit
-  def initialize(repo, commit)
-    @git_prefix = "git -C /srv/git/#{repo}.git"
+  def initialize(work_dir, commit)
+    @git_prefix = "git -C #{work_dir}"
     @commit = commit
   end
 

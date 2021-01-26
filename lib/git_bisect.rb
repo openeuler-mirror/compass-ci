@@ -100,10 +100,10 @@ class GitBisect
     bisect_error = ErrorMessages.new(@build_pkg_dir).obtain_error_messages_by_error_id(@error_id)
     all_errors = Utils.obt_errors(@work_dir, first_bad_commit)
     first_bad_commit_result_root = Utils.obt_result_root_by_commit(first_bad_commit)
-    FileUtils.rm_r(@work_dir) if Dir.exist?(@work_dir)
 
     return Hash['repo' => @upstream_repo,
                 'commit' => first_bad_commit,
+                'work_dir' => @work_dir,
                 'bisect_error' => bisect_error,
                 'all_errors' => all_errors,
                 'pkgbuild_repo' => @pkgbuild_repo,
