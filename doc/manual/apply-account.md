@@ -27,8 +27,9 @@ Email template:
 
 - please replace the 3 parts in {{ }} with your information.
 - the email name should be in English or Chinese Pinyin, as: "David Rientjes" in the template.
-- my oss commit: a git commit URL that has your contribution. It should be in a
-  well known git repo that's registered in [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)
+- my oss commit: a git commit URL that has your name and email.
+  The git repo should be in our test coverage and registered in
+  [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos).
 
 ## step 2: receive an email
 
