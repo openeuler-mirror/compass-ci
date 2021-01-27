@@ -39,21 +39,19 @@ def file_check(file)
     File.basename(file, '.json')
   when /\.json\.gz$/
     File.basename(file, '.json.gz')
-  when /\.yaml$/
-    File.basename(file, '.yaml')
   end
 end
 
 def create_stats(result_root)
   stats = {}
 
-  monitor_files = Dir["#{result_root}/*.{json,json.gz,yaml}"]
+  monitor_files = Dir["#{result_root}/*.{json,json.gz}"]
 
   monitor_files.each do |file|
     next unless File.size?(file)
 
     monitor = file_check(file)
-    next if %w[stats job].include?(monitor)
+    next if monitor == 'stats'
 
     extract_pre_result(stats, monitor, file)
   end
