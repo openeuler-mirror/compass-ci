@@ -3,12 +3,15 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 . $CCI_SRC/container/defconfig.sh
+. $LKP_SRC/lib/log.sh
 
 lsmod | grep -q "^nfs\s" || {
-	sudo modprobe nfs
+	log_error "[ERROR] kernel module nfs is missing (try: sudo modprobe nfs)"
+	exit 1
 }
 lsmod | grep -q "^nfsd\s" || {
-	sudo modprobe nfsd
+	log_error "[ERROR] kernel module nfsd is missing (try: sudo modprobe nfsd)"
+	exit 1
 }
 
 # Several nfs servers running will cause conflict, so rm an old before running a new nfs server docker.

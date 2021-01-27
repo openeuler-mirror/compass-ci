@@ -3,9 +3,11 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 . $CCI_SRC/container/defconfig.sh
+. $LKP_SRC/lib/log.sh
 
 lsmod | grep -q "^cifs\s" || {
-	sudo modprobe cifs
+	log_error "[ERROR] kernel module cifs is missing (try: sudo modprobe cifs)"
+	exit 1
 }
 
 docker_rm result-cifs
