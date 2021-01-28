@@ -6,11 +6,16 @@ require "redis"
 
 require "./constants"
 require "../lib/job"
+require "singleton"
 
 class Redis::Client
   class_property :client
   HOST = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
   PORT = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
+
+  def self.instance
+    Singleton::Of(self).instance
+  end
 
   def initialize(host = HOST, port = PORT)
     @client = Redis::PooledClient.new(host: host, port: port, pool_size: 25, pool_timeout: 0.01)
