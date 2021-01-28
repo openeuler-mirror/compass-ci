@@ -30,3 +30,5 @@ dependencies:
     github: anykeyh/json_on_steroids
   rate_limiter:
     github: z64/rate_limiter
+  singleton:
+    github: waterlink/singleton.cr
