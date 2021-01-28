@@ -32,7 +32,7 @@ class Sched
 
   def initialize(env : HTTP::Server::Context)
     @es = Elasticsearch::Client.new
-    @redis = Redis::Client.new
+    @redis = Redis::Client.instance
     @task_queue = TaskQueueAPI.new
     @rgc = RemoteGitClient.new
     @env = env
