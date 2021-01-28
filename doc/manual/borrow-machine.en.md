@@ -1,246 +1,101 @@
-# Prerequisites
+# Prepare
 
-Ensure that you have performed the following operations according to the [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md):
+- Apply account
+- Config default yaml files
 
-- Send an email to apply for an account.
-- Receive an email from compass-ci-robot@qq.com.
-- Configure the local environment.
+If you have not completed above works, reference to [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md) to finish it.
 
-# Applying for a Test Machine (VM)
+# Apply testbox
 
-1. Generate a local RSA private-public key pair.
+## 1. Generate local ssh pub key
 
-   ```shell
-   hi684@account-vm ~% ssh-keygen -t rsa
-   Generating public/private rsa key pair.
-   Enter file in which to save the key (/home/hi684/.ssh/id_rsa):
-   Created directory '/home/hi684/.ssh'.
-   Enter passphrase (empty for no passphrase):
-   Enter same passphrase again:
-   Your identification has been saved in /home/hi684/.ssh/id_rsa.
-   Your public key has been saved in /home/hi684/.ssh/id_rsa.pub.
-   The key fingerprint is:
-   SHA256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx hi684@account-vm
-   The key's randomart image is:
-   +---[RSA 2048]----+
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   +----[SHA256]-----+
-   hi684@account-vm ~% ls -hla .ssh
-   total 16K
-   drwx------. 2 hi684 hi684 4.0K Nov 26 16:37 .
-   drwx------. 7 hi684 hi684 4.0K Nov 26 16:37 ..
-   -rw-------. 1 hi684 hi684 1.8K Nov 26 16:37 id_rsa
-   -rw-r--r--. 1 hi684 hi684  398 Nov 26 16:37 id_rsa.pub
-   ```
+    Use the command below to check the pub key exists:
 
-2. Select the YAML file as required.
+        ls ~/.ssh/*.pub
 
-   A **lkp-tests** folder is stored in each user directory `/home/${USER}`.
+    Generate one if you don't have one now:
 
-   ```shell
-   hi684@account-vm ~% cd lkp-tests/jobs
-   hi684@account-vm ~/lkp-tests/jobs% ls -hl borrow-*
-   -rw-r--r--. 1 root root  53 Nov  2 14:54 borrow-10d.yaml
-   -rw-r--r--. 1 root root  64 Nov  2 14:54 borrow-1d.yaml
-   -rw-r--r--. 1 root root 235 Nov 19 15:27 borrow-1h.yaml
-   ```
+        ssh-keygen
 
-3. Submit the YAML file and connect to the test machine (VM).
+## 2. Select the job yaml
 
-   ```shell
-   hi684@account-vm ~/lkp-tests/jobs% submit -c -m testbox=vm-2p8g borrow-1h.yaml
-   submit borrow-1h.yaml, got job_id=z9.170593
-   query=>{"job_id":["z9.170593"]}
-   connect to ws://172.168.131.2:11310/filter
-   {"job_id":"z9.170593","message":"","job_state":"submit","result_root":"/srv/result/borrow/2020-11-26/vm-2p8g/openeuler-20.03-aarch64/3600/z9.170593"}
-   {"job_id": "z9.170593", "result_root": "/srv/result/borrow/2020-11-26/vm-2p8g/openeuler-20.03-aarch64/3600/z9.170593", "job_state": "set result root"}
-   {"job_id": "z9.170593", "job_state": "boot"}
-   {"job_id": "z9.170593", "job_state": "download"}
-   {"time":"2020-11-26 14:45:06","mac":"0a-1f-0d-3c-91-5c","ip":"172.18.156.13","job_id":"z9.170593","state":"running","testbox":"vm-2p8g.taishan200-2280-2s64p-256g--a38-12"}
-   {"job_state":"running","job_id":"z9.170593"}
-   {"job_id": "z9.170593", "state": "set ssh port", "ssh_port": "51840", "tbox_name": "vm-2p8g.taishan200-2280-2s64p-256g--a38-12"}
-   Host 172.168.131.2 not found in /home/hi684/.ssh/known_hosts
-   Warning: Permanently added '[172.168.131.2]:51840' (ECDSA) to the list of known hosts.
-   Last login: Wed Sep 23 11:10:58 2020
+    We have provided various examples for you in dir ~/lkp-tests/jobs:
 
+    You can filtrate examples for borrowing machine with command below:
 
-   Welcome to 4.19.90-2003.4.0.0036.oe1.aarch64
+        cd ~/lkp-tests/jobs
+        ls borrow*
 
-   System information as of time:  Thu Nov 26 06:44:18 CST 2020
+## 3. Submit job
 
-   System load:    0.83
-   Processes:      107
-   Memory used:    6.1%
-   Swap used:      0.0%
-   Usage On:       89%
-   IP address:     172.18.156.13
-   Users online:   1
+    Command to submit jobs:
 
+    for DCs:
 
+        submit -c -m testbox=dc-2g os_mount=container docker_image=centos:8 borrow-1h.yaml
 
-   root@vm-2p8g ~#
-   ```
+    for VMs:
 
-   For more information about how to use the **submit** command, testbox options, and how to borrow the specified operating system, see the FAQ at the end of this document.
+        submit -c -m testbox=vm-2p8g borrow-1h.yaml
 
-4. Return the test machine (VM) after use.
+    for HWs:
 
-   ```shell
-   root@vm-2p8g ~# reboot
-   Connection to 172.168.131.2 closed by remote host.
-   Connection to 172.168.131.2 closed.
-   hi684@account-vm ~/lkp-tests/jobs%
-   ```
+        submit -c -m testbox=taishan200-2280-2s48p-256g borrow-1h.yaml
 
-# Applying for a Test Machine (Physical Machine)
+    - You can view the logs in real time for the job with the command above。
+    - You will directly login the testbox if the job runs successfully.
+    - And you will receive an email that contains login command and server configuration information.
+    - Only within the period of borrowing machine, you can access the textbox with the login command.
 
-1. Generate a local RSA private-public key pair.
+## 4. Return testbox
 
-   ```shell
-   hi684@account-vm ~% ssh-keygen -t rsa
-   Generating public/private rsa key pair.
-   Enter file in which to save the key (/home/hi684/.ssh/id_rsa):
-   Created directory '/home/hi684/.ssh'.
-   Enter passphrase (empty for no passphrase):
-   Enter same passphrase again:
-   Your identification has been saved in /home/hi684/.ssh/id_rsa.
-   Your public key has been saved in /home/hi684/.ssh/id_rsa.pub.
-   The key fingerprint is:
-   SHA256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx hi684@account-vm
-   The key's randomart image is:
-   +---[RSA 2048]----+
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   |xxxxxxxxxxxxxxxxx|
-   +----[SHA256]-----+
-   hi684@account-vm ~% ls -hla .ssh
-   total 16K
-   drwx------. 2 hi684 hi684 4.0K Nov 26 16:37 .
-   drwx------. 7 hi684 hi684 4.0K Nov 26 16:37 ..
-   -rw-------. 1 hi684 hi684 1.8K Nov 26 16:37 id_rsa
-   -rw-r--r--. 1 hi684 hi684  398 Nov 26 16:37 id_rsa.pub
-   ```
+    Return manually(recommended):
 
-2. Select the YAML file as required.
+        Manually execute 'reboot' in time to return the testbox.
+        Avoid a waste of computer resource with no-load running.
 
-   A **lkp-tests** folder is stored in each user directory `/home/${USER}`.
+    Return automatically on maturity:
 
-   ```shell
-   hi684@account-vm ~% cd lkp-tests/jobs
-   hi684@account-vm ~/lkp-tests/jobs% ls -hl borrow-*
-   -rw-r--r--. 1 root root  53 Nov  2 14:54 borrow-10d.yaml
-   -rw-r--r--. 1 root root  64 Nov  2 14:54 borrow-1d.yaml
-   -rw-r--r--. 1 root root 235 Nov 19 15:27 borrow-1h.yaml
-   ```
+        The testbox will be returned automatically if it has expired its service life.
 
-3. Submit the YAML file and connect to the test machine (physical machine).
-
-   ```shell
-   hi684@account-vm ~/lkp-tests/jobs% submit -c -m testbox=taishan200-2280-2s64p-256g borrow-1h.yaml
-   submit borrow-1h.yaml, got job_id=z9.170594
-   query=>{"job_id":["z9.170594"]}
-   connect to ws://172.168.131.2:11310/filter
-   {"job_id":"z9.170594","message":"","job_state":"submit","result_root":"/srv/result/borrow/2020-11-26/taishan200-2280-2s64p-256g/openeuler-20.03-aarch64/3600/z9.170594"}
-   {"job_id": "z9.170594", "result_root": "/srv/result/borrow/2020-11-26/taishan200-2280-2s64p-256g/openeuler-20.03-aarch64/3600/z9.170594", "job_state": "set result root"}
-   {"job_id": "z9.170594", "job_state": "boot"}
-   {"job_id": "z9.170594", "job_state": "download"}
-   {"time":"2020-11-26 14:51:56","mac":"84-46-fe-26-d3-47","ip":"172.168.178.48","job_id":"z9.170594","state":"running","testbox":"taishan200-2280-2s64p-256g--a5"}
-   {"job_state":"running","job_id":"z9.170594"}
-   {"job_id": "z9.170594", "state": "set ssh port", "ssh_port": "50420", "tbox_name": "taishan200-2280-2s64p-256g--a5"}
-   Host 172.168.131.2 not found in /home/hi684/.ssh/known_hosts
-   Warning: Permanently added '[172.168.131.2]:50420' (ECDSA) to the list of known hosts.
-   Last login: Wed Sep 23 11:10:58 2020
-
-
-   Welcome to 4.19.90-2003.4.0.0036.oe1.aarch64
-
-   System information as of time:  Thu Nov 26 14:51:59 CST 2020
-
-   System load:    1.31
-   Processes:      1020
-   Memory used:    5.1%
-   Swap used:      0.0%
-   Usage On:       3%
-   IP address:     172.168.178.48
-   Users online:   1
-
-
-
-   root@taishan200-2280-2s64p-256g--a5 ~#
-   ```
-
-   For more information about how to use the **submit** command, testbox options, and how to borrow the specified operating system, see the FAQ at the end of this document.
-
-4. Return the test machine (physical machine) after use.
-
-   ```shell
-   root@taishan200-2280-2s64p-256g--a5 ~# reboot
-   Connection to 172.168.131.2 closed by remote host.
-   Connection to 172.168.131.2 closed.
-   hi684@account-vm ~/lkp-tests/jobs%
-   ```
+    - All testboxes will be returned if it has been executed command 'reboot'.
+    - The testbox cannot be accessed any more after it has been returned.
+    - Apply a new one if you want continue to use it.
 
 # FAQ
 
-* How Do I Change the Duration of Keeping the Test Machine when Applying for It?
+## Customize the borrowing time
 
-  ```shell
-  hi684@account-vm ~/lkp-tests/jobs% cat borrow-1h.yaml
-  suite: borrow
-  testcase: borrow
+    Find key in the yaml file and edit its value according to your requirement.
 
-  runtime: 1h
-  ssh_pub_key: <%=
-   begin
-   File.read("#{ENV['HOME']}/.ssh/id_rsa.pub").chomp
-   rescue
-   nil
-   end
-   %>
-  sshd:
-  # sleep at the bottom
-  sleep:
-  hi684@account-vm ~/lkp-tests/jobs% grep runtime: borrow-1h.yaml
-  sleep: 1h
-  # Use the VIM editor to change the value of the runtime field.
-  hi684@account-vm ~/lkp-tests/jobs% vim borrow-1h.yaml
-  # After changing the value, submit the request again.
-  hi684@account-vm ~/lkp-tests/jobs% submit -c -m testbox=vm-2p8g borrow-1h.yaml
-  ```
+    - The borrowing period can be calculated in days and hours.
+    - The maximum period is no more than 10 day.
 
-* Guide to the **submit** Command
+## Guidance for command submit
 
-  Reference: [submit-job.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.en.md)
+    See the usage and options for command 'submit' the command below:
 
-* What Are the testbox Options?
+        submit -h
 
-  For details about the testbox options, visit https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts.
+    Reference the following line to learn the advanced usage for command 'submit':
 
-  > ![](./../public_sys-resources/icon-note.gif) **Note**
-  >
-  > VM testbox: vm-xxx
-  >
-  > PM testbox: taishan200-2280-xxx
+        [submit detailed usage](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)
 
-  > ![](./../public_sys-resources/icon-notice.gif) **Notice**
-  >
-> - If the testbox of a physical machine ends with `--axx`, a physical machine is specified. If a task is already in the task queue of the physical machine, the borrow task you submitted will not be processed until the previous task in the queue is completed.
-  > - If the testbox of a physical machine does not end with `-axx`, no physical machine is specified. In this case, the borrow task you submitted will be immediately allocated to idle physical machines in the cluster for execution.
+## Available testbox
 
-* How Do I Borrow the Specified Operating System?
+    For a full list of testbox, reference to https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts
 
-  For details about the supported `os`, `os_arch`, and `os_version`, see [os-os\_verison-os\_arch.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/os-os_verison-os_arch.md).
+    >![](./../public_sys-resources/icon-note.gif) **instruction:**
+    >
+    > - DCs: dc-xxx
+    > - VMs: vm-xxx
+    > - HWs: taishan200-2280-xxx
+
+    >![](./../public_sys-resources/icon-notice.gif) **attention:**
+    > - It means that you choosed a specified physical machine if the testbox name is end with `--axx`.
+    > - You will need to wait if there are already tasks in the task queue for the machine.
+    > - Your job will be randomly assigned to a machine that meets the requirements if the testbox name is not end with '-axx'.
+
+## Specify the OS
+
+    About supportted `os`, `os_arch`, `os_version`, reference to [os-os_verison-os_arch.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/os-os_verison-os_arch.md)
