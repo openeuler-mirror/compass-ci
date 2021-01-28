@@ -12,3 +12,4 @@ content.each do |key, value|
   build_my_info = BuildMyInfo.new(value['my_email'], value['my_name'], ENV['lab'])
   build_my_info.store_account_info
 end
+sleep

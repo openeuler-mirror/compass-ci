@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  ES_HOST
+  ES_PORT
+]
+
+defaults = relevant_defaults(names)
+env = docker_env(defaults)
+
+DEFAULT_CCI = '/c/compass-ci'
+docker_rm 'register-accounts'
+
+cmd = %w[
+  docker run
+  --name register-accounts
+  -d
+] + env + %W[
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v /etc/compass-ci/register:/etc/compass-ci/register:ro
+  -v /etc/localtime:/etc/localtime:ro
+  -w #{DEFAULT_CCI}/container/register-accounts
+  register-accounts
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./register-accounts']
+
+system(*cmd)
