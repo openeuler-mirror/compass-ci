@@ -214,7 +214,6 @@ class MirrorMain
     @git_info[git_repo]['git_repo'] = git_repo
     @git_info[git_repo].merge!(@defaults[project]) if @defaults[project]
     fork_stat_init(git_repo)
-    es_repo_update(git_repo)
     @priority_queue.push git_repo, @priority
     @priority += 1
   end
