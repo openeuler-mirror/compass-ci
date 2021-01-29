@@ -3,7 +3,7 @@
 You'll need an account to submit jobs. The account is mainly for tracking your resource consumptions.
 We have limited pool of testboxes, so there have to be some usage control.
 
-We offer free accounts to OSS (Open Source Software) contributors.
+We offer free accounts to OSS (Open Source Software) contributors where the OSS project is in our test coverage.
 You can prove yourself as OSS contributor by providing "my oss commit" in the below email.
 
 We offer free accounts to our collaborators too. If you are one of our
@@ -26,10 +26,15 @@ Email template:
 ---
 
 - please replace the 3 parts in {{ }} with your information.
+
 - the email name should be in English or Chinese Pinyin, as: "David Rientjes" in the template.
+
 - my oss commit: a git commit URL that has your name and email.
   The git repo should be in our test coverage and registered in
   [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos).
+  If your contributed OSS project is not in upstream-repos, you may refer to
+  [test-oss-project](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/test-oss-project.zh.md)
+  to add it to compass-ci testing.
 
 ## step 2: receive an email
 
