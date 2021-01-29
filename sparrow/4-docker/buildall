@@ -39,6 +39,7 @@ do_one()
 		fi
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
+		[ "$container_name" == 'initrd-lkp' ] && ./run
 	)
 	[ -n "$LKP_SRC" ] && log_info "finish build $container."
 	started_containers+="$container_name"
