@@ -75,13 +75,15 @@ class Sched
     end
 
     idle_queues = [] of String
+    delimiter_queues = [] of String
     default_queues.each do |queue|
       idle_queues << "#{queue}/idle"
+      delimiter_queues << "#{queue}/delimiter@localhost"
     end
 
-    all_queues = rand_queues(sub_queues) + idle_queues
+    all_queues = delimiter_queues + rand_queues(sub_queues) + idle_queues
 
-    return all_queues
+    return all_queues.uniq
   end
 
   def get_job_from_queues(queues, testbox)
