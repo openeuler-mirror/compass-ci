@@ -378,7 +378,7 @@ class MirrorMain
       offset_new_refs: 0,
       new_refs_count: {}
     }
-    query = { query: { match: { git_repo: git_repo } } }
+    query = { query: { match: { _id: git_repo } } }
     result = @es_client.search(index: 'repo', body: query)['hits']
     return fork_stat unless result['total'].positive?
 
@@ -389,37 +389,45 @@ class MirrorMain
   end
 
   def create_year_hash(new_refs_count, year, month, day)
-    new_refs_count[year] = { 'year_count' => 1, month => { 'month_count' => 1, day => 1 } }
+    new_refs_count[year] = 1
+    new_refs_count[month] = 1
+    new_refs_count[day] = 1
     return new_refs_count
   end
 
   def update_year_hash(new_refs_count, year, month, day)
-    new_refs_count[year]['year_count'] += 1
-    return create_month_hash(new_refs_count, year, month, day) if new_refs_count[year][month].nil?
+    new_refs_count[year] += 1
+    return create_month_hash(new_refs_count, month, day) if new_refs_count[month].nil?
 
-    return update_month_hash(new_refs_count, year, month, day)
+    return update_month_hash(new_refs_count, month, day)
   end
 
-  def create_month_hash(new_refs_count, year, month, day)
-    new_refs_count[year][month] = { 'month_count' => 1, day => 1 }
+  def create_month_hash(new_refs_count, month, day)
+    new_refs_count[month] = 1
+    new_refs_count[day] = 1
+
     return new_refs_count
   end
 
-  def update_month_hash(new_refs_count, year, month, day)
-    new_refs_count[year][month]['month_count'] += 1
-    if new_refs_count[year][month][day].nil?
-      new_refs_count[year][month][day] = 1
+  def update_month_hash(new_refs_count, month, day)
+    new_refs_count[month] += 1
+    if new_refs_count[day].nil?
+      new_refs_count[day] = 1
     else
-      new_refs_count[year][month][day] += 1
+      new_refs_count[day] += 1
     end
     return new_refs_count
   end
 
   def update_new_refs_count(new_refs_count)
     t = Time.now
-    year = t.year.to_s
-    month = t.month.to_s
-    day = t.day.to_s
+
+    # example: 2021-01-28
+    day = t.strftime('%Y-%m-%d')
+    # example: 2021-01
+    month = t.strftime('%Y-%m')
+    # example: 2021
+    year = t.strftime('%Y')
     return create_year_hash(new_refs_count, year, month, day) if new_refs_count[year].nil?
 
     return update_year_hash(new_refs_count, year, month, day)
