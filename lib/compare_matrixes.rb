@@ -72,7 +72,7 @@ def get_values(value_list, success)
     if length > 1 && average != 0
       stddev_percent = (
         standard_deviation(value_list, average, length) * 100 / average
-      ).to_i
+      )
     end
     { average: average, stddev_percent: stddev_percent,
       min: sorted[0], max: sorted[-1], sorted: sorted }
@@ -204,7 +204,7 @@ def matrixes_empty?(matrixes_list)
   return matrixes_list.any?(&:empty?)
 end
 
-def compare_matrixes(matrixes_list, suite_list, latest_jobs = nil, matrixes_titles = nil, group_key = nil, options: {})
+def compare_matrixes(matrixes_list, suite_list, latest_jobs=nil, matrixes_titles = nil, group_key = nil, options: {})
   # compare matrix in matrixes_list and print info
   # @matrixes_list: list consisting of matrix
   # @matrixes_titles: number or dimension of matrix
@@ -615,6 +615,8 @@ def format_stddev_percent(stddev_percent, average_width)
   percent_width = SUB_LONG_COLUMN_WIDTH - average_width
   if stddev_percent
     if stddev_percent != 0
+      return " < 1%   " if stddev_percent < 1
+
       percent_str = get_suitable_number_str(
         stddev_percent.abs,
         percent_width - 4,
