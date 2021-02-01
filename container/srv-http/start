@@ -14,6 +14,7 @@ cmd=(
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result:/srv/result:ro
 	-v /srv/initrd/qemu-image:/srv/initrd/qemu-image:ro
+	-v /srv/initrd/dockerimage:/srv/initrd/dockerimage:ro
 	-v /srv/os:/srv/os:ro
 	-v /srv/git/archlinux:/srv/git/archlinux:ro
 	-v /srv/cci/libvirt-xml:/srv/cci/libvirt-xml:ro
