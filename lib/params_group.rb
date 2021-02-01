@@ -124,7 +124,7 @@ end
 def get_group_key(group_params)
   group_str = group_params.each.map do |k, v|
     "#{k}=#{v}"
-  end.sort!.join('/')
+  end.sort!.join(' ')
   return group_str
 end
 
