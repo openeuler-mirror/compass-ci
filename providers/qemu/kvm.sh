@@ -6,9 +6,8 @@
 
 : ${nr_cpu:=1}
 : ${memory:=1G}
-: ${LKP_SRC:="/c/lkp-tests"}
 
-source ${LKP_SRC}/lib/log.sh
+source ${CCI_SRC}/lib/log.sh
 
 check_logfile()
 {

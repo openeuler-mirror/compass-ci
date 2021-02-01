@@ -2,9 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-: ${LKP_SRC:="/c/lkp-tests"}
-
-source ${LKP_SRC}/lib/log.sh
+source ${CCI_SRC}/lib/log.sh
 
 help()
 {
