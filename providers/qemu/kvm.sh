@@ -39,6 +39,9 @@ parse_ipxe_script()
 				;;
 			initrd)
 				file=$(basename "$b")
+				[ $file == "job.cgz" ] && {
+					job_id=$(basename $(dirname "$b"))
+				}
 				wget --timestamping -a ${log_file} --progress=bar:force $b
 				initrds+="$file "
 				;;
@@ -144,6 +147,7 @@ public_option()
 {
 	kvm=(
 		$qemu
+		-name guest=$hostname,process=$job_id
 		-kernel $kernel
 		-initrd $initrd
 		-smp $nr_cpu
