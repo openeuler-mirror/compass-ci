@@ -281,6 +281,7 @@ class MirrorMain
     file_list.each_line do |file|
       next if File.basename(file) == '.ignore'
 
+      file = file.chomp
       repo_dir = "#{REPO_DIR}/#{file}"
       load_repo_file(repo_dir, File.dirname(file), File.basename(file)) if File.file?(repo_dir)
     end
