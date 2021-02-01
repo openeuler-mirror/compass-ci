@@ -6,11 +6,11 @@
 . $LKP_SRC/lib/log.sh
 
 lsmod | grep -q "^nfs\s" || {
-	log_error "[ERROR] kernel module nfs is missing (try: sudo modprobe nfs)"
+	log_error "kernel module nfs is missing (try: sudo modprobe nfs)"
 	exit 1
 }
 lsmod | grep -q "^nfsd\s" || {
-	log_error "[ERROR] kernel module nfsd is missing (try: sudo modprobe nfsd)"
+	log_error "kernel module nfsd is missing (try: sudo modprobe nfsd)"
 	exit 1
 }
 
