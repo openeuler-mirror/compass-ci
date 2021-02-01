@@ -33,29 +33,30 @@ class ESJobs
   def set_job_summary(stats, job)
     summary_result = ''
     stats.each_key do |stat|
-      # "stderr.warning:rubygems_will_be_installed_before_its_ruby_dependency": 1,
-      # "stderr._#warning_FORTIFY_SOURCE_requires_compiling_with_optimization(-O)": 1,
-      # "stderr.disk_src.c:#:#:warning:incompatible_implicit_declaration_of_built-in_function'strcpy'": 1,
-      if stat.match(/warning/i)
-        job['summary.any_warning'] = 1
-        summary_result = 'warning'
-      end
       # "stderr.linux-perf": 1,
       # "stderr.error:target_not_found:ruby-dev": 1,
       # "stderr.error:could_not_open_file/var/lib/pacman/local/ldb-#:#-#/desc:Not_a_directory": 1,
       if stat.match(/stderr\./i)
         job['summary.any_stderr'] = 1
         summary_result = 'stderr'
+        next
       end
-      # "stderr.::Proceed_with_installation?[Y/n]error:target_not_found:liblzma-dev": 1,
-      # "stderr.==>ERROR:Failure_while_downloading_apache-cassandra": 1,
-      # "stderr.ftq.h:#:#:error:unknown_type_name'ticks'": 1,
+
+      # sum.stats.build-pkg.mb_cache.c:warning:‘read_cache’defined-but-not-used[-Wunused-function]: 1
+      # sum.stats.build-pkg.mb_cache.c:warning:control-reaches-end-of-non-void-function[-Wreturn-type]: 1
+      if stat.match(/:warning:|\.warning$/i)
+        job['summary.any_warning'] = 1
+        summary_result = 'warning'
+      end
+
       # "last_state.test.iperf.exit_code.127": 1,
       # "last_state.test.cci-makepkg.exit_code.1": 1,
-      if stat.match(/error|\.exit_code\./i)
+      # sum.stats.build-pkg.cc1plus:error:unrecognized-command-line-option‘-Wno-unknown-warning-option’[-Werror]: 2
+      if stat.match(/:error:|\.error$|\.exit_code\./i)
         job['summary.any_error'] = 1
         summary_result = 'error'
       end
+
       if stat.match(/\.fail$/i)
         job['summary.any_fail'] = 1
         summary_result = 'fail'
