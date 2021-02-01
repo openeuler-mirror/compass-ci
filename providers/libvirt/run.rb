@@ -8,6 +8,7 @@ require 'digest/md5'
 require_relative "#{ENV['CCI_SRC']}/lib/log"
 require_relative "#{ENV['CCI_SRC']}/lib/sched_client"
 require_relative "#{ENV['CCI_SRC']}/providers/lib/context"
+require_relative "#{ENV['CCI_SRC']}/providers/lib/resource"
 
 def create_logger(hostname)
   filename = "#{hostname}.log"
@@ -51,10 +52,13 @@ def main(hostname, queues)
   logger = create_logger(hostname)
   mac = compute_mac hostname
   context = Context.new(mac, hostname, queues)
+  resource = Resource.new(hostname, logger)
   sched_client = SchedClient.new
   response = request_job(context, sched_client, logger)
   return if response.nil?
 
+  resource.parse_response(response)
+  context.merge!(resource.info)
   sched_client.delete_mac2host(mac)
   sched_client.delete_host2queues(hostname)
 end
