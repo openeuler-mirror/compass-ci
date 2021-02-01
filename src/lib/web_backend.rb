@@ -510,3 +510,41 @@ def get_tbox_state(params)
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
+
+def get_echart(statistics)
+  echart = {
+    'title' => 'new refs statistics',
+    'unit' => 'times',
+    'x_name' => 'date',
+    'source' => [['x_params'], ['new_ref_times']]
+  }
+  dev = 1
+  # The day will be 2021-01-01
+  day = Date.new(2021, 1, 1)
+  today = Date.today
+  while day <= today
+    day_s = day.to_s
+    echart['source'][0][dev] = day_s
+    echart['source'][1][dev] = statistics[day_s] || 0
+    day += 1
+    dev += 1
+  end
+  echart
+end
+
+def query_repo_statistics(params)
+  query = { "query": { "match": { "_id": params[:git_repo] } } }
+  result = ES_CLIENT.search(index: 'repo', body: query)['hits']
+  statistics = result['total'].positive? ? result['hits'][0]['_source']['new_refs_count'] : {}
+  get_echart(statistics)
+end
+
+def new_refs_statistics(params)
+  begin
+    body = query_repo_statistics(params)
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'new refs statistics error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end

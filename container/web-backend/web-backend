@@ -133,3 +133,16 @@ end
 get '/get_tbox_state' do
   get_tbox_state(params)
 end
+
+# GET /get_repo_statistics?git_repo=$git_repo
+# Response:
+#   - {
+#       "title": "new refs statistics",
+#       "unit": "times",
+#       "x_name": "date",
+#       "source": [["x_params", $date1, ..., $date_today],
+#                  ["new_ref_times", $times_1, ..., $times_today]]
+#     }
+get '/get_repo_statistics' do
+  new_refs_statistics(params)
+end
