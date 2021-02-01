@@ -8,6 +8,10 @@ class Sched
 
     job = @redis.get_job(job_id)
 
+    # update job_state
+    job_state = @env.params.query["job_state"]?
+    job["job_state"] = job_state if job_state
+
     response = @es.set_job_content(job)
     if response["_id"] == nil
       # es update fail, raise exception
@@ -26,7 +30,8 @@ class Sched
 
     @redis.remove_finished_job(job_id)
 
-    @log.info(%({"job_id": "#{job_id}", "job_state": "complete"}))
+    job_state ||= "complete"
+    @log.info(%({"job_id": "#{job_id}", "job_state": "#{job_state}"}))
   rescue e
     @log.warn(e)
   end
