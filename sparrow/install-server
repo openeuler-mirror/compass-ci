@@ -1,0 +1,20 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# For your reference only.
+# It's better to run the below scripts step by step.
+
+[[ $CCI_SRC ]] || export CCI_SRC=$(dirname $(dirname $(realpath $0)))
+cd $CCI_SRC/sparrow || exit
+
+0-package/common
+1-storage/tiny
+1-storage/permission
+2-network/br0
+2-network/iptables
+2-network/nfs
+2-network/cifs
+3-code/dev-env
+. /etc/profile.d/compass.sh
+4-docker/buildall run-only
+7-systemd/systemd-setup
