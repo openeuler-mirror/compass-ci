@@ -63,16 +63,29 @@ class GitMirror
     return fetch_info.include? '->'
   end
 
+  def url_changed?(url, mirror_dir)
+    url = get_url(Array(url)[0])
+    git_url = %x(git -C #{mirror_dir} ls-remote --get-url origin).chomp
+
+    return true if url == git_url
+
+    return false
+  end
+
+  def git_repo_download(url, mirror_dir)
+    return git_clone(url, mirror_dir) unless File.directory?(mirror_dir)
+
+    return git_fetch(mirror_dir) if url_changed?(url, mirror_dir)
+
+    FileUtils.rm_r(mirror_dir)
+    return git_clone(url, mirror_dir)
+  end
+
   def mirror_sync
     fork_info = @queue.pop
     mirror_dir = "/srv/git/#{fork_info['git_repo']}"
     mirror_dir = "#{mirror_dir}.git" unless fork_info['is_submodule']
-    possible_new_refs = false
-    if File.directory?(mirror_dir)
-      possible_new_refs = git_fetch(mirror_dir)
-    else
-      possible_new_refs = git_clone(fork_info['url'], mirror_dir)
-    end
+    possible_new_refs = git_repo_download(fork_info['url'], mirror_dir)
     feedback(fork_info['git_repo'], possible_new_refs)
   end
 
