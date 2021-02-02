@@ -72,7 +72,7 @@ def assign_range(value)
   range_value
 end
 
-options = { nr_jobs: 10, desc_keyword: nil }
+options = { nr_jobs: 10, desc_keyword: 'start_time' }
 range = nil
 
 opt_parser = OptionParser.new do |opts|
