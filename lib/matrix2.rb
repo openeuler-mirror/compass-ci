@@ -2,7 +2,7 @@
 
 # frozen_string_literal: true
 
-LKP_SRC = ENV['LKP_SRC'] || '/c/lkp-tests'
+LKP_SRC ||= ENV['LKP_SRC'] || '/c/lkp-tests'
 
 require "#{LKP_SRC}/lib/stats"
 require "#{LKP_SRC}/lib/yaml"

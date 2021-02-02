@@ -7,15 +7,9 @@ CCI_SRC = File.dirname(__dir__)
 
 require 'optparse'
 require "#{CCI_SRC}/lib/matrix2"
+require_relative '../lib/stats.rb'
 
 File.umask 0o002
-
-def extract_stats(result_root)
-  ENV['RESULT_ROOT'] = result_root
-  job_script = result_root + '/job.sh'
-
-  system job_script, 'extract_stats'
-end
 
 opt_parser = OptionParser.new do |opts|
   opts.banner = 'Usage: result2stats result_root'
@@ -36,7 +30,9 @@ argv = if ARGV == []
        end
 
 opt_parser.parse!(argv)
+RESULT_ROOT = argv[0] || ENV['RESULT_ROOT']
+ENV['RESULT_ROOT'] = RESULT_ROOT
 
-result_root = argv[0] || ENV['RESULT_ROOT']
-extract_stats result_root
-create_stats result_root
+stats = Stats.new(RESULT_ROOT)
+stats.extract_stats
+create_stats RESULT_ROOT
