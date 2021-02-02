@@ -25,7 +25,7 @@ module Cycle
   end
 
   # find the testbox that are performing jobs
-  # curl http://localhost:11311/get_running_testbox?size=10&from=0
+  # curl http://localhost:11312/get_running_testbox?size=10&from=0
   get "/get_running_testbox" do |env|
     env.lifecycle.get_running_testbox.to_json
   end

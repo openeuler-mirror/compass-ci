@@ -13,7 +13,7 @@ names = Set.new %w[
 defaults = relevant_defaults(names)
 env = docker_env(defaults)
 
-LIFECYCLE_PORT = defaults['LIFECYCLE_PORT'] || '11311'
+LIFECYCLE_PORT = defaults['LIFECYCLE_PORT'] || '11312'
 docker_rm "lifecycle-#{LIFECYCLE_PORT}"
 
 cmd = %W[

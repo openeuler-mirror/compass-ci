@@ -9,7 +9,7 @@ require_relative '../defconfig.rb'
 names = Set.new ['LIFECYCLE_PORT']
 defaults = relevant_defaults(names)
 
-LIFECYCLE_PORT = defaults['LIFECYCLE_PORT'] || '11311'
+LIFECYCLE_PORT = defaults['LIFECYCLE_PORT'] || '11312'
 
 CCI_SRC = ENV['CCI_SRC']
 system "bash #{CCI_SRC}/container/compile ."
