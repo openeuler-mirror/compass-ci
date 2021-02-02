@@ -130,8 +130,8 @@ class MirrorMain
     defaults_file = "#{repodir}/DEFAULTS"
     return unless File.exist?(defaults_file)
 
-    project = repodir.delete_prefix("#{REPO_DIR}/")
-    @defaults[project] = YAML.safe_load(File.open(defaults_file))
+    defaults_key = repodir == REPO_DIR ? 'default' : repodir.delete_prefix("#{REPO_DIR}/")
+    @defaults[defaults_key] = YAML.safe_load(File.open(defaults_file))
   end
 
   def traverse_repodir(repodir)
@@ -225,7 +225,7 @@ class MirrorMain
     git_repo = "#{project}/#{fork_name}"
     @git_info[git_repo] = YAML.safe_load(File.open(repodir))
     @git_info[git_repo]['git_repo'] = git_repo
-    @git_info[git_repo].merge!(@defaults[project]) if @defaults[project]
+    @git_info[git_repo] = merge_defaults(git_repo)
     fork_stat_init(git_repo)
     @priority_queue.push git_repo, @priority
     @priority += 1
@@ -445,5 +445,18 @@ class MirrorMain
     return create_year_hash(new_refs_count, year, month, day) if new_refs_count[year].nil?
 
     return update_year_hash(new_refs_count, year, month, day)
+  end
+end
+
+# main thread
+class MirrorMain
+  def merge_defaults(git_repo)
+    defaults_key = File.dirname(git_repo)
+    while defaults_key != '.'
+      return @git_info[git_repo].merge!(@defaults[defaults_key]) if @defaults[defaults_key]
+
+      defaults_key = File.dirname(defaults_key)
+    end
+    return @git_info[git_repo].merge!(@defaults['default']) if @defaults['default']
   end
 end
