@@ -36,9 +36,13 @@ class GitBisectRun
   end
 end
 
-job_id = ARGV[0]
-error_id = ARGV[1]
-work_dir = ARGV[2]
+begin
+  job_id = ARGV[0]
+  error_id = ARGV[1]
+  work_dir = ARGV[2]
 
-run = GitBisectRun.new job_id, error_id, work_dir
-run.git_bisect
+  run = GitBisectRun.new job_id, error_id, work_dir
+  run.git_bisect
+rescue
+  exit -1
+end
