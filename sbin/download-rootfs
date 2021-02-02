@@ -1,0 +1,40 @@
+#!/bin/bash
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+# download os rootfs.
+# 1. download default os rootfs openeuler aarch64 20.03
+# example usage:
+#      ./download-rootfs
+# 2. download os rootfs you want by add params $os, $os_arch, $os_version.
+# example usage:
+#      ./download-rootfs debian aarch64 sid
+
+os=${1:-openeuler}
+os_arch=${2:-aarch64}
+os_version=${3:-20.03}
+
+. ${CCI_SRC}/container/defconfig.sh
+. ${CCI_SRC}/lib/log.sh
+
+load_cci_defaults
+
+rootfs_dir=/srv/os/${os}/${os_arch}/${os_version}
+
+download_os_rootfs()
+{
+      mkdir -p $rootfs_dir
+      cd $rootfs_dir
+
+      download_url="http://api.compass-ci.openeuler.org:${SRV_HTTP_PORT}/os/${os}/${os_arch}/${os_version}.cgz"
+      wget $download_url
+
+      [ "$?" -ne 0 ] && {
+              log_error "failed to download os rootfs: $download_url"
+              exit 1
+      }
+
+      gzip -dc ${os_version}.cgz | cpio -id
+      rm -rf ${os_version}.cgz
+}
+
+download_os_rootfs
