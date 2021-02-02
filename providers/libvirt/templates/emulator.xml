@@ -1,0 +1,1 @@
+<emulator><%=qemu_path%></emulator>

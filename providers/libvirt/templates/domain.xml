@@ -1,0 +1,10 @@
+<?xml version="1.0" character="utf-8"?>
+<domain type='kvm'>
+  <resource>
+    <partition>/machine</partition>
+  </resource>
+  <features>
+    <acpi/>
+    <gic version='3'/>
+  </features>
+</domain>

@@ -1,0 +1,23 @@
+# Domain option:
+#  use templates/domain.xml if user not specified.
+domain: domain
+
+# Default options:
+#  these elements must be replaced for each domain.xml.
+default:
+        - name
+        - os
+        - memory
+        - serial
+        - interface
+        - active
+        - emulator
+
+# Replaceable options:
+#  these elements can be replaced by user configurations.
+replaceable:
+        - devices
+        - cpu
+        - seclabel
+        - disk
+        - clock

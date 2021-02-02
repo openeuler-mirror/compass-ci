@@ -1,0 +1,4 @@
+<serial type='file'>
+	<source path="<%= log_file %>"/>
+	<target port="0"/>
+</serial>

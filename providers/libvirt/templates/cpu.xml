@@ -1,0 +1,3 @@
+<vcpu placement='static'><%= nr_cpu %></vcpu>
+<cpu mode='host-passthrough' check='none'>
+</cpu>

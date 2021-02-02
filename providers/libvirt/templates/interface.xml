@@ -1,0 +1,6 @@
+<interface type='bridge'>
+  <source bridge='br0'/>
+  <mac address='<%= mac %>'/>
+  <target dev='vnet0'/>
+  <model type='virtio'/>
+</interface>

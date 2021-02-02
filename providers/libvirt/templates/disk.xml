@@ -1,0 +1,7 @@
+<% if disk %>
+<disk type='block' device='disk'>
+	<driver name='qemu' type='raw'/>
+	<source dev='<%= disk %>'/>
+	<target dev='vda' bus='virtio'/>
+</disk>
+<% end %>

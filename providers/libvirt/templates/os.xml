@@ -1,0 +1,7 @@
+<os>
+  <type arch='<%= arch %>' machine='virt'>hvm</type>
+  <loader readonly='yes' type='pflash'>/usr/share/edk2/aarch64/QEMU_EFI-pflash.raw</loader>
+  <kernel><%= kernel %></kernel>
+  <initrd><%= initrd %></initrd>
+  <cmdline><%= cmdline %></cmdline>
+</os>
