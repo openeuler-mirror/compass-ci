@@ -24,7 +24,7 @@ module StatsWrapper
     @stats_group = program_time || program
     @log = "#{RESULT_ROOT}/#{@stats_group}"
 
-    return unless pretreatment
+    return unless File.exist?("#{@log}.yaml") || pretreatment
     return unless create_tmpfile
 
     check_tmpfile
@@ -180,6 +180,15 @@ module StatsWrapper
     system "xzcat #{@dmesg_log}.xz > #{@dmesg_log}" if File.exist?("#{@dmesg_log}.xz")
   end
 
+  def self.create_yaml_tmpfile(file)
+    File.readlines(file).each do |line|
+      next if line =~ /{|}/
+
+      line.lstrip!
+      File.write(@tmpfile, line, mode: 'a')
+    end
+  end
+
   def self.create_tmpfile
     tmp = Tempfile.new('lkp-stats.', '/tmp')
     @tmpfile = tmp.path
@@ -191,6 +200,8 @@ module StatsWrapper
                   check #{@tmpfile}")
         create_status = false
       end
+    elsif File.exist?("#{@log}.yaml")
+      create_yaml_tmpfile("#{@log}.yaml")
     else
       %x(#{PROGRAM_DIR}/#{@program} < /dev/null > #{@tmpfile})
       unless $CHILD_STATUS.exitstatus.zero?
