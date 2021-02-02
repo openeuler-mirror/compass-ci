@@ -174,7 +174,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
         - 通过 qemu.img(qcow2格式)获取  rootfs (openEuler为例)
 
 
-            1) 下载 openEule r官方网站提供的 qcow2 格式镜像
+            1) 下载 openEuler 官方网站提供的 qcow2 格式镜像
                 ```bash
                 wget https://repo.openeuler.org/openEuler-20.03-LTS/virtual_machine_img/aarch64/openEuler-20.03-LTS.aarch64.qcow2.xz
                 ```
