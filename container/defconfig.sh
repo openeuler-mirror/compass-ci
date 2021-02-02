@@ -10,7 +10,7 @@ load_cci_defaults()
 
         yaml_file=(
                 /etc/compass-ci/defaults/*.yaml
-                /etc/compass-ci/account/*.yaml
+                /etc/compass-ci/accounts/*.yaml
                 "$HOME"/.config/compass-ci/defaults/*.yaml
         )
 	for i in "${yaml_file[@]}"
