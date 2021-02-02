@@ -119,10 +119,14 @@ Tmux
 
 ## tmux keys (customized)
 
+	ctrl-s ?	list-keys
 	ctrl-s c	create new window
+	ctrl-s x	kill-pane
 	alt-j/k		switch to left/right window
 	alt-1/2/3... 	switch to the 1st, 2nd, 3rd, ... window
 	ctrl-s ctrl-u   page up (press ctrl-u to continue paging up, <Enter> to exit)
+	ctrl-s [/]	copy-mode/paste-buffer
+	shift-(left mouse button/right mouse button) copy/paste to/from system clipboard
 
 Mutt
 ====
