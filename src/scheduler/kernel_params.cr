@@ -18,6 +18,7 @@ class Job
       "cifs" => "root=cifs://#{OS_HTTP_HOST}#{os_real_path}" +
                 ",guest,ro,hard,vers=1.0,noacl,nouser_xattr",
       "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0",
+      "local" => "root=/dev/mapper/os-#{self.os}_#{self.os_arch}_#{self.os_version}",
       "container" => "",
     }
 

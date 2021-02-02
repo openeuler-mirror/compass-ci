@@ -344,7 +344,7 @@ class Job
   end
 
   # defaults to the 1st value
-  VALID_OS_MOUNTS = ["initramfs", "nfs", "cifs", "container"]
+  VALID_OS_MOUNTS = ["initramfs", "nfs", "cifs", "container", "local"]
 
   private def set_os_mount
     if is_docker_job?
