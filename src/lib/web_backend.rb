@@ -6,7 +6,7 @@ require 'json'
 require 'yaml'
 require 'set'
 
-CCI_SRC = ENV['CCI_SRC'] || '/c/compass-ci'
+CCI_SRC ||= ENV['CCI_SRC'] || '/c/compass-ci'
 
 require "#{CCI_SRC}/lib/compare.rb"
 require "#{CCI_SRC}/lib/constants.rb"
