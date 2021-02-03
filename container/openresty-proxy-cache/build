@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+[ -d "openresty" ] && rm -rf openresty
+
 git clone https://gitee.com/cuiyili/openresty.git || exit 1
 
 docker build -t openresty:proxy_cache . -f openresty/Dockerfile
