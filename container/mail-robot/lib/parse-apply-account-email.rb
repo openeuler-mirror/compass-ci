@@ -6,7 +6,6 @@
 require 'json'
 require 'mail'
 require 'rest-client'
-require_relative 'gitee-commit-url-check'
 
 # used to parse mail_content for my_commit_url and my_ssh_pubkey
 # be called by AssignAccount when it needs to extract required data:
@@ -91,29 +90,33 @@ class ParseApplyAccountEmail
   end
 
   def commit_url_availability(url, base_url)
-    hub_name = url.split('/')[2]
+    repo_url = [base_url, 'git'].join('.')
+    repo_dir = repo_url.split('/')[-1]
+    commit_id = url.split('/')[-1]
 
-    # it requires authentication when sending request to get the commit information
-    # clone the repo and then validate the commit for the email address
-    if hub_name.eql? 'gitee.com'
-      gitee_commit(url, base_url)
-    else
-      non_gitee_commit(url)
-    end
+    %x(/usr/bin/git -C /tmp clone --bare  #{repo_url} #{repo_dir})
+
+    # get all commit IDs and check commit id exists
+    repo_commits = %x(/usr/bin/git -C /tmp/#{repo_dir} log --pretty=format:'%H').split(/\n/)
+    check_commit_exist(commit_id, repo_commits)
+
+    # get the auther's email for the commit
+    author_email = %x(/usr/bin/git -C /tmp/#{repo_dir} show -s --format=%aE #{commit_id}).chomp
+    check_commit_email(author_email)
+
+    FileUtils.rm_rf "/tmp/#{repo_dir}"
   end
 
-  def gitee_commit(url, base_url)
-    my_gitee_commit = GiteeCommitUrlCheck.new(@my_info, url, base_url)
-    my_gitee_commit.gitee_commit_check
+  def check_commit_exist(commit_id, repo_commits)
+    return if repo_commits.include? commit_id.chomp
+
+    raise 'NO_COMMIT_ID'
   end
 
-  def non_gitee_commit(url)
-    url_fdback = RestClient.get(url).body
-    email_index = url_fdback.index @my_info['my_email']
+  def check_commit_email(author_email)
+    return if author_email.eql? @my_info['my_email'].chomp
 
-    return unless email_index.nil?
-
-    raise 'COMMIT_URL_NOT_AVAILABLE'
+    raise 'COMMIT_AUTHOR_ERROR'
   end
 
   def parse_pub_key
