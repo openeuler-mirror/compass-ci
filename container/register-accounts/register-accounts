@@ -9,7 +9,12 @@ require_relative "#{ENV['CCI_SRC']}/lib/build_my_info_client"
 
 content = YAML.load_file('/etc/compass-ci/register/register.yaml')
 content.each do |key, value|
-  build_my_info = BuildMyInfo.new(value['my_email'], value['my_name'], ENV['lab'])
-  build_my_info.store_account_info
+  my_info = {}
+  my_info['my_email'] = value['my_email']
+  my_info['my_name'] = value['my_name']
+  my_info['lab'] = ENV['lab']
+
+  build_my_info = BuildMyInfo.new(my_info['my_email'])
+  build_my_info.store_account_info(my_info)
 end
 sleep
