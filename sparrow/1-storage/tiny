@@ -17,6 +17,7 @@ dirs=(
 	/srv/cci/scheduler
 	/srv/cci/serial/logs
 	/srv/cci/serial/fluentd-pos
+	/srv/cci/libvirt-xml
 	/tftpboot
 	/c
 	/etc/qemu
