@@ -26,21 +26,24 @@ do_one()
 	local container_name=$(basename $container)
 	lockfile-create -q --use-pid --retry 100 --lock-name "$container_name".lock
 
-	log_info "start build $container."
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
 		cd "$container"
 		[ "$container_name" == 'ssh-r' ] && exit
 		docker images | grep -wq "$container_name"
 		if [ "$?" != 0 ] || [ "$action" != "run-only" ]; then
+
+			log_info "start build $container."
+
 			[ -x build ] && ./build
 			[ -x install ] && ./install
+
+			log_info "finish build $container."
 		fi
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
 		[ "$container_name" == 'initrd-lkp' ] && ./run
 	)
-	log_info "finish build $container."
 	lockfile-remove --lock-name "$container_name".lock
 }
 
