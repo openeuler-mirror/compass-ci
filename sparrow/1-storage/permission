@@ -1,26 +1,37 @@
 #! /bin/bash
 
-chown lkp:lkp /srv/result
-chown lkp:lkp /srv/initrd
-chown -R lkp:lkp /srv/es
-chown -R mailer:team /srv/cci/Maildir
-chown lkp:lkp /srv/cache/netdata_cache
-chown lkp:lkp /srv/cache/netdata_lib
-chown lkp:lkp /srv/cci/serial/fluentd-pos
-chown lkp:lkp /srv/cci/libvirt-xml
-chown lkp:committer /srv/git
-chgrp team /srv/cci/serial/logs
-chmod 775 /srv/result
-chmod 775 /srv/es/logging-es
-chmod 775 /srv/es
-chmod 775 /srv/cache/netdata_cache
-chmod 775 /srv/cache/netdata_lib
-chmod 775 /srv/cci/serial/logs
-chmod 775 /srv/cci/libvirt-xml
-chmod 775 /srv/cci/serial/fluentd-pos
-chmod -R 775 /srv/cci/Maildir
+chmod_dir=(
+		/srv/result
+		/srv/es/logging-es
+		/srv/es
+		/srv/cache/netdata_cache
+		/srv/cache/netdata_lib
+		/srv/cci/serial/logs
+		/srv/cci/libvirt-xml
+		/srv/cci/serial/fluentd-pos
+		/srv/cci/Maildir
+)
 
+chmod 775 "${chmod_dir[@]}"
+
+chown_dir=(
+		/srv/result
+		/srv/initrd
+		/srv/es
+		/srv/cache/netdata_cache
+		/srv/cache/netdata_lib
+		/srv/cci/serial/fluentd-pos
+		/srv/cci/libvirt-xml
+)
+
+chown lkp:lkp "${chown_dir[@]}"
+
+chown lkp:committer /srv/git
+chown mailer:team /srv/cci/Maildir
+
+chgrp team /srv/cci/serial/logs
 chgrp team /srv/dc
+
 chmod g+ws /srv/dc
 
 find /tftpboot -type d | xargs chmod 775
