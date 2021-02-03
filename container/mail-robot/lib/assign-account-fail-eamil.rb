@@ -33,17 +33,20 @@ def email_err_message(message)
 
           https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/test-oss-project.en.md
     EMAIL_MESSAGE
-  when 'COMMIT_URL_NOT_AVAILABLE'
+  when 'COMMIT_AUTHOR_ERROR'
     err_message = <<~EMAIL_MESSAGE
-      We cannot confirm the commit url matches your email.
+      We cannot confirm the commit author matches your email.
+      Make sure it is truely submitted with your email.
 
-          Make sure the commit exists.
-          Make sure it is truely submitted with your email.
+      Choose a commit that was submitted with your own email and try again.
+    EMAIL_MESSAGE
+  when 'NO_COMMIT_ID'
+    err_message = <<~EMAIL_MESSAGE
+      There is no such commit ID in the repo.
 
-      Go to the commit history and find your commit.
-      Enter the commit and you will get your commit url.
-
-      Try again after you have correctted the url
+      Please check the commit ID exists.
+      or
+      You have write the commit ID correctly.
     EMAIL_MESSAGE
   when 'NO_PUBKEY'
     err_message = <<~EMAIL_MESSAGE
