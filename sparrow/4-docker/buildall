@@ -17,10 +17,10 @@ build_depends()
 	done
 	wait
 
-	do_one $container
+	do_one_build $container
 }
 
-do_one()
+do_one_build()
 {
 	local container=$1
 	local container_name=$(basename $container)
@@ -29,30 +29,53 @@ do_one()
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
 		cd "$container"
-		[ "$container_name" == 'ssh-r' ] && exit
-		docker images | grep -wq "$container_name"
-		if [ "$?" != 0 ] || [ "$action" != "run-only" ]; then
 
-			log_info "start build $container."
+		log_info "start build $container."
 
-			[ -x build ] && ./build
-			[ -x install ] && ./install
+		[ -x build ] && ./build
+		[ -x install ] && ./install
 
-			log_info "finish build $container."
-		fi
-		[ -x first-run ] && ./first-run
-		[ -x start ] && ./start
-		[ "$container_name" == 'initrd-lkp' ] && ./run
+		log_info "finish build $container."
 	)
 	lockfile-remove --lock-name "$container_name".lock
+}
+
+start_depends()
+{
+	local container=$1
+
+	for dep in $(cat $container/start-depends 2> /dev/null)
+	do
+		start_depends $CONTAINER_PATH/$dep
+	done
+
+	do_one_run $container
+}
+
+do_one_run()
+{
+	local container=$1
+	local container_name=$(basename $container)
+
+	cd "$container"
+	[ -x first-run ] && ./first-run
+	[ -x start ] && ./start
+	[ "$container_name" == 'initrd-lkp' ] && ./run
 }
 
 tmpdir=$(mktemp -d)
 
 for dir in $CONTAINER_PATH/*/
 do
-	build_depends $dir &
+	container_name=$(basename $dir)
+	[ "$container_name" == 'ssh-r' ] && continue
+
+	docker images | grep -wq "$container_name"
+	if [ "$?" != 0 ] || [ "$action" != "run-only" ]; then
+		build_depends $dir &
+		wait
+	fi
+	start_depends $dir
 done
-wait
 
 rm -fr $tmpdir
