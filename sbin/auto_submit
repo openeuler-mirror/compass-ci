@@ -6,7 +6,9 @@
 require 'bunny'
 require 'json'
 require 'yaml'
+require 'set'
 require_relative '../lib/build_my_info_client'
+require "#{ENV['CCI_SRC']}/container/defconfig"
 
 # receive message and auto submit job
 class AutoSubmit
@@ -86,15 +88,23 @@ class AutoSubmit
   end
 end
 
-option = {
-  my_name: 'Auto Submit Robot',
-  my_email: 'autosubmit@localhost',
-  lab: `awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml`.chomp
-}
+def my_email
+  names = Set.new %w[auto-submit]
+
+  defaults = relevant_defaults(names)
+  defaults['auto-submit']['my_email']
+end
+
+def config_yaml
+  build_my_info = BuildMyInfo.new(my_email)
+
+  my_info = build_my_info.search_my_info
+  build_my_info.config_default_yaml(my_info)
+  build_my_info.config_lab_yaml(my_info)
+end
 
 # fix verification problems when submit jobs by auto-submit service
-build_my_info = BuildMyInfo.new(option[:my_email], option[:my_name], option[:lab])
-build_my_info.config_my_info
+config_yaml
 
 auto_submitter = AutoSubmit.new
 auto_submitter.listen
