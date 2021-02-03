@@ -69,6 +69,7 @@ module Utils
       save_job_to_yaml(job, PROCESS_JOB_YAML)
       response = %x(#{LKP_SRC}/sbin/submit #{PROCESS_JOB_YAML})
       puts "submit job response: #{response}"
+      return nil if response =~ /job id=0/
       return $1 if response =~ /job id=(.*)/
 
       return nil
