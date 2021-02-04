@@ -43,6 +43,7 @@ Which contains account information for you:
 	my_name
 	my_email
 	my_token
+	lab
 
 ## step 3: one-time setup
 
@@ -50,6 +51,7 @@ Which contains account information for you:
 
 	git clone https://gitee.com/wu_fengguang/lkp-tests.git
 	setup ~/.config/compass-ci/defaults/account.yaml
+	      ~/.config/compass-ci/include/lab/{{ lab }}.yaml
 
 ## step 4: try it out
 
