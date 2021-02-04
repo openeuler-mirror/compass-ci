@@ -1,0 +1,23 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+# This is a single-use container.
+# The container will run if you run the 'submit' to submit jobs.
+# After the command execute over, the container will been removed itself.
+# Do not need to delete manually for it has been added option '--rm'.
+date_suffix=$(date +%m%d-%H%M%S)
+cmd=(
+        docker run
+        --rm
+        --name=submit-$USER-$data_suffix
+        -it
+        -v /etc/compass-ci:/etc/compass-ci:ro
+        -v $HOME/.config:/root/.config:ro
+        -v $HOME/.ssh:/root/.ssh:rw
+        submit
+        /srv/lkp-tests/sbin/submit "$@"
+)
+
+"${cmd[@]}"
+
