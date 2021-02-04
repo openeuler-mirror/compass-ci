@@ -29,7 +29,7 @@ module Utils
         commits << temp_commit if temp_commit
       end
       commits << get_last_commit(work_dir, commit) if commits.empty?
-      return commits.to_a
+      return commits.to_a.compact
     end
 
     def get_day_ago_commit(work_dir, commit, day_ago)
