@@ -11,7 +11,7 @@ REDIS_PORT     = 6379
 # delimiter and exttract-ststs will loop consume job
 # when use 32 (scheduler use 25), meet Exception:
 #   Exception: No free connection (used 32 of 32)
-REDIS_POOL_NUM =   64
+REDIS_POOL_NUM =   1000
 
 REDIS_POOL_TIMEOUT = 10 # ms
 
