@@ -16,8 +16,7 @@ RUN apt-get update && \
 
 # it may take a long time, even break up if you use default source address for the gem.
 # delete the following step if you do not want to use the default one.
-RUN gem sources --add https://gems.ruby-china.com/ && \
-    gem sources --remove https://rubygems.org/
+RUN gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 
 RUN gem install git faye-websocket activesupport rest-client
 
