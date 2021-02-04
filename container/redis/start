@@ -22,8 +22,3 @@ cmd=(
 )
 
 "${cmd[@]}"
-
-# test
-echo you can use cmd: redis-cli to start a redis client
-echo and then use cmd: keys *
-
