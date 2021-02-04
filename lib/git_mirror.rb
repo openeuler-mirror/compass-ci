@@ -39,14 +39,12 @@ class GitMirror
   end
 
   def git_clone(url, mirror_dir)
-    ret = false
     url = get_url(Array(url)[0])
     10.times do
-      stderr = %x(git clone --mirror --depth 1 #{url} #{mirror_dir} 2>&1)
-      ret = !stderr.include?('fatal')
-      break if ret
+      %x(git clone --mirror --depth 1 #{url} #{mirror_dir} 2>&1)
+      return true if File.directory?(mirror_dir) && File.exist?("#{mirror_dir}/config")
     end
-    return ret
+    return false
   end
 
   def git_fetch(mirror_dir)
