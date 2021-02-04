@@ -453,10 +453,12 @@ class MirrorMain
   def merge_defaults(git_repo)
     defaults_key = File.dirname(git_repo)
     while defaults_key != '.'
-      return @git_info[git_repo].merge!(@defaults[defaults_key]) if @defaults[defaults_key]
+      return @defaults[defaults_key].merge(@git_info[git_repo]) if @defaults[defaults_key]
 
       defaults_key = File.dirname(defaults_key)
     end
-    return @git_info[git_repo].merge!(@defaults['default']) if @defaults['default']
+    return @defaults['default'].merge(@git_info[git_repo]) if @defaults['default']
+
+    return @git_info[git_repo]
   end
 end
