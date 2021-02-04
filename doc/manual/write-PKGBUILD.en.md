@@ -13,8 +13,9 @@ PKGBUILD includes variables and functions.
 - pkgrel: Mandatory. It indicates the release number of a software package.
 - arch: Mandatory. It indicates the architecture sequence of a software package.
 - depends: Optional. It indicates the name of the dependency package required for running a software test.
-- makedepends: Optional. It indicates the list of files required for building a software package.
-- source: Optional. It indicates the MD5 hash value of each source file to verify the integrity of the source file during the build process.
+- makedepends: Optional. It indicates the name of the dependency package required for building a software package.
+- source: Optional. It indicates the list of files required for building a software package.
+- md5sums: Optional. It indicates the MD5 hash value of each source file to verify the integrity of the source file during the build process.
 
 ## Defining a Function
 
