@@ -37,7 +37,7 @@ setup_login() {
 pack_cgz()
 {
 	echo "Packing package. Please wait."
-	find / ! -path "/tmp/${IMAGE_NAME}" | grep -vf /tmp/files-to-exclude | cpio -o -Hnewc | gzip -9 > /tmp/${IMAGE_NAME}
+	find ./ ! -path "./tmp/${IMAGE_NAME}" | grep -vf ./tmp/files-to-exclude | cpio -o -Hnewc | gzip -9 > ./tmp/${IMAGE_NAME}
 	chmod 644 /tmp/${IMAGE_NAME} 
 }
 
