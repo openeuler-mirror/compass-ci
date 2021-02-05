@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require_relative './libvirt/run'
+
+tbox_group = 'vt-2p16g'
+hostname = "#{tbox_group}.#{ENV['USER']}-#{Process.pid}"
+# specify which queues will be request, use "," to separate more than 2 values
+queues = "#{tbox_group}~#{ENV['USER']}"
+
+main(hostname, queues)
