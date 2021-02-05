@@ -1,0 +1,11 @@
+# please fill the configuration according to comments.
+
+# account name
+my_name: xxx
+
+# email address
+my_email: xxx@xxx.com
+
+# when you deploy compass-ci client, fill the compass-ci server's ip,
+# then client can access server service.
+server_ip:
