@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 gem install --no-user-install git activesupport rest-client cucumber json faye-websocket elasticsearch
 
 grep -q '^lkp:' /etc/passwd || useradd -u 1090 lkp
