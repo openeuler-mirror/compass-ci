@@ -5,16 +5,16 @@ FROM alpine:3.9
 
 ADD root /
 
-RUN apk add --no-cache nginx php7 php7-fpm php7-session php7-json php7-exif php7-imagick php7-gd php7-fileinfo nodejs npm \
-    && mkdir /run/nginx/ \
-    && mkdir /h5ai
+RUN apk add --no-cache nginx php7 php7-fpm php7-session php7-json php7-exif php7-imagick php7-gd php7-fileinfo nodejs npm git \
+    && mkdir /run/nginx/
 
 RUN sed -i '/\[global\]/a daemonize = no' /etc/php7/php-fpm.conf
 RUN sed -i "s/user = nobody/user = nginx/g" /etc/php7/php-fpm.d/www.conf
 RUN sed -i "s/group = nobody/group = nginx/g" /etc/php7/php-fpm.d/www.conf
 
+RUN git clone https://gitee.com/luweitao_y/h5ai.git /h5ai
+
 WORKDIR /h5ai
-COPY h5ai /h5ai
 
 # build h5ai package
 RUN npm install \
