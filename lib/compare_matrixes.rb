@@ -83,15 +83,12 @@ def get_values(value_list, success)
 end
 
 def get_compare_value(base_value_average, value_average, success)
-  # get compare value(change or reproduction)
+  # get compare value(change)
   #
-  if success
-    return if base_value_average.zero?
+  return unless success
+  return if base_value_average.zero?
 
-    (100 * value_average / base_value_average - 100).round(1)
-  else
-    (100 * (value_average - base_value_average)).round(1)
-  end
+  (100 * value_average / base_value_average - 100).round(1)
 end
 
 def field_changed?(base_values, values, success, field, options)
@@ -265,7 +262,7 @@ def get_html_header(matrixes_titles, success)
     compare_title = CHANGE_STR
   else
     common_title = FAILS_RUNS_STR
-    compare_title = REPRODUCTION_STR
+    compare_title = ''
   end
 
   header = get_html_index(matrixes_titles)
@@ -551,35 +548,6 @@ def format_fails_runs(fails, runs)
   fails_str + ':' + runs_str
 end
 
-def get_reproduction_index_str(reproduction, compare_index)
-  reproduction_str = format('%+.1f%%', reproduction)
-  reproduction_index = compare_index - reproduction_str.index('.')
-  if reproduction_index.negative?
-    reproduction_str = format('%+.1e%%', reproduction).sub('e+0', 'e+').sub('e-0', 'e-')
-    reproduction_index = compare_index - reproduction_str.index('e') - 1
-  end
-  return reproduction_index, reproduction_str
-end
-
-def get_reprodcution(reproduction, compare_index)
-  if reproduction
-    reproduction_index, reproduction_str = get_reproduction_index_str(reproduction, compare_index)
-    space_str = ' ' * (SUB_SHORT_COLUMN_WIDTH - reproduction_str.length)
-    reproduction_str = space_str.insert(reproduction_index, reproduction_str)
-  else
-    reproduction_str = format("%-#{SUB_SHORT_COLUMN_WIDTH}s", '0')
-  end
-  reproduction_str
-end
-
-def format_reproduction(reproduction, theme, compare_index)
-  color = get_compare_value_color(reproduction, theme)
-  colorize(
-    color,
-    get_reprodcution(reproduction, compare_index)
-  )
-end
-
 def get_change_index_str(change, compare_index)
   change_str = format('%+.1f%%', change)
   change_index = compare_index - change_str.index('.')
@@ -696,7 +664,7 @@ def get_title_name(success)
     compare_title = CHANGE_STR
   else
     common_title = FAILS_RUNS_STR
-    compare_title = REPRODUCTION_STR
+    compare_title = ''
   end
   return common_title, compare_title
 end
@@ -721,14 +689,14 @@ def get_base_matrix_title_symbol(common_index, success)
   title_symbol
 end
 
-def get_other_matrixes_title_symbol(_compare_title, matrixes_number, common_index, success)
+def get_other_matrixes_title_symbol(compare_title, matrixes_number, common_index, success)
   title_symbol = ' ' * (
     (INTERVAL_WIDTH + COLUMN_WIDTH) * matrixes_number
   )
   start_point = 0
 
   common_symbol = success ? '\\' : '|'
-  compare_symbol = '|'
+  compare_symbol = compare_title.empty? ? '' : '|'
   compare_index = SUB_SHORT_COLUMN_WIDTH / 2
 
   (matrixes_number - 1).times do |_|
@@ -789,12 +757,8 @@ def get_success_str(values, index, theme, compare_index)
   (change_str || '') + stddev_str
 end
 
-def get_failure_str(values, index, theme, compare_index)
-  unless index.zero?
-    reproduction_str = format_reproduction(
-      values[:reproduction], theme, compare_index
-    )
-  end
+def get_failure_str(values, index)
+  reproduction_str = format("%-#{SUB_SHORT_COLUMN_WIDTH}s", '') unless index.zero?
 
   fails_runs_str = format_fails_runs(
     values[:fails],
@@ -813,7 +777,7 @@ def get_values_str(matrixes, success, theme)
                     ) + INTERVAL_BLANK
                   else
                     get_failure_str(
-                      values, index, theme, compare_index
+                      values, index
                     ) + INTERVAL_BLANK
                   end
   end
