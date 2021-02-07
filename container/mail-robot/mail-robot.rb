@@ -32,7 +32,7 @@ def handle_new_email(mail_file, mail_drafts)
 end
 
 def apply_account(mail_content)
-  return unless mail_content.subject == 'apply account'
+  return unless mail_content.subject.match?(/apply account/i)
 
   assign_uuid = ApplyAccount.new(mail_content)
   assign_uuid.check_to_send_account
