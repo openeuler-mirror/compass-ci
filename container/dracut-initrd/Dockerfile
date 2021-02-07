@@ -7,7 +7,7 @@ MAINTAINER Wu Fenguang <wfg@mail.ustc.edu.cn>
 
 ADD bin /usr/local/bin
 COPY conf/sources.list* /etc/apt/
-COPY conf/add-cifs.conf /etc/dracut.conf.d/
+COPY conf/add-modules.conf /etc/dracut.conf.d/
 WORKDIR /usr/local/bin
 
 RUN setup-dracut.sh
