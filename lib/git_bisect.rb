@@ -23,6 +23,7 @@ class GitBisect
     set_build_pkg_dir
     set_upstream
     set_pkgbuild_repo
+    set_upstream_url
     set_work_dir
     set_bad_commit
     set_good_commit
@@ -54,6 +55,12 @@ class GitBisect
     raise 'upstream info is null' unless @upstream_repo || @upstream_commit
 
     @upstream_repo_git = "git://#{GIT_MIRROR_HOST}/#{@upstream_repo}"
+  end
+
+  def set_upstream_url
+    @upstream_url = @bad_job['upstream_url']
+    puts "upstream_url: #{@upstream_url}"
+    raise 'upstream url is null' unless @upstream_url
   end
 
   def set_work_dir
@@ -106,6 +113,7 @@ class GitBisect
                 'work_dir' => @work_dir,
                 'bisect_error' => bisect_error,
                 'all_errors' => all_errors,
+                'upstream_url' => @upstream_url
                 'pkgbuild_repo' => @pkgbuild_repo,
                 'first_bad_commit_result_root' => first_bad_commit_result_root]
   end

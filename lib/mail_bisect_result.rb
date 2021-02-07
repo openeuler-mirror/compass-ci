@@ -16,6 +16,7 @@ class MailBisectResult
     @commit_id = bisect_info['commit']
     @all_errors = bisect_info['all_errors']
     @bisect_error = bisect_info['bisect_error']
+    @upstream_url = bisect_info['upstream_url']
     @pkgbuild_repo = bisect_info['pkgbuild_repo']
     @first_bad_commit_result_root = bisect_info['first_bad_commit_result_root']
     @git_commit = GitCommit.new(@work_dir, @commit_id)
@@ -46,7 +47,7 @@ class MailBisectResult
     Hi #{@git_commit.author_name},
 
     We found some error/warning(s) and the first bad commit in the below project:
-    git url: #{@git_commit.url}
+    git url: #{@upstream_url/@commit_id}
     git commit: #{@commit_id} ("#{@git_commit.subject}")
 
     All error/warning(s) (new ones prefixed by >>):
