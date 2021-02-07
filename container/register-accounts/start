@@ -9,6 +9,7 @@ require_relative '../defconfig.rb'
 names = Set.new %w[
   ES_HOST
   ES_PORT
+  lab
 ]
 
 defaults = relevant_defaults(names)
