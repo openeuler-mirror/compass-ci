@@ -31,6 +31,7 @@ cmd = %w[
 ] + env + %W[
   -v /c/upstream-repos:/c/upstream-repos:ro
   -v #{defaults['MAILDIR']}:#{defaults['MAILDIR']}:rw
+  -v /etc/compass-ci/conf/sec_admins.yaml:/etc/compass-ci/conf/sec_admins.yaml:ro
   -v #{ENV['CCI_SRC']}:/c/compass-ci:rw
   -w /c/compass-ci/container/mail-robot
   mail-robot
