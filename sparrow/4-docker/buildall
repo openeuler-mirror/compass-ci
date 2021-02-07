@@ -29,13 +29,9 @@ do_one_build()
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
 		cd "$container"
-
-		log_info "start build $container."
-
 		[ -x build ] && ./build
+		[ "$?" == 0 ] && log_info "finish build $container"
 		[ -x install ] && ./install
-
-		log_info "finish build $container."
 	)
 	lockfile-remove --lock-name "$container_name".lock
 }
