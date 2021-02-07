@@ -48,17 +48,22 @@ class ParseApplyAccountEmail
     return @my_info
   end
 
-  def extract_mail_content_line
+  def extract_mail_content_body
     mail_content_body = @mail_content.part[0].part[0].body.decoded || \
                         @mail_content.part[0].body.decoded || \
                         @mail_content.body.decoded
-    mail_content_line = mail_content_body.gsub(/\n/, '')
 
-    return mail_content_line
+    return mail_content_body
+  end
+
+  def extract_users
+    users = extract_mail_content_body.split(/\r|\n/)
+    users.delete('')
+    users
   end
 
   def extract_commit_url
-    mail_content_line = extract_mail_content_line
+    mail_content_line = extract_mail_content_body.gsub(/\n/, '')
     # the commit url should be headed with a prefix: my oss commit
     # the commit url should be in a standart format, example:
     # my oss commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
