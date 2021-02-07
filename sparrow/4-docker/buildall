@@ -53,10 +53,13 @@ do_one_run()
 	local container=$1
 	local container_name=$(basename $container)
 
-	cd "$container"
-	[ -x first-run ] && ./first-run
-	[ -x start ] && ./start
-	[ "$container_name" == 'initrd-lkp' ] && ./run
+	mkdir $tmpdir/start_$container_name 2>/dev/null &&
+	(
+		cd "$container"
+		[ -x first-run ] && ./first-run
+		[ -x start ] && ./start
+		[ "$container_name" == 'initrd-lkp' ] && ./run
+	)
 }
 
 tmpdir=$(mktemp -d)
