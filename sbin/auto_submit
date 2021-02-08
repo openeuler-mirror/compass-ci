@@ -30,21 +30,6 @@ class AutoSubmit
     return pkgbuild_repo
   end
 
-  def submit(newrefs_info, submit_argv)
-    newrefs_info['new_refs']['heads'].each do |branch, commit_id|
-      inactive_time = %x(git -C /srv/git/#{newrefs_info['git_repo']}.git log --pretty=format:"%cr" -1 #{commit_id})
-      next if inactive_time =~ /(month|year)/
-
-      real_argvs = Array.new(submit_argv)
-      real_argvs.push("upstream_branch=#{branch.delete_prefix('refs/heads/')}")
-      real_argvs.push("upstream_commit=#{commit_id}")
-      tag = %x(git -C /srv/git/#{newrefs_info['git_repo']}.git tag --points-at #{commit_id})
-      real_argvs.push("upstream_tag=#{tag}") unless tag.empty?
-
-      system(real_argvs.join(' '))
-    end
-  end
-
   def get_argvs(newrefs_info)
     git_repo = newrefs_info['git_repo']
     puts "git_repo : #{git_repo}"
@@ -60,16 +45,77 @@ class AutoSubmit
     submit_argv
   end
 
+  def submit_one_job(submit_argv, git_repo, branch, commit_id)
+    inactive_time = %x(git -C /srv/git/#{git_repo}.git log --pretty=format:"%cr" -1 #{commit_id})
+    return if inactive_time =~ /(month|year)/
+
+    real_argvs = Array.new(submit_argv)
+    real_argvs.push("upstream_branch=#{branch}")
+    real_argvs.push("upstream_commit=#{commit_id}")
+    tag = %x(git -C /srv/git/#{git_repo}.git tag --points-at #{commit_id})
+    real_argvs.push("upstream_tag=#{tag}") unless tag.empty?
+
+    system(real_argvs.join(' '))
+  end
+
+  def get_branch_commands(submit_commands)
+    submit_commands.each do |element|
+      return element['branch_commands'] if element['branch_commands']
+    end
+    return nil
+  end
+
+  def submit_specific_branch(submit_argv, newrefs_info, branch_commands)
+    return newrefs_info['new_refs']['heads'] if branch_commands.nil?
+
+    non_specific_commits = {}
+    newrefs_info['new_refs']['heads'].each do |branch, commit_id|
+      branch_name = branch.delete_prefix('refs/heads/')
+      if branch_commands[branch_name].nil?
+        non_specific_commits[branch] = commit_id
+        next
+      end
+      argvs = Array.new(submit_argv)
+      argvs.push(branch_commands[branch_name])
+      submit_one_job(argvs, newrefs_info['git_repo'], branch_name, commit_id)
+    end
+    return non_specific_commits
+  end
+
+  def submit_non_specific(non_specific_commits, git_repo, submit_argv)
+    non_specific_commits.each do |branch, commit_id|
+      branch = branch.delete_prefix('refs/heads/')
+      submit_one_job(submit_argv, git_repo, branch, commit_id)
+    end
+  end
+
+  # Add support of different branch different job
+  # newrefs_info['submit'] is like:
+  # ["submit command 1",
+  #  "submit command 2",
+  #  ...,
+  #  { "branch_commands" => { "branch_1" => "submit command 1",
+  #                           ...,
+  #                           "branch_n" => "submit command n"
+  #                         }
+  #  }
+  # ]
   def submit_job(newrefs_info)
     submit_argv = get_argvs(newrefs_info)
     return unless submit_argv
 
     return unless newrefs_info['submit']
 
+    branch_commands = get_branch_commands(newrefs_info['submit'])
+    non_specific_commits = submit_specific_branch(submit_argv, newrefs_info, branch_commands)
+    return if non_specific_commits.empty?
+
     newrefs_info['submit'].each do |argv_config|
+      next if argv_config.is_a? Hash
+
       argvs = Array.new(submit_argv)
       argvs.push(argv_config)
-      submit(newrefs_info, argvs)
+      submit_non_specific(non_specific_commits, newrefs_info['git_repo'], argvs)
     end
   end
 
