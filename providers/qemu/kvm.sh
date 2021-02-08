@@ -76,16 +76,12 @@ check_qemu()
 
 check_initrds()
 {
-	[ -n "$initrds" ] || {
+	if [ -n "$initrds" ]; then
+		cat $initrds > concatenated-initrd
+	else
 		log_error "The current initrds is null."
 		exit 1
-	}
-}
-
-set_initrd()
-{
-	initrd=initrd
-	cat $initrds > $initrd
+	fi
 }
 
 set_bios()
@@ -148,7 +144,7 @@ public_option()
 		$qemu
 		-name guest=$hostname,process=$job_id
 		-kernel $kernel
-		-initrd $initrd
+		-initrd concatenated-initrd
 		-smp $nr_cpu
 		-m $memory
 		-rtc base=localtime
@@ -211,7 +207,6 @@ run_qemu()
 
 set_options()
 {
-	set_initrd
 	set_bios
 	set_helper
 	set_nic
