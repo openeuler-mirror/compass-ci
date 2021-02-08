@@ -5,6 +5,10 @@
 
 require 'mail'
 require 'sinatra'
+
+REDIS_HOST = %x(/sbin/ip route | awk '/default/ {print $3}').chomp
+REDIS_PORT = ENV['REDIS_PORT']
+
 require "#{ENV['CCI_SRC']}/lib/mail-post"
 
 mail_server = %x(/sbin/ip route |awk '/default/ {print $3}').chomp

@@ -11,6 +11,7 @@ docker_rm 'send-mail'
 names = Set.new %w[
   LOCAL_SEND_MAIL_PORT
   LOCAL_ROBOT_EMAIL_ADDRESS
+  REDIS_PORT
 ]
 
 defaults = relevant_defaults(names)

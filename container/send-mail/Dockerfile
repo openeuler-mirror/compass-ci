@@ -6,4 +6,4 @@ MAINTAINER Luan Shengde <shdluan@163.com>
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
-    apt-get install -y ruby-mail ruby-json ruby-sinatra
+    apt-get install -y ruby-mail ruby-json ruby-sinatra ruby-redis ruby-rufus-scheduler
