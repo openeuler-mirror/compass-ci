@@ -2,5 +2,9 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. ../defconfig.sh
+
+docker_skip_rebuild "alpine:auto-submit"
+
 docker build -t alpine:auto-submit .
 

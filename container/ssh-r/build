@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. ../defconfig.sh
+
+docker_skip_rebuild "ssh-r:0.001"
+
 if [ ! -f "known_auth_keys" ]; then
   echo "-----> ERROR: no testbox rsa public key file 'known_auth_keys' at currrent DIR"
   exit 1

@@ -3,6 +3,10 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require_relative '../defconfig'
+
+docker_skip_rebuild "kibana:7.6.2"
+
 BASE_IMAGE_DICT = {
   'aarch64' => 'gagara/kibana-oss-arm64:7.6.2',
   'x86_64' => 'kibana:7.6.2' }.freeze

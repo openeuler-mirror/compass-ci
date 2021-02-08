@@ -3,4 +3,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require_relative '../defconfig'
+
+docker_skip_rebuild "sub-fluentd:alpine"
+
 system 'docker build -t sub-fluentd:alpine .'

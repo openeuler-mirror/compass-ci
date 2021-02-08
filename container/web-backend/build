@@ -1,4 +1,8 @@
 #!/bin/sh
 # SPDX-License-Identifier: MulanPSL-2.0+
 
+. ../defconfig.sh
+
+docker_skip_rebuild "debian:web-backend"
+
 docker build -t debian:web-backend .

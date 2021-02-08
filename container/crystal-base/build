@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. ../defconfig.sh
+
+docker_skip_rebuild "alpine:crystal-base"
+
 if [ -n "$SQUID_HOST" ] && [ -n "$SQUID_PORT" ]; then
 	proxy="http://$SQUID_HOST:$SQUID_PORT/"
 else

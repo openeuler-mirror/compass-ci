@@ -4,6 +4,8 @@
 
 . ../defconfig.sh
 
+docker_skip_rebuild "delimiter"
+
 load_cci_defaults
 
 docker build -t delimiter .

@@ -5,6 +5,8 @@
 
 require_relative '../defconfig.rb'
 
+docker_skip_rebuild "logging-es:7.6.2"
+
 BASE_IMAGE_DICT = {
   'aarch64' => 'gagara/elasticsearch-oss-arm64:7.6.2',
   'x86_64' => 'elasticsearch:7.6.2'

@@ -6,6 +6,9 @@
 # If job.yaml does not have these two parameters, git will use the local proxy cache,
 # GITCACHE_HOST defaults to the local ip, GITCACHE_PORT default port is 5000
 . ../defconfig.sh
+
+docker_skip_rebuild "alpine:crystal-shards"
+
 load_cci_defaults
 
 docker build --build-arg GITCACHE_HOST=$GITCACHE_HOST --build-arg GITCACHE_PORT=$GITCACHE_PORT -t alpine:crystal-shards .

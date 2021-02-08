@@ -2,4 +2,8 @@
 # Origin: https://docs.docker.com/registry
 # SPDX-License-Identifier: Apache license
 
+. ../defconfig.sh
+
+docker_skip_rebuild "registry"
+
 docker pull registry

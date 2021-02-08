@@ -10,6 +10,8 @@ load_cci_defaults
 
 service_port=${TASKQUEUE_PORT:-3060}
 
+docker_skip_rebuild "taskqueue-alpine:v0.001-${service_port}"
+
 if [[ ! -f "taskqueue" ]]; then
   $CCI_SRC/container/compile .
 else

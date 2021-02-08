@@ -4,6 +4,10 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. ../defconfig.sh
+
+docker_skip_rebuild "upload-libvirt-xml"
+
 # The libvirt xml upload has nothing to do with the job. It renames the uploaded file and does not currently have permission to upload.
 # it is a transitional service. Two different functions use the same port service,
 

@@ -2,4 +2,8 @@
 # Origin: https://hub.docker.com/r/netdata/netdata
 # SPDX-License-Identifier: GPL-3.0+
 
+. ../defconfig.sh
+
+docker_skip_rebuild "netdata/netdatalkp"
+
 docker build -t netdata/netdatalkp .
