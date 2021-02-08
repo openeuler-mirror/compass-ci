@@ -69,11 +69,8 @@ do
 	container_name=$(basename $dir)
 	[ "$container_name" == 'ssh-r' ] && continue
 
-	docker images | grep -wq "$container_name"
-	if [ "$?" != 0 ] || [ "$action" != "run-only" ]; then
-		build_depends $dir &
-		wait
-	fi
+	build_depends $dir &
+	wait
 	start_depends $dir
 done
 
