@@ -5,9 +5,9 @@
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
-apt-get install -y --fix-missing --no-install-recommends apt-utils >/dev/null 2>&1
-apt-get install -y --fix-missing nfs-common netbase cifs-utils kmod rsync
-apt-get install -y --fix-missing dracut dracut-network dracut-config-generic
+apt-get install -y --fix-missing --no-install-recommends -qq apt-utils \
+nfs-common netbase cifs-utils kmod rsync dracut dracut-network \
+dracut-config-generic
 
 apt-get clean
 rm -rf /var/lib/apt/lists/*
