@@ -49,8 +49,9 @@ def parse_response(url)
   return hash
 end
 
-def wget_cmd(path, url, name)
-  system "wget -q -P #{path} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
+
+def curl_cmd(path, url, name)
+  system "curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
 end
 
 def build_load_path(hostname)
@@ -75,8 +76,8 @@ def load_initrds(load_path, hash)
   arch = RUBY_PLATFORM.split('-')[0]
   job_url = hash['job']
   lkp_url = hash['lkp']
-  wget_cmd(load_path, job_url, 'job.cgz')
-  wget_cmd(load_path, lkp_url, "lkp-#{arch}.cgz")
+  curl_cmd(load_path, job_url, 'job.cgz')
+  curl_cmd(load_path, lkp_url, "lkp-#{arch}.cgz")
 end
 
 def start_container(hostname, load_path, hash)
