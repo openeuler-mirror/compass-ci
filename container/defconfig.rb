@@ -47,3 +47,9 @@ def get_available_memory
   # take the middle value according to the system memory size.
   [1024, 30720, Math.sqrt(memtotal) * 1024].sort[1].to_i
 end
+
+def docker_skip_rebuild(tag)
+  return unless ENV['action'].include? 'run-only'
+
+  exit 1 if system "docker image inspect #{tag} > /dev/null 2>&1"
+end

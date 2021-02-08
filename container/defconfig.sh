@@ -41,3 +41,11 @@ push_image()
         docker tag "$src_tag" "$dst_tag"
         docker push "$dst_tag"
 }
+
+docker_skip_rebuild()
+{
+	tag=$1
+	[ "$action" != "run-only" ] && return
+	docker image inspect $tag > /dev/null 2>&1
+	[ "$?" == "0" ] && exit 1
+}
