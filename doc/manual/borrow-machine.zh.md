@@ -3,7 +3,7 @@
 - 申请account
 - 配置默认yaml文件
 
-如果未完成以上步骤，请参考[apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md)完成操作。
+如果未完成以上步骤，请参考 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md) 完成操作。
 
 # 申请测试机
 
@@ -62,14 +62,14 @@
 
 # FAQ
 
-## 自定义借用时长
+* 自定义借用时长
 
-    在借用机器的yaml实例文件中，找到’runtime‘字段，根据需求修改借用时长。
+    在借用机器的yaml实例文件中，找到 **runtime** 字段，根据需求修改借用时长。
 
-    - 借用机器可以按照小时（h）、天（d）来计算。
-    - 借用时长最多不超过10天。
+	借用机器可以按照小时（h）、天（d）来计算。
+	借用时长最多不超过10天。
 
-## submit命令指导
+* submit命令指导
 
     学习submit命令，您可以使用 以下命令查看submit命令的各项参数及使用方法：
 
@@ -77,9 +77,9 @@
 
     也可以参考submit命令手册学习submit命令高级用法：
 
-        [submit命令详解](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)
+    [submit命令详解](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)
 
-## 可选的testbox
+* 可选的testbox
 
     查看可选的testbox列表，请参考：https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts
 
@@ -95,6 +95,6 @@
     > - 物理机的testbox若选择以`--axx`结尾的，则表示指定到了具体的某一个物理机。若此物理机任务队列中已经有任务在排队，则需要等待队列中前面的任务执行完毕后，才会轮到你提交的borrow任务。
     > - 物理机的testbox若不选择以`-axx`结尾的，表示不指定具体的某一个物理机。则此时集群中的空闲物理机会即时被分配执行你的borrow任务。
 
-## 如何 borrow 指定的操作系统
+* 如何 borrow 指定的操作系统
 
     关于支持的`os`, `os_arch`, `os_version`，参见：[os-os_verison-os_arch.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/os-os_verison-os_arch.md)

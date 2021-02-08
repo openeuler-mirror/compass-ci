@@ -64,24 +64,24 @@ If you have not completed above works, reference to [apply-account.md](https://g
 
 # FAQ
 
-## Customize the borrowing time
+* Customize the borrowing time
 
     Find key in the yaml file and edit its value according to your requirement.
 
-    - The borrowing period can be calculated in days and hours.
-    - The maximum period is no more than 10 day.
+	The borrowing period can be calculated in days and hours.
+	The maximum period is no more than 10 day.
 
-## Guidance for command submit
+* Guidance for command submit
 
     See the usage and options for command 'submit' the command below:
 
-        submit -h
+	submit -h
 
     Reference the following line to learn the advanced usage for command 'submit':
+    
+    [submit detailed usage](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)
 
-        [submit detailed usage](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)
-
-## Available testbox
+* Available testbox
 
     For a full list of testbox, reference to https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts
 
@@ -96,6 +96,6 @@ If you have not completed above works, reference to [apply-account.md](https://g
     > - You will need to wait if there are already tasks in the task queue for the machine.
     > - Your job will be randomly assigned to a machine that meets the requirements if the testbox name is not end with '-axx'.
 
-## Specify the OS
+* Specify the OS
 
     About supportted `os`, `os_arch`, `os_version`, reference to [os-os_verison-os_arch.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/os-os_verison-os_arch.md)
