@@ -43,7 +43,7 @@ class Stats
   end
 
   def assign_stats_list
-    stats_list = []
+    stats_list = Set.new
     stats_list << @job['suite']
     stats_list << ['time', @job['suite'] + '.time']
     stats_list << 'stderr'
