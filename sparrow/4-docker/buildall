@@ -67,8 +67,7 @@ tmpdir=$(mktemp -d)
 
 for dir in $CONTAINER_PATH/*/
 do
-	build_depends $dir &
-	wait
+	build_depends $dir
 	start_depends $dir
 done
 
