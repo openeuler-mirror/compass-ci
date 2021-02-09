@@ -6,6 +6,7 @@
 # Usage:
 #       es-find key=val ...
 #       es-find -r "start_time=2021-1-1 00:00:00,2021-1-1 23:59:59;..."
+#       es-find tbox_group=vm-2p8g -c suite,job_state
 # if given multi keys, they create AND conditions
 # if given val1,val2,... for a key, they create OR conditions
 # Eg: query (testbox is xxx or yyy) and (suite is aaa) and (user is bbb).
@@ -74,6 +75,7 @@ end
 
 options = { nr_jobs: 10, desc_keyword: 'start_time' }
 range = nil
+count = nil
 
 opt_parser = OptionParser.new do |opts|
   opts.banner = 'Usage: es-find [options] search_key1=val1[,val2..] ..'
@@ -97,6 +99,10 @@ opt_parser = OptionParser.new do |opts|
     range = r
   end
 
+  opts.on('-c', '--count KEYWORD', 'count keyword: suite|job_state|testbox|id|...') do |c|
+    count = c
+  end
+
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     exit
@@ -108,6 +114,11 @@ items = parse_argv
 items[:range] = prase_range(range) if range
 
 es = ESQuery.new(ES_HOST, ES_PORT)
-query_result = es.multi_field_query(items, size: options[:nr_jobs], desc_keyword: options[:desc_keyword])
+if count
+  count_keywords = count.split(',')
+  query_result = es.query_fields(count_keywords, items)
+else
+  query_result = es.multi_field_query(items, size: options[:nr_jobs], desc_keyword: options[:desc_keyword])
+end
 json_string = JSON.pretty_generate(query_result)
 puts json_string
