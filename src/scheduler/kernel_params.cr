@@ -3,7 +3,9 @@
 
 class Job
   private def kernel_common_params
-    return "user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job rootovl ip=dhcp ro"
+    common_params = "user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job ip=dhcp"
+    return "#{common_params} rw" if "#{self.os_mount}" == "local"
+    return "#{common_params} rootovl ro"
   end
 
   private def kernel_custom_params
