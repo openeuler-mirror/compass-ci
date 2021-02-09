@@ -49,6 +49,7 @@ def get_available_memory
 end
 
 def docker_skip_rebuild(tag)
+  return if ENV['action'].nil?
   return unless ENV['action'].include? 'run-only'
 
   exit 1 if system "docker image inspect #{tag} > /dev/null 2>&1"
