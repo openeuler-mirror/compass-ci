@@ -36,7 +36,7 @@ class MailBisectResult
     prefix_srv = "http://#{SRV_HTTP_DOMAIN}:#{SRV_HTTP_PORT}"
     bisect_job_url = ENV['result_root'] ? "bisect job result directory:\n#{prefix_srv}#{ENV['result_root']}\n" : ''
     bisect_report_doc = "bisect email doc:\nhttps://gitee.com/wu_fengguang/compass-ci/blob/master/doc/bisect_email.en.md\n"
-    pkgbuild_repo_url = "PKGBUILD:\n#{prefix_srv}/#{@pkgbuild_repo}\n"
+    pkgbuild_repo_url = "PKGBUILD:\n#{prefix_srv}/git/#{@pkgbuild_repo}\n"
     first_bad_commit_job_url = "first bad commit job result directory:\n#{prefix_srv}#{@first_bad_commit_result_root}\n"
 
     data = <<~BODY
