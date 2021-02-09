@@ -56,6 +56,7 @@ do_one_run()
 	mkdir $tmpdir/start_$container_name 2>/dev/null &&
 	(
 		cd "$container"
+		[ "$container_name" == 'ssh-r' ] && continue
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
 		[ "$container_name" == 'initrd-lkp' ] && ./run
@@ -66,9 +67,6 @@ tmpdir=$(mktemp -d)
 
 for dir in $CONTAINER_PATH/*/
 do
-	container_name=$(basename $dir)
-	[ "$container_name" == 'ssh-r' ] && continue
-
 	build_depends $dir &
 	wait
 	start_depends $dir
