@@ -97,6 +97,26 @@ set_helper()
        [ -f "$helper" ] || helper=/usr/lib/qemu/qemu-bridge-helper
 }
 
+add_disk()
+{
+	[ -d "$mount_points" ] || mount_points=$(pwd)
+
+	[ -n "$hdd_partitions" ] && {
+		local unix_time=$(date +%s)
+
+		local index=0
+		for disk in $hdd_partitions
+		do
+			qcow2_file="${mount_points}/${unix_time}${disk##*/}.qcow2"
+			drive="file=${qcow2_file},media=disk,format=qcow2,index=${index}"
+			((index++))
+
+			qemu-img create -fq qcow2 "${qcow2_file}" 512G
+			kvm+=(-drive ${drive})
+		done
+	}
+}
+
 set_nic()
 {
        nic="tap,model=virtio-net-pci,helper=$helper,br=br0,mac=${mac}"
@@ -134,7 +154,7 @@ print_message()
 	log_info initrds: $initrds
 	log_info append: $append
 	[ "$DEBUG" == "true" ] || log_info less $log_file
-	
+
 	sleep 5
 }
 
@@ -228,6 +248,7 @@ set_options
 print_message
 
 public_option
+add_disk
 individual_option
 
 run_qemu
