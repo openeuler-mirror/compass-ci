@@ -44,6 +44,14 @@ trap del_host_info EXIT
 
 	host=${tbox_group%.*}
 
+	# cleanup definitions from HW testbox
+	# to avoid mixing up with definitions from the below VM testbox
+	unset nr_hdd_partitions
+	unset nr_ssd_partitions
+	unset hdd_partitions
+	unset ssd_partitions
+	unset rootfs_partition
+	unset rootfs_disk
 	create_yaml_variables "$LKP_SRC/hosts/${host}"
 
 	source "$CCI_SRC/providers/$provider/${template}.sh"
