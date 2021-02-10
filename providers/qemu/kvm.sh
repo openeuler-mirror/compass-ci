@@ -99,22 +99,22 @@ set_helper()
 
 add_disk()
 {
-	[ -d "$mount_points" ] || mount_points=$(pwd)
+	# VM testbox has disk spec?
+	[ -n "$hdd_partitions" ] || return 0
 
-	[ -n "$hdd_partitions" ] && {
-		local unix_time=$(date +%s)
+	[ -n "$mount_points" ] || mount_points=$(pwd)
 
-		local index=0
-		for disk in $hdd_partitions
-		do
-			qcow2_file="${mount_points}/${unix_time}${disk##*/}.qcow2"
-			drive="file=${qcow2_file},media=disk,format=qcow2,index=${index}"
-			((index++))
+	local index=0
+	local disk
+	for disk in $hdd_partitions
+	do
+		local qcow2_file="${mount_points}/${hostname}-${disk##*/}.qcow2"
+		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index}"
+		((index++))
 
-			qemu-img create -fq qcow2 "${qcow2_file}" 512G
-			kvm+=(-drive ${drive})
-		done
-	}
+		qemu-img create -q -f qcow2 "${qcow2_file}" 512G
+		kvm+=(-drive ${drive})
+	done
 }
 
 set_nic()
