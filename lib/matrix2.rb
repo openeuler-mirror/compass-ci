@@ -128,6 +128,8 @@ def combine_group_query_data(job_list, dims)
     end
     get_groups_matrix(groups, group_key, value, suites_hash, latest_jobs_hash)
   end
+  return nil if groups.empty?
+
   return groups, suites_hash, latest_jobs_hash
 end
 
