@@ -203,7 +203,8 @@ class MirrorMain
 
     fork_key = @priority_queue.delete_min_return_key
     do_push(fork_key)
-    @priority_queue.push fork_key, (@priority - @fork_stat[fork_key][:priority])
+    priority_set = @priority > @fork_stat[fork_key][:priority] ? (@priority - @fork_stat[fork_key][:priority]) : 1
+    @priority_queue.push fork_key, priority_set
     @priority += 1
   end
 
