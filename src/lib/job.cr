@@ -154,9 +154,9 @@ class Job
     set_submit_date()
     set_pp_params()
     set_rootfs()
+    set_os_mount()
     set_result_root()
     set_result_service()
-    set_os_mount()
     set_depends_initrd()
     set_kernel()
     set_initrds_uri()
@@ -247,7 +247,7 @@ class Job
 
   def get_pkg_common_dir
     pkg_style = nil
-    ["cci-makepkg", "cci-depends", "build-pkg"].each do |item|
+    ["cci-makepkg", "cci-depends", "build-pkg", "rpmbuild-pkg"].each do |item|
       pkg_style = @hash[item]?
       break if pkg_style
     end
@@ -276,6 +276,8 @@ class Job
       package_dir = ",/initrd/pkg/#{common_dir}/#{@hash["cci-makepkg"]["benchmark"]}"
     elsif @hash["cci-depends"]?
       package_dir = ",/initrd/deps/#{common_dir}/#{@hash["cci-depends"]["benchmark"]}"
+    elsif @hash["rpmbuild-pkg"]?
+      package_dir = ",/initrd/rpmbuild-pkg/#{common_dir}/#{@hash["rpm_repo"].to_s.split("/")[-1]}"
     elsif @hash["build-pkg"]?
       if @hash["pkgbuild_repo"].to_s =~ /(packages|community)\/\//
         package_name = @hash["pkgbuild_repo"].to_s.split("/")[-2]
