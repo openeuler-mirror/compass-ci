@@ -18,7 +18,7 @@ class Job
     fs2root = {
       "nfs"  => "root=#{OS_HTTP_HOST}:#{os_real_path}",
       "cifs" => "root=cifs://#{OS_HTTP_HOST}#{os_real_path}" +
-                ",guest,ro,hard,vers=1.0,noacl,nouser_xattr",
+                ",guest,ro,hard,vers=1.0,noacl,nouser_xattr,noserverino",
       "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0",
       "local" => "root=/dev/mapper/os-#{self.os}_#{self.os_arch}_#{self.os_version}",
       "container" => "",
