@@ -12,6 +12,7 @@ def build_my_info(option)
   info_es = build_my_info.search_my_info
   info_es.update option
   info_es['my_token'] = %x(uuidgen).chomp if info_es['my_token'].nil?
+  info_es['my_ssh_pubkey'] = []
 
   build_my_info.config_my_info(info_es)
 end
