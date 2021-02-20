@@ -47,7 +47,7 @@ class MailBisectResult
     Hi #{@git_commit.author_name},
 
     We found some error/warning(s) and the first bad commit in the below project:
-    git url: #{@upstream_url/@commit_id}
+    git url: #{@upstream_url}/#{@commit_id}
     git commit: #{@commit_id} ("#{@git_commit.subject}")
 
     All error/warning(s) (new ones prefixed by >>):
