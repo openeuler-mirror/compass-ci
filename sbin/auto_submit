@@ -7,8 +7,7 @@ require 'bunny'
 require 'json'
 require 'yaml'
 require 'set'
-require_relative '../lib/build_my_info_client'
-require "#{ENV['CCI_SRC']}/container/defconfig"
+require_relative '../lib/config_account'
 
 # receive message and auto submit job
 class AutoSubmit
@@ -130,23 +129,7 @@ class AutoSubmit
   end
 end
 
-def my_email
-  names = Set.new %w[auto-submit]
-
-  defaults = relevant_defaults(names)
-  defaults['auto-submit']['my_email']
-end
-
-def config_yaml
-  build_my_info = BuildMyInfo.new(my_email)
-
-  my_info = build_my_info.search_my_info
-  build_my_info.config_default_yaml(my_info)
-  build_my_info.config_lab_yaml(my_info)
-end
-
-# fix verification problems when submit jobs by auto-submit service
-config_yaml
+config_yaml('auto-submit')
 
 auto_submitter = AutoSubmit.new
 auto_submitter.listen
