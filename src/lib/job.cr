@@ -9,6 +9,7 @@ require "scheduler/constants.cr"
 require "scheduler/jobfile_operate.cr"
 require "scheduler/kernel_params.cr"
 require "scheduler/pp_params.cr"
+require "scheduler/testbox_env.cr"
 require "../scheduler/elasticsearch_client"
 require "./json_logger"
 
@@ -52,6 +53,7 @@ class Job
 
   def initialize(job_content : JSON::Any, id)
     @hash = job_content.as_h
+    @hash.merge!(testbox_env)
     @es = Elasticsearch::Client.new
     @account_info = Hash(String, JSON::Any).new
     @log = JSONLogger.new
