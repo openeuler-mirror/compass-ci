@@ -3,12 +3,25 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-def build_apply_account_email(my_info)
+def build_apply_account_email(my_info, account_info, assign_account_vm)
   email_greeting = if my_info['bisect']
                      'We have automatically created the following information for you.'
                    else
                      'Thank you for joining us.'
                    end
+
+  login_msg = <<~LOGIN_MSG
+
+    You can use the following command to login the jumper server:
+
+      Login command:
+        ssh -p #{account_info['jumper_port']} #{account_info['my_login_name']}@#{account_info['jumper_host']}
+
+      Account password:
+        #{account_info['my_password']}
+  LOGIN_MSG
+
+  login_account_vm = assign_account_vm ? login_msg : ''
 
   email_msg = <<~EMAIL_MESSAGE
     To: #{my_info['my_email']}
@@ -17,8 +30,8 @@ def build_apply_account_email(my_info)
     Dear #{my_info['my_name']},
 
     #{email_greeting}
-
-    You can use the following info to submit jobs:
+    #{login_account_vm}
+    You need to do the following configurations before submitting a job:
 
     notice:
       (1-2) are ONE-TIME setup
