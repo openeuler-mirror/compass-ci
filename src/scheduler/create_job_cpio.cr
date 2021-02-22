@@ -134,8 +134,7 @@ class Sched
 
     # the job.yaml is not final version
     files = ["#{src_dir}/job.sh",
-             "#{src_dir}/job.yaml",
-             "#{src_dir}/job.cgz"]
+             "#{src_dir}/job.yaml"]
     FileUtils.cp(files, dst_dir)
   end
 end
