@@ -11,8 +11,8 @@
 #       compare "id=6000,6001" "id=7000,7001"
 #       compare "commit=a12d232e" "commit=b3bacc31"
 #       compare "os=debian" "os=centos" -c "suite=iperf"
-#       compare "os=centos" -d "os_version os_arch"
-#       compare "os=centos" -d "os_version os_arch" --theme="classic"
+#       compare os=centos -d "os_version os_arch"
+#       compare os=centos suite=iperf -d "os_version os_arch" --theme="classic"
 
 require 'optparse'
 require_relative '../lib/compare.rb'
@@ -37,7 +37,8 @@ opt_parser = OptionParser.new do |opts|
     common_conditions = c
   end
 
-  opts.on('-d', '--dimension dimensions', 'dimensions to group compare: "tbox_group os_arch os ..."') do |d|
+  opts.on('-d', '--dimension dimensions', 'this option activate group compare mode, require filter and dimenssion',
+          'filter like: os=openeuler,centos suite=iperf', 'dimensions like: "tbox_group os_arch os ..."') do |d|
     dimensions = d
     is_group = true
   end
