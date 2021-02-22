@@ -11,17 +11,17 @@ def email_err_message(message)
       You should add a commit url for the 'apply account' email.
 
       For example:
-        my oss commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+        my_oss_commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
     EMAIL_MESSAGE
   when 'URL_PREFIX_ERR'
     err_message = <<~EMAIL_MESSAGE
       Please add a correct prefix for the commit url.
 
-          my oss commit
+          my_oss_commit
 
       For example:
 
-          my oss commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+          my_oss_commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
     EMAIL_MESSAGE
   when 'NOT_REGISTERED'
     err_message = <<~EMAIL_MESSAGE
