@@ -288,8 +288,8 @@ class MirrorMain
   end
 
   def es_repo_update(git_repo)
-    repo_info = @git_info[git_repo].merge(@fork_stat[git_repo])
-    repo_info.delete(:cur_refs) if repo_info.key?(:cur_refs)
+    repo_info = { 'git_repo' => git_repo, 'url' => @git_info[git_repo]['url'] }
+    repo_info = repo_info.merge(@fork_stat[git_repo])
     body = {
       "doc": repo_info,
       "doc_as_upsert": true
