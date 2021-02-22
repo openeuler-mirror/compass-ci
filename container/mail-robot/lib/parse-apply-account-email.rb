@@ -57,18 +57,27 @@ class ParseApplyAccountEmail
   end
 
   def extract_users
-    users = extract_mail_content_body.split(/\r|\n/)
+    users_info = []
+
+    users = extract_mail_content_body.split(/---+/)
     users.delete('')
-    users
+    users.each do |user|
+      user_info = YAML.safe_load(user)
+
+      users_info << user_info if user_info.include?('my_email')
+    end
+
+    return users_info
   end
 
   def extract_commit_url
     mail_content_line = extract_mail_content_body.gsub(/\n/, '')
-    # the commit url should be headed with a prefix: my oss commit
+    # the commit url should be headed with a prefix: my_oss_commit
     # the commit url should be in a standart format, example:
-    # my oss commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
-    unless mail_content_line.match?(%r{my oss commit:\s*https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})
-      raise 'URL_PREFIX_ERR' unless mail_content_line.match?(%r{my oss commit:\s*https?://})
+    # my_oss_commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+    # the prefix is renamed to 'my_oss_commit', but 'my oss commit' is still supportted.
+    unless mail_content_line.match?(%r{my[ _]oss[ _]commit:\s*https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})
+      raise 'URL_PREFIX_ERR' unless mail_content_line.match?(%r{my[ _]oss[ _]commit:\s*https?://})
       raise 'NO_COMMIT_URL' unless mail_content_line.match?(%r{https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})
     end
 
