@@ -55,6 +55,9 @@ class ApplyAccount
     @es_host = @send_mail_host
     @es_port = ES_PORT
 
+    # email info file for account issuers.
+    @account_issuer = YAML.load_file '/etc/compass-ci/account-issuer.yaml'
+
     @my_info = {}
   end
 
@@ -63,16 +66,59 @@ class ApplyAccount
     # in order to successfully send email for failed parsing
     # firstly get my_email before execute parse_mail_content is needed
     @my_info['my_email'] = @mail_content.from[0]
-    parse_mail_content
-    apply_my_account
 
-    store_account_info
-    send_mail('')
+    # for the forwarded email, it contains my_email/my_name .etc.
+    # all emails from account issuer  will be treated as forwarded emails.
+    # the mail_content may like:
+    # ---
+    # my_name: name_1
+    # my_name: email_1
+    # account_vm: true/false/yes/no
+    # ---
+    # my_name: name_2
+    # my_email: email_2
+    # ---
+    # the forwarded email allowed to contain multi my_email/my_name(s)
+    # in this case, we will loop them
+    if @account_issuer.include? @my_info['my_email']
+      users_info = forward_users
+      users_info.each do |user_info|
+        # for forwarded email for multi users, avoid rezidual information from the last,
+        # need to clear the old data for my_info.
+        @my_info.clear
+        assign_account_vm = user_info.delete('account_vm')
+        @my_info.update user_info
+
+        applying_account(assign_account_vm)
+        sleep 5
+      end
+    else
+      parse_mail_content
+      applying_account(false)
+    end
   rescue StandardError => e
     puts e.message
     puts e.backtrace
 
     send_mail(e.message)
+  end
+
+  def forward_users
+    forward_email_content = ParseApplyAccountEmail.new(@mail_content)
+    users_info = forward_email_content.extract_users
+
+    users_info.clone.each_index do |i|
+      users_info[i]['my_ssh_pubkey'] = []
+      users_info[i]['lab'] = ENV['lab']
+    end
+
+    users_info
+  end
+
+  def applying_account(assign_account_vm)
+    account_info = apply_my_account
+    store_account_info
+    send_mail('', account_info, assign_account_vm)
   end
 
   def parse_mail_content
@@ -93,7 +139,9 @@ class ApplyAccount
     apply_info['my_token'] = my_account_es['my_uuid'] if my_account_es['my_token'].nil?
     apply_info.update my_account_es
     apply_info.update @my_info
-    apply_info['my_ssh_pubkey'] = (apply_info['my_ssh_pubkey'] + my_ssh_pubkey_new).uniq
+    if my_ssh_pubkey_new
+      apply_info['my_ssh_pubkey'] = (apply_info['my_ssh_pubkey'] + my_ssh_pubkey_new).uniq
+    end
     @my_info.update apply_info
     apply_info['is_update_account'] = true
     apply_info
@@ -102,14 +150,15 @@ class ApplyAccount
   def apply_my_account
     my_account_es = read_my_account_es
     apply_info = {}
+
     if my_account_es
       build_apply_info(apply_info, my_account_es)
     else
       my_token = %x(uuidgen).chomp
       @my_info['my_token'] = my_token
       apply_info.update @my_info
+      apply_info['enable_login'] = true
     end
-    apply_info['lab'] = ENV['lab']
     apply_new_account(apply_info, my_account_es)
   end
 
@@ -118,6 +167,7 @@ class ApplyAccount
     acct_info = apply_account.apply_jumper_account
 
     @my_info['my_login_name'] = acct_info['my_login_name'] unless my_account_es
+    acct_info
   end
 
   def store_account_info
@@ -125,9 +175,9 @@ class ApplyAccount
     es.put_source_by_id(@my_info['my_email'], @my_info)
   end
 
-  def send_mail(error_message)
+  def send_mail(error_message, account_info, assign_account_vm)
     email_message = if error_message.empty?
-                      build_apply_account_email(@my_info)
+                      build_apply_account_email(@my_info, account_info, assign_account_vm)
                     else
                       build_apply_account_fail_email(@my_info, error_message)
                     end
