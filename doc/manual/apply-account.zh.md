@@ -4,7 +4,7 @@
 因为目前我们的测试机资源池有限，因此需要做一些使用限制。
 
 我们为平台测试所覆盖的开源软件（OSS）的贡献者提供了免费的账号。
-你可以通过在下面邮件中提供‘my oss commit’来验明正身您是一个开源软件（OSS）的贡献者。
+你可以通过在下面邮件中提供‘my_oss_commit’来验明正身您是一个开源软件（OSS）的贡献者。
 
 我们同时也为我们的合作者提供了免费的账号。
 这种情况需要提供用的邮件，名字，ssh公钥，以及申请测试机的目的。
@@ -18,7 +18,7 @@
         收件人: compass-ci-robot@qq.com
         邮件标题: apply account
 
-        my oss commit: {{ https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03 }}
+        my_oss_commit: {{ https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03 }}
 
         {{ 将您的ssh公钥添加为邮件附件，例如 ~/.ssh/id_rsa.pub }}
 
@@ -26,7 +26,7 @@
 
 - 使用您的信息替换{{ }}中的内容
 - 邮件名应该使用英文或中文拼音，例如模板中的“David Rientjes”
-- my oss commit:  使用您的邮件和名字提交的代码的地址。
+- my_oss_commit:  使用您的邮件和名字提交的代码的地址。
 
 
   您的仓库需要在平台测试覆盖的范围内，并且注册到：

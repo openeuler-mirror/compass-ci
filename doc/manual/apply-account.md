@@ -4,7 +4,7 @@ You'll need an account to submit jobs. The account is mainly for tracking your r
 We have limited pool of testboxes, so there have to be some usage control.
 
 We offer free accounts to OSS (Open Source Software) contributors where the OSS project is in our test coverage.
-You can prove yourself as OSS contributor by providing "my oss commit" in the below email.
+You can prove yourself as OSS contributor by providing "my_oss_commit" in the below email.
 
 We offer free accounts to our collaborators too. If you are one of our
 collaborators, you should know the collaboration channel to apply account.
@@ -19,7 +19,7 @@ Email template:
 	To: compass-ci-robot@qq.com
 	Subject: apply account
 
-	my oss commit: {{ https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03 }}
+	my_oss_commit: {{ https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03 }}
 
 	{{ attach your ssh pubkey file(s), e.g. ~/.ssh/id_rsa.pub }}
 
@@ -29,7 +29,7 @@ Email template:
 
 - the email name should be in English or Chinese Pinyin, as: "David Rientjes" in the template.
 
-- my oss commit: a git commit URL that has your name and email.
+- my_oss_commit: a git commit URL that has your name and email.
   The git repo should be in our test coverage and registered in
   [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos).
   If your contributed OSS project is not in upstream-repos, you may refer to

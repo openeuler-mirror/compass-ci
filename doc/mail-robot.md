@@ -17,9 +17,9 @@ send mail to: compass-ci-robot@qq.com
 
 subject: apply account
 mail content
-  my oss commit: commit_url
+  my_oss_commit: commit_url
   example:
-    my oss commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
+    my_oss_commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
 attahcment
   ssh pub_key
 
