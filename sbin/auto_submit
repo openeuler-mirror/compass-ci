@@ -57,28 +57,13 @@ class AutoSubmit
     system(real_argvs.join(' '))
   end
 
-  def get_branch_commands(submit_commands)
-    submit_commands.each do |element|
-      return element['branch_commands'] if element['branch_commands']
-    end
-    return nil
-  end
+  def submit_specific_branch(submit_argv, newrefs_info, branches)
+    branches.each do |branch_name|
+      branch = "refs/heads/#{branch_name}"
+      next unless newrefs_info['new_refs']['heads'][branch]
 
-  def submit_specific_branch(submit_argv, newrefs_info, branch_commands)
-    return newrefs_info['new_refs']['heads'] if branch_commands.nil?
-
-    non_specific_commits = {}
-    newrefs_info['new_refs']['heads'].each do |branch, commit_id|
-      branch_name = branch.delete_prefix('refs/heads/')
-      if branch_commands[branch_name].nil?
-        non_specific_commits[branch] = commit_id
-        next
-      end
-      argvs = Array.new(submit_argv)
-      argvs.push(branch_commands[branch_name])
-      submit_one_job(argvs, newrefs_info['git_repo'], branch_name, commit_id)
+      submit_one_job(submit_argv, newrefs_info['git_repo'], branch_name, newrefs_info['new_refs']['heads'][branch])
     end
-    return non_specific_commits
   end
 
   def submit_non_specific(non_specific_commits, git_repo, submit_argv)
@@ -90,13 +75,13 @@ class AutoSubmit
 
   # Add support of different branch different job
   # newrefs_info['submit'] is like:
-  # ["submit command 1",
-  #  "submit command 2",
+  # [
+  #  { "command" => "submit command 1",
+  #    "branches" => [ "master", "next", ... ]
+  #  },
   #  ...,
-  #  { "branch_commands" => { "branch_1" => "submit command 1",
-  #                           ...,
-  #                           "branch_n" => "submit command n"
-  #                         }
+  #  { "command" => "submit command n",
+  #    "branches" => [ "branch_name_a", "branch_name_b", ... ]
   #  }
   # ]
   def submit_job(newrefs_info)
@@ -105,16 +90,14 @@ class AutoSubmit
 
     return unless newrefs_info['submit']
 
-    branch_commands = get_branch_commands(newrefs_info['submit'])
-    non_specific_commits = submit_specific_branch(submit_argv, newrefs_info, branch_commands)
-    return if non_specific_commits.empty?
-
-    newrefs_info['submit'].each do |argv_config|
-      next if argv_config.is_a? Hash
-
+    newrefs_info['submit'].each do |element|
       argvs = Array.new(submit_argv)
-      argvs.push(argv_config)
-      submit_non_specific(non_specific_commits, newrefs_info['git_repo'], argvs)
+      argvs.push(element['command'])
+      if element['branches']
+        submit_specific_branch(argvs, newrefs_info, element['branches'])
+      else
+        submit_non_specific(newrefs_info['new_refs']['heads'], newrefs_info['git_repo'], argvs)
+      end
     end
   end
 
