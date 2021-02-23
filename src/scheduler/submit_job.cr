@@ -144,8 +144,15 @@ class Sched
     JSON.parse(response[1].to_json)["id"].to_s if response[0] == 200
   end
 
+  def save_secrets(job, job_id)
+    return nil unless job["secrets"]?
+
+    @redis.hash_set("id2secrets", job_id, job["secrets"]?.to_json)
+    job.delete("secrets")
+  end
   # add job content to es and return a response
   def add_job(job, job_id)
+    save_secrets(job, job_id)
     job.update_id(job_id)
     @es.set_job_content(job)
   end

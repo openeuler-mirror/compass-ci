@@ -9,6 +9,7 @@ cd "$1" || exit
 
 install -m775 -D -t lkp/scheduled job.sh
 install -m664 -D -t lkp/scheduled job.yaml
+[ -f secrets.yaml ] && install -m664 -D -t lkp/scheduled secrets.yaml
 
 find lkp | cpio --quiet -o -H newc | gzip > job.cgz
 

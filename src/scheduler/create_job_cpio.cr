@@ -74,8 +74,21 @@ class Sched
     script_lines = JSON.parse(script_lines)
   end
 
+  def create_secrets_yaml(job_id, base_dir)
+    secrets = @redis.hash_get("id2secrets", job_id)
+    return nil unless secrets
+
+    secrets_yaml = base_dir + "/#{job_id}/secrets.yaml"
+    prepare_dir(secrets_yaml)
+
+    File.open(secrets_yaml, "w") do |file|
+      YAML.dump(JSON.parse(secrets), file)
+    end
+  end
+
   def create_job_cpio(job_content : JSON::Any, base_dir : String)
     job_content = job_content.as_h
+    create_secrets_yaml(job_content["id"], base_dir)
 
     # put job2sh in an array
     if job_content.has_key?("job2sh")
