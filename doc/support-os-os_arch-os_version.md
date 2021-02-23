@@ -18,5 +18,5 @@ centos          aarch64         7                                 container,
                                 7.8.2003                cifs/nfs,
 debian          aarch64         sid                     cifs/nfs,	   ,initramfs
                 x86             sid                     cifs/nfs,
-archlinux       aarch64         2020-11-12              cifs/nfs,
+archlinux       aarch64         2020-11-12              nfs,
 ```
