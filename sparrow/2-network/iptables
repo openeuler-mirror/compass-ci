@@ -8,9 +8,9 @@ BR0_IFACE=br0
 BR0_SUBNET=172.18.0.0/16
 
 # iptables -t nat -F
-iptables -I FORWARD 1 -j ACCEPT
-iptables -t nat -A POSTROUTING -o "$PUB_IFACE" -s $BR0_SUBNET -j MASQUERADE
-iptables -t nat -A POSTROUTING -o $BR0_IFACE -d $BR0_SUBNET -j MASQUERADE
+iptables -w 10 -I FORWARD 1 -j ACCEPT
+iptables -w 10 -t nat -A POSTROUTING -o "$PUB_IFACE" -s $BR0_SUBNET -j MASQUERADE
+iptables -w 10 -t nat -A POSTROUTING -o $BR0_IFACE -d $BR0_SUBNET -j MASQUERADE
 
 command -v firewall-cmd > /dev/null || {
 	exit 0
