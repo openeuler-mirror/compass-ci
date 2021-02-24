@@ -125,30 +125,20 @@ module Utils
       File.open(commit_jobs, 'a+') { |f| f.puts content }
     end
 
-    def get_account_info
-      ESQuery.new(index: 'accounts').query_by_id(DELIMITER_EMAIL)
-    end
-
     def init_job_content(job_id)
       job_yaml = AssistResult.new.get_job_yaml(job_id)
       raise "get job yaml failed, job id: #{job_id}" unless job_yaml
 
       job = JSON.parse job_yaml
-
-      account_info = get_account_info
-      raise "query delimiter account info failed: #{DELIMITER_EMAIL}" unless account_info
-
       record_jobs(job['id'], job['upstream_commit'])
 
       job['suite'] = 'bisect'
-      job['my_name'] = account_info['my_name']
-      job['my_email'] = account_info['my_email']
-      job['my_token'] = account_info['my_token']
+      job['my_name'] = ENV['my_name']
+      job['my_email'] = ENV['my_email']
+      job['my_token'] = ENV['secrets_my_token']
       job['bad_job_id'] = job_id
+      job['queue'] = "#{job['testbox'].split('.')[0]}-bisect"
 
-      job.delete('tboxgroup')
-      job.delete('subqueue')
-      job.delete('queue')
       job.delete('id')
 
       return job
