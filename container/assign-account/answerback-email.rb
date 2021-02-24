@@ -40,7 +40,8 @@ my_info = {
   'my_commit_url' => nil,
   'my_token' => nil,
   'my_login_name' => nil,
-  'my_ssh_pubkey' => []
+  'my_ssh_pubkey' => [],
+  'lab' => LAB
 }
 
 # stdin_info is used to store infos added with option:
@@ -179,7 +180,6 @@ def apply_account(my_info, conf_info)
   apply_info = {}
   apply_info.update my_info
   apply_info.update conf_info
-  apply_info['lab'] = LAB
 
   assign_account_url = "#{JUMPER_HOST}:#{JUMPER_PORT}/assign_account"
   account_info_str = RestClient.post assign_account_url, apply_info.to_json
