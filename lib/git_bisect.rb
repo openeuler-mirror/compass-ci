@@ -113,7 +113,7 @@ class GitBisect
                 'work_dir' => @work_dir,
                 'bisect_error' => bisect_error,
                 'all_errors' => all_errors,
-                'upstream_url' => @upstream_url
+                'upstream_url' => @upstream_url,
                 'pkgbuild_repo' => @pkgbuild_repo,
                 'first_bad_commit_result_root' => first_bad_commit_result_root]
   end
