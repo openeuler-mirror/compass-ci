@@ -56,7 +56,7 @@ do_one_run()
 	mkdir $tmpdir/start_$container_name 2>/dev/null &&
 	(
 		cd "$container"
-		[ "$container_name" == 'ssh-r' ] && continue
+		[ "$container_name" == 'ssh-r' ] && exit
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
 		[ "$container_name" == 'initrd-lkp' ] && ./run
