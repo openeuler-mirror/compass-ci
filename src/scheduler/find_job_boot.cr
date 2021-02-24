@@ -160,6 +160,8 @@ class Sched
   end
 
   private def get_boot_ipxe(job : Job)
+    return job["ipxe_response"] if job["suite"] == "install-iso" && job["ipxe_response"]?
+
     response = "#!ipxe\n\n"
 
     _initrds_uri = Array(String).from_json(job.initrds_uri).map { |uri| "initrd #{uri}" }
