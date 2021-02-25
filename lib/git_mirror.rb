@@ -223,7 +223,10 @@ end
 class MirrorMain
   def load_repo_file(repodir, project, fork_name)
     git_repo = "#{project}/#{fork_name}"
-    @git_info[git_repo] = YAML.safe_load(File.open(repodir))
+    git_info = YAML.safe_load(File.open(repodir))
+    return if git_info.nil? || git_info['url'].nil?
+
+    @git_info[git_repo] = git_info
     @git_info[git_repo]['git_repo'] = git_repo
     @git_info[git_repo] = merge_defaults(git_repo, @git_info[git_repo])
     fork_stat_init(git_repo)
