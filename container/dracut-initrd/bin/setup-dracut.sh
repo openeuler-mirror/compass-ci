@@ -16,4 +16,5 @@ rm -rf /var/lib/apt/lists/*
 cp -a /usr/local/bin/cifs-lib.sh /usr/lib/dracut/modules.d/95cifs/
 
 cat overlay-lkp.sh   >> /usr/lib/dracut/modules.d/90overlay-root/overlay-mount.sh
-sed -i "/install() {/ainst /usr/bin/awk" /usr/lib/dracut/modules.d/40network/module-setup.sh
+sed -i "/install() {/a\    inst /usr/bin/awk" /usr/lib/dracut/modules.d/40network/module-setup.sh
+sed -i "/install() {/a\    inst /sbin/mke2fs" /usr/lib/dracut/modules.d/98dracut-systemd/module-setup.sh
