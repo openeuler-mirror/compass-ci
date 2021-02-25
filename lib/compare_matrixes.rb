@@ -584,7 +584,7 @@ def format_stddev_percent(stddev_percent, average_width)
   percent_width = SUB_LONG_COLUMN_WIDTH - average_width
   if stddev_percent
     if stddev_percent != 0
-      return " < 1%   " if stddev_percent < 1
+      return ' < 1%   ' if stddev_percent < 1
 
       percent_str = get_suitable_number_str(
         stddev_percent.abs,
