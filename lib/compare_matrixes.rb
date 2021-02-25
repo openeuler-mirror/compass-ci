@@ -163,6 +163,7 @@ def get_matrixes_values(matrixes_list, latest_jobs, options)
   matrixes_size = get_matrixes_size(matrixes_list)
   get_matrixes_fields(matrixes_list).each do |field|
     next if field == 'stats_source'
+    next if field.end_with?('.message', '.log')
 
     success = successful?(field)
     next unless success || latest_failure?(field, latest_jobs)
