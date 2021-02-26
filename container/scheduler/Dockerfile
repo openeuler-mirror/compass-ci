@@ -8,7 +8,7 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 RUN apk update
 
 RUN apk add --no-cache 'ruby-dev' \
-    'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
+    'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'util-linux'
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
