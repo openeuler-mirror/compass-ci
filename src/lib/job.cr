@@ -332,6 +332,10 @@ class Job
     @hash.[key]?
   end
 
+  def has_key?(key : String)
+    @hash.has_key?(key)
+  end
+
   def []=(key : String, value : String | Nil)
     if key == "id" || key == "tbox_group"
       raise "Should not use []= update #{key}, use update_#{key}"
