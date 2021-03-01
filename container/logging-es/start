@@ -20,9 +20,8 @@ cmd=(
 
 "${cmd[@]}"
 
-echo "Please wait 60s for setting index"
-sleep 60
-
+# set index
+check_service_ready 9202
 curl -sSH "Content-Type: application/json" -XPUT "localhost:9202/_settings" -d '
 {
 	"index": {

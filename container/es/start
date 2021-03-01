@@ -20,7 +20,6 @@ cmd=(
 
 "${cmd[@]}"
 
-echo "Please wait 60s for setting index"
-sleep 60
-
-set_es_indices
+# set index
+check_service_ready 9200
+find $CCI_SRC/sbin/ -name "es-*-mapping.sh" -exec sh {} \;
