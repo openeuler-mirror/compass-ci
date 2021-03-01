@@ -56,7 +56,10 @@ do_one_run()
 	mkdir $tmpdir/start_$container_name 2>/dev/null &&
 	(
 		cd "$container"
-		[ "$container_name" == 'ssh-r' ] && exit
+		[ "$container_name"  == "ssh-r" ] && {
+			container_id=$(docker ps -aqf name="ssh_r")
+			[ -n "$container_id" ] && exit
+		}
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
 		[ "$container_name" == 'initrd-lkp' ] && ./run
