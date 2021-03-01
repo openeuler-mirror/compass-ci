@@ -145,6 +145,7 @@ class Job
 
     check_required_keys()
     check_account_info()
+    check_run_time()
     set_defaults()
   end
 
@@ -407,6 +408,29 @@ class Job
 
     @hash.delete("my_uuid")
     @hash.delete("my_token")
+  end
+
+  private def check_run_time
+    # only job.yaml for borrowing machine has the key: ssh_pub_key
+    return unless @hash.has_key?("ssh_pub_key")
+
+    # the maxmum borrowing time is limited no more than 10 days.
+    # case the runtime/sleep value count beyond the limit,
+    # it will throw error message and prevent the submit for borrowing machine.
+    # runtime value is converted to second.
+    max_run_time = 10 * 24 * 3600
+    error_msg = "\nMachine borrow time(runtime/sleep) cannot exceed 10 days. Consider re-borrow.\n"
+
+    if @hash["pp"]["sleep"].as_i?
+      sleep_run_time = @hash["pp"]["sleep"]
+    elsif @hash["pp"]["sleep"].as_h?
+      sleep_run_time = @hash["pp"]["sleep"]["runtime"]
+    else
+      notice_msg = "\nPlease set runtime/sleep first for the job yaml and retry."
+      raise notice_msg
+    end
+
+    raise error_msg if sleep_run_time.as_i > max_run_time
   end
 
   private def is_valid_account?(account_info)
