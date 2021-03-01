@@ -67,7 +67,7 @@ tmpdir=$(mktemp -d)
 
 for dir in $CONTAINER_PATH/*/
 do
-	build_depends $dir
+	[ "$action" != "start-only" ] && build_depends $dir
 	start_depends $dir
 done
 
