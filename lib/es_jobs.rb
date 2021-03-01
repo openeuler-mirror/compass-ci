@@ -104,7 +104,7 @@ class ESJobs
 
   def set_default_value(result, stats, metrics)
     left_metrics = metrics - stats.keys
-    left_metrics.each { |metric| result['raw.stats'][metric] << nil }
+    left_metrics.each { |metric| result['raw.stats'][metric] }
 
     stats.each do |key, value|
       result['raw.stats'][key] << value
