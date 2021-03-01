@@ -28,9 +28,15 @@ docker_rm()
 	docker rm -f $container
 }
 
-set_es_indices()
+check_service_ready()
 {
-	find $CCI_SRC/sbin/ -name "es-*-mapping.sh" -exec sh {} \;
+	local port=$1
+	local i
+	for i in {1..30}
+	do
+		curl -s localhost:$port > /dev/null && return
+		sleep 2
+	done
 }
 
 push_image()
