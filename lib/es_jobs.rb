@@ -124,6 +124,8 @@ class ESJobs
 
   def stats_count(result)
     result['raw.stats'].each do |key, value|
+      next if key.end_with?('.message')
+
       if function_stat?(key)
         result['sum.stats'][key] = value.compact.size
       else
