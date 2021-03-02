@@ -2,4 +2,10 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-$CCI_SRC/sbin/build-my-info.rb
+source ${CCI_SRC}/lib/log.sh
+
+if [ -n "$my_email" ] && [ -n "$my_name" ]; then
+	$CCI_SRC/sbin/build-my-info.rb -e $my_email -n $my_name
+else
+	log_info "if you need to register account, please try: $CCI_SRC/sbin/build-my-info.rb -e \$my_email -n \$my_name"
+fi
