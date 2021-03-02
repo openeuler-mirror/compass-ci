@@ -285,10 +285,11 @@ class MirrorMain
 
   def reload(file_list, belong)
     system("git -C #{REPO_DIR}/#{belong} pull")
+    reload_defaults(file_list, belong)
     file_list.each_line do |file|
-      next if File.basename(file) == '.ignore'
-
       file = file.chomp
+      next if File.basename(file) == '.ignore' || File.basename(file) == 'DEFAULTS'
+
       repo_dir = "#{REPO_DIR}/#{belong}/#{file}"
       load_repo_file(repo_dir, File.dirname(file), File.basename(file), belong) if File.file?(repo_dir)
     end
@@ -496,5 +497,16 @@ class MirrorMain
       return true if git_repo == repo['git_repo']
     end
     return false
+  end
+
+  def reload_defaults(file_list, belong)
+    file_list.each_line do |file|
+      file = file.chomp
+      next unless File.basename(file) == 'DEFAULTS'
+
+      repodir = "#{REPO_DIR}/#{belong}/#{File.dirname(file)}"
+      load_defaults(repodir, belong)
+      traverse_repodir(repodir, belong)
+    end
   end
 end
