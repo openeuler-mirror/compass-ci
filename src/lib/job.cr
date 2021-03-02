@@ -142,6 +142,7 @@ class Job
     # init job with "-1", or use the original job_content["id"]
     id = "-1" if "#{id}" == ""
     @hash["id"] = JSON::Any.new("#{id}")
+    self["job_state"] = "submit"
 
     check_required_keys()
     check_account_info()
