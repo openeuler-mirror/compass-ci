@@ -6,6 +6,7 @@ require_relative 'git'
 require_relative 'es_query'
 require_relative 'constants'
 require_relative 'mail_client'
+require_relative 'parse_mail_list'
 require_relative 'assign_account_client'
 
 # compose and send email for bisect result
@@ -21,11 +22,17 @@ class MailBisectResult
     @first_bad_commit_result_root = bisect_info['first_bad_commit_result_root']
     @git_commit = GitCommit.new(@work_dir, @commit_id)
     @to = @git_commit.author_email
-    # now send mail to review
-    @bcc = 'caoxl@crystal.ci, caoxl78320@163.com, huming15@163.com, wfg@mail.ustc.edu.cn'
+  end
+
+  def parse_mail_info
+    mail_hash = parse_mail_list('delimiter')
+    @to = mail_hash['to'] if mail_hash.key?('to')
+    @bcc = mail_hash['bcc'] if mail_hash.key?('bcc')
+    raise 'Need to add bcc email for bisect report.' unless @bcc
   end
 
   def create_send_email
+    parse_mail_info
     send_report_mail(compose_mail)
     send_account_mail
     rm_work_dir
@@ -35,7 +42,7 @@ class MailBisectResult
     subject = "[Compass-CI][#{@repo.split('/')[1]}] #{@commit_id[0..9]} #{@bisect_error[0].split("\n")[0]}"
     prefix_srv = "http://#{SRV_HTTP_DOMAIN}:#{SRV_HTTP_PORT}"
     bisect_job_url = ENV['result_root'] ? "bisect job result directory:\n#{prefix_srv}#{ENV['result_root']}\n" : ''
-    bisect_report_doc = "bisect email doc:\nhttps://gitee.com/wu_fengguang/compass-ci/blob/master/doc/bisect_email.en.md\n"
+    report_doc = "bisect email doc:\nhttps://gitee.com/wu_fengguang/compass-ci/blob/master/doc/bisect_email.en.md\n"
     pkgbuild_repo_url = "PKGBUILD:\n#{prefix_srv}/git/#{@pkgbuild_repo}\n"
     first_bad_commit_job_url = "first bad commit job result directory:\n#{prefix_srv}#{@first_bad_commit_result_root}\n"
 
@@ -58,7 +65,7 @@ class MailBisectResult
     #{pkgbuild_repo_url}
     #{first_bad_commit_job_url}
     #{bisect_job_url}
-    #{bisect_report_doc}
+    #{report_doc}
     Regards,
     Compass CI team
     BODY
