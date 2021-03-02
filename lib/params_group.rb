@@ -50,7 +50,7 @@ def job_is_useful?(job)
   return unless stats
 
   suite = job['_source']['suite']
-  return unless suite && stats.keys.any? { |stat| stat.start_with?(suite) }
+  return unless suite
 
   true
 end
