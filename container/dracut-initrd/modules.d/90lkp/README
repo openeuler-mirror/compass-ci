@@ -1,0 +1,5 @@
+dracut lkp module
+
+This module is to deploy lkp module into rootfs.
+Module lkp(Linux Kernel Performance) is a test framework, which is used
+to make self-defined test for os kernel.
