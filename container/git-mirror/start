@@ -23,6 +23,7 @@ cmd = %W[
   -e GIT_ASKPASS=/kill-parent.sh
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
   -v /etc/localtime:/etc/localtime:ro
+  -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
   -v #{ENV['REPO_SRC']}:#{DOCKER_REPO}
   -v /srv/git:/srv/git
   -w /c/compass-ci/sbin
