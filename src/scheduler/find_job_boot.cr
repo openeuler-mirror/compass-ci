@@ -191,8 +191,8 @@ class Sched
       "LKP_SERVER"         => job["LKP_SERVER"]?,
       "vt"                 => _vt,
       "RESULT_WEBDAV_PORT" => job["RESULT_WEBDAV_PORT"]? || "3080",
-      "SRV_HTTP_HOST"      => SRV_HTTP_HOST,
-      "SRV_HTTP_PORT"      => SRV_HTTP_PORT,
+      "SRV_HTTP_CCI_HOST"  => SRV_HTTP_CCI_HOST,
+      "SRV_HTTP_CCI_PORT"  => SRV_HTTP_CCI_PORT,
     }.to_json
   end
 

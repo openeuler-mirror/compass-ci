@@ -46,8 +46,8 @@ class Domain
   end
 
   def load_xml_file(filepath)
-    host = @context.info['SRV_HTTP_HOST']
-    port = @context.info['SRV_HTTP_PORT']
+    host = @context.info['SRV_HTTP_CCI_HOST']
+    port = @context.info['SRV_HTTP_CCI_PORT']
     system "wget --timestamping --progress=bar:force http://#{host}:#{port}/cci/libvirt-xml/#{filepath}"
     %x(basename #{filepath}).chomp
   end

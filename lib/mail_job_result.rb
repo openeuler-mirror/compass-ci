@@ -9,7 +9,7 @@ require 'json'
 
 # compose and send email for job result
 class MailJobResult
-  def initialize(job_id, result_host = SRV_HTTP_HOST, result_port = SRV_HTTP_PORT)
+  def initialize(job_id, result_host = SRV_HTTP_RESULT_HOST, result_port = SRV_HTTP_RESULT_PORT)
     @job_id = job_id
     @result_host = result_host
     @result_port = result_port

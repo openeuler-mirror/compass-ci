@@ -14,8 +14,8 @@ names = Set.new %w[
   ES_PORT
   SEND_MAIL_HOST
   SEND_MAIL_PORT
-  SRV_HTTP_HOST
-  SRV_HTTP_PORT
+  SRV_HTTP_RESULT_HOST
+  SRV_HTTP_RESULT_PORT
   lab
 ]
 
@@ -24,8 +24,8 @@ env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'
-SRV_HTTP_HOST = defaults['SRV_HTTP_HOST'] || Open3.capture3('curl ip.sb')[0].chomp
-SRV_HTTP_PORT = defaults['SRV_HTTP_PORT'] || '11300'
+SRV_HTTP_RESULT_HOST = defaults['SRV_HTTP_RESULT_HOST'] || Open3.capture3('curl ip.sb')[0].chomp
+SRV_HTTP_RESULT_PORT = defaults['SRV_HTTP_RESULT_PORT'] || '11300'
 docker_rm "extract-stats"
 
 cmd = %w[
@@ -36,8 +36,8 @@ cmd = %w[
 ] + env + %W[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
-  -e SRV_HTTP_HOST=#{SRV_HTTP_HOST}
-  -e SRV_HTTP_PORT=#{SRV_HTTP_PORT}
+  -e SRV_HTTP_RESULT_HOST=#{SRV_HTTP_RESULT_HOST}
+  -e SRV_HTTP_RESULT_PORT=#{SRV_HTTP_RESULT_PORT}
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v /etc/localtime:/etc/localtime:ro
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}

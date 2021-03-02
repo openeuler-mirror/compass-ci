@@ -25,7 +25,7 @@ download_os_rootfs()
       mkdir -p $rootfs_dir
       cd $rootfs_dir
 
-      download_url="http://api.compass-ci.openeuler.org:${SRV_HTTP_PORT}/os/${os}/${os_arch}/${os_version}.cgz"
+      download_url="http://api.compass-ci.openeuler.org:${SRV_HTTP_OS_PORT}/os/${os}/${os_arch}/${os_version}.cgz"
       wget $download_url
 
       [ "$?" -ne 0 ] && {
