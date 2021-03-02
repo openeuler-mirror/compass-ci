@@ -81,7 +81,7 @@ class GitMirror
 
   def mirror_sync
     fork_info = @queue.pop
-    mirror_dir = "/srv/git/#{fork_info['git_repo']}"
+    mirror_dir = "/srv/git/#{fork_info['belong']}/#{fork_info['git_repo']}"
     mirror_dir = "#{mirror_dir}.git" unless fork_info['is_submodule']
     possible_new_refs = git_repo_download(fork_info['url'], mirror_dir)
     feedback(fork_info['git_repo'], possible_new_refs)
@@ -107,6 +107,7 @@ class MirrorMain
     @defaults = {}
     @git_queue = Queue.new
     @es_client = Elasticsearch::Client.new(url: "http://#{ES_HOST}:#{ES_PORT}")
+    clone_upstream_repo
     load_fork_info
     connection_init
     handle_webhook
@@ -124,35 +125,37 @@ class MirrorMain
     @fork_stat[git_repo] = get_fork_stat(git_repo)
   end
 
-  def load_defaults(repodir)
+  def load_defaults(repodir, belong)
     defaults_file = "#{repodir}/DEFAULTS"
     return unless File.exist?(defaults_file)
 
-    defaults_key = repodir == REPO_DIR ? 'default' : repodir.delete_prefix("#{REPO_DIR}/")
+    defaults_key = repodir == "#{REPO_DIR}/#{belong}" ? belong : repodir.delete_prefix("#{REPO_DIR}/#{belong}/")
     @defaults[defaults_key] = YAML.safe_load(File.open(defaults_file))
-    @defaults[defaults_key] = merge_defaults(defaults_key, @defaults[defaults_key])
+    @defaults[defaults_key] = merge_defaults(defaults_key, @defaults[defaults_key], belong)
   end
 
-  def traverse_repodir(repodir)
+  def traverse_repodir(repodir, belong)
     if File.directory? repodir
-      load_defaults(repodir)
+      load_defaults(repodir, belong)
       entry_list = Dir.children(repodir) - ['DEFAULTS']
       entry_list.each do |entry|
         next if entry.start_with? '.'
 
-        traverse_repodir("#{repodir}/#{entry}")
+        traverse_repodir("#{repodir}/#{entry}", belong)
       end
     else
       return if File.dirname(repodir) == REPO_DIR
 
-      project = File.dirname(repodir).delete_prefix("#{REPO_DIR}/")
+      project = File.dirname(repodir).delete_prefix("#{REPO_DIR}/#{belong}/")
       fork_name = File.basename(repodir)
-      load_repo_file(repodir, project, fork_name)
+      load_repo_file(repodir, project, fork_name, belong)
     end
   end
 
   def load_fork_info
-    traverse_repodir(REPO_DIR)
+    @upstreams['upstreams'].each do |repo|
+      traverse_repodir("#{REPO_DIR}/#{repo['location']}", repo['location'])
+    end
   end
 
   def create_workers
@@ -182,7 +185,7 @@ class MirrorMain
     update_fork_stat(git_repo, feedback_info[:possible_new_refs])
     return unless feedback_info[:possible_new_refs]
 
-    return reload_fork_info if git_repo == 'u/upstream-repos/upstream-repos'
+    return reload_fork_info(git_repo) if is_upstream_repo?(git_repo)
 
     new_refs = check_new_refs(git_repo)
     return if new_refs[:heads].empty?
@@ -221,14 +224,16 @@ end
 
 # main thread
 class MirrorMain
-  def load_repo_file(repodir, project, fork_name)
+  def load_repo_file(repodir, project, fork_name, belong)
     git_repo = "#{project}/#{fork_name}"
     git_info = YAML.safe_load(File.open(repodir))
     return if git_info.nil? || git_info['url'].nil?
 
     @git_info[git_repo] = git_info
     @git_info[git_repo]['git_repo'] = git_repo
-    @git_info[git_repo] = merge_defaults(git_repo, @git_info[git_repo])
+    @git_info[git_repo]['belong'] = belong
+    @git_info[git_repo] = merge_defaults(git_repo, @git_info[git_repo], belong)
+
     fork_stat_init(git_repo)
     @priority_queue.push git_repo, @priority
     @priority += 1
@@ -247,7 +252,7 @@ class MirrorMain
   def get_cur_refs(git_repo)
     return if @git_info[git_repo]['is_submodule']
 
-    mirror_dir = "/srv/git/#{git_repo}.git"
+    mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git"
     show_ref_out = %x(git -C #{mirror_dir} show-ref --heads 2>/dev/null)
     cur_refs = { heads: {} }
     show_ref_out.each_line do |line|
@@ -266,27 +271,26 @@ class MirrorMain
     return new_refs
   end
 
-  def reload_fork_info
-    upstream_repos = 'u/upstream-repos/upstream-repos'
+  def reload_fork_info(upstream_repos)
     if @git_info[upstream_repos][:cur_refs].empty?
       @git_info[upstream_repos][:cur_refs] = get_cur_refs(upstream_repos)
     else
       old_commit = @git_info[upstream_repos][:cur_refs][:heads]['refs/heads/master']
       new_refs = check_new_refs(upstream_repos)
       new_commit = new_refs[:heads]['refs/heads/master']
-      changed_files = %x(git -C /srv/git/#{upstream_repos}.git diff --name-only #{old_commit}...#{new_commit})
-      reload(changed_files)
+      changed_files = %x(git -C /srv/git/#{@git_info[upstream_repos]['belong']}/#{upstream_repos}.git diff --name-only #{old_commit}...#{new_commit})
+      reload(changed_files, @git_info[upstream_repos]['belong'])
     end
   end
 
-  def reload(file_list)
-    system("git -C #{REPO_DIR} pull")
+  def reload(file_list, belong)
+    system("git -C #{REPO_DIR}/#{belong} pull")
     file_list.each_line do |file|
       next if File.basename(file) == '.ignore'
 
       file = file.chomp
-      repo_dir = "#{REPO_DIR}/#{file}"
-      load_repo_file(repo_dir, File.dirname(file), File.basename(file)) if File.file?(repo_dir)
+      repo_dir = "#{REPO_DIR}/#{belong}/#{file}"
+      load_repo_file(repo_dir, File.dirname(file), File.basename(file), belong) if File.file?(repo_dir)
     end
   end
 
@@ -357,7 +361,7 @@ class MirrorMain
     end
   end
 
-  def handle_submodule(submodule)
+  def handle_submodule(submodule, belong)
     submodule.each_line do |line|
       next unless line.include?('url = ')
 
@@ -365,7 +369,7 @@ class MirrorMain
       git_repo = url.split('://')[1] if url.include?('://')
       break unless git_repo
 
-      @git_info[git_repo] = { 'url' => url, 'git_repo' => git_repo, 'is_submodule' => true }
+      @git_info[git_repo] = { 'url' => url, 'git_repo' => git_repo, 'is_submodule' => true, 'belong' => belong }
       fork_stat_init(git_repo)
       @priority_queue.push git_repo, @priority
       @priority += 1
@@ -378,11 +382,11 @@ class MirrorMain
       return true
     end
 
-    mirror_dir = "/srv/git/#{git_repo}.git"
+    mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git"
     submodule = %x(git -C #{mirror_dir} show HEAD:.gitmodules 2>/dev/null)
     return if submodule.empty?
 
-    handle_submodule(submodule)
+    handle_submodule(submodule, @git_info[git_repo]['belong'])
   end
 
   def get_fork_stat(git_repo)
@@ -453,8 +457,8 @@ end
 
 # main thread
 class MirrorMain
-  def merge_defaults(object_key, object)
-    return object if object_key == 'default'
+  def merge_defaults(object_key, object, belong)
+    return object if object_key == belong
 
     defaults_key = File.dirname(object_key)
     while defaults_key != '.'
@@ -462,8 +466,35 @@ class MirrorMain
 
       defaults_key = File.dirname(defaults_key)
     end
-    return @defaults['default'].merge(object) if @defaults['default']
+    return @defaults[belong].merge(object) if @defaults[belong]
 
     return object
+  end
+
+  def clone_upstream_repo
+    if File.exist?('/etc/compass-ci/defaults/upstream-config')
+      @upstreams = YAML.safe_load(File.open('/etc/compass-ci/defaults/upstream-config'))
+      @upstreams['upstreams'].each do |repo|
+        url = get_url(repo['url'])
+        %x(git clone #{url} #{REPO_DIR}/#{repo['location']} 2>&1)
+      end
+    else
+      puts 'ERROR: No upstream-config file'
+      return -1
+    end
+  end
+
+  def get_url(url)
+    if url.include?('gitee.com/') && File.exist?("/srv/git/#{url.delete_prefix('https://')}")
+      url = "/srv/git/#{url.delete_prefix('https://')}"
+    end
+    return url
+  end
+
+  def is_upstream_repo?(git_repo)
+    @upstreams['upstreams'].each do |repo|
+      return true if git_repo == repo['git_repo']
+    end
+    return false
   end
 end
