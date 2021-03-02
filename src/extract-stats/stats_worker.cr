@@ -82,23 +82,18 @@ class StatsWorker
       }
     )
 
-    error_id = select_error_id(check_new_error_ids(error_ids, job_id))
-    if error_id
+    new_error_ids = check_new_error_ids(error_ids, job_id)
+    unless new_error_ids.empty?
+      sample_error_id = new_error_ids.sample
       STDOUT.puts "send a delimiter task: job_id is #{job_id}"
-      @tq.add_task(DELIMITER_TASK_QUEUE, JSON.parse({"error_id" => error_id,
+      @tq.add_task(DELIMITER_TASK_QUEUE, JSON.parse({"error_id" => sample_error_id,
                                                      "job_id" => job_id,
                                                      "lab" => LAB}.to_json))
+      msg = %({"job_id": "#{job_id}", "new_error_id": "#{sample_error_id}"})
+      system "echo '#{msg}'"
     end
     msg = %({"job_id": "#{job_id}", "job_state": "extract_finished"})
     system "echo '#{msg}'"
-  end
-
-  def select_error_id(new_error_ids : Array)
-    new_error_ids.each do |error_id|
-      return error_id if /(cpp|c|h):(warning|error)/i =~ error_id
-    end
-
-    return nil
   end
 
   def check_new_error_ids(error_ids : Array, job_id : String)
