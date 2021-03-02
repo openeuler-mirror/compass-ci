@@ -2,12 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-mkdir -p /etc/compass-ci
-cp -a $CCI_SRC/sparrow/setup.yaml /etc/compass-ci/setup.yaml
-
-server_ip=$(awk '/^server_ip:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
 [ -z $server_ip ] && server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
-
 server_name=$(hostname | cut -f1 -d.)
 : ${sched_host:=$server_ip}
 : ${sched_port:=3000}
