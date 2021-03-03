@@ -71,7 +71,9 @@ check_kernel()
 check_qemu()
 {
 	# debian has both qemu-system-x86_64 and qemu-system-riscv64 command
-	[[ $kernel =~ 'riscv64' ]] && qemu=qemu-system-riscv64
+	[[ $kernel =~ 'riscv64' ]] && {
+		command -v qemu-system-riscv64 > /dev/null && qemu=qemu-system-riscv64
+	}
 }
 
 check_initrds()
@@ -139,9 +141,12 @@ set_qemu()
 		qemu-kvm
 	)
 
-	for qemu in "${qemus[@]}"
+	for qemu_candidate in "${qemus[@]}"
 	do
-		command -v "$qemu" > /dev/null && break
+		command -v "$qemu_candidate" > /dev/null && {
+			qemu="$qemu_candidate"
+			break
+		}
 	done
 
 	check_qemu
