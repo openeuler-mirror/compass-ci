@@ -4,6 +4,7 @@
 require "kemal"
 require "yaml"
 
+require "./mq"
 require "./job"
 require "./web_env"
 require "./block_helper"
@@ -34,6 +35,7 @@ class Sched
     @es = Elasticsearch::Client.new
     Redis::Client.set_pool_size(1000)
     @redis = Redis::Client.instance
+    @mq = MQClient.instance
     @task_queue = TaskQueueAPI.new
     @rgc = RemoteGitClient.new
     @env = env

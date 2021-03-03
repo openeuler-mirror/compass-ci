@@ -6,11 +6,14 @@ class Sched
     job_id = @env.params.query["job_id"]?
     return unless job_id
 
+    @env.set "job_id", job_id
+
     job = @redis.get_job(job_id)
 
     # update job_state
     job_state = @env.params.query["job_state"]?
     job["job_state"] = job_state if job_state
+    job["job_state"] = "complete" if job["job_state"] == "boot"
 
     response = @es.set_job_content(job)
     if response["_id"] == nil
@@ -34,5 +37,15 @@ class Sched
     @log.info(%({"job_id": "#{job_id}", "job_state": "#{job_state}"}))
   rescue e
     @log.warn(e)
+  ensure
+    source = @env.params.query["source"]?
+    if source != "lifecycle"
+      mq_msg = {
+        "job_id" => @env.get?("job_id").to_s,
+        "job_state" => "close",
+        "time" => get_time
+      }
+      @mq.pushlish_confirm(JOB_MQ, mq_msg.to_json)
+    end
   end
 end

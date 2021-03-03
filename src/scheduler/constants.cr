@@ -12,6 +12,8 @@ JOB_ES_PORT       = 9200
 JOB_ES_PORT_DEBUG = 9201
 JOB_INDEX_TYPE    = "jobs/_doc"
 
+JOB_MQ = "job_mq"
+
 LAB = (ENV.has_key?("lab") ? ENV["lab"] : "nolab")
 
 SCHED_HOST = (ENV.has_key?("SCHED_HOST") ? ENV["SCHED_HOST"] : "172.17.0.1")

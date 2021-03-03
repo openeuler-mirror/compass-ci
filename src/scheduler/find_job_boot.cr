@@ -16,6 +16,7 @@ class Sched
       host = value
     end
 
+    @env.set "testbox", host
     response = get_job_boot(host, boot_type)
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     @log.info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
@@ -23,6 +24,15 @@ class Sched
     response
   rescue e
     @log.warn(e)
+  ensure
+    mq_msg = {
+      "job_id" => @env.get?("job_id").to_s,
+      "testbox" => @env.get?("testbox").to_s,
+      "deadline" => @env.get?("deadline").to_s,
+      "time" => get_time,
+      "job_state" => "boot"
+    }
+    @mq.pushlish_confirm(JOB_MQ, mq_msg.to_json)
   end
 
   # auto submit a job to collect the host information.
@@ -104,6 +114,9 @@ class Sched
 
     if job
       @es.set_job_content(job)
+      @env.set "job_id", job["id"]
+      @env.set "deadline", job["deadline"]
+      @env.set "job_state", job["job_state"]
       create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
     else
       # for physical machines
