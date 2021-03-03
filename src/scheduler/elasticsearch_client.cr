@@ -105,7 +105,7 @@ class Elasticsearch::Client
     end
 
     history ||= [] of JSON::Any
-    history << JSON.parse(wtmp_hash.to_json)
+    history << JSON.parse(wtmp_hash.to_json) unless wtmp_hash["state"]?.to_s == "requesting"
     history = JSON.parse(history.to_json)
 
     body = { "history" => history}
