@@ -112,7 +112,7 @@ Notes:
     kernel_append_root: use_root_partition=zhangsan_local_for_iperf_20210218 save_root_partition=zhangsan_local_for_iperf_20210219
     ```
 
-2. scheduler return the ipxe_response to testbox
+2. scheduler return the custom_ipxe to testbox
 
     ```
     #!ipxe

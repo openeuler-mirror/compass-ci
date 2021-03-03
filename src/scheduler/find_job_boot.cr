@@ -174,7 +174,7 @@ class Sched
   end
 
   private def get_boot_ipxe(job : Job)
-    return job["ipxe_response"] if job["suite"] == "install-iso" && job.has_key?("ipxe_response")
+    return job["custom_ipxe"] if job["suite"] == "install-iso" && job.has_key?("custom_ipxe")
 
     response = "#!ipxe\n\n"
 
