@@ -103,12 +103,15 @@ class Sched
     @log.warn(e)
   end
 
+  def get_time
+    Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
   def update_tbox_wtmp
     testbox = ""
     hash = Hash(String, String | Nil).new
 
-    time = Time.local.to_s("%Y-%m-%d %H:%M:%S")
-    hash["time"] = time
+    hash["time"] = get_time
 
     %w(mac ip job_id tbox_name tbox_state).each do |parameter|
       if (value = @env.params.query[parameter]?)
@@ -117,7 +120,6 @@ class Sched
           testbox = value
         when "tbox_state"
           hash["state"] = value
-          hash["deadline"] = nil if value == "rebooting"
         when "mac"
           hash["mac"] = normalize_mac(value)
         else
@@ -136,23 +138,26 @@ class Sched
     @log.warn(e)
   end
 
-  def set_tbox_boot_wtmp(job : Job)
-    time = Time.local
-    booting_time = time.to_s("%Y-%m-%dT%H:%M:%S")
+  def set_lifecycle(job, testbox)
+    if job
+      deadline = job.get_deadline
+      job["deadline"] = deadline
+      job["job_state"] = "boot"
+      state = "booting"
+      job_id = job["id"]
+    else
+      deadline = nil
+      job_id = ""
+      state = "requesting"
+    end
 
-    runtime = (job["timeout"]? || job["runtime"]?).to_s
-    runtime = 1800 if runtime.empty?
-
-    # reserve 300 seconds for system startup, hw machine will need such long time
-    deadline = (time + (runtime.to_i32 * 2 + 300).second).to_s("%Y-%m-%dT%H:%M:%S")
     hash = {
-      "job_id" => job["id"],
-      "state" => "booting",
-      "booting_time" => booting_time,
+      "job_id" => job_id,
+      "state" => state,
+      "time" => get_time,
       "deadline" => deadline
     }
-
-    @es.update_tbox(job["testbox"], hash)
+    @es.update_tbox(testbox.to_s, hash)
   end
 
   def report_ssh_port

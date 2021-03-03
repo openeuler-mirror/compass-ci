@@ -243,6 +243,14 @@ class Job
     self["rootfs"] = "#{os}-#{os_version}-#{os_arch}"
   end
 
+  def get_deadline
+    runtime = (self["timeout"]? || self["runtime"]?).to_s
+    runtime = 1800 if runtime.empty?
+
+    # reserve 300 seconds for system startup, hw machine will need such long time
+    (Time.local + (runtime.to_i32 * 2 + 300).second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
   def set_result_root
     update_tbox_group_from_testbox # id must exists, need update tbox_group
     self["result_root"] = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{pp_params}", "#{id}")

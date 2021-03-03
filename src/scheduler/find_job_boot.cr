@@ -100,10 +100,11 @@ class Sched
   def get_job_boot(host, boot_type)
     queues = get_queues(host)
     job = get_job_from_queues(queues, host)
+    set_lifecycle(job, host)
 
     if job
+      @es.set_job_content(job)
       create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
-      set_tbox_boot_wtmp(job)
     else
       # for physical machines
       spawn { auto_submit_idle_job(host) }
