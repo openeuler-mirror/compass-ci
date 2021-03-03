@@ -159,6 +159,7 @@ class Sched
       "time" => get_time,
       "deadline" => deadline
     }
+    @redis.update_wtmp(testbox.to_s, hash)
     @es.update_tbox(testbox.to_s, hash)
   end
 
