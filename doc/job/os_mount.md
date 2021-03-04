@@ -56,7 +56,7 @@ The brief flow is as follows:
 
 ## persistent rootfs data
 
-When you need to persist the rootfs data of a job, and use it in the subsequent job(s), two fields in `kernel_append_root` will help you: `save_root_partition`, `use_root_partition`.
+When you need to persist the rootfs data of a job, and use it in the subsequent job(s), two fields in `kernel_custom_params` will help you: `save_root_partition`, `use_root_partition`.
 
 The brief flow is as follows:
 
@@ -87,12 +87,12 @@ Demo usage:
     rootfs data of job-20210218.yaml so that it can be used by the subsequent
     jobs.
     Then you need add the follow field in your job-20210218.yaml:
-        kernel_append_root: save_root_partition=zhangsan_local_for_iperf_20210218
+        kernel_custom_params: save_root_partition=zhangsan_local_for_iperf_20210218
 
   - in 20210219, you submit a job-20210219.yaml, and you want to use the rootfs
     data of job-20210218.yaml.
     Then you need add the follow field in your job-20210219.yaml:
-        kernel_append_root: use_root_partition=zhangsan_local_for_iperf_20210218
+        kernel_custom_params: use_root_partition=zhangsan_local_for_iperf_20210218
   ```
 
 Notes:
@@ -109,7 +109,7 @@ Notes:
     os_arch: aarch64
     os_version: 20.03
     os_mount: local
-    kernel_append_root: use_root_partition=zhangsan_local_for_iperf_20210218 save_root_partition=zhangsan_local_for_iperf_20210219
+    kernel_custom_params: use_root_partition=zhangsan_local_for_iperf_20210218 save_root_partition=zhangsan_local_for_iperf_20210219
     ```
 
 2. scheduler return the custom_ipxe to testbox
@@ -118,7 +118,7 @@ Notes:
     #!ipxe
     dhcp
     initrd http://${http_server_ip}:${http_server_port}/os/openeuler/aarch64/20.03-iso-snapshots/${timestamp}/initrd.lkp
-    kernel http://${http_server_ip}:${http_server_port}/os/openeuler/aarch64/20.03-iso-snapshots/${timestamp}/boot/vmlinuz root=/dev/mapper/os-openeuler_aarch64_20.03 rootfs_src=${nfs_server_ip}:os/openeuler/aarch64/20.03-iso-snapshots/${timestamp} initrd=initrd.lkp ${kernel_append_root}
+    kernel http://${http_server_ip}:${http_server_port}/os/openeuler/aarch64/20.03-iso-snapshots/${timestamp}/boot/vmlinuz root=/dev/mapper/os-openeuler_aarch64_20.03 rootfs_src=${nfs_server_ip}:os/openeuler/aarch64/20.03-iso-snapshots/${timestamp} initrd=initrd.lkp ${kernel_custom_params}
     boot
     ```
 
