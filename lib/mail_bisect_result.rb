@@ -40,11 +40,12 @@ class MailBisectResult
 
   def compose_mail
     subject = "[Compass-CI][#{@repo.split('/')[1]}] #{@commit_id[0..9]} #{@bisect_error[0].split("\n")[0]}"
-    prefix_srv = "http://#{SRV_HTTP_DOMAIN}:#{SRV_HTTP_PORT}"
-    bisect_job_url = ENV['result_root'] ? "bisect job result directory:\n#{prefix_srv}#{ENV['result_root']}\n" : ''
+    prefix_srv_result = "http://#{SRV_HTTP_DOMAIN}:#{SRV_HTTP_RESULT_PORT}"
+    prefix_srv_git = "http://#{SRV_HTTP_DOMAIN}:#{SRV_HTTP_GIT_PORT}"
+    bisect_job_url = ENV['result_root'] ? "bisect job result directory:\n#{prefix_srv_result}#{ENV['result_root']}\n" : ''
     report_doc = "bisect email doc:\nhttps://gitee.com/wu_fengguang/compass-ci/blob/master/doc/bisect_email.en.md\n"
-    pkgbuild_repo_url = "PKGBUILD:\n#{prefix_srv}/git/#{@pkgbuild_repo}\n"
-    first_bad_commit_job_url = "first bad commit job result directory:\n#{prefix_srv}#{@first_bad_commit_result_root}\n"
+    pkgbuild_repo_url = "PKGBUILD:\n#{prefix_srv_git}/git/#{@pkgbuild_repo}\n"
+    first_bad_commit_job_url = "first bad commit job result directory:\n#{prefix_srv_result}#{@first_bad_commit_result_root}\n"
 
     data = <<~BODY
     To: #{@to}
