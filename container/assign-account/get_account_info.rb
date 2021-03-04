@@ -136,7 +136,7 @@ class AccountStorage
   def permit_login_config(login_name)
     if @data.key?('enable_login') && @data['enable_login']
       %x(usermod -s /usr/bin/zsh #{login_name})
-    else
+    elsif @data.key?('enable_login') && !@data['enable_login']
       %x(usermod -s /sbin/nologin #{login_name})
     end
   end
