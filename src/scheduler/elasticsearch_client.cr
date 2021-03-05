@@ -79,7 +79,10 @@ class Elasticsearch::Client
   end
 
   def search(index, query)
-    @client.search({:index => index, :body => query})
+    results = @client.search({:index => index, :body => query})
+    raise results unless results.is_a?(JSON::Any)
+
+    results["hits"]["hits"].as_a
   end
 
   def update_account(account_content : JSON::Any, my_email : String)
@@ -90,6 +93,19 @@ class Elasticsearch::Client
         :body => {:doc => account_content}
       }
     )
+  end
+
+  def get_tbox(testbox)
+    query = {:index => "testbox", :type => "_doc", :id => testbox}
+    return nil unless @client.exists(query)
+
+    response = @client.get_source(query)
+    case response
+    when JSON::Any
+      return response
+    else
+      return nil
+    end
   end
 
   def update_tbox(testbox : String, wtmp_hash : Hash)
