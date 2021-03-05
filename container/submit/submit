@@ -13,6 +13,7 @@ cmd=(
         --name=submit-$USER-$data_suffix
         -it
         -v /etc/compass-ci:/etc/compass-ci:ro
+        -v $LKP_SRC:/srv/lkp-tests:ro
         -v $HOME/.config:/root/.config:ro
         -v $HOME/.ssh:/root/.ssh:rw
         submit
