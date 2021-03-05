@@ -29,7 +29,7 @@ class JSONLogger < Logger
     msg = { 'message' => msg } unless msg.is_a?(Hash)
     logger_hash.merge!(msg)
 
-    logger_hash.to_json
+    logger_hash.to_json + "\n"
   }
 
   def initialize(logdev = STDOUT, formatter = FORMATTER)
