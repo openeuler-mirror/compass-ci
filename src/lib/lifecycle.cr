@@ -144,21 +144,17 @@ class Lifecycle
 
   def update_cached_machine(testbox, event)
     machine = @machines[testbox]?
-    return if machine && !event["time"].to_s.bigger_than?(machine["time"]?)
+    if machine
+      return unless event["time"].to_s.bigger_than?(machine["time"]?)
 
-    update_es_machine_time(testbox, event)
-  end
+      machine.as_h["time"] = event["time"]
+    else
+      machine = @es.get_tbox(testbox)
+      return unless machine
 
-  def update_es_machine_time(testbox, event)
-    machine = @es.get_tbox(testbox)
-    return unless machine
-    return unless event["time"].to_s.bigger_than?(machine["time"]?)
-
-    machine.as_h.delete("history")
-    machine.as_h["time"] = event["time"]
-    machine.as_h["state"] = JSON::Any.new("booting")
-    @machines[testbox] = machine
-    @es.update_tbox(testbox, machine.as_h)
+      machine.as_h.delete("history")
+      @machines[testbox] = machine
+    end
   end
 
   def update_cached_job(job_id, event)
@@ -187,8 +183,7 @@ class Lifecycle
 
   def on_job_close(event)
     event_job_id = event["job_id"].to_s
-    job = @jobs[event_job_id]
-
+    job = @jobs[event_job_id]?
     return unless job
 
     @jobs.delete(event_job_id)
