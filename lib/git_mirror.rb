@@ -11,6 +11,7 @@ require 'priority_queue'
 require 'English'
 require 'elasticsearch'
 require_relative 'constants.rb'
+require_relative 'json_logger.rb'
 
 # worker threads
 class GitMirror
@@ -106,6 +107,7 @@ class MirrorMain
     @git_info = {}
     @defaults = {}
     @git_queue = Queue.new
+    @log = JSONLogger.new
     @es_client = Elasticsearch::Client.new(url: "http://#{ES_HOST}:#{ES_PORT}")
     clone_upstream_repo
     load_fork_info
@@ -192,6 +194,7 @@ class MirrorMain
 
     feedback_info[:new_refs] = new_refs
     send_message(feedback_info)
+    new_refs_log(git_repo, new_refs[:heads].length)
   end
 
   def do_push(fork_key)
@@ -508,5 +511,14 @@ class MirrorMain
       load_defaults(repodir, belong)
       traverse_repodir(repodir, belong)
     end
+  end
+
+  def new_refs_log(git_repo, nr_new_branch)
+    @log.info({
+      msg: 'new refs',
+      time: Time.now,
+      repo: git_repo,
+      nr_new_branch: nr_new_branch
+    }.to_json)
   end
 end
