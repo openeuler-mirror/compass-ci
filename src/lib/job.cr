@@ -89,6 +89,8 @@ class Job
     docker_image
     kernel_version
     linux_vmlinuz_path
+    src_lv_suffix
+    boot_lv_suffix
   )
 
   macro method_missing(call)
