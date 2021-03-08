@@ -9,6 +9,7 @@ class Sched
     end
 
     @env.set "job_id", job_id
+    @env.set "time", get_time
 
     # try to get report value and then update it
     job_content = {} of String => String
@@ -34,13 +35,14 @@ class Sched
     @log.info(log.to_json)
 
     @env.set "job_state", job_content["job_state"]?
+    update_testbox_time(job_id)
   rescue e
     @log.warn(e)
   ensure
     mq_msg = {
       "job_id" => @env.get?("job_id").to_s,
       "job_state" => (@env.get?("job_state") || "update").to_s,
-      "time" => get_time
+      "time" => @env.get?("time").to_s
     }
     @mq.pushlish_confirm(JOB_MQ, mq_msg.to_json)
   end

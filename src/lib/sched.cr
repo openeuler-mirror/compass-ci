@@ -163,6 +163,13 @@ class Sched
     @es.update_tbox(testbox.to_s, hash)
   end
 
+  def update_testbox_time(job_id)
+    job = @redis.get_job(job_id)
+    testbox = job["testbox"]
+    hash = {"time" => @env.get?("time").to_s}
+    @es.update_tbox(testbox, hash)
+  end
+
   def report_ssh_port
     testbox = @env.params.query["tbox_name"]
     ssh_port = @env.params.query["ssh_port"].to_s
