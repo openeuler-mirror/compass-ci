@@ -1,0 +1,71 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+[[ $CCI_SRC ]] || export CCI_SRC=$(git rev-parse --show-toplevel)
+
+. $CCI_SRC/lib/log.sh
+
+check_server_ip()
+{
+	[ -z "$server_ip" ] && . 0-package/read-config
+	[ -z "$server_ip" ] && {
+		log_error "ENV \$server_ip doesn't exist, please config $CCI_SRC/sparrow/setup.yaml"
+		exit 1
+	}
+}
+
+install_env()
+{
+	cd $CCI_SRC/sparrow || return
+	check_server_ip
+	0-package/install
+	1-storage/tiny
+	5-build/ipxe &
+	1-storage/permission
+	2-network/br0
+	2-network/iptables
+	3-code/git
+	3-code/dev-env
+	. /etc/profile.d/compass.sh
+	5-build/register-account
+}
+
+boot_ipxe()
+{
+	SCHED_HOST=$server_ip
+	sed -i "s%172.17.0.1%${SCHED_HOST}%g" /tftpboot/boot.ipxe
+	sed -i "s%3000%${SCHED_PORT:-3000}%g" /tftpboot/boot.ipxe
+}
+
+run_service()
+{
+	(
+		cd $CCI_SRC/container/dnsmasq || return
+		./build
+		./start
+		boot_ipxe
+	)&
+	(
+		cd $CCI_SRC/container/qemu-efi || return
+		./build
+		./install
+	)&
+	(
+		cd $CCI_SRC/container/fluentd-base || return
+		./build
+
+		cd $CCI_SRC/container/sub-fluentd || return
+		./build
+		./start
+	)&
+}
+
+main()
+{
+	install_env
+	run_service
+}
+
+main
+wait
