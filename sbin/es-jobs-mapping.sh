@@ -140,6 +140,9 @@ else
 		          "upstream_commit": {
 		            "type": "keyword"
 		          },
+		          "my_email": {
+		            "type": "keyword"
+		          },
 		          "enqueue_time": {
 		            "type": "date",
 		            "format": "yyyy-MM-dd HH:mm:ss"
