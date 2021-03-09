@@ -29,26 +29,28 @@
 
 1. 登录 openEuler 系统
 
-2. 配置git账号
+2. 设置文件权限
 	```bash
-	git config --global user.name "xxx"
-	git config --global user.email "xxx@xxx.com"
-	```
-
-3. 设置文件权限并关闭SELINUX
-	```bash
-	umask 002 && setenforce 0
+	umask 002
 	```
 
 	>**说明：**   
-	>setenforce 0 只是暂时禁用SELINUX，需要修改/etc/selinux/config中的SELINUX=enforcing改为SELINUX=permissive或disabled才能长期有效    
-	>umask 002 只是暂时设置umask值，需要修改/etc/bashrc中的umask值为002才能长期有效
+	>umask 002 只是暂时设置umask值，需要修改/etc/bashrc中的umask值为002才能长期有效    
+	>执行下个步骤前请确保当前umask值为002，否则因文件权限问题将导致部分服务无法正常运行。   
 
-4. 创建工作目录并克隆 compass-ci 项目代码
+3. 创建工作目录并克隆 compass-ci 项目代码
 	```bash
 	mkdir /c/ && ln -s /c/compass-ci /c/cci
  	git clone https://gitee.com/wu_fengguang/compass-ci.git
 	```
+	
+4. 编辑setup.yaml配置用户名和邮箱
+	```bash
+	vi /c/compass-ci/sparrow/setup.yaml
+	```
+
+	>**说明：**   
+	>只需填写my_name, my_email, 且my_name, my_email冒号后面必须有1个空格。    
 
 5. 执行一键部署脚本 install-tiny
 	```bash
@@ -57,38 +59,18 @@
 
 #### 提交测试任务前的准备
 
-1. 生成lkp-aarch64.cgz压缩包
+1. 测试环境是否可以提交job测试
 	```bash
-	cd /c/compass-ci/container/lkp-initrd && ./run
-	```
-2. 验证账号
-	```bash
-	cd /c/compass-ci/sbin && ./build-my-info.rb
-	```
-
-3. 测试环境是否可以提交job测试
-	```bash
-	submit iperf.yaml testbox=vm-2p8g
+	submit iperf.yaml
 	```
 
 	执行上述命令正常情况下会提示信息如下:    
 	```
-	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory    
-	submit /c/lkp-tests/jobs/iperf.yaml failed, got job_id=0, error: Error resolving real path of '/srv/os/openeuler/aarch64/20.03/boot/vmlinuz': No such file or directory    
+	submit_id=bf5e7ad7-839d-48ec-a033-23281323c750
+	submit /c/lkp-tests/jobs/iperf.yaml, got job id=nolab.1
+	submit /c/lkp-tests/jobs/iperf.yaml, got job id=nolab.1
 	```
-	compass-ci搭建完毕，执行步骤4下载所需要的rootfs文件就可以开始进行测试了。
-
-4. 下载rootfs文件（根据所需要的rootfs在[该目录](http://124.160.11.58:11300/os/)下获取对应版本的cgz文件）
-	```bash
-	mkdir -p /srv/os/openeuler/aarch64/20.03
-	cd /srv/os/openeuler/aarch64/20.03
-	wget http://api.compass-ci.openeuler.org:11300/os/openeuler/aarch64/20.03.cgz
-	```
-
-5. 解压rootfs cgz 文件
-	```bash
-	gzip -dc 20.03.cgz | cpio -idv
-	```
+	compass-ci搭建完毕，下面就可以开始进行测试了。
 
 #### 提交测试任务到本地compass-ci
 本文以测试用例iperf.yaml为例
@@ -117,3 +99,11 @@
 
 	>**说明：**
 	>[登陆测试环境调测任务](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%99%BB%E5%BD%95%E6%B5%8B%E8%AF%95%E6%9C%BA%E8%B0%83%E6%B5%8B%E4%BB%BB%E5%8A%A1.md)
+
+# FAQ
+
+* 选择下载os rootfs
+
+	启动qemu测试机需要[os rootfs文件](http://api.compass-ci.openeuler.org:11304/os/)，   
+	一键部署默认下载os rootfs为openeuler aarch64 20.03，当部署完毕后，可在该目录下查看: /srv/os/openeuler/aarch64/20.03    
+	如需要其他os rootfs，可使用该脚本下载: /c/compass-ci/sbin/download-rootfs    
