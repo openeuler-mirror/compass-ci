@@ -3,6 +3,10 @@
 
 . /lib/dracut-lib.sh
 
+if ! getargbool 0 local; then
+        return
+fi
+
 # transfer LKP dirs
 [ -d /lkp ] || return 0
 
