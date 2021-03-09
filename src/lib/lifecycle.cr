@@ -311,7 +311,7 @@ class Lifecycle
     return if Time.local < deadline
 
     mq_queue = get_machine_reboot_queue(testbox)
-    @mq.pushlish_confirm(mq_queue, machine.to_json)
+    @mq.pushlish_confirm(mq_queue, machine.to_json, durable: true)
 
     machine["state"] = "rebooting_queue"
     machine["time"] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")

@@ -3,6 +3,7 @@
 
 require "singleton"
 require "amqp-client"
+require "amq-protocol"
 
 class MQClient
   getter ch : AMQP::Client::Channel
@@ -19,14 +20,22 @@ class MQClient
     Singleton::Of(self).instance
   end
 
-  def pushlish_confirm(queue, msg)
-    q = @ch.queue(queue)
-    q.publish_confirm msg
+  def pushlish_confirm(queue, msg, passive = false, durable = false, exclusive = false, auto_delete = false)
+    q = @ch.queue(queue, passive, durable, exclusive, auto_delete)
+    if durable
+      q.publish_confirm(msg, props: AMQ::Protocol::Properties.new(delivery_mode: 2))
+    else
+      q.publish_confirm msg
+    end
   end
 
-  def pushlish(queue, msg)
-    q = @ch.queue(queue)
-    q.publish msg
+  def pushlish(queue, msg, passive = false, durable = false, exclusive = false, auto_delete = false)
+    q = @ch.queue(queue, passive, durable, exclusive, auto_delete)
+    if durable
+      q.publish(msg, props: AMQ::Protocol::Properties.new(delivery_mode: 2))
+    else
+      q.publish(msg)
+    end
   end
 
   def get(queue)
