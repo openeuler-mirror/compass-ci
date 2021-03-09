@@ -37,7 +37,8 @@ class Job
       value = format_string(hash[key].to_s)
       next if 0 == value.size
 
-      if 40 > value.size + items_size + values.size
+      if items_size < 40
+        value = value[0...(40-items_size)] if items_size + value.size > 40
         values << value
         items_size += value.size
       else
