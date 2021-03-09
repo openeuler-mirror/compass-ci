@@ -7,6 +7,7 @@
 [[ $CCI_SRC ]] || export CCI_SRC=$(cd $(dirname $(realpath $0)); git rev-parse --show-toplevel)
 cd $CCI_SRC/sparrow || exit
 
+. 0-package/read-config
 0-package/install
 1-storage/tiny
 1-storage/permission
