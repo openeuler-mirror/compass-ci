@@ -16,5 +16,5 @@ cd $CCI_SRC/sparrow || exit
 2-network/cifs
 3-code/dev-env
 . /etc/profile.d/compass.sh
-4-docker/buildall run-only
+4-docker/buildall start-only
 7-systemd/systemd-setup
