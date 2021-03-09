@@ -4,16 +4,21 @@
 
 . $CCI_SRC/container/defconfig.sh
 
-docker_rm rabbitmq
+docker_name=rabbitmq
+
+docker_rm $docker_name
 
 cmd=(
 	docker run
 	--restart=always
 	-d
-	--name rabbitmq
+	--name $docker_name
+	--hostname $docker_name
+	-u 1090
 	-p 5672:5672
 	-p 15672:15672
 	-v /etc/localtime:/etc/localtime:ro
+	-v /srv/rabbitmq:/var/lib/rabbitmq
 	rabbitmq:3-management
 )
 
