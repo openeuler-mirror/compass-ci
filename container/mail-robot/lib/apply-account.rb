@@ -100,7 +100,7 @@ class ApplyAccount
     puts e.message
     puts e.backtrace
 
-    send_mail(e.message)
+    send_mail(e.message, '', '')
   end
 
   def forward_users
