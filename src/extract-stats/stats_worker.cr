@@ -27,8 +27,11 @@ class StatsWorker
         end
       rescue e
         STDERR.puts e.message
+        error_message = e.message
+
         # incase of many error message when task-queue, ES does not work
         sleep(10)
+        @tq = TaskQueueAPI.new if error_message && error_message.includes?("3060': Connection refused")
       end
     end
   end
