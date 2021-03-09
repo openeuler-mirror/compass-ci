@@ -63,8 +63,10 @@ class ParseApplyAccountEmail
     users.delete('')
     users.each do |user|
       user_info = YAML.safe_load(user)
+      next if user_info.nil?
+      next unless user_info.include?('my_email')
 
-      users_info << user_info if user_info.include?('my_email')
+      users_info << user_info
     end
 
     return users_info
