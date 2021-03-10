@@ -5,6 +5,9 @@
 
 require 'fileutils'
 require 'optparse'
+require 'json'
+
+require '../lib/mq_client'
 
 opt = {}
 options = OptionParser.new do |opts|
@@ -42,6 +45,8 @@ HOSTNAME = opt['hostname_prefix'] || "vm-2p8g.#{ENV['HOSTNAME']}"
 NR_VM    = opt['nr_vm'] || 1
 QUEUES   = opt['queues'] || "#{ENV['HOSTNAME']}.#{RUBY_PLATFORM.split('-')[0]}"
 LOG_DIR  = '/srv/cci/serial/logs'
+MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
+MQ_PORT = ENV['MQ_PORT'] || 5672
 
 def main(hostname)
   start_time = record_runtime_log(hostname)
@@ -99,7 +104,26 @@ def save_pid(arr)
   f.close
 end
 
+def reboot_deadline_machine(hostname)
+  mq = MQClient.new
+  queue = mq.queue(hostname, {:durable => true})
+  queue.subscribe({:block => true, :manual_ack => true}) do |info,  _pro, msg|
+    puts msg
+    machine_info = JSON.parse(msg)
+    job_id = machine_info['job_id']
+    system "pkill #{job_id};echo $?"
+    mq.ack(info)
+  end
+end
+
 def multiqemu
+  Process.fork do
+    reboot_deadline_machine(HOSTNAME)
+  rescue StandardError => e
+    puts e.backtrace
+    sleep 5
+  end
+
   pids = []
   NR_VM.to_i.times do |i|
     pid = Process.fork do
