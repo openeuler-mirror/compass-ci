@@ -25,7 +25,7 @@ dependencies:
     github: icyleaf/any_merge
     branch: master
   deep-merge:
-    gitlab: peterhoeg/deep-merge.cr
+    github: peterhoeg/deep-merge.cr
   json_on_steroids:
     github: anykeyh/json_on_steroids
   rate_limiter:
