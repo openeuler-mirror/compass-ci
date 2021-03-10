@@ -258,23 +258,28 @@ class Job
   end
 
   def get_pkg_common_dir
-    pkg_style = nil
+    tmp_style = nil
     ["cci-makepkg", "cci-depends", "build-pkg", "rpmbuild-pkg"].each do |item|
-      pkg_style = @hash[item]?
-      break if pkg_style
+      tmp_style = @hash[item]?
+      break if tmp_style
     end
-    return nil unless pkg_style
+    return nil unless tmp_style
+    pkg_style = Hash(String, JSON::Any).new {|h, k| h[k] = JSON::Any.new(nil)}
+    pkg_style.merge!(tmp_style.as_h? || Hash(String, JSON::Any).new)
 
-    pkg_style = JSON.parse("{}") if pkg_style == nil
+    tmp_os = pkg_style["os"].as_s? || "#{os}"
+    tmp_os_arch = pkg_style["os_arch"].as_s? || "#{os_arch}"
+    tmp_os_version = pkg_style["os_version"].as_s? || "#{os_version}"
 
-    tmp_os = pkg_style["os"]? == nil ? "#{os}" : pkg_style["os"]
-    tmp_os_arch = pkg_style["os_arch"]? == nil ? "#{os_arch}" : pkg_style["os_arch"]
-    tmp_os_version = pkg_style["os_version"]? == nil ? "#{os_version}" : pkg_style["os_version"]
+    mount_type = pkg_style["os_mount"].as_s? || "#{os_mount}"
+    # same usage for client
+    mount_type = "nfs" if mount_type == "cifs"
 
-    tmp_os_mount = pkg_style["os_mount"]? == nil ? "#{os_mount}" : pkg_style["os_mount"]
-    mount_type = tmp_os_mount == "cifs" ? "nfs" : tmp_os_mount.dup
-
-    common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
+    if @hash["rpmbuild-pkg"]?
+      common_dir = "#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
+    else
+      common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
+    end
 
     return common_dir
   end
