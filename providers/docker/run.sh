@@ -23,7 +23,7 @@ busybox_path=$(command -v busybox)
 cmd=(
 	docker run
 	--rm
-	--hostname $host
+	--hostname $host.compass-ci.net
 	-m $memory
 	--tmpfs /tmp:rw,exec,nosuid,nodev
 	-e CCI_SRC=/c/compass-ci
