@@ -194,7 +194,7 @@ class MirrorMain
 
     feedback_info[:new_refs] = new_refs
     send_message(feedback_info)
-    new_refs_log(git_repo, new_refs[:heads].length)
+    new_refs_log(git_repo, new_refs[:heads].length) if last_commit_new?(git_repo)
   end
 
   def do_push(fork_key)
@@ -327,7 +327,7 @@ class MirrorMain
 
   def update_fork_stat(git_repo, possible_new_refs)
     update_stat_fetch(git_repo)
-    update_stat_new_refs(git_repo) if possible_new_refs
+    update_stat_new_refs(git_repo) if possible_new_refs && last_commit_new?(git_repo)
     es_repo_update(git_repo)
   end
 end
@@ -520,5 +520,12 @@ class MirrorMain
       repo: git_repo,
       nr_new_branch: nr_new_branch
     }.to_json)
+  end
+
+  def last_commit_new?(git_repo)
+    inactive_time = %x(git -C /srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git log --pretty=format:"%cr" -1)
+    return false if inactive_time =~ /(day|week|month|year)/
+
+    return true
   end
 end
