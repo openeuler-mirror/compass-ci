@@ -12,6 +12,7 @@ cmd=(
 	-p 11303:11300
 	-v /srv/initrd/qemu-image:/srv/initrd/qemu-image:ro
 	-v /srv/initrd/dockerimage:/srv/initrd/dockerimage:ro
+	-v /srv/initrd/rpmbuild-pkg:/srv/initrd/rpmbuild-pkg:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-d
 	srv-http
