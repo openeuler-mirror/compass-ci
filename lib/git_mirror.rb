@@ -39,25 +39,38 @@ class GitMirror
     return url
   end
 
+  def stderr_443?(stderr_info)
+    return true if stderr_info.include?('Failed to connect to github.com port 443')
+
+    return false
+  end
+
   def git_clone(url, mirror_dir)
     url = get_url(Array(url)[0])
     10.times do
-      %x(git clone --mirror --depth 1 #{url} #{mirror_dir} 2>&1)
+      stderr = %x(git clone --mirror --depth 1 #{url} #{mirror_dir} 2>&1)
       return true if File.directory?(mirror_dir) && File.exist?("#{mirror_dir}/config")
+
+      url = "git://#{url.split('://')[1]}" if stderr_443?(stderr)
     end
     return false
   end
 
   def git_fetch(mirror_dir)
     if File.exist?("#{mirror_dir}/shallow")
+      FileUtils.rm("#{mirror_dir}/shallow.lock") if File.exist?("#{mirror_dir}/shallow.lock")
       %x(git -C #{mirror_dir} fetch --unshallow 2>&1)
-      return false
     end
 
     fetch_info = %x(git -C #{mirror_dir} fetch 2>&1)
     # Check whether mirror_dir is a good git repository by 2 conditions. If not, delete it.
     if fetch_info.include?(ERR_MESSAGE) && Dir.empty?(mirror_dir)
       FileUtils.rmdir(mirror_dir)
+    end
+
+    if stderr_443?(fetch_info)
+      url = %x(git -C #{mirror_dir} ls-remote --get-url origin).chomp
+      %x(git -C #{mirror_dir} remote set-url origin git://#{url.split('://')[1]})
     end
     return fetch_info.include? '->'
   end
@@ -66,7 +79,7 @@ class GitMirror
     url = get_url(Array(url)[0])
     git_url = %x(git -C #{mirror_dir} ls-remote --get-url origin).chomp
 
-    return true if url == git_url
+    return true if git_url == url || git_url.include?(url.split('://')[1])
 
     return false
   end
