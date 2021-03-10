@@ -110,7 +110,7 @@ class Lifecycle
 
   def mq_event_loop
     puts "deal job events"
-    q = @mq.ch.queue("job_mq")
+    q = @mq.ch.queue("job_mq", durable: false)
     q.subscribe(no_ack: false) do |msg|
       event = JSON.parse(msg.body_io.to_s)
       job_state = event["job_state"]?
@@ -311,6 +311,8 @@ class Lifecycle
     return if Time.local < deadline
 
     mq_queue = get_machine_reboot_queue(testbox)
+    machine.as_h.delete("history")
+    machine.as_h["testbox"] = JSON::Any.new(testbox)
     @mq.pushlish_confirm(mq_queue, machine.to_json, durable: true)
 
     machine["state"] = "rebooting_queue"
@@ -320,7 +322,7 @@ class Lifecycle
 
   def get_machine_reboot_queue(testbox)
     if testbox.includes?(".")
-      testbox =~ /.*\.(.*)-\d+$/
+      testbox =~ /(.*)-\d+$/
     else
       testbox =~ /(.*)--.*/
     end
