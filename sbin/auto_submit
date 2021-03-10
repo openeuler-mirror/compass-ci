@@ -44,14 +44,16 @@ class AutoSubmit
     submit_argv
   end
 
-  def submit_one_job(submit_argv, git_repo, branch, commit_id)
-    inactive_time = %x(git -C /srv/git/#{git_repo}.git log --pretty=format:"%cr" -1 #{commit_id})
+  def submit_one_job(submit_argv, git_repo, belong, branch, commit_id)
+    mirror_dir = "/srv/git/#{belong}/#{git_repo}.git"
+    inactive_time = %x(git -C #{mirror_dir} log --pretty=format:"%cr" -1 #{commit_id})
     return if inactive_time =~ /(month|year)/
 
     real_argvs = Array.new(submit_argv)
     real_argvs.push("upstream_branch=#{branch}")
     real_argvs.push("upstream_commit=#{commit_id}")
-    tag = %x(git -C /srv/git/#{git_repo}.git tag --points-at #{commit_id})
+    real_argvs.push("upstream_dir=#{belong}")
+    tag = %x(git -C #{mirror_dir} tag --points-at #{commit_id})
     real_argvs.push("upstream_tag=#{tag}") unless tag.empty?
 
     system(real_argvs.join(' '))
@@ -60,16 +62,17 @@ class AutoSubmit
   def submit_specific_branch(submit_argv, newrefs_info, branches)
     branches.each do |branch_name|
       branch = "refs/heads/#{branch_name}"
-      next unless newrefs_info['new_refs']['heads'][branch]
+      commit_id = newrefs_info['new_refs']['heads'][branch]
+      next unless commit_id
 
-      submit_one_job(submit_argv, newrefs_info['git_repo'], branch_name, newrefs_info['new_refs']['heads'][branch])
+      submit_one_job(submit_argv, newrefs_info['git_repo'], newrefs_info['belong'], branch_name, commit_id)
     end
   end
 
-  def submit_non_specific(non_specific_commits, git_repo, submit_argv)
-    non_specific_commits.each do |branch, commit_id|
+  def submit_non_specific(newrefs_info, submit_argv)
+    newrefs_info['new_refs']['heads'].each do |branch, commit_id|
       branch = branch.delete_prefix('refs/heads/')
-      submit_one_job(submit_argv, git_repo, branch, commit_id)
+      submit_one_job(submit_argv, newrefs_info['git_repo'], newrefs_info['belong'], branch, commit_id)
     end
   end
 
@@ -96,7 +99,7 @@ class AutoSubmit
       if element['branches']
         submit_specific_branch(argvs, newrefs_info, element['branches'])
       else
-        submit_non_specific(newrefs_info['new_refs']['heads'], newrefs_info['git_repo'], argvs)
+        submit_non_specific(newrefs_info, argvs)
       end
     end
   end
