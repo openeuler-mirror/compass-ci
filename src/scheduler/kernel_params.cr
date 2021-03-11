@@ -4,8 +4,12 @@
 class Job
   private def kernel_common_params
     common_params = "user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job ip=dhcp"
-    return "#{common_params} rw" if "#{self.os_mount}" == "local"
-    return "#{common_params} rootovl ro"
+    return "#{common_params} rootovl ro" unless "#{self.os_mount}" == "local"
+
+    os_info = "#{os}_#{os_arch}_#{os_version}"
+    use_root_partition = "/dev/mapper/os-#{os_info}_#{src_lv_suffix}" if @hash["src_lv_suffix"]? != nil
+    save_root_partition = "/dev/mapper/os-#{os_info}_#{boot_lv_suffix}" if @hash["boot_lv_suffix"]? != nil
+    return "#{common_params} local use_root_partition=#{use_root_partition} save_root_partition=#{save_root_partition} rw"
   end
 
   private def kernel_custom_params
@@ -20,7 +24,7 @@ class Job
       "cifs" => "root=cifs://#{OS_HTTP_HOST}#{os_real_path}" +
                 ",guest,ro,hard,vers=1.0,noacl,nouser_xattr,noserverino",
       "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0",
-      "local" => "root=/dev/mapper/os-#{self.os}_#{self.os_arch}_#{self.os_version}",
+      "local" => "root=#{OS_HTTP_HOST}:#{os_real_path}", # root is just used to temporarily mount a root in initqueue stage when lvm is not ready
       "container" => "",
     }
 
