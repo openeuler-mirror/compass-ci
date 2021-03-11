@@ -6,6 +6,11 @@ LKP_SRC ||= ENV['LKP_SRC'] || '/c/lkp-tests'
 require "#{LKP_SRC}/lib/log.rb"
 require 'tempfile'
 require 'English'
+require_relative './dump_stat'
+
+Dir[File.expand_path("#{LKP_SRC}/stats/*.rb")].uniq.each do |file|
+  require file
+end
 
 PROGRAM_DIR = "#{LKP_SRC}/stats"
 
@@ -30,6 +35,27 @@ module StatsWrapper
     check_tmpfile
     warn_empty_stats
     return unless create_stat
+
+    check_empty_json
+    delete_log_package
+  end
+
+  def self.wrapper_func(program, program_time = nil)
+    @program = program
+    @stats_group = program_time || program
+    @log = "#{RESULT_ROOT}/#{@stats_group}"
+
+    return unless File.exist?("#{@log}.yaml") || pretreatment
+
+    if File.exist?("#{@log}.yaml")
+      log_lines = read_log("#{@log}.yaml")
+      stat_result = parse_simple_log_yaml(log_lines)
+    else
+      log_lines = read_log(@log)
+      call_func_cmd = "#{@program.gsub('-', '_')}(log_lines)" # eg: proc_vmstats(log_lines)
+      stat_result = eval(call_func_cmd)
+    end
+    return unless DumpStat.dump_stat(@stats_group, stat_result)
 
     check_empty_json
     delete_log_package
@@ -260,4 +286,22 @@ module StatsWrapper
 
     File.delete(@tmpfile) if File.exist?(@tmpfile)
   end
+end
+
+# read line of log
+# return Array(String)
+def read_log(log_path)
+  return nil unless File.exist?(log_path)
+
+  File.readlines(log_path)
+end
+
+def parse_simple_log_yaml(log_lines)
+  result = Hash.new { |hash, key| hash[key] = [] }
+  log_lines.each do |line|
+    key, value = line.split(/:?\s+/)
+    result[key] << value
+  end
+
+  result
 end
