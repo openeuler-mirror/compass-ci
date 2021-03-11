@@ -5,9 +5,9 @@ analyse_kernel_cmdline_params() {
     # example: $nfs_server_ip:/os/${os}/${os_arch}/${os_version}-snapshots/20210310005959
     rootfs_src=$(echo $"$rootfs" | sed 's/\///')
     timestamp="$(basename $root)"
-    os="$(echo $root_src | awk -F '/|-' '{print $2}')"
-    os_arch="$(echo $root_src | awk -F '/|-' '{print $3}')"
-    os_version="$(echo $root_src | awk -F '/|-' '{print $4}')"
+    os="$(echo $rootfs_src | awk -F '/|-' '{print $2}')"
+    os_arch="$(echo $rootfs_src | awk -F '/|-' '{print $3}')"
+    os_version="$(echo $rootfs_src | awk -F '/|-' '{print $4}')"
     os_info="${os}_${os_arch}_${os_version}"
     export rootfs_src timestamp os_info
 }
@@ -58,22 +58,22 @@ analyse_kernel_cmdline_params
 sed -i "s/^locking_type = .*/locking_type = 1/" /etc/lvm/lvm.conf
 
 use_root_partition="$(getarg use_root_partition=)"
-if [ -n "$use_root_partition" ]; then
-    src_lv="$use_root_partition" # /dev/mapper/os-${os_info}_${timestamp}
+if [ -z "$use_root_partition" ]; then
+    src_lv="/dev/mapper/os-${os_info}_$timestamp"
     sync_src_lv "$src_lv"
 else
-    src_lv="/dev/mapper/os-${os_info}_$timestamp"
-    [ -e "src_lv" ] || {
+    src_lv="$use_root_partition"
+    [ -e "$src_lv" ] || {
         echo "warn dracut: FATAL: no src_lv with local mount, reboot"
         reboot
     }
 fi
 
 save_root_partition="$(getarg save_root_partition=)"
-if [ -n "$save_root_partition" ]; then
-    boot_lv="$save_root_partition"
-else
+if [ -z "$save_root_partition" ]; then
     boot_lv="/dev/mapper/os-${os_info}"
+else
+    boot_lv="$save_root_partition"
 fi
 
 snapshot_boot_lv "$src_lv" "$boot_lv"
