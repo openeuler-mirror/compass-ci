@@ -9,6 +9,10 @@
 . $CCI_SRC/container/defconfig.sh
 docker_rm web-backend
 
+load_cci_defaults
+[[ $SRV_HTTP_RESULT_HOST ]] || SRV_HTTP_RESULT_HOST=$(curl ip.sb)
+[[ $SRV_HTTP_RESULT_PORT ]] || SRV_HTTP_RESULT_PORT=11300
+
 cmd=(
 	docker run
 	--name web-backend
@@ -17,6 +21,8 @@ cmd=(
 	-p 32767:32767
 
 	-e ES_PORT=9200
+	-e SRV_HTTP_RESULT_HOST=$SRV_HTTP_RESULT_HOST
+	-e SRV_HTTP_RESULT_PORT=$SRV_HTTP_RESULT_PORT
 	-e CCI_SRC=/c/compass-ci
 	-e LKP_SRC=/c/lkp-tests
 	-e UPSTREAM_REPOS_PATH=/c/upstream-repos
