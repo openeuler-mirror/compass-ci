@@ -56,23 +56,25 @@ The brief flow is as follows:
 
 ## persistent rootfs data
 
-When you need to persist the rootfs data of a job, and use it in the subsequent job(s), two fields in `kernel_custom_params` will help you: `save_root_partition`, `use_root_partition`.
+When you need to persist the rootfs data of a job, and use it in the subsequent job(s), two fields in `kernel_custom_params` will help you: 'src_lv_suffix', 'boot_lv_suffix'.
 
 The brief flow is as follows:
 
   ```
   1. boot and request scheduler for job.
   2. initrd stage:
+      use_root_partition  seems like /dev/mapper/os-${os}_${os_arch}_${os_version}_${src_lv_suffix}
+      save_root_partition seems like /dev/mapper/os-${os}_${os_arch}_${os_version}_${boot_lv_suffix}
     - firstly, we need two logical volume:
       ${src_lv} -- src logical volume:
-        - if have ${use_root_partition}, src_lv=/dev/mapper/os-${os}_${os_arch}_${os_version}_${use_root_partition}
+        - if have ${use_root_partition}, src_lv=${use_root_partition}
         - if no   ${use_root_partition}, src_lv=/dev/mapper/os-${os}_${os_arch}_${os_version}_${timestamp}
       ${boot_lv} -- boot logical volume:
-        - if have ${save_root_partition}, boot_lv=/dev/mapper/os-${os}_${os_arch}_${os_version}_${save_root_partition}
+        - if have ${save_root_partition}, boot_lv=${save_root_partition}
         - if no   ${save_root_partition}, boot_lv=/dev/mapper/os-${os}_${os_arch}_${os_version}
     - if ${src_lv} not exists:
-      - if have ${use_root_partition}, exit 1.
-      - if no   ${use_root_partition}, create ${src_lv}, and rsync the rootfs from cluster nfs server.
+      - if have ${use_root_partition}, reboot.
+      - if no   ${use_root_partition}, create ${src_lv}, and sync the rootfs from cluster nfs server.
       - if ${boot_lv} != ${src_lv}:
         - if ${boot_lv} exists: delete it
         - create ${boot_lv} as the snapshot of ${src_lv}.
@@ -87,12 +89,12 @@ Demo usage:
     rootfs data of job-20210218.yaml so that it can be used by the subsequent
     jobs.
     Then you need add the follow field in your job-20210218.yaml:
-        kernel_custom_params: save_root_partition=zhangsan_local_for_iperf_20210218
+        kernel_custom_params: boot_lv_suffix=zhangsan_local_for_iperf_20210218
 
   - in 20210219, you submit a job-20210219.yaml, and you want to use the rootfs
     data of job-20210218.yaml.
     Then you need add the follow field in your job-20210219.yaml:
-        kernel_custom_params: use_root_partition=zhangsan_local_for_iperf_20210218
+        kernel_custom_params: src_lv_suffix=zhangsan_local_for_iperf_20210218
   ```
 
 Notes:
@@ -109,16 +111,19 @@ Notes:
     os_arch: aarch64
     os_version: 20.03
     os_mount: local
-    kernel_custom_params: use_root_partition=zhangsan_local_for_iperf_20210218 save_root_partition=zhangsan_local_for_iperf_20210219
+    kernel_custom_params: src_lv_suffix=zhangsan_local_for_iperf_20210218 boot_lv_suffix=zhangsan_local_for_iperf_20210219
     ```
 
 2. scheduler return the custom_ipxe to testbox
 
+    os_info = "#{os}_#{os_arch}_#{os_version}"
+    use_root_partition  = "/dev/mapper/os-#{os_info}_#{src_lv_suffix}"
+    save_root_partition = "/dev/mapper/os-#{os_info}_#{boot_lv_suffix}"
     ```
     #!ipxe
     dhcp
     initrd http://${http_server_ip}:${http_server_port}/os/openeuler/aarch64/20.03-iso-snapshots/${timestamp}/initrd.lkp
-    kernel http://${http_server_ip}:${http_server_port}/os/openeuler/aarch64/20.03-iso-snapshots/${timestamp}/boot/vmlinuz root=/dev/mapper/os-openeuler_aarch64_20.03 rootfs_src=${nfs_server_ip}:os/openeuler/aarch64/20.03-iso-snapshots/${timestamp} initrd=initrd.lkp ${kernel_custom_params}
+    kernel http://${http_server_ip}:${http_server_port}/os/openeuler/aarch64/20.03-iso-snapshots/${timestamp}/boot/vmlinuz root=/dev/mapper/os-openeuler_aarch64_20.03 initrd=initrd.lkp local use_root_partition=#{use_root_partition} save_root_partition=#{save_root_partition} rw ...
     boot
     ```
 
