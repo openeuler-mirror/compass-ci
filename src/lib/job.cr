@@ -277,11 +277,8 @@ class Job
     # same usage for client
     mount_type = "nfs" if mount_type == "cifs"
 
-    if @hash["rpmbuild-pkg"]?
-      common_dir = "#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
-    else
-      common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
-    end
+    common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
+    common_dir = "#{tmp_os}-#{tmp_os_version}/#{tmp_os_arch}" if @hash.has_key?("rpmbuild-pkg")
 
     return common_dir
   end
