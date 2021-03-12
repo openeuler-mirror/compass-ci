@@ -36,6 +36,8 @@ server_name=$(hostname | cut -f1 -d.)
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
+SCHED_HOST: $sched_host
+SCHED_PORT: $sched_port
 lab: nolab
 EOF
 
