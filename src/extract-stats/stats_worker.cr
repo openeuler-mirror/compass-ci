@@ -81,6 +81,7 @@ class StatsWorker
       {
         :index => "jobs", :type => "_doc",
         :id => job_id,
+        :refresh => "wait_for",
         :body => {:doc => update_content},
       }
     )
