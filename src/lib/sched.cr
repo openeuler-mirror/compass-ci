@@ -218,4 +218,14 @@ class Sched
 
     return nil
   end
+
+  def mq_pushlish_confirm(queue, msg)
+    3.times do
+      @mq.pushlish_confirm(queue, msg)
+      break
+    rescue e
+      res = @mq.reconnect
+      sleep 5
+    end
+  end
 end

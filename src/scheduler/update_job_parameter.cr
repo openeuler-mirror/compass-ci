@@ -44,6 +44,6 @@ class Sched
       "job_state" => (@env.get?("job_state") || "update").to_s,
       "time" => @env.get?("time").to_s
     }
-    @mq.pushlish_confirm(JOB_MQ, mq_msg.to_json)
+    spawn mq_pushlish_confirm(JOB_MQ, mq_msg.to_json)
   end
 end
