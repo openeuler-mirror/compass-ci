@@ -37,7 +37,7 @@ defaults['SSHR_PORT_LEN'] ||= 2000
 defaults['SCHED_PORT'] ||= '3000'
 defaults['SCHED_HOST'] ||= '172.17.0.1'
 defaults['MASTER_FLUENTD_PORT'] ||= '24224'
-defaults['SRV_HTTP_CCI_PORT'] ||= '11306'
+defaults['SRV_HTTP_CCI_PORT'] ||= '11307'
 env = docker_env(defaults)
 
 CCI_REPOS = ENV['CCI_REPOS'] || '/c'
