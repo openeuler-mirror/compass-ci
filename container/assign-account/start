@@ -14,7 +14,7 @@ cmd=(
 	-v /etc:/etc:rw
 	-v /srv/account-info:/opt/account_data/:rw
 	-v /home:/home:rw
-	-p 29999:29999
+	-p 10000:10000
 	assign-account
 )
 

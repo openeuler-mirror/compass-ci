@@ -10,7 +10,7 @@ require 'yaml'
 require_relative 'get_account_info'
 
 set :bind, '0.0.0.0'
-set :port, 29999
+set :port, 10000
 
 post '/assign_account' do
   begin
