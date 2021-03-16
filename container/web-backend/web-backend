@@ -9,7 +9,7 @@ CCI_SRC = ENV['CCI_SRC'] || '/c/compass-ci'
 require "#{CCI_SRC}/src/lib/web_backend.rb"
 
 set :bind, '0.0.0.0'
-set :port, 32767
+set :port, 10002
 set :show_exceptions, false
 set :environment, :production
 

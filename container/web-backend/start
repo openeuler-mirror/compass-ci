@@ -18,7 +18,7 @@ cmd=(
 	--name web-backend
 	--restart=always
 	-d
-	-p 32767:32767
+	-p 10002:10002
 
 	-e ES_PORT=9200
 	-e SRV_HTTP_RESULT_HOST=$SRV_HTTP_RESULT_HOST
