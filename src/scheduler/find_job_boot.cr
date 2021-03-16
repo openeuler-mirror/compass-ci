@@ -126,16 +126,8 @@ class Sched
     return boot_content(job, boot_type)
   end
 
-  private def ipxe_msg(msg)
-    "#!ipxe
-        echo ...
-        echo #{msg}
-        echo ...
-        reboot"
-  end
-
-  private def grub_msg(msg)
-    "#!grub
+  private def boot_msg(boot_type, msg)
+    "#!#{boot_type}
         echo ...
         echo #{msg}
         echo ...
@@ -220,9 +212,9 @@ class Sched
 
     case boot_type
     when "ipxe"
-      return job ? get_boot_ipxe(job) : ipxe_msg("No job now")
+      return job ? get_boot_ipxe(job) : boot_msg(boot_type, "No job now")
     when "grub"
-      return job ? get_boot_grub(job) : grub_msg("No job now")
+      return job ? get_boot_grub(job) : boot_msg(boot_type, "No job now")
     when "container"
       return job ? get_boot_container(job) : Hash(String, String).new.to_json
     when "libvirt"
