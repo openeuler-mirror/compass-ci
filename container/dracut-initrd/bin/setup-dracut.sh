@@ -17,7 +17,8 @@ cp -a /usr/local/bin/cifs-lib.sh /usr/lib/dracut/modules.d/95cifs/
 
 cat overlay-lkp.sh   >> /usr/lib/dracut/modules.d/90overlay-root/overlay-mount.sh
 sed -i "/install() {/a\    inst /usr/bin/awk" /usr/lib/dracut/modules.d/40network/module-setup.sh
-sed -i "/install() {/a\    inst /sbin/mke2fs /usr/bin/basename" /usr/lib/dracut/modules.d/98dracut-systemd/module-setup.sh
+sed -i "/install() {/a\    inst /sbin/e2fsck /sbin/mke2fs /usr/bin/basename" /usr/lib/dracut/modules.d/00bash/module-setup.sh
+
 pre_mount_file="/usr/lib/dracut/modules.d/98dracut-systemd/dracut-pre-mount.sh"
 [ "$(sed -n '$p' $pre_mount_file)"  = "exit 0" ] && sed -i '$d' "$pre_mount_file"
 cat set-local-sysroot.sh >> "$pre_mount_file"
