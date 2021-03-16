@@ -4,7 +4,7 @@
 
 LKP_SRC ||= ENV['LKP_SRC'] || '/c/lkp-tests'
 MONITOR_HOST ||= ENV['MONITOR_HOST'] || '172.17.0.1'
-MONITOR_PORT ||= ENV['MONITOR_PORT'] || '11310'
+MONITOR_PORT ||= ENV['MONITOR_PORT'] || '20001'
 GIT_MIRROR_HOST ||= ENV['GIT_MIRROR_HOST'] || '172.17.0.1'
 DELIMITER_EMAIL ||= ENV['DELIMITER_EMAIL'] || 'delimiter@localhost'
 BISECT_RUN_SCRIPT = "#{ENV['CCI_SRC']}/src/delimiter/find-commit/bisect_run_script.rb"

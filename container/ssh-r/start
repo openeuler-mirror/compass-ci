@@ -15,7 +15,7 @@ cmd=(
   -e GATEWAY_PORTS=true
   -e TCP_FORWARDING=true
   -d
-  -p 50000-51999:50000-51999
+  -p 21000-23999:21000-23999
   -p 5050:22
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/pub/sshr/keys/:/etc/ssh/keys

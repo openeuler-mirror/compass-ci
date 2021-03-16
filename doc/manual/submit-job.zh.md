@@ -140,7 +140,7 @@ options:
     hi8109@account-vm ~% submit -m iperf.yaml testbox=vm-2p8g
     submit iperf.yaml, got job_id=z9.173923
     query=>{"job_id":["z9.173923"]}
-    connect to ws://172.168.131.2:11310/filter
+    connect to ws://172.168.131.2:20001/filter
     {"job_id":"z9.173923","message":"","job_state":"submit","result_root":"/srv/result/iperf/2020-11-30/vm-2p8g/openeuler-20.03-aarch6
     {"job_id": "z9.173923", "result_root": "/srv/result/iperf/2020-11-30/vm-2p8g/openeuler-20.03-aarch64/tcp-30/z9.173923", "job_state
     {"job_id": "z9.173923", "job_state": "boot"}
@@ -173,7 +173,7 @@ options:
     hi8109@account-vm ~% submit -m -c borrow-1h.yaml testbox=vm-2p8g
     submit borrow-1h.yaml, got job_id=z9.173925
     query=>{"job_id":["z9.173925"]}
-    connect to ws://172.168.131.2:11310/filter
+    connect to ws://172.168.131.2:20001/filter
     {"job_id":"z9.173925","message":"","job_state":"submit","result_root":"/srv/result/borrow/2020-11-30/vm-2p8g/openeuler-20.03-aarch
     {"job_id": "z9.173925", "result_root": "/srv/result/borrow/2020-11-30/vm-2p8g/openeuler-20.03-aarch64/3600/z9.173925", "job_state"
     {"job_id": "z9.173925", "job_state": "boot"}

@@ -9,7 +9,7 @@ require_relative '../defconfig.rb'
 names = Set.new ['MONITOR_PORT']
 defaults = relevant_defaults(names)
 
-MONITOR_PORT = (defaults['MONITOR_PORT'] || '11310')
+MONITOR_PORT = (defaults['MONITOR_PORT'] || '20001')
 
 docker_skip_rebuild "monitoring-#{MONITOR_PORT}"
 

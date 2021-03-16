@@ -17,7 +17,7 @@ env = docker_env(defaults)
 
 DEFAULT_CCI = '/c/cci'
 DEFAULT_LKP = '/c/lkp-tests'
-MONITOR_PORT = defaults['MONITOR_PORT'] || '11310'
+MONITOR_PORT = defaults['MONITOR_PORT'] || '20001'
 docker_rm "monitoring-#{MONITOR_PORT}"
 
 cmd = %W[
