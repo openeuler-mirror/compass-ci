@@ -1,29 +1,26 @@
-# Introduction of compare feature
-  The compare feature used to analyze the results of different jobs, showing the performance waves and changes
-  under different influencing factors, for users to analyze performance influencing factor.
+# 比较功能介绍
+  比较功能用于分析不同任务的结果，显示不同影响因素下的性能波动和变化，供用户分析性能影响因素。
 
 ## url: https://compass-ci.openeuler.org/compare
 
-## options directions
-### filters:
+## 选项说明
+### 过滤器:
     - suite: iperf, netperf, mysql, ...
     - OS: openeuler 20.03, centos 7.6, ...
     - os_arch: aarch64, x86
     - tbox_group: vm-2p8g, taishan200-2880-2s48p-256g, ...
-    we can combine the above options arbitrarily to limit compare scope.
-    choose at least one option as filter.
+    我们可以任意组合以上选项来限制比较范围，但至少选择一个选项作为过滤器。
 
-### dimension
-    Dimension can select: os, os_version, os_arch, suite, tbox_group.
-    Within filter, we will compare all different job result by dimension
-    and keep other test conditions are same.
+### 维度
+    可选维度: os, os_version, os_arch, suite, tbox_group.
+    在过滤器中，我们将按所选维度比较所有不同的任务结果，并保持其他测试条件一致。
 
-## example:
-    filter: suite = iperf
-    dimension: os_version
+## 示例:
+    过滤器: suite = iperf
+    维度: os_version
 
-    result:
-	os=openeuler/os_arch=aarch64/pp.iperf.protocol=tcp/pp.iperf.runtime=20/tbox_group=vm-2p8g  # other test conditions keep same
+    结果:
+	os=openeuler/os_arch=aarch64/pp.iperf.protocol=tcp/pp.iperf.runtime=20/tbox_group=vm-2p8g  # 其他测试条件一致
 
 
 	               20.09                           20.03  metric
