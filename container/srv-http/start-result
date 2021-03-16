@@ -9,7 +9,7 @@ cmd=(
 	docker run
 	--restart=always
 	--name srv-http-result
-	-p 11300:11300
+	-p 20007:11300
 	-v /srv/result:/srv/result:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-d

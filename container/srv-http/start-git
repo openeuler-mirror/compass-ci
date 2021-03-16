@@ -9,7 +9,7 @@ cmd=(
 	docker run
 	--restart=always
 	--name srv-http-git
-	-p 11305:11300
+	-p 20010:11300
 	-v /srv/git/archlinux:/srv/git/archlinux:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-d

@@ -9,7 +9,7 @@ cmd=(
 	docker run
 	--restart=always
 	--name srv-http-pub
-	-p 11302:11300
+	-p 20006:11300
 	-v /srv/pub:/srv/pub:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-d

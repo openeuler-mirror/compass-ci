@@ -9,7 +9,7 @@ cmd=(
 	docker run
 	--restart=always
 	--name srv-http-initrd
-	-p 11303:11300
+	-p 20008:11300
 	-v /srv/initrd/qemu-image:/srv/initrd/qemu-image:ro
 	-v /srv/initrd/dockerimage:/srv/initrd/dockerimage:ro
 	-v /srv/initrd/rpmbuild-pkg:/srv/initrd/rpmbuild-pkg:ro
