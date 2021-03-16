@@ -7,6 +7,8 @@ require 'open-uri'
 require 'json'
 require 'set'
 require 'fileutils'
+
+require '../lib/mq_client'
 require_relative '../../container/defconfig'
 
 BASE_DIR = '/srv/dc'
@@ -19,6 +21,8 @@ defaults = relevant_defaults(names)
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT = defaults['SCHED_PORT'] || 3000
 LOG_DIR  = '/srv/cci/serial/logs'
+MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
+MQ_PORT = ENV['MQ_PORT'] || 5672
 
 def get_url(hostname)
   "http://#{SCHED_HOST}:#{SCHED_PORT}/boot.container/hostname/#{hostname}"
@@ -84,7 +88,8 @@ def start_container(hostname, load_path, hash)
   docker_image = hash['docker_image']
   system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
   system(
-    { 'hostname' => hostname,
+    { 'job_id' => hash['job_id'],
+      'hostname' => hostname,
       'docker_image' => docker_image,
       'load_path' => load_path,
       'log_dir' => "#{LOG_DIR}/#{hostname}"
@@ -145,6 +150,29 @@ def loop_main(hostname, queues)
   end
 end
 
+def loop_reboot_docker(hostname)
+  loop do
+    begin
+      reboot_docker(hostname)
+    rescue StandardError => e
+      puts e.backtrace
+      sleep 5
+    end
+  end
+end
+
+def reboot_docker(hostname)
+  mq = MQClient.new(MQ_HOST, MQ_PORT)
+  queue = mq.queue(hostname, {:durable => true})
+  queue.subscribe({:block => true, :manual_ack => true}) do |info,  _pro, msg|
+    puts msg
+    machine_info = JSON.parse(msg)
+    job_id = machine_info['job_id']
+    system "docker rm -f #{job_id};echo $?"
+    mq.ack(info)
+  end
+end
+
 def save_pid(pids)
   FileUtils.cd("#{ENV['CCI_SRC']}/providers")
   f = File.new('dc.pid', 'a')
@@ -153,6 +181,10 @@ def save_pid(pids)
 end
 
 def multi_docker(hostname, nr_container, queues)
+  Process.fork do
+    loop_reboot_docker(hostname)
+  end
+
   pids = []
   nr_container.to_i.times do |i|
     pid = Process.fork do

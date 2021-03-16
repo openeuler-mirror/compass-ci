@@ -4,6 +4,7 @@
 
 . $LKP_SRC/lib/yaml.sh
 
+: ${job_id:=$$}
 : ${docker_image:="centos:7"}
 : ${load_path:="${HOME}/jobs"}
 : ${hostname:="dc-1g-1"}
@@ -23,6 +24,7 @@ busybox_path=$(command -v busybox)
 cmd=(
 	docker run
 	--rm
+	--name ${job_id}
 	--hostname $host.compass-ci.net
 	-m $memory
 	--tmpfs /tmp:rw,exec,nosuid,nodev
