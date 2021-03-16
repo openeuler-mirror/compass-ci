@@ -76,7 +76,7 @@ def check_send_mail(mail_info)
   raise 'no/empty email_to address.' if mail_info['to'].nil? || mail_info['to'].empty?
   raise 'no/empty email content.' if mail_info['body'].nil? || mail_info['body'].empty?
 
-  return mail_info unless ENV['SEND_MAIL_PORT'].to_s == '49000'
+  return mail_info unless ENV['SEND_MAIL_PORT'].to_s == '10001'
 
   mail_info = check_email_mapping(mail_info.clone)
   mail_info = check_email_limit(mail_info.clone)
@@ -101,7 +101,7 @@ def send_mail(mail_info)
 end
 
 def check_to_store_email(mail)
-  return if ENV['SEND_MAIL_PORT'].to_s != '49000'
+  return if ENV['SEND_MAIL_PORT'].to_s != '10001'
   return if ENV['HOST_SERVER'] != 'z9'
 
   store_email(mail)

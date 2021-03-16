@@ -21,9 +21,9 @@ names = Set.new %w[
 
 defaults = relevant_defaults(names)
 JUMPER_HOST = defaults['JUMPER_HOST']
-JUMPER_PORT = defaults['JUMPER_PORT'] || 29999
+JUMPER_PORT = defaults['JUMPER_PORT'] || 10000
 SEND_MAIL_HOST = defaults['SEND_MAIL_HOST'] || 'localhost'
-SEND_MAIL_PORT = defaults['SEND_MAIL_PORT'] || 49000
+SEND_MAIL_PORT = defaults['SEND_MAIL_PORT'] || 10001
 LAB = ENV['lab']
 
 # used for other codes calling to assign account for user
