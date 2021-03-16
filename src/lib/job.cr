@@ -278,7 +278,7 @@ class Job
     mount_type = "nfs" if mount_type == "cifs"
 
     common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
-    common_dir = "#{tmp_os}-#{tmp_os_version}/#{tmp_os_arch}" if @hash.has_key?("rpmbuild-pkg")
+    common_dir = "#{tmp_os}-#{tmp_os_version}" if @hash.has_key?("rpmbuild-pkg")
 
     return common_dir
   end
@@ -293,7 +293,7 @@ class Job
     elsif @hash["cci-depends"]?
       package_dir = ",/initrd/deps/#{common_dir}/#{@hash["cci-depends"]["benchmark"]}"
     elsif @hash["rpmbuild-pkg"]?
-      package_dir = ",/initrd/rpmbuild-pkg/#{common_dir}/#{@hash["rpm_repo"].to_s.split("/")[-1]}"
+      package_dir = ",/initrd/rpmbuild-pkg/#{common_dir}"
     elsif @hash["build-pkg"]?
       if @hash["pkgbuild_repo"].to_s =~ /(packages|community)\/\//
         package_name = @hash["pkgbuild_repo"].to_s.split("/")[-2]
