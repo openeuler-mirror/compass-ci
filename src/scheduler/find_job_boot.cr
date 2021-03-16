@@ -32,7 +32,7 @@ class Sched
       "time" => get_time,
       "job_state" => "boot"
     }
-    spawn mq_pushlish_confirm(JOB_MQ, mq_msg.to_json)
+    spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
   end
 
   # auto submit a job to collect the host information.

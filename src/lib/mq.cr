@@ -37,7 +37,7 @@ class MQClient
     Singleton::Of(self).instance
   end
 
-  def pushlish_confirm(queue, msg, passive = false, durable = false, exclusive = false, auto_delete = false)
+  def publish_confirm(queue, msg, passive = false, durable = false, exclusive = false, auto_delete = false)
     q = @ch.queue(queue, passive, durable, exclusive, auto_delete)
     if durable
       q.publish_confirm(msg, props: AMQ::Protocol::Properties.new(delivery_mode: 2))
@@ -46,7 +46,7 @@ class MQClient
     end
   end
 
-  def pushlish(queue, msg, passive = false, durable = false, exclusive = false, auto_delete = false)
+  def publish(queue, msg, passive = false, durable = false, exclusive = false, auto_delete = false)
     q = @ch.queue(queue, passive, durable, exclusive, auto_delete)
     if durable
       q.publish(msg, props: AMQ::Protocol::Properties.new(delivery_mode: 2))

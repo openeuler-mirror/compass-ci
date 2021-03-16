@@ -79,7 +79,7 @@ class Lifecycle
         "job_state" => "abnormal",
         "testbox" => testbox
       }
-      @mq.pushlish_confirm("job_mq", msg.to_json)
+      @mq.publish_confirm("job_mq", msg.to_json)
       @match[testbox].delete(id)
     end
   end
@@ -313,7 +313,7 @@ class Lifecycle
     mq_queue = get_machine_reboot_queue(testbox)
     machine.as_h.delete("history")
     machine.as_h["testbox"] = JSON::Any.new(testbox)
-    @mq.pushlish_confirm(mq_queue, machine.to_json, durable: true)
+    @mq.publish_confirm(mq_queue, machine.to_json, durable: true)
 
     machine["state"] = "rebooting_queue"
     machine["time"] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")

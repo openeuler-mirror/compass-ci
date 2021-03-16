@@ -45,7 +45,7 @@ class Sched
         "job_state" => "close",
         "time" => get_time
       }
-      spawn mq_pushlish_confirm(JOB_MQ, mq_msg.to_json)
+      spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
     end
   end
 end

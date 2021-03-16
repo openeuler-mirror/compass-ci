@@ -219,9 +219,9 @@ class Sched
     return nil
   end
 
-  def mq_pushlish_confirm(queue, msg)
+  def mq_publish_confirm(queue, msg)
     3.times do
-      @mq.pushlish_confirm(queue, msg)
+      @mq.publish_confirm(queue, msg)
       break
     rescue e
       res = @mq.reconnect
