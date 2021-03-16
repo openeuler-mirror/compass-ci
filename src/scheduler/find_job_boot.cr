@@ -144,6 +144,7 @@ class Sched
 
   private def get_boot_container(job : Job)
     response = Hash(String, String).new
+    response["job_id"] = job.id.to_s
     response["docker_image"] = "#{job.docker_image}"
     response["lkp"] = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}" +
                       JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz")
