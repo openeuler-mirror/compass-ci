@@ -8,7 +8,7 @@ The service is used to send mails with formatted mail data
 
 ## send mail port
 - send intranet mail: 11311
-- send internet mail: 49000
+- send internet mail: 10001
 
 ## send mail host
 - host the service running on
@@ -58,5 +58,5 @@ The service is used to send mails with formatted mail data
 	test msg 1010
 	"
 
-	%x(curl -XPOST 'localhost:49000/send_mail_text' -d "#{data}")
+	%x(curl -XPOST 'localhost:10001/send_mail_text' -d "#{data}")
 	```
