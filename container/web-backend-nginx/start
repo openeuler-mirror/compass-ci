@@ -10,7 +10,7 @@ docker_rm web-backend-nginx
 cmd=(
 	docker run
 	--name web-backend-nginx
-	-p 11320:11320
+	-p 20003:20003
 	-d
 
 	-v /etc/ssl/certs:/opt/cert
