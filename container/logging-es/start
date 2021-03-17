@@ -19,14 +19,3 @@ cmd=(
 )
 
 "${cmd[@]}"
-
-# set index
-check_service_ready 9202
-curl -sSH "Content-Type: application/json" -XPUT "localhost:9202/_settings" -d '
-{
-	"index": {
-	"refresh_interval": "120s",
-	"translog.durability": "async",
-	"translog.sync_interval": "120s",
-	"translog.flush_threshold_size": "1024mb"}
-}'
