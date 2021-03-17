@@ -11,4 +11,4 @@ docker_skip_rebuild "alpine:crystal-shards"
 
 load_cci_defaults
 
-docker build --build-arg GITCACHE_HOST=$GITCACHE_HOST --build-arg GITCACHE_PORT=$GITCACHE_PORT -t alpine:crystal-shards .
+docker build -t alpine:crystal-shards .
