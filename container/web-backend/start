@@ -11,7 +11,7 @@ docker_rm web-backend
 
 load_cci_defaults
 [[ $SRV_HTTP_RESULT_HOST ]] || SRV_HTTP_RESULT_HOST=$(curl ip.sb)
-[[ $SRV_HTTP_RESULT_PORT ]] || SRV_HTTP_RESULT_PORT=11300
+[[ $SRV_HTTP_RESULT_PORT ]] || SRV_HTTP_RESULT_PORT=20007
 
 cmd=(
 	docker run
