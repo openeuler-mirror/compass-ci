@@ -5,7 +5,10 @@ FROM alpine:crystal-base
 
 MAINTAINER chief <taxcom@tom.com>
 
-copy shard.yml /usr/share/crystal/app/shard.yml
+COPY git /usr/local/sbin/git
+RUN echo -e "[url \"git://\"]\n\tinsteadOf = https://" >> /etc/gitconfig
+
+COPY shard.yml /usr/share/crystal/app/shard.yml
 
 WORKDIR /usr/share/crystal/app
 RUN shards
@@ -14,7 +17,7 @@ sed -i '99s/arguments\[:id]/arguments\[:id]?/'  /usr/share/crystal/app/lib/elast
 sed -i 's/, Utils.__listify(arguments\[:q].as(String))/ /'  /usr/share/crystal/app/lib/elasticsearch-crystal/src/elasticsearch/api/actions/search.cr;\
 sed -i '205a \        params.clear' /usr/share/crystal/app/lib/elasticsearch-crystal/src/elasticsearch/api/actions/search.cr;
 
-copy shard-amqp.yml /usr/share/crystal/app/shard.yml
+COPY shard-amqp.yml /usr/share/crystal/app/shard.yml
 RUN shards
 
 CMD ["bash"]

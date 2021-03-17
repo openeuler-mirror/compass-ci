@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [[ "$*" = "ls-remote --get-url origin" ]]; then
+        /usr/bin/git "$@" | sed 's|git://|https://|g'
+else
+        /usr/bin/git "$@"
+fi
