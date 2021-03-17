@@ -4,6 +4,7 @@
 
 [ -z $server_ip ] && server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 server_name=$(hostname | cut -f1 -d.)
+: ${lab:=nolab}
 : ${sched_host:=$server_ip}
 : ${sched_port:=3000}
 : ${ES_HOST:=$server_ip}
@@ -38,7 +39,7 @@ mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
 SCHED_HOST: $sched_host
 SCHED_PORT: $sched_port
-lab: nolab
+lab: $lab
 EOF
 
 mkdir -p /etc/compass-ci/service
