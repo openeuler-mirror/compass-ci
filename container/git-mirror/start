@@ -6,7 +6,7 @@
 require_relative '../defconfig.rb'
 
 DOCKER_CCI = '/c/compass-ci'
-DOCKER_REPO = '/c/upstream-repos'
+DOCKER_REPO = '/c/git-repos'
 docker_rm "git-mirror"
 
 lkp = %x(id -u lkp)
