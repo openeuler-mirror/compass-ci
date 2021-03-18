@@ -224,7 +224,7 @@ class Sched
       @mq.publish_confirm(queue, msg)
       break
     rescue e
-      res = @mq.reconnect
+      @mq.reconnect
       sleep 5
     end
   end

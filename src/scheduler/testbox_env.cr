@@ -5,7 +5,7 @@ class Job
   def get_service_env
     hash = Hash(String, JSON::Any).new
     yaml_any = File.open("/etc/compass-ci/service/service-env.yaml") do |content|
-      YAML.parse(content).as_h? 
+      YAML.parse(content).as_h?
     end
     return hash unless yaml_any
 
