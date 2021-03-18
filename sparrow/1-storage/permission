@@ -10,6 +10,7 @@ chmod_dir=(
 		/srv/cci/libvirt-xml
 		/srv/cci/serial/fluentd-pos
 		/srv/cci/Maildir
+		/srv/rabbitmq
 )
 
 chmod 775 "${chmod_dir[@]}"
@@ -22,6 +23,7 @@ chown_dir=(
 		/srv/cache/netdata_lib
 		/srv/cci/serial/fluentd-pos
 		/srv/cci/libvirt-xml
+		/srv/rabbitmq
 )
 
 chown lkp:lkp "${chown_dir[@]}"

@@ -24,6 +24,7 @@ dirs=(
 	/srv/cci/Maildir/.compass-ci/new
 	/srv/cci/Maildir/.compass-ci/cur
 	/srv/cci/Maildir/.compass-ci/sent
+	/srv/rabbitmq
 )
 
 mkdir -p "${dirs[@]}"
