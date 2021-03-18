@@ -62,7 +62,7 @@ do_one_run()
 		}
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
-		[ "$container_name" == 'initrd-lkp' ] && ./run
+		[ "$container_name" == 'lkp-initrd' ] && ./run
 	)
 }
 
