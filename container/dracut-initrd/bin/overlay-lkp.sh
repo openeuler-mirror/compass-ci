@@ -1,6 +1,11 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-2.0
 
+# transfer custom bootstrap
+[ -d /custom_bootstrap ] && {
+	cp -a /custom_bootstrap/* "$NEWROOT"/
+}
+
 # transfer LKP dirs
 [ -d /lkp ] || return 0
 
