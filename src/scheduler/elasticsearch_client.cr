@@ -82,7 +82,10 @@ class Elasticsearch::Client
     results = @client.search({:index => index, :body => query})
     raise results unless results.is_a?(JSON::Any)
 
-    results["hits"]["hits"].as_a
+    return results["hits"]["hits"].as_a unless results.as_h.has_key?("error")
+
+    puts results
+    Array(JSON::Any).new
   end
 
   def update_account(account_content : JSON::Any, my_email : String)
