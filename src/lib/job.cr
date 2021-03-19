@@ -514,6 +514,15 @@ class Job
   private def common_initrds
     temp_initrds = [] of String
 
+    if @hash.has_key?("custom_bootstrap")
+      raise "need runtime field in the job yaml." unless @hash.has_key?("runtime")
+
+      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+        JobHelper.service_path("#{SRV_INITRD}/custom_bootstrap/#{@hash["my_email"]}/bootstrap-#{os_arch}.cgz")
+
+      return temp_initrds
+    end
+
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
                     JobHelper.service_path("#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz")
     temp_initrds << "#{SCHED_HTTP_PREFIX}/job_initrd_tmpfs/#{id}/job.cgz"
