@@ -53,7 +53,6 @@ class Job
 
   def initialize(job_content : JSON::Any, id)
     @hash = job_content.as_h
-    @hash.merge!(testbox_env)
     @es = Elasticsearch::Client.new
     @account_info = Hash(String, JSON::Any).new
     @log = JSONLogger.new
@@ -150,6 +149,7 @@ class Job
     check_account_info()
     check_run_time()
     set_defaults()
+    @hash.merge!(testbox_env)
   end
 
   private def set_defaults
