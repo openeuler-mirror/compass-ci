@@ -13,7 +13,7 @@ cmd=(
 	-v /srv/result/upload:/srv/result/upload
 	-v /srv/os/install/ks:/srv/os/install/ks
 	-v /etc/localtime:/etc/localtime:ro
-	-p 11387:11387
+	-p 20004:11387
 	rsync_server:latest
 )
 
