@@ -7,4 +7,5 @@
 ./start-initrd
 ./start-os
 ./start-git
+./start-rpm
 ./start-cci

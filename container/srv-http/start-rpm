@@ -1,0 +1,19 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+docker_rm srv-http-rpm
+
+cmd=(
+	docker run
+	--restart=always
+	--name srv-http-rpm
+	-p 20012:11300
+	-v /srv/rpm/pub:/srv/rpm/pub:ro
+	-v /etc/localtime:/etc/localtime:ro
+	-d
+	srv-http
+)
+
+"${cmd[@]}"
