@@ -56,7 +56,7 @@ class ApplyAccount
     @es_port = ES_PORT
 
     # email info file for account issuers.
-    @account_issuer = YAML.load_file '/etc/compass-ci/account-issuer.yaml'
+    @account_issuer = YAML.load_file ENV['ACCOUNT_ISSUER']
 
     @my_info = {}
   end

@@ -16,6 +16,7 @@ names = Set.new %w[
   SCHED_HTTPS_PORT
   ES_PORT
   MAILDIR
+  ACCOUNT_ISSUER
   lab
 ]
 
