@@ -119,9 +119,34 @@ add_disk()
 	done
 }
 
+set_mac()
+{
+	job_id=$(awk -F'/' '/job_initrd_tmpfs/{print $(NF-1)}' $ipxe_script)
+
+	if [ $(command -v es-find) ]; then
+		nr_nic=$(es-find id=$job_id | awk '/nr_nic/{print $2}' | tr -d ,)
+	else
+		echo "command not found: es-find. set nr_nic=1"
+		sleep 1
+	fi
+
+	mac_arr[1]=$mac
+	nr_nic=${nr_nic:-1}
+
+	[ "$nr_nic" -ge "2" ] || return
+	for i in $(seq 2 $nr_nic)
+	do
+	        mac=$(echo $hostname$i | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/0a-\1-\2-\3-\4-\5/')
+	        mac_arr[$i]=$mac
+	done
+}
+
 set_nic()
 {
-       nic="tap,model=virtio-net-pci,helper=$helper,br=br0,mac=${mac}"
+        for i in $(seq 1 $nr_nic)
+        do
+                nic[$i]="-nic tap,model=virtio-net-pci,helper=$helper,br=br0,mac=${mac_arr[$i]}"
+        done
 }
 
 set_device()
@@ -190,7 +215,7 @@ individual_option()
 					-machine virt-4.0,accel=kvm,gic-version=3
 					-cpu Kunpeng-920
 					-bios $bios
-					-nic $nic
+					${nic[@]}
 			)
 			;;
 		qemu-kvm)
@@ -198,17 +223,17 @@ individual_option()
 					-machine virt-4.0,accel=kvm,gic-version=3
 					-cpu Kunpeng-920
 					-bios $bios
-					-nic $nic
+					${nic[@]}
 			)
 			[ "$(arch)" == "x86_64" ] && arch_option=(
 					-bios $bios
-					-nic $nic
+					${nic[@]}
 			)
 			;;
 		qemu-system-x86_64)
 			arch_option=(
 					-bios $bios
-					-nic $nic
+					${nic[@]}
 			)
 			;;
 		qemu-system-riscv64)
@@ -234,6 +259,7 @@ set_options()
 {
 	set_bios
 	set_helper
+	set_mac
 	set_nic
 	set_device
 	set_netdev
