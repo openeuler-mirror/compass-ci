@@ -10,7 +10,7 @@ ENV        DEBIAN_FRONTEND noninteractive
 COPY conf/sources.list* /etc/apt/
 
 RUN        apt-get update && \
-           apt-get install -y git uuid-runtime ruby-listen ruby-json ruby-mail ruby-rest-client
+           apt-get install -y git uuid-runtime ruby-listen ruby-json ruby-mail ruby-rest-client ruby-git
 
 
 RUN        gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
