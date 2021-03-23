@@ -108,7 +108,7 @@ EOF
 cat > /etc/profile.d/compass.sh <<'EOF'
 export LKP_SRC=/c/lkp-tests
 export CCI_SRC=/c/compass-ci
-export REPO_SRC=/c/upstream-repos
+export REPO_SRC=/c/git-repos
 export CCI_REPOS=/c
 
 export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
