@@ -11,6 +11,7 @@ chmod_dir=(
 		/srv/cci/serial/fluentd-pos
 		/srv/cci/Maildir
 		/srv/rabbitmq
+		/c/git-repos
 )
 
 chmod 775 "${chmod_dir[@]}"
@@ -29,6 +30,7 @@ chown_dir=(
 chown lkp:lkp "${chown_dir[@]}"
 
 chown lkp:committer /srv/git
+chown lkp:committer /c/git-repos
 chown mailer:team /srv/cci/Maildir
 
 chgrp team /srv/cci/serial/logs

@@ -20,6 +20,7 @@ dirs=(
 	/srv/cci/libvirt-xml
 	/tftpboot
 	/c
+	/c/git-repos
 	/etc/qemu
 	/srv/cci/Maildir/.compass-ci/new
 	/srv/cci/Maildir/.compass-ci/cur
