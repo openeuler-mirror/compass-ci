@@ -42,6 +42,15 @@ SCHED_PORT: $sched_port
 lab: $lab
 EOF
 
+[[ -f /etc/compass-ci/defaults/upstream-config ]] || {
+cat > /etc/compass-ci/defaults/upstream-config <<EOF
+upstreams:
+- url: https://gitee.com/thesamename/upstream-repos.git
+  location: upstream
+  git_repo: u/upstream-repos/upstream-repos
+EOF
+}
+
 mkdir -p /etc/compass-ci/service
 cat > /etc/compass-ci/service/service-env.yaml <<EOF
 ES_HOST: $ES_HOST
