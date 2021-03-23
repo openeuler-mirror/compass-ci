@@ -8,7 +8,7 @@ require 'json'
 require 'set'
 require 'fileutils'
 
-require '../lib/mq_client'
+require_relative '../../lib/mq_client'
 require_relative '../../container/defconfig'
 
 BASE_DIR = '/srv/dc'
