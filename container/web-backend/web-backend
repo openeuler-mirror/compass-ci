@@ -146,3 +146,28 @@ end
 get '/get_repo_statistics' do
   new_refs_statistics(params)
 end
+
+# GET /get_jobs_summary?suite=iperf&GROUP_BY=my_name
+# must:
+# - query_conditions
+#   - suite / group_id / ...
+# - GROUP_BY
+#   - group_id / my_email / my_name
+#
+# Response like:
+#   - {
+#       "kezhiming": {
+#                       "nr_all": $nr_all,
+#                       "nr_pass": $nr_pass,
+#                       "nr_fail: $nr_fail
+#                     },
+#       "chenqun": {
+#                       "nr_all": $nr_all,
+#                       "nr_pass": $nr_pass,
+#                       "nr_fail": $nr_fail
+#                     },
+#        ...
+#     }
+get '/get_jobs_summary' do
+  group_jobs_stats(params)
+end
