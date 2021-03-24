@@ -7,7 +7,7 @@ require 'fileutils'
 require 'optparse'
 require 'json'
 
-require '../lib/mq_client'
+require_relative "../lib/mq_client"
 
 opt = {}
 options = OptionParser.new do |opts|
