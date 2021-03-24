@@ -115,7 +115,6 @@ class MirrorMain
   def initialize
     @feedback_queue = Queue.new
     @fork_stat = {}
-    @priority = 0
     @priority_queue = PriorityQueue.new
     @git_info = {}
     @defaults = {}
@@ -221,11 +220,9 @@ class MirrorMain
   def push_git_queue
     return if @git_queue.size >= 1
 
-    fork_key = @priority_queue.delete_min_return_key
+    fork_key, old_pri = @priority_queue.delete_min
     do_push(fork_key)
-    priority_set = @priority > @fork_stat[fork_key][:priority] ? (@priority - @fork_stat[fork_key][:priority]) : 1
-    @priority_queue.push fork_key, priority_set
-    @priority += 1
+    @priority_queue.push fork_key, get_repo_priority(fork_key, old_pri)
   end
 
   def main_loop
@@ -251,8 +248,7 @@ class MirrorMain
     @git_info[git_repo] = merge_defaults(git_repo, @git_info[git_repo], belong)
 
     fork_stat_init(git_repo)
-    @priority_queue.push git_repo, @priority
-    @priority += 1
+    @priority_queue.push git_repo, get_repo_priority(git_repo, 0)
   end
 
   def compare_refs(cur_refs, old_refs)
@@ -388,8 +384,7 @@ class MirrorMain
 
       @git_info[git_repo] = { 'url' => url, 'git_repo' => git_repo, 'is_submodule' => true, 'belong' => belong }
       fork_stat_init(git_repo)
-      @priority_queue.push git_repo, @priority
-      @priority += 1
+      @priority_queue.push git_repo, get_repo_priority(git_repo, 0)
     end
   end
 
@@ -474,6 +469,8 @@ end
 
 # main thread
 class MirrorMain
+  WEEK_SECONDS = 604800
+
   def merge_defaults(object_key, object, belong)
     return object if object_key == belong
 
@@ -540,5 +537,26 @@ class MirrorMain
     return false if inactive_time =~ /(day|week|month|year)/
 
     return true
+  end
+
+  def get_repo_priority(git_repo, old_pri)
+    old_pri ||= 0
+    mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}"
+    mirror_dir = "#{mirror_dir}.git" unless @git_info[git_repo]['is_submodule']
+
+    return old_pri + Math.cbrt(WEEK_SECONDS) unless File.directory?(mirror_dir)
+
+    return cal_priority(mirror_dir, old_pri)
+  end
+
+  def cal_priority(mirror_dir, old_pri)
+    last_commit_time = %x(git -C #{mirror_dir} log --pretty=format:"%ct" -1 2>/dev/null).to_i
+    return old_pri + Math.cbrt(WEEK_SECONDS) if last_commit_time.zero?
+
+    t = Time.now.to_i
+    interval = t - last_commit_time
+    return old_pri + Math.cbrt(WEEK_SECONDS) if interval <= 0
+
+    return old_pri + Math.cbrt(interval)
   end
 end
