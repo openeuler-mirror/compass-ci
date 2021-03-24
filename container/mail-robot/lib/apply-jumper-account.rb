@@ -6,7 +6,7 @@
 require 'json'
 
 JUMPER_HOST = ENV['JUMPER_HOST'] || 'api.compass-ci.openeuler.org'
-JUMPER_PORT = ENV['JUMPER_PORT'] || 29999
+JUMPER_PORT = ENV['JUMPER_PORT'] || 10000
 
 # used to apply account
 # be called after AssignAccount successfully parsed my_commit_url and my_ssh_pubkey

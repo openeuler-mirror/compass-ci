@@ -12,7 +12,7 @@ require_relative 'assign-account-fail-eamil'
 require_relative 'apply-jumper-account'
 require_relative 'parse-apply-account-email'
 
-SEND_MAIL_PORT = ENV['SEND_MAIL_PORT'] || 49000
+SEND_MAIL_PORT = ENV['SEND_MAIL_PORT'] || 10001
 
 # assign uuid/account for user
 # when mail-robot listened new email, and the email's subject
