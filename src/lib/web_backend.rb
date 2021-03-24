@@ -121,6 +121,8 @@ end
 
 def get_dimension_conditions(params)
   dimension = params.key?(:dimension) ? [params.delete(:dimension)] : []
+  dimension = params.key?(:GROUP_BY) ? [params.delete(:GROUP_BY)] : [] if dimension.empty?
+
   conditions = {}
   FIELDS.each do |f|
     v = params[f]
@@ -545,6 +547,70 @@ def new_refs_statistics(params)
   rescue StandardError => e
     warn e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'new refs statistics error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+def single_count(stats)
+  fail_count = 0
+  pass_count = 0
+  single_nr_fail = 0
+  single_nr_pass = 0
+  stats.each do |stat, value|
+    fail_count += 1 if stat.match(/\.fail$/i)
+    pass_count += 1 if stat.match(/\.pass$/i)
+    single_nr_fail = value if stat.match(/\.nr_fail$/i)
+    single_nr_pass = value if stat.match(/\.nr_pass$/i)
+  end
+  fail_count = single_nr_fail.zero? ? fail_count : single_nr_fail
+  pass_count = single_nr_pass.zero? ? pass_count : single_nr_pass
+  [fail_count, pass_count, fail_count + pass_count]
+end
+
+def count_stats(job_list)
+  nr_stats = { 'nr_fail' => 0, 'nr_pass' => 0, 'nr_all' => 0 }
+  job_list.each do |job|
+    next unless job['_source']['stats']
+
+    fail_count, pass_count, all_count = single_count(job['_source']['stats'])
+    nr_stats['nr_fail'] += fail_count
+    nr_stats['nr_pass'] += pass_count
+    nr_stats['nr_all'] += all_count
+  end
+  nr_stats
+end
+
+def get_jobs_stats_count(dimension, must, size, from)
+  dimension_list = get_dimension_list(dimension)
+  stats_count = {}
+  dimension_list.each do |dim|
+    job_list = query_dimension(dimension[0], dim, must, size, from)
+    stats_count[dim] = count_stats(job_list)
+  end
+  stats_count.to_json
+end
+
+def get_stats_by_dimension(conditions, dimension, must, size, from)
+  must += build_multi_field_subquery_body(conditions)
+  count_query = { query: { bool: { must: must } } }
+  total = es_count(count_query)
+  return {} if total < 1
+
+  get_jobs_stats_count(dimension, must, size, from)
+end
+
+def get_jobs_stats(params)
+  dimension, conditions = get_dimension_conditions(params)
+  must = get_es_must(params)
+  get_stats_by_dimension(conditions, dimension, must, 1000, 0)
+end
+
+def group_jobs_stats(params)
+  begin
+    body = get_jobs_stats(params)
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'group jobs table error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
