@@ -4,7 +4,7 @@ analyse_kernel_cmdline_params() {
     rootfs="$(getarg root=)"
     # example: $nfs_server_ip:/os/${os}/${os_arch}/${os_version}-snapshots/20210310005959
     rootfs_src=$(echo $"$rootfs" | sed 's/\///')
-    timestamp="$(basename $root)"
+    timestamp="$(basename $rootfs_src)"
     os="$(echo $rootfs_src | awk -F '/|-' '{print $2}')"
     os_arch="$(echo $rootfs_src | awk -F '/|-' '{print $3}')"
     os_version="$(echo $rootfs_src | awk -F '/|-' '{print $4}')"
