@@ -1,4 +1,4 @@
-# How DO I Use the Compass-CI Platform to Test Open Source Projects?
+# How Do I Use the Compass-CI Platform to Test Open Source Projects?
 
 This document describes how to use the Compass-CI platform to test open source projects.
 
@@ -57,15 +57,25 @@ Perform the following steps to add the information of the code repository to be 
 
      For details, see [How To Add Test Cases](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md).
 
-2. Configure the **auto\_submit.yaml** file and submit the test task.
+2. Configure **DEFAULTS** files in **upstream-repos** repository and submit the test task.
 
-   You only need to add the following configuration information to the **sbin/auto\_submit.yaml** file in the **compass-ci** repository:
+   You only need to add **DEFAULTS** file in the directory of file **backlight** we referred to above, and configure it like:
 
-   ```
-   b/backlight/backlight:
-   - testbox=vm-2p8g os=openEuler os_version=20.03 os_mount=initramfs os_arch=aarch64 iperf.yaml
-   ```
+ ```
+  submit:
+  - command: testbox=vm-2p16g os=openeuler os_version=20.03 os_mount=cifs os_arch=aarch64 api-avx2neon.yaml
+    branches:
+    - master
+    - next
+  - command: testbox=vm-2p16g os=openeuler os_version=20.03 os_mount=cifs os_arch=aarch64 other-avx2neon.yaml
+    branches:
+    - branch_name_a
+    - branch_name_b
 
-   Submit the modified **auto\_submit.yaml** file to the **compass-ci** repository using Pull Request. Then you can use the Compass-CI platform to test your project.
+ ```
 
-   For details about how to set parameters in the **auto\_submit.yaml** file, see https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job.
+   Submit the modified **DEFAULTS** file to the **upstream-repos** repository using Pull Request. Then you can use the Compass-CI platform to test your project.
+
+   For details about how to configure DEFAULTS files, see https://gitee.com/wu_fengguang/upstream-repos/blob/master/README.md.
+
+   For meaning and effect of parameters in the command, see https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job.
