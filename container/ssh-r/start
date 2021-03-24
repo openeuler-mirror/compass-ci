@@ -16,7 +16,7 @@ cmd=(
   -e TCP_FORWARDING=true
   -d
   -p 21000-23999:21000-23999
-  -p 5050:22
+  -p 5051:22
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/pub/sshr/keys/:/etc/ssh/keys
   ssh-r:0.001

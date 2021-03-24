@@ -38,7 +38,7 @@ names = Set.new %w[
 ]
 
 defaults = relevant_defaults(names)
-defaults['SSHR_PORT'] ||= 5050
+defaults['SSHR_PORT'] ||= 5051
 defaults['SSHR_PORT_BASE'] ||= 21000
 defaults['SSHR_PORT_LEN'] ||= 2000
 defaults['SCHED_PORT'] ||= '3000'
