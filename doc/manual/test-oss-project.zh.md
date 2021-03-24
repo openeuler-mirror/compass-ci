@@ -6,7 +6,7 @@
 
 执行以下步骤，将想要测试的代码仓信息以 yaml 文件的方式添加到 upstream-repos 仓库（https://gitee.com/wu_fengguang/upstream-repos ）。
 
-1. Fork 要测试的代码仓库并 git clone 到本地，本文以 blacklight 仓库（https://github.com/baskerville/backlight ）为例说明。
+1. Fork upstream-repos 仓库并 git clone 到本地，本文以 blacklight 仓库（https://github.com/baskerville/backlight ）为例说明。
 
 ![](./../pictures/fork_blacklight.png)
 
@@ -39,7 +39,7 @@
 	>
     >可参考 upstream-repos 仓库中已有文件格式,请保持格式一致。
 
-5. 通过 Pull Request 命令将新增的 backlight 文件提交到 blacklight 仓库。
+5. 通过 Pull Request 命令将新增的 backlight 文件提交到 upstream-repos 仓库。
 
 
 ### 提交测试任务到 compass-ci 平台
@@ -56,13 +56,23 @@
 
         请参考：[如何添加测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md )
 
-2. 配置 auto_submit.yaml 文件，提交测试任务
+2. 配置 upstream-repos仓库中的DEFAULTS文件，提交测试任务
 
-    你只需要在 compass-ci 仓库下面的 sbin/auto_submit.yaml 文件中添加配置信息，如：
+    你只需要在上述backlight文件所在目录增加 DEFAULTS 文件并添加配置信息，如：
     ```
-    b/backlight/backlight:
-    - testbox=vm-2p8g os=openEuler os_version=20.03 os_mount=initramfs os_arch=aarch64 iperf.yaml
-    ```
-	通过 Pull Request 的方式将修改好的 auto_submit.yaml 文件提交到 compass-ci 仓库，就可以使用 compass-ci 测试你的项目了。
+    submit:
+    - command: testbox=vm-2p16g os=openeuler os_version=20.03 os_mount=cifs os_arch=aarch64 api-avx2neon.yaml
+      branches:
+      - master
+      - next
+    - command: testbox=vm-2p16g os=openeuler os_version=20.03 os_mount=cifs os_arch=aarch64 other-avx2neon.yaml
+      branches:
+      - branch_name_a
+      - branch_name_b
 
-    auto_submit.yaml 文件的参数配置请参考 https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job 。
+    ```
+    通过 Pull Request 的方式将修改好的 DEFAULTS 文件提交到 upstream-repos 仓库，就可以使用 compass-ci 测试你的项目了。
+
+    详细配置方式请参考 https://gitee.com/wu_fengguang/upstream-repos/blob/master/README.md 。
+
+    命令参数意义及作用请参考 https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job 。
