@@ -34,6 +34,22 @@ server_name=$(hostname | cut -f1 -d.)
 : ${DOCKER_REGISTRY_PORT:=5001}
 : ${LOCAL_SEND_MAIL_PORT:=11311}
 : ${LOCAL_ROBOT_EMAIL_ADDRESS:=Crystal TEAM}
+: ${GIT_SERVER:=$server_ip}
+: ${SCHED_HTTPS_HOST:=$server_ip}
+: ${SCHED_HTTPS_PORT:=20002}
+: ${DOCKER_PROXY_HOST:=$server_ip}
+: ${DOCKER_PROXY_PORT:=3128}
+: ${JUMPER_HOST:=$server_ip}
+: ${JUMPER_PORT:=10000}
+: ${MONITOR_HOST:=$server_ip}
+: ${MONITOR_PORT:=20001}
+: ${FETCH_MAIL_DIR:=/srv/cci/Maildir}
+: ${FETCH_MAIL_BOX:=.compass-ci}
+: ${GIT_DAEMON_HOST:=$server_ip}
+: ${GIT_MIRROR_HOST:=$server_ip}
+: ${REDIS_PORT:=6379}
+: ${MAILDIR:=/srv/cci/Maildir/.compass-ci}
+: ${SENT_MAILDIR:=/srv/cci/Maildir/.sent}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -53,6 +69,8 @@ EOF
 
 mkdir -p /etc/compass-ci/service
 cat > /etc/compass-ci/service/service-env.yaml <<EOF
+SCHED_HTTPS_HOST: $SCHED_HTTPS_HOST
+SCHED_HTTPS_PORT: $SCHED_HTTPS_PORT
 ES_HOST: $ES_HOST
 ES_PORT: $ES_PORT
 SCHED_HOST: $sched_host
@@ -88,6 +106,19 @@ DOCKER_REGISTRY_PORT: $DOCKER_REGISTRY_PORT
 LOCAL_SEND_MAIL_PORT: $LOCAL_SEND_MAIL_PORT
 MAILDIR: /srv/cci/Maildir/.compass-ci
 LOCAL_ROBOT_EMAIL_ADDRESS: $LOCAL_ROBOT_EMAIL_ADDRESS
+DOCKER_PROXY_HOST: $DOCKER_PROXY_HOST
+DOCKER_PROXY_PORT: $DOCKER_PROXY_PORT
+JUMPER_HOST: $JUMPER_HOST
+JUMPER_PORT: $JUMPER_PORT
+MONITOR_HOST: $MONITOR_HOST
+MONITOR_PORT: $MONITOR_PORT
+FETCH_MAIL_DIR: $FETCH_MAIL_DIR
+FETCH_MAIL_BOX: $FETCH_MAIL_BOX
+GIT_DAEMON_HOST: $GIT_DAEMON_HOST
+GIT_MIRROR_HOST: $GIT_MIRROR_HOST
+REDIS_PORT: $REDIS_PORT
+MAILDIR: $MAILDIR
+SENT_MAILDIR: $SENT_MAILDIR
 EOF
 
 mkdir -p /etc/compass-ci/scheduler
