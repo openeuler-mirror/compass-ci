@@ -12,6 +12,7 @@ require "#{CCI_SRC}/lib/compare.rb"
 require "#{CCI_SRC}/lib/constants.rb"
 require "#{CCI_SRC}/lib/es_query.rb"
 require "#{CCI_SRC}/lib/matrix2.rb"
+require "#{CCI_SRC}/lib/params_group.rb"
 require "#{CCI_SRC}/lib/compare_data_format.rb"
 
 UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
@@ -613,4 +614,68 @@ def group_jobs_stats(params)
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'group jobs table error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+
+# -------------------------------------------------------------------------------------------
+# job error table like:
+#   job_id           error_id           error_message           link to result
+#   -------------------------------------------------------------------------------------
+#   crystal.630608   "stderr.xxx"       "messag:xxxx"           https://$host:$port/$result_root
+#   ...
+# -------------------------------------------------------------------------------------------
+
+def get_job_error(params)
+  begin
+    body = job_error_body(params)
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get error table error']
+  end
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+def job_error_body(params)
+  error_objects  = get_error_objects(params)
+  {
+    filter: params,
+    attributes: ['job_id', 'error_id', 'error_message', 'link_to_result'],
+    objects: error_objects,
+  }.to_json
+end
+
+def get_error_objects(filter_items)
+  error_objs = []
+
+  job_list = get_job_list(filter_items)
+  job_list.each do |job|
+    error_obj = get_error_from_job(job)
+    error_objs << error_obj unless error_obj.empty?
+  end
+
+  error_objs
+end
+
+def get_job_list(items)
+  es = ESQuery.new(ES_HOST, ES_PORT)
+  query_results = es.multi_field_query(items)
+
+  extract_jobs_list(query_results['hits']['hits'])
+end
+
+# get all error_id from one job
+def get_error_from_job(job)
+  job_error_obj = {}
+  job['stats'].each do |metric, value|
+    next unless metric.end_with?('.message')
+
+    result_host = ENV['SRV_HTTP_RESULT_HOST'] || SRV_HTTP_RESULT_HOST
+    result_port = ENV['SRV_HTTP_RESULT_PORT'] || SRV_HTTP_RESULT_PORT
+    error_id = metric.sub('.message', '.fail')
+    job_error_obj['id'] = job['id']
+    job_error_obj['error_id'] = error_id
+    job_error_obj['error_message'] = value
+    job_error_obj['link_to_result'] = value
+  end
+
+  job_error_obj
 end
