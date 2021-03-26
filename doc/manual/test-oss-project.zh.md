@@ -6,9 +6,9 @@
 
 执行以下步骤，将想要测试的代码仓信息以 yaml 文件的方式添加到 upstream-repos 仓库（https://gitee.com/wu_fengguang/upstream-repos ）。
 
-1. Fork upstream-repos 仓库并 git clone 到本地，本文以 blacklight 仓库（https://github.com/baskerville/backlight ）为例说明。
+1. Fork upstream-repos 仓库并 git clone 到本地，本文以 backlight 仓库（https://github.com/baskerville/backlight ）为例说明。
 
-![](./../pictures/fork_blacklight.png)
+![](./../pictures/fork_backlight.png)
 
 2. 执行以下命令，以首字母和仓库名创建文件路径。
 
