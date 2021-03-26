@@ -39,6 +39,8 @@ class EtcdClient
   end
 
   def move(f_queue, t_queue, value)
+    f_queue = "#{BASE}/#{f_queue}" unless f_queue.starts_with?(BASE)
+    t_queue = "#{BASE}/#{t_queue}" unless t_queue.starts_with?(BASE)
     @etcd.kv.move(f_queue, t_queue, value)
   end
 
