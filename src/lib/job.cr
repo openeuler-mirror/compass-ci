@@ -293,7 +293,7 @@ class Job
     elsif @hash["cci-depends"]?
       package_dir = ",/initrd/deps/#{common_dir}/#{@hash["cci-depends"]["benchmark"]}"
     elsif @hash["rpmbuild-pkg"]?
-      package_dir = ",/initrd/rpmbuild-pkg/#{common_dir}"
+      package_dir = ",/rpm/upload/#{common_dir}"
     elsif @hash["build-pkg"]?
       if @hash["pkgbuild_repo"].to_s =~ /(packages|community)\/\//
         package_name = @hash["pkgbuild_repo"].to_s.split("/")[-2]
