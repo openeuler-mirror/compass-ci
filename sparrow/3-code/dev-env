@@ -50,6 +50,7 @@ server_name=$(hostname | cut -f1 -d.)
 : ${REDIS_PORT:=6379}
 : ${MAILDIR:=/srv/cci/Maildir/.compass-ci}
 : ${SENT_MAILDIR:=/srv/cci/Maildir/.sent}
+: ${NETDATA_PORT:=20013}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF

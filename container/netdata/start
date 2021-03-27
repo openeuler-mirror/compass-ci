@@ -4,13 +4,15 @@
 
 . $CCI_SRC/container/defconfig.sh
 
+load_cci_defaults
+
 docker_rm netdata
 
 cmd=(
 	docker run -d
 	--restart=always
 	--name netdata
-	-p 20012:19999
+	-p ${NETDATA_PORT:=20013}:19999
 	-v /proc:/host/proc:ro
 	-v /sys:/host/sys:ro
 	-v /etc/localtime:/etc/localtime:ro
