@@ -1,4 +1,4 @@
-FROM alpine:3.11
+FROM alpine:scheduler-dev
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
@@ -9,10 +9,6 @@ RUN apk add --no-cache 'ruby-dev' \
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-    gem install rest-client && \
-    gem install activesupport && \
-    gem install git && \
-    gem install json && \
     gem install yaml
 
 
