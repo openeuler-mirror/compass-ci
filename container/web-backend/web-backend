@@ -170,6 +170,7 @@ end
 #     }
 get '/get_jobs_summary' do
   group_jobs_stats(params)
+end
 
 # GET /get_job_error?suite=virttest&tbox_group=vm-2p8g
 # Response

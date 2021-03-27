@@ -614,6 +614,7 @@ def group_jobs_stats(params)
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'group jobs table error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
 
 # -------------------------------------------------------------------------------------------
 # job error table like:
