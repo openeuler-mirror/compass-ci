@@ -1,0 +1,12 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. ../defconfig.sh
+
+version=v3.4.15
+docker_skip_rebuild "etcd-${version}:alpine"
+
+docker build -t etcd-${version}:alpine --build-arg VERSION=${version} .
+
+
