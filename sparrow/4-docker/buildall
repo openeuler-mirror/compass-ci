@@ -24,7 +24,7 @@ do_one_build()
 {
 	local container=$1
 	local container_name=$(basename $container)
-	lockfile-create -q --use-pid --retry 100 --lock-name "$container_name".lock
+	lockfile-create -q --use-pid --retry 100 --lock-name "build_${container_name}".lock
 
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
@@ -33,7 +33,7 @@ do_one_build()
 		[ "$?" == 0 ] && log_info "finish build $container"
 		[ -x install ] && ./install
 	)
-	lockfile-remove --lock-name "$container_name".lock
+	lockfile-remove --lock-name "build_${container_name}".lock
 }
 
 start_depends()
@@ -42,8 +42,9 @@ start_depends()
 
 	for dep in $(cat $container/start-depends 2> /dev/null)
 	do
-		start_depends $CONTAINER_PATH/$dep
+		start_depends $CONTAINER_PATH/$dep &
 	done
+	wait
 
 	do_one_run $container
 }
@@ -52,6 +53,7 @@ do_one_run()
 {
 	local container=$1
 	local container_name=$(basename $container)
+	lockfile-create -q --use-pid --retry 100 --lock-name "start_${container_name}".lock
 
 	mkdir $tmpdir/start_$container_name 2>/dev/null &&
 	(
@@ -64,14 +66,31 @@ do_one_run()
 		[ -x start ] && ./start
 		[ "$container_name" == 'lkp-initrd' ] && ./run
 	)
+	lockfile-remove --lock-name "start_${container_name}".lock
 }
+
+build_all()
+{
+	for dir in $CONTAINER_PATH/*/
+	do
+		build_depends $dir &
+	done
+	wait
+}
+
+start_all()
+{
+	for dir in $CONTAINER_PATH/*/
+	do
+		start_depends $dir &
+	done
+	wait
+}
+
 
 tmpdir=$(mktemp -d)
 
-for dir in $CONTAINER_PATH/*/
-do
-	[ "$action" != "start-only" ] && build_depends $dir
-	start_depends $dir
-done
+[ "$action" == "start-only" ] || build_all
+start_all
 
 rm -fr $tmpdir
