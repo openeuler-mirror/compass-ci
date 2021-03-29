@@ -199,14 +199,7 @@ class MirrorMain
     update_fork_stat(git_repo, feedback_info[:possible_new_refs])
     return unless feedback_info[:possible_new_refs]
 
-    return reload_fork_info(git_repo) if is_upstream_repo?(git_repo)
-
-    new_refs = check_new_refs(git_repo)
-    return if new_refs[:heads].empty?
-
-    feedback_info[:new_refs] = new_refs
-    send_message(feedback_info)
-    new_refs_log(git_repo, new_refs[:heads].length) if last_commit_new?(git_repo)
+    handle_feedback_new_refs(git_repo, feedback_info)
   end
 
   def do_push(fork_key)
@@ -283,14 +276,19 @@ class MirrorMain
     return new_refs
   end
 
+  def get_change_files(upstream_repos)
+    old_commit = @git_info[upstream_repos][:cur_refs][:heads]['refs/heads/master']
+    new_refs = check_new_refs(upstream_repos)
+    new_commit = new_refs[:heads]['refs/heads/master']
+    mirror_dir = "/srv/git/#{@git_info[upstream_repos]['belong']}/#{upstream_repos}.git"
+    %x(git -C #{mirror_dir} diff --name-only #{old_commit}...#{new_commit})
+  end
+
   def reload_fork_info(upstream_repos)
     if @git_info[upstream_repos][:cur_refs].empty?
       @git_info[upstream_repos][:cur_refs] = get_cur_refs(upstream_repos)
     else
-      old_commit = @git_info[upstream_repos][:cur_refs][:heads]['refs/heads/master']
-      new_refs = check_new_refs(upstream_repos)
-      new_commit = new_refs[:heads]['refs/heads/master']
-      changed_files = %x(git -C /srv/git/#{@git_info[upstream_repos]['belong']}/#{upstream_repos}.git diff --name-only #{old_commit}...#{new_commit})
+      changed_files = get_change_files(upstream_repos)
       reload(changed_files, @git_info[upstream_repos]['belong'])
     end
   end
@@ -325,13 +323,17 @@ class MirrorMain
     @fork_stat[git_repo][:offset_fetch] = offset_fetch + 1
   end
 
+  def update_new_refs_info(git_repo, offset_new_refs)
+    @fork_stat[git_repo][:new_refs_time][offset_new_refs] = Time.now.to_s
+    @fork_stat[git_repo][:offset_new_refs] = offset_new_refs + 1
+    @fork_stat[git_repo][:new_refs_count] = update_new_refs_count(@fork_stat[git_repo][:new_refs_count])
+  end
+
   def update_stat_new_refs(git_repo)
     @fork_stat[git_repo][:priority] += 1
     offset_new_refs = @fork_stat[git_repo][:offset_new_refs]
     offset_new_refs = 0 if offset_new_refs >= 10
-    @fork_stat[git_repo][:new_refs_time][offset_new_refs] = Time.now.to_s
-    @fork_stat[git_repo][:offset_new_refs] = offset_new_refs + 1
-    @fork_stat[git_repo][:new_refs_count] = update_new_refs_count(@fork_stat[git_repo][:new_refs_count])
+    update_new_refs_info(git_repo, offset_new_refs)
   end
 
   def update_fork_stat(git_repo, possible_new_refs)
@@ -471,6 +473,17 @@ end
 class MirrorMain
   WEEK_SECONDS = 604800
 
+  def handle_feedback_new_refs(git_repo, feedback_info)
+    return reload_fork_info(git_repo) if upstream_repo?(git_repo)
+
+    new_refs = check_new_refs(git_repo)
+    return if new_refs[:heads].empty?
+
+    feedback_info[:new_refs] = new_refs
+    send_message(feedback_info)
+    new_refs_log(git_repo, new_refs[:heads].length) if last_commit_new?(git_repo)
+  end
+
   def merge_defaults(object_key, object, belong)
     return object if object_key == belong
 
@@ -505,7 +518,7 @@ class MirrorMain
     return url
   end
 
-  def is_upstream_repo?(git_repo)
+  def upstream_repo?(git_repo)
     @upstreams['upstreams'].each do |repo|
       return true if git_repo == repo['git_repo']
     end
