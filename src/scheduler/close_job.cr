@@ -8,7 +8,7 @@ class Sched
 
     @env.set "job_id", job_id
 
-    job = @redis.get_job(job_id)
+    job = get_id2job(job_id)
 
     # update job_state
     job_state = @env.params.query["job_state"]?
@@ -21,17 +21,8 @@ class Sched
       raise "es set job content fail!"
     end
 
-    subqueue = job.subqueue
-    queue = (subqueue == "idle" ? job.queue : "#{job.queue}/#{subqueue}")
-
-    response = @task_queue.hand_over_task(
-      "sched/#{queue}", "extract_stats", job_id
-    )
-    if response[0] != 201
-      raise "#{response}"
-    end
-
-    @redis.remove_finished_job(job_id)
+    move_process2stats(job)
+    delete_id2job(job.id)
 
     job_state ||= "complete"
     @log.info(%({"job_id": "#{job_id}", "job_state": "#{job_state}"}))
