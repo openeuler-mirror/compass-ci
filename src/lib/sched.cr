@@ -7,6 +7,7 @@ require "yaml"
 require "./mq"
 require "./job"
 require "./web_env"
+require "./etcd_client"
 require "./block_helper"
 require "./taskqueue_api"
 require "./remote_git_client"
@@ -23,6 +24,7 @@ require "../scheduler/request_cluster_state"
 require "../scheduler/update_job_parameter"
 require "../scheduler/create_job_cpio"
 require "../scheduler/download_file"
+require "../scheduler/opt_job_in_etcd"
 
 class Sched
   property es
@@ -37,6 +39,7 @@ class Sched
     @redis = Redis::Client.instance
     @mq = MQClient.instance
     @task_queue = TaskQueueAPI.new
+    @etcd = EtcdClient.new
     @rgc = RemoteGitClient.new
     @env = env
     @log = env.log.as(JSONLogger)
