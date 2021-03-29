@@ -27,7 +27,7 @@ class Sched
       job_content[parameter] = value
     end
 
-    @redis.update_job(job_content)
+    update_id2job(job_content)
 
     # json log
     log = job_content.dup
@@ -45,5 +45,12 @@ class Sched
       "time" => @env.get?("time").to_s
     }
     spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
+  end
+
+  def update_testbox_time(job_id)
+    job = get_id2job(job_id)
+    testbox = job["testbox"]
+    hash = {"time" => @env.get?("time").to_s}
+    @es.update_tbox(testbox, hash)
   end
 end
