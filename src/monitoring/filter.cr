@@ -56,7 +56,7 @@ class Filter
     msg = JSON.parse(msg.to_s).as_h?
     return unless msg
 
-    @sp.save_dmesg_to_result_root(msg)
+    @sp.deal_serial_log(msg)
     @hash.keys.each do |query|
       if match_query(query.as_h, msg)
         send_msg(query, msg)

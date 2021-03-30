@@ -4,6 +4,7 @@
 require "../scheduler/elasticsearch_client"
 require "set"
 require "json"
+require "../lib/mq"
 
 # This parses dmesg in a stream of serial log, finding a number of patterns
 # in various places of the dmesg and take actions accordingly.
@@ -40,9 +41,16 @@ class SerialParser
     "Restarting system",
   ]
 
+  CRASH_PATTERNS = [
+    "mount.nfs: Connection timed out",
+    "No space left on device",
+    "Kernel panic - not syncing: ",
+  ]
+
   def initialize
     @host2head = Hash(String, Array(String)).new
     @host2rt = Hash(String, String).new
+    @mq = MQClient.instance
   end
 
   def host_in_msg(msg)
@@ -51,7 +59,7 @@ class SerialParser
     File.basename(msg["serial_path"].to_s)
   end
 
-  def detect_start_or_end(msg, pattern_list)
+  def detect_patterns(msg, pattern_list)
     message = msg["message"].to_s
     pattern_list.each do |pattern|
       matched = message.match(/.*(?<signal>#{pattern})/)
@@ -60,17 +68,50 @@ class SerialParser
   end
 
   def delete_host(msg, host, signal)
-    boundary_signal = detect_start_or_end(msg, signal)
+    boundary_signal = detect_patterns(msg, signal)
     return unless boundary_signal
 
     @host2head.delete(host)
     @host2rt.delete(host)
   end
 
-  def save_dmesg_to_result_root(msg)
+  def mq_publish(msg, host)
+    crash_signal = detect_patterns(msg, CRASH_PATTERNS)
+    return unless crash_signal
+
+    job_id = ""
+    if @host2rt.has_key?(host)
+      job_id = File.basename(@host2rt[host])
+    end
+
+    mq_msg = {
+      "job_id" => job_id,
+      "testbox" => host,
+      "time" => msg["time"]? || Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800"),
+      "job_state" => "crash"
+    }
+    spawn mq_publish_check("job_mq", mq_msg.to_json)
+  end
+
+  def mq_publish_check(queue, msg)
+    3.times do
+      @mq.publish_confirm(queue, msg)
+      break
+    rescue e
+      res = @mq.reconnect
+      sleep 5
+    end
+  end
+
+  def deal_serial_log(msg)
     host = host_in_msg(msg)
     return unless host
 
+    mq_publish(msg, host)
+    save_dmesg_to_result_root(msg, host)
+  end
+
+  def save_dmesg_to_result_root(msg, host)
     delete_host(msg, host, START_PATTERNS)
 
     check_save = check_save_dmesg(msg, host)
