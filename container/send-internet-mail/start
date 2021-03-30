@@ -14,6 +14,7 @@ names = Set.new %w[
   SEND_MAIL_PORT
   SENT_MAILDIR
   REDIS_PORT
+  EMAIL_LIMIT_COUNT
 ]
 
 defaults = relevant_defaults(names)
