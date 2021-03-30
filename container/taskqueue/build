@@ -12,10 +12,8 @@ service_port=${TASKQUEUE_PORT:-3060}
 
 docker_skip_rebuild "taskqueue-alpine:v0.001-${service_port}"
 
-if [[ ! -f "taskqueue" ]]; then
-  $CCI_SRC/container/compile .
-else
-  echo -e "\n\033[34m- Info: using \033[31mexists\033[34m taskqueue -\033[0m\n"
-fi
+$CCI_SRC/container/compile .
 
 docker build -t taskqueue-alpine:v0.001-${service_port} .
+
+rm taskqueue
