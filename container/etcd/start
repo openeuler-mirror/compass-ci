@@ -8,7 +8,7 @@ docker_rm etcd-server
 
 cmd=(
 	docker run
-	-it
+	-d
 	-p 2379:2379
 	-p 2380:2380
 	-p 4001:4001
