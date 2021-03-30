@@ -122,6 +122,8 @@ class Lifecycle
         on_job_close(event)
       when "abnormal"
         on_abnormal_job(event)
+      when "crash"
+        on_job_crash(event)
       else
         on_other_job(event)
       end
@@ -187,6 +189,16 @@ class Lifecycle
 
     @jobs.delete(event_job_id)
     update_cached_machine(job["testbox"].to_s, event)
+  end
+
+  def on_job_crash(event)
+    event_job_id = event["job_id"].to_s
+    if @jobs[event_job_id]?
+      close_job(event_job_id, "crash")
+    end
+
+    testbox = event["testbox"].to_s
+    reboot_crash_machine(testbox, event)
   end
 
   def on_job_boot(event)
@@ -296,6 +308,15 @@ class Lifecycle
     spawn @scheduler_api.close_job(job_id, reason, "lifecycle")
   end
 
+  def reboot_crash_machine(testbox, event)
+    @machines.delete(testbox)
+    machine = @es.get_tbox(testbox)
+    return unless machine
+    return unless event["time"].to_s.bigger_than?(machine["time"]?)
+
+    reboot_machine(testbox, machine)
+  end
+
   def reboot_timeout_machine(testbox)
     @machines.delete(testbox)
     machine = @es.get_tbox(testbox)
@@ -308,6 +329,10 @@ class Lifecycle
     deadline = Time.parse(deadline.to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
     return if Time.local < deadline
 
+    reboot_machine(testbox, machine)
+  end
+
+  def reboot_machine(testbox, machine)
     mq_queue = get_machine_reboot_queue(testbox)
     machine.as_h.delete("history")
     machine.as_h["testbox"] = JSON::Any.new(testbox)
