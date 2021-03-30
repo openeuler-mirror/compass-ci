@@ -12,6 +12,7 @@ server_name=$(hostname | cut -f1 -d.)
 : ${OS_HTTP_HOST:=$server_ip}
 : ${send_mail_host:=$server_ip}
 : ${SEND_MAIL_PORT:=10001}
+: ${EMAIL_LIMIT_COUNT:=10}
 : ${srv_http_result_host:=$server_ip}
 : ${srv_http_os_host:=$server_ip}
 : ${srv_http_git_host:=$server_ip}
@@ -90,6 +91,7 @@ SRV_HTTP_CCI_PORT: $SRV_HTTP_CCI_PORT
 TASKQUEUE_HOST: $sched_host
 SEND_MAIL_HOST: $send_mail_host
 SEND_MAIL_PORT: $SEND_MAIL_PORT
+EMAIL_LIMIT_COUNT: $EMAIL_LIMIT_COUNT
 LOGGING_ES_HOST: $LOGGING_ES_HOST
 LOGGING_ES_PORT: $LOGGING_ES_PORT
 INITRD_HTTP_HOST: $initrd_http_host
