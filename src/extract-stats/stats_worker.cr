@@ -58,7 +58,6 @@ class StatsWorker
     error_ids = get_error_ids_by_json(result_root)
     update_content.merge!({"error_ids" => error_ids}) unless error_ids.empty?
 
-
     @es.@client.update(
       {
         :index => "jobs", :type => "_doc",
