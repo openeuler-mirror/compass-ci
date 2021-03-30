@@ -54,9 +54,9 @@ class EmailRateLimit
   end
 
   def change_queue(email)
-    return unless (@redis.hget 'email_in_limit', email).to_i >= 10
+    return unless (@redis.hget 'email_in_limit', email).to_i >= ENV['EMAIL_LIMIT_COUNT'].to_i
 
     @redis.hdel 'email_in_limit', email
-    @redis.hset 'email_out_limit', email, 10
+    @redis.hset 'email_out_limit', email, ENV['EMAIL_LIMIT_COUNT']
   end
 end
