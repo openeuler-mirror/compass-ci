@@ -177,8 +177,7 @@ class Lifecycle
     event_job_id = event["job_id"].to_s
     return unless @jobs.has_key?(event_job_id)
 
-    @jobs.delete(event_job_id)
-    spawn @scheduler_api.close_job(event_job_id, "abnormal", "lifecycle")
+    close_job(event_job_id, "abnormal")
   end
 
   def on_job_close(event)
@@ -222,8 +221,7 @@ class Lifecycle
     return if machine_job_id.empty?
     return unless @jobs.has_key?(machine_job_id)
 
-    @jobs.delete(machine_job_id)
-    spawn  @scheduler_api.close_job(machine_job_id, "abnormal", "lifecycle")
+    close_job(machine_job_id, "abnormal")
   end
 
   def max_time(times)
