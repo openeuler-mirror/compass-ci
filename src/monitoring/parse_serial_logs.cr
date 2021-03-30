@@ -51,7 +51,7 @@ class SerialParser
     File.basename(msg["serial_path"].to_s)
   end
 
-  def detect_start_or_end(msg, host, pattern_list)
+  def detect_start_or_end(msg, pattern_list)
     message = msg["message"].to_s
     pattern_list.each do |pattern|
       matched = message.match(/.*(?<signal>#{pattern})/)
@@ -60,7 +60,7 @@ class SerialParser
   end
 
   def delete_host(msg, host, signal)
-    boundary_signal = detect_start_or_end(msg, host, signal)
+    boundary_signal = detect_start_or_end(msg, signal)
     return unless boundary_signal
 
     @host2head.delete(host)
