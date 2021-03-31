@@ -47,6 +47,7 @@ The brief flow is as follows:
       ${boot_lv} -- boot logical volume:
         - will boot from this lv.
         - boot_lv=/dev/mapper/os-${os}_${os_arch}_${os_version}
+    - check whether ${pv_device} is given, if so, create physical volume(pv for short) and volume group(vg for short) on ${pv_device}.
     - if ${src_lv} not exists: create it, and rsync the rootfs from cluster nfs server.
     - if ${boot_lv} exists: delete it.
     - create ${boot_lv} as the snapshot of ${src_lv}.
@@ -57,6 +58,7 @@ The brief flow is as follows:
 ## persistent rootfs data
 
 When you need to persist the rootfs data of a job, and use it in the subsequent job(s), two fields in `kernel_custom_params` will help you: 'src_lv_suffix', 'boot_lv_suffix'.
+If you want to run on a brand new machine, you should use 'pv_device' to assign a disk device to create pv and vg.
 
 The brief flow is as follows:
 
@@ -65,6 +67,7 @@ The brief flow is as follows:
   2. initrd stage:
       use_root_partition  seems like /dev/mapper/os-${os}_${os_arch}_${os_version}_${src_lv_suffix}
       save_root_partition seems like /dev/mapper/os-${os}_${os_arch}_${os_version}_${boot_lv_suffix}
+      check and ensure pv and vg exist for lv.
     - firstly, we need two logical volume:
       ${src_lv} -- src logical volume:
         - if have ${use_root_partition}, src_lv=${use_root_partition}
@@ -95,6 +98,8 @@ Demo usage:
     data of job-20210218.yaml.
     Then you need add the follow field in your job-20210219.yaml:
         kernel_custom_params: src_lv_suffix=zhangsan_local_for_iperf_20210218
+  - if you want to create pv and vg on /dev/sda, you can use like this:
+        kernel_custom_params: pv_device=/dev/sda ...
   ```
 
 Notes:
@@ -147,6 +152,9 @@ Notes:
         local src_lv=$1
 
         lvdisplay ${src_lv} > /dev/null && return
+
+        # need create volume group, usually in first use of this machine. $pv_device e.g. /dev/sda
+	[ -n "$pv_device" ] && { do some check and create pv and vg }
 
         # create logical volume
         lvcreate --size 10G --name $(basename ${src_lv}) os || exit
