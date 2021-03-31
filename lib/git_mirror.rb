@@ -414,9 +414,9 @@ class MirrorMain
       new_refs_count: {}
     }
     query = { query: { match: { _id: git_repo } } }
-    result = @es_client.search(index: 'repo', body: query)['hits']
-    return fork_stat unless result['total'].positive?
+    return fork_stat unless @es_client.count(index: 'repo', body: query)['count'].positive?
 
+    result = @es_client.search(index: 'repo', body: query)['hits']
     fork_stat.each_key do |key|
       fork_stat[key] = result['hits'][0]['_source'][key.to_s] || fork_stat[key]
     end
