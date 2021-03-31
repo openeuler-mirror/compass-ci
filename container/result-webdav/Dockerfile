@@ -5,6 +5,7 @@
 
 FROM openresty/openresty:alpine
 
+RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 RUN apk add bash
 RUN mkdir -p /var/log/nginx/
 RUN adduser lkp -u 1090 -g 1090 -D
