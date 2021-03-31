@@ -308,11 +308,8 @@ class MirrorMain
   def es_repo_update(git_repo)
     repo_info = { 'git_repo' => git_repo, 'url' => @git_info[git_repo]['url'] }
     repo_info = repo_info.merge(@fork_stat[git_repo])
-    body = {
-      "doc": repo_info,
-      "doc_as_upsert": true
-    }
-    @es_client.update(index: 'repo', type: '_doc', id: git_repo, body: body)
+    body = repo_info
+    @es_client.index(index: 'repo', type: '_doc', id: git_repo, body: body)
   end
 
   def update_stat_fetch(git_repo)
