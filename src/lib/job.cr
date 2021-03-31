@@ -90,6 +90,7 @@ class Job
     linux_vmlinuz_path
     src_lv_suffix
     boot_lv_suffix
+    pv_device
   )
 
   macro method_missing(call)
