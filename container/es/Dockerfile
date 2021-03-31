@@ -1,41 +1,24 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-FROM alpine:3.11
+FROM elasticsearch:7.11.1@sha256:d52cda1e73d1b1915ba2d76ca1e426620c7b5d6942d9d2f432259503974ba786
 
 ARG MEMORY
 
-RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/elasticsearch/config/elasticsearch.yml && \
+    sed -i '$a path.data: /srv/es' /usr/share/elasticsearch/config/elasticsearch.yml && \
+    sed -i '$a node.name: node-1' /usr/share/elasticsearch/config/elasticsearch.yml && \
+    sed -i '$a cluster.initial_master_nodes: ["node-1"]' /usr/share/elasticsearch/config/elasticsearch.yml && \
+    sed -i "s/-Xms256m/-Xms${MEMORY}m/g" /usr/share/elasticsearch/config/jvm.options && \
+    sed -i "s/-Xmx256m/-Xmx${MEMORY}m/g" /usr/share/elasticsearch/config/jvm.options
 
-RUN apk add --no-cache elasticsearch curl
+RUN mkdir /usr/share/elasticsearch/tmp && \
+    chown -R 1090:1090 /usr/share/elasticsearch
 
-RUN rm -rf /etc/init.d/elasticsearch \
-    && rm -rf /usr/share/java/elasticsearch/plugins \
-    && mv /usr/share/java/elasticsearch /usr/share/es \
-    && echo "===> Creating Elasticsearch Paths..." \
-    && for path in \
-         /srv/es \
-         /usr/share/es/logs \
-         /usr/share/es/config \
-         /usr/share/es/config/scripts \
-         /usr/share/es/tmp \
-         /usr/share/es/plugins \
-       ; do \
-         mkdir -p "$path"; \
-       done \
-    && cp /etc/elasticsearch/*.* /usr/share/es/config \
-    && chown -R 1090:1090 /usr/share/es \
-    && chown -R 1090:1090 /srv/es;
+WORKDIR /usr/share/elasticsearch
 
-RUN sed -i 's:#path.data\: /path/to/data:path.data\: /srv/es:' /usr/share/es/config/elasticsearch.yml;
-RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/es/config/elasticsearch.yml;
-RUN sed -i "s/-Xms256m/-Xms${MEMORY}m/g" /usr/share/es/config/jvm.options
-RUN sed -i "s/-Xmx256m/-Xmx${MEMORY}m/g" /usr/share/es/config/jvm.options
-
-WORKDIR /usr/share/es
-
-ENV PATH /usr/share/es/bin:$PATH
-ENV ES_TMPDIR /usr/share/es/tmp
+ENV PATH /usr/share/elasticsearch/bin:$PATH
+ENV ES_TMPDIR /usr/share/elasticsearch/tmp
 
 VOLUME ["/srv/es"]
 
@@ -43,4 +26,3 @@ EXPOSE 9200 9300
 
 USER 1090
 CMD ["elasticsearch"]
-

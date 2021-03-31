@@ -15,7 +15,7 @@ cmd=(
 	-v /srv/es:/srv/es
 	-v /etc/localtime:/etc/localtime:ro
 	--name es-server01
-	es643b:alpine311
+	es:7.11.1
 )
 
 "${cmd[@]}"

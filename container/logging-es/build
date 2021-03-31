@@ -5,15 +5,15 @@
 
 require_relative '../defconfig.rb'
 
-docker_skip_rebuild "logging-es:7.6.2"
+docker_skip_rebuild "logging-es:7.11.1"
 
 BASE_IMAGE_DICT = {
-  'aarch64' => 'gagara/elasticsearch-oss-arm64:7.6.2',
-  'x86_64' => 'elasticsearch:7.6.2'
+  'aarch64' => 'elasticsearch:7.11.1@sha256:d52cda1e73d1b1915ba2d76ca1e426620c7b5d6942d9d2f432259503974ba786',
+  'x86_64' => 'elasticsearch:7.11.1'
 }.freeze
 
 BASE_IMAGE = BASE_IMAGE_DICT[%x(arch).chomp]
 
 available_memory = get_available_memory
 
-system "docker build -t logging-es:7.6.2 --build-arg BASE_IMAGE=#{BASE_IMAGE} --build-arg MEMORY=#{available_memory} ."
+system "docker build -t logging-es:7.11.1 --build-arg BASE_IMAGE=#{BASE_IMAGE} --build-arg MEMORY=#{available_memory} ."

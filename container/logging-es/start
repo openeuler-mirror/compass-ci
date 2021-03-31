@@ -15,7 +15,7 @@ cmd=(
 	-p 9302:9300
 	-v /srv/es/logging-es:/srv/es/logging-es
 	--name logging-es
-	logging-es:7.6.2
+	logging-es:7.11.1
 )
 
 "${cmd[@]}"
