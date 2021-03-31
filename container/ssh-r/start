@@ -4,14 +4,14 @@
 
 . $CCI_SRC/container/defconfig.sh
 
-vm_name=ssh_r
+docker_name=ssh_r
 
-docker_rm ${vm_name}
+docker_rm ${docker_name}
 
 cmd=(
   docker run
   --restart=always
-  --name ${vm_name}
+  --name ${docker_name}
   -e GATEWAY_PORTS=true
   -e TCP_FORWARDING=true
   -d
