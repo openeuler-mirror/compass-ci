@@ -7,24 +7,24 @@ require 'set'
 require_relative '../defconfig.rb'
 
 names = Set.new %w[
-  ES_HOST
-  ES_PORT
+  LOGGING_ES_HOST
+  LOGGING_ES_PORT
 ]
 
 defaults = relevant_defaults(names)
-ES_HOST = defaults['ES_HOST'] || '172.17.0.1'
-ES_PORT = defaults['ES_PORT'] || '9200'
+LOGGING_ES_HOST = defaults['LOGGING_ES_HOST'] || '172.17.0.1'
+LOGGING_ES_PORT = defaults['LOGGING_ES_PORT'] || '9202'
 
-docker_rm 'kibana'
+docker_rm 'kibana-logging'
 
 cmd = %W[
   docker run
   --restart=always
-  --name kibana
+  --name kibana-logging
   -v /etc/localtime:/etc/localtime:ro
   -d
-  -e ELASTICSEARCH_HOSTS=http://#{ES_HOST}:#{ES_PORT}
-  -p 20017:5601
+  -e ELASTICSEARCH_HOSTS=http://#{LOGGING_ES_HOST}:#{LOGGING_ES_PORT}
+  -p 20000:5601
   kibana:7.11.1
 ]
 
