@@ -36,6 +36,8 @@ cmd=(
 	-v /srv/result:/srv/result:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-v ${busybox_path}:/usr/local/bin/busybox
+	--log-driver json-file
+	--log-opt max-size=10m
 	--oom-score-adj="-1000"
 	${docker_image}
 	/root/sbin/entrypoint.sh
