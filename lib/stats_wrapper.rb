@@ -284,7 +284,7 @@ module StatsWrapper
     # delete temporarily extracted dmesg above
     File.delete(@dmesg_log) if File.exist?("#{@dmesg_log}.xz")
 
-    File.delete(@tmpfile) if File.exist?(@tmpfile)
+    File.delete(@tmpfile) if @tmpfile && File.exist?(@tmpfile)
   end
 end
 
