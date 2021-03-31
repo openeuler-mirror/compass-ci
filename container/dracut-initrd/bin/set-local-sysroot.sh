@@ -14,8 +14,35 @@ analyse_kernel_cmdline_params() {
 
 sync_src_lv() {
     local src_lv="$1"
+    local vg_name="os"
 
     [ -e "$src_lv" ] && return
+
+    # need create volume group, usually in first use of this machine. $pv_device e.g. /dev/sda
+    pv_device="$(getarg pv_device=)"
+    [ -n "$pv_device" ] && {
+        [ -b "$pv_device" ] || {
+	     echo "warn dracut: FATAL: device not found: $pv_device, reboot"
+             reboot
+        }
+
+        # ensure the physical disk has been initialized as physical volume
+        real_pv_device="$(lvm pvs | grep -w $pv_device | awk '{print $1}')"
+        [ "$real_pv_device" = "$pv_device" ] || {
+            lvm pvcreate "$pv_device" || reboot
+        }
+
+        # ensure the volume group $vg_name exists
+        real_vg_name="$(lvm pvs | grep -w $vg_name | awk '{print $2}')"
+        [ "$real_vg_name" = "$vg_name" ] || {
+            lvm vgcreate "$vg_name" "$pv_device" || reboot
+        }
+    }
+
+    lvm vgs "$vg_name" || {
+        echo "warn dracut: FATAL: vg os not found, reboot"
+        reboot
+    }
 
     # create logical volume
     src_lv_devname="$(basename $src_lv)"
