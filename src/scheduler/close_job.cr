@@ -15,6 +15,9 @@ class Sched
     job["job_state"] = job_state if job_state
     job["job_state"] = "complete" if job["job_state"] == "boot"
 
+    job.set_time("close_time")
+    @env.set "close_time", job["close_time"]
+
     response = @es.set_job_content(job)
     if response["_id"] == nil
       # es update fail, raise exception
@@ -34,7 +37,7 @@ class Sched
       mq_msg = {
         "job_id" => @env.get?("job_id").to_s,
         "job_state" => "close",
-        "time" => get_time
+        "time" => @env.get?("close_time").to_s
       }
       spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
     end

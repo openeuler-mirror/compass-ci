@@ -170,6 +170,11 @@ class Job
     set_sshr_info()
     set_queue()
     set_subqueue()
+    set_time("submit_time")
+  end
+
+  def set_time(key)
+    self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
   private def set_docker_os

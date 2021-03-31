@@ -92,6 +92,7 @@ class Sched
     if job
       job.update({"testbox" => testbox})
       job.set_result_root
+      job.set_time("boot_time")
       @log.info(%({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state"
 : "set result root"}))
       set_id2job(job)
