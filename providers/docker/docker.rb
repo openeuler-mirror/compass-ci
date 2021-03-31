@@ -39,15 +39,10 @@ def del_host2queues(hostname)
 end
 
 def parse_response(url)
-  response = nil
-  URI.open(url) do |http|
-    response = http.read
-  end
+  response = %x(curl #{url})
   hash = response.is_a?(String) ? JSON.parse(response) : nil
   if hash.nil? || !hash.key?('job')
-    puts '..........'
-    puts 'no job now'
-    puts '..........'
+    puts response
     return nil
   end
   return hash
