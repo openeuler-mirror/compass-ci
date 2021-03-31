@@ -1,0 +1,5 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+nohup $CCI_SRC/providers/multi-docker -n dc-8g -c 10 -q dc-8g.$(arch) &

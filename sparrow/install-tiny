@@ -23,3 +23,4 @@ cd $CCI_SRC/sparrow || exit
 5-build/os-ready
 5-build/register-account
 7-systemd/systemd-setup
+8-testbox/multi-docker
