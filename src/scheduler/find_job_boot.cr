@@ -197,7 +197,7 @@ class Sched
   def get_job_boot(host, boot_type)
     queues = get_queues(host)
     job = get_job_from_queues(queues, host)
-    set_lifecycle(job, host)
+    set_lifecycle(job, host, queues)
 
     if job
       @es.set_job_content(job)

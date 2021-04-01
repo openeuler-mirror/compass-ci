@@ -147,7 +147,7 @@ class Sched
     @log.warn(e)
   end
 
-  def set_lifecycle(job, testbox)
+  def set_lifecycle(job, testbox, queues)
     if job
       deadline = job.get_deadline
       job["deadline"] = deadline
@@ -160,11 +160,13 @@ class Sched
       state = "requesting"
     end
 
+    queues = JSON.parse(queues.to_json)
     hash = {
       "job_id" => job_id,
       "state" => state,
       "time" => get_time,
-      "deadline" => deadline
+      "deadline" => deadline,
+      "queues" => queues
     }
     @redis.update_wtmp(testbox.to_s, hash)
     @es.update_tbox(testbox.to_s, hash)
