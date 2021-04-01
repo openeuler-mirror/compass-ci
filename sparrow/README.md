@@ -41,7 +41,7 @@
 3. 创建工作目录并克隆 compass-ci 项目代码
 	```bash
 	mkdir /c/ && ln -s /c/compass-ci /c/cci
- 	git clone https://gitee.com/wu_fengguang/compass-ci.git
+	git clone https://gitee.com/wu_fengguang/compass-ci.git
 	```
 	
 4. 编辑setup.yaml配置用户名和邮箱
@@ -57,53 +57,39 @@
 	cd compass-ci/sparrow && ./install-tiny
 	```
 
-#### 提交测试任务前的准备
-
-1. 测试环境是否可以提交job测试
+#### 提交测试任务
+本文以/c/lkp-tests/jobs/目录下已有的通用测试用例host-info.yaml为例
+- 使环境变量生效
 	```bash
-	submit iperf.yaml
+	source /etc/profile.d/compass-ci
 	```
 
-	执行上述命令正常情况下会提示信息如下:    
+- 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)提交测试用例
+	```bash
+	submit host-info.yaml
+	```
+
+	执行上述命令会打印提示信息如下:
 	```
 	submit_id=bf5e7ad7-839d-48ec-a033-23281323c750
-	submit /c/lkp-tests/jobs/iperf.yaml, got job id=nolab.1
-	submit /c/lkp-tests/jobs/iperf.yaml, got job id=nolab.1
+	submit /c/lkp-tests/jobs/host-info.yaml, got job id=nolab.1
 	```
-	compass-ci搭建完毕，下面就可以开始进行测试了。
 
-#### 提交测试任务到本地compass-ci
-本文以测试用例iperf.yaml为例
-
-1. [使用 compass-ci 平台测试开源项目](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/test-oss-project.zh.md)
-
-2. 根据测试需要[编写测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)和[编写PKGBUILD](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/write-PKGBUILD.zh.md)
-
-3. 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)提交测试用例
+- 查看任务结果
+等待约1分钟，可根据上一步骤中打印的job id查看任务结果。
 	```bash
-	submit iperf.yaml
+	cd $(es-find id=nolab.1 |grep result_root|awk -F '"' '{print "/srv/"$4}') && ls
 	```
 
-#### 运行测试任务并查看任务结果
+	结果文件介绍
+	job.yaml文件
+	job.yaml 文件中部分字段是用户提交上来的，其他字段是平台根据提交的 job 自动添加进来的。此文件包含了测试任务需要的所有参数。
 
-1. 运行测试任务
-	```bash
-	cd /c/compass-ci/providers/ && ./my-qemu.sh
-	```
+	output文件
+	output 文件记录了用例的执行过程，文件最后部分一般会有 check_exit_code 这个状态码，非 0 代表测试用例错误。
 
-2. 在本地/srv/result/目录下根据测试用例名称/日期/[testbox](https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts)/[os-os_version-os_arch](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job/os-os_version-os_arch.md)/job_id [查看任务结果](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.zh.md)(可用tab键自动补全多级目录方便查找)
-	```bash
-	cd /srv/result/iperf/2020-12-29/vm-2p8g/openeuler-20.03-aarch64/nolab.1
-	cat output
-	```
+	stats.json
+	测试用例执行完成会生成一个与测试用例同名的文件，记录它们的测试命令及标准化输出结果。compass-ci 会对这些文件进行解析，生成后缀名是 .json 的文件。
+	stats.json 是所有的 json 文件的汇总，所有测试命令的关键结果都会统计到这个文件中，便于后续的比较和分析。
 
-	>**说明：**
-	>[登陆测试环境调测任务](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/%E5%A6%82%E4%BD%95%E7%99%BB%E5%BD%95%E6%B5%8B%E8%AF%95%E6%9C%BA%E8%B0%83%E6%B5%8B%E4%BB%BB%E5%8A%A1.md)
-
-# FAQ
-
-* 选择下载os rootfs
-
-	启动qemu测试机需要[os rootfs文件](http://api.compass-ci.openeuler.org:11304/os/)，   
-	一键部署默认下载os rootfs为openeuler aarch64 20.03，当部署完毕后，可在该目录下查看: /srv/os/openeuler/aarch64/20.03    
-	如需要其他os rootfs，可使用该脚本下载: /c/compass-ci/sbin/download-rootfs    
+体验更多功能例如[自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/test-oss-project.zh.md)、[调测环境登录](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/log-in-machine-debug.md)、[测试结果分析](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.zh.md)等，请[申请账号](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.zh.md)、[申请测试机](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/borrow-machine.zh.md)。
