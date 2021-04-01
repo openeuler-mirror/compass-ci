@@ -41,6 +41,10 @@ module Scheduler
     env.create_sched
   end
 
+  after_all do |env|
+    env.sched.etcd_close
+  end
+
   # echo alive
   get "/" do |env|
     env.sched.alive(VERSION)

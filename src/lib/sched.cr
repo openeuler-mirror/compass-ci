@@ -49,6 +49,10 @@ class Sched
     @log.info(%({"from": "#{@env.request.remote_address}", "response": #{response.to_json}}))
   end
 
+  def etcd_close
+    @etcd.close
+  end
+
   def alive(version)
     debug_message("Env= {\n#{`export`}}")
     "LKP Alive! The time is #{Time.local}, version = #{version}"

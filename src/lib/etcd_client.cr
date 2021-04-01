@@ -13,6 +13,10 @@ class EtcdClient
     @etcd = Etcd.client(host, port, version)
   end
 
+  def close
+    @etcd.close
+  end
+
   def put(queue, content)
     queue = "#{BASE}/#{queue}" unless queue.starts_with?(BASE)
     @etcd.kv.put_not_exists(queue, content)
