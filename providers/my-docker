@@ -5,7 +5,7 @@
 
 require_relative './docker/docker'
 
-tbox_group = 'dc-1g'
+tbox_group = 'dc-8g'
 hostname = "#{tbox_group}.#{ENV['USER']}-#{Process.pid}"
 # specify which queues will be request, use "," to separate more than 2 values
 queues = "#{tbox_group}~#{ENV['USER']}"
