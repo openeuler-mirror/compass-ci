@@ -117,17 +117,14 @@ class Elasticsearch::Client
       result = @client.get_source(query)
       raise result unless result.is_a?(JSON::Any)
 
-      history = result["history"].as_a?
       result = result.as_h
     else
       result = wtmp_hash
     end
 
-    history ||= [] of JSON::Any
-    history << JSON.parse(wtmp_hash.to_json) unless wtmp_hash["state"]?.to_s == "requesting"
-    history = JSON.parse(history.to_json)
-
+    history = JSON::Any.new([] of JSON::Any)
     body = { "history" => history}
+
     body.any_merge!(result)
     body.any_merge!(wtmp_hash)
 

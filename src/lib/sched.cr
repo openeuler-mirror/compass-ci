@@ -160,16 +160,33 @@ class Sched
       state = "requesting"
     end
 
+    type = get_type(testbox)
     queues = JSON.parse(queues.to_json)
     hash = {
       "job_id" => job_id,
       "state" => state,
       "time" => get_time,
       "deadline" => deadline,
-      "queues" => queues
+      "queues" => queues,
+      "type" => type,
+      "name" => testbox
     }
+
     @redis.update_wtmp(testbox.to_s, hash)
     @es.update_tbox(testbox.to_s, hash)
+  end
+
+  def get_type(testbox)
+    return unless testbox
+
+    if testbox.includes?("vm")
+      type = "vm"
+    elsif testbox.includes?("dc")
+      type = "dc"
+    else
+      type = "physical"
+    end
+    type
   end
 
   def report_ssh_port
