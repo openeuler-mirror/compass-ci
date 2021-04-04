@@ -8,6 +8,10 @@ docker_skip_rebuild "delimiter"
 
 load_cci_defaults
 
+bash $CCI_SRC/container/compile .
+
 docker build -t delimiter .
 
 push_image delimiter:latest
+
+rm delimiter

@@ -32,10 +32,9 @@ cmd = %w[
   -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
-  -w #{DEFAULT_CCI}/src
   delimiter
 ]
 
-cmd += ['sh', '-c', 'umask 002 && ruby ./delimiter.rb']
+cmd += ['sh', '-c', 'umask 002 && ./delimiter']
 
 system(*cmd)
