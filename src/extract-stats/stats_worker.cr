@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
-
 require "../lib/etcd_client"
 require "../scheduler/elasticsearch_client"
 require "../scheduler/redis_client"
@@ -30,6 +29,8 @@ class StatsWorker
       STDERR.puts e.message
       # incase of many error message when task-queue, ES does not work
       sleep(10)
+    ensure
+      @etcd.close
     end
   end
 
@@ -71,7 +72,7 @@ class StatsWorker
       sample_error_id = new_error_ids.sample
       STDOUT.puts "send a delimiter task: job_id is #{job_id}"
       queue = "#{DELIMITER_TASK_QUEUE}/#{job_id}"
-      value = {"error_id" => sample_error_id}
+      value = {"job_id" => job_id, "error_id" => sample_error_id}
       @etcd.put(queue, value)
 
       msg = %({"job_id": "#{job_id}", "new_error_id": "#{sample_error_id}"})

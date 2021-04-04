@@ -6,10 +6,13 @@ require "./constants"
 require "./stats_worker"
 
 module ExtractStats
+  @@ec = EtcdClient.new
+
   def self.consume_tasks
     channel = Channel(String).new
-    revision = self.consume_by_list(EXTRACT_STATS_QUEUE_PATH, channel)
-    self.consume_by_watch(EXTRACT_STATS_QUEUE_PATH, revision, channel)
+    queue = EXTRACT_STATS_QUEUE_PATH
+    revision = self.consume_by_list(queue, channel)
+    self.consume_by_watch(queue, revision, channel)
   end
 
   def self.consume_by_list(queue, channel)
@@ -26,7 +29,7 @@ module ExtractStats
 
   def self.get_history_tasks(queue)
     tasks = [] of Etcd::Model::Kv
-    range = EtcdClient.new.range_prefix(queue)
+    range = @@ec.range_prefix(queue)
     revision = range.header.not_nil!.revision
     tasks += range.kvs
 
@@ -45,7 +48,7 @@ module ExtractStats
   end
 
   def self.watch_queue(queue, revision, channel)
-    watcher = EtcdClient.new.watch_prefix(queue, start_revision: revision.to_i64, filters:  [Etcd::Watch::Filter::NODELETE]) do |events|
+    watcher = EtcdClient.new.watch_prefix(queue, start_revision: revision.to_i64 + 1, filters:  [Etcd::Watch::Filter::NODELETE]) do |events|
       events.each do |event|
         puts event
         channel.send(event.kv.key)
