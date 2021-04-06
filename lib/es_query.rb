@@ -130,6 +130,11 @@ class ESQuery
 
     parse_fields(result)
   end
+
+  def query_mapping
+    mapping = @client.indices.get_mapping(index: @index)
+    get_mapping_key(mapping)
+  end
 end
 
 # Range Query Example:
@@ -259,4 +264,24 @@ def parse_fields(es_result)
   end
 
   result_hash
+end
+
+def get_mapping_key(mapping)
+  mapping_key = []
+  properties = mapping.values[0]['mappings']['properties']
+  properties.each do |key, value|
+    parse_mapping_properties(key, value, mapping_key)
+  end
+
+  mapping_key
+end
+
+def parse_mapping_properties(key, value, mapping_key)
+  if value['type']
+    mapping_key << key
+  else
+    value['properties'].each do |k, v|
+      parse_mapping_properties("#{key}.#{k}", v, mapping_key)
+    end
+  end
 end
