@@ -147,6 +147,17 @@ class Sched
     @log.warn(e)
   end
 
+  def send_mq_msg(job_state)
+    mq_msg = {
+      "job_id" => @env.get?("job_id").to_s,
+      "testbox" => @env.get?("testbox").to_s,
+      "deadline" => @env.get?("deadline").to_s,
+      "time" => get_time,
+      "job_state" => job_state
+    }
+    spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
+  end
+
   def set_lifecycle(job, testbox, queues)
     if job
       deadline = job.get_deadline

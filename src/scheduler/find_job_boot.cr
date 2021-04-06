@@ -25,14 +25,7 @@ class Sched
   rescue e
     @log.warn(e)
   ensure
-    mq_msg = {
-      "job_id" => @env.get?("job_id").to_s,
-      "testbox" => @env.get?("testbox").to_s,
-      "deadline" => @env.get?("deadline").to_s,
-      "time" => get_time,
-      "job_state" => "boot"
-    }
-    spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
+    send_mq_msg("boot")
   end
 
   # auto submit a job to collect the host information.
@@ -228,6 +221,13 @@ class Sched
 
   def get_job_boot(host, boot_type)
     queues = get_queues(host)
+
+    # do before get job from etcd
+    # because if no job will hang
+    # need to update information in a timely manner
+    set_lifecycle(nil, host, queues)
+    send_mq_msg("boot")
+
     job = get_job_from_queues(queues, host)
     set_lifecycle(job, host, queues)
 
