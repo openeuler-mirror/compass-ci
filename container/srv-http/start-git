@@ -9,7 +9,8 @@ cmd=(
 	docker run
 	--restart=always
 	--name srv-http-git
-	-p 20010:11300
+	-e LISTEN_PORT=20010
+	-p 20010:20010
 	-v /srv/git/archlinux:/srv/git/archlinux:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-d

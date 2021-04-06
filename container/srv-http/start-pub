@@ -9,7 +9,8 @@ cmd=(
 	docker run
 	--restart=always
 	--name srv-http-pub
-	-p 20006:11300
+	-e LISTEN_PORT=20006
+	-p 20006:20006
 	-v /srv/pub:/srv/pub:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-d

@@ -9,7 +9,8 @@ cmd=(
 	docker run
 	--restart=always
 	--name srv-http-rpm
-	-p 20012:11300
+	-e LISTEN_PORT=20012
+	-p 20012:20012
 	-v /srv/rpm/pub:/srv/rpm/pub:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-d
