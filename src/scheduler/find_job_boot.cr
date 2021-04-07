@@ -117,7 +117,7 @@ class Sched
   def split_jobs_by_email(jobs)
     hash = Hash(String, Array(Etcd::Model::Kv)).new
     jobs.each do |job|
-      key = job.key.split("/")[4]
+      key = job.key.split("/")[5]
       if hash.has_key?(key)
         hash[key] << job
       else
