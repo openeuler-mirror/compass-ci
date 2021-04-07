@@ -21,7 +21,7 @@ class JSONLogger < Logger
     logger_hash = {
       'level' => severity.to_s,
       'level_num' => level_num,
-      'time' => datetime
+      'time' => Time.now.strftime("%Y-%m-%dT%H:%M:%S.%3N+0800")
     }
 
     logger_hash['progname'] = progname if progname
