@@ -37,7 +37,6 @@ else
 	echo "jobs index not exists, begin create index."
 	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/jobs' -d '{
 		    "mappings": {
-		      "_doc": {
 		      "dynamic": false,
 		      "dynamic_templates": [
 		          {
@@ -166,7 +165,6 @@ else
 		            "format": "yyyy-MM-dd HH:mm:ss"
 		          }
 		        }
-		      }
 		    }
 		  }'
 	  if [ $? -ne 0 ]

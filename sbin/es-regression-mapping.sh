@@ -10,15 +10,13 @@ else
 	echo "begin create index."
 	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/regression' -d '{
 		"mappings": {
-			"_doc": {
-				"dynamic": false,
-				"properties": {
-					"error_id": {
-						"type": "keyword"
-					},
-					"job_id": {
-						"type": "keyword"
-					}
+			"dynamic": false,
+			"properties": {
+				"error_id": {
+					"type": "keyword"
+				},
+				"job_id": {
+					"type": "keyword"
 				}
 			}
 		}

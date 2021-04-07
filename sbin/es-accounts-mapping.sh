@@ -12,24 +12,22 @@ else
 	echo "begin create index."
 	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/accounts' -d '{
 		"mappings": {
-			"_doc": {
-				"dynamic": false,
-				"properties": {
-					"my_commit_url": {
-						"type": "keyword"
-					},
-					"my_token": {
-						"type": "keyword"
-					},
-					"my_email": {
-						"type": "keyword"
-					},
-					"my_name": {
-						"type": "keyword"
-					},
-					"my_login_name": {
-						"type": "keyword"
-					}
+			"dynamic": false,
+			"properties": {
+				"my_commit_url": {
+					"type": "keyword"
+				},
+				"my_token": {
+					"type": "keyword"
+				},
+				"my_email": {
+					"type": "keyword"
+				},
+				"my_name": {
+					"type": "keyword"
+				},
+				"my_login_name": {
+					"type": "keyword"
 				}
 			}
 		}

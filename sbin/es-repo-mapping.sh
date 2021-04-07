@@ -11,35 +11,33 @@ echo 'Start to create "repo" index.'
 curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/repo' -d '
 {
     "mappings": {
-        "_doc": {
-            "properties": {
-                "git_repo": {
-                    "type": "keyword"
-                },
-                "pkgbuild_repo": {
-                    "type": "keyword"
-                },
-                "url": {
-                    "type": "keyword"
-                },
-                "fetch_time": {
-                    "type": "keyword"
-                },
-                "new_refs_time": {
-                    "type": "keyword"
-                },
-                "offset_fetch": {
-                    "type": "long"
-                },
-                "offset_new_refs": {
-                    "type": "long"
-                },
-                "priority": {
-                    "type": "long"
-                },
-                "queued": {
-                    "type": "boolean"
-                }
+        "properties": {
+            "git_repo": {
+                "type": "keyword"
+            },
+            "pkgbuild_repo": {
+                "type": "keyword"
+            },
+            "url": {
+                "type": "keyword"
+            },
+            "fetch_time": {
+                "type": "keyword"
+            },
+            "new_refs_time": {
+                "type": "keyword"
+            },
+            "offset_fetch": {
+                "type": "long"
+            },
+            "offset_new_refs": {
+                "type": "long"
+            },
+            "priority": {
+                "type": "long"
+            },
+            "queued": {
+                "type": "boolean"
             }
         }
     }
