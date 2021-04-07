@@ -49,11 +49,18 @@ class GitMirror
     url = get_url(Array(url)[0])
     10.times do
       stderr = %x(git clone --mirror --depth 1 #{url} #{mirror_dir} 2>&1)
-      return true if File.directory?(mirror_dir) && File.exist?("#{mirror_dir}/config")
+      return 2 if File.directory?(mirror_dir) && File.exist?("#{mirror_dir}/config")
 
       url = "git://#{url.split('://')[1]}" if stderr_443?(stderr)
     end
-    return false
+    return -2
+  end
+
+  def fetch_443(mirror_dir, fetch_info)
+    return unless stderr_443?(fetch_info)
+
+    url = %x(git -C #{mirror_dir} ls-remote --get-url origin).chomp
+    %x(git -C #{mirror_dir} remote set-url origin git://#{url.split('://')[1]})
   end
 
   def git_fetch(mirror_dir)
@@ -67,12 +74,10 @@ class GitMirror
     if fetch_info.include?(ERR_MESSAGE) && Dir.empty?(mirror_dir)
       FileUtils.rmdir(mirror_dir)
     end
+    fetch_443(mirror_dir, fetch_info)
+    return -1 if fetch_info.include?('fatal')
 
-    if stderr_443?(fetch_info)
-      url = %x(git -C #{mirror_dir} ls-remote --get-url origin).chomp
-      %x(git -C #{mirror_dir} remote set-url origin git://#{url.split('://')[1]})
-    end
-    return fetch_info.include? '->'
+    return fetch_info.include?('->') ? 1 : 0
   end
 
   def url_changed?(url, mirror_dir)
@@ -196,8 +201,14 @@ class MirrorMain
     git_repo = feedback_info[:git_repo]
     return if check_submodule(git_repo)
 
+    # values of possible_new_refs:
+    # 2: git clone a new repo
+    # 1: git fetch and get new refs
+    # 0: git fetch and no new refs
+    # -1: git fetch fail
+    # -2: git clone fail
     update_fork_stat(git_repo, feedback_info[:possible_new_refs])
-    return unless feedback_info[:possible_new_refs]
+    return if feedback_info[:possible_new_refs] < 1
 
     handle_feedback_new_refs(git_repo, feedback_info)
   end
@@ -335,7 +346,9 @@ class MirrorMain
 
   def update_fork_stat(git_repo, possible_new_refs)
     update_stat_fetch(git_repo)
-    update_stat_new_refs(git_repo) if possible_new_refs && last_commit_new?(git_repo)
+    git_fail_log(git_repo, possible_new_refs) if possible_new_refs.negative?
+    update_stat_new_refs(git_repo) if possible_new_refs.positive? && last_commit_new?(git_repo)
+    new_repo_log(git_repo) if possible_new_refs == 2
     es_repo_update(git_repo)
   end
 end
@@ -533,10 +546,24 @@ class MirrorMain
     end
   end
 
+  def new_repo_log(git_repo)
+    @log.info({
+      msg: 'new repo',
+      repo: git_repo
+    }.to_json)
+  end
+
+  def git_fail_log(git_repo, possible_new_refs)
+    msg = possible_new_refs == -1 ? 'git fetch fail' : 'git clone fail'
+    @log.info({
+      msg: msg,
+      repo: git_repo
+    }.to_json)
+  end
+
   def new_refs_log(git_repo, nr_new_branch)
     @log.info({
       msg: 'new refs',
-      time: Time.now,
       repo: git_repo,
       nr_new_branch: nr_new_branch
     }.to_json)
