@@ -468,7 +468,7 @@ end
 
 # main thread
 class MirrorMain
-  WEEK_SECONDS = 604800
+  STEP_SECONDS = 2592000
 
   def handle_feedback_new_refs(git_repo, feedback_info)
     return reload_fork_info(git_repo) if upstream_repo?(git_repo)
@@ -554,18 +554,18 @@ class MirrorMain
     mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}"
     mirror_dir = "#{mirror_dir}.git" unless @git_info[git_repo]['is_submodule']
 
-    return old_pri + Math.cbrt(WEEK_SECONDS) unless File.directory?(mirror_dir)
+    return old_pri + Math.cbrt(STEP_SECONDS) unless File.directory?(mirror_dir)
 
     return cal_priority(mirror_dir, old_pri)
   end
 
   def cal_priority(mirror_dir, old_pri)
     last_commit_time = %x(git -C #{mirror_dir} log --pretty=format:"%ct" -1 2>/dev/null).to_i
-    return old_pri + Math.cbrt(WEEK_SECONDS) if last_commit_time.zero?
+    return old_pri + Math.cbrt(STEP_SECONDS) if last_commit_time.zero?
 
     t = Time.now.to_i
     interval = t - last_commit_time
-    return old_pri + Math.cbrt(WEEK_SECONDS) if interval <= 0
+    return old_pri + Math.cbrt(STEP_SECONDS) if interval <= 0
 
     return old_pri + Math.cbrt(interval)
   end
