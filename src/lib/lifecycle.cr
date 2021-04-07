@@ -43,7 +43,10 @@ class Lifecycle
   def alive(version)
     "Lifecycle Alive! The time is #{Time.local}, version = #{version}"
   rescue e
-    @log.warn(e)
+    @log.warn({
+      "resource" => "/alive",
+      "message" => e.to_s
+    }.to_json)
   end
 
   def init_from_es
@@ -68,6 +71,11 @@ class Lifecycle
 
       deal_match_job(testbox, machine["job_id"].to_s)
     end
+  rescue e
+    @log.warn({
+      "resource" => "init_from_es",
+      "message" => e.to_s
+    }.to_json)
   end
 
   def deal_match_job(testbox, job_id)
@@ -129,6 +137,11 @@ class Lifecycle
       end
       @mq.ch.basic_ack(msg.delivery_tag)
     end
+  rescue e
+    @log.warn({
+      "resource" => "mq_event_loop",
+      "message" => e.to_s
+    }.to_json)
   end
 
   def on_other_job(event)
@@ -253,6 +266,11 @@ class Lifecycle
       next if dead_job_id && deadline <= Time.local
 
       sleep_until(deadline)
+    rescue e
+      @log.warn({
+        "resource" => "timeout_job_loop",
+        "message" => e.to_s
+      }.to_json)
     end
   end
 
@@ -264,6 +282,11 @@ class Lifecycle
       next if dead_machine_name && deadline <= Time.local
 
       sleep_until(deadline)
+    rescue e
+      @log.warn({
+        "resource" => "timeout_machine_loop",
+        "message" => e.to_s
+      }.to_json)
     end
   end
 
@@ -306,6 +329,12 @@ class Lifecycle
   def close_job(job_id, reason)
     @jobs.delete(job_id)
     spawn @scheduler_api.close_job(job_id, reason, "lifecycle")
+    @log.info({
+      "job_id" => job_id,
+      "state" => "close",
+      "reason" => reason,
+      "type" => "job"
+    }.to_json)
   end
 
   def reboot_crash_machine(testbox, event)
@@ -314,7 +343,7 @@ class Lifecycle
     return unless machine
     return unless event["time"].to_s.bigger_than?(machine["time"]?)
 
-    reboot_machine(testbox, machine)
+    reboot_machine(testbox, machine, "crash")
   end
 
   def reboot_timeout_machine(testbox)
@@ -329,10 +358,10 @@ class Lifecycle
     deadline = Time.parse(deadline.to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
     return if Time.local < deadline
 
-    reboot_machine(testbox, machine)
+    reboot_machine(testbox, machine, "timeout")
   end
 
-  def reboot_machine(testbox, machine)
+  def reboot_machine(testbox, machine, reason)
     mq_queue = get_machine_reboot_queue(testbox)
     machine.as_h.delete("history")
     machine.as_h["testbox"] = JSON::Any.new(testbox)
@@ -341,6 +370,12 @@ class Lifecycle
     machine["state"] = "rebooting_queue"
     machine["time"] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
     @es.update_tbox(testbox, machine.as_h)
+    @log.info({
+      "type" => "testbox",
+      "reason" => reason,
+      "testbox" => testbox,
+      "state" => "reboot"
+    }.to_json)
   end
 
   def get_machine_reboot_queue(testbox)
