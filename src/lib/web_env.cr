@@ -4,6 +4,7 @@
 require "./sched"
 require "./lifecycle"
 require "./json_logger"
+require "./updaterepo"
 
 class HTTP::Server
   # Instances of this class are passed to an `HTTP::Server` handler.
@@ -30,6 +31,14 @@ class HTTP::Server
 
     def create_lifecycle
       @lifecycle = Lifecycle.new(self)
+    end
+
+    def repo
+      @repo ||= create_repo
+    end
+
+    def create_repo
+      @repo = Repo.new(self)
     end
   end
 end
