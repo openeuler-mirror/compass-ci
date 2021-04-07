@@ -1,0 +1,6 @@
+#!/bin/sh
+
+. ../defconfig.sh
+docker_skip_rebuild "fedora:update-repodata"
+
+docker build -t fedora:update-repodata .

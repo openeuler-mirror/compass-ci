@@ -1,0 +1,41 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+DOCKER_CCI = '/c/compass-ci'
+
+names = Set.new %w[
+  MQ_HOST
+  MQ_PORT
+  LKP_SERVER
+]
+
+defaults = relevant_defaults(names)
+defaults['MQ_HOST'] ||= defaults['LKP_SERVER'] ||= '172.17.0.1'
+defaults['LKP_SERVER'] ||= '172.17.0.1'
+defaults['MQ_PORT'] ||= 5672
+env = docker_env(defaults)
+
+docker_rm "update-repodata"
+
+cmd = %W[
+  docker run
+  --restart=always
+  --name update-repodata
+  -u 1090:1090
+] + env + %W[
+  -d
+  -e CCI_SRC=#{DOCKER_CCI}
+  -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
+  -v /etc/localtime:/etc/localtime:ro
+  -v /srv/rpm:/srv/rpm
+  -w /c/compass-ci/lib
+  fedora:update-repodata
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./rpm-repo.rb']
+system(*cmd)
