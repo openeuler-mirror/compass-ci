@@ -323,6 +323,11 @@ class MirrorMain
     @es_client.index(index: 'repo', type: '_doc', id: git_repo, body: body)
   end
 
+  def update_fail_count(git_repo, possible_new_refs)
+    @fork_stat[git_repo][:clone_fail_cnt] += 1 if possible_new_refs == -2
+    @fork_stat[git_repo][:fetch_fail_cnt] += 1 if possible_new_refs == -1
+  end
+
   def update_stat_fetch(git_repo)
     @fork_stat[git_repo][:queued] = false
     offset_fetch = @fork_stat[git_repo][:offset_fetch]
@@ -338,7 +343,6 @@ class MirrorMain
   end
 
   def update_stat_new_refs(git_repo)
-    @fork_stat[git_repo][:priority] += 1
     offset_new_refs = @fork_stat[git_repo][:offset_new_refs]
     offset_new_refs = 0 if offset_new_refs >= 10
     update_new_refs_info(git_repo, offset_new_refs)
@@ -346,6 +350,7 @@ class MirrorMain
 
   def update_fork_stat(git_repo, possible_new_refs)
     update_stat_fetch(git_repo)
+    update_fail_count(git_repo, possible_new_refs)
     git_fail_log(git_repo, possible_new_refs) if possible_new_refs.negative?
     update_stat_new_refs(git_repo) if possible_new_refs.positive? && last_commit_new?(git_repo)
     new_repo_log(git_repo) if possible_new_refs == 2
@@ -416,7 +421,8 @@ class MirrorMain
   def get_fork_stat(git_repo)
     fork_stat = {
       queued: false,
-      priority: 0,
+      fetch_fail_cnt: 0,
+      clone_fail_cnt: 0,
       fetch_time: [],
       offset_fetch: 0,
       new_refs_time: [],
@@ -581,18 +587,20 @@ class MirrorMain
     mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}"
     mirror_dir = "#{mirror_dir}.git" unless @git_info[git_repo]['is_submodule']
 
-    return old_pri + Math.cbrt(STEP_SECONDS) unless File.directory?(mirror_dir)
+    step = (@fork_stat[git_repo][:clone_fail_cnt] + 1) * Math.cbrt(STEP_SECONDS)
+    return old_pri + step unless File.directory?(mirror_dir)
 
-    return cal_priority(mirror_dir, old_pri)
+    return cal_priority(mirror_dir, old_pri, git_repo)
   end
 
-  def cal_priority(mirror_dir, old_pri)
+  def cal_priority(mirror_dir, old_pri, git_repo)
     last_commit_time = %x(git -C #{mirror_dir} log --pretty=format:"%ct" -1 2>/dev/null).to_i
-    return old_pri + Math.cbrt(STEP_SECONDS) if last_commit_time.zero?
+    step = (@fork_stat[git_repo][:fetch_fail_cnt] + 1) * Math.cbrt(STEP_SECONDS)
+    return old_pri + step if last_commit_time.zero?
 
     t = Time.now.to_i
     interval = t - last_commit_time
-    return old_pri + Math.cbrt(STEP_SECONDS) if interval <= 0
+    return old_pri + step if interval <= 0
 
     return old_pri + Math.cbrt(interval)
   end
