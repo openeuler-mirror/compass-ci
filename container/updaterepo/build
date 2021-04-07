@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require_relative '../defconfig.rb'
+
+docker_skip_rebuild "update-repo"
+
+CCI_SRC = ENV['CCI_SRC']
+system "bash #{CCI_SRC}/container/compile ."
+system "docker build -t update-repo ."
+
+system 'rm updaterepo'
