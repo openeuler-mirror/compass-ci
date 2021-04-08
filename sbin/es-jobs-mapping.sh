@@ -150,6 +150,10 @@ else
 		            "type": "date",
 		            "format": "yyyy-MM-dd HH:mm:ss"
 		          },
+		          "submit_date": {
+		            "type": "date",
+		            "format": "yyyy-MM-dd"
+		          },
 		          "user": {
 		            "type": "keyword"
 		          },
