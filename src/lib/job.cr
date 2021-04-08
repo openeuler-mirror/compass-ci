@@ -240,6 +240,7 @@ class Job
   end
 
   private def set_os_dir
+    self["os_version"] = "#{os_version}".chmop("-iso") + "-iso" if "#{self.os_mount}" == "local"
     self["os_dir"] = "#{os}/#{os_arch}/#{os_version}"
   end
 
