@@ -7,8 +7,8 @@ require 'set'
 require_relative '../defconfig.rb'
 
 names = Set.new %w[
-  SCHED_HOST
   SCHED_PORT
+  SCHED_NODES
   REDIS_HOST
   REDIS_PORT
   ES_HOST
@@ -35,36 +35,42 @@ defaults['SSHR_PORT'] ||= 5051
 defaults['SSHR_PORT_BASE'] ||= 21000
 defaults['SSHR_PORT_LEN'] ||= 2000
 defaults['SCHED_PORT'] ||= '3000'
-defaults['SCHED_HOST'] ||= '172.17.0.1'
 defaults['MASTER_FLUENTD_PORT'] ||= '24224'
 defaults['SRV_HTTP_CCI_PORT'] ||= '11307'
+sched_nodes = defaults.delete('SCHED_NODES')
+SCHED_PORT = defaults.delete('SCHED_PORT')
+
+sched_nodes.each do |node|
+  docker_rm "s001-alpine-#{node['port']}"
+end
 env = docker_env(defaults)
 
 CCI_REPOS = ENV['CCI_REPOS'] || '/c'
 DEFAULT_LKP = "#{CCI_REPOS}/lkp-tests"
 DEFAULT_CCI = "#{CCI_REPOS}/compass-ci"
 LAB = defaults['lab'] || 'z9'
-SCHED_PORT = defaults['SCHED_PORT']
-SCHED_HOST = defaults['SCHED_HOST']
 
-docker_rm "s001-alpine-#{SCHED_PORT}"
+sched_nodes.each do |node|
+  node_host = node['host']
+  node_port = node['port']
 
-bind_list = []
-[SCHED_HOST, '172.17.0.1'].uniq.each do |ip|
-  bind_list << '-p'
-  bind_list << "#{ip}:#{SCHED_PORT}:#{SCHED_PORT}"
-end
+  bind_list = []
+  [node_host, '172.17.0.1'].uniq.each do |ip|
+    bind_list << '-p'
+    bind_list << "#{ip}:#{node_port}:#{node_port}"
+  end
 
-cmd = %W[
+  cmd = %W[
   docker run
-  --restart=always
-  --name s001-alpine-#{SCHED_PORT}
+  --name s001-alpine-#{node_port}
   -d
   -u 1090:1090
-] + bind_list + env + %W[
+  ] + bind_list + env + %W[
   -e CCI_REPOS=#{CCI_REPOS}
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
+  -e SCHED_PORT=#{node_port}
+  -v /srv/tmp/public:/c/cci/scheduler/public
   -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
   -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
@@ -78,8 +84,9 @@ cmd = %W[
   --log-opt max-buffer-size=4m
   --log-opt tag=scheduler-#{SCHED_PORT}
   sch-ruby-a:v0.00d-#{SCHED_PORT}
-]
+  ]
 
-cmd += ['sh', '-c', 'umask 002 && ./scheduler']
+  cmd += ['sh', '-c', 'umask 002 && ./scheduler']
 
-system(*cmd)
+  system(*cmd)
+end

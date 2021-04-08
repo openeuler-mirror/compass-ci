@@ -77,6 +77,13 @@ ES_HOST: $ES_HOST
 ES_PORT: $ES_PORT
 SCHED_HOST: $sched_host
 SCHED_PORT: $sched_port
+SCHED_NODES:
+  - host: $sched_host
+    port: 3001
+  - host: $sched_host
+    port: 3002
+  - host: $sched_host
+    port: 3003
 LKP_SERVER: $server_ip
 GIT_SERVER: $git_server
 OS_HTTP_HOST: $OS_HTTP_HOST
