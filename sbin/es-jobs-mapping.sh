@@ -85,6 +85,9 @@ else
 		          "suite": {
 		            "type": "keyword"
 		          },
+		          "errid": {
+			    "type": "text"
+			  },
 		          "category": {
 		            "type": "keyword"
 		          },
