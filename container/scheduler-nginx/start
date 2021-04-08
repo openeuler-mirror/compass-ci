@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  SCHED_PORT
+]
+
+defaults = relevant_defaults(names)
+SCHED_PORT = defaults['SCHED_PORT']
+env = docker_env(defaults)
+
+docker_rm 'scheduler-nginx'
+
+cmd = %w[
+  docker run
+  --name scheduler-nginx
+  --restart=always
+  -d
+] + env + %W[
+  -p #{SCHED_PORT}:#{SCHED_PORT}
+  -v /etc/localtime:/etc/localtime:ro
+  --log-opt mode=non-blocking
+  --log-opt max-buffer-size=4m
+  scheduler-nginx
+]
+
+system(*cmd)
