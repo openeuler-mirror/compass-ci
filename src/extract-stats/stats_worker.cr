@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 require "../lib/etcd_client"
@@ -8,6 +9,9 @@ require "./regression_client"
 require "./constants.cr"
 
 class StatsWorker
+  @@metric_failure = File.read("#{ENV["LKP_SRC"]}/etc/failure").strip.split("\n").as(Array(String))
+  @@__is_failure_cache = Hash(String, Bool).new
+
   def initialize
     @es = Elasticsearch::Client.new
     @etcd = EtcdClient.new
@@ -45,6 +49,21 @@ class StatsWorker
     system "#{ENV["CCI_SRC"]}/sbin/mail-job #{job_id}"
   end
 
+  def is_failure(stats_field)
+    if @@__is_failure_cache.has_key?(stats_field)
+      @@__is_failure_cache[stats_field]
+    else
+      @@__is_failure_cache[stats_field] = __is_failure(stats_field)
+    end
+  end
+
+  def __is_failure(stats_field)
+    return false if stats_field.index(".time.")
+    return false if stats_field.index(".timestamp.")
+    return true if @@metric_failure.any? { |pattern| stats_field =~ %r{^#{pattern}} }
+    false
+  end
+
   def store_stats_es(result_root : String, job_id : String, queue_path : String)
     stats_path = "#{result_root}/stats.json"
     return unless File.exists?(stats_path)
@@ -53,8 +72,13 @@ class StatsWorker
       JSON.parse(file)
     end
 
+    errid = Array(String).new
+    stats.as_h.keys.each do |k|
+      errid << k.to_s if is_failure(k.to_s)
+    end
+
     update_content = Hash(String, Array(String) | Hash(String, JSON::Any)).new
-    update_content.merge!({"stats" => stats.as_h})
+    update_content.merge!({"stats" => stats.as_h, "errid" => errid})
 
     error_ids = get_error_ids_by_json(result_root)
     update_content.merge!({"error_ids" => error_ids}) unless error_ids.empty?
