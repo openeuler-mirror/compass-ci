@@ -7,7 +7,7 @@ docker_rm minio
 
 cmd=(
 	docker run -d
-	-p 11321:9000
+	-p 20014:9000
 	--name minio
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/minio/:/srv/minio/

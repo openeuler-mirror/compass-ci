@@ -11,8 +11,8 @@ cmd=(
 	docker run -d
 	--name openresty-proxy-cache
 	--restart=always
-	-p 11333:80
-	-p 11334:443
+	-p 20015:80
+	-p 20016:443
 	-v $PWD/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
 	-v /srv/initrd/tar:/srv/initrd/tar:ro
 	-v /etc/localtime:/etc/localtime:ro
