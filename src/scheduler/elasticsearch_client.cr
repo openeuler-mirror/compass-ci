@@ -36,6 +36,9 @@ class Elasticsearch::Client
 
   # caller should judge response["_id"] != nil
   def set_job_content(job : Job)
+    # time indicates the update time of each job event
+    job.set_time
+
     response = get_job_content(job.id)
     if response["id"]?
       response = update(job.dump_to_json_any, job.id)

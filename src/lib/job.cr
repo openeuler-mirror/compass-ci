@@ -315,6 +315,10 @@ class Job
     return package_dir
   end
 
+  def set_time
+    self["time"] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
   def set_upload_dirs
     self["upload_dirs"] = "#{result_root}#{get_package_dir}"
   end
