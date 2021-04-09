@@ -76,6 +76,7 @@ class Sched
     if job_id
       begin
         job = @es.get_job(job_id.to_s)
+        @log.warn("job_is_nil, job id=#{job_id.to_s}") unless job
       rescue ex
         @log.warn("Invalid job (id=#{job_id}) in es. Info: #{ex}")
         @log.warn(ex.inspect_with_backtrace)

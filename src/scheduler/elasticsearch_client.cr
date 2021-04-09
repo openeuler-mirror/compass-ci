@@ -142,6 +142,7 @@ class Elasticsearch::Client
     return @client.create(
       {
         :index => "jobs", :type => "_doc",
+        :refresh => "wait_for",
         :id => job_id,
         :body => job_content,
       }
@@ -152,6 +153,7 @@ class Elasticsearch::Client
     return @client.update(
       {
         :index => "jobs", :type => "_doc",
+        :refresh => "wait_for",
         :id => job_id,
         :body => {:doc => job_content},
       }
