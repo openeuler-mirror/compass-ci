@@ -42,8 +42,7 @@ module ExtractStats
 
       task = tasks.delete_at(0)
       spawn { StatsWorker.new.handle(task.key, channel) }
-
-      sleep 1
+      Fiber.yield
     end
   end
 
@@ -63,8 +62,7 @@ module ExtractStats
     while true
       key = channel.receive
       spawn { StatsWorker.new.handle(key, channel) }
-
-      sleep 1
+      Fiber.yield
     end
   end
 end
