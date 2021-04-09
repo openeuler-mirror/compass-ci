@@ -88,6 +88,9 @@ else
 		          "errid": {
 			    "type": "text"
 			  },
+		          "time": {
+			    "type": "date"
+			  },
 		          "category": {
 		            "type": "keyword"
 		          },
