@@ -10,7 +10,7 @@
 #      ./download-rootfs debian aarch64 sid
 
 os=${1:-openeuler}
-os_arch=${2:-aarch64}
+os_arch=${2:-$(arch)}
 os_version=${3:-20.03}
 
 . ${CCI_SRC}/container/defconfig.sh
