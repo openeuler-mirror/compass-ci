@@ -37,4 +37,9 @@ download_os_rootfs()
       rm -rf ${os_version}.cgz
 }
 
-download_os_rootfs
+is_virtual()
+{
+	dmidecode -s system-product-name | grep -iq "virtual"
+}
+
+is_virtual || download_os_rootfs
