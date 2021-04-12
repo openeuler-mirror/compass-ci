@@ -2,4 +2,6 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-$CCI_SRC/sbin/download-rootfs
+. $CCI_SRC/lib/check_public_network.sh
+
+public_network_ok && $CCI_SRC/sbin/download-rootfs

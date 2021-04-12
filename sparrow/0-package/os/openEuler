@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. $CCI_SRC/lib/check_public_network.sh
+
 pkgs=(
 	vim
 	git
@@ -26,10 +28,12 @@ pkgs=(
 	sudo
 )
 
-yum install -y --skip-broken "${pkgs[@]}"
+public_network_ok && {
+	yum install -y --skip-broken "${pkgs[@]}"
 
-wget http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
-wget http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
+	wget http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
+	wget http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
 
-rpm -i --force lib64lockfile1-1.16-1-omv4002.$(arch).rpm lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
-rm -rf *.rpm
+	rpm -i --force lib64lockfile1-1.16-1-omv4002.$(arch).rpm lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
+	rm -rf *.rpm
+}
