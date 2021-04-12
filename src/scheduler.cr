@@ -9,7 +9,7 @@ module Scheduler
   log = JSONLogger.new
 
   begin
-    Kemal.run(SCHED_PORT)
+    Kemal.run(ENV["NODE_PORT"].to_i32)
   rescue e
     log.error(e)
   end
