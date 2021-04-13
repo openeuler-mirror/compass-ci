@@ -158,6 +158,16 @@ class Sched
     spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
   end
 
+  # input:  ["sched/dc-8g.aarch64/ready"]
+  # output: ["dc-8g.aarch64"]
+  def fetch_queues(queues)
+    new_queues = [] of String
+    queues.each do |queue|
+      new_queues << queue.split("/")[1]
+    end
+    new_queues
+  end
+
   def set_lifecycle(job, testbox, queues)
     if job
       deadline = job.get_deadline
@@ -172,7 +182,7 @@ class Sched
     end
 
     type = get_type(testbox)
-    queues = JSON.parse(queues.to_json)
+    queues = JSON.parse(fetch_queues(queues).to_json)
     hash = {
       "job_id" => job_id,
       "state" => state,
