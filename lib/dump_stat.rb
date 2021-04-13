@@ -38,7 +38,7 @@ module DumpStat
 
     stat_result.each do |key, value|
       key = key.resolve_invalid_bytes
-      key = key.chomp.strip
+      key = key.strip
       next if key[0] == '#'
       next if value.empty? || value == 0
       next if monitor =~ /^(dmesg|kmsg)$/ && key =~ /^(message|pattern):/
