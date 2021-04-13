@@ -432,7 +432,14 @@ class MirrorMain
     query = { query: { match: { _id: git_repo } } }
     return fork_stat unless @es_client.count(index: 'repo', body: query)['count'].positive?
 
-    result = @es_client.search(index: 'repo', body: query)['hits']
+    begin
+      result = @es_client.search(index: 'repo', body: query)['hits']
+    rescue StandardError
+      puts $ERROR_INFO
+      sleep 1
+      retry
+    end
+
     fork_stat.each_key do |key|
       fork_stat[key] = result['hits'][0]['_source'][key.to_s] || fork_stat[key]
     end
