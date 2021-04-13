@@ -168,6 +168,10 @@ class ESJobs
   end
 
   def output
+    output_yaml('', @result)
+  end
+
+  def generate_result
     if @jobs.empty?
       puts "No query result is found: #{@es_query}"
       return
@@ -175,6 +179,6 @@ class ESJobs
     @result = query_jobs_state(@jobs)
     @result['kvcount'] = @result['kvcount'].sort.to_h
     @result['raw.id'] = @result['raw.id'].sort.to_h
-    output_yaml('', @result)
+    @result
   end
 end
