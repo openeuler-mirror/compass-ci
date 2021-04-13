@@ -18,6 +18,7 @@ server_name=$(hostname | cut -f1 -d.)
 : ${srv_http_git_host:=$server_ip}
 : ${srv_http_cci_host:=$server_ip}
 : ${SRV_HTTP_RESULT_PORT:=20007}
+: ${SRV_HTTP_INITRD_PORT:=20008}
 : ${SRV_HTTP_OS_PORT:=20009}
 : ${SRV_HTTP_GIT_PORT:=20010}
 : ${SRV_HTTP_CCI_PORT:=20011}
@@ -92,6 +93,7 @@ SRV_HTTP_OS_HOST: $srv_http_os_host
 SRV_HTTP_GIT_HOST: $srv_http_git_host
 SRV_HTTP_CCI_HOST: $srv_http_cci_host
 SRV_HTTP_RESULT_PORT: $SRV_HTTP_RESULT_PORT
+SRV_HTTP_INITRD_PORT: $SRV_HTTP_INITRD_PORT
 SRV_HTTP_OS_PORT: $SRV_HTTP_OS_PORT
 SRV_HTTP_GIT_PORT: $SRV_HTTP_GIT_PORT
 SRV_HTTP_CCI_PORT: $SRV_HTTP_CCI_PORT
