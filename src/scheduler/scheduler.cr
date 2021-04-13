@@ -31,6 +31,7 @@ require "../lib/json_logger"
 #
 module Scheduler
   VERSION = "0.2.0"
+  logging false
 
   add_context_storage_type(Time::Span)
 
@@ -43,6 +44,7 @@ module Scheduler
 
   after_all do |env|
     env.sched.etcd_close
+    env.log.info(%({"from": "#{env.request.remote_address}", "message": "access_record"}))
   end
 
   # echo alive

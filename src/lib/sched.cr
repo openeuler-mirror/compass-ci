@@ -54,7 +54,6 @@ class Sched
   end
 
   def alive(version)
-    debug_message("Env= {\n#{`export`}}")
     "LKP Alive! The time is #{Time.local}, version = #{version}"
   rescue e
     @log.warn(e)
