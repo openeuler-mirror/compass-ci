@@ -29,13 +29,13 @@ sync_src_lv() {
         # ensure the physical disk has been initialized as physical volume
         real_pv_device="$(lvm pvs | grep -w $pv_device | awk '{print $1}')"
         [ "$real_pv_device" = "$pv_device" ] || {
-            lvm pvcreate "$pv_device" || reboot
+            lvm pvcreate -y "$pv_device" || reboot
         }
 
         # ensure the volume group $vg_name exists
         real_vg_name="$(lvm pvs | grep -w $vg_name | awk '{print $2}')"
         [ "$real_vg_name" = "$vg_name" ] || {
-            lvm vgcreate "$vg_name" "$pv_device" || reboot
+            lvm vgcreate -y "$vg_name" "$pv_device" || reboot
         }
     }
 
