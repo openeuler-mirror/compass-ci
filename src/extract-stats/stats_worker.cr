@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 require "../lib/etcd_client"
+require "../lib/json_logger"
 require "../scheduler/elasticsearch_client"
 require "../scheduler/redis_client"
 require "../scheduler/constants"
@@ -16,6 +17,7 @@ class StatsWorker
     @es = Elasticsearch::Client.new
     @etcd = EtcdClient.new
     @rc = RegressionClient.new
+    @log = JSONLogger.new
   end
 
   def handle(queue_path, channel)
@@ -30,7 +32,7 @@ class StatsWorker
       @etcd.delete(queue_path)
     rescue e
       channel.send(queue_path)
-      STDERR.puts e.message
+      @log.error(e.message)
       # incase of many error message when task-queue, ES does not work
       sleep(10)
     ensure
@@ -95,16 +97,16 @@ class StatsWorker
     new_error_ids = check_new_error_ids(error_ids, job_id)
     unless new_error_ids.empty?
       sample_error_id = new_error_ids.sample
-      STDOUT.puts "send a delimiter task: job_id is #{job_id}"
+      @log.info("send a delimiter task: job_id is #{job_id}")
       queue = "#{DELIMITER_TASK_QUEUE}/#{job_id}"
       value = {"job_id" => job_id, "error_id" => sample_error_id}
       @etcd.put(queue, value)
 
       msg = %({"job_id": "#{job_id}", "new_error_id": "#{sample_error_id}"})
-      system "echo '#{msg}'"
+      @log.info(msg)
     end
     msg = %({"job_id": "#{job_id}", "job_state": "extract_finished"})
-    system "echo '#{msg}'"
+    @log.info(msg)
   end
 
   def check_new_error_ids(error_ids : Array, job_id : String)
@@ -113,7 +115,7 @@ class StatsWorker
       begin
         is_exists = @rc.check_error_id error_id
       rescue e
-        STDERR.puts e.message
+        @log.error(e.message)
         next
       end
       next if is_exists
