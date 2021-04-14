@@ -14,10 +14,10 @@ cmd=(
 	-p 4001:4001
 	-p 7001:7001
 	-v /srv/etcd/dir:/data
+	-v /etc/localtime:/etc/localtime:ro
 	-e ETCD_UNSUPPORTED_ARCH=arm64
 	--name etcd-server
 	etcd-v3.4.15:alpine
-	/bin/etcd
 	--name node-1
 	--data-dir /data
 	--initial-cluster-state new

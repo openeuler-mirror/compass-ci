@@ -14,3 +14,9 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
     rm -Rf etcd-${VERSION}-linux-arm64* /var/cache/apk/*
 
 VOLUME /data
+
+COPY etcd_compact.sh /
+COPY entry.sh /
+RUN echo '* 0 * * * /test.sh > /etcd_compact.log 2>&1' >> /var/spool/cron/crontabs/root
+
+ENTRYPOINT ["/entry.sh"]
