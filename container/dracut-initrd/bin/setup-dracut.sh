@@ -20,6 +20,9 @@ sed -i "/install() {/a\    inst /usr/bin/awk" /usr/lib/dracut/modules.d/40networ
 tools_00bash="/sbin/e2fsck /sbin/mke2fs /usr/bin/basename /sbin/lvm /sbin/reboot"
 sed -i "/install() {/a\    inst $tools_00bash" /usr/lib/dracut/modules.d/00bash/module-setup.sh
 
-pre_mount_file="/usr/lib/dracut/modules.d/98dracut-systemd/dracut-pre-mount.sh"
+dracut_systemd_dir="/usr/lib/dracut/modules.d/98dracut-systemd"
+pre_mount_service="${dracut_systemd_dir}/dracut-pre-mount.service"
+sed -i "/Description/aConditionKernelCommandLine=|local" "$pre_mount_service"
+pre_mount_file="${dracut_systemd_dir}/dracut-pre-mount.sh"
 [ "$(sed -n '$p' $pre_mount_file)"  = "exit 0" ] && sed -i '$d' "$pre_mount_file"
 cat set-local-sysroot.sh >> "$pre_mount_file"
