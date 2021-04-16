@@ -26,11 +26,7 @@ end
 
 module JobHelper
   def self.match_tbox_group(testbox : String)
-    tbox_group = testbox
-    if testbox =~ /(.*)-\d+$/
-      tbox_group = $1
-    end
-    return tbox_group
+    testbox.split(/\.|--/)[0]
   end
 
   def self.service_path(path)
