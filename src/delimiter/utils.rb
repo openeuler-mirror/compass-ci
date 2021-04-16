@@ -137,9 +137,10 @@ module Utils
       job['my_email'] = ENV['my_email']
       job['my_token'] = ENV['secrets_my_token']
       job['bad_job_id'] = job_id
-      job['queue'] = "#{job['testbox'].split('.')[0]}-bisect"
+      job['testbox'] = job['tbox_group']
 
       job.delete('id')
+      job.delete('queue')
 
       return job
     end
