@@ -4,6 +4,6 @@
 
 . ../defconfig.sh
 
-docker_skip_rebuild "debian:assistant"
+docker_skip_rebuild "assistant"
 
-docker build -t debian:assistant .
+docker build -t assistant .

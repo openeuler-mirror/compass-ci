@@ -1,21 +1,42 @@
-#!/bin/bash
+#!/usr/bin/env ruby
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
 
-. $CCI_SRC/container/defconfig.sh
+require 'set'
+require_relative '../defconfig.rb'
 
-docker_rm assistant 
+names = Set.new %w[
+  ASSISTANT_HOST
+  ASSISTANT_PORT
+]
 
-cmd=(
-	docker run
-	--restart=always
-	--name assistant
-	-u nobody
-	-d
-	-p 8101:8101
-	-v /srv/initrd:/srv/initrd
-	-v /etc/localtime:/etc/localtime:ro
-	debian:assistant
-)
+defaults = relevant_defaults(names)
+env = docker_env(defaults)
 
-"${cmd[@]}"
+DEFAULT_LKP = '/c/lkp-tests'
+DEFAULT_CCI = '/c/compass-ci'
+DEFAULT_CONFIG_DIR = '/etc/compass-ci'
+ASSISTANT_PORT = defaults['ASSISTANT_PORT']
+docker_rm 'assistant'
+
+cmd = %w[
+  docker run
+  --name assistant
+  --restart=always
+  -d
+] + env + %W[
+  -e LKP_SRC=#{DEFAULT_LKP}
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -p #{ASSISTANT_PORT}:#{ASSISTANT_PORT}
+  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
+  -v /etc/localtime:/etc/localtime:ro
+  -w #{DEFAULT_CCI}/container/assistant/
+  assistant
+]
+
+cmd += ['sh', '-c', 'umask 002 && ruby ./routes.rb']
+
+system(*cmd)
