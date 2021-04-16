@@ -6,7 +6,7 @@ require_relative 'git'
 require_relative 'es_query'
 require_relative 'constants'
 require_relative 'mail_client'
-require_relative 'parse_mail_list'
+require_relative 'assistant_client'
 require_relative 'assign_account_client'
 
 # compose and send email for bisect result
@@ -25,7 +25,7 @@ class MailBisectResult
   end
 
   def parse_mail_info
-    mail_hash = parse_mail_list('delimiter')
+    mail_hash = AssistantClient.new.get_mail_list('delimiter')
     @to = mail_hash['to'] if mail_hash.key?('to')
     @bcc = mail_hash['bcc'] if mail_hash.key?('bcc')
     raise 'Need to add bcc email for bisect report.' unless @bcc
