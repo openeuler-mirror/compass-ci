@@ -100,6 +100,9 @@ else
 		          "queue": {
 		            "type": "keyword"
 		          },
+		          "subqueue": {
+			    "type": "keyword"
+		          },
 		          "testbox": {
 		            "type": "keyword"
 		          },
