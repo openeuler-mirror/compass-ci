@@ -121,8 +121,6 @@ module DumpStat
     @max_cols_stat = ''
     zero_stats = []
     @result.each do |key, val|
-      next if key.end_with?('.message', '.log')
-
       if @max_cols < val.size
         @max_cols = val.size
         @max_cols_stat = key
