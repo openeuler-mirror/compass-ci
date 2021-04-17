@@ -40,11 +40,15 @@ module Scheduler
     env.response.headers["Connection"] = "close"
     env.create_log
     env.create_sched
+  rescue e
+    env.log.warn(e.inspect_with_backtrace)
   end
 
   after_all do |env|
     env.sched.etcd_close
     env.log.info(%({"from": "#{env.request.remote_address}", "message": "access_record"}))
+  rescue e
+    env.log.warn(e.inspect_with_backtrace)
   end
 
   # echo alive
