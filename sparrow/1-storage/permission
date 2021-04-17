@@ -13,6 +13,9 @@ chmod_dir=(
 		/srv/rabbitmq
 		/c/git-repos
 		/srv/tmp/public
+		/srv/initrd
+		/srv/initrd/pkg
+		/srv/initrd/deps
 )
 
 chmod 775 "${chmod_dir[@]}"
@@ -20,6 +23,8 @@ chmod 775 "${chmod_dir[@]}"
 chown_dir=(
 		/srv/result
 		/srv/initrd
+		/srv/initrd/pkg
+		/srv/initrd/deps
 		/srv/es
 		/srv/cache/netdata_cache
 		/srv/cache/netdata_lib
