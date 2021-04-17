@@ -4,7 +4,6 @@
 
 require_relative "#{ENV['CCI_SRC']}/lib/es_query"
 
-def get_job_stats(job_id)
-  content = ESQuery.new.query_by_id(job_id)
-  return content['stats']
+def get_job_content(job_id)
+  return ESQuery.new.query_by_id(job_id)
 end

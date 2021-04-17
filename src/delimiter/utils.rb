@@ -108,9 +108,12 @@ module Utils
     # this is a temporary solution, the extract container will be improved in future.
     def query_stats(job_id, times)
       (1..times).each do |i|
-        new_job = ESQuery.new.query_by_id(job_id)
+        job_content = AssistResult.new.get_job_content(job_id)
         puts "query stats times: #{i}"
-        return new_job['stats'] if new_job['stats']
+        if job_content
+          job_content = JSON.parse(job_content)
+          return job_content['stats'] if job_content.key?('stats')
+        end
 
         sleep 60
       end

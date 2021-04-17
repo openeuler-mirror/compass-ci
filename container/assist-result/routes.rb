@@ -7,7 +7,7 @@ require 'json'
 require 'sinatra'
 
 require_relative './views/get_job_yaml'
-require_relative './views/get_job_stats'
+require_relative './views/get_job_content'
 require_relative './views/check_job_credible'
 
 configure do
@@ -36,9 +36,9 @@ post '/check_job_credible' do
   return [200, {'credible' => result}.to_json]
 end
 
-get '/get_job_stats/:job_id' do
+get '/get_job_content/:job_id' do
   begin
-    result = get_job_stats(params[:job_id])
+    result = get_job_content(params[:job_id])
   rescue StandardError => e
     return [400, e.backtrace.inspect]
   end

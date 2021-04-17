@@ -34,4 +34,12 @@ class AssistResult
 
     return JSON.parse(response.body)
   end
+
+  def get_job_content(job_id)
+    resource = RestClient::Resource.new("http://#{@host}:#{@port}/get_job_content/#{job_id}")
+    response = resource.get()
+    return nil unless response.code == 200
+
+    return response.body
+  end
 end
