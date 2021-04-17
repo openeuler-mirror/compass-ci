@@ -8,5 +8,3 @@ version=v3.4.15
 docker_skip_rebuild "etcd-${version}:alpine"
 
 docker build -t etcd-${version}:alpine --build-arg VERSION=${version} .
-
-
