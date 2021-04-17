@@ -34,7 +34,7 @@ class RegressionClient
       :body  => query_body,
     })
     raise "query failed." unless result["hits"]? || result["hits"]["total"]?
-    total = result["hits"]["total"]
+    total = result["hits"]["total"]["value"]
     if total.is_a?(JSON::Any)
       total = total.as_i
     else
