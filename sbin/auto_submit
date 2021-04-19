@@ -55,6 +55,9 @@ class AutoSubmit
     real_argvs.push("upstream_dir=#{belong}")
     tag = %x(git -C #{mirror_dir} tag --points-at #{commit_id})
     real_argvs.push("upstream_tag=#{tag}") unless tag.empty?
+    author_email = %x(git -C #{mirror_dir} log --format=%ae -1)
+    committer_email = %x(git -C #{mirror_dir} log --format=%ce -1)
+    real_argvs.push("author_email=#{author_email} committer_email=#{committer_email}")
 
     system(real_argvs.join(' '))
   end
