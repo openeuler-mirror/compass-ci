@@ -3,7 +3,6 @@
 # frozen_string_literal: true
 
 require 'json'
-require_relative 'es_query'
 require_relative 'error_messages'
 require_relative 'sched_client'
 require_relative '../src/delimiter/utils'
@@ -12,7 +11,6 @@ require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 # find the first bad commit
 class GitBisect
   def initialize(task)
-    @es = ESQuery.new
     @task = task
   end
 
@@ -54,7 +52,7 @@ class GitBisect
     puts "upstream_commit: #{@upstream_commit}"
     raise 'upstream info is null' unless @upstream_repo || @upstream_commit
 
-    @upstream_repo_git = "git://#{GIT_MIRROR_HOST}/#{@upstream_repo}"
+    @upstream_repo_git = "git://#{GIT_MIRROR_HOST}/upstream/#{@upstream_repo}"
   end
 
   def set_upstream_url
@@ -66,7 +64,7 @@ class GitBisect
   def set_work_dir
     @work_dir = Utils.clone_repo(@upstream_repo_git, @upstream_commit)
     puts "work_dir: #{@work_dir}"
-    raise "checkout repo: #{@upstream_repo} to commit: #{@upstream_commit} failed!" unless @work_dir
+    raise "checkout repo: #{@upstream_repo_git} to commit: #{@upstream_commit} failed!" unless @work_dir
   end
 
   def set_pkgbuild_repo
@@ -104,7 +102,7 @@ class GitBisect
     return nil unless temp[0].include?('is the first bad commit') || temp[-1].include?('bisect run success')
 
     first_bad_commit = Utils.parse_first_bad_commit(result)
-    bisect_error = ErrorMessages.new(@build_pkg_dir).obtain_error_messages_by_error_id(@error_id)
+    bisect_error = Utils.get_bisect_error(@bad_job_id, @error_id)
     all_errors = Utils.obt_errors(@work_dir, first_bad_commit)
     first_bad_commit_result_root = Utils.obt_result_root_by_commit(first_bad_commit)
 

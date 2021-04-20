@@ -5,13 +5,11 @@
 # frozen_string_literal: true
 
 require 'json'
-require_relative "#{ENV['CCI_SRC']}/lib/es_query"
 require_relative "#{ENV['CCI_SRC']}/src/delimiter/utils"
 
 # git bisect run
 class GitBisectRun
   def initialize(job_id, error_id, work_dir)
-    @es = ESQuery.new
     @job_id = job_id
     @error_id = error_id
     @work_dir = work_dir
@@ -27,12 +25,17 @@ class GitBisectRun
   private
 
   def get_bisect_status(job)
-    status = Utils.get_job_status(job, @error_id)
-    exit 125 unless status
+    begin
+      status = Utils.get_job_status(job, @error_id)
+      exit 125 unless status
 
-    exit 1 if status.eql?('bad')
+      exit 1 if status.eql?('bad')
 
-    exit 0
+      exit 0
+    rescue StandardError => e
+      puts e.backtrace.inspect
+      exit -1
+    end
   end
 end
 
@@ -43,6 +46,7 @@ begin
 
   run = GitBisectRun.new job_id, error_id, work_dir
   run.git_bisect
-rescue
+rescue StandardError => e
+  puts e.backtrace.inspect
   exit -1
 end
