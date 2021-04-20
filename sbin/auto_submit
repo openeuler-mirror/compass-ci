@@ -51,15 +51,33 @@ class AutoSubmit
 
     real_argvs = Array.new(submit_argv)
     real_argvs.push("upstream_branch=#{branch}")
-    real_argvs.push("upstream_commit=#{commit_id}")
     real_argvs.push("upstream_dir=#{belong}")
     tag = %x(git -C #{mirror_dir} tag --points-at #{commit_id})
     real_argvs.push("upstream_tag=#{tag}") unless tag.empty?
-    author_email = %x(git -C #{mirror_dir} log --format=%ae -1)
-    committer_email = %x(git -C #{mirror_dir} log --format=%ce -1)
-    real_argvs.push("author_email=#{author_email} committer_email=#{committer_email}")
+    if git_repo.include?('my-sql_with_boostkit_patch')
+      competi_argvs = get_argvs_for_competition(mirror_dir, branch, commit_id)
+      real_argvs.push(competi_argvs)
+    end
+    real_argvs.push("upstream_commit=#{commit_id}")
 
     system(real_argvs.join(' '))
+  end
+
+  def get_argvs_for_competition(real_argvs, mirror_dir, branch, commit_id)
+    argvs_for_base = Array.new(real_argvs)
+    author_email = %x(git -C #{mirror_dir} log --format=%ae -1 #{commit_id}).chomp
+    committer_email = %x(git -C #{mirror_dir} log --format=%ce -1 #{commit_id}).chomp
+
+    if committer_email.include?('noreply')
+      emails = %x(git -C #{mirror_dir} log --format=%ae -2 #{commit_id})
+      committer_email = emails.lines[0].chomp
+      author_email = emails.lines[1].chomp
+    end
+
+    base_commit = %x(git -C #{mirror_dir} merge-base master #{branch}).chomp
+    argvs_for_base.push("upstream_commit=#{base_commit}")
+    system(argvs_for_base.join(' '))
+    return "author_email=#{author_email} committer_email=#{committer_email} base_commit=#{base_commit}"
   end
 
   def submit_specific_branch(submit_argv, newrefs_info, branches)
