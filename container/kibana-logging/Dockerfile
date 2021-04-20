@@ -5,8 +5,11 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
 
-# docker image borrowed from hub.docker.com/r/gagara/kibana-oss-arm64
+ARG USER
+ARG PASSWORD
 
 MAINTAINER Wu Zhende <wuzhende666@163.com>
 
-RUN sed -i 's/server.host: "0"/server.host: "0.0.0.0"/' config/kibana.yml
+RUN sed -i 's/server.host: "0"/server.host: "0.0.0.0"/' config/kibana.yml && \
+    sed -i "6i\elasticsearch.username: ${USER}" config/kibana.yml && \
+    sed -i "6i\elasticsearch.password: ${PASSWORD}" config/kibana.yml
