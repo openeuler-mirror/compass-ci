@@ -6,6 +6,7 @@
 require 'fileutils'
 require 'json'
 require './mq_client'
+require_relative 'json_logger.rb'
 
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
@@ -29,31 +30,47 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 #    change /srv/rpm/pub/**/repodate
 # @mq.ack(info)
 class HandleRepo
+  @@upload_dir_prefix = "/srv/rpm/upload/"
   def initialize
     @mq = MQClient.new(MQ_HOST, MQ_PORT)
-    @update = []
+    @log = JSONLogger.new
   end
 
   def handle_new_rpm
     queue = @mq.queue("update_repo")
     queue.subscribe({:block => true, :manual_ack => true}) do |info,  _pro, msg|
-      rpm_info = JSON.parse(msg)
-      rpm_info["upload_rpms"].each do |rpm|
-        rpm_path = File.dirname(rpm).sub("upload", "testing")
-        FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
+      begin
+        rpm_info = JSON.parse(msg)
+        check_upload_rpms(rpm_info)
+        rpm_info["upload_rpms"].each do |rpm|
+          rpm_path = File.dirname(rpm).sub("upload", "testing")
+          FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
 
-        dest = File.join(rpm_path.to_s, File.basename(rpm))
-        @update << dest
-        FileUtils.mv(rpm, dest)
-        system("createrepo --update $(dirname #{rpm_path})")
+          dest = File.join(rpm_path.to_s, File.basename(rpm))
+          FileUtils.mv(rpm, dest)
+          system("createrepo --update $(dirname #{rpm_path})")
+        end
+        @mq.ack(info)
+      rescue StandardError => e
+        @log.warn({
+          "error message": e.message
+        }.to_json)
+        @mq.ack(info)
       end
-      update_pub_dir
-      @mq.ack(info)
     end
   end
 
-  def update_pub_dir
-    @update.each do |rpm|
+  def check_upload_rpms(data)
+    raise JSON.dump({ "errcode" => "200", "errmsg" => "no upload_rpms params" }) unless data.key?("upload_rpms")
+    raise JSON.dump({ "errcode" => "200", "errmsg" => "upload_rpms params type error" }) if data["upload_rpms"].class != Array
+    data["upload_rpms"].each do |rpm|
+      raise JSON.dump({ "errcode" => "200", "errmsg" => "#{rpm} not exist" }) unless File.exist?(rpm)
+      raise JSON.dump({ "errcode" => "200", "errmsg" => "the upload directory is incorrect" }) unless File.dirname(rpm).start_with?(@@upload_dir_prefix)
+    end
+  end
+
+  def update_pub_dir(update)
+    update.each do |rpm|
       pub_path = File.dirname(rpm).sub("testing", "pub")
       FileUtils.mkdir_p(pub_path) unless File.directory?(pub_path)
 
