@@ -21,6 +21,11 @@ def relevant_defaults(names)
   cci_defaults.select { |k, _| names.include? k }
 end
 
+def relevant_service_authentication(names)
+  hash = YAML.load_file('/etc/compass-ci/passwd.yaml') || {}
+  hash.select { |k, _| names.include? k }
+end
+
 def set_local_env
   hash = cci_defaults
   hash.map { |k, v| system "export #{k}=#{v}" }

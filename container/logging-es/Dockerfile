@@ -5,6 +5,8 @@ ARG BASE_IMAGE
 FROM $BASE_IMAGE
 
 ARG MEMORY
+ARG USER
+ARG PASSWORD
 
 # docker image borrowed from hub.docker.com/r/gagara/elasticsearch-oss-arm64
 
@@ -16,6 +18,9 @@ RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/elastic
     sed -i '$a cluster.initial_master_nodes: ["node-1"]' /usr/share/elasticsearch/config/elasticsearch.yml && \
     sed -i '$a indices.memory.index_buffer_size: 20%' /usr/share/elasticsearch/config/elasticsearch.yml && \
     sed -i '$a thread_pool.write.queue_size: 2000' /usr/share/elasticsearch/config/elasticsearch.yml && \
+    sed -i '$a xpack.security.enabled: true' /usr/share/elasticsearch/config/elasticsearch.yml && \
+    sed -i '$a xpack.license.self_generated.type: basic' /usr/share/elasticsearch/config/elasticsearch.yml && \
+    sed -i '$a xpack.security.transport.ssl.enabled: true' /usr/share/elasticsearch/config/elasticsearch.yml && \
     sed -i "s/-Xms1g/-Xms${MEMORY}m/g" /usr/share/elasticsearch/config/jvm.options && \
     sed -i "s/-Xmx1g/-Xmx${MEMORY}m/g" /usr/share/elasticsearch/config/jvm.options
 
@@ -23,6 +28,8 @@ RUN mkdir /usr/share/elasticsearch/tmp && \
     chown -R 1090:1090 /usr/share/elasticsearch
 
 WORKDIR /usr/share/elasticsearch
+
+RUN ./bin/elasticsearch-users useradd ${USER} -p ${PASSWORD} -r superuser
 
 ENV PATH /usr/share/elasticsearch/bin:$PATH
 ENV ES_TMPDIR /usr/share/elasticsearch/tmp
