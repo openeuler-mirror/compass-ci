@@ -42,4 +42,24 @@ class AssistResult
 
     return response.body
   end
+
+  def get_compare_errors(pre_id, cur_id)
+    resource = RestClient::Resource.new("http://#{@host}:#{@port}/get_compare_errors/#{pre_id},#{cur_id}")
+    response = resource.get()
+    return nil unless response.code == 200
+
+    return response.body
+  end
+
+  def get_error_messages(job_id, error_id)
+    data = {
+      'job_id' => job_id,
+      'error_id' => error_id
+    }
+    resource = RestClient::Resource.new("http://#{@host}:#{@port}/get_error_messages")
+    response = resource.post(Base64.encode64(data.to_json))
+    return nil unless response.code == 200
+
+    return response.body
+  end
 end

@@ -67,7 +67,7 @@ module Utils
 
     def submit_job(job)
       save_job_to_yaml(job, PROCESS_JOB_YAML)
-      response = %x(#{LKP_SRC}/sbin/submit #{PROCESS_JOB_YAML})
+      response = %x(#{ENV['LKP_SRC']}/sbin/submit #{PROCESS_JOB_YAML})
       puts "submit job response: #{response}"
       return nil if response =~ /job id=0/
       return $1 if response =~ /job id=(.*)/
@@ -87,6 +87,7 @@ module Utils
       query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
       extract_finished = monitor_run_stop(query)
       return nil unless extract_finished.zero?
+      puts "#{bad_job_id}, #{new_job_id}, #{error_id}"
 
       check_result = AssistResult.new.check_job_credible(bad_job_id, new_job_id, error_id)
       raise "check job credible failed:  #{bad_job_id}, #{new_job_id}, #{error_id}" if check_result == nil
@@ -185,13 +186,17 @@ module Utils
     def obt_errors_by_commits(cur_commit, pre_commit)
       cur_id = obt_id_by_commit(cur_commit)
       pre_id = obt_id_by_commit(pre_commit)
-      _, errors = get_compare_result(pre_id, cur_id)
-      return errors
+      return AssistResult.new.get_compare_errors(pre_id, cur_id)
     end
 
     def obt_result_root_by_commit(commit)
-      id = obt_id_by_commit(commit)
-      ESQuery.new.query_by_id(id)['result_root']
+      job_id = obt_id_by_commit(commit)
+      job_content = AssistResult.new.get_job_content(job_id)
+      return JSON.parse(job_content)['result_root']
+    end
+
+    def get_bisect_error(job_id, error_id)
+      return AssistResult.new.get_error_messages(job_id, error_id)
     end
   end
 end
