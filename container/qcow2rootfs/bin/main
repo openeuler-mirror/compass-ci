@@ -39,7 +39,7 @@ extract_rootfs() {
 	echo "[$(date +'%D %T')] Converting .qcow2 to .tar.gz, please wait several minutes..."
 	su - "$EXTRACT_USER" -c "
 		export LIBGUESTFS_BACKEND=direct
-		$EXTRACT_ROOT/bin/extract $QCOW2_FILE $tar_out_file
+		$EXTRACT_ROOT/bin/extract $EXTRACT_ROOT/qcow2-dir/$QCOW2_NAME $tar_out_file
 	"
 
 	echo "[$(date +'%D %T')] Depressing rootfs to $ROOTFS_DIR"
