@@ -55,12 +55,14 @@ server_name=$(hostname | cut -f1 -d.)
 : ${MAILDIR:=/srv/cci/Maildir/.compass-ci}
 : ${SENT_MAILDIR:=/srv/cci/Maildir/.sent}
 : ${NETDATA_PORT:=20013}
+: ${lkp_initrd_user:=latest}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
 SCHED_HOST: $sched_host
 SCHED_PORT: $sched_port
 lab: $lab
+lkp_initrd_user: $lkp_initrd_user
 EOF
 
 [[ -f /etc/compass-ci/defaults/upstream-config ]] || {
