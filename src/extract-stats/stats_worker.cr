@@ -99,7 +99,7 @@ class StatsWorker
       sample_error_id = new_error_ids.sample
       @log.info("send a delimiter task: job_id is #{job_id}")
       queue = "#{DELIMITER_TASK_QUEUE}/#{job_id}"
-      value = {"job_id" => job_id, "error_id" => sample_error_id}
+      value = %({"job_id": "#{job_id}", "error_id": "#{sample_error_id}"})
       @etcd.put(queue, value)
 
       msg = %({"job_id": "#{job_id}", "new_error_id": "#{sample_error_id}"})
