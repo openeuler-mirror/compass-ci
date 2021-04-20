@@ -9,11 +9,17 @@ require_relative '../defconfig.rb'
 names = Set.new %w[
   LOGGING_ES_HOST
   LOGGING_ES_PORT
+  LOGGING_ES_USER
+  LOGGING_ES_PASSWORD
 ]
+
+authentication_info = relevant_service_authentication(names)
 
 defaults = relevant_defaults(names)
 defaults['LOGGING_ES_HOST'] ||= '172.17.0.1'
 defaults['LOGGING_ES_PORT'] ||= '9202'
+defaults.merge!(authentication_info)
+
 env = docker_env(defaults)
 
 docker_rm 'master-fluentd'
