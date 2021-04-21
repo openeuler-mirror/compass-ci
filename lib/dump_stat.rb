@@ -56,7 +56,7 @@ module DumpStat
       if value.is_a?(String)
         value = check_string_value(k, value, @monitor)
         next  unless value
-        return nil unless number?(value, @invalid_records, @record_index, @monitor)
+        return nil unless number?(k, value, @invalid_records, @record_index, @monitor)
 
         value = value.index('.') ? value.to_f : value.to_i
       elsif value.is_a?(Array)
@@ -65,7 +65,7 @@ module DumpStat
 
           value[i] = check_string_value(k, value[i], @monitor)
           next unless value[i]
-          return nil unless number?(value[i], @invalid_records, @record_index, @monitor)
+          return nil unless number?(k, value[i], @invalid_records, @record_index, @monitor)
 
           value[i] = value[i].index('.') ? value[i].to_f : value[i].to_i
           valid_stats_verification(k, value[i])
@@ -164,10 +164,10 @@ def check_string_value(key, value, monitor)
 end
 
 # only number is valid
-def number?(value, invalid_records, record_index, monitor)
+def number?(key, value, invalid_records, record_index, monitor)
   unless value.numeric?
     invalid_records.push record_index
-    warn_stat "invalid stats value: #{value}", monitor
+    warn_stat "invalid stats key-value:  \n key: #{key} \n value: #{value}", monitor
     return nil
   end
 
