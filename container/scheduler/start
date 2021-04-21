@@ -14,6 +14,8 @@ names = Set.new %w[
   REDIS_PORT
   ES_HOST
   ES_PORT
+  ES_USER
+  ES_PASSWORD
   OS_HTTP_HOST
   OS_HTTP_PORT
   INITRD_HTTP_HOST
@@ -44,6 +46,10 @@ SCHED_PORT = defaults['SCHED_PORT']
 sched_nodes.each do |node|
   docker_rm "s001-alpine-#{node['port']}"
 end
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
 env = docker_env(defaults)
 
 CCI_REPOS = ENV['CCI_REPOS'] || '/c'

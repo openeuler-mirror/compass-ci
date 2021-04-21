@@ -13,6 +13,8 @@ names = Set.new %w[
   REDIS_PORT
   ES_HOST
   ES_PORT
+  ES_USER
+  ES_PASSWORD
   OS_HTTP_HOST
   OS_HTTP_PORT
   INITRD_HTTP_HOST
@@ -38,6 +40,10 @@ defaults['SCHED_PORT'] ||= '3000'
 defaults['SCHED_HOST'] ||= '172.17.0.1'
 defaults['MASTER_FLUENTD_PORT'] ||= '24224'
 defaults['SRV_HTTP_CCI_PORT'] ||= '11307'
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
 env = docker_env(defaults)
 
 CCI_REPOS = ENV['CCI_REPOS'] || '/c'
