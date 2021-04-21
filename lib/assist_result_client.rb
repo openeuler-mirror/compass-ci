@@ -60,6 +60,6 @@ class AssistResult
     response = resource.post(Base64.encode64(data.to_json))
     return nil unless response.code == 200
 
-    return response.body
+    return JSON.parse(response.body)
   end
 end
