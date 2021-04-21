@@ -3,7 +3,16 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'set'
 require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  ES_USER
+  ES_PASSWORD
+]
+
+service_authentication = relevant_service_authentication(names)
+env = docker_env(service_authentication)
 
 DOCKER_CCI = '/c/compass-ci'
 DOCKER_REPO = '/c/git-repos'
@@ -12,10 +21,11 @@ docker_rm "git-mirror"
 lkp = %x(id -u lkp)
 group_id = %x(cat /etc/group | grep '^committer' | awk -F ':' '{print $3}')
 
-cmd = %W[
+cmd = %w[
   docker run
   --restart=always
   --name git-mirror
+] + env + %W[
   -u #{lkp.to_i}:#{group_id.to_i}
   -d
   -e CCI_SRC=#{DOCKER_CCI}

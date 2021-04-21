@@ -125,7 +125,7 @@ class MirrorMain
     @defaults = {}
     @git_queue = Queue.new
     @log = JSONLogger.new
-    @es_client = Elasticsearch::Client.new(url: "http://#{ES_HOST}:#{ES_PORT}")
+    @es_client = Elasticsearch::Client.new(hosts: ES_HOSTS)
     clone_upstream_repo
     load_fork_info
     connection_init

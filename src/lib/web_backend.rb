@@ -34,7 +34,7 @@ NOT_SHOW_FIELDS = %w[result_root].freeze
 ALL_FIELDS = FIELDS + NOT_SHOW_FIELDS
 NOT_NEED_EXIST_FIELDS = %w[error_ids upstream_repo].freeze
 PREFIX_SEARCH_FIELDS = ['tbox_group'].freeze
-ES_CLIENT = Elasticsearch::Client.new(url: "http://#{ES_HOST}:#{ES_PORT}")
+ES_CLIENT = Elasticsearch::Client.new(hosts: ES_HOSTS)
 COMPARE_RECORDS_NUMBER = 100
 
 def es_query(query)

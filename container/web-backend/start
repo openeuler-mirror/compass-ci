@@ -13,6 +13,8 @@ load_cci_defaults
 [[ $SRV_HTTP_RESULT_HOST ]] || SRV_HTTP_RESULT_HOST=$(curl ip.sb)
 [[ $SRV_HTTP_RESULT_PORT ]] || SRV_HTTP_RESULT_PORT=20007
 
+load_service_authentication
+
 cmd=(
 	docker run
 	--name web-backend
@@ -26,6 +28,8 @@ cmd=(
 	-e CCI_SRC=/c/compass-ci
 	-e LKP_SRC=/c/lkp-tests
 	-e UPSTREAM_REPOS_PATH=/c/upstream-repos
+	-e ES_USER=$ES_USER
+	-e ES_PASSWORD=$ES_PASSWORD
 
 	-v $CCI_SRC:/c/compass-ci
 	-v $LKP_SRC:/c/lkp-tests
