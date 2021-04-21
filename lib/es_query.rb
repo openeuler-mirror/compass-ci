@@ -7,12 +7,10 @@ require_relative 'constants.rb'
 
 # build multiple query request body
 class ESQuery
-  HOST = (ENV.key?('ES_HOST') ? ENV['ES_HOST'] : ES_HOST)
-  PORT = (ENV.key?('ES_PORT') ? ENV['ES_PORT'] : ES_PORT).to_i
-  def initialize(host = HOST, port = PORT, index: 'jobs')
+  def initialize(hosts = ES_HOSTS, index: 'jobs')
     @index = index
     @scroll_id = ''
-    @client = Elasticsearch::Client.new url: "http://#{host}:#{port}"
+    @client = Elasticsearch::Client.new hosts: hosts
     raise 'Connect Elasticsearch  error!' unless @client.ping
   end
 

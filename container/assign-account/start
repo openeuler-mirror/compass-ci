@@ -4,6 +4,8 @@
 
 . ../defconfig.sh
 
+load_service_authentication
+
 docker_rm assign-account
 
 cmd=(
@@ -11,6 +13,8 @@ cmd=(
 	--restart=always
 	--name=assign-account
 	-d
+	-e ES_USER=$ES_USER
+	-e ES_PASSWORD=$ES_PASSWORD
 	-v /etc:/etc:rw
 	-v /srv/account-info:/opt/account_data/:rw
 	-v /home:/home:rw

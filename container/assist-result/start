@@ -9,11 +9,17 @@ require_relative '../defconfig.rb'
 names = Set.new %w[
   ES_HOST
   ES_PORT
+  ES_USER
+  ES_PASSWORD
   ASSIST_RESULT_HOST
   ASSIST_RESULT_PORT
 ]
 
 defaults = relevant_defaults(names)
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
 env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'

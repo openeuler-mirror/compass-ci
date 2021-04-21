@@ -15,12 +15,17 @@ names = Set.new %w[
   SCHED_HTTPS_HOST
   SCHED_HTTPS_PORT
   ES_PORT
+  ES_USER
+  ES_PASSWORD
   MAILDIR
   ACCOUNT_ISSUER
   lab
 ]
 
 defaults = relevant_defaults(names)
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
 
 env = docker_env(defaults)
 

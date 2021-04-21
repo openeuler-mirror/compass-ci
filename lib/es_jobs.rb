@@ -23,7 +23,7 @@ class ESJobs
   end
 
   def query_jobs_from_es
-    es = ESQuery.new(ES_HOST, ES_PORT)
+    es = ESQuery.new
     result = es.multi_field_query @es_query
     jobs = result['hits']['hits']
     jobs.map! { |job| job['_source'] }

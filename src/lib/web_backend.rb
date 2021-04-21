@@ -657,7 +657,7 @@ def get_error_objects(filter_items)
 end
 
 def get_job_list(items)
-  es = ESQuery.new(ES_HOST, ES_PORT)
+  es = ESQuery.new
   query_results = es.multi_field_query(items)
 
   extract_jobs_list(query_results['hits']['hits'])

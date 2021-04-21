@@ -77,7 +77,7 @@ options = { nr_jobs: 10, desc_keyword: 'start_time' }
 range = nil
 count = nil
 
-es = ESQuery.new(ES_HOST, ES_PORT)
+es = ESQuery.new(ES_HOSTS)
 
 opt_parser = OptionParser.new do |opts|
   opts.banner = 'Usage: es-find [options] search_key1=val1[,val2..] ..'

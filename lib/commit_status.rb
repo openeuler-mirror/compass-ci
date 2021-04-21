@@ -26,7 +26,7 @@ def query_latest_good_commit(job, error_id)
 end
 
 def query_jobs_from_es(items)
-  es = ESQuery.new(ES_HOST, ES_PORT)
+  es = ESQuery.new
   result = es.multi_field_query items
   jobs_list = result['hits']['hits']
   jobs_list.map! { |job| job['_source'] }
