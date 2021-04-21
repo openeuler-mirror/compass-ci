@@ -12,6 +12,8 @@ names = Set.new %w[
   REDIS_PORT
   ES_HOST
   ES_PORT
+  ES_USER
+  ES_PASSWORD
   SEND_MAIL_HOST
   SEND_MAIL_PORT
   SRV_HTTP_RESULT_HOST
@@ -20,6 +22,10 @@ names = Set.new %w[
 ]
 
 defaults = relevant_defaults(names)
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
 env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'

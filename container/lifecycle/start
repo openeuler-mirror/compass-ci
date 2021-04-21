@@ -8,9 +8,15 @@ require_relative '../defconfig.rb'
 
 names = Set.new %w[
   LIFECYCLE_PORT
+  ES_USER
+  ES_PASSWORD
 ]
 
 defaults = relevant_defaults(names)
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
 env = docker_env(defaults)
 
 LIFECYCLE_PORT = defaults['LIFECYCLE_PORT'] || '11312'
