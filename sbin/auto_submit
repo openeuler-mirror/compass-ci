@@ -55,7 +55,7 @@ class AutoSubmit
     tag = %x(git -C #{mirror_dir} tag --points-at #{commit_id})
     real_argvs.push("upstream_tag=#{tag}") unless tag.empty?
     if git_repo.include?('my-sql_with_boostkit_patch')
-      competi_argvs = get_argvs_for_competition(mirror_dir, branch, commit_id)
+      competi_argvs = get_argvs_for_competition(real_argvs, mirror_dir, branch, commit_id)
       real_argvs.push(competi_argvs)
     end
     real_argvs.push("upstream_commit=#{commit_id}")
@@ -70,8 +70,10 @@ class AutoSubmit
 
     if committer_email.include?('noreply')
       emails = %x(git -C #{mirror_dir} log --format=%ae -2 #{commit_id})
-      committer_email = emails.lines[0].chomp
-      author_email = emails.lines[1].chomp
+      if emails.lines.size == 2
+        committer_email = emails.lines[0].chomp
+        author_email = emails.lines[1].chomp
+      end
     end
 
     base_commit = %x(git -C #{mirror_dir} merge-base master #{branch}).chomp
