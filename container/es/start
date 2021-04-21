@@ -21,5 +21,5 @@ cmd=(
 "${cmd[@]}"
 
 # set index
-check_service_ready 9200
+check_auth_es_ready 9200
 find $CCI_SRC/sbin/ -name "es-*-mapping.sh" -exec sh {} \;

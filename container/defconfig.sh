@@ -20,12 +20,31 @@ load_cci_defaults()
 	done
 }
 
+load_service_authentication()
+{
+	shopt -s nullglob
+	create_yaml_variables '/etc/compass-ci/passwd.yaml'
+}
+
 docker_rm()
 {
 	container=$1
 	[ -n "$(docker ps -aqf name="^${container}$")" ] || return 0
 	docker stop $container
 	docker rm -f $container
+}
+
+check_auth_es_ready()
+{
+	local port=$1
+	load_service_authentication
+	local i
+	for i in {1..30}
+	do
+
+		curl -s localhost:$port -u $ES_USER:$ES_PASSWORD> /dev/null && return
+		sleep 2
+	done
 }
 
 check_service_ready()

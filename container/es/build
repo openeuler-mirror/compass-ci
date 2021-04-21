@@ -3,10 +3,17 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'set'
 require_relative '../defconfig.rb'
 
+names = Set.new %w[
+  ES_USER
+  ES_PASSWORD
+]
+
+defaults = relevant_service_authentication(names)
 docker_skip_rebuild "es:7.11.1"
 
 available_memory = get_available_memory
 
-system "docker build -t es:7.11.1 --build-arg MEMORY=#{available_memory} --network=host ."
+system "docker build -t es:7.11.1 --build-arg MEMORY=#{available_memory} --build-arg USER=#{defaults['ES_USER']} --build-arg PASSWORD=#{defaults['ES_PASSWORD']} --network=host ."
