@@ -35,7 +35,7 @@ class Elasticsearch::Client
     if auth
       user = ENV["ES_USER"]?
       password = ENV["ES_PASSWORD"]?
-      host = "http://#{user}:#{URI.encode_www_form(password)}@#{host}" if user && password
+      host = "#{user}:#{URI.encode_www_form(password)}@#{host}" if user && password
     end
     @client = Elasticsearch::API::Client.new({:host => host, :port => port})
   end
