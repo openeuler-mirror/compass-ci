@@ -29,7 +29,11 @@ class MessageQueueClient
         begin
           filter.filter_msg(msg.body_io)
         rescue e
-          @log.warn("filter message failed: #{e}")
+          @log.warn({
+            "resource" => "filter_message",
+            "message" => e.inspect_with_backtrace,
+            "data" => msg.body_io.to_s
+          }.to_json)
         end
       end
     end
@@ -42,7 +46,11 @@ class MessageQueueClient
           filter_msg(conn, filter, exchange_name, queue_name)
         end
       rescue e
-        @log.warn("monitoring_message_queue failed: #{e}")
+        @log.warn({
+          "resource" => "monitoring_message_queue",
+          "message" => e.inspect_with_backtrace,
+          "data" => "#{exchange_name}, #{queue_name}"
+        }.to_json)
         sleep 5
       end
     end

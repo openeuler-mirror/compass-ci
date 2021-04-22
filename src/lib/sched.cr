@@ -56,7 +56,7 @@ class Sched
   def alive(version)
     "LKP Alive! The time is #{Time.local}, version = #{version}"
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 
   def normalize_mac(mac : String)
@@ -72,7 +72,7 @@ class Sched
       "No yet!"
     end
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 
   def del_host_mac
@@ -84,7 +84,7 @@ class Sched
       "No yet!"
     end
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 
   def set_host2queues
@@ -96,7 +96,7 @@ class Sched
       "No yet!"
     end
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 
   def del_host2queues
@@ -108,7 +108,7 @@ class Sched
       "No yet!"
     end
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 
   def get_time
@@ -143,7 +143,7 @@ class Sched
     hash["testbox"] = testbox
     @log.info(hash.to_json)
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 
   def send_mq_msg(job_state)
@@ -223,7 +223,7 @@ class Sched
 
     @log.info(%({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"}))
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 
   private def query_consumable_keys(shortest_queue_name)

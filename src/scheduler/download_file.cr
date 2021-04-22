@@ -11,6 +11,6 @@ class Sched
 
     send_file @env, file_path
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 end

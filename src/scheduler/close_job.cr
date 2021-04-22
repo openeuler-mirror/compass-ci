@@ -30,7 +30,7 @@ class Sched
     job_state ||= "complete"
     @log.info(%({"job_id": "#{job_id}", "job_state": "#{job_state}"}))
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   ensure
     source = @env.params.query["source"]?
     if source != "lifecycle"

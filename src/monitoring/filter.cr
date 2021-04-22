@@ -47,7 +47,11 @@ class Filter
     @hash[query].each do |socket|
       socket.send msg.to_json
     rescue e
-      @log.warn("send msg failed: #{e}")
+      @log.warn({
+        "resource" => "send_msg",
+        "message" => e.inspect_with_backtrace,
+        "data" => "query: #{query}, mas: #{msg}"
+      }.to_json)
       remove_filter_rule(query, socket)
     end
   end

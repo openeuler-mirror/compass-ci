@@ -28,7 +28,7 @@ class MQClient
     }.to_json)
   rescue e
     @log.warn({
-      "msg" => e.to_s,
+      "msg" => e.inspect_with_backtrace,
       "source" => "mq_client"
     }.to_json)
   end

@@ -69,7 +69,7 @@ class Sched
     # show cluster state
     return @redis.hash_get("sched/cluster_state", cluster_id)
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 
   # node_state: "finish" | "ready"

@@ -45,7 +45,7 @@ class Lifecycle
   rescue e
     @log.warn({
       "resource" => "/alive",
-      "message" => e.to_s
+      "message" => e.inspect_with_backtrace
     }.to_json)
   end
 
@@ -74,7 +74,7 @@ class Lifecycle
   rescue e
     @log.warn({
       "resource" => "init_from_es",
-      "message" => e.to_s
+      "message" => e.inspect_with_backtrace
     }.to_json)
   end
 
@@ -118,30 +118,34 @@ class Lifecycle
 
   def mq_event_loop
     puts "deal job events"
-    q = @mq.ch.queue("job_mq", durable: false)
-    q.subscribe(no_ack: false) do |msg|
-      event = JSON.parse(msg.body_io.to_s)
-      job_state = event["job_state"]?
+    event = JSON::Any.new(nil)
+    begin
+      q = @mq.ch.queue("job_mq", durable: false)
+      q.subscribe(no_ack: false) do |msg|
+        event = JSON.parse(msg.body_io.to_s)
+        job_state = event["job_state"]?
 
-      case job_state
-      when "boot"
-        on_job_boot(event)
-      when "close"
-        on_job_close(event)
-      when "abnormal"
-        on_abnormal_job(event)
-      when "crash"
-        on_job_crash(event)
-      else
-        on_other_job(event)
+        case job_state
+        when "boot"
+          on_job_boot(event)
+        when "close"
+          on_job_close(event)
+        when "abnormal"
+          on_abnormal_job(event)
+        when "crash"
+          on_job_crash(event)
+        else
+          on_other_job(event)
+        end
+        @mq.ch.basic_ack(msg.delivery_tag)
       end
-      @mq.ch.basic_ack(msg.delivery_tag)
+    rescue e
+      @log.warn({
+        "resource" => "mq_event_loop",
+        "message" => e.inspect_with_backtrace,
+        "event" => event
+      }.to_json)
     end
-  rescue e
-    @log.warn({
-      "resource" => "mq_event_loop",
-      "message" => e.to_s
-    }.to_json)
   end
 
   def on_other_job(event)
@@ -269,7 +273,8 @@ class Lifecycle
     rescue e
       @log.warn({
         "resource" => "timeout_job_loop",
-        "message" => e.to_s
+        "message" => e.inspect_with_backtrace,
+        "job_id" => dead_job_id
       }.to_json)
     end
   end
@@ -285,7 +290,8 @@ class Lifecycle
     rescue e
       @log.warn({
         "resource" => "timeout_machine_loop",
-        "message" => e.to_s
+        "message" => e.inspect_with_backtrace,
+        "testbox" => dead_machine_name
       }.to_json)
     end
   end

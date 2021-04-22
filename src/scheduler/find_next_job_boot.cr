@@ -15,6 +15,6 @@ class Sched
 
     response
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   end
 end
