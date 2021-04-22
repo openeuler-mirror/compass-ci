@@ -9,6 +9,8 @@ require_relative '../defconfig.rb'
 names = Set.new %w[
   ES_HOST
   ES_PORT
+  ES_USER
+  ES_PASSWORD
   lab
 ]
 
@@ -25,7 +27,7 @@ cmd = %w[
 ] + env + %W[
   -e CCI_SRC=#{DEFAULT_CCI}
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
-  -v /etc/compass-ci/register:/etc/compass-ci/register:ro
+  -v /etc/compass-ci:/etc/compass-ci:ro
   -v /etc/localtime:/etc/localtime:ro
   -w #{DEFAULT_CCI}/container/register-accounts
   register-accounts
