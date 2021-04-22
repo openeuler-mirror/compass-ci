@@ -151,6 +151,7 @@ class Job
 
   private def set_defaults
     append_init_field()
+    set_os_arch()
     set_docker_os()
     set_user_lkp_src()
     set_os_mount()
@@ -172,6 +173,10 @@ class Job
 
   def set_time(key)
     self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
+  private def set_os_arch
+    self["os_arch"] = @hash["arch"].to_s if @hash.has_key?("arch")
   end
 
   private def set_docker_os
