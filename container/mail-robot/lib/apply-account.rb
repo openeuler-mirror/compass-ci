@@ -56,7 +56,7 @@ class ApplyAccount
     @es_port = ES_PORT
 
     # email info file for account issuers.
-    @account_issuer = File.exists?(ENV['ACCOUNT_ISSUER']) ? YAML.load_file(ENV['ACCOUNT_ISSUER']) : {}
+    @account_issuer = File.exist?(ENV['ACCOUNT_ISSUER']) ? YAML.load_file(ENV['ACCOUNT_ISSUER']) : {}
 
     @my_info = {}
   end
