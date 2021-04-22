@@ -48,7 +48,7 @@ class AssistResult
     response = resource.get()
     return nil unless response.code == 200
 
-    return response.body
+    return JSON.parse(response.body)
   end
 
   def get_error_messages(job_id, error_id)
