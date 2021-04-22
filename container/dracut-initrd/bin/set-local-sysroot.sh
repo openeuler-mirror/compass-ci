@@ -2,6 +2,10 @@
 
 analyse_kernel_cmdline_params() {
     rootfs="$(getarg root=)"
+
+    # if root is a local disk, then boot directly.
+    [[ $rootfs =~ ^/dev/ ]] && exit 0
+
     # example: $nfs_server_ip:/os/${os}/${os_arch}/${os_version}-snapshots/20210310005959
     rootfs_src=$(echo $"$rootfs" | sed 's/\///')
     timestamp="$(basename $rootfs_src)"
