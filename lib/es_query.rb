@@ -45,11 +45,12 @@ class ESQuery
         }, size: size
       }
       result = @client.search index: @index, scroll: '10m', body: query
-      @scroll_id = result['_scroll_id']
-      return result
     else
-      @client.scroll scroll: '10m', scroll_id: @scroll_id
+      result = @client.scroll scroll: '10m', scroll_id: @scroll_id
     end
+
+    @scroll_id = result['_scroll_id'] unless result.empty? && result.include?('_scroll_id')
+    return result
   end
 
   def query_by_id(id)
