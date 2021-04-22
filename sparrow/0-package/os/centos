@@ -25,6 +25,7 @@ pkgs=(
 	wget
 	curl
 	sudo
+	iputils
 )
 
 yum install -y --skip-broken "${pkgs[@]}"

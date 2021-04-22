@@ -26,6 +26,7 @@ pkgs=(
 	libvirt
 	curl
 	sudo
+	iputils
 )
 
 public_network_ok && {
