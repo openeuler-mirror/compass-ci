@@ -5,4 +5,3 @@
 crond
 /bin/etcd "$@"
 exec
-
