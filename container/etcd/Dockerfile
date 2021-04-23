@@ -6,12 +6,13 @@ FROM alpine:3.13
 MAINTAINER Cao Xueliang <caoxl78320@163.com>
 
 ARG VERSION
+ARG ARCH
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories && \
     apk update && apk add ca-certificates && \
-    wget https://repo.huaweicloud.com/etcd/${VERSION}/etcd-${VERSION}-linux-arm64.tar.gz && \
-    tar zxvf etcd-${VERSION}-linux-arm64.tar.gz && \
-    mv etcd-${VERSION}-linux-arm64/etcd* /bin/ && \
-    rm -Rf etcd-${VERSION}-linux-arm64* /var/cache/apk/*
+    wget https://repo.huaweicloud.com/etcd/${VERSION}/etcd-${VERSION}-linux-${ARCH}.tar.gz && \
+    tar zxvf etcd-${VERSION}-linux-${ARCH}.tar.gz && \
+    mv etcd-${VERSION}-linux-${ARCH}/etcd* /bin/ && \
+    rm -Rf etcd-${VERSION}-linux-${ARCH}* /var/cache/apk/*
 
 VOLUME /data
 
