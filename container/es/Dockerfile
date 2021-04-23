@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-FROM elasticsearch:7.11.1@sha256:d52cda1e73d1b1915ba2d76ca1e426620c7b5d6942d9d2f432259503974ba786
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 ARG MEMORY
 ARG USER
