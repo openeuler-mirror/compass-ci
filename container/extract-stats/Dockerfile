@@ -10,7 +10,7 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-    gem install rest-client activesupport git json yaml elasticsearch
+    gem install rest-client activesupport git json yaml elasticsearch terminal-table
 
 ENV RUNTIME_DIR /c/cci/extract
 
