@@ -4,6 +4,7 @@
 
 require_relative 'mail_client.rb'
 require_relative 'es_query.rb'
+require_relative 'compare.rb'
 require_relative 'constants.rb'
 require 'json'
 
@@ -16,27 +17,44 @@ class MailJobResult
   end
 
   def send_mail
-    json = compose_mail.to_json
-    MailClient.new.send_mail(json)
+    data = compose_mail
+    return nil unless data
+    MailClient.new.send_mail_encode(data)
   end
 
   def compose_mail
     set_submitter_info
-    subject = "[Compass-CI] job: #{@job_id} result"
+    context = get_compare_result(@job)
+    return nil unless context
+
+    subject = "[Compass-CI] job: #{@job_id} compare result"
     signature = "Regards\nCompass-CI\nhttps://gitee.com/openeuler/compass-ci"
-    body = "Hi,
-    Thanks for your participation in Kunpeng and software ecosystem!
+
+    data = <<~BODY
+    To: #{@email_to}
+    Bcc: #{@email_cc}
+    Subject: #{subject}
+
+    Hi,
+
+    html_part: Thanks for your participation in Kunpeng and software ecosystem!
     Your Job: #{@job_id} had finished.
-    Please check job result: http://#{@result_host}:#{@result_port}#{@result_root}\n\n#{signature}"
-    { 'to' => @submitter_email, 'body' => body, 'subject' => subject }
+    Bellow are comparsion result of the base_commit:
+    #{context.to_s}
+    \n\n#{signature}"
+    BODY
+
+    data
   end
 
   def set_submitter_info
-    job = query_job
-    exit unless job && job['email']
+    sleep 10
+    @job = query_job
+    exit unless @job && @job['author_email']
 
-    @submitter_email = job['email']
-    @result_root = job['result_root']
+    @email_to = @job['author_email']
+    @email_cc = @job['committer_email']
+    @result_root = @job['result_root']
   end
 
   def query_job
@@ -49,4 +67,19 @@ class MailJobResult
 
     query_result['hits']['hits'][0]['_source']
   end
+end
+
+def get_compare_result(job)
+  min_samples = job['nr_num'].to_i
+  base_commit = job['base_commit']
+  commit_id = job['commit_id']
+  return nil unless base_commit && commit_id
+
+  condition_list = [{'base_commit' => base_commit}, {'commit_id' => commit_id}]
+  options = { :min_samples => min_samples, :no_print => true}
+
+  matrices_list, suite_list = create_matrices_list(condition_list, options[:min_samples])
+  return nil if matrices_list.size < 2
+
+  compare_matrixes(matrices_list, suite_list, options: options)
 end
