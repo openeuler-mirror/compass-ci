@@ -64,6 +64,8 @@ class AutoSubmit
   end
 
   def get_argvs_for_competition(real_argvs, mirror_dir, branch, commit_id)
+    return if branch == 'master'
+
     argvs_for_base = Array.new(real_argvs)
     author_email = %x(git -C #{mirror_dir} log --format=%ae -1 #{commit_id}).chomp
     committer_email = %x(git -C #{mirror_dir} log --format=%ce -1 #{commit_id}).chomp
