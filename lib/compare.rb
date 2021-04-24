@@ -20,7 +20,13 @@ require 'yaml'
 
 def compare_matrices_list(argv, common_conditions, options)
   condition_list = parse_argv(argv, common_conditions)
-  matrices_list, suite_list = create_matrices_list(condition_list)
+  matrices_list, suite_list = create_matrices_list(condition_list, options[:min_samples])
+  if matrices_list.size < 2
+    return nil if options[:no_print]
+
+    warn "matrix less than min_samples"
+  end
+
   compare_matrixes(matrices_list, suite_list, options: options)
 end
 
@@ -35,18 +41,28 @@ def parse_argv(argv, common_conditions)
   conditions
 end
 
-def create_matrices_list(conditions)
+def create_matrices_list(conditions, min_samples)
   matrices_list = []
   suite_list = []
   es = ESQuery.new
   conditions.each do |condition|
     query_results = es.multi_field_query(condition, desc_keyword: 'start_time')
-    matrix, suites = combine_query_data(query_results)
+    matrix, suites = combine_query_data(query_results, min_samples)
+    next unless matrix
+
     matrices_list << matrix
     suite_list.concat(suites)
   end
 
   return matrices_list, suite_list
+end
+
+def matrices_verification(matrices, options)
+  if matrices.size < 2
+    return nil if options[:no_print]
+
+    warn "matrix less than min_samples"
+  end
 end
 
 # -------------------------------------------------------------------------------------------

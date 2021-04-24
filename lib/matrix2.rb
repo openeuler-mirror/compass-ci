@@ -101,8 +101,10 @@ end
 
 # input: query results from es_query
 # return: matrix
-def combine_query_data(query_data)
+def combine_query_data(query_data, min_sample)
   job_list = extract_jobs_list(query_data['hits']['hits'])
+  return nil if job_list.size < min_sample
+
   create_matrix(job_list)
 end
 

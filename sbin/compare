@@ -22,6 +22,7 @@ is_group = false
 dimensions = nil
 colorful = nil
 options = {}
+options[:min_samples] = 1
 template = nil
 
 opt_parser = OptionParser.new do |opts|
@@ -46,6 +47,10 @@ opt_parser = OptionParser.new do |opts|
   opts.on('--theme theme', 'turn on colorful display with theme: classic|focus_good|focus_bad',
           '|striking|light|json|html') do |theme|
     colorful = theme
+  end
+
+  opts.on('--min_samples min_samples', 'give a number to litmit the min_samples of matrix which used to compare') do |min_samples|
+    options[:min_samples] = min_samples.to_i
   end
 
   opts.on('-t', '--template template', 'compare with user-defined template') do |t|
