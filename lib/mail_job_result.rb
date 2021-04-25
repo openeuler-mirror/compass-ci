@@ -37,9 +37,11 @@ class MailJobResult
 
     Hi,
 
-    html_part: Thanks for your participation in Kunpeng and software ecosystem!
+    Thanks for your participation in Kunpeng and software ecosystem!
     Your Job: #{@job_id} had finished.
-    Bellow are comparsion result of the base_commit:
+    Bellow are comparsion result of the base_commit and current_commit:
+    \tbase_commit: #{@job['base_commit']}
+    \tcurrent_commit: #{@job['upstream_commit']}
     #{context.to_s}
     \n\n#{signature}"
     BODY
@@ -72,14 +74,15 @@ end
 def get_compare_result(job)
   min_samples = job['nr_num'].to_i
   base_commit = job['base_commit']
-  commit_id = job['commit_id']
+  commit_id = job['upstream_commit']
   return nil unless base_commit && commit_id
 
-  condition_list = [{'base_commit' => base_commit}, {'commit_id' => commit_id}]
+  condition_list = [{'base_commit' => base_commit}, {'upstream_commit' => commit_id}]
   options = { :min_samples => min_samples, :no_print => true}
 
   matrices_list, suite_list = create_matrices_list(condition_list, options[:min_samples])
   return nil if matrices_list.size < 2
 
-  compare_matrixes(matrices_list, suite_list, options: options)
+  m_titles = [base_commit.slice(0, 16), commit_id.slice(0, 24)]
+  compare_matrixes(matrices_list, suite_list, nil, m_titles, options: options)
 end
