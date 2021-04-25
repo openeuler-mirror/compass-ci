@@ -55,7 +55,7 @@ class MailBisectResult
     Hi #{@git_commit.author_name},
 
     Some error/warning(s) are found in
-    git url: #{@upstream_url}/#{@commit_id}
+    git url: #{@upstream_url}/commit/#{@commit_id}
     git commit: #{@commit_id} ("#{@git_commit.subject}")
 
     All error/warning(s) (new ones prefixed by >>):
