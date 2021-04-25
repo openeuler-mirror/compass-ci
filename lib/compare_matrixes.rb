@@ -812,7 +812,7 @@ def get_all_result_str(matrixes_values, suite_list, matrixes_titles, matrixes_nu
 
   failure_str = get_result_str(matrixes_values[false].sort, suite_list, matrixes_titles, false, theme)
   success_str = get_result_str(matrixes_values[true].sort, suite_list, matrixes_titles, true, theme)
-  failure_str + success_str
+  success_str + failure_str
 end
 
 def get_result_str(values, suite_list, matrixes_titles, success, theme)
