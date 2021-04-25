@@ -27,8 +27,10 @@ cmd = %w[
   -d
   -e CCI_SRC=#{DOCKER_CCI}
   -e LKP_SRC=#{DOCKER_LKP}
+  -e CCI_REPOS=/c
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
   -v #{ENV['LKP_SRC']}:#{DOCKER_LKP}
+  -v /c/lab-z9:/c/lab-z9
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
