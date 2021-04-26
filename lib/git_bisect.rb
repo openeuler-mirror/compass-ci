@@ -4,7 +4,6 @@
 
 require 'json'
 require_relative 'error_messages'
-require_relative 'sched_client'
 require_relative '../src/delimiter/utils'
 require_relative "#{ENV['LKP_SRC']}/lib/monitor"
 

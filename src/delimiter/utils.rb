@@ -8,7 +8,6 @@ require 'yaml'
 require 'fileutils'
 
 require_relative './constants'
-require_relative '../../lib/sched_client'
 require_relative '../../lib/assist_result_client'
 require_relative '../../lib/compare_error_messages'
 require_relative "#{ENV['LKP_SRC']}/lib/monitor"
