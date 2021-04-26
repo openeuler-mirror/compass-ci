@@ -5,7 +5,13 @@ class RegressionClient
   HOST = (ENV.has_key?("ES_HOST") ? ENV["ES_HOST"] : JOB_ES_HOST)
   PORT = (ENV.has_key?("ES_PORT") ? ENV["ES_PORT"] : JOB_ES_PORT).to_i32
 
-  def initialize(host = HOST, port = PORT)
+  def initialize(host = HOST, port = PORT, auth = true)
+    if auth
+      user = ENV["ES_USER"]?
+      password = ENV["ES_PASSWORD"]?
+      host = "#{user}:#{URI.encode_www_form(password)}@#{host}" if user && password
+    end
+
     @client = Elasticsearch::API::Client.new({:host => host, :port => port})
   end
 
