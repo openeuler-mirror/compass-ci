@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+. $CCI_SRC/container/defconfig.sh
+
+load_service_authentication
+
 # Determine whether curl is installed. If not, install curl.
 if ! [ -x "$(command -v curl)" ]
 then
@@ -28,14 +32,14 @@ then
 fi
 
 # Determine whether jobs index has created
-status_code=$(curl -sSIL -w "%{http_code}\n" -o /dev/null http://localhost:9200/jobs)
+status_code=$(curl -sSIL -u "${ES_USER}:${ES_PASSWORD}" -w "%{http_code}\n" -o /dev/null http://localhost:9200/jobs)
 
 if [ $status_code -eq 200 ]
 then
 	echo "jobs index has create, exit."
 else
 	echo "jobs index not exists, begin create index."
-	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/jobs' -d '{
+	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/jobs' -u "${ES_USER}:${ES_PASSWORD}" -d '{
 		    "mappings": {
 		      "dynamic": false,
 		      "dynamic_templates": [
@@ -191,7 +195,7 @@ else
 		  echo "create jobs index failed."
 	  else
 		  echo "set index.mapping.total_fields.limit: 10000"
-		  curl -sS -XPUT 127.0.0.1:9200/jobs/_settings -H 'Content-Type: application/json' \
+		  curl -sS -XPUT 127.0.0.1:9200/jobs/_settings -u "${ES_USER}:${ES_PASSWORD}" -H 'Content-Type: application/json' \
 		       -d '{"index.mapping.total_fields.limit": 10000}'
 	  fi
 fi
