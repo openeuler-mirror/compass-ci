@@ -4,6 +4,7 @@
 # frozen_string_literal: true
 
 def email_err_message(message)
+  err_message = ''
   case message
   when 'NO_COMMIT_URL'
     err_message = <<~EMAIL_MESSAGE
