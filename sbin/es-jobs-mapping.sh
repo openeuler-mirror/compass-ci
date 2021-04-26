@@ -148,6 +148,12 @@ else
 		          "upstream_commit": {
 		            "type": "keyword"
 		          },
+		          "base_commit": {
+		            "type": "keyword"
+		          },
+		          "nr_run": {
+		            "type": "integer"
+		          },
 		          "my_email": {
 		            "type": "keyword"
 		          },
