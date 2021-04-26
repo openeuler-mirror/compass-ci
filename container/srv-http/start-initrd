@@ -15,6 +15,7 @@ cmd=(
 	-v /srv/initrd/dockerimage:/srv/initrd/dockerimage:ro
 	-v /srv/initrd/rpmbuild-pkg:/srv/initrd/rpmbuild-pkg:ro
 	-v /srv/initrd/osimage:/srv/initrd/osimage:ro
+	-v /srv/initrd/deps:/srv/initrd/deps:ro
 	-v /etc/localtime:/etc/localtime:ro
 	-d
 	srv-http
