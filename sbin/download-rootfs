@@ -27,7 +27,7 @@ wget_download()
 {
 	local download_url=$1
 	wget $download_url || {
-	        log_error "failed to download os rootfs: $download_url"
+	        log_error "failed to download file: $download_url"
 	        exit 1
 	}
 }
