@@ -8,6 +8,6 @@ docker_skip_rebuild "openresty:proxy_cache"
 
 [ -d "openresty" ] && rm -rf openresty
 
-git clone https://gitee.com/cuiyili/openresty.git || exit 1
+git clone http://gitee.com/cuiyili/openresty.git || exit 1
 
 docker build -t openresty:proxy_cache . -f openresty/Dockerfile
