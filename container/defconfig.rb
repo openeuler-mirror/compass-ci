@@ -23,7 +23,10 @@ def relevant_defaults(names)
 end
 
 def relevant_service_authentication(names)
-  hash = YAML.load_file('/etc/compass-ci/passwd.yaml') || {}
+  file_name = '/etc/compass-ci/passwd.yaml'
+  return {} unless File.exist?(file_name)
+
+  hash = YAML.load_file(file_name) || {}
   hash.select { |k, _| names.include? k }
 end
 

@@ -23,7 +23,9 @@ load_cci_defaults()
 load_service_authentication()
 {
 	shopt -s nullglob
-	create_yaml_variables '/etc/compass-ci/passwd.yaml'
+	file_name='/etc/compass-ci/passwd.yaml'
+	[ -f $file_name ] || return
+	create_yaml_variables $file_name
 }
 
 docker_rm()
