@@ -4,8 +4,6 @@
 
 . ../defconfig.sh
 
-load_service_authentication
-
 docker_rm assign-account
 
 cmd=(
