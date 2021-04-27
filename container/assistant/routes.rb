@@ -9,6 +9,7 @@ require 'open3'
 
 require_relative './views/locate_files'
 require_relative './views/get_mail_list'
+require_relative './views/send_account_mail'
 
 configure do
   set :bind, '0.0.0.0'
@@ -31,6 +32,17 @@ end
 get '/get_mail_list/:type' do
   begin
     result = get_mail_list(params[:type])
+  rescue StandardError => e
+    return [400, e.backtrace.inspect]
+  end
+
+  return [200, result.to_json]
+end
+
+post '/send_account_mail' do
+  begin
+    data = JSON.parse(request.body.read)
+    result = send_account_mail(data)
   rescue StandardError => e
     return [400, e.backtrace.inspect]
   end

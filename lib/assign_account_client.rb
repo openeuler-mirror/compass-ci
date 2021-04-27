@@ -4,13 +4,13 @@
 # frozen_string_literal: true
 
 require 'json'
-require 'mail'
 require 'set'
 require 'optparse'
 require 'rest-client'
 require_relative '../container/defconfig'
 require_relative 'es_client'
 require_relative '../container/mail-robot/lib/assign-account-email'
+require_relative "#{ENV['CCI_SRC']}/lib/parse_mail_list"
 
 names = Set.new %w[
   JUMPER_HOST
@@ -32,6 +32,7 @@ class AutoAssignAccount
     @my_info = user_info
 
     @my_info_es = {}
+    @account_info = {}
   end
 
   def update_from_es
@@ -59,10 +60,10 @@ class AutoAssignAccount
   end
 
   def update_my_info_from_account_info
-    account_info = apply_account
+    @account_info = apply_account
 
-    @my_info['my_login_name'] = account_info['my_login_name']
-    @my_info['my_ssh_pubkey'] << account_info['my_jumper_pubkey'] unless account_info['my_jumper_pubkey'].nil?
+    @my_info['my_login_name'] = @account_info['my_login_name']
+    @my_info['my_ssh_pubkey'] << @account_info['my_jumper_pubkey'] unless @account_info['my_jumper_pubkey'].nil?
   end
 
   def store_account_info
@@ -72,7 +73,9 @@ class AutoAssignAccount
 
   def send_mail
     @my_info['bisect'] = true
-    message = build_apply_account_email(@my_info)
+    default_email = parse_mail_list('delimiter')
+    @my_info['my_email'] = default_email['to'] unless default_email.empty?
+    message = build_apply_account_email(@my_info, @account_info, false)
     %x(curl -XPOST "#{SEND_MAIL_HOST}:#{SEND_MAIL_PORT}/send_mail_text" -d "#{message}")
   end
 

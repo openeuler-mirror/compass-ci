@@ -21,4 +21,12 @@ class AssistantClient
 
     return JSON.parse(response.body)
   end
+
+  def send_account_mail(user_info)
+    resource = RestClient::Resource.new("http://#{@host}:#{@port}/send_account_mail")
+    response = resource.post(user_info.to_json)
+    return nil unless response.code == 200
+
+    return JSON.parse(response.body)
+  end
 end
