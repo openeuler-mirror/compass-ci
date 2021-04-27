@@ -97,10 +97,10 @@ def compare_candidates_body
     query_conditions: {
       suite: all_suite,
       OS: [
-        { os: 'openeuler', os_version: ['1.0', '20.03'] },
+        { os: 'archlinux', os_version: ['5.5.0-1'] },
         { os: 'centos', os_version: ['7.6', '7.8', '8.1'] },
         { os: 'debian', os_version: %w[10 sid] },
-        { os: 'archlinux', os_version: ['5.5.0-1'] }
+        { os: 'openeuler', os_version: ['1.0', '20.03'] }
       ],
       os_arch: %w[aarch64 x86_64],
       tbox_group: all_tbox_group
