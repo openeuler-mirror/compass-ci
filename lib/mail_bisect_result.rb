@@ -84,12 +84,7 @@ class MailBisectResult
       'my_name' => @git_commit.author_name,
       'my_commit_url' => "#{@git_commit.url}/commit/#{@commit_id}"
     }
-
-    account_info = ESQuery.new(index: 'accounts').query_by_id(@to)
-    return if account_info
-
-    apply_account = AutoAssignAccount.new(user_info)
-    apply_account.send_account
+    AssistantClient.new.send_account_mail(user_info)
   end
 
   def rm_work_dir
