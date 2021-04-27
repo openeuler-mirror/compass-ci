@@ -1,5 +1,11 @@
 #!/bin/sh
 
+reboot_with_msg()
+{
+	echo "[compass-ci reboot] $1"
+	reboot
+}
+
 analyse_kernel_cmdline_params() {
     rootfs="$(getarg root=)"
 
@@ -25,28 +31,22 @@ sync_src_lv() {
     # need create volume group, usually in first use of this machine. $pv_device e.g. /dev/sda
     pv_device="$(getarg pv_device=)"
     [ -n "$pv_device" ] && {
-        [ -b "$pv_device" ] || {
-	     echo "warn dracut: FATAL: device not found: $pv_device, reboot"
-             reboot
-        }
+        [ -b "$pv_device" ] || reboot_with_msg "warn dracut: FATAL: device not found: $pv_device"
 
         # ensure the physical disk has been initialized as physical volume
         real_pv_device="$(lvm pvs | grep -w $pv_device | awk '{print $1}')"
         [ "$real_pv_device" = "$pv_device" ] || {
-            lvm pvcreate -y "$pv_device" || reboot
+            lvm pvcreate -y "$pv_device" || reboot_with_msg "create pv failed: $pv_device"
         }
 
         # ensure the volume group $vg_name exists
         real_vg_name="$(lvm pvs | grep -w $vg_name | awk '{print $2}')"
         [ "$real_vg_name" = "$vg_name" ] || {
-            lvm vgcreate -y "$vg_name" "$pv_device" || reboot
+            lvm vgcreate -y "$vg_name" "$pv_device" || reboot_with_msg "create vg failed: $vg_name"
         }
     }
 
-    lvm vgs "$vg_name" || {
-        echo "warn dracut: FATAL: vg os not found, reboot"
-        reboot
-    }
+    lvm vgs "$vg_name" || reboot_with_msg "warn dracut: FATAL: vg os not found"
 
     # create logical volume
     src_lv_devname="$(basename $src_lv)"
@@ -94,10 +94,7 @@ if [ -z "$use_root_partition" ]; then
     sync_src_lv "$src_lv"
 else
     src_lv="$use_root_partition"
-    [ -e "$src_lv" ] || {
-        echo "warn dracut: FATAL: no src_lv with local mount, reboot"
-        reboot
-    }
+    [ -e "$src_lv" ] || reboot_with_msg "warn dracut: FATAL: no src_lv with local mount"
 fi
 
 save_root_partition="$(getarg save_root_partition=)"
