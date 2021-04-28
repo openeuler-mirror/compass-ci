@@ -190,7 +190,7 @@ auto-submit:
 EOF
 
 [[ -f /etc/compass-ci/passwd.yaml ]] || {
-passwd=$(< /dev/urandom tr -dc "a-zA-Z0-9-=+@#_:/[](){}$%&.^*\!" | head -c 10;echo)
+passwd=$(< /dev/urandom tr -dc "a-zA-Z0-9" | head -c 10; echo)
 
 cat > /etc/compass-ci/passwd.yaml <<EOF
 ES_USER: root
