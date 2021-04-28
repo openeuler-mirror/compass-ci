@@ -563,7 +563,7 @@ class MirrorMain
     @log.info({
       msg: 'new repo',
       repo: git_repo
-    }.to_json)
+    })
   end
 
   def git_fail_log(git_repo, possible_new_refs)
@@ -571,7 +571,7 @@ class MirrorMain
     @log.info({
       msg: msg,
       repo: git_repo
-    }.to_json)
+    })
   end
 
   def new_refs_log(git_repo, nr_new_branch)
@@ -579,7 +579,7 @@ class MirrorMain
       msg: 'new refs',
       repo: git_repo,
       nr_new_branch: nr_new_branch
-    }.to_json)
+    })
   end
 
   def last_commit_new?(git_repo)
