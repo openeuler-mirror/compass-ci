@@ -2,6 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'set'
 require_relative '../container/defconfig.rb'
 
 config = cci_defaults
@@ -29,6 +30,12 @@ ES_HOSTS = [{
   user: ES_USER,
   password: ES_PASSWORD
 }]
+
+KIBANA_HOST ||= config['KIBANA_HOST'] || '172.17.0.1'
+KIBANA_PORT ||= config['KIBANA_PORT'] || '20017'
+
+LOGGING_KIBANA_HOST ||= config['LOGGING_KIBANA_HOST'] || '172.17.0.1'
+LOGGING_KIBANA_PORT ||= config['LOGGING_KIBANA_PORT'] || '20000'
 
 SEND_MAIL_HOST ||= config['SEND_MAIL_HOST'] || '172.17.0.1'
 SEND_MAIL_PORT ||= config['SEND_MAIL_PORT'] || 10001
