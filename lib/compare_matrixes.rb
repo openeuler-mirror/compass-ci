@@ -191,7 +191,7 @@ def remove_unchanged_field(matrixes_values, suite_list)
   #
   matrixes_values.each_key do |success|
     matrixes_values[success].delete_if do |field|
-      if suite_list.any? { |suite| field.start_with?(suite) }
+      if success
         matrixes_values[success][field][:changed] = true
       end
 
