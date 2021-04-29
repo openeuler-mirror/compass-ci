@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'optparse'
+require_relative '../lib/constants.rb'
+require_relative '../lib/kibana_dashboard.rb'
+
+opt_type = nil
+opt_host = 'kibana'
+opt_hash = {}
+
+options = OptionParser.new do |opts|
+  opts.banner = 'Usage: dashboard [options] file/id file/id ...'
+  opts.separator '       importing or exporting kibana dashboards'
+  opts.separator '       use "dashboard -e" to export kibana dashboards'
+  opts.separator '       use "dashboard -e -l" to export logging-kibana dashboards'
+  opts.separator '       use "dashboard -i" to import kibana dashboards'
+  opts.separator '       use "dashboard -e -h xx.xx.xx.xx -p xx" to assign kibana'
+  opts.separator ''
+  opts.separator 'options:'
+
+  opts.on('-e', '--export', 'export kibana dashboards') do
+    opt_type = 'export'
+  end
+
+  opts.on('-i', '--import', 'import kibana dashboards') do
+    opt_type = 'import'
+  end
+
+  opts.on('-l', '--logging', 'sends requests to logging-kibana, the default value is kibana') do
+    opt_host = 'logging-kibana'
+  end
+
+  opts.on('-h host', '--host host', 'set host') do |host|
+    opt_hash['host'] = host
+  end
+
+  opts.on('-p port', '--port port', 'set port') do |port|
+    opt_hash['port'] = port
+  end
+end
+
+options.parse!(ARGV)
+
+unless opt_type
+  puts(options)
+  exit
+end
+
+parameters = ARGV
+
+hash = {}
+hash['host'] = opt_host == 'kibana' ? KIBANA_HOST : LOGGING_KIBANA_HOST
+hash['port'] = opt_host == 'kibana' ? KIBANA_PORT : LOGGING_KIBANA_PORT
+hash['user'] = opt_host == 'kibana' ? ES_USER : LOGGING_ES_USER
+hash['password'] = opt_host == 'kibana' ? ES_PASSWORD : LOGGING_ES_PASSWORD
+hash.merge!(opt_hash)
+
+kibana_dashboard = KibanaDashboard.new(hash['host'], hash['port'], hash['user'], hash['password'])
+
+if opt_type == 'export'
+  kibana_dashboard.export(parameters)
+elsif opt_type == 'import'
+  kibana_dashboard.import(parameters)
+end
