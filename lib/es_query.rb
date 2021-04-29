@@ -15,17 +15,20 @@ class ESQuery
   end
 
   # Example @items: { key1 => value1, key2 => [value2, value3, ..], ...}
+  # Example @unmatch_items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # means to query: key1 == value1 && (key2 in [value2, value3, ..])
-  def multi_field_query(items, size: 10_000, desc_keyword: nil)
+  def multi_field_query(items, unmatch_items: {}, size: 10_000, desc_keyword: nil)
     unless items
       warn 'empty filter!'
       exit
     end
     query_fields = build_multi_field_subquery_body items
+    unmatch_fields = build_multi_field_subquery_body unmatch_items
     query = {
       query: {
         bool: {
-          must: query_fields
+          must: query_fields,
+          must_not: unmatch_fields
         }
       }, size: size
     }
