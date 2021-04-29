@@ -439,12 +439,12 @@ class Job
     # only job.yaml for borrowing machine has the key: ssh_pub_key
     return unless @hash.has_key?("ssh_pub_key")
 
-    # the maxmum borrowing time is limited no more than 10 days.
+    # the maxmum borrowing time is limited no more than 30 days.
     # case the runtime/sleep value count beyond the limit,
     # it will throw error message and prevent the submit for borrowing machine.
     # runtime value is converted to second.
-    max_run_time = 10 * 24 * 3600
-    error_msg = "\nMachine borrow time(runtime/sleep) cannot exceed 10 days. Consider re-borrow.\n"
+    max_run_time = 30 * 24 * 3600
+    error_msg = "\nMachine borrow time(runtime/sleep) cannot exceed 30 days. Consider re-borrow.\n"
 
     if @hash["pp"]["sleep"].as_i?
       sleep_run_time = @hash["pp"]["sleep"]
