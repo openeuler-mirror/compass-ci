@@ -137,6 +137,11 @@ class StatsWorker
       end
       error_ids.concat(content.as_h.keys)
     end
-    error_ids
+
+    error_ids.each do |error_id|
+      error_ids.delete(error_id) if error_id.ends_with?(".message")
+    end
+
+    return error_ids
   end
 end
