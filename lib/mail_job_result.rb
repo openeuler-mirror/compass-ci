@@ -77,7 +77,7 @@ def get_compare_result(job)
   commit_id = job['upstream_commit']
   return nil unless base_commit && commit_id
 
-  condition_list = [{'base_commit' => base_commit}, {'upstream_commit' => commit_id}]
+  condition_list = [{'upstream_commit' => base_commit}, {'upstream_commit' => commit_id}]
   options = { :min_samples => min_samples, :no_print => true}
 
   matrices_list, suite_list = create_matrices_list(condition_list, options[:min_samples])
