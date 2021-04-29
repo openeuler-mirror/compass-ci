@@ -81,7 +81,9 @@ class AutoSubmit
     base_commit = %x(git -C #{mirror_dir} merge-base master #{branch}).chomp
     argvs_for_base.push("upstream_commit=#{base_commit}")
     system(argvs_for_base.join(' '))
-    return "author_email=#{author_email} committer_email=#{committer_email} base_commit=#{base_commit}"
+    commit_title = %x(git -C #{mirror_dir} log --format=%s -1 #{commit_id}).chomp
+
+    return "author_email=#{author_email} committer_email=#{committer_email} base_commit=#{base_commit} commit_title=#{commit_title}"
   end
 
   def submit_specific_branch(submit_argv, newrefs_info, branches)
