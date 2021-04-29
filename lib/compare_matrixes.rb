@@ -129,10 +129,15 @@ def get_values_by_field(matrixes_list, field, matrixes_size, success, options)
   #
   values = {}
   matrixes_list.length.times do |index|
-    value_list = fill_missing_with_zeros(
-      matrixes_list[index][field],
-      matrixes_size[index]
-    )
+    value_list = matrixes_list[index][field]
+    unless value_list
+      if success
+        value_list = [0] unless value_list
+      else
+        value_list = [1] unless value_list
+      end
+    end
+
     values[index] = get_values(value_list, success)
     next if index.zero?
 

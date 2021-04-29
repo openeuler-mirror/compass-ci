@@ -62,16 +62,6 @@ def create_stats(result_root)
   # stats
 end
 
-def samples_fill_missing_zeros(value, size)
-  value.concat([0] * (size - value.size))
-end
-
-def matrix_fill_miss_zeros(matrix, col_size)
-  matrix.each_value do |value|
-    samples_fill_missing_zeros(value, col_size)
-  end
-end
-
 # input: job_list
 # return: matrix of Hash(String, Array(Number))
 #   Eg: matrix: {
@@ -94,8 +84,7 @@ def create_matrix(job_list)
       matrix[key] << value
     end
   end
-  col_size = job_list.size
-  matrix_fill_miss_zeros(matrix, col_size)
+
   return matrix, suites
 end
 
