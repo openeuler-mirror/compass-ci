@@ -26,6 +26,8 @@ pkgs=(
 	curl
 	sudo
 	iputils
+	libxml2-devel
+	libxslt-devel
 )
 
 yum install -y --skip-broken "${pkgs[@]}"

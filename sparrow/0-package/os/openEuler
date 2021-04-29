@@ -29,6 +29,8 @@ pkgs=(
 	curl
 	sudo
 	iputils
+	libxml2-devel
+	libxslt-devel
 )
 
 public_network_ok && {
