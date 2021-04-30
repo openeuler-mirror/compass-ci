@@ -24,10 +24,10 @@ class MailJobResult
 
   def compose_mail
     set_submitter_info
-    context = get_compare_result(@job)
+    context = keep_100_lines(get_compare_result(@job))
     return nil unless context
 
-    subject = "[Compass-CI] job: #{@job_id} compare result"
+    subject = "[Compass-CI] #{@job['commit_title'] || @job_id} comparsion"
     signature = "Regards\nCompass-CI\nhttps://gitee.com/openeuler/compass-ci"
 
     data = <<~BODY
@@ -38,10 +38,17 @@ class MailJobResult
     Hi,
 
     Thanks for your participation in Kunpeng and software ecosystem!
-    Your Job: #{@job_id} had finished.
-    Bellow are comparsion result of the base_commit and current_commit:
-    \tbase_commit: #{@job['base_commit']}
-    \tcurrent_commit: #{@job['upstream_commit']}
+    Your job id: #{@job_id}
+    Bellow are comparsion result of the base commit and your commit:
+    \tbase commit: #{@job['base_commit']}
+    \tcommit_link: #{@job['upstream_url']}/commit/#{@job['base_commit']}
+
+    \tyour commit: #{@job['upstream_commit']}
+    \tbranch: #{@job['upstream_branch']}
+    \tcommit_link: #{@job['upstream_url']}/commit/#{@job['upstream_commit']}
+
+    compare command:
+    \tcompare upstream_commit=#{@job['base_commit']}  upstream_commit=#{@job['upstream_commit']} --min_samples #{@job['nr_run']}
     #{context.to_s}
     \n\n#{signature}"
     BODY
@@ -85,4 +92,8 @@ def get_compare_result(job)
 
   m_titles = [base_commit.slice(0, 16), commit_id.slice(0, 24)]
   compare_matrixes(matrices_list, suite_list, nil, m_titles, options: options)
+end
+
+def keep_100_lines(context)
+  context.split("\n")[0,99].join("\n")
 end
