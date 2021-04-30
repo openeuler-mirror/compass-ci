@@ -61,7 +61,7 @@
 本文以/c/lkp-tests/jobs/目录下已有的通用测试用例host-info.yaml为例
 - 使环境变量生效
 	```bash
-	source /etc/profile.d/compass-ci
+	source /etc/profile.d/compass.sh
 	```
 
 - 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)提交测试用例
