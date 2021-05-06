@@ -404,13 +404,6 @@ def query_repos(must, from: 0, size: 1)
   result['hits']['hits'].each do |r|
     r = r['_source']
 
-    # What does this regular expression want:
-    # 1. a three-segment structure "xxx/xxx/xxx"
-    # 2. there can be '-' or '_' in every segment, but can't be at first or last of the segment.
-    # 3. the first segment can have lowercase of letters or numbers in it.
-    # 4. the other two segments can have letters(lowercase or uppercase) or numbers in it.
-    next unless r['git_repo'] =~ %r{^([a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/[a-zA-Z0-9][\w\-]*[a-zA-Z0-9]){2})$}
-
     repos << {
       git_url: get_repo_url(r['url']),
       git_repo: r['git_repo']
@@ -423,6 +416,14 @@ def search_repos(git_repo, page_size, page_num)
   size = page_size
   from = size * page_num
   must = git_repo ? [{ regexp: { git_repo: ".*#{git_repo}.*" } }] : []
+
+  # What does this regular expression want:
+  # 1. a three-segment structure "xxx/xxx/xxx"
+  # 2. there can be '-' or '_' in every segment, but can't be at first or last of the segment.
+  # 3. the first segment can have lowercase of letters or numbers in it.
+  # 4. the other two segments can have letters(lowercase or uppercase) or numbers in it.
+  must << { regexp: { git_repo: "[a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/[a-zA-Z0-9][a-zA-Z0-9\-_]*[a-zA-Z0-9]){2}" } }
+
   count_query = { query: { bool: { must: must } } }
   total = ES_CLIENT.count(index: 'repo', body: count_query)['count']
   return [], total if wrong_size?(size, from)
