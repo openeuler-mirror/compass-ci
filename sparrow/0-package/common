@@ -48,8 +48,8 @@ cat > /etc/docker/daemon.json <<EOF
     "tag": "{{.Name}}"
   },
   "registry-mirrors": [
-    "http://hub-mirror.c.163.com",
-    "http://docker.mirrors.ustc.edu.cn"
+    "https://hub-mirror.c.163.com",
+    "https://docker.mirrors.ustc.edu.cn"
   ],
   "insecure-registries": ["$DOCKER_REGISTRY_HOST:$DOCKER_REGISTRY_PORT"]
 }
