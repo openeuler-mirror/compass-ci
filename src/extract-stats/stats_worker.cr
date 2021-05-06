@@ -33,7 +33,7 @@ class StatsWorker
     rescue e
       channel.send(queue_path)
       @log.error(e.message)
-      # incase of many error message when task-queue, ES does not work
+      # incase of many error message when ETCD, ES does not work
       sleep(10)
     ensure
       @etcd.close
