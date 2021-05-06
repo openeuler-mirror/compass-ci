@@ -24,12 +24,12 @@ def compute_mac(string)
 end
 
 def job_exist?(response)
-  flag = false
+  flag = true
   if response['job_id'].empty?
     puts '----------'
     puts 'No job now'
     puts '----------'
-    flag = true
+    flag = false
   end
   return flag
 end
@@ -41,7 +41,7 @@ def request_job(context, sched_client, logger)
   sched_client.register_mac2host(hostname, mac)
   sched_client.register_host2queues(hostname, queues)
   response = JSON.parse(sched_client.consume_job('libvirt', 'mac', mac))
-  if job_exist?(response)
+  if !job_exist?(response)
     logger.info('No job now')
     sched_client.delete_mac2host(mac)
     sched_client.delete_host2queues(hostname)
