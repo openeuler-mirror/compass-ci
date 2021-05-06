@@ -9,7 +9,7 @@
 public_network_ok && {
 	gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 	gem install --no-user-install git activesupport rest-client cucumber json faye-websocket elasticsearch bunny \
-		nokogiri
+		nokogiri ruby-libvirt
 }
 
 grep -q '^lkp:' /etc/passwd || useradd -u 1090 lkp
