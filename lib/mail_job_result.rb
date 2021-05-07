@@ -50,7 +50,7 @@ class MailJobResult
     compare command:
     \tcompare upstream_commit=#{@job['base_commit']}  upstream_commit=#{@job['upstream_commit']} --min_samples #{@job['nr_run']}
     #{context.to_s}
-    \n\n#{signature}"
+    \n\n#{signature}
     BODY
 
     data
