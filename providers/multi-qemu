@@ -26,6 +26,10 @@ options = OptionParser.new do |opts|
     opt['queues'] = queues
   end
 
+  opts.on('-l log_dir', '--log_dir log_dir', 'directory for save qemu log') do |dir|
+    opt['log_dir'] = dir
+  end
+
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     exit
@@ -44,7 +48,7 @@ PWD      = Dir.pwd
 HOSTNAME = opt['hostname_prefix'] || "vm-2p8g.#{ENV['HOSTNAME']}"
 NR_VM    = opt['nr_vm'] || 1
 QUEUES   = opt['queues'] || "#{ENV['HOSTNAME']}.#{RUBY_PLATFORM.split('-')[0]}"
-LOG_DIR  = '/srv/cci/serial/logs'
+LOG_DIR  = opt['log_dir'] || '/srv/cci/serial/logs'
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
@@ -77,7 +81,7 @@ def start_qemu(hostname)
   FileUtils.mkdir_p(pwd_hostname) unless File.exist?(pwd_hostname)
   FileUtils.cd(pwd_hostname)
   system(
-    { 'hostname' => hostname, 'queues' => QUEUES },
+    { 'hostname' => hostname, 'queues' => QUEUES, 'log_dir' => LOG_DIR },
     ENV['CCI_SRC'] + '/providers/qemu.sh'
   )
 end

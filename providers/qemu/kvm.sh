@@ -6,12 +6,13 @@
 
 : ${nr_cpu:=1}
 : ${memory:=1G}
+: ${log_dir:=/srv/cci/serial/logs}
 
 source ${CCI_SRC}/lib/log.sh
 
 check_logfile()
 {
-	log_file=/srv/cci/serial/logs/${hostname}
+	log_file=${log_dir}/${hostname}
 	[ -f "$log_file" ] || {
 		touch $log_file
 		# fluentd refresh time is 1s
