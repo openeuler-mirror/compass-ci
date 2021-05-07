@@ -21,8 +21,8 @@ RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/elastic
     sed -i '$a xpack.security.enabled: true' /usr/share/elasticsearch/config/elasticsearch.yml && \
     sed -i '$a xpack.license.self_generated.type: basic' /usr/share/elasticsearch/config/elasticsearch.yml && \
     sed -i '$a xpack.security.transport.ssl.enabled: true' /usr/share/elasticsearch/config/elasticsearch.yml && \
-    sed -i "s/-Xms1g/-Xms${MEMORY}m/g" /usr/share/elasticsearch/config/jvm.options && \
-    sed -i "s/-Xmx1g/-Xmx${MEMORY}m/g" /usr/share/elasticsearch/config/jvm.options
+    echo "-Xms${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options && \
+    echo "-Xmx${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options
 
 RUN mkdir /usr/share/elasticsearch/tmp && \
     chown -R 1090:1090 /usr/share/elasticsearch
