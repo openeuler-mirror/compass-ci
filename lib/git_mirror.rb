@@ -246,6 +246,8 @@ class MirrorMain
     git_info = YAML.safe_load(File.open(repodir))
     return if git_info.nil? || git_info['url'].nil?
 
+    return wrong_repo_warn(git_repo) unless git_repo =~ %r{^([a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/\S+){1,2})$}
+
     @git_info[git_repo] = git_info
     @git_info[git_repo]['git_repo'] = git_repo
     @git_info[git_repo]['belong'] = belong
@@ -579,6 +581,13 @@ class MirrorMain
       msg: 'new refs',
       repo: git_repo,
       nr_new_branch: nr_new_branch
+    })
+  end
+
+  def wrong_repo_warn(git_repo)
+    @log.warn({
+      msg: 'wrong repos',
+      repo: git_repo
     })
   end
 
