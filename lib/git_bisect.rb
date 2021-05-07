@@ -47,11 +47,12 @@ class GitBisect
   def set_upstream
     @upstream_repo = @bad_job['upstream_repo']
     @upstream_commit = @bad_job['upstream_commit']
+    @upstream_dir = @bad_job['upstream_dir']
     puts "upstream_repo: #{@upstream_repo}"
     puts "upstream_commit: #{@upstream_commit}"
     raise 'upstream info is null' unless @upstream_repo || @upstream_commit
 
-    @upstream_repo_git = "git://#{GIT_MIRROR_HOST}/upstream/#{@upstream_repo}"
+    @upstream_repo_git = "git://#{GIT_MIRROR_HOST}/#{@upstream_dir}/#{@upstream_repo}"
   end
 
   def set_upstream_url
