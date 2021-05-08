@@ -59,8 +59,17 @@ class AutoSubmit
       real_argvs.push(competi_argvs)
     end
     real_argvs.push("upstream_commit=#{commit_id}")
+    branch_command = get_branch_command(mirror_dir, branch)
+    real_argvs.push(branch_command) if branch_command
 
     system(real_argvs.join(' '))
+  end
+
+  def get_branch_command(mirror_dir, branch)
+    branch_command = %x(git -C #{mirror_dir} show #{branch}:'.cci/auto-submit' 2>/dev/null).chomp
+    return nil if branch_command.empty? || branch_command.include?('submit') || branch_command.lines.size > 1
+
+    return branch_command
   end
 
   def get_argvs_for_competition(real_argvs, mirror_dir, branch, commit_id)
@@ -103,6 +112,17 @@ class AutoSubmit
     end
   end
 
+  def get_commands_from_repository(newrefs_info)
+    mirror_dir = "/srv/git/#{newrefs_info['belong']}/#{newrefs_info['git_repo']}.git"
+    repository_commands = %x(git -C #{mirror_dir} show HEAD:'.cci/auto-submit' 2>/dev/null)
+    return nil if repository_commands.empty?
+
+    submit_info = YAML.safe_load(repository_commands)
+    return nil if submit_info.nil? || submit_info['submit'].nil? || !submit_info.is_a?(Hash)
+
+    return submit_info
+  end
+
   # Add support of different branch different job
   # newrefs_info['submit'] is like:
   # [
@@ -117,6 +137,9 @@ class AutoSubmit
   def submit_job(newrefs_info)
     submit_argv = get_argvs(newrefs_info)
     return unless submit_argv
+
+    repository_commands = get_commands_from_repository(newrefs_info)
+    newrefs_info['submit'] = repository_commands unless repository_commands.nil?
 
     return unless newrefs_info['submit']
 
