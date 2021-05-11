@@ -32,25 +32,33 @@ sync_src_lv() {
 
     [ -e "$src_lv" ] && return
 
-    # need create volume group, usually in first use of this machine. $pv_device e.g. /dev/sda
-    pv_device="$(getarg pv_device=)"
-    [ -n "$pv_device" ] && {
-        [ -b "$pv_device" ] || reboot_with_msg "warn dracut: FATAL: device not found: $pv_device"
+    # if os_mount=local, then 'rootfs_disk' is necessary.
+    rootfs_disk="$(getarg rootfs_disk=)"
+    [ -n "$rootfs_disk" ] || reboot_with_msg "cannot find rootfs_disk for this testbox."
 
-        # ensure the physical disk has been initialized as physical volume
-        real_pv_device="$(lvm pvs | grep -w $pv_device | awk '{print $1}')"
-        [ "$real_pv_device" = "$pv_device" ] || {
-            lvm pvcreate -y "$pv_device" || reboot_with_msg "create pv failed: $pv_device"
-        }
+    # prepare volume group
+    local disk
+    for disk in $(echo $rootfs_disk | tr ',' ' ')
+    do
+        # if disk not exist, then reboot
+        [ -b "$disk" ] || reboot_with_msg "warn dracut: FATAL: device not found: $disk"
 
-        # ensure the volume group $vg_name exists
-        real_vg_name="$(lvm pvs | grep -w $vg_name | awk '{print $2}')"
-        [ "$real_vg_name" = "$vg_name" ] || {
-            lvm vgcreate -y "$vg_name" "$pv_device" || reboot_with_msg "create vg failed: $vg_name"
-        }
-    }
+        # if disk is not pv, then pvcreate it.
+        lvm pvdisplay $disk > /dev/null || lvm pvcreate -y $disk || reboot_with_msg "create pv failed: $disk"
 
-    lvm vgs "$vg_name" || reboot_with_msg "warn dracut: FATAL: vg os not found"
+        # if vg not existed: create it by disk.
+        # if vg existed:     add disk to vg,
+        if lvm vgdisplay $vg_name > /dev/null; then
+            # if pv not in vg: add disk to vg
+            lvm pvdisplay $disk | grep 'VG Name' | grep -w $vg_name || {
+                lvm vgextend -y $vg_name $disk || reboot_with_msg "vgextend failed: $disk"
+            }
+        else
+            lvm vgcreate -y $vg_name $disk || reboot_with_msg "vgcreate failed: $disk"
+        fi
+    done
+
+    lvm vgs "$vg_name" || reboot_with_msg "warn dracut: FATAL: vg $vg_name not found"
 
     # create logical volume
     src_lv_devname="$(basename $src_lv)"
