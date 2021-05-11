@@ -166,7 +166,7 @@ class Lifecycle
     if machine
       return unless event["time"].to_s.bigger_than?(machine["time"]?)
 
-      machine.as_h["time"] = event["time"]
+      @machines[testbox]  = JSON.parse(machine.as_h.merge!(event.as_h).to_json)
     else
       machine = @es.get_tbox(testbox)
       return unless machine
