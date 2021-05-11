@@ -292,6 +292,10 @@ class Job
   end
 
   def get_package_dir
+    if @hash["sysbench-mysql"]? || @hash["benchmark-sql"]?
+      return ",/initrd/build-pkg"
+    end
+
     package_dir = ""
     common_dir = get_pkg_common_dir
     return package_dir unless common_dir
