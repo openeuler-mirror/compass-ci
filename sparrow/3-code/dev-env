@@ -198,6 +198,8 @@ ES_PASSWORD: $passwd
 LOGGING_ES_USER: root
 LOGGING_ES_PASSWORD: $passwd
 EOF
+
+chmod 660 /etc/compass-ci/passwd.yaml
 }
 
 source /etc/os-release

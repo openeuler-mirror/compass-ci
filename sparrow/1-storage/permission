@@ -44,6 +44,5 @@ chgrp team /srv/cci/serial/logs
 chgrp team /srv/dc
 
 chmod g+ws /srv/dc
-chmod 660 /etc/compass-ci/password.yaml
 
 find /tftpboot -type d | xargs chmod 775
