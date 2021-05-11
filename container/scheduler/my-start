@@ -76,6 +76,7 @@ cmd = %W[
   -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
   -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
   -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
+  -v /srv/tmp/public:/c/cci/scheduler/public
   -v /etc/compass-ci:/etc/compass-ci:ro
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/result:/srv/result
