@@ -16,6 +16,7 @@ require "../scheduler/jobfile_operate"
 require "../scheduler/redis_client"
 require "../scheduler/elasticsearch_client"
 
+require "../scheduler/renew_deadline"
 require "../scheduler/submit_job"
 require "../scheduler/find_job_boot"
 require "../scheduler/find_next_job_boot"

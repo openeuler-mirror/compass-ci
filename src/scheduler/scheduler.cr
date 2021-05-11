@@ -77,6 +77,12 @@ module Scheduler
     env.sched.submit_job.to_json
   end
 
+  # extend the deadline
+  # curl "http://localhost:3000/renew_deadline?job_id=1&time=100
+  get "/renew_deadline" do |env|
+    env.sched.renew_deadline.to_s
+  end
+
   # file download server
   get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
     env.sched.download_file

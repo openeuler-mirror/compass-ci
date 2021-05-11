@@ -261,6 +261,11 @@ class Job
     (Time.local + (runtime.to_i32 * 2 + 300).second).to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
+  def renew_deadline(time)
+    deadline = Time.parse(self["deadline"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    self["deadline"] = (deadline + time.to_i32.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
   def set_result_root
     update_tbox_group_from_testbox # id must exists, need update tbox_group
     self["result_root"] = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{pp_params}", "#{id}")
