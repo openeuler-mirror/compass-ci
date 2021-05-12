@@ -8,7 +8,7 @@ require 'mail'
 require 'rest-client'
 require_relative '../../../lib/es_client'
 require_relative 'assign-account-email'
-require_relative 'assign-account-fail-eamil'
+require_relative 'assign-account-fail-email'
 require_relative 'apply-jumper-account'
 require_relative 'parse-apply-account-email'
 
