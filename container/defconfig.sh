@@ -62,6 +62,8 @@ check_service_ready()
 
 push_image()
 {
+	[ "$suite" == "self-test" ] && return
+
         local local_docker_hub="$DOCKER_REGISTRY_HOST:$DOCKER_REGISTRY_PORT"
         local src_tag=$1
         local dst_tag="$local_docker_hub/$src_tag"
