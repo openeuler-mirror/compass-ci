@@ -10,6 +10,7 @@ server_name=$(hostname | cut -f1 -d.)
 : ${ES_HOST:=$server_ip}
 : ${ES_PORT:=9200}
 : ${OS_HTTP_HOST:=$server_ip}
+: ${OS_HTTP_PORT:=8000}
 : ${send_mail_host:=$server_ip}
 : ${SEND_MAIL_PORT:=10001}
 : ${EMAIL_LIMIT_COUNT:=10}
@@ -92,6 +93,7 @@ SCHED_NODES:
 LKP_SERVER: $server_ip
 GIT_SERVER: $git_server
 OS_HTTP_HOST: $OS_HTTP_HOST
+OS_HTTP_PORT: $OS_HTTP_PORT
 SRV_HTTP_RESULT_HOST: $srv_http_result_host
 SRV_HTTP_OS_HOST: $srv_http_os_host
 SRV_HTTP_GIT_HOST: $srv_http_git_host
