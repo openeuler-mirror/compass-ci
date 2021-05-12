@@ -102,13 +102,13 @@ set_helper()
 add_disk()
 {
 	# VM testbox has disk spec?
-	[ -n "$hdd_partitions" ] || return 0
+	[ -n "$hdd_partitions" ] || [ -n "$rootfs_disk" ] || return 0
 
 	[ -n "$mount_points" ] || mount_points=$(pwd)
 
 	local index=0
 	local disk
-	for disk in $hdd_partitions
+	for disk in $hdd_partitions $rootfs_disk
 	do
 		local qcow2_file="${mount_points}/${hostname}-${disk##*/}.qcow2"
 		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index}"
