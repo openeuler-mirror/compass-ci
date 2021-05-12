@@ -18,7 +18,7 @@ WORKDIR /h5ai
 RUN npm install && \
     npm run build
 
-FROM nginx:alpine
+FROM nginx:1.20.0-alpine
 
 ADD root /
 
