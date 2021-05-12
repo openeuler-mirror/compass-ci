@@ -5,6 +5,10 @@ FROM node:alpine as Builder
 
 MAINTAINER Lu Weitao <luweitaobe@163.com>
 
+RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+
+RUN apk update
+
 RUN apk add git
 
 RUN git clone https://gitee.com/luweitao_y/h5ai.git /h5ai
