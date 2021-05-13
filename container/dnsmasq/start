@@ -11,6 +11,9 @@ kill $(ps -ef| grep dnsmasq| grep libvirt| awk '{print $2}') 2> /dev/null
 WORKSPACE=$(dirname "$(realpath "$0")")
 DNSMASQ_CONF_DIR="/etc/compass-ci/dnsmasq"
 
+# config custom br0
+[ -n "$br0_segment" ] && sed -i "/dhcp-range=/{ s/172.18/${br0_segment}/g }" dnsmasq.d/dnsmasq.conf
+
 # load custom dnsmasq.conf
 [ -d "${DNSMASQ_CONF_DIR}/dnsmasq.d/" ] &&
 	cp -a ${DNSMASQ_CONF_DIR}/dnsmasq.d/* ${WORKSPACE}/dnsmasq.d/

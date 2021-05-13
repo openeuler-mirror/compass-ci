@@ -3,8 +3,14 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # 2020.3 by wufengguang
 
+br0_segment=$(awk '/^br0_segment:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+
+: ${br0_segment:=172.18}
+
+br0_subnet=${br0_segment}.0.1/16
+
 ip link add br0 type bridge
-ip addr add 172.18.0.1/16 dev br0
+ip addr add $br0_subnet dev br0
 ip link set dev br0 up
 
 brctl setfd br0 2

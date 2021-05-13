@@ -2,10 +2,14 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+br0_segment=$(awk '/^br0_segment:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+
+: ${br0_segment:=172.18}
+
+BR0_SUBNET=${br0_segment}.0.0/16
+
 PUB_IFACE=$(ip route get 1.2.3.4 | awk '{print $5; exit}')
 BR0_IFACE=br0
-
-BR0_SUBNET=172.18.0.0/16
 
 # iptables -t nat -F
 iptables -w 10 -I FORWARD 1 -j ACCEPT

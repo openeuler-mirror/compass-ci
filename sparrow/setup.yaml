@@ -9,3 +9,6 @@ my_email: xxx@xxx.com
 # when you deploy compass-ci client, fill the compass-ci server's ip,
 # then client can access server service.
 server_ip:
+
+# config br0 previous 2 segments
+br0_segment: 172.18
