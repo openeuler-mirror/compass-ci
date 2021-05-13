@@ -20,7 +20,7 @@ class StatsWorker
     @log = JSONLogger.new
   end
 
-  def handle(queue_path, channel)
+  def handle(queue_path, channel, commit_channel)
     begin
       res = @etcd.range(queue_path)
       return nil if res.count == 0
@@ -29,6 +29,7 @@ class StatsWorker
       job = @es.get_job_content(job_id)
       result_root = job["result_root"]?
       result_post_processing(job_id, result_root.to_s, queue_path)
+      commit_channel.send(job["upstream_commit"].to_s) if job["nr_run"]? && job["upstream_commit"]? && job["base_commit"]?
       @etcd.delete(queue_path)
     rescue e
       channel.send(queue_path)

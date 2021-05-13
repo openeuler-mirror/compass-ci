@@ -7,6 +7,7 @@ require "./stats_worker"
 
 module ExtractStats
   @@ec = EtcdClient.new
+  @@commit_channel = Channel(String).new
 
   def self.consume_tasks
     channel = Channel(String).new
@@ -41,7 +42,7 @@ module ExtractStats
       return if tasks.empty?
 
       task = tasks.delete_at(0)
-      spawn { StatsWorker.new.handle(task.key, channel) }
+      spawn { StatsWorker.new.handle(task.key, channel, @@commit_channel) }
       Fiber.yield
     end
   end
@@ -61,7 +62,7 @@ module ExtractStats
   def self.handle_events(channel)
     while true
       key = channel.receive
-      spawn { StatsWorker.new.handle(key, channel) }
+      spawn { StatsWorker.new.handle(key, channel, @@commit_channel) }
       Fiber.yield
     end
   end
