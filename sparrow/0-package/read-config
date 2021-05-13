@@ -9,9 +9,6 @@ export_config_variables()
 {
 	[[ -n "$my_email" && -n "$my_name" ]] && return
 
-	mkdir -p /etc/compass-ci/
-	cp -a $CCI_SRC/sparrow/setup.yaml /etc/compass-ci/setup.yaml
-
 	options=( server_ip my_name my_email )
 
 	for option in ${options[@]}
@@ -20,9 +17,24 @@ export_config_variables()
 	done
 }
 
+check_segment()
+{
+	server_ip_segment=$(ip route get 1.2.3.4 | awk '{print $7; exit}' | awk -F. '{print $1"."$2}')
+	export br0_segment=$(awk '/^br0_segment:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+
+	[ "$server_ip_segment" != "$br0_segment" ] || {
+		export br0_segment=172.$(($(date +%s%N)%13+19))
+		sed -i "s/br0_segment: 172.18/br0_segment: ${br0_segment}/g" /etc/compass-ci/setup.yaml
+	}
+}
+
+mkdir -p /etc/compass-ci/
+cp -a $CCI_SRC/sparrow/setup.yaml /etc/compass-ci/setup.yaml
 export_config_variables
 
 [[ -n "$my_email" && -n "$my_name" ]] || {
 	log_error "ENV \$my_email or \$my_name doesn't exist, please config $CCI_SRC/sparrow/setup.yaml"
 	exit 1
 }
+
+check_segment
