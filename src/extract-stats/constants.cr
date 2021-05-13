@@ -6,3 +6,5 @@ STATS_WORKER_COUNT       = 10
 
 DELIMITER_TASK_QUEUE = "delimiter"
 ERROR_ID_FILES       = %w[build-pkg.json]
+
+MAIL_COMPARE_QUEUE = "mail_compare"
