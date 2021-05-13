@@ -274,7 +274,7 @@ class Job
 
   def get_pkg_common_dir
     tmp_style = nil
-    ["cci-makepkg", "cci-depends", "build-pkg", "rpmbuild-pkg"].each do |item|
+    ["cci-makepkg", "cci-depends", "build-pkg", "rpmbuild"].each do |item|
       tmp_style = @hash[item]?
       break if tmp_style
     end
@@ -291,7 +291,7 @@ class Job
     mount_type = "nfs" if mount_type == "cifs"
 
     common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
-    common_dir = "#{tmp_os}-#{tmp_os_version}" if @hash.has_key?("rpmbuild-pkg")
+    common_dir = "#{tmp_os}-#{tmp_os_version}" if @hash.has_key?("rpmbuild")
 
     return common_dir
   end
@@ -309,7 +309,7 @@ class Job
       package_dir = ",/initrd/pkg/#{common_dir}/#{@hash["cci-makepkg"]["benchmark"]}"
     elsif @hash["cci-depends"]?
       package_dir = ",/initrd/deps/#{common_dir}/#{@hash["cci-depends"]["benchmark"]}"
-    elsif @hash["rpmbuild-pkg"]?
+    elsif @hash["rpmbuild"]?
       package_dir = ",/rpm/upload/#{common_dir}"
     elsif @hash["build-pkg"]?
       if @hash["pkgbuild_repo"].to_s =~ /(packages|community)\/\//
