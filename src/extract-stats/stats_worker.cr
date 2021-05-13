@@ -48,8 +48,6 @@ class StatsWorker
     system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
     # storage stats to job in es
     store_stats_es(result_root, job_id, queue_path)
-    # send mail to submitter for job results
-    system "#{ENV["CCI_SRC"]}/sbin/mail-job #{job_id}"
   end
 
   def is_failure(stats_field)
