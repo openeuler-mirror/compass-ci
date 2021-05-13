@@ -25,6 +25,6 @@ argv = ARGV.empty? ? ['-h'] : ARGV
 
 opt_parser.parse!(argv)
 
-job_id = argv[0]
-mail = MailJobResult.new(job_id)
+upstream_commit = argv[0]
+mail = MailJobResult.new(upstream_commit)
 mail.send_mail

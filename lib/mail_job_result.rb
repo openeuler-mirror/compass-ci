@@ -10,8 +10,8 @@ require 'json'
 
 # compose and send email for job result
 class MailJobResult
-  def initialize(job_id, result_host = SRV_HTTP_RESULT_HOST, result_port = SRV_HTTP_RESULT_PORT)
-    @job_id = job_id
+  def initialize(upstream_commit, result_host = SRV_HTTP_RESULT_HOST, result_port = SRV_HTTP_RESULT_PORT)
+    @upstream_commit = upstream_commit
     @result_host = result_host
     @result_port = result_port
   end
@@ -27,7 +27,7 @@ class MailJobResult
     context = keep_100_lines(get_compare_result(@job))
     return nil unless context
 
-    subject = "[Compass-CI] #{@job['commit_title'] || @job_id} comparsion"
+    subject = "[Compass-CI] #{@job['commit_title'] || @job['id']} comparsion"
     signature = "Regards\nCompass-CI\nhttps://gitee.com/openeuler/compass-ci"
 
     data = <<~BODY
@@ -38,7 +38,6 @@ class MailJobResult
     Hi,
 
     Thanks for your participation in Kunpeng and software ecosystem!
-    Your job id: #{@job_id}
     Bellow are comparsion result of the base commit and your commit:
     \tbase commit: #{@job['base_commit']}
     \tcommit_link: #{@job['upstream_url']}/commit/#{@job['base_commit']}
@@ -68,9 +67,9 @@ class MailJobResult
 
   def query_job
     es = ESQuery.new
-    query_result = es.multi_field_query({ 'id' => @job_id })
+    query_result = es.multi_field_query({ 'upstream_commit' => @upstream_commit })
     if query_result['hits']['hits'].empty?
-      warn "Non-existent job: #{@job_id}"
+      warn "Non-existent jobs"
       return nil
     end
 
