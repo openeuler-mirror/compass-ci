@@ -4,14 +4,14 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require_relative '../lib/mail_job_result.rb'
+require_relative '../lib/mail_compare_result.rb'
 
 # mail job results to job submitter
 # require the job had submitted job.yaml include email
 
 opt_parser = OptionParser.new do |opts|
-  opts.banner = 'Usage: mail-job  job_id'
-  opts.separator 'eg: mail-job crystal.123012'
+  opts.banner = 'Usage: mail-compare  upstream_commit'
+  opts.separator 'eg: mail-compare 88247d9d32aa6e49692e76ba19066378fa666e89'
   opts.separator ''
   opts.separator 'options:'
 
