@@ -8,6 +8,8 @@
 
 check_server_ip()
 {
+	mkdir -p /etc/compass-ci
+	cp -a $CCI_SRC/sparrow/setup.yaml /etc/compass-ci/setup.yaml
 	[ -z "$server_ip" ] && . 0-package/read-config
 	[ -z "$server_ip" ] && {
 		log_error "ENV \$server_ip doesn't exist, please config $CCI_SRC/sparrow/setup.yaml"
