@@ -1,0 +1,71 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'yaml'
+require 'bunny'
+require 'json'
+
+# usage: manual_submit $git_repo
+# manual_submit u/upstream-repos/upstream-repos
+REPO_DIR = ENV['REPO_SRC']
+
+def get_belong_dir(git_repo)
+  if File.exist?('/etc/compass-ci/defaults/upstream-config')
+    upstreams = YAML.safe_load(File.open('/etc/compass-ci/defaults/upstream-config'))
+    upstreams['upstreams'].each do |repo|
+      file_path = "#{REPO_DIR}/#{repo['location']}/#{git_repo}"
+      return repo['location'] if File.exist?(file_path)
+    end
+  end
+  return nil
+end
+
+def get_defaults_info(repo_path)
+  defaults_dir = File.dirname(repo_path)
+  defaults = {}
+  while defaults_dir != REPO_DIR
+    defaults_new = YAML.safe_load(File.open("#{defaults_dir}/DEFAULTS")) if File.exist?("#{defaults_dir}/DEFAULTS")
+    defaults = defaults_new.merge(defaults)
+    defaults_dir = File.dirname(defaults_dir)
+  end
+  defaults_new = YAML.safe_load(File.open("#{defaults_dir}/DEFAULTS")) if File.exist?("#{defaults_dir}/DEFAULTS")
+  defaults_new.merge(defaults)
+end
+
+def get_git_info(belong_dir, git_repo)
+  mirror_dir = "/srv/git/#{belong_dir}/#{git_repo}.git"
+  show_ref_out = %x(git -C #{mirror_dir} show-ref --heads 2>/dev/null)
+  cur_refs = { heads: {} }
+  show_ref_out.each_line do |line|
+    strings = line.split
+    cur_refs[:heads][strings[1]] = strings.first
+  end
+  { 'git_repo' => git_repo, 'belong' => belong_dir, 'new_refs' => cur_refs }
+end
+
+def send_job_info
+  connection = Bunny.new('amqp://172.17.0.1:5672')
+  connection.start
+  channel = connection.create_channel
+
+  queue = channel.queue('new_refs')
+  git_repo = ARGV[0]
+  belong_dir = get_belong_dir(git_repo)
+
+  if belong_dir
+    repo_path = "#{REPO_DIR}/#{belong_dir}/#{git_repo}"
+    repo_info = YAML.safe_load(File.open(repo_path))
+    defaults = get_defaults_info(repo_path)
+    repo_info = defaults.merge(repo_info)
+    git_info = get_git_info(belong_dir, git_repo)
+    message = repo_info.merge(git_info)
+    puts message
+    queue.publish(message.to_json)
+  else
+    puts "can not find git_repo: #{git_repo}"
+  end
+end
+
+send_job_info
