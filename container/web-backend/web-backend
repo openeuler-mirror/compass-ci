@@ -172,10 +172,14 @@ get '/get_jobs_summary' do
   group_jobs_stats(params)
 end
 
-# GET /get_job_error?suite=virttest&tbox_group=vm-2p8g
+# GET /get_job_error?suite=virttest&tbox_group=vm-2p8g&group_id=wcl_ansible-openeuler-03-10
 # Response
 # {
-#   "filter": {"group_id":"wcl_ansible-openeuler-03-10"},
+#   "filter": {
+#     "suite": "virttest",
+#     "tbox_group": "vm-2p8g",
+#     "group_id": "wcl_ansible-openeuler-03-10"
+#   },
 #   "attributes": ["job_id", "error_id", "error_message", "link_to_result"],
 #   "objects": [
 #      {
