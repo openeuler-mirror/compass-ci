@@ -122,6 +122,7 @@ add_disk()
 set_mac()
 {
 	job_id=$(awk -F'/' '/job_initrd_tmpfs/{print $(NF-1)}' $ipxe_script)
+	nr_nic=$(awk -F'=' '/# nr_nic=/{print NF}' $ipxe_script)
 
 	if [ $(command -v es-find) ]; then
 		nr_nic=$(es-find id=$job_id | awk '/nr_nic/{print $2}' | tr -d ,)
