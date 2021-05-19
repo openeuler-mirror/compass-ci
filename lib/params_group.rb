@@ -62,8 +62,6 @@ def group(jobs_list, dimensions)
     group_key = get_group_key(group_params)
     groups[group_key] ||= {}
     groups[group_key][dimension_key] ||= []
-    next unless job['stats']
-
     groups[group_key][dimension_key] << job
   end
   filter_groups(groups)
