@@ -49,7 +49,11 @@ end
 
 opt_parser.parse!(ARGV)
 items = parse_argv
-raise 'Please enter a query' if items.empty?
+
+if items.empty?
+  puts(opt_parser)
+  exit
+end
 
 es_jobs = ESJobs.new(items, opt_refine, opt_fields, opt_stats_filter)
 es_jobs.generate_result
