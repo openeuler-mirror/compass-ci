@@ -40,7 +40,7 @@ class ParseApplyAccountEmail
 
     @my_info = {
       'my_email' => mail_content.from[0],
-      'my_name' => mail_content.From.unparsed_value.gsub(/ <[^<>]*>/, '').gsub(/"/, ''),
+      'my_name' => mail_content.From.unparsed_value.gsub(/ *<[^<>]*>/, '').gsub(/"/, ''),
       'my_ssh_pubkey' => []
     }
   end
