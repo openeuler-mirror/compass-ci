@@ -233,7 +233,6 @@ class MirrorMain
     loop do
       push_git_queue
       handle_feedback
-      Signal.trap(:SIGCHLD, 'SIG_IGN')
       sleep(0.1)
     end
   end
