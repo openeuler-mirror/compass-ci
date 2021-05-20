@@ -352,7 +352,7 @@ class Job
   end
 
   # if not assign tbox_group, set it to a match result from testbox
-  #  ?if job special testbox, should we just set tbox_group=textbox
+  #  ?if job special testbox, should we just set tbox_group=testbox
   private def update_tbox_group_from_testbox
     if self["tbox_group"] == ""
       @hash["tbox_group"] = JSON::Any.new(JobHelper.match_tbox_group(testbox))
