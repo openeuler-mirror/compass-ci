@@ -87,6 +87,13 @@ class Elasticsearch::Client
     @client.get_source(query)
   end
 
+  def get_hit_total(index, query)
+    results = @client.search({:index => index, :body => query})
+    raise results unless results.is_a?(JSON::Any)
+
+    results["hits"]["total"]["value"].to_s.to_i32
+  end
+
   def search(index, query)
     results = @client.search({:index => index, :body => query})
     raise results unless results.is_a?(JSON::Any)
