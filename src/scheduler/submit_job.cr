@@ -58,6 +58,8 @@ class Sched
       next if (config["roles"].as_a.map(&.to_s) & roles).empty?
 
       queue = host.to_s
+      queue = $1 if queue =~ /(\S+)--[0-9]+$/
+
       job_id = get_job_id(lab)
 
       # return when job_id is '0'
@@ -71,16 +73,20 @@ class Sched
       job["queue"] = queue
       job.update_tbox_group(queue)
       job["node_roles"] = config["roles"].as_a.join(" ")
-      direct_macs = config["macs"].as_a
-      direct_ips = [] of String
-      direct_macs.size.times do
-        raise "Host id is greater than 254, host_id: #{ip0}" if ip0 > 254
-        direct_ips << "#{net_id}.#{ip0}"
-        ip0 += 1
+      if config["macs"]?
+      	direct_macs = config["macs"].as_a
+      	direct_ips = [] of String
+      	direct_macs.size.times do
+        	raise "Host id is greater than 254, host_id: #{ip0}" if ip0 > 254
+        	direct_ips << "#{net_id}.#{ip0}"
+        	ip0 += 1
+      	end
+      	job["direct_macs"] = direct_macs.join(" ")
+      	job["direct_ips"] = direct_ips.join(" ")
       end
-      job["direct_macs"] = direct_macs.join(" ")
-      job["direct_ips"] = direct_ips.join(" ")
 
+      # multi-machine test requires two network cards
+      job["nr_nic"] = "2"
       status, msg = add_job(job, job_id)
       job_id = "0" unless status
       job_messages << {

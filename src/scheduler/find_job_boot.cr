@@ -290,6 +290,7 @@ class Sched
     return job["custom_ipxe"] if job["suite"].starts_with?("install-iso") && job.has_key?("custom_ipxe")
 
     response = "#!ipxe\n\n"
+    response += "# nr_nic=" + job["nr_nic"] + "\n" if job.has_key?("nr_nic")
 
     _initrds_uri = Array(String).from_json(job.initrds_uri).map { |uri| "initrd #{uri}" }
     response += _initrds_uri.join("\n") + "\n"
