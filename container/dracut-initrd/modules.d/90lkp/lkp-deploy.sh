@@ -55,3 +55,7 @@ if test -d "$kmdir" &&  ! test -d "$NEWROOT/$kmdir"; then
     cp -an "$kmdir"		"$NEWROOT"/lib/modules/
     cp -an /lib/firmware	"$NEWROOT"/lib/
 fi
+
+if getargbool 0 local; then
+    rm -f "$NEWROOT"/lkp/run/lkp-bootstrap.pid
+fi
