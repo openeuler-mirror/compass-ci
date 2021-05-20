@@ -107,6 +107,12 @@ else
 		          "subqueue": {
 			    "type": "keyword"
 		          },
+		          "all_params_hash_value": {
+			    "type": "keyword"
+			  },
+		          "pp_params_hash_value": {
+			    "type": "keyword"
+			  },
 		          "testbox": {
 		            "type": "keyword"
 		          },
