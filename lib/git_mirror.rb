@@ -223,6 +223,7 @@ class MirrorMain
 
   def push_git_queue
     return if @git_queue.size >= 1
+    return no_repo_warn if @priority_queue.empty?
 
     fork_key, old_pri = @priority_queue.delete_min
     do_push(fork_key)
@@ -587,6 +588,12 @@ class MirrorMain
     @log.warn({
       msg: 'wrong repos',
       repo: git_repo
+    })
+  end
+
+  def no_repo_warn
+    @log.warn({
+      msg: 'no repo files'
     })
   end
 
