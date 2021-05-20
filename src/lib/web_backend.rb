@@ -45,16 +45,11 @@ def es_count(query)
   ES_CLIENT.count(index: 'jobs*', body: query)['count']
 end
 
-# "vm-2p8g--212" remove "--212"
-# "vm-2p8g--zzz" remove "--zzz"
-# "vm-git-bisect" don't remove "-bisect"
+# delete $user after '--' or '.' or '~'
 def filter_tbox_group(es_result)
   result = Set.new
   es_result.each do |r|
-    if r =~ /(^.+--.+$)|(^vm-.*-\d\w*-(([a-zA-Z]+)|(\d+))$)/
-      index = r.index('--') || r.rindex('-')
-      r = r[0, index]
-    end
+    r = r.gsub(/(--|\.|~).*$/, '')
     result.add r
   end
   result.to_a
@@ -70,10 +65,7 @@ def all_suite
     size: 0
   }
   es_result = es_query(query)['aggregations']['all_suite']['buckets']
-  es_result.sort_by! { |h| h['doc_count'] }
-  es_result.reverse!.map! { |x|	x['key'] }
-
-  es_result
+  filter_es_result(es_result)
 end
 
 def all_tbox_group
@@ -86,10 +78,17 @@ def all_tbox_group
     size: 0
   }
   es_result = es_query(query)['aggregations']['all_tbox_group']['buckets']
-  es_result.sort_by! { |h| h['doc_count'] }
-  es_result.reverse!.map! { |x|	x['key'] }
+  es_result = filter_es_result(es_result)
 
   filter_tbox_group(es_result)
+end
+
+def filter_es_result(es_result)
+  result_second = []
+  es_result.each { |e| result_second << e if e['doc_count'] > 1 }
+  result_second.sort_by! { |h| h['doc_count'] }
+  result_second.reverse!.map! { |x| x['key'] }
+  return result_second
 end
 
 def compare_candidates_body
