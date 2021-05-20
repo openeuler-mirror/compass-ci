@@ -147,6 +147,7 @@ class Job
     check_run_time()
     set_defaults()
     @hash.merge!(testbox_env)
+    checkout_max_run
   end
 
   private def set_defaults
@@ -170,6 +171,23 @@ class Job
     set_subqueue()
     set_time("submit_time")
     set_params_hash_value
+  end
+
+  private def checkout_max_run
+    return unless hash["max_run"]?
+
+    query = {
+      "size" => 0,
+      "query" => {
+        "term" => {
+          "all_params_hash_value" => hash["all_params_hash_value"]
+        }
+      }
+    }
+    total = @es.get_hit_total("jobs", query)
+
+    msg = "exceeds the max_run(#{hash["max_run"]}), #{total} jobs exist"
+    raise msg if total >= hash["max_run"].to_s.to_i32
   end
 
   private def set_params_hash_value
