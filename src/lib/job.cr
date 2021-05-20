@@ -169,6 +169,24 @@ class Job
     set_queue()
     set_subqueue()
     set_time("submit_time")
+    set_params_hash_value
+  end
+
+  private def set_params_hash_value
+    hash["pp_params_hash_value"] = JSON::Any.new(get_hasher_result(hash["pp"]).to_s)
+
+    all_params_hash = {"pp" => hash["pp"]}
+    COMMON_PARAMS.each do |param|
+      all_params_hash[param] = hash[param]
+    end
+
+    hash["all_params_hash_value"] = JSON::Any.new(get_hasher_result(all_params_hash).to_s)
+  end
+
+  # Designated hasher seed
+  # A pseudorandom param's hash value is completely determined by the hasher seed
+  def get_hasher_result(param)
+    param.hash(Crystal::Hasher.new(1111111111111111111, 1111111111111111111)).result
   end
 
   def set_time(key)
