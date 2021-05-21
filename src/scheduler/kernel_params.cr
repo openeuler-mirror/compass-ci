@@ -9,30 +9,7 @@ class Job
     os_info = "#{os}_#{os_arch}_#{os_version}"
     use_root_partition = "/dev/mapper/os-#{os_info}_#{src_lv_suffix}" if @hash["src_lv_suffix"]? != nil
     save_root_partition = "/dev/mapper/os-#{os_info}_#{boot_lv_suffix}" if @hash["boot_lv_suffix"]? != nil
-    rootfs_disk = @hash["rootfs_disk"]? != nil ? "#{@hash["rootfs_disk"].as_a.join(",")}" : ""
-
-    crashkernel = ""
-    if "#{os_mount}" == "local"
-      crashkernel = get_crashkernel(get_memory)
-    end
-    return "#{common_params} local use_root_partition=#{use_root_partition} save_root_partition=#{save_root_partition} rootfs_disk=#{rootfs_disk} rw #{crashkernel}"
-  end
-
-  private def get_memory
-    return $1 if "#{@hash["memory"]}" =~ /(\d+)g/i
-  end
-
-  private def get_crashkernel(memory)
-    return "crashkernel=auto" unless memory
-
-    memory = memory.to_i
-    if memory <= 8
-      return "crashkernel=auto"
-    elsif 8 < memory <= 16
-      return "crashkernel=256M"
-    else
-      return "crashkernel=512M"
-    end
+    return "#{common_params} local use_root_partition=#{use_root_partition} save_root_partition=#{save_root_partition}"
   end
 
   private def kernel_custom_params

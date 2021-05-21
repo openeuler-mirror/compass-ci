@@ -85,6 +85,7 @@ class Sched
 
     if job
       job.update({"testbox" => testbox})
+      update_kernel_params(job)
       job.set_result_root
       job.set_time("boot_time")
       @log.info(%({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state"
@@ -93,6 +94,12 @@ class Sched
     end
 
     return job
+  end
+
+  def update_kernel_params(job)
+    host_info = get_host_info(job.testbox)
+    job.update({"roofs_disk" => get_rootfs_disk(host_info)})
+    job.update({"crashkernel" => get_crashkernel(host_info)})
   end
 
   def consume_job(queues)
@@ -286,6 +293,7 @@ class Sched
     return response
   end
 
+
   private def get_boot_ipxe(job : Job)
     return job["custom_ipxe"] if job["suite"].starts_with?("install-iso") && job.has_key?("custom_ipxe")
 
@@ -296,12 +304,42 @@ class Sched
     response += _initrds_uri.join("\n") + "\n"
 
     _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + Array(String).from_json(job.ipxe_kernel_params)
-    response += _kernel_params.join(" ")
+    response += _kernel_params.join(" ") + job["roofs_disk"] + job["crashkernel"]
 
     response += "\nboot\n"
 
     return response
   end
+
+  private def get_host_info(testbox)
+    file_name = testbox =~ /^(vm-|dc-)/ ? testbox.split(".")[0] : testbox
+    return YAML.parse(File.read("#{CCI_REPOS}/#{LAB_REPO}/hosts/#{file_name}")).as_h
+  end
+
+  private def get_rootfs_disk(host_info)
+    return host_info.has_key?("rootfs_disk") ? " rootfs_disk=#{host_info["rootfs_disk"].as_a.join(",")}" : ""
+  end
+
+  private def get_memory(host_info)
+    if host_info.has_key?("memory")
+      return $1 if "#{host_info["memory"]}" =~ /(\d+)g/i
+    end
+  end
+
+  private def get_crashkernel(host_info)
+    memory = get_memory(host_info)
+    return " crashkernel=auto" unless memory
+
+    memory = memory.to_i
+    if memory <= 8
+      return " crashkernel=auto"
+    elsif 8 < memory <= 16
+      return " crashkernel=256M"
+    else
+      return " crashkernel=512M"
+    end
+  end
+
 
   private def get_boot_libvirt(job : Job)
     _kernel_params = job["kernel_params"]?
