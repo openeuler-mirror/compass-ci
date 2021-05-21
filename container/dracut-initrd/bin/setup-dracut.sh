@@ -26,3 +26,15 @@ sed -i "/Description/aConditionKernelCommandLine=|local" "$pre_mount_service"
 pre_mount_file="${dracut_systemd_dir}/dracut-pre-mount.sh"
 [ "$(sed -n '$p' $pre_mount_file)"  = "exit 0" ] && sed -i '$d' "$pre_mount_file"
 cat set-local-sysroot.sh >> "$pre_mount_file"
+
+# The situations which should skip modprobe sunrpc
+# - if kernel param root is /dev and not /dev/nfs
+# - if kernel param root is starts with 'cifs://'
+nfs_start_rpc_sh="/usr/lib/dracut/modules.d/95nfs/nfs-start-rpc.sh"
+sed -i '2a\
+    # If rootfs is /dev and not /dev/nfs, then return\
+    lsmod | grep -w sunrpc || export CCI_NO_SUNRPC=true\
+    local rootfs\
+    rootfs=$(getarg root=)\
+    [[ $rootfs =~ ^/dev/ ]] && [[ $rootfs != /dev/nfs ]] && return\
+    [[ $rootfs =~ ^cifs:// ]] && return\n' $nfs_start_rpc_sh

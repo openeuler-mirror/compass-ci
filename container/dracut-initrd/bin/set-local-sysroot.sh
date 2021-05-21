@@ -120,4 +120,9 @@ snapshot_boot_lv "$src_lv" "$boot_lv"
 
 set_sysroot "$boot_lv"
 
+[ "$CCI_NO_SUNRPC" == "true" ] && {
+	umount /var/lib/nfs/rpc_pipefs
+	rmmod nfsv4 nfs rpcsec_gss_krb5 auth_rpcgss lockd sunrpc
+}
+
 exit 0
