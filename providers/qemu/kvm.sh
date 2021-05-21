@@ -146,7 +146,10 @@ set_nic()
 {
         for i in $(seq 1 $nr_nic)
         do
-                nic[$i]="-nic tap,model=virtio-net-pci,helper=$helper,br=br0,mac=${mac_arr[$i]}"
+		br="br$((i-1))"
+		[ -f "/sys/class/net/${br}/address" ] || continue
+		nic[$i]="-nic tap,model=virtio-net-pci,helper=${helper},br=${br},mac=${mac_arr[$i]}"
+
         done
 }
 
