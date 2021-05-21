@@ -14,7 +14,7 @@ JOB_INDEX_TYPE    = "jobs/_doc"
 
 JOB_MQ = "job_mq"
 
-LAB = (ENV.has_key?("lab") ? ENV["lab"] : "nolab")
+LAB = (ENV.has_key?("lab") ? ENV["lab"] : "z9")
 
 SCHED_HOST = (ENV.has_key?("SCHED_HOST") ? ENV["SCHED_HOST"] : "172.17.0.1")
 SCHED_PORT = (ENV.has_key?("SCHED_PORT") ? ENV["SCHED_PORT"] : 3000).to_i32
@@ -29,7 +29,7 @@ SRV_HTTP_CCI_HOST = (ENV.has_key?("SRV_HTTP_CCI_HOST") ? ENV["SRV_HTTP_CCI_HOST"
 SRV_HTTP_CCI_PORT = (ENV.has_key?("SRV_HTTP_CCI_PORT") ? ENV["SRV_HTTP_CCI_PORT"] : 20011).to_i32
 
 CCI_REPOS = (ENV.has_key?("CCI_REPOS") ? ENV["CCI_REPOS"] : "/c")
-LAB_REPO  = "lab-z9"
+LAB_REPO  = "lab-#{LAB}"
 
 SRV_OS     = "/srv/os"
 SRV_INITRD = "/srv/initrd"
