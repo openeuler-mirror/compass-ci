@@ -10,7 +10,7 @@ require "#{LKP_SRC}/lib/matrix"
 require_relative './params_group.rb'
 
 def set_pre_value(item, value, sample_size)
-  return value if item.end_with?('.message', '.log')
+  return value if item.end_with?('.message', '.log', '.element')
 
   if value.size == 1
     value[0]
