@@ -21,8 +21,10 @@ analyse_kernel_cmdline_params() {
 
     os="$(echo $rootfs_src | awk -F '/|-' '{print $2}')"
     os_arch="$(echo $rootfs_src | awk -F '/|-' '{print $3}')"
-    os_version="$(echo $rootfs_src | awk -F '/|-' '{print $4}')"
+    os_version="$(getarg os_version=)"
     os_info="${os}_${os_arch}_${os_version}"
+    [ -n "$os"] || [ -n "$os_arch" ] || [ -n "$os_version" ] || reboot_with_msg "cannot find right os_info: $os_info"
+
     export rootfs_src timestamp os_info
 }
 
