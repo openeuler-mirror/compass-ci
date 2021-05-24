@@ -98,8 +98,8 @@ class Sched
 
   def update_kernel_params(job)
     host_info = get_host_info(job.testbox)
-    job.update({"roofs_disk" => get_rootfs_disk(host_info)})
-    job.update({"crashkernel" => get_crashkernel(host_info)})
+    job.set_rootfs_disk(get_rootfs_disk(host_info))
+    job.set_crashkernel(get_crashkernel(host_info))
   end
 
   def consume_job(queues)
@@ -304,7 +304,7 @@ class Sched
     response += _initrds_uri.join("\n") + "\n"
 
     _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + Array(String).from_json(job.ipxe_kernel_params)
-    response += _kernel_params.join(" ") + job["roofs_disk"] + job["crashkernel"]
+    response += _kernel_params.join(" ") + " rootfs_disk=#{JSON.parse(job["rootfs_disk"]).as_a.join(",")}" + " crashkernel=#{job["crashkernel"]}"
 
     response += "\nboot\n"
 
@@ -314,10 +314,18 @@ class Sched
   private def get_host_info(testbox)
     file_name = testbox =~ /^(vm-|dc-)/ ? testbox.split(".")[0] : testbox
     return YAML.parse(File.read("#{CCI_REPOS}/#{LAB_REPO}/hosts/#{file_name}")).as_h
+  rescue
+    return Hash(String, YAML::Any).new
   end
 
   private def get_rootfs_disk(host_info)
-    return host_info.has_key?("rootfs_disk") ? " rootfs_disk=#{host_info["rootfs_disk"].as_a.join(",")}" : ""
+    rootfs_disk = [] of JSON::Any
+    temp = host_info.has_key?("rootfs_disk") ? host_info["rootfs_disk"].as_a : [] of YAML::Any
+    temp.each do |item|
+      rootfs_disk << JSON::Any.new("#{item}")
+    end
+
+    return rootfs_disk
   end
 
   private def get_memory(host_info)
@@ -328,15 +336,15 @@ class Sched
 
   private def get_crashkernel(host_info)
     memory = get_memory(host_info)
-    return " crashkernel=auto" unless memory
+    return "auto" unless memory
 
     memory = memory.to_i
     if memory <= 8
-      return " crashkernel=auto"
+      return "auto"
     elsif 8 < memory <= 16
-      return " crashkernel=256M"
+      return "256M"
     else
-      return " crashkernel=512M"
+      return "512M"
     end
   end
 

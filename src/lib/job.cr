@@ -721,6 +721,14 @@ class Job
     set_initrds_uri()
   end
 
+  def set_rootfs_disk(rootfs_disk)
+    @hash["rootfs_disk"] = JSON::Any.new(rootfs_disk)
+  end
+
+  def set_crashkernel(crashkernel)
+    @hash["crashkernel"] = JSON::Any.new(crashkernel)
+  end
+
   def get_uuid_tag
     uuid = self["uuid"]
     uuid != "" ? "/#{uuid}" : nil
