@@ -6,7 +6,7 @@ class Job
     common_params = "user=lkp job=/lkp/scheduled/job.yaml RESULT_ROOT=/result/job ip=dhcp"
     return "#{common_params} rootovl ro" unless "#{self.os_mount}" == "local"
 
-    os_info = "#{os}_#{os_arch}_#{os_version}"
+    os_info = "#{os}_#{os_arch}_#{os_version.gsub('-', '_')}"
     use_root_partition = "/dev/mapper/os-#{os_info}_#{src_lv_suffix}" if @hash["src_lv_suffix"]? != nil
     save_root_partition = "/dev/mapper/os-#{os_info}_#{boot_lv_suffix}" if @hash["boot_lv_suffix"]? != nil
     return "#{common_params} local use_root_partition=#{use_root_partition} save_root_partition=#{save_root_partition} os_version=#{os_version}"
