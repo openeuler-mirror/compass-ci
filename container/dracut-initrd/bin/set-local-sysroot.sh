@@ -88,7 +88,18 @@ snapshot_boot_lv() {
 
     lvm lvremove --force "$boot_lv"
     boot_lv_devname="$(basename $boot_lv)"
-    lvm lvcreate --size 10G --name ${boot_lv_devname#os-} --snapshot "$src_lv"
+    if [ -z "$save_root_partition" ]; then
+        lvm lvcreate -y -L 10G --name ${boot_lv_devname#os-} --snapshot "$src_lv"
+    else
+        lvm lvcreate -y -L 10G --name ${boot_lv_devname#os-} os
+        mke2fs -t ext4 -F "$boot_lv"
+
+        # sync src_lv to boot_lv
+        mkdir -p /mnt1 && mount "$src_lv" /mnt1
+        mkdir -p /mnt2 && mount "$boot_lv" /mnt2
+        cp -a /mnt1/. /mnt2/
+        umount /mnt1 /mnt2
+    fi
 }
 
 set_sysroot() {
