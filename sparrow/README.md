@@ -40,8 +40,9 @@
 
 3. 创建工作目录并克隆 compass-ci 项目代码
 	```bash
-	mkdir /c/ && ln -s /c/compass-ci /c/cci
-	git clone https://gitee.com/wu_fengguang/compass-ci.git
+	mkdir -p /c/
+	git clone https://gitee.com/wu_fengguang/compass-ci.git /c/compass-ci
+	ln -s /c/compass-ci /c/cci
 	```
 	
 4. 编辑setup.yaml配置用户名和邮箱
