@@ -88,7 +88,7 @@ module DumpStat
 
   # keep message | log line which key end with .message|.log
   def self.assign_log_message(key, value)
-    if key.end_with?('.message', '.log')
+    if key.end_with?('.message', '.log', '.element')
       k = @monitor + '.' + key
       @result[k] = value
       return true
