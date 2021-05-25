@@ -292,9 +292,13 @@ class Job
   def get_deadline
     runtime = (self["timeout"]? || self["runtime"]?).to_s
     runtime = 1800 if runtime.empty?
+    runtime = runtime.to_i32
+
+    # the runtime may not be as accurate, providing some flexibility.
+    extra_time = [Math.sqrt(runtime), 3600].min.to_i32
 
     # reserve 300 seconds for system startup, hw machine will need such long time
-    (Time.local + (runtime.to_i32 * 2 + 300).second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+    (Time.local + (runtime + extra_time + 300).second).to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
   def renew_deadline(time)
