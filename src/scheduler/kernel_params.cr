@@ -9,7 +9,8 @@ class Job
     os_info = "#{os}_#{os_arch}_#{os_version.gsub('-', '_')}"
     use_root_partition = "/dev/mapper/os-#{os_info}_#{src_lv_suffix}" if @hash["src_lv_suffix"]? != nil
     save_root_partition = "/dev/mapper/os-#{os_info}_#{boot_lv_suffix}" if @hash["boot_lv_suffix"]? != nil
-    return "#{common_params} local use_root_partition=#{use_root_partition} save_root_partition=#{save_root_partition} os_version=#{os_version}"
+    src_lv_size = @hash["src_lv_size"]? != nil ? @hash["src_lv_size"] : "10G"
+    return "#{common_params} local use_root_partition=#{use_root_partition} save_root_partition=#{save_root_partition} os_version=#{os_version} src_lv_size=#{src_lv_size} rw"
   end
 
   private def kernel_custom_params
