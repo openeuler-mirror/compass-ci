@@ -65,7 +65,7 @@ cmd = %W[
   --name s001-alpine-#{SCHED_HTTPS_PORT}
   -d
   -u 1090:1090
-  -p #{SCHED_HTTPS_PORT}:#{defaults['SCHED_PORT']}
+  -p #{SCHED_HTTPS_PORT}:#{defaults['SCHED_HTTPS_PORT']}
 ] + env + %W[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
