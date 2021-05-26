@@ -122,6 +122,22 @@ class ESJobs
     end
   end
 
+  def assemble_element(key, value, result)
+    if key.end_with?('.element')
+      value.each do |one_value_array|
+        one_value_array.each do |element|
+          result['sum.stats']["#{key}: #{element}"] ||= 0
+          result['sum.stats']["#{key}: #{element}"] += 1
+        end
+      end
+    else
+      result['avg.stats'][key] = value.compact.sum / value.compact.size.to_f
+      result['max.stats'][key] = value.compact.max
+      result['min.stats'][key] = value.compact.min
+    end
+    result
+  end
+
   def stats_count(result)
     result['raw.stats'].each do |key, value|
       next if key.end_with?('.message')
@@ -129,9 +145,7 @@ class ESJobs
       if function_stat?(key)
         result['sum.stats'][key] = value.compact.size
       else
-        result['avg.stats'][key] = value.compact.sum / value.compact.size.to_f
-        result['max.stats'][key] = value.compact.max
-        result['min.stats'][key] = value.compact.min
+        result = assemble_element(key, value, result)
       end
     end
   end
