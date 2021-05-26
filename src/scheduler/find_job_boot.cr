@@ -23,7 +23,7 @@ class Sched
 
     response
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   ensure
     send_mq_msg("boot")
   end

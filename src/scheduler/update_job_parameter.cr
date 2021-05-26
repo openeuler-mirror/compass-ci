@@ -37,7 +37,7 @@ class Sched
     @env.set "job_state", job_content["job_state"]?
     update_testbox_time(job_id)
   rescue e
-    @log.warn(e)
+    @log.warn(e.inspect_with_backtrace)
   ensure
     mq_msg = {
       "job_id" => @env.get?("job_id").to_s,
