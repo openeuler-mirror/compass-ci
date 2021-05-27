@@ -80,6 +80,7 @@ module Matrix
 
       stats.each do |key, value|
         next if key.include?('timestamp')
+        next if useless_stat?(key)
 
         matrix[key] = [] unless matrix[key]
         matrix[key] << value
@@ -87,6 +88,16 @@ module Matrix
     end
 
     return matrix, suites
+  end
+
+  def self.useless_stat?(stat)
+    return unless @fields
+
+    @fields.each do |field|
+      return false if stat.include?(field)
+    end
+
+    true
   end
 
   # input: query results from es_query
@@ -107,7 +118,8 @@ module Matrix
   #                 group2_key => {...}
   #                 ...
   #               }
-  def self.combine_group_query_data(job_list, dims)
+  def self.combine_group_query_data(job_list, dims, options)
+    @fields = options[:fields]
     suites_hash = {}
     latest_jobs_hash = {}
     groups = auto_group(job_list, dims)

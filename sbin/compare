@@ -44,6 +44,11 @@ opt_parser = OptionParser.new do |opts|
     is_group = true
   end
 
+  opts.on('-f', '--field field', 'field to filter stats_metrics of result',
+          'use like: -f "iperf.tcp.sender.bps iperf.tcp.receiver.bps ..."') do |f|
+    options[:fields] = f.split(',')
+  end
+
   opts.on('--theme theme', 'turn on colorful display with theme: classic|focus_good|focus_bad',
           '|striking|light|json|html') do |theme|
     colorful = theme
