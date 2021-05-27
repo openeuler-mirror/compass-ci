@@ -257,7 +257,7 @@ individual_option()
 
 run_qemu()
 {
-	"${kvm[@]}" "${arch_option[@]}" --append "${append}"
+	"${kvm[@]}" "${arch_option[@]}" --append "${append}" >> $log_file 2>&1
 }
 
 set_options()
