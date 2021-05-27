@@ -1,0 +1,18 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# 2021.5 by cuiyili
+
+: ${BR1_ROUTE:="172.20.0.1"}
+
+BR1_NIC=$(ip route get "${BR1_ROUTE}" | awk '{print $5; exit}')
+VIA_ROUTE=$(ip route get "${BR1_ROUTE}" | awk '{print $3; exit}')
+
+if [ -n "${BR1_NIC}" ] && [ "${VIA_ROUTE}" == "${BR1_ROUTE}" ]; then
+	ip link add br1 type bridge
+	brctl addif br1 "${BR1_NIC}"
+	ip link set dev br1 up
+
+	grep -qsx "allow br1" /etc/qemu/bridge.conf ||
+		echo "allow br1" >> /etc/qemu/bridge.conf
+fi

@@ -12,6 +12,7 @@ cd $CCI_SRC/sparrow || exit
 1-storage/tiny
 1-storage/permission
 2-network/br0
+2-network/br1
 2-network/iptables
 2-network/nfs
 2-network/cifs
