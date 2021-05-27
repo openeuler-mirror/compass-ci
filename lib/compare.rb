@@ -47,7 +47,7 @@ def create_matrices_list(conditions, min_samples)
   es = ESQuery.new
   conditions.each do |condition|
     query_results = es.multi_field_query(condition, desc_keyword: 'start_time')
-    matrix, suites = combine_query_data(query_results, min_samples)
+    matrix, suites = Matrix.combine_query_data(query_results, min_samples)
     next unless matrix
 
     matrices_list << matrix
@@ -89,7 +89,7 @@ end
 def create_groups_matrices_list(conditions, dims)
   es = ESQuery.new
   query_results = es.multi_field_query(conditions, desc_keyword: 'start_time')
-  combine_group_query_data(query_results['hits']['hits'], dims)
+  Matrix.combine_group_query_data(query_results['hits']['hits'], dims)
 end
 
 # -------------------------------------------------------------------------------------------
@@ -150,7 +150,7 @@ end
 def create_groups_matrices(template_params)
   es = ESQuery.new
   query_results = es.multi_field_query(template_params['filter'])
-  combine_group_jobs_list(
+  Matrix.combine_group_jobs_list(
     query_results,
     template_params['x_params'],
     template_params['compare_dimensions'],

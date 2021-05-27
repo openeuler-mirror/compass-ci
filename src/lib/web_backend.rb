@@ -188,13 +188,13 @@ end
 def do_get_groups_matrices(must, dimension, total, size, from)
   job_list = get_dimension_job_list(dimension, must, size, from)
 
-  matrices, suites_hash, latest_jobs_hash = combine_group_query_data(job_list, dimension)
+  matrices, suites_hash, latest_jobs_hash = Matrix.combine_group_query_data(job_list, dimension)
   while matrices.empty?
     from += size
     break if from > total
 
     job_list = get_dimension_job_list(dimension, must, size, from)
-    matrices, suites_hash, latest_jobs_hash = combine_group_query_data(job_list, dimension)
+    matrices, suites_hash, latest_jobs_hash = Matrix.combine_group_query_data(job_list, dimension)
   end
   [matrices, suites_hash, latest_jobs_hash]
 end
