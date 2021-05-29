@@ -70,7 +70,7 @@ class Sched
 
   def get_job_from_queues(queues, testbox)
     job = nil
-    etcd_job = consume_job(queues)
+    etcd_job = consume_job(queues, testbox)
     job_id = etcd_job.key.split("/")[-1]
     puts "#{testbox} got the job #{job_id}"
     if job_id
@@ -102,9 +102,11 @@ class Sched
     job.set_crashkernel(get_crashkernel(host_info))
   end
 
-  def consume_job(queues)
+  def consume_job(queues, testbox)
     job, revision = consume_by_list(queues)
     return job if job
+
+    spawn auto_submit_idle_job(testbox)
 
     consume_by_watch(queues, revision)
   end
