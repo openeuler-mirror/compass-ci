@@ -178,8 +178,9 @@ class MirrorMain
   end
 
   def create_workers
+    @worker_threads = []
     10.times do
-      Thread.new do
+      @worker_threads << Thread.new do
         git_mirror = GitMirror.new(@git_queue, @feedback_queue)
         git_mirror.git_mirror
       end
@@ -228,6 +229,7 @@ class MirrorMain
     fork_key, old_pri = @priority_queue.delete_min
     do_push(fork_key)
     @priority_queue.push fork_key, get_repo_priority(fork_key, old_pri)
+    check_worker_threads
   end
 
   def main_loop
@@ -584,6 +586,18 @@ class MirrorMain
     })
   end
 
+  def worker_threads_warn
+    @log.warn({
+      state: 'some workers died'
+    })
+  end
+
+  def worker_threads_error
+    @log.error({
+      state: 'most workers died'
+    })
+  end
+
   def wrong_repo_warn(git_repo)
     @log.warn({
       msg: 'wrong repos',
@@ -625,5 +639,15 @@ class MirrorMain
     return old_pri + step if interval <= 0
 
     return old_pri + Math.cbrt(interval)
+  end
+
+  def check_worker_threads
+    alive = 0
+    @worker_threads.each do |t|
+      alive += 1 if t.alive?
+    end
+    num = @worker_threads.size
+    return worker_threads_error if alive < num / 2
+    return worker_threads_warn if alive < num
   end
 end
