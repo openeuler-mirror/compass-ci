@@ -8,11 +8,13 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 RUN apk update
 
 RUN apk add --no-cache 'ruby-dev' \
-    'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'util-linux'
+    'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'util-linux' 'shadow'
+
+RUN groupadd -g 1090 lkp && useradd -m -u 1090 -g 1090 lkp
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-    gem install yaml
+    gem install yaml io-console elasticsearch
 
 
 ENV SCHED_RUNTIME_DIR /c/cci/scheduler
