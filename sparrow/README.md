@@ -58,6 +58,14 @@
 	cd compass-ci/sparrow && ./install-tiny
 	```
 
+6. 注册账号
+	以root用户一键部署compass-ci之后，会使用步骤4中填写的用户名和邮箱自动注册账号，其他非root用户注册账号可以使用build-my-info脚本注册。
+
+	```bash
+	cd /c/compass-ci/sbin
+	./build-my-info.rb -e $my_email -n $my_name
+	```
+
 #### 提交测试任务
 本文以/c/lkp-tests/jobs/目录下已有的通用测试用例host-info.yaml为例
 - 使环境变量生效
