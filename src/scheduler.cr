@@ -4,11 +4,13 @@
 require "scheduler/scheduler"
 require "./scheduler/constants.cr"
 require "./lib/json_logger"
+require "./lib/create_secrets_yaml"
 
 module Scheduler
   log = JSONLogger.new
 
   begin
+    create_secrets_yaml("scheduler")
     Kemal.run(ENV["NODE_PORT"].to_i32)
   rescue e
     log.error(e)

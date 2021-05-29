@@ -189,6 +189,9 @@ delimiter:
 auto-submit:
   my_email: auto-submit@localhost
   my_name: auto-submit
+scheduler:
+  my_email: compass-ci@localhost
+  my_name: compass-ci
 EOF
 
 [[ -f /etc/compass-ci/passwd.yaml ]] || {
