@@ -65,7 +65,7 @@ cmd = %W[
   docker run
   --restart=always
   --name s001-alpine-#{SCHED_PORT}
-  -d
+  -it
   -u 1090:1090
 ] + bind_list + env + %W[
   -e CCI_REPOS=#{CCI_REPOS}
