@@ -257,7 +257,14 @@ individual_option()
 
 run_qemu()
 {
-	"${kvm[@]}" "${arch_option[@]}" --append "${append}" >> $log_file 2>&1
+	# stdout:
+	# - [ "$DEBUG" == "true" ] || kvm=("${kvm[@]}" -serial file:${log_file})
+	# - if debug mode: just is the stdio of current terminal shell.
+	# - if not debug mode: will be write to $log_file by qemu param "-serial file:${log_file}"
+	# stderr:
+	# - '2> >(tee -a $log_file >&2)'
+	# - will be write to both current terminal shell and $log_file.
+	"${kvm[@]}" "${arch_option[@]}" --append "${append}" 2> >(tee -a $log_file >&2)
 }
 
 set_options()
