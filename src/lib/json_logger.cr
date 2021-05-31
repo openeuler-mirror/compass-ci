@@ -10,7 +10,7 @@ add_context_storage_type(Time::Span)
 
 class JSONLogger < Logger
   def initialize(logdev = STDOUT, formatter = my_formatter, @env = nil)
-    @env_info = Hash(String, String | Int32).new
+    @env_info = Hash(String, String | Int32 | Float64).new
     super(logdev, formatter: formatter)
   end
 
@@ -42,19 +42,24 @@ class JSONLogger < Logger
     @env_info["status_code"] = env.response.status_code
     @env_info["method"] = env.request.method
     @env_info["resource"] = env.request.resource
-
-    elapsed = get_elapsed(env)
-    @env_info["elapsed"] = elapsed.to_s if elapsed
+    
+    set_elapsed(env)
   end
 
-  private def get_elapsed(env : HTTP::Server::Context)
+  private def set_elapsed(env : HTTP::Server::Context)
     start_time = env.get?("start_time")
     return unless start_time
 
-    elapsed = (Time.monotonic - start_time.as(Time::Span)).total_milliseconds
-    return "#{elapsed.round(2)}ms" if elapsed >= 1
+    elapsed_time = (Time.monotonic - start_time.as(Time::Span)).total_milliseconds
+    @env_info["elapsed_time"] = elapsed_time
 
-    "#{(elapsed * 1000).round(2)}µs"
+    if elapsed_time >= 1
+      elapsed = "#{elapsed_time.round(2)}ms"
+    else
+      elapsed = "#{(elapsed_time * 1000).round(2)}µs"
+    end
+
+    @env_info["elapsed"] = elapsed
   end
 
   def set_env(env : HTTP::Server::Context)
