@@ -232,6 +232,8 @@ class Sched
   def get_job_boot(host, boot_type)
     queues = get_queues(host)
 
+    raise "Queues are not registered for this testbox: #{host}" if queues.empty?
+
     # do before get job from etcd
     # because if no job will hang
     # need to update information in a timely manner
