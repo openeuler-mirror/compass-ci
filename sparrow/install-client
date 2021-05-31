@@ -26,6 +26,7 @@ install_env()
 	5-build/ipxe &
 	1-storage/permission
 	2-network/br0
+	2-network/br1
 	2-network/iptables
 	3-code/git
 	3-code/dev-env
