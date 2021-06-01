@@ -57,14 +57,6 @@ def create_matrices_list(conditions, options)
   return matrices_list, suite_list
 end
 
-def matrices_verification(matrices, options)
-  if matrices.size < 2
-    return nil if options[:no_print]
-
-    warn "matrix less than min_samples"
-  end
-end
-
 # -------------------------------------------------------------------------------------------
 # compare_group
 # - one condition only
