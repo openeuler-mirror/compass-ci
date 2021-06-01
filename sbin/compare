@@ -57,6 +57,10 @@ opt_parser = OptionParser.new do |opts|
     options[:min_samples] = min_samples.to_i
   end
 
+  opts.on('--transposed', 'transposed dimensions and metric in result') do
+    options[:transposed] = true
+  end
+
   opts.on('-t', '--template template', 'compare with user-defined template') do |t|
     template = t
   end

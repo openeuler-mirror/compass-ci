@@ -225,7 +225,7 @@ def compare_matrixes(matrixes_list, suite_list, latest_jobs=nil, matrixes_titles
     suite_list,
     matrixes_titles,
     matrixes_list.size,
-    options[:theme]
+    options
   )
   return result_str if no_print
 
@@ -730,7 +730,6 @@ def get_header(matrixes_titles, success, common_title, compare_title)
                    #  fails + ":" + runs
                    FAILS_PROPORTION * SUB_LONG_COLUMN_WIDTH
                  end
-
   header, matrixes_number = get_first_header(matrixes_titles)
   header += get_liner(matrixes_number)
   header += get_title(common_title, compare_title, matrixes_number, success, common_index)
@@ -810,24 +809,28 @@ def get_theme(matrixes_values, matrixes_titles, theme)
   return THEMES[:none]
 end
 
-def get_all_result_str(matrixes_values, suite_list, matrixes_titles, matrixes_number, theme)
+def get_all_result_str(matrixes_values, suite_list, matrixes_titles, matrixes_number, options)
   matrixes_titles ||= matrixes_number.times.to_a.map(&:to_s)
-  theme = get_theme(matrixes_values, matrixes_titles, theme)
-  return '' unless theme
+  options[:theme] = get_theme(matrixes_values, matrixes_titles, options[:theme])
+  return '' unless options[:theme]
 
-  failure_str = get_result_str(matrixes_values[false].sort, suite_list, matrixes_titles, false, theme)
-  success_str = get_result_str(matrixes_values[true].sort, suite_list, matrixes_titles, true, theme)
-  success_str + failure_str
+  if options[:transposed]
+    get_transposed_result(matrixes_values[true], suite_list, matrixes_titles, options)
+  else
+    failure_str = get_result_str(matrixes_values[false].sort, suite_list, matrixes_titles, false, options)
+    success_str = get_result_str(matrixes_values[true].sort, suite_list, matrixes_titles, true, options)
+    success_str + failure_str
+  end
 end
 
-def get_result_str(values, suite_list, matrixes_titles, success, theme)
+def get_result_str(values, suite_list, matrixes_titles, success, options)
   return '' if values.empty?
 
   suite_set = Set.new(suite_list)
   result_str = "\n\n\n"
   common_title, compare_title = get_title_name(success)
   result_str += get_header(matrixes_titles, success, common_title, compare_title)
-  ranked_str = get_ranked_str(values, suite_set, success, theme)
+  ranked_str = get_ranked_str(values, suite_set, success, options[:theme])
   result_str += ranked_str
   result_str
 end
@@ -846,4 +849,114 @@ def get_ranked_str(values, suite_set, success, theme)
     end
   end
   suite_str + common_str
+end
+
+# ----------------------------------------------------------------------------------------------------------
+# format for transposed_result like:
+#                         params          iperf.tcp.receiver.bps            iperf.tcp.sender.bps
+# ------------------------------  ------------------------------  ------------------------------
+#                                  relative      avg     %stddev   relative      avg     %stddev
+#                         centos            2.638681e+10 ± 23%              2.638853e+10 ± 23%
+#                      openeuler     -0.1%  2.636343e+10 ± 22%       +0.1%  2.641691e+10 ± 22%
+# ----------------------------------------------------------------------------------------------------------
+def get_transposed_result(values, suite_list, matrixes_titles, options)
+  return '' if values.empty?
+
+  result_str = "\n\n\n"
+  stddev_title, change_title = STDDEV_STR, REA_STR
+  metrics = values.keys
+  result_str += get_transposed_header(metrics, matrixes_titles, stddev_title, change_title)
+  ranked_str = transposed_ranked_str(values, metrics, matrixes_titles, options[:theme])
+  result_str += ranked_str
+
+  result_str
+end
+
+def get_transposed_header(stats_metrics, matrixes_titles, stddev_title, change_title)
+  # average + " + " + standard_deviation
+  common_index = STDDEV_AVERAGE_PROPORTION * SUB_LONG_COLUMN_WIDTH + 1
+  metrics_count = stats_metrics.size
+
+  header = transposed_first_header(stats_metrics)
+  header += transposed_line(metrics_count)
+  header += transposed_title(metrics_count, stddev_title, change_title, common_index)
+end
+
+def transposed_first_header(stats_metrics)
+  line = format("%#{COLUMN_WIDTH}s", DIM)
+  stats_metrics.each do |metric|
+    line += INTERVAL_BLANK + format("%#{COLUMN_WIDTH}s", metric)
+  end
+
+  line += format("\n")
+end
+
+def transposed_line(metrics_count)
+  line = '-' * COLUMN_WIDTH
+  line + (INTERVAL_BLANK + '-' * COLUMN_WIDTH) * metrics_count + "\n"
+end
+
+def transposed_title(metrics_count, stddev_title, change_title, common_index)
+  common_index -= stddev_title.length / 2
+
+  title = ' ' * COLUMN_WIDTH
+  metric_title = get_other_metric_title(stddev_title, change_title, common_index) * metrics_count
+  title += metric_title
+
+  title += format("\n")
+end
+
+def get_other_metric_title(common_title, compare_title, common_index)
+  column = ' ' * (
+     COLUMN_WIDTH - common_title.length - compare_title.length
+   )
+  compare_index = (SUB_SHORT_COLUMN_WIDTH - compare_title.length) / 2
+  compare_index = 0 if compare_index.negative?
+  column = column.insert(compare_index, compare_title)
+  column.insert(SUB_SHORT_COLUMN_WIDTH + common_index - AVG_STR.length - INTERVAL_WIDTH, AVG_STR)
+  INTERVAL_BLANK + column.insert(COLUMN_WIDTH - common_title.length, common_title).rstrip
+end
+
+def transposed_ranked_str(values, metrics, matrixes_titles, theme)
+  str = ''
+  dims_map = convert_dims_mapping(matrixes_titles)
+  matrixes_titles.each do |param|
+    row = format("%#{COLUMN_WIDTH}s", param)
+    row += INTERVAL_BLANK + transposed_values_str(values, metrics, dims_map[param], theme)
+    str += row + format("\n")
+  end
+
+  str
+end
+
+def convert_dims_mapping(matrixes_titles)
+  map = {}
+  index = 0
+  matrixes_titles.each do |dim|
+    map[dim] = index
+    index += 1
+  end
+
+  map
+end
+
+def transposed_values_str(values, metrics, param_index, theme)
+  vaules_str = ''
+  compare_index = SUB_SHORT_COLUMN_WIDTH / 2
+  metrics.each do |metric|
+    vaules_str += transposed_success_str(
+      values[metric][param_index], param_index, theme, compare_index
+    ) + INTERVAL_BLANK
+  end
+
+  vaules_str
+end
+
+def transposed_success_str(values, index, theme, compare_index)
+  change_str = format_change(values[:change], theme, compare_index) unless index.zero?
+  stddev_str = format_stddev(
+    values[:average],
+    values[:stddev_percent]
+  )
+  (change_str || ' ' * SUB_SHORT_COLUMN_WIDTH) + stddev_str
 end
