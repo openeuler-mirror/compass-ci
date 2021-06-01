@@ -24,22 +24,9 @@ class Sched
       # update node state only
       update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
     when "wait_ready"
-      update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
-      @@block_helper.block_until_finished(cluster_id) {
-        cluster_state = sync_cluster_state(cluster_id, job_id, states[request_state])
-        cluster_state == "ready" || cluster_state == "abort"
-      }
-
-      return cluster_state
+      return block_until_state(cluster_id, job_id, states[request_state])
     when "wait_finish", "finished"
-      update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
-      while 1
-        sleep(10)
-        cluster_state = sync_cluster_state(cluster_id, job_id, states[request_state])
-        break if (cluster_state == "finish" || cluster_state == "abort")
-      end
-
-      return cluster_state
+      return block_until_state(cluster_id, job_id, states[request_state])
     when "write_state"
       node_roles = @env.params.query["node_roles"]
       node_ip = @env.params.query["ip"]
@@ -74,21 +61,19 @@ class Sched
   end
 
   # node_state: "finish" | "ready"
-  def sync_cluster_state(cluster_id, job_id, node_state)
+  def sync_cluster_state(cluster_id, job_id, target_state)
     cluster_state = get_cluster_state(cluster_id)
     cluster_state.each_value do |host_state|
-      state = host_state["state"]
-      return "abort" if state == "abort"
-    end
+      node_state = host_state["state"]
+      entire_state = host_state.has_key?("entire_state") ? host_state["entire_state"] : ""
 
-    cluster_state.each_value do |host_state|
-      state = host_state["state"]
-      next if "#{state}" == "#{node_state}"
-      return "retry"
+      return "abort" if node_state == "abort"
+      return target_state if entire_state == target_state
+      return "retry" if node_state != target_state
     end
 
     # cluster state is node state when all nodes are normal
-    return node_state
+    return target_state
   end
 
   # return:
@@ -110,6 +95,27 @@ class Sched
       cluster_state[job_id].merge!(job_info)
       @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
     end
+  end
+
+  def block_until_state(cluster_id, job_id, state)
+    cluster_state = ""
+    update_cluster_state(cluster_id, job_id, {"state" => state})
+    while 1
+      sleep(10)
+      cluster_state = sync_cluster_state(cluster_id, job_id, state)
+      break if (cluster_state == state || cluster_state == "abort")
+    end
+    update_cluster_entire_state(cluster_id, cluster_state)
+    return cluster_state
+  end
+
+  # Update cluster entire info according to cluster id.
+  def update_cluster_entire_state(cluster_id, cluster_entire_state)
+    cluster_state = get_cluster_state(cluster_id)
+    cluster_state.each_key do |job_id|
+      cluster_state[job_id]["entire_state"] = cluster_entire_state
+    end
+    @redis.hash_set("sched/cluster_state", cluster_id, cluster_state.to_json)
   end
 
   # get the node state of role from cluster_state
