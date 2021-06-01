@@ -13,19 +13,17 @@ class Sched
     cluster_state = ""
 
     states = {"abort"       => "abort",
-              "started"     => "start",
               "finished"    => "finish",
               "failed"      => "abort",
+              "wait_start"  => "start",
               "wait_ready"  => "ready",
               "wait_finish" => "finish"}
 
     case request_state
-    when "abort", "started", "failed"
+    when "abort", "failed"
       # update node state only
       update_cluster_state(cluster_id, job_id, {"state" => states[request_state]})
-    when "wait_ready"
-      return block_until_state(cluster_id, job_id, states[request_state])
-    when "wait_finish", "finished"
+    when "wait_start", "wait_ready", "wait_finish", "finished"
       return block_until_state(cluster_id, job_id, states[request_state])
     when "write_state"
       node_roles = @env.params.query["node_roles"]
@@ -60,7 +58,7 @@ class Sched
     @log.warn(e.inspect_with_backtrace)
   end
 
-  # node_state: "finish" | "ready"
+  # node_state: "finish" | "ready" | "start"
   def sync_cluster_state(cluster_id, job_id, target_state)
     cluster_state = get_cluster_state(cluster_id)
     cluster_state.each_value do |host_state|
