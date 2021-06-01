@@ -46,9 +46,15 @@ module Scheduler
 
   after_all do |env|
     env.sched.etcd_close
-    env.log.info(%({"from": "#{env.request.remote_address}", "message": "access_record"}))
+    env.log.info({
+      "from" => env.request.remote_address.to_s,
+      "message" => "access_record"
+    }.to_json) unless env.response.status_code == 500
   rescue e
-    env.log.warn(e.inspect_with_backtrace)
+    env.log.warn({
+      "message" => e,
+      "warn_message" => e.inspect_with_backtrace
+    })
   end
 
   # echo alive

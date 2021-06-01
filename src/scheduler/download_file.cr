@@ -11,6 +11,7 @@ class Sched
 
     send_file @env, file_path
   rescue e
+    @env.response.status_code = 500
     @log.warn(e.inspect_with_backtrace)
   end
 end

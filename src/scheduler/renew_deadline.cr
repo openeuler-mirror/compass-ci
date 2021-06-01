@@ -22,6 +22,7 @@ class Sched
 
     return true
   rescue e
+    @env.response.status_code = 500
     @log.warn(e.inspect_with_backtrace)
     return false
   end

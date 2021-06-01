@@ -23,6 +23,7 @@ class Sched
 
     response
   rescue e
+    @env.response.status_code = 500
     @log.warn(e.inspect_with_backtrace)
   ensure
     send_mq_msg("boot")

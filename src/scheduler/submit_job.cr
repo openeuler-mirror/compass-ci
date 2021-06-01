@@ -20,6 +20,7 @@ class Sched
       response = submit_cluster_job(job, cluster_config)
     end
   rescue ex
+    @env.response.status_code = 500
     @log.warn(ex.inspect_with_backtrace)
     response = [{
       "job_id"    => "0",
