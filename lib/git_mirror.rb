@@ -586,15 +586,17 @@ class MirrorMain
     })
   end
 
-  def worker_threads_warn
+  def worker_threads_warn(alive)
     @log.warn({
-      state: 'some workers died'
+      state: 'some workers died',
+      alive_num: alive
     })
   end
 
-  def worker_threads_error
+  def worker_threads_error(alive)
     @log.error({
-      state: 'most workers died'
+      state: 'most workers died',
+      alive_num: alive
     })
   end
 
@@ -647,7 +649,7 @@ class MirrorMain
       alive += 1 if t.alive?
     end
     num = @worker_threads.size
-    return worker_threads_error if alive < num / 2
-    return worker_threads_warn if alive < num
+    return worker_threads_error(alive) if alive < num / 2
+    return worker_threads_warn(alive) if alive < num
   end
 end
