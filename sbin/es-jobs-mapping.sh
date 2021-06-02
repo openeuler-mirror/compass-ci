@@ -89,6 +89,9 @@ else
 		          "suite": {
 		            "type": "keyword"
 		          },
+		          "submit_time": {
+		            "type": "date"
+		          },
 		          "errid": {
 			    "type": "text"
 			  },
