@@ -565,7 +565,6 @@ class Job
     self["linux_vmlinuz_path"] = File.real_path("#{boot_dir}/vmlinuz-#{kernel_version}")
     if "#{os_mount}" == "initramfs"
       self["linux_modules_initrd"] = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
-      self["linux_headers_initrd"] = File.real_path("#{boot_dir}/headers-#{kernel_version}.cgz")
     end
   end
 
@@ -602,8 +601,6 @@ class Job
                     JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
     temp_initrds << "#{OS_HTTP_PREFIX}" +
                     JobHelper.service_path(self["linux_modules_initrd"])
-    temp_initrds << "#{OS_HTTP_PREFIX}" +
-                    JobHelper.service_path(self["linux_headers_initrd"])
 
     temp_initrds.concat(initrd_deps.split(/ /)) unless initrd_deps.empty?
     temp_initrds.concat(initrd_pkg.split(/ /)) unless initrd_pkg.empty?
