@@ -31,7 +31,6 @@ install_env()
 	3-code/git
 	3-code/dev-env
 	. /etc/profile.d/compass.sh
-	5-build/register-account
 }
 
 boot_ipxe()
