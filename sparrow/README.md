@@ -101,4 +101,9 @@
 	测试用例执行完成会生成一个与测试用例同名的文件，记录它们的测试命令及标准化输出结果。compass-ci 会对这些文件进行解析，生成后缀名是 .json 的文件。
 	stats.json 是所有的 json 文件的汇总，所有测试命令的关键结果都会统计到这个文件中，便于后续的比较和分析。
 
-体验更多功能例如[自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/test-oss-project.zh.md)、[调测环境登录](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/log-in-machine-debug.md)、[测试结果分析](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.zh.md)等，请[申请账号](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.zh.md)、[申请测试机](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/borrow-machine.zh.md)。
+体验更多功能
+- [自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/test-oss-project.md)
+- [调测环境登录](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/log-in-machine-debug.md)
+- [测试结果分析](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.md)
+- [borrow测试机](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/borrow-machine.md)
+- [web页面](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/web.md)
