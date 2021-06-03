@@ -10,10 +10,15 @@ config = cci_defaults
 names = Set.new %w[
   ES_USER
   ES_PASSWORD
+  LOGGING_ES_USER
+  LOGGING_ES_PASSWORD
 ]
 
 ES_HOST ||= config['ES_HOST'] || '172.17.0.1'
 ES_PORT ||= config['ES_PORT'] || 9200
+
+LOGGING_ES_HOST ||= config['LOGGING_ES_HOST'] || '172.17.0.1'
+LOGGING_ES_PORT ||= config['LOGGING_ES_PORT'] || 9202
 
 if ENV['ES_USER']
   ES_USER = ENV['ES_USER']
@@ -29,6 +34,22 @@ ES_HOSTS = [{
   port: ES_PORT,
   user: ES_USER,
   password: ES_PASSWORD
+}]
+
+if ENV['LOGGING_ES_USER']
+  LOGGING_ES_USER = ENV['LOGGING_ES_USER']
+  LOGGING_ES_PASSWORD = ENV['LOGGING_ES_PASSWORD']
+else
+  service_authentication = relevant_service_authentication(names)
+  LOGGING_ES_USER = service_authentication['LOGGING_ES_USER']
+  LOGGING_ES_PASSWORD = service_authentication['LOGGING_ES_PASSWORD']
+end
+
+LOGGING_ES_HOSTS = [{
+  host: LOGGING_ES_HOST,
+  port: LOGGING_ES_PORT,
+  user: LOGGING_ES_USER,
+  password: LOGGING_ES_PASSWORD
 }]
 
 KIBANA_HOST ||= config['KIBANA_HOST'] || '172.17.0.1'
