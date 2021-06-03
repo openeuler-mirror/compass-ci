@@ -305,6 +305,7 @@ def get_job_query_range(condition_fields)
   { range: range }
 end
 
+MAX_JOBS_NUM = 1000000
 def search_job(condition_fields, page_size, page_num)
   must = []
   FIELDS.each do |field|
@@ -320,6 +321,7 @@ def search_job(condition_fields, page_size, page_num)
   range = get_job_query_range(condition_fields)
   must << range if range[:range][:start_time]
   result, total = es_search(must, page_size, page_num * page_size)
+  total = MAX_JOBS_NUM if total > MAX_JOBS_NUM
   return get_jobs_result(result), total
 end
 
