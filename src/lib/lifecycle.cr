@@ -380,7 +380,8 @@ class Lifecycle
       "type" => "testbox",
       "reason" => reason,
       "testbox" => testbox,
-      "state" => "reboot"
+      "state" => "reboot",
+      "mq_queue" => mq_queue,
     }.to_json)
   end
 
