@@ -52,9 +52,9 @@ module Scheduler
     }.to_json) unless env.response.status_code == 500
   rescue e
     env.log.warn({
-      "message" => e,
-      "warn_message" => e.inspect_with_backtrace
-    })
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
   end
 
   # echo alive

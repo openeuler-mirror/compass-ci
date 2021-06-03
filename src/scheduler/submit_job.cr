@@ -19,12 +19,16 @@ class Sched
         job.os_arch).not_nil!
       response = submit_cluster_job(job, cluster_config)
     end
-  rescue ex
+  rescue e
     @env.response.status_code = 500
-    @log.warn(ex.inspect_with_backtrace)
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
+
     response = [{
       "job_id"    => "0",
-      "message"   => ex.to_s,
+      "message"   => e.to_s,
       "job_state" => "submit",
     }]
   ensure

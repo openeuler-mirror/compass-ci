@@ -28,10 +28,13 @@ class Sched
     delete_id2job(job.id)
 
     job_state ||= "complete"
-    @log.info(%({"job_id": "#{job_id}", "job_state": "#{job_state}"}))
+    @env.set "job_state", job_state
   rescue e
     @env.response.status_code = 500
-    @log.warn(e.inspect_with_backtrace)
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
   ensure
     source = @env.params.query["source"]?
     if source != "lifecycle"

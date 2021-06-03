@@ -7,11 +7,15 @@ class Sched
     job_package = @env.params.url["job_package"]
     file_path = ::File.join [Kemal.config.public_folder, job_id, job_package]
 
-    @log.info(%({"job_id": "#{job_id}", "job_state": "download"}))
+    @env.set "job_id", job_id
+    @env.set "job_state", "download"
 
     send_file @env, file_path
   rescue e
     @env.response.status_code = 500
-    @log.warn(e.inspect_with_backtrace)
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
   end
 end

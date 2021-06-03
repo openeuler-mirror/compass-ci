@@ -32,13 +32,17 @@ class Sched
     # json log
     log = job_content.dup
     log["job_id"] = log.delete("id").not_nil!
-    @log.info(log.to_json)
 
+    @env.set "log", log.to_json
     @env.set "job_state", job_content["job_state"]?
+
     update_testbox_time(job_id)
   rescue e
     @env.response.status_code = 500
-    @log.warn(e.inspect_with_backtrace)
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
   ensure
     mq_msg = {
       "job_id" => @env.get?("job_id").to_s,

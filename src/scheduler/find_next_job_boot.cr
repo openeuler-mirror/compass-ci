@@ -11,11 +11,16 @@ class Sched
 
     response = get_job_boot(hostname, "ipxe")
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    @log.info(%({"job_id": "#{job_id}", "job_state": "boot"})) if job_id
+
+    @env.set "job_id", job_id
+    @env.set "job_state", "boot"
 
     response
   rescue e
     @env.response.status_code = 500
-    @log.warn(e.inspect_with_backtrace)
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
   end
 end

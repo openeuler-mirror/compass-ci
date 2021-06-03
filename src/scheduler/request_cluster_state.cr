@@ -55,7 +55,10 @@ class Sched
     return @redis.hash_get("sched/cluster_state", cluster_id)
   rescue e
     @env.response.status_code = 500
-    @log.warn(e.inspect_with_backtrace)
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
   end
 
   # node_state: "finish" | "ready" | "start"
