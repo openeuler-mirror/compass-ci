@@ -39,13 +39,18 @@ def del_host2queues(hostname)
 end
 
 def parse_response(url)
-  response = %x(curl #{url})
-  hash = response.is_a?(String) ? JSON.parse(response) : nil
-  if hash.nil? || !hash.key?('job')
-    puts response
-    return nil
+  while true do
+    response = %x(curl #{url})
+    hash = response.is_a?(String) ? JSON.parse(response) : {}
+    next if hash["job_id"] == "0"
+
+    unless hash.has_key?('job')
+      puts response
+      return nil
+    end
+
+    return hash
   end
-  return hash
 end
 
 

@@ -24,7 +24,12 @@ check_logfile()
 write_logfile()
 {
 	ipxe_script=ipxe_script
-	curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
+	while true
+	do
+		curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
+		cat $ipxe_script | grep "No job now" && continue
+		break
+	done
 	cat $ipxe_script >> ${log_file}
 }
 
