@@ -288,7 +288,7 @@ class Sched
         echo ...
         echo #{msg}
         echo ...
-        reboot"
+        chain http://#{ENV["SCHED_HOST"]}:#{ENV["SCHED_PORT"]}/boot.ipxe/mac/${mac:hexhyp}"
   end
 
   private def get_boot_container(job : Job)
