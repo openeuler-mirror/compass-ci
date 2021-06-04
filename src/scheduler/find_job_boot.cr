@@ -76,6 +76,8 @@ class Sched
   def get_job_from_queues(queues, testbox)
     job = nil
     etcd_job = consume_job(queues, testbox)
+    return nil unless etcd_job
+
     job_id = etcd_job.key.split("/")[-1]
     puts "#{testbox} got the job #{job_id}"
     if job_id
@@ -177,7 +179,8 @@ class Sched
   def consume_by_watch(queues, revision)
     ready_queues = split_ready_queues(queues)
 
-    channel = Channel(Array(Etcd::Model::WatchEvent)).new
+    channel = Channel(Array(Etcd::Model::WatchEvent) | String).new
+    close_consume(channel)
     ech = Hash(EtcdClient, Etcd::Watch::Watcher).new
     ready_queues.each do |queue|
       ec = EtcdClient.new
@@ -189,6 +192,13 @@ class Sched
 
     watchers = start_watcher(ech)
     loop_handle_event(channel, ech)
+  end
+
+  def close_consume(channel)
+    spawn {
+      sleep 1800
+      channel.send("close") unless channel.closed?
+    }
   end
 
   def split_ready_queues(queues)
@@ -211,16 +221,27 @@ class Sched
   def loop_handle_event(channel, ech)
     while true
       events = channel.receive
+      if events.is_a?(String)
+        close_watch(ech)
+        channel.close
+        return nil
+      end
+
       events.each do |event|
         if ready2process(event.kv)
-          ech.each do |ec, watcher|
-            watcher.stop
-            ec.close
-          end
+          close_watch(ech)
+          channel.close
 
           return event.kv
         end
       end
+    end
+  end
+
+  def close_watch(ech)
+    ech.each do |ec, watcher|
+      watcher.stop
+      ec.close
     end
   end
 
