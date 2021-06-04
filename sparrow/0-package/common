@@ -7,7 +7,11 @@
 . $CCI_SRC/lib/check_public_network.sh
 
 public_network_ok && {
-	gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ -u
+	for gem_source in $(gem sources -l | grep http)
+	do
+		gem source -r $gem_source
+	done
+	gem source -a https://gems.ruby-china.com/ -u
 	gem install --no-user-install git activesupport rest-client cucumber json faye-websocket elasticsearch bunny \
 		nokogiri ruby-libvirt
 }
