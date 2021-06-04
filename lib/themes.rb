@@ -18,7 +18,6 @@ REA_STR = 'relative'
 AVG_STR = 'avg'
 STDDEV_AVERAGE_PROPORTION = 5 / 8.0
 FIELD_STR = 'metric'
-DIM = 'params'
 FAILS_RUNS_STR = 'fails:runs'
 REPRODUCTION_STR = 'change'
 FAILS_PROPORTION = 4 / 7.0

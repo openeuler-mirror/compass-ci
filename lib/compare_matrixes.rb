@@ -865,25 +865,25 @@ def get_transposed_result(values, suite_list, matrixes_titles, options)
   result_str = "\n\n\n"
   stddev_title, change_title = STDDEV_STR, REA_STR
   metrics = values.keys
-  result_str += get_transposed_header(metrics, matrixes_titles, stddev_title, change_title)
+  result_str += get_transposed_header(metrics, matrixes_titles, stddev_title, change_title, options[:dims])
   ranked_str = transposed_ranked_str(values, metrics, matrixes_titles, options[:theme])
   result_str += ranked_str
 
   result_str
 end
 
-def get_transposed_header(stats_metrics, matrixes_titles, stddev_title, change_title)
+def get_transposed_header(stats_metrics, matrixes_titles, stddev_title, change_title, dims)
   # average + " + " + standard_deviation
   common_index = STDDEV_AVERAGE_PROPORTION * SUB_LONG_COLUMN_WIDTH + 1
   metrics_count = stats_metrics.size
 
-  header = transposed_first_header(stats_metrics)
+  header = transposed_first_header(stats_metrics, dims)
   header += transposed_line(metrics_count)
   header += transposed_title(metrics_count, stddev_title, change_title, common_index)
 end
 
-def transposed_first_header(stats_metrics)
-  line = format("%#{COLUMN_WIDTH}s", DIM)
+def transposed_first_header(stats_metrics, dims)
+  line = format("%#{COLUMN_WIDTH}s", dims)
   stats_metrics.each do |metric|
     line += INTERVAL_BLANK + format("%#{COLUMN_WIDTH}s", metric)
   end
