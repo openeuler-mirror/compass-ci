@@ -420,7 +420,7 @@ class Sched
     when "grub"
       return job ? get_boot_grub(job) : boot_msg(boot_type, "No job now")
     when "container"
-      return job ? get_boot_container(job) : Hash(String, String).new.to_json
+      return job ? get_boot_container(job) : {"job_id" => "0"}.to_json
     when "libvirt"
       return job ? get_boot_libvirt(job) : {"job_id" => ""}.to_json
     else
