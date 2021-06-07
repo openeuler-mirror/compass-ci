@@ -11,6 +11,8 @@ cmd=(
 	docker run
 	--name web-backend-nginx
 	-p 20003:20003
+	-p 20019:20019
+	-p 20020:20020
 	-d
 
 	-v /etc/ssl/certs:/opt/cert
