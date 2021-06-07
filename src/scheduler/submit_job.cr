@@ -20,7 +20,7 @@ class Sched
       response = submit_cluster_job(job, cluster_config)
     end
   rescue e
-    @env.response.status_code = 500
+    @env.response.status_code = 202
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s

@@ -49,7 +49,7 @@ module Scheduler
     env.log.info({
       "from" => env.request.remote_address.to_s,
       "message" => "access_record"
-    }.to_json) unless env.response.status_code == 500
+    }.to_json) if env.response.status_code == 200
   rescue e
     env.log.warn({
       "message" => e.to_s,
