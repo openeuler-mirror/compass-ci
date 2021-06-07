@@ -36,6 +36,37 @@ class ESQuery
     @client.search index: @index + '*', body: query
   end
 
+  # usage is the same as multi_field_query,
+  # but the function can request large data sets that more than index.max_result_window(default 10_000).
+  def multi_field_scroll_query(items, unmatch_items: {}, desc_keyword: nil)
+    unless items
+      warn 'empty filter!'
+      exit
+    end
+    query_fields = build_multi_field_subquery_body items
+    unmatch_fields = build_multi_field_subquery_body unmatch_items
+    query = {
+      query: {
+        bool: {
+          must: query_fields,
+          must_not: unmatch_fields
+        }
+      }
+    }
+    query.merge!(assign_desc_body(desc_keyword)) if desc_keyword
+
+    result = @client.search index: @index, scroll: '10m', body: query
+    jobs = []
+    @scroll_id = result['_scroll_id'] unless result.empty? && result.include?('_scroll_id')
+
+    while result['hits']['hits'].size.positive?
+      jobs += result['hits']['hits']
+      result = @client.scroll scroll: '10m', scroll_id: @scroll_id
+    end
+
+    return jobs
+  end
+
   def traverse_field(size)
     if @scroll_id.empty?
       query = {
