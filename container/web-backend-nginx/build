@@ -1,9 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env ruby
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
 
-. ../defconfig.sh
+require 'set'
+require_relative '../defconfig'
 
+names = Set.new %w[
+  KIBANA_GUEST
+]
+
+defaults = relevant_service_authentication(names)
 docker_skip_rebuild "web-backend-nginx"
 
-docker build -t web-backend-nginx .
+system "docker build -t web-backend-nginx --build-arg KIBANA_GUEST=#{defaults['KIBANA_GUEST']} ."
