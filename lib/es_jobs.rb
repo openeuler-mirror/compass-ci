@@ -24,8 +24,7 @@ class ESJobs
 
   def query_jobs_from_es
     es = ESQuery.new
-    result = es.multi_field_query @es_query
-    jobs = result['hits']['hits']
+    jobs = es.multi_field_scroll_query @es_query
     jobs.map! { |job| job['_source'] }
     return jobs
   end
