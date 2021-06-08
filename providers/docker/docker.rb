@@ -8,6 +8,7 @@ require 'json'
 require 'set'
 require 'fileutils'
 
+require_relative '../lib/common'
 require_relative '../../lib/mq_client'
 require_relative '../../container/defconfig'
 
@@ -168,7 +169,8 @@ def reboot_docker(hostname)
     puts msg
     machine_info = JSON.parse(msg)
     job_id = machine_info['job_id']
-    system "docker rm -f #{job_id};echo $?"
+    res, msg = reboot('dc', job_id)
+    report_event(machine_info, res, msg)
     mq.ack(info)
   end
 end
