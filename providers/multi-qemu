@@ -7,6 +7,7 @@ require 'fileutils'
 require 'optparse'
 require 'json'
 
+require_relative 'lib/common'
 require_relative "../lib/mq_client"
 
 opt = {}
@@ -49,7 +50,10 @@ HOSTNAME = opt['hostname_prefix'] || "vm-2p8g.#{ENV['HOSTNAME']}"
 NR_VM    = opt['nr_vm'] || 1
 QUEUES   = opt['queues'] || "#{ENV['HOSTNAME']}.#{RUBY_PLATFORM.split('-')[0]}"
 LOG_DIR  = opt['log_dir'] || '/srv/cci/serial/logs'
-MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
+
+SCHED_HOST = ENV['LKP_SERVER'] || '172.17.0.1'
+SCHED_PORT = ENV['LKP_CGI_PORT'] || '3000'
+MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
 def main(hostname)
@@ -126,7 +130,8 @@ def reboot_vm(hostname)
     puts msg
     machine_info = JSON.parse(msg)
     job_id = machine_info['job_id']
-    system "pkill #{job_id};echo $?"
+    res, msg = reboot('vm', job_id)
+    report_event(machine_info, res, msg)
     mq.ack(info)
   end
 end
