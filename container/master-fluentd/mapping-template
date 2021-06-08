@@ -1,0 +1,32 @@
+{
+    "template": "*",
+    "settings": {
+        "number_of_shards": 1
+    },
+    "mappings": {
+        "dynamic_templates": [
+            {
+                "string_fields": {
+                    "match_mapping_type": "string",
+                    "mapping": {
+                        "type": "keyword"
+                    }
+                }
+            }
+        ],
+        "properties": {
+            "message": {
+                "type": "keyword"
+            },
+            "error_message": {
+                "type": "text"
+            },
+	    "log": {
+	        "type": "text"
+	    },
+            "time": {
+                "type": "date"
+            }
+        }
+    }
+}
