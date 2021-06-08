@@ -91,7 +91,10 @@ class Elasticsearch::Client
     results = @client.search({:index => index, :body => query})
     raise results unless results.is_a?(JSON::Any)
 
-    results["hits"]["total"]["value"].to_s.to_i32
+    total = results["hits"]["total"]["value"].to_s.to_i32
+    id = total >= 1 ? results["hits"]["hits"][0]["_source"]["id"] : 0
+
+    return total, id
   end
 
   def search(index, query)

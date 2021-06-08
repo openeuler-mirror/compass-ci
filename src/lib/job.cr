@@ -178,16 +178,20 @@ class Job
     return unless hash["max_run"]?
 
     query = {
-      "size" => 0,
+      "size" => 1,
       "query" => {
         "term" => {
           "all_params_hash_value" => hash["all_params_hash_value"]
         }
-      }
+      },
+      "sort" =>  [{
+        "submit_time" => { "order" => "desc", "unmapped_type" => "date" }
+      }],
+      "_source" => ["id", "all_params_hash_value"]
     }
-    total = @es.get_hit_total("jobs", query)
+    total, latest_job_id = @es.get_hit_total("jobs", query)
 
-    msg = "exceeds the max_run(#{hash["max_run"]}), #{total} jobs exist"
+    msg = "exceeds the max_run(#{hash["max_run"]}), #{total} jobs exist, the latest job id=#{latest_job_id}"
     raise msg if total >= hash["max_run"].to_s.to_i32
   end
 
