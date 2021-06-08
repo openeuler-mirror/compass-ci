@@ -48,10 +48,18 @@ class EtcdClient
     @etcd.kv.move(f_queue, t_queue, value)
   end
 
+  def move(f_queue, t_queue)
+    f_queue = "#{BASE}/#{f_queue}" unless f_queue.starts_with?(BASE)
+    t_queue = "#{BASE}/#{t_queue}" unless t_queue.starts_with?(BASE)
+    res = range(f_queue)
+    raise "can not move the queue in etcd: #{f_queue}" if res.count == 0
+
+    @etcd.kv.move(f_queue, t_queue, res.kvs[0].value)
+  end
+
   def watch_prefix(prefix, **opts, &block : Array(Etcd::Model::WatchEvent) -> Void)
     prefix = "#{BASE}/#{prefix}" unless prefix.starts_with?(BASE)
     @etcd.watch.watch_prefix(prefix, **opts, &block)
   end
-
 end
 
