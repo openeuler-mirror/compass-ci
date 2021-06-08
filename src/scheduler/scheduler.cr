@@ -83,6 +83,13 @@ module Scheduler
     env.sched.submit_job.to_json
   end
 
+  # for client to report event
+  # this event is recorded in the log
+  # curl -H 'Content-Type: application/json' -X POST #{SCHED_HOST}:#{SCHED_PORT}/report_event -d '#{data.to_json}'
+  post "/report_event" do |env|
+    env.sched.report_event.to_s
+  end
+
   # extend the deadline
   # curl "http://localhost:3000/renew_deadline?job_id=1&time=100
   get "/renew_deadline" do |env|

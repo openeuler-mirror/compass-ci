@@ -26,6 +26,7 @@ require "../scheduler/update_job_parameter"
 require "../scheduler/create_job_cpio"
 require "../scheduler/download_file"
 require "../scheduler/opt_job_in_etcd"
+require "../scheduler/report_event"
 
 class Sched
   property es
