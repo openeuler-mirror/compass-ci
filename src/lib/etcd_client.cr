@@ -61,5 +61,28 @@ class EtcdClient
     prefix = "#{BASE}/#{prefix}" unless prefix.starts_with?(BASE)
     @etcd.watch.watch_prefix(prefix, **opts, &block)
   end
+
+  def update_base_version(key, value, version)
+    key = "#{BASE}/#{key}" unless key.starts_with?(BASE)
+    key = Base64.strict_encode(key)
+    value = Base64.strict_encode(value)
+    post_body = {
+      :compare => [{
+        :key => key,
+        :version => "#{version}",
+        :target => "VERSION",
+        :result => "EQUAL",
+      }],
+      :success =>[{
+        :request_put =>{
+          :key => key,
+          :value => value,
+        }
+      }],
+    }
+
+    response = @etcd.api.post("/kv/txn", post_body)
+    Etcd::Model::TxnResponse.from_json(response.body).succeeded
+  end
 end
 
