@@ -1,31 +1,57 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-require "logger"
+require "log"
 require "json"
 require "any_merge"
 require "kemal"
 
 add_context_storage_type(Time::Span)
 
-class JSONLogger < Logger
-  def initialize(logdev = STDOUT, formatter = my_formatter, @env = nil)
+class JSONLogger < Log
+  def initialize(formatter = my_formatter, @env = nil)
     @env_info = Hash(String, String | Int32 | Float64 | JSON::Any).new
-    super(logdev, formatter: formatter)
+    super("", Log::IOBackend.new(formatter: formatter), :trace)
+  end
+
+  def trace(msg)
+    self.trace { msg }
+  end
+
+  def debug(msg)
+    self.debug { msg }
+  end
+
+  def info(msg)
+    self.info { msg }
+  end
+
+  def notice(msg)
+    self.notice { msg }
+  end
+
+  def warn(msg)
+    self.warn { msg }
+  end
+
+  def error(msg)
+    self.error { msg }
+  end
+
+  def fatal(msg)
+    self.fatal { msg }
   end
 
   def my_formatter
-    Logger::Formatter.new do | severity, datetime, progname, msg, io|
+    Log::Formatter.new do |entry, io|
       get_env_info(@env.as(HTTP::Server::Context)) if @env
-      level_num = severity.to_i32
-      datetime = datetime.to_s("%Y-%m-%dT%H:%M:%S.%3N+0800")
+      level_num = entry.severity.to_i32
+      datetime = entry.timestamp.to_s("%Y-%m-%dT%H:%M:%S.%3N+0800")
       logger_hash = JSON.parse(%({"level_num": #{level_num},
-                                  "level": "#{severity}",
-                                  "time": "#{datetime}"
-                                  })).as_h
+                               "level": "#{entry.severity.to_s.upcase}",
+                               "time": "#{datetime}"})).as_h
 
-      logger_hash.any_merge!({"progname" => progname}) unless progname.empty?
-
+      msg = entry.message
       begin
         message = JSON.parse(msg).as_h
       rescue
