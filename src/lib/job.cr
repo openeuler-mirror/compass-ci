@@ -416,11 +416,11 @@ class Job
     @hash.has_key?(key)
   end
 
-  def []=(key : String, value : String | Nil)
+  def []=(key : String, value)
     if key == "id" || key == "tbox_group"
       raise "Should not use []= update #{key}, use update_#{key}"
     end
-    @hash[key] = JSON::Any.new(value) if value
+    @hash[key] = JSON.parse(value.to_json)
   end
 
   private def is_docker_job?
