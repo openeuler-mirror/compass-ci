@@ -6,7 +6,7 @@ require "./lib/create_secrets_yaml"
 require "./delimiter/delimiter"
 
 begin
-  config_secrets_yaml("delimiter")
+  create_secrets_yaml("delimiter")
   delimiter = Delimiter.new
   delimiter.consume_delimiter("delimiter")
 rescue ex
