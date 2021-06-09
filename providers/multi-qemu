@@ -78,6 +78,8 @@ def record_runtime_log(hostname, start_time: Time.new, is_start: true)
   File.open(log_file, 'a') do |f|
     f.puts "\nTotal QEMU duration:  #{duration} minutes"
   end
+  # Allow fluentd sufficient time to read the contents of the log file
+  sleep(2)
 end
 
 def start_qemu(hostname)
