@@ -8,12 +8,13 @@ require 'json'
 # print logs in JSON format
 class JSONLogger < Logger
   LEVEL_INFO = {
-    'DEBUG' => 0,
-    'INFO' => 1,
-    'WARN' => 2,
-    'ERROR' => 3,
-    'FATAL' => 4,
-    'UNKNOWN' => 5
+    'TRACE' => 0,
+    'DEBUG' => 1,
+    'INFO' => 2,
+    'NOTICE' => 3,
+    'WARN' => 4,
+    'ERROR' => 5,
+    'FATAL' => 6
   }.freeze
 
   FORMATTER = proc { |severity, datetime, progname, msg|
