@@ -101,11 +101,16 @@ class Sched
   def block_until_state(cluster_id, job_id, state)
     cluster_state = ""
     update_cluster_state(cluster_id, job_id, {"state" => state})
-    while 1
-      sleep(10)
+    check_cluster_state_nums = 0
+    while check_cluster_state_nums < 3600*8/10
       cluster_state = sync_cluster_state(cluster_id, job_id, state)
       break if (cluster_state == state || cluster_state == "abort")
+      sleep(10)
+      check_cluster_state_nums += 1
     end
+
+    # if cluster state can not sync within 8h, set cluster state 'abort'
+    cluster_state = "abort" if cluster_state == "retry"
     update_cluster_entire_state(cluster_id, cluster_state)
     return cluster_state
   end
