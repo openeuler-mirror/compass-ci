@@ -80,13 +80,13 @@ cmd = %W[
   -v /srv/result:/srv/result
   -v /srv/initrd:/srv/initrd:ro
   -v /srv/os:/srv/os:ro
-  -v /etc/compass-ci/ca:/ca
+  -v /etc/compass-ci:/etc/compass-ci:ro
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
   --log-opt tag=scheduler-#{SCHED_HTTPS_PORT}
   sch-ruby-a:v0.00d-#{defaults['SCHED_PORT']}
 ]
 
-cmd += ['sh', '-c', 'umask 002 && ./scheduler --ssl --ssl-key-file /ca/server.key --ssl-cert-file /ca/server.crt']
+cmd += ['sh', '-c', "umask 002 && ./scheduler --ssl --ssl-key-file #{ca_path}/server.key --ssl-cert-file #{ca_path}/server.crt']
 
 system(*cmd)
