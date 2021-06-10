@@ -105,6 +105,10 @@ opt_parser = OptionParser.new do |opts|
     count = c
   end
 
+  opts.on('--reg', 'fuzzy matching') do
+    options[:regexp] = true
+  end
+
   opts.on_tail('--keyword', 'check all available search_keys') do
     available_search_key = es.query_mapping
     available_search_key.each do |key|
@@ -127,7 +131,12 @@ if count
   count_keywords = count.split(',')
   query_result = es.query_fields(count_keywords, items)
 else
-  query_result = es.multi_field_query(items, size: options[:nr_jobs], desc_keyword: options[:desc_keyword])
+  query_result = es.multi_field_query(
+    items,
+    size: options[:nr_jobs],
+    desc_keyword: options[:desc_keyword],
+    regexp: options[:regexp]
+  )
 end
 json_string = JSON.pretty_generate(query_result)
 puts json_string

@@ -17,12 +17,12 @@ class ESQuery
   # Example @items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # Example @unmatch_items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # means to query: key1 == value1 && (key2 in [value2, value3, ..])
-  def multi_field_query(items, unmatch_items: {}, size: 10_000, desc_keyword: nil)
+  def multi_field_query(items, unmatch_items: {}, size: 10_000, desc_keyword: nil, regexp: nil)
     unless items
       warn 'empty filter!'
       exit
     end
-    query_fields = build_multi_field_subquery_body items
+    query_fields = build_multi_field_subquery_body(items, regexp)
     unmatch_fields = build_multi_field_subquery_body unmatch_items
     query = {
       query: {
@@ -182,25 +182,33 @@ end
 #   }
 # }
 # items['range'] = range
-def build_multi_field_subquery_body(items)
+def build_multi_field_subquery_body(items, regexp = nil)
   query_fields = []
   items.each do |key, value|
     if value.is_a?(Array)
-      inner_query = build_multi_field_or_query_body(key, value)
+      inner_query = build_multi_field_or_query_body(key, value, regexp)
       query_fields.push({ bool: { should: inner_query } })
     elsif key.to_s == 'range'
       query_fields.concat(value.map { |k, v| { range: { k => v } } })
     else
-      query_fields.push({ term: { key => value } })
+      if regexp
+        query_fields.push({ regexp: { key => ".*#{value}.*" } })
+      else
+        query_fields.push({ term: { key => value } })
+      end
     end
   end
   query_fields
 end
 
-def build_multi_field_or_query_body(field, value_list)
+def build_multi_field_or_query_body(field, value_list, regexp)
   inner_query = []
   value_list.each do |inner_value|
-    inner_query.push({ term: { field => inner_value } })
+    if regexp
+      inner_query.push({ regexp: { field => ".*#{inner_value}.*" } })
+    else
+      inner_query.push({ term: { field => inner_value } })
+    end
   end
   inner_query
 end
