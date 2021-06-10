@@ -87,6 +87,6 @@ cmd = %W[
   sch-ruby-a:v0.00d-#{defaults['SCHED_PORT']}
 ]
 
-cmd += ['sh', '-c', "umask 002 && ./scheduler --ssl --ssl-key-file #{ca_path}/server.key --ssl-cert-file #{ca_path}/server.crt']
+cmd += ['sh', '-c', "umask 002 && ./scheduler --ssl --ssl-key-file #{ca_path}/server.key --ssl-cert-file #{ca_path}/server.crt"]
 
 system(*cmd)
