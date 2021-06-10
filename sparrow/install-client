@@ -63,6 +63,17 @@ run_service()
 	)&
 }
 
+check_service()
+{
+	for service in dnsmasq sub-fluentd
+	do
+		docker ps | grep -q $service || {
+			log_error "failed to start container $service"
+			exit 1
+		}
+	done
+}
+
 main()
 {
 	install_env
@@ -71,3 +82,4 @@ main()
 
 main
 wait
+check_service
