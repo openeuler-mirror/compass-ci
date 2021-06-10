@@ -21,14 +21,29 @@ check_logfile()
 	}
 }
 
+free_mem()
+{
+	free -g | awk '/Mem/ {print $4}' | tr -d Gi
+}
+
 write_logfile()
 {
 	ipxe_script=ipxe_script
+	
+	# when free mem is less than the limit value, program will wait  
+	limit_mem=32
+
 	while true
 	do
-		curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
-		cat $ipxe_script | grep "No job now" && continue
-		break
+		if [ $(free_mem) -ge ${limit_mem} ]
+		then
+			curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
+			cat $ipxe_script | grep "No job now" && continue
+			break
+		else
+			echo "free memory is not enough: $(free_mem) < ${limit_mem}, wait..." 
+			sleep 60
+		fi
 	done
 	cat $ipxe_script >> ${log_file}
 }
