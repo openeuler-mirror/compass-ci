@@ -5,7 +5,7 @@
 source ${CCI_SRC}/lib/log.sh
 
 if [ -n "$my_email" ] && [ -n "$my_name" ]; then
-	$CCI_SRC/sbin/build-my-info.rb -e $my_email -n $my_name
+	build-my-info -e $my_email -n $my_name
 else
-	log_info "if you need to register account, please try: $CCI_SRC/sbin/build-my-info.rb -e \$my_email -n \$my_name"
+	log_info "if you need to register account, please try: build-my-info -e \$my_email -n \$my_name"
 fi

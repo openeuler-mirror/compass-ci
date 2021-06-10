@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # register user information
-ruby build-my-info.rb -e "$my_email" -n "$USER" -l "$lab"
+ruby build-my-info -e "$my_email" -n "$USER" -l "$lab"
 
 cci_makepkg_file="$LKP_SRC/jobs/cci-makepkg.yaml"
 grep "atomic" $cci_makepkg_file || sed -i 's|benchmark:|& atomic|g' $cci_makepkg_file
