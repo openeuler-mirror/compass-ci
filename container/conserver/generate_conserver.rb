@@ -5,7 +5,8 @@
 require 'fileutils'
 require 'yaml'
 
-lab = ENV['LAB'] || 'z9'
+lab = 'z9'
+lab = 'crystal' if ENV['HOSTNAME'].include?("crystal")
 CCI_REPOS = ENV['CCI_REPOS'] || '/c'
 
 def generate_conserver(lab)
