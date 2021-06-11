@@ -188,6 +188,9 @@ else
 		          "job_state": {
 		            "type": "keyword"
 		          },
+		          "tags": {
+		            "type": "text"
+		          },
 		          "start_time": {
 		            "type": "date",
 		            "format": "yyyy-MM-dd HH:mm:ss"
