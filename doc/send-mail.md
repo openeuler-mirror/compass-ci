@@ -14,22 +14,34 @@ The service is used to send mails with formatted mail data
 - host the service running on
 
 ## data format
+case you want to add an attachment file, please use send_mail_yaml,
+then add attach_name and attach_content to the mail data as the following example:
 - send_mail_yaml
 	data='{
 	"subject": "email subject",
 	"to": "email_to_addr",
-	"body": "email message"
+	"cc": "email_cc_addr",
+	"bcc": "email_bcc_addr",
+	"body": "email message",
+	"attach_name": "attachment file name",
+	"attach_content": "attachment file content"
 	}'
     or
 	data="
 	subject: email subject
 	to: email_to_addr
+	cc: email_cc_addr
+	bcc: email_bcc_addr
 	body: email message
+	attach_name: attachment file name
+	attach_content: attachment file content
 	"
 
 - send_mail_text
 	data="
 	To: email_to_addr
+	Cc: email_cc_addr
+	Bcc: email_bcc_addr
 	Subject: email_subject
 
 	mail_msg_line1
