@@ -176,14 +176,13 @@ class Sched
       job["job_state"] = "boot"
       state = "booting"
       job_id = job["id"]
-      tbox_group = job["tbox_group"]
     else
       deadline = nil
       job_id = ""
       state = "requesting"
-      tbox_group = JobHelper.match_tbox_group(testbox.to_s)
     end
 
+    tbox_group = JobHelper.match_tbox_group(testbox.to_s)
     type = get_type(testbox)
     queues = JSON.parse(fetch_queues(queues).to_json)
     hash = {
