@@ -9,21 +9,17 @@
                 "string_fields": {
                     "match_mapping_type": "string",
                     "mapping": {
-                        "type": "keyword"
+                        "type": "text",
+                        "fields": {
+                            "keyword": {
+                                "type": "keyword"
+			    }
+			}
                     }
                 }
             }
         ],
         "properties": {
-            "message": {
-                "type": "keyword"
-            },
-            "error_message": {
-                "type": "text"
-            },
-	    "log": {
-	        "type": "text"
-	    },
             "time": {
                 "type": "date"
             }
