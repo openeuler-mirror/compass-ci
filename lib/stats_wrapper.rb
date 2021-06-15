@@ -3,10 +3,10 @@
 # frozen_string_literal: true
 
 LKP_SRC ||= ENV['LKP_SRC'] || '/c/lkp-tests'
-require "#{LKP_SRC}/lib/log.rb"
 require 'tempfile'
 require 'English'
 require_relative './dump_stat'
+require_relative './json_logger.rb'
 
 Dir[File.expand_path("#{LKP_SRC}/stats/*.rb")].uniq.each do |file|
   require file
@@ -30,7 +30,7 @@ module StatsWrapper
     @log = "#{RESULT_ROOT}/#{@stats_group}"
 
     unless File.exist?("#{PROGRAM_DIR}/#{@program}")
-      warn "#{PROGRAM_DIR}/#{@program} doesn't exist"
+      log_error "#{PROGRAM_DIR}/#{@program} doesn't exist"
       return
     end
 
@@ -309,4 +309,14 @@ def parse_simple_log_yaml(log_lines)
   end
 
   result
+end
+
+def log_warn(msg)
+  log = JSONLogger.new
+  log.warn(msg)
+end
+
+def log_error(msg)
+  log = JSONLogger.new
+  log.error(msg)
 end

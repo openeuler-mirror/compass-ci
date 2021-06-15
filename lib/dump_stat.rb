@@ -7,7 +7,6 @@ require "#{LKP_SRC}/lib/bounds"
 require "#{LKP_SRC}/lib/yaml"
 require "#{LKP_SRC}/lib/job"
 require "#{LKP_SRC}/lib/string_ext"
-require "#{LKP_SRC}/lib/log"
 require 'set'
 
 UNSTRUCTURED_MONITORS = %w[ftrace].to_set
