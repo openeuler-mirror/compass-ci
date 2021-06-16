@@ -86,6 +86,12 @@ class Sched
     end
   end
 
+  # this depends on LKP_SRC, more exactly
+  # - sbin/create-job-cpio.sh
+  # - sbin/job2sh and its lib/ depends
+  # Normal end users don't need change those logics, so it's enough to
+  # use static *mainline* lkp-tests source here instead of per-user
+  # uploaded lkp-tests code.
   def create_job_cpio(job_content : JSON::Any, base_dir : String)
     job_content = job_content.as_h
     create_secrets_yaml(job_content["id"], base_dir)
