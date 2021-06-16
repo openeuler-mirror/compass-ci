@@ -22,16 +22,23 @@ def get_belong_dir(git_repo)
   return nil
 end
 
+def merge_defaults(defaults, defaults_dir)
+  if File.exist?("#{defaults_dir}/DEFAULTS")
+    defaults_new = YAML.safe_load(File.open("#{defaults_dir}/DEFAULTS"))
+    defaults = defaults_new.merge(defaults)
+  end
+  return defaults
+end
+
 def get_defaults_info(repo_path)
   defaults_dir = File.dirname(repo_path)
   defaults = {}
   while defaults_dir != REPO_DIR
-    defaults_new = YAML.safe_load(File.open("#{defaults_dir}/DEFAULTS")) if File.exist?("#{defaults_dir}/DEFAULTS")
-    defaults = defaults_new.merge(defaults)
+    defaults = merge_defaults(defaults, defaults_dir)
     defaults_dir = File.dirname(defaults_dir)
   end
-  defaults_new = YAML.safe_load(File.open("#{defaults_dir}/DEFAULTS")) if File.exist?("#{defaults_dir}/DEFAULTS")
-  defaults_new.merge(defaults)
+  defaults = merge_defaults(defaults, defaults_dir)
+  return defaults
 end
 
 def get_git_info(belong_dir, git_repo)
