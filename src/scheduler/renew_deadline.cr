@@ -20,14 +20,14 @@ class Sched
     @env.set "deadline", job["deadline"]
     send_mq_msg("renew")
 
-    return true
+    return job["deadline"]
   rescue e
     @env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
-    return false
+    return e.to_s
   end
 
   def check_renew_job(job)
