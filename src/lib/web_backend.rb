@@ -35,6 +35,7 @@ ALL_FIELDS = FIELDS + NOT_SHOW_FIELDS
 NOT_NEED_EXIST_FIELDS = %w[error_ids upstream_repo].freeze
 PREFIX_SEARCH_FIELDS = ['tbox_group'].freeze
 ES_CLIENT = Elasticsearch::Client.new(hosts: ES_HOSTS)
+LOGGING_ES_CLIENT = Elasticsearch::Client.new(hosts: LOGGING_ES_HOSTS)
 COMPARE_RECORDS_NUMBER = 100
 
 def es_query(query)
@@ -689,4 +690,46 @@ def get_error_from_job(job)
   end
 
   job_error_obj
+end
+
+def msg_per_hour
+  query = {
+    "query": {
+      "bool": {
+        "filter": [
+          { "exists": { "field": "msg" } },
+          { "range": { "time": { "gt": "now-1h" } } }
+        ]
+      }
+    }
+  }
+  LOGGING_ES_CLIENT.count(index: 'git-mirror', body: query)['count']
+end
+
+def worker_threads_alive
+  query = {
+    query: {
+      bool: {
+        filter: [
+          { exists: { field: "state" } },
+          { range: { time: { gt: "now-5m" } } }
+        ]
+      }
+    },
+    size: 1,
+    sort: [{
+      time: { order: 'desc' }
+    }]
+  }
+  result = LOGGING_ES_CLIENT.search(index: 'git-mirror', body: query)['hits']
+  num = result['total']['value']
+  return [ 'OK', 10 ] if num.zero?
+  return [ result['hits'][0]['_source']['level'], result['hits'][0]['_source']['alive_num'] ]
+end
+
+def git_mirror_state
+  msg_count = msg_per_hour
+  state, alive_num = worker_threads_alive
+  state = 'WARN' if state == 'OK' && msg_count.zero?
+  [ state, alive_num ]
 end
