@@ -17,6 +17,13 @@ def config_yaml(account)
   build_my_info = BuildMyInfo.new(my_email(account))
 
   my_info = build_my_info.search_my_info
+
+  for i in 1..20
+    break if my_info['my_email']
+    sleep(6)
+    my_info = build_my_info.search_my_info
+  end
+
   build_my_info.config_default_yaml(my_info)
   build_my_info.config_lab_yaml(my_info)
 end
