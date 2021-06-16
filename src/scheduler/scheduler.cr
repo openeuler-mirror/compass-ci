@@ -96,6 +96,12 @@ module Scheduler
     env.sched.renew_deadline.to_s
   end
 
+  # get testbox deadline
+  # curl "http://localhost:3000/get_deadline?testbox=xxx
+  get "/get_deadline" do |env|
+    env.sched.get_deadline.to_s
+  end
+
   # file download server
   get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
     env.sched.download_file
