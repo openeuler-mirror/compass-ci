@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Health Monitor</title>
+</head>
+
+<body onload="onload()">
+
+    <h1 style="text-align:center">Compass-ci 服务健康监视器</h1>
+    <hr>
+    <table style="width:80%;margin:auto" cellspacing="20px">
+        <tr>
+            <td id="GitMirror" style="width:30%;background-color:green;height:200px;text-align:center;"
+                onclick="goGitMirror()">
+                <font size="6">git mirror</font>
+            </td>
+
+            <td style="width:30%;background-color:green;height:200px;text-align:center;" onclick="goMachineList()">
+                <font size="6">machine list</font>
+            </td>
+
+            <td style="width:30%;background-color:green;height:200px;text-align:center;">
+                <font size="6">no service</font>
+            </td>
+        </tr>
+
+        <tr>
+            <td style="background-color:green;height:200px;text-align:center;">
+                <font size="6">no service</font>
+            </td>
+            <td style="background-color:green;height:200px;text-align:center;">
+                <font size="6">no service</font>
+            </td>
+            <td style="background-color:green;height:200px;text-align:center;">
+                <font size="6">no service</font>
+            </td>
+        </tr>
+
+        <tr>
+            <td style="background-color:green;height:200px;text-align:center;">
+                <font size="6">no service</font>
+            </td>
+            <td style="background-color:green;height:200px;text-align:center;">
+                <font size="6">no service</font>
+            </td>
+            <td style="background-color:green;height:200px;text-align:center;">
+                <font size="6">no service</font>
+            </td>
+        </tr>
+    </table>
+</body>
+<script>
+    function git_mirror_state(data) {
+        var color;
+        if (data[0] == "OK") {
+            color = "green";
+        }
+        else if (data[0] == "WARN") {
+            color = "yellow";
+        }
+        else {
+            color = "red"
+        }
+        document.getElementById("GitMirror").style.backgroundColor = color;
+    };
+
+    function getdata() {
+        var ajax = new XMLHttpRequest();
+        ajax.open("get", "/git_mirror_health");
+        ajax.send();
+        ajax.onreadystatechange = function () {
+            if (ajax.readyState == 4 && ajax.status == 200) {
+                var data = JSON.parse(ajax.responseText);
+                git_mirror_state(data);
+            }
+        }
+    };
+
+    function onload() {
+        getdata();
+        setInterval("getdata()", 10000);
+    };
+
+    function goMachineList() {
+        window.open('MachineList.html');
+    };
+
+    function goGitMirror() {
+        window.open('GitMirror.html');
+    };
+
+</script>
+
+</html>

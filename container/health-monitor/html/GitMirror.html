@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Git Mirror</title>
+</head>
+
+<body onload="onload()">
+
+    <h1 style="text-align:center">Git Mirror 服务状态</h1>
+    <hr>
+    <div style="width:40%;margin-top:5%;margin-left:30%;">
+        <table style="width:100%;" border="1">
+            <tr>
+                <th>状态</th>
+                <td id="state"></td>
+            </tr>
+            <tr>
+                <th>活跃线程数</th>
+                <td id="num"></td>
+            </tr>
+            <tr>
+                <th>每小时log数</th>
+                <td id="lognum"></td>
+            </tr>
+        </table>
+    </div>
+
+</body>
+<script>
+    function getdata() {
+        var ajax = new XMLHttpRequest();
+        ajax.open("get", "/git_mirror_health");
+        ajax.send();
+        ajax.onreadystatechange = function () {
+            if (ajax.readyState == 4 && ajax.status == 200) {
+                var data = JSON.parse(ajax.responseText);
+                console.log(data);
+                showData(data);
+            }
+        }
+    };
+
+    function showData(data) {
+        document.getElementById('state').innerText = data[0];
+        document.getElementById('num').innerText = data[1];
+        document.getElementById('lognum').innerText = data[2];
+    };
+
+    function onload() {
+        getdata();
+    };
+</script>
+
+</html>
