@@ -21,29 +21,43 @@ check_logfile()
 	}
 }
 
-free_mem()
+mem_available()
 {
-	free -g | awk '/Mem/ {print $4}' | tr -d Gi
+	# refer to ~/lkp-tests/lkp-exec/qemu
+	# MemAvailable = MemFree + (Active_file/2) + Inactive_file
+	local memory_available mem_free active_file inactive_file
+
+	mem_free=$(cat /proc/meminfo | awk '/MemFree/ {print $2}')
+	active_file=$(cat /proc/meminfo | awk '/Active\(file\)/ {print $2}')
+	inactive_file=$(cat /proc/meminfo | awk '/Inactive\(file\)/ {print $2}')
+
+	(( memory_available = mem_free + (active_file/2) + inactive_file ))
+
+	## kB -> GB
+	echo $((memory_available >> 20))
+}
+
+low_mem_wait()
+{
+	local vm_required_memory
+	vm_required_memory=$(($(echo $memory | tr -d G) * 3 / 2))
+	
+	# when available memory is less than the vm required, program will wait
+	while [ $(mem_available) -lt ${vm_required_memory} ]
+	do
+		echo "available memory is not enough: $(mem_available) < ${vm_required_memory}, wait 30s"
+		sleep 30
+	done
 }
 
 write_logfile()
 {
 	ipxe_script=ipxe_script
-	
-	# when free mem is less than the limit value, program will wait  
-	limit_mem=32
-
 	while true
 	do
-		if [ $(free_mem) -ge ${limit_mem} ]
-		then
-			curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
-			cat $ipxe_script | grep "No job now" && continue
-			break
-		else
-			echo "free memory is not enough: $(free_mem) < ${limit_mem}, wait..." 
-			sleep 60
-		fi
+		curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
+		cat $ipxe_script | grep "No job now" && continue
+		break
 	done
 	cat $ipxe_script >> ${log_file}
 }
@@ -299,6 +313,7 @@ set_options()
 }
 
 check_logfile
+low_mem_wait
 write_logfile
 
 parse_ipxe_script
