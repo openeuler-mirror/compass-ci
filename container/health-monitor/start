@@ -1,0 +1,22 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+
+[[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
+
+. $CCI_SRC/container/defconfig.sh
+docker_rm health-monitor
+
+cmd=(
+	docker run
+	--name health-monitor
+	-p 20021:20021
+	-d
+
+	--log-opt mode=non-blocking
+	--log-opt max-buffer-size=4m
+
+	health-monitor
+)
+
+"${cmd[@]}"
