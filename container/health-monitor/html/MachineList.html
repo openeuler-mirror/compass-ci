@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Machine List</title>
+</head>
+
+<body onload="onload()">
+
+    <h1 style="text-align:center">Compass-ci 机器资源列表</h1>
+    <hr>
+    <div style="width:40%;margin-left:5%;float:left;">
+        <table id="tbphy" style="width:100%;" border="1">
+            <caption>可用物理机列表</caption>
+            <tr>
+                <th>机器</th>
+                <th>数量</th>
+            </tr>
+        </table>
+    </div>
+
+    <div style="width:40%;margin-right:5%;float:right;">
+        <table id="tbdc" style="width:100%;" border="1">
+            <caption>可用DC列表</caption>
+            <tr>
+                <th>机器</th>
+                <th>数量</th>
+            </tr>
+        </table>
+    </div>
+
+    <div style="width:40%;margin-left:5%;margin-top:5%;float:left;">
+        <table id="tbvm" style="width:100%;" border="1">
+            <caption>可用VM列表</caption>
+            <tr>
+                <th>机器</th>
+                <th>数量</th>
+            </tr>
+        </table>
+    </div>
+
+</body>
+<script>
+    function getdata() {
+        var ajax = new XMLHttpRequest();
+        ajax.open("get", "/active_testbox");
+        ajax.send();
+        ajax.onreadystatechange = function () {
+            if (ajax.readyState == 4 && ajax.status == 200) {
+                var data = JSON.parse(ajax.responseText);
+                showData(data.physical, 'tbphy');
+                showData(data.dc, 'tbdc');
+                showData(data.vm, 'tbvm');
+            }
+        }
+    };
+
+    function showData(data, tbid) {
+        for (var i = 0; i < data.length; i++) {
+            var tr = document.createElement('tr');
+            document.getElementById(tbid).appendChild(tr);
+            var td = document.createElement('td');
+            tr.appendChild(td);
+            td.style.textAlign = 'center';
+            td.innerText = data[i].key;
+            var td = document.createElement('td');
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            td.innerText = data[i].doc_count;
+        }
+    };
+
+    function onload() {
+        getdata();
+    };
+</script>
+
+</html>
