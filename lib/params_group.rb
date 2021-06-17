@@ -202,9 +202,14 @@ end
 def find_param_in_job(job, param)
   return job[param] if job.key?(param)
 
-  job.each_value do |v|
-    return v[param] if v.is_a?(Hash) && v.key?(param)
+  # handle pp.* params
+  job['pp'].each_value do |v|
+    next unless v
+
+    return v[param] if v.key?(param)
   end
+
+  return nil
 end
 
 # @dimension Array(Hash)
