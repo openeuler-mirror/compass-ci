@@ -319,7 +319,7 @@ class Job
 
   def get_pkg_common_dir
     tmp_style = nil
-    ["cci-makepkg", "cci-depends", "build-pkg", "rpmbuild"].each do |item|
+    ["cci-makepkg", "cci-depends", "build-pkg", "pkgbuild", "rpmbuild"].each do |item|
       tmp_style = @hash[item]?
       break if tmp_style
     end
@@ -364,6 +364,15 @@ class Job
       end
 
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
+      package_dir += ",/cci/build-config" if @hash["config"]?
+    elsif @hash["pkgbuild"]?
+      if @hash["pkgbuild_repo"].to_s =~ /(packages|community)\/\//
+        package_name = @hash["pkgbuild_repo"].to_s.split("/")[-2]
+      else
+        package_name = @hash["pkgbuild_repo"].to_s.split("/")[-1]
+      end
+
+      package_dir = ",/initrd/pkgbuild/#{common_dir}/#{package_name}"
       package_dir += ",/cci/build-config" if @hash["config"]?
     end
 

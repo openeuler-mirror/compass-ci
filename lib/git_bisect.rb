@@ -41,7 +41,7 @@ class GitBisect
   end
 
   def set_build_pkg_dir
-    @build_pkg_dir = File.join('/srv', @bad_job['result_root'], 'build-pkg')
+    @build_pkg_dir = File.join('/srv', @bad_job['result_root'], @bad_job['suite'])
   end
 
   def set_upstream

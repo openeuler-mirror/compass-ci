@@ -20,8 +20,8 @@ module CEM
 
     return true if later_es_result['job_state'] == 'finished'
 
-    previous_result_file = File.join('/srv', es.query_by_id(previous_job_id)['result_root'], 'build-pkg')
-    later_result_file = File.join('/srv', later_es_result['result_root'], 'build-pkg')
+    previous_result_file = File.join('/srv', es.query_by_id(previous_job_id)['result_root'], es.query_by_id(previous_job_id)['suite'])
+    later_result_file = File.join('/srv', later_es_result['result_root'], later_es_result['suite'])
 
     filenames_check = filenames_check(previous_result_file, later_result_file, error_id)
 
@@ -58,7 +58,7 @@ module CEM
     previous_error_ids = es.query_by_id(previous_job_id)['error_ids']
     later_es_result = es.query_by_id(later_job_id)
     later_error_ids = later_es_result['error_ids']
-    later_result_file = File.join('/srv', later_es_result['result_root'], 'build-pkg')
+    later_result_file = File.join('/srv', later_es_result['result_root'], later_es_result['suite'])
 
     new_error_ids =  get_new_error_ids(later_error_ids, previous_error_ids)
     error_messages = ErrorMessages.new(later_result_file).obtain_error_messages
@@ -70,7 +70,7 @@ module CEM
 
   def get_error_messages(job_id, error_id)
     es_result = ESQuery.new.query_by_id(job_id)
-    result_file = File.join('/srv', es_result['result_root'], 'build-pkg')
+    result_file = File.join('/srv', es_result['result_root'], es_result['suite'])
     return ErrorMessages.new(result_file).obtain_error_messages_by_error_id(error_id)
   end
 
@@ -90,6 +90,9 @@ module CEM
 
     error_messages.each do |k, v|
       if new_error_ids.include?("build-pkg.#{build_pkg_error_id(k)}")
+        new_error_number += 1
+        formatted_error_messages = add_sign(formatted_error_messages, '>>', v)
+      elsif new_error_ids.include?("pkgbuild.#{build_pkg_error_id(k)}")
         new_error_number += 1
         formatted_error_messages = add_sign(formatted_error_messages, '>>', v)
       else

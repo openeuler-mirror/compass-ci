@@ -41,8 +41,8 @@ class ESJobs
         next
       end
 
-      # sum.stats.build-pkg.mb_cache.c:warning:‘read_cache’defined-but-not-used[-Wunused-function]: 1
-      # sum.stats.build-pkg.mb_cache.c:warning:control-reaches-end-of-non-void-function[-Wreturn-type]: 1
+      # sum.stats.pkgbuild.mb_cache.c:warning:‘read_cache’defined-but-not-used[-Wunused-function]: 1
+      # sum.stats.pkgbuild.mb_cache.c:warning:control-reaches-end-of-non-void-function[-Wreturn-type]: 1
       if stat.match(/:warning:|\.warning$/i)
         job['summary.any_warning'] = 1
         summary_result = 'warning'
@@ -50,7 +50,7 @@ class ESJobs
 
       # "last_state.test.iperf.exit_code.127": 1,
       # "last_state.test.cci-makepkg.exit_code.1": 1,
-      # sum.stats.build-pkg.cc1plus:error:unrecognized-command-line-option‘-Wno-unknown-warning-option’[-Werror]: 2
+      # sum.stats.pkgbuild.cc1plus:error:unrecognized-command-line-option‘-Wno-unknown-warning-option’[-Werror]: 2
       if stat.match(/:error:|\.error$|\.exit_code\./i)
         job['summary.any_error'] = 1
         summary_result = 'error'
