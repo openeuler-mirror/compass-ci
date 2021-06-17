@@ -30,6 +30,8 @@ cmd=(
 	-e UPSTREAM_REPOS_PATH=/c/upstream-repos
 	-e ES_USER=$ES_USER
 	-e ES_PASSWORD=$ES_PASSWORD
+	-e LOGGING_ES_USER=$LOGGING_ES_USER
+	-e LOGGING_ES_PASSWORD=$LOGGING_ES_PASSWORD
 
 	-v $CCI_SRC:/c/compass-ci
 	-v $LKP_SRC:/c/lkp-tests

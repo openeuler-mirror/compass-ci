@@ -194,3 +194,10 @@ end
 get '/get_job_error' do
   get_job_error(params)
 end
+
+# GET /git_mirror_health
+# Response:
+# - [ "state", "alive_num", "msg_count" ]
+get '/git_mirror_health' do
+  git_mirror_health
+end

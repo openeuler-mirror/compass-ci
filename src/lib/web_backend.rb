@@ -731,5 +731,15 @@ def git_mirror_state
   msg_count = msg_per_hour
   state, alive_num = worker_threads_alive
   state = 'WARN' if state == 'OK' && msg_count.zero?
-  [ state, alive_num ]
+  [ state, alive_num, msg_count ].to_json
+end
+
+def git_mirror_health
+  begin
+    body = git_mirror_state
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'git mirror health error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
