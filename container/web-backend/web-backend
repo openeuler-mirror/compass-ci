@@ -58,6 +58,12 @@ get '/get_jobs' do
   get_jobs(params)
 end
 
+# GET /active_testbox
+# return to testbox that are active within 30 minutes
+get '/active_testbox' do
+  get_active_testbox
+end
+
 # GET /get_repos?git_repo=a&page_size=12&page_num=3
 # optional:
 # - git_repo

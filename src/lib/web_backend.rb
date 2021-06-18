@@ -8,6 +8,7 @@ require 'set'
 
 CCI_SRC ||= ENV['CCI_SRC'] || '/c/compass-ci'
 
+require "#{CCI_SRC}/lib/my_data.rb"
 require "#{CCI_SRC}/lib/compare.rb"
 require "#{CCI_SRC}/lib/constants.rb"
 require "#{CCI_SRC}/lib/es_query.rb"
@@ -742,4 +743,25 @@ def git_mirror_health
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'git mirror health error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+def get_active_testbox
+  begin
+    my_data = MyData.new
+    active_vm = my_data.get_testbox_aggs(type: 'vm')
+    active_dc = my_data.get_testbox_aggs(type: 'dc')
+    active_physical = my_data.get_testbox_aggs
+
+    result = {
+      'vm' => active_vm['aggregations']['queue']['buckets'],
+      'dc' => active_dc['aggregations']['queue']['buckets'],
+      'physical' => active_physical['aggregations']['queue']['buckets']
+    }.to_json
+  rescue StandardError => e
+    warn e.message
+
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get active testbox error']
+  end
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result]
 end
