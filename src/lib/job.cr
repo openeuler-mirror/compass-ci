@@ -294,16 +294,48 @@ class Job
     self["rootfs"] = "#{os}-#{os_version}-#{os_arch}"
   end
 
-  def get_deadline
-    runtime = (self["timeout"]? || self["runtime"]?).to_s
-    runtime = 1800 if runtime.empty?
-    runtime = runtime.to_i32
+  def get_testbox_type
+    return "vm" if self["testbox"].starts_with?("vm")
+    return "dc" if self["testbox"].starts_with?("dc")
+    return "physical"
+  end
 
-    # the runtime may not be as accurate, providing some flexibility.
-    extra_time = [Math.sqrt(runtime), 3600].min.to_i32
+  def get_boot_time
+    case get_testbox_type
+    when "dc"
+      return 60
+    when "vm"
+      return 300
+    else
+      return 1200
+    end
+  end
 
-    # reserve 300 seconds for system startup, hw machine will need such long time
-    (Time.local + (runtime + extra_time + 300).second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+  def get_deadline(stage)
+    case stage
+    when "boot"
+      time = get_boot_time
+    when "running"
+      time = (self["timeout"]? || self["runtime"]? || 1800).to_s.to_i32
+      extra_time = 0 if self["timeout"]?
+      extra_time ||= [time / 8, 300].max.to_i32 + Math.sqrt(time).to_i32
+    when "post_run"
+      time = 300
+    when "manual_check"
+      time = 60
+    else
+      return nil
+    end
+
+    extra_time ||= 0
+    (Time.local + (time + extra_time).second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
+  def set_deadline(stage)
+    deadline = get_deadline(stage)
+    return nil unless deadline
+
+    self["deadline"] = deadline
   end
 
   def renew_deadline(time)
