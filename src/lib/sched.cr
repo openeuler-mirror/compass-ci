@@ -148,13 +148,13 @@ class Sched
     @log.warn(e.inspect_with_backtrace)
   end
 
-  def send_mq_msg(job_state)
+  def send_mq_msg(job_stage)
     mq_msg = {
       "job_id" => @env.get?("job_id").to_s,
       "testbox" => @env.get?("testbox").to_s,
       "deadline" => @env.get?("deadline").to_s,
       "time" => get_time,
-      "job_state" => job_state
+      "job_stage" => job_stage
     }
     spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
   end
@@ -171,9 +171,8 @@ class Sched
 
   def set_lifecycle(job, testbox, queues)
     if job
-      deadline = job.get_deadline
-      job["deadline"] = deadline
-      job["job_state"] = "boot"
+      deadline = job.set_deadline("boot")
+      job["job_stage"] = "boot"
       state = "booting"
       job_id = job["id"]
     else

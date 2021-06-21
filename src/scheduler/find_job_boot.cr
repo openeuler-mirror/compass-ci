@@ -20,7 +20,7 @@ class Sched
     response = get_job_boot(host, boot_type)
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     @env.set "job_id", job_id
-    @env.set "job_state", "boot"
+    @env.set "job_stage", "boot"
 
     response
   rescue e
@@ -273,7 +273,7 @@ class Sched
       @es.set_job_content(job)
       @env.set "job_id", job["id"]
       @env.set "deadline", job["deadline"]
-      @env.set "job_state", job["job_state"]
+      @env.set "job_stage", job["job_stage"]
       create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
     else
       # for physical machines

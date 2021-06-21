@@ -15,6 +15,11 @@ class Sched
     job["job_state"] = job_state if job_state
     job["job_state"] = "complete" if job["job_state"] == "boot"
 
+    job["job_stage"] = "finish"
+    job_health = @env.params.query["job_health"]?
+    job_health ||= job["job_health"]? || "success"
+    job["job_health"] = job_health
+
     job.set_time("close_time")
     @env.set "close_time", job["close_time"]
 
@@ -26,9 +31,6 @@ class Sched
 
     move_process2stats(job)
     delete_id2job(job.id)
-
-    job_state ||= "complete"
-    @env.set "job_state", job_state
   rescue e
     @env.response.status_code = 500
     @log.warn({
@@ -40,7 +42,7 @@ class Sched
     if source != "lifecycle"
       mq_msg = {
         "job_id" => @env.get?("job_id").to_s,
-        "job_state" => "close",
+        "job_stage" => "finish",
         "time" => @env.get?("close_time").to_s
       }
       spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
