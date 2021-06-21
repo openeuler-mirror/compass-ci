@@ -188,6 +188,15 @@ else
 		          "job_state": {
 		            "type": "keyword"
 		          },
+		          "job_stage": {
+			    "type": "keyword"
+			  },
+		          "job_health": {
+			    "type": "keyword"
+			  },
+		          "last_success_stage": {
+			    "type": "keyword"
+			  },
 		          "tags": {
 		            "type": "text"
 		          },
