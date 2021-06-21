@@ -242,8 +242,6 @@ public_option()
 		-nographic
 		-monitor null
 	)
-
-	[ "$DEBUG" == "true" ] || kvm=("${kvm[@]}" -serial file:${log_file})
 }
 
 individual_option()
@@ -291,14 +289,16 @@ individual_option()
 
 run_qemu()
 {
-	# stdout:
-	# - [ "$DEBUG" == "true" ] || kvm=("${kvm[@]}" -serial file:${log_file})
-	# - if debug mode: just is the stdio of current terminal shell.
-	# - if not debug mode: will be write to $log_file by qemu param "-serial file:${log_file}"
-	# stderr:
-	# - '2> >(tee -a $log_file >&2)'
-	# - will be write to both current terminal shell and $log_file.
-	"${kvm[@]}" "${arch_option[@]}" --append "${append}" 2> >(tee -a $log_file >&2)
+	if [ "$DEBUG" == "true" ];then
+		"${kvm[@]}" "${arch_option[@]}" --append "${append}"
+	else
+		# The default value of serial in QEMU is stdio.
+		# We use >> and 2>&1 to record serial, stdout, and stderr together to log_file
+		"${kvm[@]}" "${arch_option[@]}" --append "${append}" >> $log_file 2>&1
+	fi
+
+	local return_code=$?
+	[ $return_code -eq 0 ] || echo "[ERROR] qemu start return code is: $return_code" >> $log_file
 }
 
 set_options()
