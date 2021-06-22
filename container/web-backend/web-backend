@@ -162,17 +162,20 @@ end
 #
 # Response like:
 #   - {
-#       "kezhiming": {
-#                       "nr_all": $nr_all,
-#                       "nr_pass": $nr_pass,
-#                       "nr_fail: $nr_fail
-#                     },
-#       "chenqun": {
-#                       "nr_all": $nr_all,
-#                       "nr_pass": $nr_pass,
-#                       "nr_fail": $nr_fail
-#                     },
-#        ...
+#       "filter": {
+#         "suite": "$suite",
+#         "GROUP_BY": "$GROUP_BY"
+#        },
+#       "attributes": ["$group_by", 'nr_all', 'nr_pass', 'nr_fail'],
+#       "objects": [
+#         {
+#           "$group_by": "kezhiming"
+#           "nr_all": $nr_all,
+#           "nr_pass": $nr_pass,
+#           "nr_fail: $nr_fail
+#         },
+#         ...
+#       ]
 #     }
 get '/get_jobs_summary' do
   group_jobs_stats(params)

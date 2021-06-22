@@ -580,8 +580,8 @@ def single_count(stats)
   [fail_count, pass_count, fail_count + pass_count]
 end
 
-def count_stats(job_list)
-  nr_stats = { 'nr_fail' => 0, 'nr_pass' => 0, 'nr_all' => 0 }
+def count_stats(job_list, dimension, dim)
+  nr_stats = { dimension => dim, 'nr_fail' => 0, 'nr_pass' => 0, 'nr_all' => 0 }
   job_list.each do |job|
     next unless job['_source']['stats']
 
@@ -595,12 +595,12 @@ end
 
 def get_jobs_stats_count(dimension, must, size, from)
   dimension_list = get_dimension_list(dimension)
-  stats_count = {}
+  stats_count = []
   dimension_list.each do |dim|
     job_list = query_dimension(dimension[0], dim, must, size, from)
-    stats_count[dim] = count_stats(job_list)
+    stats_count << count_stats(job_list, dimension[0], dim)
   end
-  stats_count.to_json
+  stats_count
 end
 
 def get_stats_by_dimension(conditions, dimension, must, size, from)
@@ -615,7 +615,12 @@ end
 def get_jobs_stats(params)
   dimension, conditions = get_dimension_conditions(params)
   must = get_es_must(params)
-  get_stats_by_dimension(conditions, dimension, must, 1000, 0)
+  objects = get_stats_by_dimension(conditions, dimension, must, 1000, 0)
+  {
+    filter: params,
+    attributes: [ dimension[0], 'nr_all', 'nr_pass', 'nr_fail' ],
+    objects: objects,
+  }.to_json
 end
 
 def group_jobs_stats(params)
