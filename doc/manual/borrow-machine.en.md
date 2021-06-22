@@ -47,7 +47,14 @@ If you have not completed above works, reference to [apply-account.md](https://g
     - And you will receive an email that contains login command and server configuration information.
     - Only within the period of borrowing machine, you can access the textbox with the login command.
 
-## 4. Return testbox
+## 4. renew testbox
+    Login testbox to renew the lease, before testbox expires.
+    get testbox lease:
+        lkp-renew -g
+    renew N days:
+        lkp-renew Nd
+
+## 5. Return testbox
 
     Return manually(recommended):
 
