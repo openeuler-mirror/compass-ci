@@ -54,7 +54,6 @@ class Lifecycle
     jobs.each do |result|
       job_id = result["_id"].to_s
       job = result["_source"].as_h
-      job.delete_if{|key, _| !JOB_KEYWORDS.includes?(key)}
 
       @jobs[job_id] = JSON.parse(job.to_json)
       @match[job["testbox"].to_s] << job_id
@@ -64,7 +63,6 @@ class Lifecycle
     machines.each do |result|
       testbox = result["_id"].to_s
       machine = result["_source"].as_h
-      machine.delete("history")
 
       machine = JSON.parse(machine.to_json)
       @machines[testbox] = machine
@@ -84,7 +82,8 @@ class Lifecycle
 
       msg = {
         "job_id" => id,
-        "job_state" => "abnormal",
+        "job_health" => "abnormal",
+        "job_stage" => "unknow",
         "testbox" => testbox
       }
       @mq.publish_confirm("job_mq", msg.to_json)
@@ -95,9 +94,23 @@ class Lifecycle
   def get_active_jobs
     query = {
       "size" => 10000,
+      "_source" => JOB_KEYWORDS,
       "query" => {
-        "term" => {
-          "job_state" => "boot"
+        "bool" => {
+          "must_not" => [
+            {
+              "terms" => {
+                "job_stage" => ["submit", "finish"]
+              }
+            }
+          ],
+          "must" => [
+            {
+              "exists" => {
+                "field" => "job_stage"
+              }
+            }
+          ]
         }
       }
     }
@@ -107,6 +120,7 @@ class Lifecycle
   def get_active_machines
     query = {
       "size" => 10000,
+      "_source" => TESTBOX_KEYWORDS,
       "query" => {
         "terms" => {
           "state" => ["booting", "running", "rebooting"]
@@ -123,17 +137,15 @@ class Lifecycle
       q = @mq.ch.queue("job_mq", durable: false)
       q.subscribe(no_ack: false) do |msg|
         event = JSON.parse(msg.body_io.to_s)
-        job_state = event["job_state"]?
+        job_stage = event["job_stage"]?
 
-        case job_state
+        case job_stage
         when "boot"
           on_job_boot(event)
-        when "close"
-          on_job_close(event)
-        when "abnormal"
-          on_abnormal_job(event)
-        when "crash"
-          on_job_crash(event)
+        when "finish"
+          on_job_finish(event)
+        when "unknow"
+          on_unknow_job(event)
         else
           on_other_job(event)
         end
@@ -145,6 +157,18 @@ class Lifecycle
         "message" => e.inspect_with_backtrace,
         "event" => event
       }.to_json)
+    end
+  end
+
+  def on_unknow_job(event)
+    job_health = event["job_health"]?
+    case job_health
+    when "crash"
+      on_job_crash(event)
+    when "abnormal"
+      on_abnormal_job(event)
+    else
+      return
     end
   end
 
@@ -183,11 +207,10 @@ class Lifecycle
     else
       job = @es.get_job(job_id)
       return unless job
-      return if JOB_CLOSE_STATE.includes?(job["job_state"]?)
+      return if job["job_stage"]? == "finish"
 
       job = job.dump_to_json_any.as_h
       job.delete_if{|key, _| !JOB_KEYWORDS.includes?(key)}
-      job["job_state"] = event["job_state"]
       @jobs[job_id] = JSON.parse(job.to_json)
     end
   end
@@ -199,7 +222,7 @@ class Lifecycle
     close_job(event_job_id, "abnormal")
   end
 
-  def on_job_close(event)
+  def on_job_finish(event)
     event_job_id = event["job_id"].to_s
     job = @jobs[event_job_id]?
     return unless job
