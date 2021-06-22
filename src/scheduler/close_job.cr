@@ -7,6 +7,7 @@ class Sched
     return unless job_id
 
     @env.set "job_id", job_id
+    @env.set "job_stage", "finish"
 
     job = get_id2job(job_id)
 
@@ -38,14 +39,6 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    source = @env.params.query["source"]?
-    if source != "lifecycle"
-      mq_msg = {
-        "job_id" => @env.get?("job_id").to_s,
-        "job_stage" => "finish",
-        "time" => @env.get?("close_time").to_s
-      }
-      spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
-    end
+    send_mq_msg if @env.params.query["source"]? != "lifecycle"
   end
 end

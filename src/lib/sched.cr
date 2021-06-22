@@ -148,11 +148,25 @@ class Sched
     @log.warn(e.inspect_with_backtrace)
   end
 
-  def send_mq_msg(job_stage)
+  def send_mq_msg
+    job_stage = @env.get?("job_stage").to_s
+    deadline = @env.get?("deadline").to_s
+
+    # the state of the testbox
+    state = @env.get?("state").to_s
+
+    # only need send job_stage info
+    return if job_stage.empty?
+
+    # because when the testbox in the requesting state
+    # there is no deadline
+    # other scenarios must have deadline
+    return if deadline.empty? && state != "requesting"
+
     mq_msg = {
       "job_id" => @env.get?("job_id").to_s,
       "testbox" => @env.get?("testbox").to_s,
-      "deadline" => @env.get?("deadline").to_s,
+      "deadline" => deadline,
       "time" => get_time,
       "job_stage" => job_stage
     }

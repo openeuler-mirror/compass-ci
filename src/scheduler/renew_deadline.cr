@@ -18,7 +18,8 @@ class Sched
     @env.set "testbox", job["testbox"]
     @env.set "job_id", job["id"]
     @env.set "deadline", job["deadline"]
-    send_mq_msg("renew")
+    @env.set "job_stage", "renew"
+    send_mq_msg
 
     return job["deadline"]
   rescue e

@@ -54,15 +54,7 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    job_stage = @env.get?("job_stage").to_s
-    mq_msg = {
-      "job_id" => @env.get?("job_id").to_s,
-      "job_stage" => job_stage,
-      "time" => @env.get?("time").to_s,
-      "deadline" => @env.get?("deadline").to_s
-    }
-    # only need send job_stage info
-    spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json) unless job_stage.empty?
+    send_mq_msg
   end
 
   def update_testbox_time(job_id)

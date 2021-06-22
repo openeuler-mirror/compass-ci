@@ -3,6 +3,8 @@
 
 class Sched
   def find_job_boot
+    @env.set "job_stage", "boot"
+
     value = @env.params.url["value"]
     boot_type = @env.params.url["boot_type"]
 
@@ -20,7 +22,6 @@ class Sched
     response = get_job_boot(host, boot_type)
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     @env.set "job_id", job_id
-    @env.set "job_stage", "boot"
 
     response
   rescue e
@@ -30,7 +31,7 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    send_mq_msg("boot")
+    send_mq_msg
   end
 
   # auto submit a job to collect the host information.
@@ -264,7 +265,8 @@ class Sched
     # because if no job will hang
     # need to update information in a timely manner
     set_lifecycle(nil, host, queues)
-    send_mq_msg("boot")
+    @env.set "state", "requesting"
+    send_mq_msg
 
     job = get_job_from_queues(queues, host)
     set_lifecycle(job, host, queues)
@@ -274,6 +276,7 @@ class Sched
       @env.set "job_id", job["id"]
       @env.set "deadline", job["deadline"]
       @env.set "job_stage", job["job_stage"]
+      @env.set "state", "booting"
       create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
     else
       # for physical machines
