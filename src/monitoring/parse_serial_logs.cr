@@ -89,7 +89,8 @@ class SerialParser
       "job_id" => job_id,
       "testbox" => host,
       "time" => msg["time"]? || Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800"),
-      "job_state" => "crash"
+      "job_stage" => "unknow",
+      "job_health" => "crash"
     }
     spawn mq_publish_check("job_mq", mq_msg.to_json)
   end
