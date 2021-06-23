@@ -4,5 +4,5 @@
 
 public_network_ok()
 {
-	ping -c 1 -w 1 114.114.114.114 >/dev/null 2>&1
+	ping -c 1 -W 10 114.114.114.114 >/dev/null 2>&1
 }
