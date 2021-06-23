@@ -365,7 +365,13 @@ end
 # main thread
 class MirrorMain
   def check_git_repo(git_repo, webhook_url)
-    return @git_info.key?(git_repo) && Array(@git_info[git_repo]['url'])[0] == webhook_url
+    if @git_info.key?(git_repo)
+      git_url = Array(@git_info[git_repo]['url'])[0]
+      return git_url.gsub('compass-ci-robot@', '') == webhook_url if git_url.include?('compass-ci-robot@')
+
+      return git_url == webhook_url
+    end
+    return false
   end
 
   # example
