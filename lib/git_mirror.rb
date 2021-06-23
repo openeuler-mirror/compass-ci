@@ -246,7 +246,7 @@ class MirrorMain
   def load_repo_file(repodir, project, fork_name, belong)
     git_repo = "#{project}/#{fork_name}"
     git_info = YAML.safe_load(File.open(repodir))
-    return if git_info.nil? || git_info['url'].nil?
+    return if git_info.nil? || git_info['url'].nil? || Array(git_info['url'])[0].nil?
 
     return wrong_repo_warn(git_repo) unless git_repo =~ %r{^([a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/\S+){1,2})$}
 
