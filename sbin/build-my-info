@@ -10,11 +10,15 @@ if $PROGRAM_NAME == __FILE__
   option = {
     'my_email' => `git config --global user.email`.chomp,
     'my_name' => `git config --global user.name`.chomp,
-    'lab' => `awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml`.chomp
+    'lab' => `awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml`.chomp,
+    'my_ssh_pubkey' => []
   }
 
+  is_search = false
+
   options = OptionParser.new do |opts|
-    opts.banner = "Usage: build-my-info [-e email] [-n name] [-l lab] [-t]\n"
+    opts.banner = "Usage: build-my-info [-e email] [-n name] [-l lab] [-k pubkey_file] [-t]\n"
+    opts.banner += "       build-my-info [-e email] [-s]\n"
 
     opts.separator ''
     opts.separator 'options:'
@@ -35,6 +39,15 @@ if $PROGRAM_NAME == __FILE__
       option['my_token'] = %x(uuidgen).chomp
     end
 
+    opts.on('-k pubkey_file', 'pubkey_file') do |pubkey_file|
+      my_ssh_pubkey = File.read(pubkey_file).chomp
+      option['my_ssh_pubkey'].insert(0, my_ssh_pubkey)
+    end
+
+    opts.on('-s', 'search my_info') do
+      is_search = true
+    end
+
     opts.on_tail('-h', 'show this message') do
       puts opts
       exit
@@ -43,5 +56,11 @@ if $PROGRAM_NAME == __FILE__
 
   options.parse!
 
-  build_account_info(option)
+  if is_search
+    my_info, = search_account_info(option)
+    puts my_info.to_json
+  else
+    build_account_info(option)
+  end
+
 end
