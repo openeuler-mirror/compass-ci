@@ -38,5 +38,5 @@ if items.empty?
 end
 
 es_jobs = ESJobs.new(items, opt_refine, opt_fields, opt_stats_filter)
-es_jobs.generate_result
-es_jobs.output
+result = es_jobs.generate_result
+es_jobs.output if result
