@@ -33,7 +33,7 @@ cmd = %W[
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/rpm:/srv/rpm
-  -w /c/compass-ci/lib
+  -w /c/compass-ci/sbin
   fedora:update-repodata
 ]
 
