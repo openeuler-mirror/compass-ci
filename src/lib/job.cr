@@ -311,6 +311,12 @@ class Job
     end
   end
 
+  def get_reboot_time
+    type = get_testbox_type
+    return 1200 if type == "physical"
+    return 60
+  end
+
   def get_deadline(stage)
     case stage
     when "boot"
@@ -323,6 +329,8 @@ class Job
       time = 300
     when "manual_check"
       time = 60
+    when "finish"
+      time = get_reboot_time
     else
       return nil
     end
