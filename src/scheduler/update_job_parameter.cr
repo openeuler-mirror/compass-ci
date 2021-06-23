@@ -46,7 +46,7 @@ class Sched
 
     @env.set "log", log.to_json
 
-    update_testbox_time(job_id)
+    update_testbox_info(job)
   rescue e
     @env.response.status_code = 500
     @log.warn({
@@ -57,10 +57,13 @@ class Sched
     send_mq_msg
   end
 
-  def update_testbox_time(job_id)
-    job = get_id2job(job_id)
+  def update_testbox_info(job)
     testbox = job["testbox"]
+    deadline = @env.get?("deadline")
+
     hash = {"time" => @env.get?("time").to_s}
+    hash["deadline"] = deadline.to_s if deadline
+
     @es.update_tbox(testbox, hash)
   end
 end

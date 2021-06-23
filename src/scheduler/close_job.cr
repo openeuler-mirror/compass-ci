@@ -24,6 +24,10 @@ class Sched
     job.set_time("close_time")
     @env.set "close_time", job["close_time"]
 
+    deadline = job.get_deadline("finish")
+    @env.set "deadline", deadline
+    @es.update_tbox(job["testbox"].to_s, {"deadline" => deadline})
+
     response = @es.set_job_content(job)
     if response["_id"] == nil
       # es update fail, raise exception
