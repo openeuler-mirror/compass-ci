@@ -4,5 +4,6 @@
 
 public_network_ok()
 {
-	ping -c 1 -W 10 114.114.114.114 >/dev/null 2>&1
+	ping -c 1 -W 10 114.114.114.114 >/dev/null 2>&1 ||
+		curl -k -s -m 10 --retry-delay 2 --retry 5 https://compass-ci.openeuler.org/ -o /dev/null
 }
