@@ -26,10 +26,10 @@ hi8109@account-vm ~% submit iperf.yaml testbox=vm-2p8g
 submit iperf.yaml, got job_id=z9.173924
 ```
 
-testbox 字段的值指定需要的测试机，可以使用 `ll` 命令查看 `lkp-tests/hosts` 路径下的可选测试机。如下所示：
+testbox 字段的值指定需要的测试机，可以使用 `ls -l` 命令查看 `lab-z9/hosts` 路径下的可选测试机。如下所示：
 
 ```shell
-hi8109@account-vm ~/lkp-tests/hosts% ll
+hi8109@account-vm ~/lab-z9/hosts% ls -l
 total 120K
 -rw-r--r--. 1 root root  76 2020-11-02 14:54 vm-snb
 -rw-r--r--. 1 root root  64 2020-11-02 14:54 vm-pxe-hi1620-2p8g
@@ -84,7 +84,10 @@ options:
     -s, --set 'KEY: VALUE'           add YAML hash to job
     -o, --output DIR                 save job yaml to DIR/
     -a, --auto-define-files          auto add define_files
+    -i, --include include.yaml       include other job yamls
     -c, --connect                    auto connect to the host
+    -r, --result                     mirror job result dir
+    -n, --number job_number          number to submit job
     -m, --monitor                    monitor job status: use -m 'KEY: VALUE' to add rule
         --my-queue                   add to my queue
 ```
@@ -124,6 +127,35 @@ options:
     $program 的值是 $suite ， $suite-dev ， $suite.aarch64 或 $suite.x86_64 。
     当 suite 为 makepkg ， makepkg-deps ， pack-deps ， cci-makepkg 或 cci-depends 时，$program = $benchmark 。
     ```
+
+* **-i的用法**
+
+    使用 -i include.yaml 参数可以将其他 yaml 文件中的键值对更新到提交的任务当中。示例如下所示：
+    ```
+    submit iperf.yaml -i ~/lkp-tests/jobs/ssh-on-fail.yaml testbox=vm-2p8g
+    ```
+
+
+    * 最终提交的iperf任务中将会加上 ssh-on-fail.yaml 中的键值对。
+
+* **-n的用法**
+
+    使用 -n 参数可以指定目标任务的提交次数。示例如下所示：
+    ```
+    submit iperf.yaml testbox=vm-2p8g -n 3
+    ```
+
+    控制台显示如下：
+
+    ```shell
+    hi8109@account-vm ~% submit iperf.yaml testbox=vm-2p8g -n 3
+    submit_id=4357d057-7854-4ae6-a392-27ea2c3c639b
+    submit iperf.yaml, got job id=z9.2563524
+    submit iperf.yaml, got job id=z9.2563525
+    submit iperf.yaml, got job id=z9.2563526
+    ```
+
+    * 一键提交三个 iperf 任务。
 
 * **-m的用法**
 
@@ -205,3 +237,30 @@ options:
 
     已经成功登陆执行机。
 
+* **-r的用法**
+
+    -r 参数需要搭配 -m 参数来使用，可以获取测试结果到本地。
+
+    示例命令如下：
+
+    ```
+    submit -m -r rpmbuild.yaml testbox=vm-2p8g
+    ```
+    当我们提交一个任务后，会获取到该任务的状态信息，添加 -r 参数之后就会在当前目录下生成一个以 job_id 命名的文件夹, 文件夹中存放着完整详细的测试结果数据。
+
+    控制台显示如下：
+
+    ```shell
+    hi8109@account-vm ~% submit -m -r rpmbuild.yaml testbox=vm-2p8g
+    submit_id=4656eccc-68e2-4a14-817c-4efe3a2b5440
+    submit rpmbuild.yaml, got job id=z9.2563521
+    query=>{"job_id":["z9.2563521"]}
+    connect to ws://172.168.131.113:20001/filter
+    {"level_num":2,"level":"INFO","time":"2021-06-22T23:11:27.794+0800","from":"172.17.0.1:56104","message":"access_record","status_code":200,"method":"GET","resource":"/boot.ipxe/mac/0a-70-46-e4-44-c5","testbox":"vm-2p8g","elapsed_time":4270.4326,"elapsed":"4270.43ms","job_id":"z9.2563521"}
+
+    The vm-2p8g testbox is starting. Please wait about 3 minutes
+    {"level_num":2,"level":"INFO","time":"2021-06-22T23:13:00+0800","mac":"0a-70-46-e4-44-c5","ip":"172.18.96.168","job_id":"z9.2563521","state":"rebooting","testbox":"vm-2p8g","status_code":200,"method":"GET","resource":"/~lkp/cgi-bin/lkp-wtmp?tbox_name=vm-2p8g&tbox_state=rebooting&mac=0a-70-46-e4-44-c5&ip=172.18.96.168&job_id=z9.2563521","elapsed_time":599.538024,"elapsed":"599.54ms"}
+    {"level_num":2,"level":"INFO","time":"2021-06-22T23:13:02.461+0800","job_id":"z9.2563521","job_state":"extract_finished"}
+    connection closed:
+
+   ```
