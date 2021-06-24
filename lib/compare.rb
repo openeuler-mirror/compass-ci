@@ -97,7 +97,7 @@ end
 #        os_arch:
 #                - aarch64
 #                - x86
-#   compare_dimensions:
+#   dimensions:
 #        - os: debian
 #          os_version: sid
 #        - os: openeuler
@@ -132,7 +132,7 @@ end
 #     {"suite"=>["fio-bisic"]},
 #     {"os_arch"=>["aarch_64"]}
 #   ],
-#   "compare_dimensions"=>[
+#   "dimensions"=>[
 #     {"os"=>"openeuler", "os_version"=>20.03},
 #     {"os"=>"centos", "os_version"=>7.6}
 #   ],
@@ -146,7 +146,7 @@ def create_groups_matrices(template_params)
   Matrix.combine_group_jobs_list(
     query_results,
     template_params['x_params'],
-    template_params['compare_dimensions'],
+    template_params['dimensions'],
     template_params['compare_metrics']
   )
 end

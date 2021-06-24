@@ -41,7 +41,7 @@ class FormatEchartData
     @data_set[metric] = {}
     metric_value.each do |value_type, values| # value_type can be: average, standard_deviation, change
       @data_set[metric][value_type] = {
-        'dimensions' => ['compare_dimension']
+        'dimensions' => ['dimensions']
       }
 
       dimension_list = values.keys.sort

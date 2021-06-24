@@ -88,7 +88,7 @@ end
 #           "suite": ["fio-basic"],
 #           "os_arch": ["aarch64", "x86"]
 #         },
-#       "compare_dimensions": [
+#       "dimensions": [
 #           {
 #             "os": "debian",
 #             "os_version": "sid"
