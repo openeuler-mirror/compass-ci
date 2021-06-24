@@ -99,15 +99,13 @@ end
 #           }
 #         ],
 #       "x_params": ["bs", "test_size"],
-#       "title": "Hackbench Performance Testing",
-#       "unit": "KB/s"
 #     }
 #
 # Response:
 #   - compare result
-post '/compare_template' do
+post '/performance_result' do
   request.body.rewind # in case someone already read it
-  compare_template(request.body.read)
+  perfmance_result(request.body.read)
 end
 
 # GET /get_testboxes

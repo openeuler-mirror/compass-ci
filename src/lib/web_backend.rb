@@ -457,9 +457,9 @@ def get_repos(params)
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
 
-def compare_template(data)
+def perfmance_result(data)
   begin
-    body = template_body(JSON.parse(data))
+    body = result_body(JSON.parse(data))
   rescue StandardError => e
     warn e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'compare error']
@@ -467,11 +467,11 @@ def compare_template(data)
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
 
-def template_body(request_body)
+def result_body(request_body)
   groups_matrices = create_groups_matrices(request_body)
-  compare_results = compare_metrics_values(groups_matrices)
-  formatter = FormatEchartData.new(compare_results, request_body)
-  formatter.format_for_echart.to_json
+  compare_results, dims = compare_metrics_values(groups_matrices)
+  formatter = FormatEchartData.new(compare_results, request_body, dims)
+  formatter.format_echart_data.to_json
 end
 
 def search_testboxes

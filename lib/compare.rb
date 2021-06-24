@@ -112,7 +112,7 @@ end
 def compare_by_template(template, options)
   template_params = load_template(template)
   groups_matrices = create_groups_matrices(template_params)
-  compare_results = compare_metrics_values(groups_matrices)
+  compare_results, _ = compare_metrics_values(groups_matrices)
   show_compare_result(compare_results, template_params, options)
 end
 

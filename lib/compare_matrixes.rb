@@ -462,11 +462,13 @@ end
 # }
 def compare_metrics_values(groups_matrices)
   metrics_compare_values = {}
+  dims = Set.new
   groups_matrices.each do |group_key, dimensions|
+    dims += dimensions.keys
     metrics_compare_values[group_key] = get_metric_values(dimensions)
   end
 
-  metrics_compare_values
+  return metrics_compare_values, dims
 end
 
 def get_metric_values(dimensions)

@@ -8,9 +8,10 @@ require 'terminal-table'
 # format compare results for a specific format
 #
 class FormatEchartData
-  def initialize(metrics_compare_results, template_params)
-    @metrics_compare_results = metrics_compare_results
+  def initialize(compare_results, template_params, dims = {})
+    @compare_results = compare_results
     @template_params = template_params
+    @dims = dims
     @data_set = {}
   end
 
@@ -26,8 +27,8 @@ class FormatEchartData
   end
 
   def convert_to_echart_dataset
-    @x_params = sort_x_params(@metrics_compare_results.keys)
-    @metrics_compare_results.each_value do |metrics_values|
+    @x_params = sort_x_params(@compare_results.keys)
+    @compare_results.each_value do |metrics_values|
       metrics_values.each do |metric, metric_value|
         assign_echart_data_set(metric, metric_value)
       end
@@ -55,8 +56,8 @@ class FormatEchartData
     dimensions.each do |dimension|
       dimension_values = [dimension]
       @x_params.each do |x_param|
-        if @metrics_compare_results[x_param][metric] && @metrics_compare_results[x_param][metric][value_type]
-          dimension_values << @metrics_compare_results[x_param][metric][value_type][dimension]
+        if @compare_results[x_param][metric] && @compare_results[x_param][metric][value_type]
+          dimension_values << @compare_results[x_param][metric][value_type][dimension]
         else
           source[0].delete(x_param)
         end
@@ -65,6 +66,80 @@ class FormatEchartData
     end
 
     source
+  end
+
+  # -------------------------------------------------------------------------------------------------
+  # format data for api
+  # output:
+  # [
+  #   {
+  #     "title": "iperf.tcp.sender.bps",
+  #     "datas": [
+  #       {
+  #         "name": "openeuler",
+  #         "data": [22690569006.73847, 26416908414.62344, ...]
+  #         "deviation": [15.41451513296539, 22.716525982147182, ...],
+  #         "x_params": [ "10", "20", ...]
+  #       },
+  #       {...},
+  #     ]
+  #   },
+  #   ...
+  # ]
+  # -------------------------------------------------------------------------------------------------
+  def format_echart_data
+    # kv[0]: x_param
+    # kv[1]: metrics_vaules
+    sort_compare_result(@compare_results).each do |kv|
+      kv[1].each do |metric, values|
+        @data_set[metric] ||= {}
+        @data_set[metric]['title'] = metric
+        @data_set[metric]['datas'] ||= {}
+        assign_datas(kv[0], metric)
+      end
+    end
+
+    convert_echart_line_data
+  end
+
+  def assign_datas(x_param, metric)
+    @dims.each do |dim|
+      @data_set[metric]['datas'][dim] ||= {}
+      @data_set[metric]['datas'][dim]['name'] = dim
+      @data_set[metric]['datas'][dim]['data'] ||= []
+      @data_set[metric]['datas'][dim]['deviation'] ||= []
+      @data_set[metric]['datas'][dim]['x_params'] ||= []
+
+      @data_set[metric]['datas'][dim]['x_params'] << x_param
+      @data_set[metric]['datas'][dim]['data'] << assign_data(x_param, metric, 'average', dim)
+      @data_set[metric]['datas'][dim]['deviation'] << assign_data(x_param, metric, 'standard_deviation', dim)
+    end
+  end
+
+  def assign_data(x_param, metric, type, dim)
+    return 0 unless @compare_results[x_param].key?(metric)
+    return 0 unless @compare_results[x_param][metric][type].key?(dim)
+    return @compare_results[x_param][metric][type][dim]
+  end
+
+  def convert_echart_line_data
+    echart_data = []
+    @data_set.each_value do |metric_values|
+      datas = {}
+      metric_values.each do |key, value|
+        if key != 'datas'
+          datas.merge!({key => value})
+          next
+        end
+        datas[key] = []
+        value.each_value do |v|
+          datas[key] << v
+        end
+      end
+      echart_data << datas
+    end
+
+    echart_data
   end
 end
 
