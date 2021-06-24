@@ -175,3 +175,47 @@ def sort_x_params(x_params_list)
 
   x_params_hash.sort.map { |h| h[1] }
 end
+
+def numeric?(item)
+  Float(item)
+rescue
+  nil
+end
+
+def score(item)
+  score = 0
+  return item.to_f*0.1 if numeric?(item)
+
+  items = item.split('|')
+  mutil = 1
+  items.each do |i|
+    v = i.sub(/[a-zA-Z]+/, '')
+    if v.empty?
+      return item
+    else
+      score += v.to_f * mutil
+    end
+    mutil *= 10
+  end
+
+  score
+end
+
+# sort Hash(compare_result) by key
+# input like:
+# {
+#   "1G|4K" => {...},
+#   "1G|1024k" => {...},
+#   "1G|128k" => {...},
+#   "2G|4k" => {...}
+# }
+# output:
+# [
+#  ["1G|4K", {...}],
+#  ["1G|128k", {...}],
+#  ["1G|1024k", {...}],
+#  ["2G|4k", {...}]
+# ]
+def sort_compare_result(compare_result)
+  compare_result.sort{|a, b| score(a[0]) <=> score(b[0])}
+end
