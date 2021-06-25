@@ -120,15 +120,18 @@ class Sched
   end
 
   def consume_by_list(queues)
-    jobs, revision = get_history_jobs(queues)
-    email_jobs = split_jobs_by_email(jobs)
     loop do
-      return nil, revision if email_jobs.empty?
+      jobs, revision = get_history_jobs(queues)
+      email_jobs = split_jobs_by_email(jobs)
 
-      job = pop_job_by_priority(email_jobs)
-      return nil, revision unless job
+      loop do
+        return nil, revision if email_jobs.empty?
 
-      return job, revision if ready2process(job)
+        job = pop_job_by_priority(email_jobs)
+        return nil, revision unless job
+
+        return job, revision if ready2process(job)
+      end
     end
   end
 
@@ -167,7 +170,7 @@ class Sched
     ec = EtcdClient.new
     jobs = [] of Etcd::Model::Kv
     queues.each do |queue|
-      job = ec.range_prefix(queue)
+      job = ec.range_prefix(queue, ETCD_RANGE_SIZE)
       revisions << job.header.not_nil!.revision
       jobs += job.kvs
     end

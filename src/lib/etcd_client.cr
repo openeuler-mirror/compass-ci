@@ -27,14 +27,33 @@ class EtcdClient
     @etcd.kv.delete(queue)
   end
 
-  def range(queue)
-    queue = "#{BASE}/#{queue}" unless queue.starts_with?(BASE)
-    @etcd.kv.range(queue)
+  # reference the range of etcd kv src, add the limit function
+  def range(key, range_end : String? = nil, limit : Int32 = 0_i32, base64_keys : Bool = true)
+    if base64_keys
+      key = "#{BASE}/#{key}" unless key.starts_with?(BASE)
+      key = Base64.strict_encode(key)
+      if range_end
+        range_end = "#{BASE}/#{range_end}" unless range_end.starts_with?(BASE)
+        range_end = Base64.strict_encode(range_end)
+      end
+    end
+
+    post_body = {
+      :key       => key,
+      :range_end => range_end,
+      :limit     => limit,
+    }.compact
+    response = @etcd.api.post("/kv/range", post_body)
+
+    Etcd::Model::RangeResponse.from_json(response.body)
   end
 
-  def range_prefix(prefix)
+  # reference the range_prefix of etcd kv src, add the limit function
+  def range_prefix(prefix, limit : Int32 = 0_i32)
     prefix = "#{BASE}/#{prefix}" unless prefix.starts_with?(BASE)
-    @etcd.kv.range_prefix(prefix)
+    encoded_prefix = Base64.strict_encode(prefix)
+    range_end = @etcd.kv.prefix_range_end encoded_prefix
+    range(encoded_prefix, range_end, limit, false)
   end
 
   def update(queue, value)
@@ -68,16 +87,16 @@ class EtcdClient
     value = Base64.strict_encode(value)
     post_body = {
       :compare => [{
-        :key => key,
+        :key     => key,
         :version => "#{version}",
-        :target => "VERSION",
-        :result => "EQUAL",
+        :target  => "VERSION",
+        :result  => "EQUAL",
       }],
-      :success =>[{
-        :request_put =>{
-          :key => key,
+      :success => [{
+        :request_put => {
+          :key   => key,
           :value => value,
-        }
+        },
       }],
     }
 
@@ -85,4 +104,3 @@ class EtcdClient
     Etcd::Model::TxnResponse.from_json(response.body).succeeded
   end
 end
-
