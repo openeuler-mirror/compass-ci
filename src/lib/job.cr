@@ -328,7 +328,7 @@ class Job
     when "post_run"
       time = 300
     when "manual_check"
-      time = 60
+      time = 36000
     when "finish"
       time = get_reboot_time
     else
