@@ -355,13 +355,13 @@ class Lifecycle
     return deadline, dead_machine_name
   end
 
-  def close_job(job_id, reason)
+  def close_job(job_id, job_health)
     @jobs.delete(job_id)
-    spawn @scheduler_api.close_job(job_id, reason, "lifecycle")
+    spawn @scheduler_api.close_job(job_id, job_health: job_health, source: "lifecycle")
     @log.info({
       "job_id" => job_id,
       "state" => "close",
-      "reason" => reason,
+      "job_health" => job_health,
       "type" => "job"
     }.to_json)
   end
