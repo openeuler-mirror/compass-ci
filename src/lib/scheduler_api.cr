@@ -10,9 +10,10 @@ class SchedulerAPI
     @host = ENV.has_key?("SCHED_HOST") ? ENV["SCHED_HOST"] : "172.17.0.1"
   end
 
-  def close_job(job_id, job_state = nil, source=nil)
+  def close_job(job_id, job_state = nil, source = nil, job_health = nil)
     url = "/~lkp/cgi-bin/lkp-post-run?job_id=#{job_id}&source=#{source}"
     url += "&job_state=#{job_state}" if job_state
+    url += "&job_health=#{job_health}" if job_health
     client = HTTP::Client.new(@host, port: @port)
     response = client.get(url)
     client.close()
