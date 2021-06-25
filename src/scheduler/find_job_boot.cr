@@ -275,6 +275,7 @@ class Sched
     set_lifecycle(job, host, queues)
 
     if job
+      job["last_success_stage"] = "boot"
       @es.set_job_content(job)
       @env.set "job_id", job["id"]
       @env.set "deadline", job["deadline"]

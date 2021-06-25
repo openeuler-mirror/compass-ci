@@ -28,6 +28,7 @@ class Sched
 
       if JOB_STAGES.includes?(value)
         job_content["job_stage"] = value
+        job["last_success_stage"] = value
         @env.set "job_stage", value
         @env.set "deadline", job.set_deadline(value).to_s
       else
@@ -46,6 +47,7 @@ class Sched
 
     @env.set "log", log.to_json
 
+    @es.set_job_content(job)
     update_testbox_info(job)
   rescue e
     @env.response.status_code = 500
