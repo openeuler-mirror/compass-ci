@@ -119,3 +119,62 @@ client:    wait start   get roles info ----------------- wait ready     run test
 但是当调度器接收到与之相关的请求时, 会阻塞(或循环)查询这些机器状态的请求, 因此只
 会返回`start`、`ready`、`finish`或`abort`。所以不会触发循环100次请求这个过程, 因
 此不会报告`abort`这个状态.
+
+## 多机测试实际操作
+
+###  环境准备
+
+1. 准备提交的yaml文件，以iperf.yaml为例,
+
+	```
+	suite: iperf
+	category: benchmark
+	initrams: cifs
+
+	cluster: cs-s1-a122-c2    # 集群节点配置文件，需要放在lkp-tests/cluster/cs-s1-a122-c2下
+
+	if role server:      	  # server需要执行的用例，需要准备用例脚本：lkp-tests/daemon/iperf-server
+	   iperf-server:
+
+	if role client:		  # client需要执行的用例，需要准备用例脚本：lkp-tests/tests/iperf
+	   iperf:
+		protocol:
+		- tcp
+```
+
+
+
+2.  准备集群节点配置文件，lkp-tests/cluster/cs-s1-a122-c2
+
+```
+ip0: 1						 # 物理机多机测试时需配置，表示配置ip的偏移量，可以使用默认1
+nodes:
+    vm-2p32g-multi-node--1:    			 # server执行任务队列名，进入vm-2p32g-multi-node的任务队列执行
+	roles: [ server ]		 		 # node角色
+	macs: [ "00:00:00:00:00:00" ]  			 # 物理机多机测试时需配置，需要指定具体mac配置ip
+    vm-2p32g-multi-node--2:	 			 # client执行任务队列名，进入vm-2p32g-multi-node的任务队列执行
+	roles: [ client ]        			 # node角色
+	macs: [ "00:00:00:00:00:00" ]   		 # 物理机多机测试时需配置，需要指定具体mac配置ip
+```
+
+> vm-2p32g-multi-node--1 后面的“--[0-9]”是队列编号，使不同node使用可以相同队列，真正的执行队列是vm-2p32g-multi-node
+
+>目前使用虚拟机测试时只可以使用vm-2p32g-multi-node和vm-2p16g-multi-node两个队列。
+>
+>物理机测试时使用multi-node任务队列
+
+>物理机的mac地址可在/c/lab-z9/hosts下查看
+
+3. 编写测试脚本，多机测试需要用到不同的node的ip，编写测试测试用例的时候需要自行执行连接的ip。
+
+其ip已被export进环境变量，脚本的可执行使用。其变量名为 "direct\_${server}\_ips" , ${server} 为集群配置文件里的roles。
+
+
+
+### 提交任务
+
+上述环境准备好之后，提交任务即可。testbox为vm-2p32g或者vm-2p16g
+
+```
+submit -m -c iperf.yaml testbox=vm-2p32g
+```
