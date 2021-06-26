@@ -119,7 +119,7 @@ module Matrix
   #                 group2_key => {...}
   #                 ...
   #               }
-  def self.combine_group_query_data(job_list, dims, options)
+  def self.combine_group_query_data(job_list, dims, options = {})
     @fields = options[:fields]
     suites_hash = {}
     latest_jobs_hash = {}
