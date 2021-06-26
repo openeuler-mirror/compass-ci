@@ -149,7 +149,7 @@ add_disk()
 		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index}"
 		((index++))
 
-		qemu-img create -q -f qcow2 "${qcow2_file}" 512G
+		[ -f "$qcow2_file" ] || qemu-img create -q -f qcow2 "${qcow2_file}" 512G
 		kvm+=(-drive ${drive})
 	done
 }
