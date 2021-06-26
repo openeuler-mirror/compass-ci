@@ -11,11 +11,6 @@ require 'set'
 
 UNSTRUCTURED_MONITORS = %w[ftrace].to_set
 
-def warn_stat(msg, monitor)
-  log_warn msg
-  log_warn "check #{RESULT_ROOT}/#{monitor}"
-end
-
 # dump stat which input by lkp-tests/stats/$script return
 # input:
 #   eg-1:
@@ -44,7 +39,7 @@ module DumpStat
 
       if key =~ /[ \t]/
         @invalid_records.push @record_index
-        warn_stat "whitespace in stats name: #{key}", @monitor
+        log_warn "whitespace in stats name: #{key}, check #{RESULT_ROOT}/#{@monitor}"
         return nil # for exit current stats/script dump-stat
       end
       next if assign_log_message(key, value)
