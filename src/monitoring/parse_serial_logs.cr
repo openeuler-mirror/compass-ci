@@ -42,10 +42,7 @@ class SerialParser
   ]
 
   CRASH_PATTERNS = [
-    "mount.nfs: Connection timed out",
-    "No space left on device",
     "Kernel panic - not syncing: ",
-    "has not responded in 120 seconds. Reconnecting...",
   ]
 
   def initialize
