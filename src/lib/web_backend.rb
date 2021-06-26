@@ -457,7 +457,7 @@ def get_repos(params)
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
 
-def perfmance_result(data)
+def performance_result(data)
   begin
     body = result_body(JSON.parse(data))
   rescue StandardError => e

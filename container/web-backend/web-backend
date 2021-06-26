@@ -105,7 +105,7 @@ end
 #   - compare result
 post '/performance_result' do
   request.body.rewind # in case someone already read it
-  perfmance_result(request.body.read)
+  performance_result(request.body.read)
 end
 
 # GET /get_testboxes
