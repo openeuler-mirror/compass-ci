@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Log Error</title>
+</head>
+
+<body onload="onload()">
+
+    <h1 style="text-align:center">Compass-ci top log errors</h1>
+    <hr>
+    <div style="width:90%;margin:auto">
+	<label>total lines : </label>
+	<label id="lines">0</label>
+        <table id="logerr" style="width:100%;" border="1">
+            <th width=15%>first_date</th>
+            <th width=10%>service</th>
+            <th width=5%>count</th>
+            <th>error_message</th>
+        </table>
+    </div>
+
+</body>
+<script>
+    function getdata() {
+        var ajax = new XMLHttpRequest();
+        ajax.open("post", "/active_service_error_log");
+        ajax.send();
+        ajax.onreadystatechange = function () {
+            if (ajax.readyState == 4 && ajax.status == 200) {
+                var data = JSON.parse(ajax.responseText);
+		document.getElementById('lines').innerText = data.total;
+                showData(data.data, 'logerr');
+            }
+        }
+    };
+
+    function showData(data, tbid) {
+        for (var i = 0; i < data.length; i++) {
+            var tr = document.createElement('tr');
+            document.getElementById(tbid).appendChild(tr);
+
+            var td = document.createElement('td');
+            tr.appendChild(td);
+            td.style.textAlign = 'center';
+            td.innerText = data[i].first_date;
+
+            var td = document.createElement('td');
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            td.innerText = data[i].service;
+
+            var td = document.createElement('td');
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            td.innerText = data[i].count;
+
+            var td = document.createElement('td');
+            tr.appendChild(td);
+            td.innerText = data[i].error_message;
+        }
+    };
+
+    function onload() {
+        getdata();
+    };
+</script>
+
+</html>
