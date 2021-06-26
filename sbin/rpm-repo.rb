@@ -5,8 +5,8 @@
 
 require 'fileutils'
 require 'json'
-require '../lib/mq_client'
-require_relative 'json_logger.rb'
+require_relative '../lib/mq_client'
+require_relative '../lib/json_logger.rb'
 
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
