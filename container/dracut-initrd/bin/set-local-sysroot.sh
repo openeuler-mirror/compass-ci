@@ -108,39 +108,44 @@ set_sysroot() {
     mount "$boot_lv" "$NEWROOT"
 }
 
+handle_lvm()
+{
+    analyse_kernel_cmdline_params
+
+    sed -i "s/^locking_type = .*/locking_type = 1/" /etc/lvm/lvm.conf
+
+    src_lv_size="$(getarg src_lv_size)"
+    src_lv_size=${src_lv_size:="10G"}
+    use_root_partition="$(getarg use_root_partition=)"
+    if [ -z "$use_root_partition" ]; then
+        src_lv="/dev/mapper/os-${os_info}_$timestamp"
+        sync_src_lv "$src_lv"
+    else
+        src_lv="$use_root_partition"
+        [ -e "$src_lv" ] || reboot_with_msg "warn dracut: FATAL: no src_lv with local mount"
+    fi
+
+    save_root_partition="$(getarg save_root_partition=)"
+    if [ -z "$save_root_partition" ]; then
+        boot_lv="/dev/mapper/os-${os_info}"
+    else
+        boot_lv="$save_root_partition"
+    fi
+
+    snapshot_boot_lv "$src_lv" "$boot_lv"
+
+    set_sysroot "$boot_lv"
+
+    [ "$CCI_NO_SUNRPC" == "true" ] && {
+        umount /var/lib/nfs/rpc_pipefs
+        rmmod nfsv4 nfs rpcsec_gss_krb5 auth_rpcgss lockd sunrpc
+    }
+}
+
 if ! getargbool 0 local; then
     exit 0
 fi
 
-analyse_kernel_cmdline_params
-
-sed -i "s/^locking_type = .*/locking_type = 1/" /etc/lvm/lvm.conf
-
-src_lv_size="$(getarg src_lv_size)"
-src_lv_size=${src_lv_size:="10G"}
-use_root_partition="$(getarg use_root_partition=)"
-if [ -z "$use_root_partition" ]; then
-    src_lv="/dev/mapper/os-${os_info}_$timestamp"
-    sync_src_lv "$src_lv"
-else
-    src_lv="$use_root_partition"
-    [ -e "$src_lv" ] || reboot_with_msg "warn dracut: FATAL: no src_lv with local mount"
-fi
-
-save_root_partition="$(getarg save_root_partition=)"
-if [ -z "$save_root_partition" ]; then
-    boot_lv="/dev/mapper/os-${os_info}"
-else
-    boot_lv="$save_root_partition"
-fi
-
-snapshot_boot_lv "$src_lv" "$boot_lv"
-
-set_sysroot "$boot_lv"
-
-[ "$CCI_NO_SUNRPC" == "true" ] && {
-	umount /var/lib/nfs/rpc_pipefs
-	rmmod nfsv4 nfs rpcsec_gss_krb5 auth_rpcgss lockd sunrpc
-}
+handle_lvm
 
 exit 0
