@@ -186,6 +186,7 @@ class Sched
   def set_lifecycle(job, testbox, queues)
     if job
       deadline = job.set_deadline("boot")
+      job["job_state"] = "boot"
       job["job_stage"] = "boot"
       state = "booting"
       job_id = job["id"]
