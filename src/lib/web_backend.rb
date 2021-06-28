@@ -15,6 +15,7 @@ require "#{CCI_SRC}/lib/es_query.rb"
 require "#{CCI_SRC}/lib/matrix2.rb"
 require "#{CCI_SRC}/lib/params_group.rb"
 require "#{CCI_SRC}/lib/compare_data_format.rb"
+require_relative './job_error.rb'
 
 UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
 
@@ -38,6 +39,7 @@ PREFIX_SEARCH_FIELDS = ['tbox_group'].freeze
 ES_CLIENT = Elasticsearch::Client.new(hosts: ES_HOSTS)
 LOGGING_ES_CLIENT = Elasticsearch::Client.new(hosts: LOGGING_ES_HOSTS)
 COMPARE_RECORDS_NUMBER = 100
+FIVE_DAYS_SECOND = 3600 * 24 * 5
 
 def es_query(query)
   ES_CLIENT.search index: 'jobs*', body: query
@@ -769,4 +771,52 @@ def get_active_testbox
   end
 
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), result]
+end
+
+# ---------------------------------------------------------------------------------------------------------
+# active-stderr, we will use the response create table like:
+#  total | first date | relevant-links(link) | error_message
+#  16    | 2021-6-15  | job_ids              | stderr.Dload_Upload_Total_Spent_Left_Speed
+#  15    | 2021-6-15  | job_ids              | stderr.Can_not_find_perf_command
+#  ...
+# ---------------------------------------------------------------------------------------------------------
+def active_stderr
+  begin
+    body = active_stderr_body
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get active-stderr error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+def active_stderr_body
+  now = Time.now  # like: 2021-06-23 17:21:55 +0800
+  query_result = es_query(five_days_query(now))['hits']['hits']
+  job_list = extract_jobs_list(query_result)
+
+  # get today jobs error
+  job_error = JobError.new(job_list, now)
+  jobs_errors = job_error.active_error
+
+  {
+    'total' => jobs_errors.size,
+    'cols' => ['count', 'first_date', 'relevant-links', 'error_message'],
+    'data' => jobs_errors
+  }.to_json
+end
+
+def five_days_query(now)
+  d5 = now - FIVE_DAYS_SECOND
+
+  {:query => {
+      :bool => {
+        :must => [{:range => {
+          "start_time" => {:gte => d5.strftime("%Y-%m-%d %H:%M:%S"), :lte => now.strftime("%Y-%m-%d %H:%M:%S")}
+        }}]
+      }
+    },
+    :size => 10000,
+    :sort => [{"start_time" => {:order=>"desc"}}]
+  }
 end

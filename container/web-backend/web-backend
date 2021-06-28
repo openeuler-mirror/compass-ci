@@ -230,3 +230,24 @@ end
 post '/active_service_error_log' do
   active_service_error_log
 end
+
+# POST /active_stderr
+# - header: "Content-Type: Application/json"
+# - body: json # just a empty {}
+# - output:
+# {
+#   "total":74,
+#   "cols":["count","first_date","relevant-links","error_message"],
+#   "data":[
+#     {
+#       "count":43,
+#       "first_date":"2021-06-22",
+#       "relevant-links":"https://compass-ci.openeuler.org/jobs?id=z9.2589771",
+#       "error_message":"stderr.Can_not_find_perf_command"
+#     },
+#     ...
+#   ]
+# }
+post '/active_stderr' do
+  active_stderr
+end
