@@ -6,7 +6,7 @@
 # How to use:
 #   cmd: t-show
 
-require '../src/lib/service_logs/service_logs'
+require_relative '../src/lib/service_logs/service_logs'
 require 'terminal-table'
 require 'json'
 
