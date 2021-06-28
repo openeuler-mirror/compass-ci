@@ -703,6 +703,18 @@ class Job
     @hash["initrds_uri"] = JSON::Any.new(initrds_uri_values)
   end
 
+  def append_initrd_uri(initrd_uri)
+    if "#{os_mount}" == "initramfs"
+      temp = @hash["initrds_uri"].as_a
+      temp << JSON::Any.new(initrd_uri)
+      self["initrds_uri"] = JSON::Any.new(temp)
+    end
+
+    temp = @hash["initrd_deps"].as_a
+    temp << JSON::Any.new(initrd_uri)
+    self["initrd_deps"] = temp
+  end
+
   private def set_user_lkp_src
     lkp_arch_cgz = "#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz"
     raise "The #{lkp_arch_cgz} does not exist." unless File.exists?(lkp_arch_cgz)
