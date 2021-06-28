@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+# How to use:
+#   cmd: t-show
+
+require '../src/lib/service_logs/service_logs'
+require 'terminal-table'
+require 'json'
+
+class TerminalShow
+  def initialize
+    @head = []
+    @rows = []
+  end
+
+  def init
+    begin
+      response = JSON.parse(Serviceslogs.new.active_service_logs)
+    rescue StandardError => e
+      e.message
+    end
+
+    @head = response['cols']
+    response['data'].each do |item|
+      msg = item['error_message']
+      msg = msg[0, 100] if msg.size > 100
+      @rows << [item['first_date'], item['service'], item['count'], msg]
+    end
+  end
+
+  def show_table
+    Terminal::Table::Style.defaults = { border: :unicode_round }
+    table = Terminal::Table.new do |t|
+      t.title = 'Compass-ci Services'
+      t.headings = @head
+      t.rows = @rows
+      t.style = { all_separators: true }
+    end
+    puts table
+  end
+end
+
+t = TerminalShow.new
+t.init
+t.show_table
