@@ -389,8 +389,8 @@ class Lifecycle
     return unless machine
     return if MACHINE_CLOSE_STATE.includes?(machine["state"])
 
-    deadline = machine["deadline"]?
-    return unless deadline
+    deadline = machine["deadline"]?.to_s
+    return if deadline.empty?
 
     deadline = Time.parse(deadline.to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
     return if Time.local < deadline
