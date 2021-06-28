@@ -71,7 +71,7 @@ sync_src_lv() {
 
     # create logical volume
     src_lv_devname="$(basename $src_lv)"
-    lvm lvcreate -y -L "$src_lv_size" --name "${src_lv_devname#os-}" os
+    lvm lvcreate -y -L "$os_lv_size" --name "${src_lv_devname#os-}" os
     mke2fs -t ext4 -F "$src_lv"
 
     # sync nfsroot to $src_lv
@@ -95,9 +95,9 @@ snapshot_boot_lv() {
     lvm lvremove --force "$boot_lv"
     boot_lv_devname="$(basename $boot_lv)"
     if [ -z "$save_root_partition" ]; then
-        lvm lvcreate -y -L "$src_lv_size" --name ${boot_lv_devname#os-} --snapshot "$src_lv"
+        lvm lvcreate -y -L "$os_lv_size" --name ${boot_lv_devname#os-} --snapshot "$src_lv"
     else
-        lvm lvcreate -y -L "$src_lv_size" --name ${boot_lv_devname#os-} os
+        lvm lvcreate -y -L "$os_lv_size" --name ${boot_lv_devname#os-} os
         mke2fs -t ext4 -F "$boot_lv"
 
         # sync src_lv to boot_lv
@@ -149,8 +149,8 @@ handle_lvm()
 
     sed -i "s/^locking_type = .*/locking_type = 1/" /etc/lvm/lvm.conf
 
-    src_lv_size="$(getarg src_lv_size)"
-    src_lv_size=${src_lv_size:="10G"}
+    os_lv_size="$(getarg os_lv_size)"
+    os_lv_size=${os_lv_size:="10G"}
 
     os_partition="$(getarg os_partition=)"
 
