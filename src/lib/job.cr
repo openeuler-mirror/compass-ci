@@ -88,6 +88,7 @@ class Job
     boot_lv_suffix
     pv_device
     src_lv_size
+    os_lv
   )
 
   macro method_missing(call)
