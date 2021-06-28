@@ -29,8 +29,8 @@ module JobHelper
     testbox.split(/\.|--/)[0]
   end
 
-  def self.service_path(path)
-    temp_path = File.real_path(path)
+  def self.service_path(path, need_exists = true)
+    temp_path = need_exists ? File.real_path(path) : path
     return temp_path.split("/srv")[-1]
   end
 end
