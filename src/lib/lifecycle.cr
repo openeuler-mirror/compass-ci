@@ -76,6 +76,14 @@ class Lifecycle
     }.to_json)
   end
 
+  def init_from_es_loop
+    loop do
+      init_from_es
+      @log.info("init from es loop")
+      sleep 600
+    end
+  end
+
   def deal_match_job(testbox, job_id)
     @match[testbox].each do |id|
       next if id == job_id

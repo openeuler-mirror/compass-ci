@@ -11,7 +11,9 @@ module Cycle
   lifecycle = Lifecycle.new
 
   # init @jobs and @machines
-  lifecycle.init_from_es
+  # The cached data is corrected from the database every 10 minutes
+  spawn lifecycle.init_from_es_loop
+
   lifecycle.mq_event_loop
 
   spawn lifecycle.timeout_job_loop
