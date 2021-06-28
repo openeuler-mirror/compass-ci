@@ -32,6 +32,10 @@ analyse_kernel_cmdline_params() {
 }
 
 sync_src_lv() {
+    # params:
+    # - src_lv : required.
+    # - rw     : optional, if not given, is "ro".
+
     local src_lv="$1"
     local vg_name="os"
 
@@ -76,8 +80,10 @@ sync_src_lv() {
     cp -a /mnt1/. /mnt2/
     umount /mnt1 /mnt2
 
-    # change permission of "$src_lv" to readonly
-    lvm lvchange --permission r "$src_lv"
+    [ "$2" == "rw" ] || {
+        # change permission of "$src_lv" to readonly
+        lvm lvchange --permission r "$src_lv"
+    }
 }
 
 snapshot_boot_lv() {
@@ -108,14 +114,14 @@ set_sysroot() {
     mount "$boot_lv" "$NEWROOT"
 }
 
-handle_lvm()
+use_os_partition()
 {
-    analyse_kernel_cmdline_params
+    [ -b "$os_partition" ] || sync_src_lv "$os_partition" "rw"
+    set_sysroot "$os_partition"
+}
 
-    sed -i "s/^locking_type = .*/locking_type = 1/" /etc/lvm/lvm.conf
-
-    src_lv_size="$(getarg src_lv_size)"
-    src_lv_size=${src_lv_size:="10G"}
+use_pair_lvm()
+{
     use_root_partition="$(getarg use_root_partition=)"
     if [ -z "$use_root_partition" ]; then
         src_lv="/dev/mapper/os-${os_info}_$timestamp"
@@ -135,6 +141,24 @@ handle_lvm()
     snapshot_boot_lv "$src_lv" "$boot_lv"
 
     set_sysroot "$boot_lv"
+}
+
+handle_lvm()
+{
+    analyse_kernel_cmdline_params
+
+    sed -i "s/^locking_type = .*/locking_type = 1/" /etc/lvm/lvm.conf
+
+    src_lv_size="$(getarg src_lv_size)"
+    src_lv_size=${src_lv_size:="10G"}
+
+    os_partition="$(getarg os_partition=)"
+
+    if [ -n "$os_partition" ]; then
+        use_os_partition
+    else
+        use_pair_lvm
+    fi
 
     [ "$CCI_NO_SUNRPC" == "true" ] && {
         umount /var/lib/nfs/rpc_pipefs
