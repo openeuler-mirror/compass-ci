@@ -5,6 +5,7 @@ require "../scheduler/elasticsearch_client"
 require "set"
 require "json"
 require "../lib/mq"
+require "../lib/json_logger"
 
 # This parses dmesg in a stream of serial log, finding a number of patterns
 # in various places of the dmesg and take actions accordingly.
@@ -42,13 +43,14 @@ class SerialParser
   ]
 
   CRASH_PATTERNS = [
-    "Kernel panic - not syncing: ",
+    "Kernel panic - not syncing:",
   ]
 
   def initialize
     @host2head = Hash(String, Array(String)).new
     @host2rt = Hash(String, String).new
     @mq = MQClient.instance
+    @log = JSONLogger.new
   end
 
   def host_in_msg(msg)
@@ -87,9 +89,12 @@ class SerialParser
       "testbox" => host,
       "time" => msg["time"]? || Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800"),
       "job_stage" => "unknow",
-      "job_health" => "crash"
-    }
-    spawn mq_publish_check("job_mq", mq_msg.to_json)
+      "job_health" => "crash",
+      "message" => msg["message"]
+    }.to_json
+
+    @log.info(mq_msg)
+    spawn mq_publish_check("job_mq", mq_msg)
   end
 
   def mq_publish_check(queue, msg)
@@ -106,8 +111,8 @@ class SerialParser
     host = host_in_msg(msg)
     return unless host
 
-    mq_publish(msg, host)
     save_dmesg_to_result_root(msg, host)
+    mq_publish(msg, host)
   end
 
   def save_dmesg_to_result_root(msg, host)
