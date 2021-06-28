@@ -656,9 +656,13 @@ class Job
     temp_initrds << "#{OS_HTTP_PREFIX}" +
                     JobHelper.service_path(self["linux_modules_initrd"])
 
-    temp_initrds.concat(initrd_deps.split(/ /)) unless initrd_deps.empty?
-    temp_initrds.concat(initrd_pkg.split(/ /)) unless initrd_pkg.empty?
+    temp = [] of String
+    deps = @hash["initrd_deps"].as_a
+    deps.map{ |item| temp << item.to_s }
+    pkg = @hash["initrd_pkg"].as_a
+    pkg.map{ |item| temp << item.to_s }
 
+    temp_initrds.concat(temp)
     return temp_initrds
   end
 
@@ -712,8 +716,8 @@ class Job
 
     get_depends_initrd(get_program_params(), initrd_deps_arr, initrd_pkg_arr)
 
-    self["initrd_deps"] = initrd_deps_arr.uniq.join(" ")
-    self["initrd_pkg"] = initrd_pkg_arr.uniq.join(" ")
+    self["initrd_deps"] = initrd_deps_arr.uniq
+    self["initrd_pkg"] = initrd_pkg_arr.uniq
   end
 
   private def get_program_params
