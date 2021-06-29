@@ -27,8 +27,8 @@
         </tr>
 
         <tr>
-            <td style="background-color:green;height:200px;text-align:center;">
-                <font size="6">no service</font>
+            <td style="background-color:green;height:200px;text-align:center;" onclick="goStderr()">
+                <font size="6">job stderrs</font>
             </td>
             <td style="background-color:green;height:200px;text-align:center;">
                 <font size="6">no service</font>
@@ -93,6 +93,9 @@
 
     function goLogError() {
         window.open('logerr.html');
+    };
+    function goStderr() {
+        window.open('stderr.html');
     };
 </script>
 
