@@ -32,6 +32,9 @@ else
 				},
 				"my_login_name": {
 					"type": "keyword"
+				},
+				"my_account": {
+					"type": "keyword"
 				}
 			}
 		}
