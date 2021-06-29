@@ -11,8 +11,8 @@
     <h1 style="text-align:center">Compass-ci top log errors</h1>
     <hr>
     <div style="width:90%;margin:auto">
-	<label>total lines : </label>
-	<label id="lines">0</label>
+        <label>total lines : </label>
+        <label id="lines">0</label>
         <table id="logerr" style="width:100%;" border="1">
             <th width=15%>first_date</th>
             <th width=10%>service</th>
@@ -30,7 +30,7 @@
         ajax.onreadystatechange = function () {
             if (ajax.readyState == 4 && ajax.status == 200) {
                 var data = JSON.parse(ajax.responseText);
-		document.getElementById('lines').innerText = data.total;
+                document.getElementById('lines').innerText = data.total;
                 showData(data.data, 'logerr');
             }
         }
