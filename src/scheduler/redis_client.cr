@@ -74,4 +74,8 @@ class Redis::Client
   def get_new_seqno
     return @client.incr("#{QUEUE_NAME_BASE}/seqno")
   end
+
+  def get_job_id(lab)
+    "#{lab}.#{self.get_new_seqno()}"
+  end
 end
