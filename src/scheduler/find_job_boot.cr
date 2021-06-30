@@ -190,7 +190,7 @@ class Sched
     ready_queues.each do |queue|
       ec = EtcdClient.new
       watcher = ec.watch_prefix(queue, start_revision: revision.to_i64, progress_notify: false, filters: [Etcd::Watch::Filter::NODELETE]) do |events|
-        channel.send(events)
+        channel.send(events) unless channel.closed?
       end
       ech[ec] = watcher
     end
