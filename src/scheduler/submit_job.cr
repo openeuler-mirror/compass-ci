@@ -138,7 +138,7 @@ class Sched
 
   def add_task(job, job_id)
     task_desc = JSON.parse(%({"domain": "compass-ci", "id": "#{job_id}"}))
-    key = "sched/#{job.queue}/ready/#{job.subqueue}/#{job_id}"
+    key = "sched/ready/#{job.queue}/#{job.subqueue}/#{job_id}"
     response = @etcd.put(key, task_desc)
     if response
       return true, ""

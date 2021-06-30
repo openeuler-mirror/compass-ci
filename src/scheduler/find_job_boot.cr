@@ -68,6 +68,7 @@ class Sched
 
     default_queues = [] of String
     queues_str.split(',', remove_empty: true) do |item|
+      default_queues << "sched/ready/#{item.strip}"
       default_queues << "sched/#{item.strip}/ready"
     end
 
@@ -80,7 +81,6 @@ class Sched
     return nil unless etcd_job
 
     job_id = etcd_job.key.split("/")[-1]
-    puts "#{testbox} got the job #{job_id}"
     if job_id
       begin
         job = @es.get_job(job_id.to_s)
@@ -92,6 +92,7 @@ class Sched
     end
 
     if job
+      @log.info("#{testbox} got the job #{job_id}")
       job.update({"testbox" => testbox})
       update_kernel_params(job)
       job.set_result_root
@@ -208,8 +209,10 @@ class Sched
   def split_ready_queues(queues)
     ready_queues = [] of String
     queues.each do |queue|
-      tmp = queue.split("/ready")[0]
-      ready_queues << "#{tmp}/ready"
+      tmp = queue.split("/")
+      # sched/vm-test/ready
+      # sched/ready/vm-test
+      ready_queues << "#{tmp[0, 3].join("/")}"
     end
 
     ready_queues.uniq
@@ -251,8 +254,20 @@ class Sched
 
   def ready2process(job)
     ec = EtcdClient.new
+    # /queues/sched/vm-test/ready/caoxl78320@163.com/crystal.2627369
+    # /queues/sched/ready/vm-test/caoxl78320@163.com/crystal.2627369
     f_queue = job.key
-    t_queue = f_queue.gsub("/ready/", "/in_process/")
+    # ["", "queues", "sched", "vm-test", "ready", "caoxl78320@163.com", "crystal.2627369"]
+    # ["", "queues", "sched", "ready", "vm-test", "caoxl78320@163.com", "crystal.2627369"]
+    tmp = f_queue.split("/")
+    if "ready" == tmp[3]
+      t_queue = f_queue.gsub("/ready/", "/in_process/")
+    else
+      tmp = f_queue.split("/")
+      tmp.delete("ready")
+      tmp.insert(3, "in_process")
+      t_queue = tmp.join("/")
+    end
     value = job.value
     res = ec.move(f_queue, t_queue, value)
     ec.close

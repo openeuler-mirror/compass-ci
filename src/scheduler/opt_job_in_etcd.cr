@@ -28,9 +28,13 @@ class Sched
   end
 
   def move_process2stats(job : Job)
-    f_queue = "sched/#{job.queue}/in_process/#{job.subqueue}/#{job.id}"
+    f_queue = "sched/in_process/#{job.queue}/#{job.subqueue}/#{job.id}"
     t_queue = "extract_stats/#{job.id}"
     value = { "id" => "#{job.id}" }
+    ret = @etcd.move(f_queue, t_queue, value)
+    return ret if ret
+
+    f_queue = "sched/#{job.queue}/in_process/#{job.subqueue}/#{job.id}"
     @etcd.move(f_queue, t_queue, value)
   end
 end
