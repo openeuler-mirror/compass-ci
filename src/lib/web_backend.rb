@@ -691,10 +691,10 @@ def get_error_from_job(job)
     result_host = ENV['SRV_HTTP_RESULT_HOST'] || SRV_HTTP_RESULT_HOST
     result_port = ENV['SRV_HTTP_RESULT_PORT'] || SRV_HTTP_RESULT_PORT
     error_id = metric.sub('.message', '.fail')
-    job_error_obj['id'] = job['id']
+    job_error_obj['job_id'] = job['id']
     job_error_obj['error_id'] = error_id
     job_error_obj['error_message'] = value
-    job_error_obj['link_to_result'] = value
+    job_error_obj['link_to_result'] = "http://#{result_host}:#{result_port}#{job['result_root']}"
   end
 
   job_error_obj
