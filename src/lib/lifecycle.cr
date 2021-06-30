@@ -295,12 +295,13 @@ class Lifecycle
   def timeout_job_loop
     dead_job_id = nil
     loop do
-      close_job(dead_job_id, "timeout") if dead_job_id
-      deadline, dead_job_id = get_min_deadline
-      # deal timeout job
-      next if dead_job_id && deadline <= Time.local
+      dead_job_id = get_timeout_job
+      if dead_job_id
+        close_job(dead_job_id, "timeout")
+        next
+      end
 
-      sleep_until(deadline)
+      sleep 30
     rescue e
       @log.warn({
         "resource" => "timeout_job_loop",
@@ -313,11 +314,13 @@ class Lifecycle
   def timeout_machine_loop
     dead_machine_name = nil
     loop do
-      reboot_timeout_machine(dead_machine_name) if dead_machine_name
-      deadline, dead_machine_name = get_min_deadline_machine
-      next if dead_machine_name && deadline <= Time.local
+      dead_machine_name = get_timeout_machine
+      if dead_machine_name
+        reboot_timeout_machine(dead_machine_name)
+        next
+      end
 
-      sleep_until(deadline)
+      sleep 30
     rescue e
       @log.warn({
         "resource" => "timeout_machine_loop",
@@ -330,6 +333,16 @@ class Lifecycle
   def sleep_until(deadline)
     s = (deadline - Time.local).total_seconds
     sleep(s)
+  end
+
+  def get_timeout_job
+    @jobs.each do |id, job|
+      next unless job["deadline"]?
+      next if job["job_stage"]? == "finish"
+
+      job_deadline = Time.parse(job["deadline"].to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+      return id if Time.local >= job_deadline
+    end
   end
 
   def get_min_deadline
@@ -345,6 +358,16 @@ class Lifecycle
       dead_job_id = id
     end
     return deadline, dead_job_id
+  end
+
+  def get_timeout_machine
+    @machines.each do |name, machine|
+      next if machine["deadline"]?.to_s.empty?
+      next if machine["state"]?.to_s == "rebooting_queue"
+
+      machine_deadline = Time.parse(machine["deadline"].to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+      return name if Time.local >= machine_deadline
+    end
   end
 
   def get_min_deadline_machine
