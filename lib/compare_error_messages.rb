@@ -21,8 +21,8 @@ module CEM
     return true if lttr_es_result['job_state'] == 'finished'
 
     prev_es_result = es.query_by_id(prev_job_id)
-    prev_result_file = File.join('/srv', prev_es_result['result_root'], prev_es_result['suite'])
-    lttr_result_file = File.join('/srv', lttr_es_result['result_root'], lttr_es_result['suite'])
+    prev_result_file = File.join('/srv', prev_es_result['result_root'], 'build-pkg')
+    lttr_result_file = File.join('/srv', lttr_es_result['result_root'], 'build-pkg')
 
     check_result = filenames_check(prev_result_file, lttr_result_file, error_id)
 
