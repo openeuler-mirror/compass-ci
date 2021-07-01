@@ -18,6 +18,7 @@
         收件人: compass-ci-robot@qq.com
         邮件标题: apply account
 
+        my_account: {{ rientjes }}
         my_oss_commit: {{ https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03 }}
 
         {{ 将您的ssh公钥添加为邮件附件，例如 ~/.ssh/id_rsa.pub }}
@@ -25,7 +26,8 @@
 ---
 
 - 使用您的信息替换{{ }}中的内容
-- 邮件名应该使用英文或中文拼音，例如模板中的“David Rientjes”
+- 邮件名应该使用英文/中文拼音，例如模板中的“David Rientjes”
+- my_account 应该使用英文/中文拼音，可以和数字，‘-’，‘_'组合，不可以有空格
 - my_oss_commit:  使用您的邮件和名字提交的代码的地址。
 
 

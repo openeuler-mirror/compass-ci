@@ -19,15 +19,18 @@ Email template:
 	To: compass-ci-robot@qq.com
 	Subject: apply account
 
+	my_account: {{ rientjes }}
 	my_oss_commit: {{ https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03 }}
 
 	{{ attach your ssh pubkey file(s), e.g. ~/.ssh/id_rsa.pub }}
 
 ---
 
-- please replace the 3 parts in {{ }} with your information.
+- please replace the 4 parts in {{ }} with your information.
 
 - the email name should be in English or Chinese Pinyin, as: "David Rientjes" in the template.
+
+- the my_account should be in English of Chinese Pinyin, and should only contains letters, numbers, '-' or '_'.
 
 - my_oss_commit: a git commit URL that has your name and email.
   The git repo should be in our test coverage and registered in
