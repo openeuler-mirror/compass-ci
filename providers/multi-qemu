@@ -56,7 +56,21 @@ SCHED_PORT = ENV['LKP_CGI_PORT'] || '3000'
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
+def total_allocated_mem
+  qemus_allocated_mem = %x{echo "$(ps -ef | grep qemu | grep result)" | awk -F "-m " '{print $2}' | awk -F "G" '{print $1}' | awk '{sum += $1};END {print sum}'}.to_i
+  dockers_allocated_mem = %x{echo "$(ps -ef | grep docker | grep result)" | awk -F "-m " '{print $2}' | awk -F "g" '{print $1}' | awk '{sum += $1};END {print sum}'}.to_i
+  qemus_allocated_mem + dockers_allocated_mem
+end
+
+def max_allocable_memory
+  (%x{cat /proc/meminfo | awk '/MemTotal/ {print $2}'}.to_i * 8 /10) >> 20
+end
+
 def main(hostname)
+  while total_allocated_mem > max_allocable_memory
+    puts "Total Allocated Memory is bigger than Max Allocable memory: #{total_allocated_mem}G > #{max_allocable_memory}G, wait for memory release!"
+    sleep(30)
+  end
   start_time = record_runtime_log(hostname)
   start_qemu(hostname)
   record_runtime_log(hostname, start_time: start_time, is_start: false)
