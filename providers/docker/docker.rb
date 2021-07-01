@@ -122,6 +122,8 @@ def record_end_log(log_file, start_time)
 end
 
 def main(hostname, queues)
+  check_mem_quota
+
   set_host2queues(hostname, queues)
   url = get_url hostname
   puts url
