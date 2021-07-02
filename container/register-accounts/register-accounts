@@ -12,6 +12,7 @@ content.each do |_key, value|
   my_info = {}
   my_info['my_email'] = value['my_email']
   my_info['my_name'] = value['my_name']
+  my_info['my_account'] = value['my_account']
   my_info['lab'] = ENV['lab']
 
   build_account_info(my_info)
