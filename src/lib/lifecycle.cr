@@ -80,7 +80,7 @@ class Lifecycle
     loop do
       init_from_es
       @log.info("init from es loop")
-      sleep 600
+      sleep 300
     end
   end
 
@@ -145,9 +145,15 @@ class Lifecycle
       q = @mq.ch.queue("job_mq", durable: false)
       q.subscribe(no_ack: false) do |msg|
         event = JSON.parse(msg.body_io.to_s)
-        job_stage = event["job_stage"]?
+        # cached messages are cailbrated from the ES every 5 minutes
+        # the non-unknow messages received five minutes age are outdated
+        # no need to be processed
+        if out_of_date?(event)
+          @mq.ch.basic_ack(msg.delivery_tag)
+          next
+        end
 
-        case job_stage
+        case event["job_stage"]?
         when "boot"
           on_job_boot(event)
         when "finish"
@@ -166,6 +172,16 @@ class Lifecycle
         "event" => event
       }.to_json)
     end
+  end
+
+  def out_of_date?(event)
+    return false if event["job_stage"]? == "unknow"
+
+    time = Time.parse(event["time"].to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    s = (Time.local - time).total_seconds
+
+    return true if s >= 300
+    return false
   end
 
   def on_unknow_job(event)
@@ -225,7 +241,9 @@ class Lifecycle
 
   def on_abnormal_job(event)
     event_job_id = event["job_id"].to_s
-    return unless @jobs.has_key?(event_job_id)
+    job = @jobs[event_job_id]?
+    return unless job
+    return if ["submit", "finish"].includes?(job["job_stage"])
 
     close_job(event_job_id, "abnormal")
   end
@@ -275,8 +293,6 @@ class Lifecycle
 
     @machines[event["testbox"].to_s] = event
 
-    deal_match_job(event["testbox"].to_s, event_job_id)
-
     # No previous job to process
     return if machine_job_id.empty?
     return unless @jobs.has_key?(machine_job_id)
@@ -297,7 +313,7 @@ class Lifecycle
     loop do
       dead_job_id = get_timeout_job
       if dead_job_id
-        close_job(dead_job_id, "timeout")
+        close_timeout_job(dead_job_id)
         next
       end
 
@@ -406,6 +422,26 @@ class Lifecycle
     reboot_machine(testbox, machine, "crash")
   end
 
+  def close_timeout_job(job_id)
+    @jobs.delete(job_id)
+    job = @es.get_job(job_id)
+    return unless job
+    return if ["submit", "finish"].includes?(job["job_stage"]?)
+
+    deadline = job["deadline"]?.to_s
+    return if deadline.empty?
+
+    deadline = Time.parse(deadline.to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    if Time.local < deadline
+      job_hash = job.dump_to_json_any.as_h
+      job_hash.delete_if{|key, _| !JOB_KEYWORDS.includes?(key)}
+      @jobs[job_id] = JSON.parse(job_hash.to_json)
+    else
+      reboot_timeout_machine(job["testbox"])
+      close_job(job_id, "timeout")
+    end
+  end
+
   def reboot_timeout_machine(testbox)
     @machines.delete(testbox)
     machine = @es.get_tbox(testbox)
@@ -416,9 +452,11 @@ class Lifecycle
     return if deadline.empty?
 
     deadline = Time.parse(deadline.to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    return if Time.local < deadline
-
-    reboot_machine(testbox, machine, "timeout")
+    if Time.local < deadline
+      @machines[testbox] = machine
+    else
+      reboot_machine(testbox, machine, "timeout")
+    end
   end
 
   def reboot_machine(testbox, machine, reason)
