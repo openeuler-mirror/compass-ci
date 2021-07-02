@@ -14,6 +14,23 @@ def email_err_message(message)
       For example:
         my_oss_commit: https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
     EMAIL_MESSAGE
+  when 'NO_MY_ACCOUNT'
+    err_message = <<~EMAIL_MESSAGE
+      No my_account found.
+      You should add a my_account in the 'apply account' email.
+      This my_account will be your unique identity when you using the compass-ci.
+
+      For example:
+        my_account: rientjes
+    EMAIL_MESSAGE
+  when 'MY_ACCOUNT_EXIST'
+    err_message = <<~EMAIL_MESSAGE
+      The my_account you offered is already used.
+      Please offer an new one and try again.
+
+      For example:
+        my_account: rientjes
+    EMAIL_MESSAGE
   when 'URL_PREFIX_ERR'
     err_message = <<~EMAIL_MESSAGE
       Please add a correct prefix for the commit url.
