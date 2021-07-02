@@ -17,7 +17,7 @@ if $PROGRAM_NAME == __FILE__
   is_search = false
 
   options = OptionParser.new do |opts|
-    opts.banner = "Usage: build-my-info [-e email] [-n name] [-l lab] [-k pubkey_file] [-t]\n"
+    opts.banner = "Usage: build-my-info [-e email] [-n name] [-a account] [-l lab] [-k pubkey_file] [-t]\n"
     opts.banner += "       build-my-info [-e email] [-s]\n"
 
     opts.separator ''
@@ -25,6 +25,16 @@ if $PROGRAM_NAME == __FILE__
 
     opts.on('-e email', 'my_email') do |email|
       option['my_email'] = email
+    end
+
+    opts.on('-a my_account', 'my_account') do |account|
+      unless account =~ /^\w[\w|\-|\_]+$/
+        message = "my_account should only contains letters, digits, '-' or '_'\n\n"
+        puts message
+        exit
+      end
+
+      option['my_account'] = account
     end
 
     opts.on('-n name', 'my_name') do |name|
