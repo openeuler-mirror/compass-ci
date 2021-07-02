@@ -14,6 +14,7 @@ require 'optparse'
 require 'rest-client'
 require_relative '../defconfig'
 require_relative '../../lib/es_client'
+require_relative '../../lib/build_account_info'
 require_relative 'build-send-account-email'
 require_relative 'build-update-email'
 
@@ -41,7 +42,8 @@ my_info = {
   'my_token' => nil,
   'my_login_name' => nil,
   'my_ssh_pubkey' => [],
-  'lab' => LAB
+  'lab' => LAB,
+  'my_account' => nil
 }
 
 # stdin_info is used to store infos added with option:
@@ -83,12 +85,13 @@ def read_my_login_name(my_email, my_info_es)
 end
 
 options = OptionParser.new do |opts|
-  opts.banner = 'Usage: answerback-mail.rb [-e|--email email] [-n|--name name] '
+  opts.banner = 'Usage: answerback-mail.rb [-e|--email email] [-n|--name name] [-a|--account account] '
   opts.banner += "[-s|--ssh-pubkey pub_key_file] [-l|--login y|n] [-u|--update]\n"
   opts.banner += '       answerback-mail.rb [-f|--raw-email email_file] '
   opts.banner += "[--login y|n] [--update]\n"
   opts.banner += "       -e|-f is required when applying account or updating account\n"
   opts.banner += "       -n is required when assigning account with -e\n"
+  opts.banner += "       -a is required when assigning account with -e\n"
   opts.banner += "       -s is optional when use -e\n"
   opts.banner += "       -u is required when updating an account\n"
   opts.banner += '       -l is optional, used to enable/disable login permission'
@@ -117,6 +120,17 @@ options = OptionParser.new do |opts|
     end
 
     stdin_info['my_name'] = name
+  end
+
+  opts.on('-a account', '--account account', 'appoint account') do |account|
+    unless account =~ /^\w[\w|\-|\_]+$/
+      message = "my_account should only contains letters, digits, '-' or '_'\n\n"
+      puts message
+
+      return false
+    end
+
+    stdin_info['my_account'] = account
   end
 
   opts.on('-s pub_key_file', '--ssh-pubkey pub_key_file', \
@@ -197,6 +211,23 @@ def check_my_email(my_info)
   return false
 end
 
+def check_my_account_exist(my_info)
+  return unless my_info['my_account'].nil?
+
+  message = "No my_account specified\n"
+  message += "use option '-a' to add one and try again\n"
+  raise message
+end
+
+def check_my_account_unique(my_info)
+  check_account = BuildMyInfo.new(my_info['my_email'])
+  return if check_account_unique(my_info, check_account)
+
+  message = "Offered my_account: #{my_info['my_account']} is already used!\n"
+  message += "Please use a new one and try again."
+  raise message
+end
+
 def build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
   new_email_pubkey = email_info.delete 'new_email_pubkey'
   new_stdin_pubkey = stdin_info.delete 'new_ssh_pubkey'
@@ -271,6 +302,9 @@ def send_account(my_info, conf_info, email_info, my_info_es, stdin_info)
   build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
 
   return unless check_my_name_exist(my_info)
+
+  check_my_account_exist(my_info)
+  check_my_account_unique(my_info)
 
   account_info = apply_account(my_info, conf_info)
   build_my_info_from_account_info(my_info, account_info, conf_info)
