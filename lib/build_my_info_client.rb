@@ -43,6 +43,7 @@ class BuildMyInfo
     default_yaml_info = YAML.load_file(default_yaml_file) || {}
     default_yaml_info['my_email'] = my_info['my_email']
     default_yaml_info['my_name'] = my_info['my_name']
+    default_yaml_info['my_account'] = my_info['my_account']
     default_yaml_info['lab'] = my_info['lab']
 
     File.open(default_yaml_file, 'w') do |f|
@@ -62,6 +63,17 @@ class BuildMyInfo
     File.open(lab_yaml_file, 'w') do |f|
       f.puts lab_yaml_info.to_yaml
     end
+  end
+
+  # when update/add item that with a unique attribute, 
+  # we need to check if the item already exists.
+  def check_item_unique(email, key, value)
+    doc = @es.multi_field_query({ key => value }, single_index: true)['hits']['hits']
+    return true if doc.empty?
+
+    return false if doc.size > 1
+
+    doc[0]['_source']['my_email'] == email
   end
 
   def config_my_info(my_info)
