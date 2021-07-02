@@ -173,6 +173,7 @@ class AccountStorage
     # they are added along with 'my_ssh_pubkey' when sending assign account request
     account_yaml['my_email'] = @data['my_email']
     account_yaml['my_name'] = @data['my_name']
+    account_yaml['my_account'] = @data['my_account']
     account_yaml['lab'] = @data['lab']
 
     File.open(default_yaml, 'w') do |f|
