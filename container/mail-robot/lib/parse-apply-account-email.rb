@@ -10,6 +10,7 @@ require 'json'
 require 'mail'
 require 'rest-client'
 require 'git'
+require_relative '../../../lib/build_account_info'
 
 # used to parse mail_content for my_commit_url and my_ssh_pubkey
 # be called by AssignAccount when it needs to extract required data:
@@ -47,6 +48,7 @@ class ParseApplyAccountEmail
 
   def build_my_info
     @my_info['my_commit_url'] = parse_commit_url
+    @my_info['my_account'] = parse_my_account
     @my_info['my_ssh_pubkey'] << parse_pub_key
 
     return @my_info
@@ -98,6 +100,26 @@ class ParseApplyAccountEmail
     commit_url_availability(url, base_url)
 
     return url
+  end
+
+  def parse_my_account
+    my_account_line = extract_mail_content_body.match(/my_account:\s*[\w\-\_]+/).to_s
+    raise 'NO_MY_ACCOUNT' if  my_account_line.nil? ||  my_account_line.empty?
+
+    my_account = YAML.safe_load(my_account_line)['my_account']
+    @my_info['my_account'] = my_account
+
+    check_my_account_uniq(@my_info['my_account'])
+
+    return my_account
+  end
+
+  def check_my_account_uniq(my_account)
+    check_account = BuildMyInfo.new(@my_info['my_email'])
+
+    return if check_account_unique(@my_info, check_account)
+
+    raise "MY_ACCOUNT_EXIST"
   end
 
   def base_url_in_upstream_repos(upstream_dir, base_url)
