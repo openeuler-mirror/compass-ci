@@ -76,6 +76,10 @@ class Sched
 
   def create_secrets_yaml(job_id, base_dir)
     secrets = @redis.hash_get("id2secrets", job_id)
+    unless secrets
+      cluster_id = @redis.hash_get("sched/id2cluster", job_id)
+      secrets = @redis.hash_get("id2secrets", cluster_id) if cluster_id
+    end
     return nil unless secrets
 
     secrets_yaml = base_dir + "/#{job_id}/secrets.yaml"

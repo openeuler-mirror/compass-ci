@@ -107,7 +107,7 @@ class Sched
 
       # multi-machine test requires two network cards
       job["nr_nic"] = "2"
-      status, msg = add_job(job, job_id)
+      status, msg = add_job(job, job_id, job_ids[0])
       job_id = "0" unless status
       job_messages << {
         "job_id"      => job_id,
@@ -167,9 +167,9 @@ class Sched
     job.delete("secrets")
   end
 
-  def add_job(job, job_id)
+  def add_job(job, job_id, cluster_id=nil)
     # deal the job fields at first
-    save_secrets(job, job_id)
+    save_secrets(job, cluster_id || job_id)
     job.update_id(job_id)
 
     # save the job to es
