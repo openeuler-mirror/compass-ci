@@ -170,12 +170,14 @@ def reboot_docker(hostname)
   mq = MQClient.new(MQ_HOST, MQ_PORT)
   queue = mq.queue(hostname, {:durable => true})
   queue.subscribe({:block => true, :manual_ack => true}) do |info,  _pro, msg|
-    puts msg
-    machine_info = JSON.parse(msg)
-    job_id = machine_info['job_id']
-    res, msg = reboot('dc', job_id)
-    report_event(machine_info, res, msg)
-    mq.ack(info)
+    Process.fork do
+      puts msg
+      machine_info = JSON.parse(msg)
+      job_id = machine_info['job_id']
+      res, msg = reboot('dc', job_id)
+      report_event(machine_info, res, msg)
+      mq.ack(info)
+    end
   end
 end
 
