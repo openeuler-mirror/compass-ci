@@ -525,8 +525,17 @@ class Job
     error_msg += "Please refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md"
 
     account_info = @es.get_account(self["my_email"])
+    unless @hash["my_account"]?
+      error_msg = "Missing required job key: my_account.\n"
+      error_msg += "We generated the my_account for you automatically.\n"
+      error_msg += "Add 'my_account: #{account_info["my_account"]}' to: "
+      error_msg += "~/.config/compass-ci/defaults/account.yaml\n"
+      error_msg += "You can also re-send 'apply account' email to specify a custom my_account name.\n"
 
-    flag = is_valid_account?(account_info)
+      flag = false
+    end
+
+    flag ||= is_valid_account?(account_info)
     @log.warn({"msg" => "Invalid account",
                "my_email" => self["my_email"],
                "my_name" => self["my_name"],
@@ -537,6 +546,8 @@ class Job
 
     @hash.delete("my_uuid")
     @hash.delete("my_token")
+    @hash.delete("my_email")
+    @hash.delete("my_name")
   end
 
   private def check_run_time
@@ -571,6 +582,7 @@ class Job
     # my_token can't be nil in es
     return false unless self["my_name"] == @account_info["my_name"]?.to_s
     return false unless self["my_token"] == @account_info["my_token"]?
+    return false unless self["my_account"] == @account_info["my_account"]?
     return true
   end
 
