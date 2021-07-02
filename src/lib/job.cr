@@ -302,14 +302,7 @@ class Job
   end
 
   def get_boot_time
-    case get_testbox_type
-    when "dc"
-      return 60
-    when "vm"
-      return 300
-    else
-      return 1200
-    end
+    3600
   end
 
   def get_reboot_time
@@ -323,11 +316,11 @@ class Job
     when "boot"
       time = get_boot_time
     when "running"
-      time = (self["timeout"]? || self["runtime"]? || 1800).to_s.to_i32
+      time = (self["timeout"]? || self["runtime"]? || 3600).to_s.to_i32
       extra_time = 0 if self["timeout"]?
       extra_time ||= [time / 8, 300].max.to_i32 + Math.sqrt(time).to_i32
     when "post_run"
-      time = 300
+      time = 1800
     when "manual_check"
       time = 36000
     when "finish"
