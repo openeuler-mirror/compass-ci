@@ -5,6 +5,8 @@ class Sched
   def update_id2job(job_content)
     id = job_content["id"].to_s
     job = get_id2job(id)
+    return false unless job
+
     job.update(job_content)
     @etcd.update("sched/id2job/#{id}", job.dump_to_json)
   end
@@ -15,7 +17,8 @@ class Sched
 
   def get_id2job(id)
     response = @etcd.range("sched/id2job/#{id}")
-    raise "get job from etcd failed. id: #{id}" unless response.count == 1
+    return nil unless response.count == 1
+
     Job.new(JSON.parse(response.kvs[0].value.not_nil!), id)
   end
 
