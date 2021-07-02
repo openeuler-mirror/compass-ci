@@ -23,6 +23,7 @@ class Sched
     @env.response.status_code = 202
     @log.warn({
       "message" => e.to_s,
+      "job_content" => public_content(job_content),
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
 
@@ -35,6 +36,18 @@ class Sched
     response.each do |job_message|
       @log.info(job_message.to_json)
     end
+  end
+
+  def public_content(job_content)
+    return "" unless job_content
+
+    temp = job_content.as_h
+    fields = ["my_email", "my_token", "my_ssh_pubkey", "secrets"]
+    fields.each do |field|
+      temp.delete(field) if temp.has_key?(field)
+    end
+
+    return temp.to_json
   end
 
   # return:
