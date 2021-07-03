@@ -148,8 +148,9 @@ class Job
     check_account_info()
     check_run_time()
     set_defaults()
+    delete_account_info()
     @hash.merge!(testbox_env)
-    checkout_max_run
+    checkout_max_run()
   end
 
   private def set_defaults
@@ -536,7 +537,9 @@ class Job
                "testbox" => self["testbox"]
                }.to_json) unless flag
     raise error_msg unless flag
+  end
 
+  private def delete_account_info
     @hash.delete("my_uuid")
     @hash.delete("my_token")
     @hash.delete("my_email")
