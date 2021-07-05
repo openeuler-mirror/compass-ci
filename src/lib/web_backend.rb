@@ -801,7 +801,7 @@ def active_stderr_body
 
   {
     'total' => jobs_errors.size,
-    'cols' => ['count', 'first_date', 'relevant-links', 'error_message'],
+    'cols' => ['count', 'first_date', 'relevant_links', 'error_message'],
     'data' => jobs_errors
   }.to_json
 end

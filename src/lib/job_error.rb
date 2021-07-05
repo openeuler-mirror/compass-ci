@@ -28,15 +28,13 @@ class JobError
   end
 
   def assign_today_errors(job, start_time)
-    job_id = job['id']
-
     job['stats'].each_key do |metric|
       error =  error?(metric, job)
       if error
         @today_errors[error] ||= {'count' => 0}
         @today_errors[error]['count'] += 1
         @today_errors[error]['first_date'] = start_time
-        @today_errors[error]['relevant-links'] ||= JOB_PAGE_URL + "?id=#{job_id}"
+        @today_errors[error]['relevant_links'] ||= job['result_root']
         @today_errors[error]['error_message'] = error
       end
     end
