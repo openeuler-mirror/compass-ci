@@ -11,6 +11,9 @@ class Sched
     @env.set "job_state", "download"
 
     send_file @env, file_path
+
+    # delete the folder after the download is complete
+    FileUtils.rm_rf(::File.join [Kemal.config.public_folder, job_id])
   rescue e
     @env.response.status_code = 500
     @log.warn({
