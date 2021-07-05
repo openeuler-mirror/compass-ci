@@ -68,8 +68,8 @@ class Sched
 
     default_queues = [] of String
     queues_str.split(',', remove_empty: true) do |item|
-      default_queues << "sched/ready/#{item.strip}"
-      default_queues << "sched/#{item.strip}/ready"
+      default_queues << "sched/ready/#{item.strip}/"
+      default_queues << "sched/#{item.strip}/ready/"
     end
 
     return default_queues.uniq
@@ -210,9 +210,9 @@ class Sched
     ready_queues = [] of String
     queues.each do |queue|
       tmp = queue.split("/")
-      # sched/vm-test/ready
-      # sched/ready/vm-test
-      ready_queues << "#{tmp[0, 3].join("/")}"
+      # sched/vm-test/ready/
+      # sched/ready/vm-test/
+      ready_queues << "#{tmp[0, 3].join("/")}/"
     end
 
     ready_queues.uniq
