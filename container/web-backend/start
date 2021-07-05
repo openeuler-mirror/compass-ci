@@ -37,6 +37,7 @@ cmd=(
 	-v $LKP_SRC:/c/lkp-tests
 	-v $UPSTREAM_REPOS_PATH:/c/upstream-repos
 	-v /etc/compass-ci:/etc/compass-ci:ro
+	-v /etc/localtime:/etc/localtime:ro
 
 	--log-opt mode=non-blocking
 	--log-opt max-buffer-size=4m
