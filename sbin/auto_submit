@@ -41,6 +41,11 @@ class AutoSubmit
 
       submit_argv.push("pkgbuild_repo=#{pkgbuild_repo}")
     end
+
+    if newrefs_info['pkgbuild_source']
+      submit_argv.push("pkgbuild_source=#{pkgbuild_source}")
+    end
+
     submit_argv
   end
 
