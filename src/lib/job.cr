@@ -172,6 +172,7 @@ class Job
     set_sshr_info()
     set_queue()
     set_subqueue()
+    set_secrets()
     set_time("submit_time")
     set_params_hash_value
   end
@@ -438,6 +439,16 @@ class Job
 
   private def set_subqueue
     self["subqueue"] = self["my_email"] unless self["subqueue"] == "idle"
+  end
+
+  private def set_secrets
+    if self["secrets"] == ""
+      self["secrets"] = {"my_email" => self["my_email"]}
+    else
+      secrets = @hash["secrets"]?.not_nil!.as_h
+      secrets.merge!({"my_email" => JSON::Any.new(self["my_email"])})
+      self["secrets"] = secrets
+    end
   end
 
   # if not assign tbox_group, set it to a match result from testbox
