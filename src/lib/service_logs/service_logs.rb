@@ -19,6 +19,9 @@ class Serviceslogs
     @today = now.strftime('%Y-%m-%d %H:%M:%S')
     @logging_es = Elasticsearch::Client.new hosts: LOGGING_ES_HOSTS
     @time_24h = Time.parse(@one_day_ago).to_i
+    @five_days_results = []
+    @scroll_alive_time = '10m'
+    @level_num = 4
 
     @query_result = {
       'total' => 0,
@@ -30,9 +33,11 @@ class Serviceslogs
 
   def active_service_logs
     Services::SERVICE.each do |e|
-      five_days_results = query_five_service_result(e)
-      search_active_error(five_days_results) unless five_days_results.empty?
+      @five_days_results.clear
+      query_five_service_result(e)
+      search_active_error
     end
+
     @query_result['data'].sort_by! { |e| [e['service'], e['first_date']] }
     @query_result['data'].reverse!
     @query_result['total'] = @query_result['data'].size
@@ -42,13 +47,12 @@ class Serviceslogs
   private
 
   def query_five_service_result(service_name)
-    five_days_results = {}
     query = {
       'size' => 10000,
       'query' => {
         'bool' => {
           'must' => [
-            { 'range' => { 'level_num' => { 'gte' => 4 } } },
+            { 'range' => { 'level_num' => { 'gte' => @level_num } } },
             { 'range' => { 'time' => { 'gte' => @five_day_ago, 'lte' => @today, 'format' => 'yyyy-MM-dd HH:mm:ss' } } }
           ]
         }
@@ -58,16 +62,19 @@ class Serviceslogs
       }
     }
 
-    result = @logging_es.search(index: "#{service_name}*", body: query)
-    result['hits']['hits'].each do |e|
-      time = Time.parse(e['_source']['time']).strftime('%Y-%m-%d %H:%M:%S')
-      five_days_results.merge!({ time => {
-                                 'service' => e['_index'],
-                                 'message' => e['_source']['message']
-                               } })
-    end
+    result = @logging_es.search(index: "#{service_name}*", scroll: @scroll_alive_time, body: query)
+    scroll_id = result['_scroll_id'] unless result.empty? && result.include?('_scroll_id')
 
-    five_days_results
+    while result['hits']['hits'].size.positive?
+      result['hits']['hits'].each do |e|
+        @five_days_results << {
+          'time' => e['_source']['time'],
+          'service' => e['_index'],
+          'message' => e['_source']['message']
+        }
+      end
+      result = @logging_es.scroll scroll: @scroll_alive_time, scroll_id: scroll_id
+    end
   end
 
   def ignore_context(msg)
@@ -83,27 +90,29 @@ class Serviceslogs
     msg
   end
 
-  def search_active_error(five_days_results)
+  def search_active_error
     active_results = {}
-    five_days_results.each do |k, v|
-      time = k
-      msg = ignore_context(v['message'])
+    @five_days_results.each do |item|
+      msg = ignore_context(item['message'])
       next if msg.empty?
 
-      # inside 24h active: { message => {count: 0 , first_date: 0} }
-      if Time.parse(time).to_i >= @time_24h
-        if active_results.keys.include?(msg)
+      # inside 24h active: { message => {count: 0 , first_date: "", service: ""} }
+      if Time.parse(item['time']).to_i >= @time_24h
+        if active_results.key?(msg)
           active_results[msg]['count'] += 1
+          active_results[msg]['first_date'] = item['time']
         else
-          active_results.merge!({ msg => { 'count' => 1, 'first_date' => time, 'service' => v['service'] } })
+          active_results.merge!({ msg => { 'count' => 1, 'first_date' => item['time'],
+                                           'service' => item['service'] } })
         end
 
-        active_results[msg]['first_date'] = time
         next
       end
 
-      if active_results.keys.include?(msg)
-        active_results[msg]['first_date'] = time
+      # outside 24h active
+      if active_results.key?(msg)
+        active_results[msg]['count'] += 1
+        active_results[msg]['first_date'] = item['time']
       end
     end
 
