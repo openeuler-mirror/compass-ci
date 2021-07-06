@@ -37,8 +37,14 @@ class StatsWorker
       # incase of many error message when ETCD, ES does not work
       sleep(10)
     ensure
+      delete_id2job(job_id) if job_id
       @etcd.close
     end
+  end
+
+  def delete_id2job(id)
+    res = @etcd.delete("sched/id2job/#{id}")
+    @log.info("extract-stats delete id2job from etcd #{id}: #{res}")
   end
 
   def result_post_processing(job_id : String, result_root : String, queue_path : String)

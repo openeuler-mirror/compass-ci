@@ -40,7 +40,6 @@ class Sched
       # es update fail, raise exception
       raise "es set job content fail!"
     end
-
   rescue e
     @env.response.status_code = 500
     @log.warn({
@@ -50,8 +49,11 @@ class Sched
   ensure
     send_mq_msg if @env.params.query["source"]? != "lifecycle"
     if job
-      move_process2stats(job)
-      delete_id2job(job.id)
+      # need update the end job_health to etcd
+      res = update_id2job(job.dump_to_json)
+      @log.info("scheduler update job to id2job #{job.id}: #{res}")
+      res = move_process2stats(job)
+      @log.info("scheduler move in_process to extract_stats #{job.id}: #{res}")
     end
   end
 end
