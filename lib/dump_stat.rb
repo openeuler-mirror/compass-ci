@@ -139,18 +139,18 @@ module DumpStat
       @result.each { |_k, y| y.pop if y.size == @max_cols }
       puts "Last record seems incomplete. Truncated #{RESULT_ROOT}/#{@monitor}.json"
     else
-      warn_stat "Not a matrix: value size is different - #{@min_cols_stat}: #{@min_cols} != #{@max_cols_stat}: #{@max_cols}: #{RESULT_ROOT}/#{@monitor}.json", @monitor
+      log_warn "Not a matrix: value size is different - #{@min_cols_stat}: #{@min_cols} != #{@max_cols_stat}: #{@max_cols}: #{RESULT_ROOT}/#{@monitor}.json, #{@monitor}"
     end
   end
 end
 
 def check_string_value(key, value, monitor)
   # value terminator is expected. If not, throw out an error warning.
-  warn_stat "no line terminator in stats value: #{value}", monitor if value.chomp!.nil?
+  log_warn "no line terminator in stats value: #{value}, #{monitor}" if value.chomp!.nil?
 
   value.strip!
   if value.empty?
-    warn_stat "empty stat value of #{key}", monitor
+    log_warn "empty stat value of #{key}, #{monitor}"
     return nil
   end
 
@@ -161,7 +161,7 @@ end
 def number?(key, value, invalid_records, record_index, monitor)
   unless value.numeric?
     invalid_records.push record_index
-    warn_stat "invalid stats key-value:  \n key: #{key} \n value: #{value}", monitor
+    log_warn "invalid stats key-value:  \n key: #{key} \n value: #{value}, #{monitor}"
     return nil
   end
 
