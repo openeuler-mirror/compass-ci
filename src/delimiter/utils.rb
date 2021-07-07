@@ -136,8 +136,8 @@ module Utils
       record_jobs(job['id'], job['upstream_commit'])
 
       job['suite'] = 'bisect-process'
-      job['my_name'] = ENV['my_name']
-      job['my_email'] = ENV['my_email']
+      job['my_name'] = ENV['secrets_my_name']
+      job['my_email'] = ENV['secrets_my_email']
       job['my_token'] = ENV['secrets_my_token']
       job['bad_job_id'] = job_id
       job['testbox'] = job['tbox_group']

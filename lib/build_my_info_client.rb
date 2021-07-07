@@ -58,6 +58,8 @@ class BuildMyInfo
     FileUtils.touch(lab_yaml_file) unless File.exist? lab_yaml_file
 
     lab_yaml_info = YAML.load_file(lab_yaml_file) || {}
+    lab_yaml_info['my_name'] = my_info['my_name']
+    lab_yaml_info['my_email'] = my_info['my_email']
     lab_yaml_info['my_token'] = my_info['my_token']
 
     File.open(lab_yaml_file, 'w') do |f|
