@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+# How to use:
+#   cmd: stderr-show | stderr-show $top_num
+
+require_relative '../lib/stderr_show.rb'
+
+top = ARGV[0] || 50
+
+t = StderrTable.new(top.to_i)
+puts t.create_table
