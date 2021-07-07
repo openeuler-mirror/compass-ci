@@ -190,10 +190,12 @@ class Sched
       job["job_stage"] = "boot"
       state = "booting"
       job_id = job["id"]
+      suite = job["suite"]
     else
       deadline = nil
       job_id = ""
       state = "requesting"
+      suite = nil
     end
 
     tbox_group = JobHelper.match_tbox_group(testbox.to_s)
@@ -207,7 +209,8 @@ class Sched
       "queues" => queues,
       "type" => type,
       "name" => testbox,
-      "tbox_group" => tbox_group
+      "tbox_group" => tbox_group,
+      "suite" => suite
     }
 
     @redis.update_wtmp(testbox.to_s, hash)
