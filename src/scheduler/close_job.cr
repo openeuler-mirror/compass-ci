@@ -50,7 +50,7 @@ class Sched
     send_mq_msg if @env.params.query["source"]? != "lifecycle"
     if job
       # need update the end job_health to etcd
-      res = update_id2job(job.dump_to_json)
+      res = update_id2job(JSON.parse(job.dump_to_json))
       @log.info("scheduler update job to id2job #{job.id}: #{res}")
       res = move_process2stats(job)
       @log.info("scheduler move in_process to extract_stats #{job.id}: #{res}")
