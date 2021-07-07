@@ -32,6 +32,7 @@ class Sched
         @env.set "job_stage", value
         @env.set "deadline", job.set_deadline(value).to_s
       else
+        value = "success" if value == "finished"
         job_content["job_health"] = value
       end
     end
