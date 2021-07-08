@@ -8,6 +8,7 @@ require "#{CCI_SRC}/lib/constants.rb"
 require 'elasticsearch'
 require 'time'
 require_relative 'conf'
+require 'set'
 
 class Serviceslogs
   include Services
@@ -22,13 +23,24 @@ class Serviceslogs
     @five_days_results = []
     @scroll_alive_time = '10m'
     @level_num = 4
+    @task2people = {}
 
     @query_result = {
       'total' => 0,
-      'cols' => %w[first_date service count error_message],
+      'cols' => %w[first_date service count handler error_message],
       'filter' => { 'start_time' => @one_day_ago, 'end_time' => @today },
       'data' => []
     }
+
+    load_task2person
+  end
+
+  def load_task2person
+    begin
+      @task2people = YAML.load_file("#{CCI_SRC}/src/lib/service_logs/task2person.yaml")
+    rescue StandardError => e
+      e.message
+    end
   end
 
   def active_service_logs
@@ -118,10 +130,16 @@ class Serviceslogs
 
     # generate web data format
     active_results.each do |k, v|
+      handler = ''
+      service = String.new(v['service'])
+      service.gsub!(/-[0-9]+/, '')
+      handler = @task2people[service] if @task2people.key?(service)
+
       @query_result['data'] << {
         'first_date' => Time.parse(v['first_date']).strftime('%Y-%m-%d'),
         'service' => v['service'],
         'count' => v['count'],
+        'handler' => handler,
         'error_message' => k
       }
     end
