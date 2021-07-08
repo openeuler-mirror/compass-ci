@@ -251,3 +251,33 @@ end
 post '/active_stderr' do
   active_stderr
 end
+
+# POST /job_boot_time
+# - header: "Content-Type: Application/json"
+# - body: json
+#
+# Response:
+#   - show job id which job state is boot and boot time at now
+#   eg:
+#     {
+#       "vm": {
+#         "threshold": 180(second),
+#         "x_params": [job_id, job_id2, job_id3, ...]
+#         "boot_time": [100, 0, 110, ...]
+#       }
+#     }
+#       "dc": {
+#         "threshold": 60(second),
+#         "x_params": [job_id, job_id2, job_id3, ...]
+#         "boot_time": [100, 0, 110, ...]
+#       }
+#     }
+#       "hw": {
+#         "threshold": 600(second),
+#         "x_params": [job_id, job_id2, job_id3, ...]
+#         "boot_time": [100, 0, 110, ...]
+#       }
+#     }
+post '/job_boot_time' do
+  job_boot_time
+end

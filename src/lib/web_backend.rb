@@ -5,6 +5,7 @@
 require 'json'
 require 'yaml'
 require 'set'
+require 'time'
 
 CCI_SRC ||= ENV['CCI_SRC'] || '/c/compass-ci'
 
@@ -819,4 +820,48 @@ def five_days_query(now)
     :size => 10000,
     :sort => [{"start_time" => {:order=>"desc"}}]
   }
+end
+
+def es_query_boot_job
+  query = {
+    query: {
+      bool: {
+        must: { term: { 'job_stage' => 'boot' } }
+      }
+    }, size: 10000
+  }
+  es_results = es_query(query)['hits']['hits']
+  job_list = []
+  es_results.each do |es_result|
+    next unless es_result['_source']['boot_time']
+
+    job_list << es_result['_source']
+  end
+  return job_list
+end
+
+def get_job_boot_time
+  response = { 'dc' => { 'threshold' => 60 , 'x_params' => [], 'boot_time' => [] },
+               'vm' => { 'threshold' => 180, 'x_params' => [], 'boot_time' => [] },
+               'hw' => { 'threshold' => 600, 'x_params' => [], 'boot_time' => [] }
+             }
+  job_list = es_query_boot_job
+  job_list.each do |job|
+    testbox_type = job['testbox'][0, 2]
+    testbox_type = 'hw' unless testbox_type.match?(/dc|vm/)
+    response[testbox_type]['x_params'] << job['id']
+    boot_time = (Time.now - Time.parse(job['boot_time'])).to_i
+    response[testbox_type]['boot_time'] << boot_time
+  end
+  return response.to_json
+end
+
+def job_boot_time
+  begin
+    body = get_job_boot_time
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get job_boot_time error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
