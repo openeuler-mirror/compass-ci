@@ -27,7 +27,7 @@ class TerminalShow
     response['data'].each do |item|
       msg = item['error_message']
       msg = msg[0, 100] if msg.size > 100
-      @rows << [item['first_date'], item['service'], item['count'], msg]
+      @rows << [item['first_date'], item['service'], item['count'], item['handler'], msg]
     end
   end
 
