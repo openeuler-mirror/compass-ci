@@ -4,8 +4,8 @@
 
 source ${CCI_SRC}/lib/log.sh
 
-if [ -n "$my_email" ] && [ -n "$my_name" ]; then
-	build-my-info -e $my_email -n $my_name
+if [ -n "$my_email" ] && [ -n "$my_name" ] && [ -n "$my_account" ]; then
+	build-my-info -e "$my_email" -n "$my_name" -a "$my_account"
 else
-	log_info "if you need to register account, please try: build-my-info -e \$my_email -n \$my_name"
+	log_info "if you need to register account, please try: build-my-info -e \$my_email -n \$my_name -a \$my_account"
 fi

@@ -1,6 +1,9 @@
 # please fill the configuration according to comments.
 
-# account name
+# account
+my_account: xxx
+
+# name
 my_name: xxx
 
 # email address

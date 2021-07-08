@@ -51,7 +51,7 @@
 	```
 
 	>**说明：**   
-	>只需填写my_name, my_email, 且my_name, my_email冒号后面必须有1个空格。    
+	>只需填写my_account, my_name, my_email, 且my_account, my_name, my_email冒号后面必须有1个空格。     
 
 5. 执行一键部署脚本 install-tiny
 	```bash
@@ -59,11 +59,10 @@
 	```
 
 6. 注册账号
-	以root用户一键部署compass-ci之后，会使用步骤4中填写的用户名和邮箱自动注册账号，其他非root用户注册账号可以使用build-my-info脚本注册。
+	非root用户注册帐号，该用户登录系统后直接使用build-my-info命令注册。
 
 	```bash
-	cd /c/compass-ci/sbin
-	./build-my-info.rb -e $my_email -n $my_name
+	build-my-info -e $my_email -n $my_name -a $my_account
 	```
 
 #### 提交测试任务

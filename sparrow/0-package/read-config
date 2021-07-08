@@ -7,9 +7,9 @@
 
 export_config_variables()
 {
-	[[ -n "$my_email" && -n "$my_name" ]] && return
+	[[ -n "$my_email" && -n "$my_name" && -n "$my_account" ]] && return
 
-	options=( server_ip my_name my_email )
+	options=( server_ip my_name my_email my_account)
 
 	for option in ${options[@]}
 	do
