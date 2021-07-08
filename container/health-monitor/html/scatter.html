@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>latency scatter</title>
+	<script src="https://cdn.staticfile.org/echarts/4.3.0/echarts.min.js"></script>
+</head>
+
+<body>
+	<h1 style="text-align:center">Compass CI jobs' boot time</h1>
+	<hr>
+	<div id="scatter_vm" style="width:50%;height:600px;float:left;"></div>
+	<div id="scatter_dc" style="width:50%;height:600px;float:left;"></div>
+	<div id="scatter_hw" style="width:50%;height:600px;float:left;"></div>
+	<script>
+		var chartDom_vm = document.getElementById('scatter_vm');
+		var myChart_vm = echarts.init(chartDom_vm);
+		var option_vm;
+
+		var chartDom_dc = document.getElementById('scatter_dc');
+		var myChart_dc = echarts.init(chartDom_dc);
+		var option_dc;
+
+		var chartDom_hw = document.getElementById('scatter_hw');
+		var myChart_hw = echarts.init(chartDom_hw);
+		var option_hw;
+		var api_data = {
+			"vm": {
+				"threshold": 180,
+				"x_params": [],
+				"boot_time": []
+			},
+			"dc": {
+				"threshold": 60,
+				"x_params": [],
+				"boot_time": []
+			},
+			"hw": {
+				"threshold": 600,
+				"x_params": [],
+				"boot_time": []
+			}
+		};
+
+		function get_option(s_name, s_data) {
+			var option_any = {
+				title: {
+					text: "boot time of " + s_name
+				},
+				grid: {
+					left: '3%',
+					right: '7%',
+					bottom: '7%',
+					containLabel: true
+				},
+				tooltip: {
+					axisPointer: {
+						show: true,
+						type: 'cross',
+						lineStyle: {
+							type: 'dashed',
+							width: 1
+						}
+					}
+				},
+				xAxis: [
+					{
+						name: 'job_id',
+						type: 'category',
+						data: s_data.x_params
+					}
+				],
+				yAxis: [
+					{
+						name: "boot time",
+						type: 'value',
+						minInterval: s_data.threshold
+					}
+				],
+				series: [{
+					name: "latency of " + s_name,
+					data: s_data.boot_time,
+					type: 'scatter',
+					markPoint: {
+						data: [
+							{ type: 'max', name: 'Max' },
+							{ type: 'min', name: 'Min' }
+						]
+					},
+					markLine: {
+						lineStyle: {
+							type: 'dashed'
+						},
+						data: [
+							{ yAxis: s_data.threshold }
+						]
+					}
+				}]
+			};
+			return option_any;
+		};
+
+		function getdata() {
+			var ajax = new XMLHttpRequest();
+			ajax.open("post", "/job_boot_time");
+			ajax.send();
+			ajax.onreadystatechange = function () {
+				if (ajax.readyState == 4 && ajax.status == 200) {
+					var data = JSON.parse(ajax.responseText);
+					if (!data.vm === null) {
+						api_data.vm = data.vm;
+					}
+					if (!data.dc === null) {
+						api_data.dc = data.dc;
+					}
+					if (!data.hw === null) {
+						api_data.hw = data.hw;
+					}
+				}
+				option_vm = get_option('vm', api_data.vm);
+				option_vm && myChart_vm.setOption(option_vm);
+
+				option_dc = get_option('dc', api_data.dc);
+				option_dc && myChart_dc.setOption(option_dc);
+
+				option_hw = get_option('hw', api_data.hw);
+				option_hw && myChart_hw.setOption(option_hw);
+			}
+		};
+
+		getdata();
+	</script>
+</body>
+
+</html>
