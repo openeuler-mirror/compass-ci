@@ -30,8 +30,8 @@
             <td style="background-color:green;height:200px;text-align:center;" onclick="goStderr()">
                 <font size="6">job stderrs</font>
             </td>
-            <td style="background-color:green;height:200px;text-align:center;">
-                <font size="6">no service</font>
+            <td style="background-color:green;height:200px;text-align:center;" onclick="goScatter()">
+                <font size="6">jobs boot time</font>
             </td>
             <td style="background-color:green;height:200px;text-align:center;">
                 <font size="6">no service</font>
@@ -96,6 +96,9 @@
     };
     function goStderr() {
         window.open('stderr.html');
+    };
+    function goScatter() {
+        window.open('scatter.html');
     };
 </script>
 
