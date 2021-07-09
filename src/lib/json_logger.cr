@@ -72,6 +72,7 @@ class JSONLogger < Log
     @env_info["testbox"] = env.get?("testbox").to_s if env.get?("testbox")
     @env_info["job_id"] = env.get?("job_id").to_s if env.get?("job_id")
     @env_info["job_state"] = env.get?("job_state").to_s if env.get?("job_state")
+    @env_info["api"] = env.get?("api").to_s if env.get?("api")
 
     set_elapsed(env)
     merge_env_log(env)
