@@ -244,6 +244,8 @@ end
 # main thread
 class MirrorMain
   def load_repo_file(repodir, project, fork_name, belong)
+    return unless ascii_text?(repodir)
+
     git_repo = "#{project}/#{fork_name}"
     git_info = YAML.safe_load(File.open(repodir))
     return if git_info.nil? || git_info['url'].nil? || Array(git_info['url'])[0].nil?
@@ -657,5 +659,15 @@ class MirrorMain
     num = @worker_threads.size
     return worker_threads_error(alive) if alive < num / 2
     return worker_threads_warn(alive) if alive < num
+  end
+end
+
+# main thread
+class MirrorMain
+  def ascii_text?(file_name)
+    type = %x(file "#{file_name}").chomp.gsub("#{file_name}: ", '')
+    return true if type == 'ASCII text'
+
+    return false
   end
 end
