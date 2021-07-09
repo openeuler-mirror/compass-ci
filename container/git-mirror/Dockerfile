@@ -12,7 +12,7 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 RUN apk update && \
     apk upgrade && \
     apk add --no-cache git tini && \
-    apk add ruby-dev make gcc g++ openssh
+    apk add ruby-dev make gcc g++ openssh file
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
