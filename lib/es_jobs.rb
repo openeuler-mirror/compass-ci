@@ -3,12 +3,26 @@
 
 LKP_SRC = ENV['LKP_SRC'] || '/c/lkp-tests'
 
-KEYWORD = %w[suite os arch category job_state tbox_group upstream_repo summary.success
-             summary.any_fail summary.any_error summary.any_stderr summary.any_warning].freeze
-
 require 'json'
 require "#{LKP_SRC}/lib/stats"
 require_relative './es_query'
+
+KEYWORD = %w[
+  suite
+  os
+  arch
+  category
+  job_state
+  job_health
+  job_stage
+  tbox_group
+  upstream_repo
+  summary.success
+  summary.any_fail
+  summary.any_error
+  summary.any_stderr
+  summary.any_warning
+].freeze
 
 # deal jobs search from es
 class ESJobs
