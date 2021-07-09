@@ -75,7 +75,7 @@ class Sched
       # continue if role in cluster config matches role in job
       next if (config["roles"].as_a.map(&.to_s) & roles).empty?
 
-      host_info = get_host_info(host.to_s)
+      host_info = Utils.get_host_info(host.to_s)
       job.update(host_info)
       queue = host.to_s
       queue = $1 if queue =~ /(\S+)--[0-9]+$/

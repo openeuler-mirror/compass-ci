@@ -6,6 +6,7 @@ require "yaml"
 
 require "./mq"
 require "./job"
+require "./utils"
 require "./web_env"
 require "./etcd_client"
 require "./block_helper"
