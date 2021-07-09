@@ -114,7 +114,7 @@ class ESQuery
     query = {
       aggs: {
         "all_#{field}" => {
-          terms: { field: field, size: 1000 }
+          terms: { field: field, size: 10000 }
         }
       },
       size: 0
@@ -260,7 +260,7 @@ def build_aggs_from_fields(fields)
   field = fields.shift
   aggs_hash['aggs'] ||= {}
   aggs_hash['aggs']["all_#{field}"] = {
-    'terms' => { field: field, size: 1000 }
+    'terms' => { field: field, size: 10000 }
   }
   sub_aggs = build_aggs_from_fields(fields)
   aggs_hash['aggs']["all_#{field}"].merge!(sub_aggs) if sub_aggs
