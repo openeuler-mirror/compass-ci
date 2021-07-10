@@ -393,21 +393,11 @@ class Job
     elsif @hash["rpmbuild"]?
       package_dir = ",/rpm/upload/#{common_dir}"
     elsif @hash["build-pkg"]?
-      if @hash["pkgbuild_repo"].to_s =~ /(packages|community)\/\//
-        package_name = @hash["pkgbuild_repo"].to_s.split("/")[-2]
-      else
-        package_name = @hash["pkgbuild_repo"].to_s.split("/")[-1]
-      end
-
+      package_name = @hash["upstream_repo"].to_s.split("/")[-1]
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
       package_dir += ",/cci/build-config" if @hash["config"]?
     elsif @hash["pkgbuild"]?
-      if @hash["pkgbuild_repo"].to_s =~ /(packages|community)\/\//
-        package_name = @hash["pkgbuild_repo"].to_s.split("/")[-2]
-      else
-        package_name = @hash["pkgbuild_repo"].to_s.split("/")[-1]
-      end
-
+      package_name = @hash["upstream_repo"].to_s.split("/")[-1]
       package_dir = ",/initrd/pkgbuild/#{common_dir}/#{package_name}"
       package_dir += ",/cci/build-config" if @hash["config"]?
     end
