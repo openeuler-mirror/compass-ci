@@ -153,7 +153,15 @@ class Sched
     # create result dir and copy job.sh, job.yaml and job.cgz to result dir
     src_dir = File.dirname(temp_yaml)
     dst_dir = File.join("/srv", job_content["result_root"].to_s)
-    FileUtils.mkdir_p(dst_dir)
+    10.times do
+      begin
+        FileUtils.mkdir_p(dst_dir)
+        break
+      rescue e
+        @log.warn("create result_root dir error, result_root: #{dst_dir} error: #{e.to_s}")
+        sleep 1
+      end
+    end
 
     # the job.yaml is not final version
     files = ["#{src_dir}/job.sh",
