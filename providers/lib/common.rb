@@ -25,10 +25,8 @@ def report_event(info, res, msg)
 end
 
 def total_allocated_mem
-  qemus_allocated_mem = %x{echo "$(ps -ef | grep qemu | grep result)" | awk -F "-m " '{print $2}' |
-awk -F "G" '{print $1}' | awk '{sum += $1};END {print sum}'}.to_i
-  dockers_allocated_mem = %x{echo "$(ps -ef | grep docker | grep result)" | awk -F "-m " '{print $2}
-' | awk -F "g" '{print $1}' | awk '{sum += $1};END {print sum}'}.to_i
+  qemus_allocated_mem = %x{echo "$(ps -ef | grep qemu | grep result)" | awk -F "-m " '{print $2}' | awk -F "G" '{print $1}' | awk '{sum += $1};END {print sum}'}.to_i
+  dockers_allocated_mem = %x{echo "$(ps -ef | grep docker | grep result)" | awk -F "-m " '{print $2}' | awk -F "g" '{print $1}' | awk '{sum += $1};END {print sum}'}.to_i
   qemus_allocated_mem + dockers_allocated_mem
 end
 
@@ -38,8 +36,7 @@ end
 
 def check_mem_quota
   while total_allocated_mem > max_allocable_memory
-    puts "Total Allocated Memory is bigger than Max Allocable memory: #{total_allocated_mem}G > #{ma
-x_allocable_memory}G, wait for memory release!"
+    puts "Total Allocated Memory is bigger than Max Allocable memory: #{total_allocated_mem}G > #{max_allocable_memory}G, wait for memory release!"
     sleep(30)
   end
 end
