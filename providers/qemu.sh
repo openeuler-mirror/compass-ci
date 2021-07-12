@@ -11,6 +11,7 @@ load_cci_defaults
 
 : ${hostname:="vm-1p1g-1"}
 : ${queues:="vm-1p1g.$(arch)"}
+: ${log_file:=/srv/cci/serial/logs/$hostname}
 
 set_host_info()
 {
@@ -29,7 +30,7 @@ del_host_info()
 get_lock()
 {
 	lockfile-create -p --retry 0 $lockfile > /dev/null 2>&1 || return 1
-	log_info "vm got lock successed: $lockfile"
+	log_info "vm got lock successed: $lockfile" | tee -a $log_file
 }
 
 main()
@@ -76,7 +77,7 @@ main()
 		source "$CCI_SRC/providers/$provider/${template}.sh"
 	)
 
-	log_info "vm finish run, release lock: $lockfile"
+	log_info "vm finish run, release lock: $lockfile" | tee -a $log_file
 	lockfile-remove $lockfile
 }
 
