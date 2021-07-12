@@ -37,8 +37,7 @@ main()
 	# why lock this?
 	# because one mac match one vm, and only one vm with unique mac can running/requesting at any time.
 
-	local lockfile="${hostname}/lockfile"
-	mkdir -p $hostname
+	local lockfile="$hostname"
 
 	while ! get_lock; do
 		sleep 1
