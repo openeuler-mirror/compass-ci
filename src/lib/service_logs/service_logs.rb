@@ -96,8 +96,6 @@ class Serviceslogs
 
     msg.gsub!(/\n.+/, ' ')
     msg.strip!
-    msg = $1 if msg =~ %r{(check /[^/]+/[^/]+)} # "check /result/openeuler_docker/2021-06-25/vm-2p16g" => "check /result/openeuler_docker"
-    msg.gsub!(/-[0-9]+/, '') # "/c/lkp-tests/stats/install-iso-pre-20210626080006 doesn't exist"
     msg.gsub!(/(z9|crystal)\.[0-9]+/, '')
     msg
   end
