@@ -107,25 +107,17 @@
 			ajax.send();
 			ajax.onreadystatechange = function () {
 				if (ajax.readyState == 4 && ajax.status == 200) {
-					var data = JSON.parse(ajax.responseText);
-					if (!data.vm === null) {
-						api_data.vm = data.vm;
-					}
-					if (!data.dc === null) {
-						api_data.dc = data.dc;
-					}
-					if (!data.hw === null) {
-						api_data.hw = data.hw;
-					}
+					api_data = JSON.parse(ajax.responseText);
+
+					option_vm = get_option('vm', api_data.vm);
+					option_vm && myChart_vm.setOption(option_vm);
+
+					option_dc = get_option('dc', api_data.dc);
+					option_dc && myChart_dc.setOption(option_dc);
+
+					option_hw = get_option('hw', api_data.hw);
+					option_hw && myChart_hw.setOption(option_hw);
 				}
-				option_vm = get_option('vm', api_data.vm);
-				option_vm && myChart_vm.setOption(option_vm);
-
-				option_dc = get_option('dc', api_data.dc);
-				option_dc && myChart_dc.setOption(option_dc);
-
-				option_hw = get_option('hw', api_data.hw);
-				option_hw && myChart_hw.setOption(option_hw);
 			}
 		};
 
