@@ -139,13 +139,17 @@ add_disk()
 	# VM testbox has disk spec?
 	[ -n "$hdd_partitions" ] || [ -n "$rootfs_disk" ] || return 0
 
-	[ -n "$mount_points" ] || mount_points=$(pwd)
+	local mnt
+	for mnt in $mount_points; do
+		[[ "$mnt" =~ "multi-qemu" ]] && qemu_mount_point="$mnt" && break
+	done
+	[ -n "$qemu_mount_point" ] || qemu_mount_point=$(pwd)
 
 	local index=0
 	local disk
 	for disk in $hdd_partitions $rootfs_disk
 	do
-		local qcow2_file="${mount_points}/${hostname}-${disk##*/}.qcow2"
+		local qcow2_file="${qemu_mount_point}/${hostname}-${disk##*/}.qcow2"
 		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index}"
 		((index++))
 
