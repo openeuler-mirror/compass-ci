@@ -40,6 +40,7 @@ module Scheduler
     env.response.headers["Connection"] = "close"
     env.create_log
     env.create_sched
+    env.set "api", env.sched.get_api.to_s
   rescue e
     env.log.warn(e.inspect_with_backtrace)
   end

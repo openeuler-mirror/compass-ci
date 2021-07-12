@@ -184,6 +184,18 @@ class Sched
     new_queues
   end
 
+  def get_api
+    resource = @env.request.resource
+    api = resource.split("?")[0].split("/")
+    if resource.starts_with?("/boot.")
+      return "boot"
+    elsif resource.starts_with?("/job_initrd_tmpfs")
+      return api[1]
+    else
+      return api[-1]
+    end
+  end
+
   def set_lifecycle(job, testbox, queues)
     if job
       deadline = job.set_deadline("boot")
