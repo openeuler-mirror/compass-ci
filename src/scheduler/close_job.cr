@@ -21,9 +21,7 @@ class Sched
     job["job_state"] = "complete" if job["job_state"] == "boot"
 
     job["job_stage"] = "finish"
-    job_health = @env.params.query["job_health"]?
-    job_health ||= job["job_health"]? || "success"
-    job["job_health"] = job_health
+    job["job_health"] = job["job_health"]? || @env.params.query["job_health"]? || "success"
 
     job.set_time("close_time")
     @env.set "close_time", job["close_time"]
