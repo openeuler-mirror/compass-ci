@@ -237,11 +237,12 @@ end
 # - output:
 # {
 #   "total":74,
-#   "cols":["count","first_date","relevant_links","error_message"],
+#   "cols":["count","first_date", "job_owner", "relevant_links","error_message"],
 #   "data":[
 #     {
 #       "count":43,
 #       "first_date":"2021-06-22",
+#       "job_owner": "compass-ci-robot"
 #       "relevant_links":"/result/host-info/2021-07-05/vm-2p8g/openeuler-20.03-aarch64/crystal.2654417"
 #       "error_message":"stderr.Can_not_find_perf_command"
 #     },

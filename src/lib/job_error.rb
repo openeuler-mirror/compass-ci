@@ -34,6 +34,7 @@ class JobError
         @today_errors[error] ||= {'count' => 0}
         @today_errors[error]['count'] += 1
         @today_errors[error]['first_date'] = start_time
+        @today_errors[error]['job_owner'] ||= job['my_account']
         @today_errors[error]['relevant_links'] ||= job['result_root']
         @today_errors[error]['error_message'] = error
       end
