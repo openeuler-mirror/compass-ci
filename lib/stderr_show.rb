@@ -20,11 +20,11 @@ class StderrTable
       e.message
     end
 
-    @head = response['cols'][0, 2] + ['error_message/relevant_links']
+    @head = response['cols'][0, 3] + ['error_message/relevant_links']
     response['data'][0, @top_num].each do |item|
       relevant_links = '/srv' + handle_long_str(item['relevant_links'], 134)
       error_message = handle_long_str(item['error_message'], 138)
-      @rows << [item['count'], item['first_date'], error_message + "\n  - " + relevant_links]
+      @rows << [item['count'], item['first_date'], item['job_owner'], error_message + "\n  - " + relevant_links]
     end
   end
 
