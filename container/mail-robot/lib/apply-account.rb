@@ -130,8 +130,8 @@ class ApplyAccount
   end
 
   def read_my_account_es
-    accountx_es = ESQuery.new(index: 'accounts')
-    accountx_es.query_by_id(@my_info['my_email'])
+    account_es = ESQuery.new(index: 'accounts')
+    account_es.query_by_id(@my_info['my_email'])
   end
 
   def build_apply_info(apply_info, my_account_es)
