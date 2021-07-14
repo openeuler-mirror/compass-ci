@@ -5,6 +5,17 @@
 DIR=$(dirname $(realpath $0))
 . $(dirname $DIR)/defconfig.sh
 
+TAG=$1
+
+[[ -n $TAG ]] && {
+	check_tag=$(git -C $LKP_SRC tag -l $TAG)
+	if [[ -n $check_tag ]]
+	then
+		echo "TAG: $TAG already exists, please use a new one."
+		exit 1
+	fi
+}
+
 load_cci_defaults
 
 [[ $ARCH 	]] || ARCH=$(uname -m)
@@ -19,11 +30,16 @@ cmd=(
 	-v $DIR/bin:/root/bin
 	-v /srv/initrd/lkp/${lkp_initrd_user:-latest}:/osimage/user/lkp
 	alpine:lkp
-	/root/bin/pack-lkp.sh
+	/root/bin/pack-lkp.sh $TAG
 )
 
 "${cmd[@]}"
+
 echo "result: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz"
+[[ -n $TAG ]] && {
+	cp "/srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz" "/srv/initrd/lkp/$TAG-${ARCH}.cgz"
+	echo "result: /srv/initrd/lkp/$TAG-${ARCH}.cgz"
+}
 
 # rsync lkp-${ARCH}.cgz if needed
 if [ -x /usr/local/bin/rsync-lkp-cgz ]; then
