@@ -7,6 +7,7 @@
 #   cmd: t-show
 
 require_relative '../src/lib/service_logs/service_logs'
+require_relative '../lib/stderr_show.rb'
 require 'terminal-table'
 require 'json'
 
@@ -26,8 +27,7 @@ class TerminalShow
     @head = ['index'].concat(response['cols'])
     index = 1
     response['data'].each do |item|
-      msg = item['error_message']
-      msg = msg[0, 100] if msg.size > 100
+      msg = handle_long_str(item['error_message'], 100)
       @rows << [index, item['first_date'], item['service'], item['count'], item['handler'], msg]
       index += 1
     end
