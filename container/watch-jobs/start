@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  ES_USER
+  ES_PASSWORD
+]
+
+defaults = relevant_defaults(names)
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
+env = docker_env(defaults)
+
+docker_rm "watch-jobs"
+
+cmd = %W[
+  docker run
+  --restart=always
+  --name watch-jobs
+  -it
+  -u 1090:1090
+] + env + %W[
+  -v /etc/localtime:/etc/localtime:ro
+  watch-jobs
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./watch-jobs']
+
+system(*cmd)
