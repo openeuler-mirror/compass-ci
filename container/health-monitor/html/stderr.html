@@ -16,6 +16,7 @@
         <table id="stderrs" style="width:100%;word-break:break-all;" border="1">
             <th width=5%>count</th>
             <th width=10%>first_date</th>
+            <th width=10%>suite</th>
             <th width=10%>job_owner</th>
             <th width=10%>relevant_links</th>
             <th>error_message</th>
@@ -51,6 +52,11 @@
             td.style.textAlign = 'center';
             tr.appendChild(td);
             td.innerText = data[i].first_date;
+
+            var td = document.createElement('td');
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            td.innerText = data[i].suite;
 
             var td = document.createElement('td');
             td.style.textAlign = 'center';
