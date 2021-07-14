@@ -18,7 +18,7 @@ require "../scheduler/redis_client"
 require "../scheduler/elasticsearch_client"
 
 require "../scheduler/renew_deadline"
-require "../scheduler/submit_job"
+require "../scheduler/auto_depend_submit_job"
 require "../scheduler/find_job_boot"
 require "../scheduler/find_next_job_boot"
 require "../scheduler/close_job"
@@ -28,6 +28,9 @@ require "../scheduler/create_job_cpio"
 require "../scheduler/download_file"
 require "../scheduler/opt_job_in_etcd"
 require "../scheduler/report_event"
+require "../scheduler/plugins/pkgbuild"
+require "../scheduler/plugins/finally"
+require "../scheduler/plugins/cluster"
 
 class Sched
   property es
@@ -46,6 +49,9 @@ class Sched
     @rgc = RemoteGitClient.new
     @env = env
     @log = env.log.as(JSONLogger)
+    @cluster = Cluster.new
+    @pkgbuild = PkgBuild.new
+    @finally = Finally.new
   end
 
   def debug_message(response)
