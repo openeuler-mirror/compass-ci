@@ -78,8 +78,8 @@ main()
 {
 	install_env
 	run_service
+	wait
+	check_service
 }
 
 main
-wait
-check_service
