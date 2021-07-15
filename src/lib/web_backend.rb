@@ -776,9 +776,9 @@ end
 
 # ---------------------------------------------------------------------------------------------------------
 # active-stderr, we will use the response create table like:
-#  total | first date | job_owner        | relevant-links(link) | error_message
-#  16    | 2021-6-15  | compass-ci-robot | job_ids              | stderr.Dload_Upload_Total_Spent_Left_Speed
-#  15    | 2021-6-15  | compass-ci-robot | job_ids              | stderr.Can_not_find_perf_command
+#  total | first date | suite | job_owner        | relevant-links(link) | error_message
+#  16    | 2021-6-15  | iperf | compass-ci-robot | job_ids              | stderr.Dload_Upload_Total_Spent_Left_Speed
+#  15    | 2021-6-15  | iperf | compass-ci-robot | job_ids              | stderr.Can_not_find_perf_command
 #  ...
 # ---------------------------------------------------------------------------------------------------------
 def active_stderr
@@ -802,7 +802,7 @@ def active_stderr_body
 
   {
     'total' => jobs_errors.size,
-    'cols' => ['count', 'first_date', 'job_owner', 'relevant_links', 'error_message'],
+    'cols' => ['count', 'first_date', 'suite', 'job_owner', 'relevant_links', 'error_message'],
     'data' => jobs_errors
   }.to_json
 end
