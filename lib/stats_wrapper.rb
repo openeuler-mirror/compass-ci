@@ -30,7 +30,9 @@ module StatsWrapper
     @log = "#{RESULT_ROOT}/#{@stats_group}"
 
     unless File.exist?("#{PROGRAM_DIR}/#{@program}")
+      return unless File.exist?(@log)
       log_error "#{PROGRAM_DIR}/#{@program} doesn't exist, check for: #{RESULT_ROOT}"
+
       return
     end
 
