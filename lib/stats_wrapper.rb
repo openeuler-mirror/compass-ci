@@ -29,13 +29,7 @@ module StatsWrapper
     @stats_group = program_time || program
     @log = "#{RESULT_ROOT}/#{@stats_group}"
 
-    unless File.exist?("#{PROGRAM_DIR}/#{@program}")
-      return unless File.exist?(@log)
-      log_error "#{PROGRAM_DIR}/#{@program} doesn't exist, check for: #{RESULT_ROOT}"
-
-      return
-    end
-
+    return unless File.exist?("#{PROGRAM_DIR}/#{@program}")
     return unless File.exist?("#{@log}.yaml") || pretreatment
     return unless create_tmpfile
 
