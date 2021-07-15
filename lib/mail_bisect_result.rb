@@ -43,8 +43,6 @@ class MailBisectResult
     subject = "[Compass-CI][#{@repo.split('/')[1]}] #{@commit_id[0..9]} #{@bisect_error[0].split("\n")[0]}"
     prefix_srv_result = "http://#{SRV_HTTP_DOMAIN}:#{SRV_HTTP_RESULT_PORT}"
     prefix_srv_git = "http://#{SRV_HTTP_DOMAIN}:#{SRV_HTTP_GIT_PORT}"
-    bisect_job_url = ENV['result_root'] ? "bisect job result directory:\n#{prefix_srv_result}#{ENV['result_root']}\n" : ''
-    report_doc = "bisect email doc:\nhttps://gitee.com/wu_fengguang/compass-ci/blob/master/doc/bisect_email.en.md\n"
     pkgbuild_repo_url = "PKGBUILD:\n#{prefix_srv_git}/git/#{@pkgbuild_repo}\n"
     first_bad_commit_job_url = "first bad commit job result directory:\n#{prefix_srv_result}#{@first_bad_commit_result_root}\n"
 
@@ -67,8 +65,6 @@ class MailBisectResult
     compiler: gcc (GCC) 7.3.0
     #{pkgbuild_repo_url}
     #{first_bad_commit_job_url}
-    #{bisect_job_url}
-    #{report_doc}
     Regards,
     Compass CI team
     BODY
