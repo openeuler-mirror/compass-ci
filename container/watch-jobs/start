@@ -24,7 +24,7 @@ cmd = %W[
   docker run
   --restart=always
   --name watch-jobs
-  -it
+  -d
   -u 1090:1090
 ] + env + %W[
   -v /etc/localtime:/etc/localtime:ro
