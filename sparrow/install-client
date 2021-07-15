@@ -74,12 +74,21 @@ check_service()
 	done
 }
 
+check_cmd()
+{
+	[ -n "$(command -v lockfile-create)" ] || {
+		log_error "command not found: lockfile-create"
+		exit 1
+	}
+}
+
 main()
 {
 	install_env
 	run_service
 	wait
 	check_service
+	check_cmd
 }
 
 main
