@@ -84,7 +84,7 @@ write_logfile()
 		}
 
 		log_info "start request job: $hostname" | tee -a $log_file
-		curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
+		curl -s -S http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
 		cat $ipxe_script | grep "No job now" && {
 			log_info "no job now: $hostname" | tee -a $log_file
 			continue
