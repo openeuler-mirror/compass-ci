@@ -55,6 +55,28 @@ write_logfile()
 	ipxe_script=ipxe_script
 	while true
 	do
+		# check if need safe-stop:
+		# - stop multi-qemu systemd
+		# - stop all multi-qemu process
+		#   - curling vm: stop after curl timeout <== following code used for this step
+		#   - running vm: stop after vm run finished
+		# - kill sleep $runtime process
+		# - then lkp will reboot hw.
+		[ -f "/tmp/$HOSTNAME/safe-stop" ] && exit 0
+
+		# check if need restart:
+		# - upgrade code
+		# - stop all multi-qemu process
+		#   - curling vm: stop after curl timeout <== following code used for this step
+		#   - running vm: stop after vm run finished
+		# - start multi-qemu process by systemd
+		#
+		# what's UUID:
+		# - UUID is generate at the beginning of ${CCI_SRC}/providers/multi-qemu.
+		# - then, if multi-qemu need restart, `/tmp/$HOSTNAME/restart/$UUID` will be generated,
+		# - so curl will exit.
+		[ -n "$UUID" ] && [ -f "/tmp/$HOSTNAME/restart/$UUID" ] && exit 0
+
 		curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
 		cat $ipxe_script | grep "No job now" && continue
 		break
