@@ -29,8 +29,14 @@ del_host_info()
 
 get_lock()
 {
+	[[ $(($retry_time % $retry_remain_times)) -eq 0 ]] && {
+		log_info "uuid: $UUID" | tee -a $log_file
+		log_info "try to get lock: $lockfile" | tee -a $log_file
+		log_info "already retry times: $retry_time" | tee -a $log_file
+	}
+
 	lockfile-create -p --retry 0 $lockfile > /dev/null 2>&1 || return 1
-	log_info "vm got lock successed: $lockfile" | tee -a $log_file
+	log_info "vm got lock successed: $lockfile, uuid: $UUID" | tee -a $log_file
 }
 
 main()
@@ -40,8 +46,11 @@ main()
 
 	local lockfile="$hostname"
 
+	local retry_remain_times=600
+	local retry_time=0
 	while ! get_lock; do
 		sleep 1
+		retry_time=$(($retry_time + 1))
 	done
 
 	# unicast prefix: x2, x6, xA, xE
@@ -77,7 +86,7 @@ main()
 		source "$CCI_SRC/providers/$provider/${template}.sh"
 	)
 
-	log_info "vm finish run, release lock: $lockfile" | tee -a $log_file
+	log_info "vm finish run, release lock: $lockfile, uuid: $UUID" | tee -a $log_file
 	lockfile-remove $lockfile
 }
 

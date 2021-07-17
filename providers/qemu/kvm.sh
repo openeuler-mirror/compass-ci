@@ -62,7 +62,10 @@ write_logfile()
 		#   - running vm: stop after vm run finished
 		# - kill sleep $runtime process
 		# - then lkp will reboot hw.
-		[ -f "/tmp/$HOSTNAME/safe-stop" ] && exit 0
+		[ -f "/tmp/$HOSTNAME/safe-stop" ] && {
+			log_info "safe stop: $hostname" | tee -a $log_file
+			exit 0
+		}
 
 		# check if need restart:
 		# - upgrade code
@@ -75,10 +78,19 @@ write_logfile()
 		# - UUID is generate at the beginning of ${CCI_SRC}/providers/multi-qemu.
 		# - then, if multi-qemu need restart, `/tmp/$HOSTNAME/restart/$UUID` will be generated,
 		# - so curl will exit.
-		[ -n "$UUID" ] && [ -f "/tmp/$HOSTNAME/restart/$UUID" ] && exit 0
+		[ -n "$UUID" ] && [ -f "/tmp/$HOSTNAME/restart/$UUID" ] && {
+			log_info "restart vm with uuid. vm: $hostname. uuid: $UUID" | tee -a $log_file
+			exit 0
+		}
 
+		log_info "start request job: $hostname" | tee -a $log_file
 		curl http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
-		cat $ipxe_script | grep "No job now" && continue
+		cat $ipxe_script | grep "No job now" && {
+			log_info "no job now: $hostname" | tee -a $log_file
+			continue
+		}
+
+		log_info "got job: $hostname" | tee -a $log_file
 		break
 	done
 	cat $ipxe_script >> ${log_file}
@@ -115,12 +127,12 @@ parse_ipxe_script()
 check_kernel()
 {
 	[ -n "$kernel" ] || {
-		log_info "Can not find job for current hostname: $hostname."
+		log_info "Can not find job for current hostname: $hostname." | tee -a $log_file
 		exit 0
 	}
 
 	[ -s "$kernel" ] || {
-		log_error "Can not find kernel file or kernel file is empty: $kernel."
+		log_error "Can not find kernel file or kernel file is empty: $kernel." | tee -a $log_file
 		exit 1
 	}
 }
@@ -138,7 +150,7 @@ check_initrds()
 	if [ -n "$initrds" ]; then
 		cat $initrds > concatenated-initrd
 	else
-		log_error "The current initrds is null."
+		log_error "The current initrds is null." | tee -a $log_file
 		exit 1
 	fi
 }
@@ -244,10 +256,10 @@ set_qemu()
 
 print_message()
 {
-	log_info SCHED_PORT: $SCHED_PORT
-	log_info kernel: $kernel
-	log_info initrds: $initrds
-	log_info append: $append
+	log_info SCHED_PORT: $SCHED_PORT | tee -a $log_file
+	log_info kernel: $kernel | tee -a $log_file
+	log_info initrds: $initrds | tee -a $log_file
+	log_info append: $append | tee -a $log_file
 	[ "$DEBUG" == "true" ] || log_info less $log_file
 
 	sleep 5
