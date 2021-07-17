@@ -35,7 +35,7 @@ get_lock()
 		log_info "already retry times: $retry_time" | tee -a $log_file
 	}
 
-	lockfile-create -p --retry 0 $lockfile > /dev/null 2>&1 || return 1
+	lockfile-create -q --lock-name -p --retry 0 $lockfile || return 1
 	log_info "vm got lock successed: $lockfile, uuid: $UUID" | tee -a $log_file
 }
 
@@ -44,7 +44,7 @@ main()
 	# why lock this?
 	# because one mac match one vm, and only one vm with unique mac can running/requesting at any time.
 
-	local lockfile="$hostname"
+	local lockfile="${hostname}.lock"
 
 	local retry_remain_times=600
 	local retry_time=0
@@ -87,7 +87,7 @@ main()
 	)
 
 	log_info "vm finish run, release lock: $lockfile, uuid: $UUID" | tee -a $log_file
-	lockfile-remove $lockfile
+	lockfile-remove --lock-name $lockfile
 }
 
 main
