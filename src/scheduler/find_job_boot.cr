@@ -287,7 +287,7 @@ class Sched
     send_mq_msg
 
     job = get_job_from_queues(queues, host)
-    set_lifecycle(job, host, queues)
+    set_lifecycle(job, host, queues) if job
 
     if job
       job["last_success_stage"] = "boot"
