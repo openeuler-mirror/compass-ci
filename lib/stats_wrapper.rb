@@ -127,7 +127,10 @@ module StatsWrapper
     return unless File.exist?(@log)
     return unless File.read(@log) =~ /\x0/
 
-    log_warn "skip binary file #{@log}"
+    log_warn({
+      'message' => "skip binary file #{@stats_group}",
+      'error_message' => "skip binary file #{@log}"
+    })
 
     true
   end
@@ -140,14 +143,20 @@ module StatsWrapper
     return if File.read("#{LKP_SRC}/etc/failure") =~ /^#{@program}\./
     return if File.read("#{LKP_SRC}/etc/pass") =~ /^#{@program}\./
 
-    log_warn "empty stats for #{@log}"
+    log_warn({
+      'message' => "empty stats for #{@stats_group}",
+      'error_message' => "empty stats for #{@log}"
+    })
   end
 
   def self.check_exist_json
     return if File.exist?("#{RESULT_ROOT}/#{@stats_group}.json") || File.exist?("#{RESULT_ROOT}/#{@stats_group}.json.gz")
     return if File.exist?("#{RESULT_ROOT}/last_stat") && File.read("#{RESULT_ROOT}/last_state") =~ /is_incomplete_run/
 
-    log_warn "no generate json file for #{@stats_group}, check #{RESULT_ROOT}"
+    log_warn({
+      'message' => "no generate json file for #{@stats_group}",
+      'error_message' => "no generate json file for #{@stats_group}, check #{RESULT_ROOT}"
+    })
     data = "# no json file for #{@stats_group}\nis_incomplete_run: 1"
     File.write("#{RESULT_ROOT}/last_state", data, mode: 'a')
   end
@@ -223,8 +232,10 @@ module StatsWrapper
     if File.exist?(@log)
       %x(#{PROGRAM_DIR}/#{@program} #{@log} < #{@log} > #{@tmpfile})
       unless $CHILD_STATUS.exitstatus.zero?
-        log_error("#{PROGRAM_DIR}/#{@program} #{@log} < #{@log} exit code #{$CHILD_STATUS.exitstatus},
-                  check #{@tmpfile}")
+        log_error({
+          'message' => "#{PROGRAM_DIR}/#{@program} exit code #{$CHILD_STATUS.exitstatus}",
+          'error_message' => "#{PROGRAM_DIR}/#{@program} #{@log} < #{@log} exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile}"
+        })
         create_status = false
       end
     elsif File.exist?("#{@log}.yaml")
@@ -232,7 +243,10 @@ module StatsWrapper
     else
       %x(#{PROGRAM_DIR}/#{@program} < /dev/null > #{@tmpfile})
       unless $CHILD_STATUS.exitstatus.zero?
-        log_error("#{PROGRAM_DIR}/#{@program} < /dev/null exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile}")
+        log_error({
+          'message' => "#{PROGRAM_DIR}/#{@program} exit code #{$CHILD_STATUS.exitstatus}",
+          'error_message' => "#{PROGRAM_DIR}/#{@program} < /dev/null exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile}"
+        })
         create_status = false
       end
     end
@@ -250,7 +264,10 @@ module StatsWrapper
   def self.dump_stat(stats_group, file)
     %x(#{LKP_SRC}/sbin/dump-stat #{stats_group} < #{file})
     unless $CHILD_STATUS.exitstatus.zero?
-      log_error("#{LKP_SRC}/sbin/dump-stat #{@program} exit code #{$CHILD_STATUS.exitstatus}, check #{file}")
+      log_error({
+        'message' => "#{LKP_SRC}/sbin/dump-stat #{@program} exit code #{$CHILD_STATUS.exitstatus}",
+        'error_message' => "#{LKP_SRC}/sbin/dump-stat #{@program} exit code #{$CHILD_STATUS.exitstatus}, check #{file}"
+      })
       return nil
     end
 
