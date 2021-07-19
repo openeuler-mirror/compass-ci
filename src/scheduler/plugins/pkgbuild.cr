@@ -19,9 +19,9 @@ class PkgBuild < PluginsCommon
     # ss struct:
     # ss:
     #   git:
-    #     upstream_commit: xxx
+    #     commit: xxx
     #   mysql:
-    #     upstream_commit: xxx
+    #     commit: xxx
     ss = job["ss"]?.not_nil!.as_h
     ss.each do |pkg_name, pkg_params|
       pbp = init_pkgbuild_params(job, pkg_name, pkg_params)
@@ -113,7 +113,7 @@ class PkgBuild < PluginsCommon
     content["testbox"] = JSON::Any.new("dc-16g")
     content["os_mount"] = JSON::Any.new("container")
     content["docker_image"] = JSON::Any.new(docker_image)
-    content["upstream_commit"] = JSON::Any.new("HEAD")
+    content["commit"] = JSON::Any.new("HEAD")
     content["upstream_repo"] = JSON::Any.new(upstream_repo)
     content["pkgbuild_repo"] = JSON::Any.new(pkgbuild_repo)
     content["upstream_url"] = upstream_info["url"][0]
@@ -129,7 +129,12 @@ class PkgBuild < PluginsCommon
 
     default = load_default_pkgbuild_yaml
 
-    content["upstream_commit"] = JSON::Any.new(get_head_commit(upstream_repo)) if content["upstream_commit"].to_s == "HEAD"
+    if content["commit"].to_s == "HEAD"
+      upstream_commit = get_head_commit(upstream_repo)
+    else
+      upstream_commit = content["commit"].to_s
+    end
+    content["upstream_commit"] = JSON::Any.new(upstream_commit)
 
     content.merge!(default)
     @log.info(content)
