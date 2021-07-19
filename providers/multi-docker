@@ -4,7 +4,10 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require_relative './docker/docker'
+require 'securerandom'
+
+require_relative 'lib/common'
+require_relative '../lib/mq_client'
 
 opt = {}
 
@@ -24,6 +27,10 @@ options = OptionParser.new do |opts|
     opt['queues'] = queues
   end
 
+  opts.on('-i index', '--index index', 'index of multi-qemu, used for safe-stop') do |index|
+    opt['index'] = index
+  end
+
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     exit
@@ -37,9 +44,91 @@ end
 
 options.parse!(ARGV)
 
-hostname = opt['hostname_prefix'] || "dc-1g.#{ENV['HOSTNAME']}"
-nr_container = opt['nr_container'] || 1
-queues = opt['queues'] || "dc-1g.#{ENV['HOSTNAME']}"
+HOSTNAME = opt['hostname_prefix'] || "dc-1g.#{ENV['HOSTNAME']}"
+NR_DC = opt['nr_container'] || 1
+QUEUES = opt['queues'] || "dc-1g.#{ENV['HOSTNAME']}"
+INDEX = opt['index']
 
-pids = multi_docker(hostname, nr_container, queues)
-save_pid pids
+UUID = SecureRandom.uuid
+SUITE_FILE = "/tmp/#{ENV['HOSTNAME']}/suite"
+SAFE_STOP_FILE = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
+RESTART_FILE = "/tmp/#{ENV['HOSTNAME']}/restart/#{UUID}"
+RESTART_LOCK_FILE = "/tmp/#{ENV['HOSTNAME']}/restart/lock"
+
+SCHED_HOST = ENV['LKP_SERVER'] || '172.17.0.1'
+SCHED_PORT = ENV['LKP_CGI_PORT'] || '3000'
+MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
+MQ_PORT = ENV['MQ_PORT'] || 5672
+
+def loop_reboot_docker(hostname)
+  loop do
+    begin
+      reboot_docker(hostname)
+    rescue StandardError => e
+      puts e.backtrace
+      sleep 5
+    end
+  end
+end
+
+def reboot_docker(hostname)
+  mq = MQClient.new(MQ_HOST, MQ_PORT)
+  queue = mq.queue(hostname, {:durable => true})
+  queue.subscribe({:block => true, :manual_ack => true}) do |info,  _pro, msg|
+    Process.fork do
+      deal_reboot_msg(mq, msg, info, 'dc')
+    end
+  end
+end
+
+def start
+  reboot_thr = Thread.new do
+    loop_reboot_docker(HOSTNAME)
+  end
+
+  threads = {}
+  NR_DC.to_i.times do |i|
+    thr = Thread.new do
+      loop_main("#{HOSTNAME}-#{i}", thr)
+    end
+    threads[i] = thr
+  end
+
+  manage_thr = Thread.new do
+    manage(threads.merge({ 'manage' => manage_thr }))
+  end
+
+  threads.each do |_, thr|
+    thr.join
+  end
+
+  manage_thr.exit
+  reboot_thr.exit
+  puts 'all threads exit'
+
+  safe_stop
+  puts "#{UUID} exit"
+end
+
+def loop_main(hostname, thr)
+  loop do
+    begin
+      thr.exit if File.exist?(SAFE_STOP_FILE)
+      system(
+        { 'hostname' => hostname, 'queues' => QUEUES, 'uuid' => UUID },
+        ENV['CCI_SRC'] + '/providers/docker.rb'
+      )
+    rescue StandardError => e
+      puts e.backtrace
+      # if an exception occurs, request the next time after 30 seconds
+      sleep 25
+    ensure
+      sleep 5
+    end
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  save_running_suite
+  start
+end

@@ -39,8 +39,14 @@ def del_host2queues(hostname)
   system cmd
 end
 
-def parse_response(url)
+def parse_response(url, uuid)
+  safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
+  restart_file = "/tmp/#{ENV['HOSTNAME']}/restart/#{uuid}"
+
   while true do
+    return nil if File.exist?(safe_stop_file)
+    return nil if uuid && File.exist?(restart_file)
+
     response = %x(curl #{url})
     hash = response.is_a?(String) ? JSON.parse(response) : {}
     next if hash["job_id"] == "0"
@@ -121,24 +127,32 @@ def record_end_log(log_file, start_time)
   sleep(2)
 end
 
-def main(hostname, queues)
+def main(hostname, queues, uuid = nil)
+  load_path = build_load_path(hostname)
+  FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
+
+  lock_file = load_path + "/#{hostname}.lock"
+  f = get_lock(lock_file)
+
   check_mem_quota
 
   set_host2queues(hostname, queues)
   url = get_url hostname
   puts url
-  hash = parse_response url
+  hash = parse_response(url, uuid)
   return del_host2queues(hostname) if hash.nil?
 
   log_file = "#{LOG_DIR}/#{hostname}"
   start_time = record_start_log(log_file, hash: hash)
 
-  load_path = build_load_path(hostname)
   load_initrds(load_path, hash)
   start_container(hostname, load_path, hash)
 
   del_host2queues(hostname)
   record_end_log(log_file, start_time)
+ensure
+  f&.flock(File::LOCK_UN)
+  f&.close
 end
 
 def loop_main(hostname, queues)
