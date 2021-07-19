@@ -636,9 +636,10 @@ class Job
     self["kernel_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path("#{linux_vmlinuz_path}")
   end
 
-  private def common_initrds
+  def get_common_initrds
     temp_initrds = [] of String
-
+    # init custom_bootstrap cgz
+    # if has custom_bootstrap field, just give bootstrap cgz to testbox, no need lkp-test/job cgz
     if @hash.has_key?("custom_bootstrap")
       raise "need runtime field in the job yaml." unless @hash.has_key?("runtime")
 
@@ -648,9 +649,26 @@ class Job
       return temp_initrds
     end
 
-    temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-                    JobHelper.service_path("#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz")
+    # init job.cgz
     temp_initrds << "#{SCHED_HTTP_PREFIX}/job_initrd_tmpfs/#{id}/job.cgz"
+
+    # pkg_data:
+    #   lkp-tests:
+    #     tag: v1.0
+    #     md5: xxxx
+    #     content: yyy (base64)
+    if @hash.has_key?("pkg_data")
+      @hash["pkg_data"].as_h.each do |key, value|
+        program = value.as_h
+        temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+          JobHelper.service_path("#{SRV_INITRD}/#{key}/#{program["tag"]}-#{os_arch}.cgz")
+        temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+          JobHelper.service_path("#{SRV_INITRD}/#{key}/#{program["md5"]}.cgz")
+      end
+    else
+      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+        JobHelper.service_path("#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz")
+    end
 
     return temp_initrds
   end
@@ -694,7 +712,7 @@ class Job
       temp_initrds.concat(nfs_cifs_initrds())
     end
 
-    temp_initrds.concat(common_initrds())
+    temp_initrds.concat(get_common_initrds())
 
     return temp_initrds
   end
