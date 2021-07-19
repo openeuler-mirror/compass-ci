@@ -19,8 +19,9 @@ class StderrTable
     rescue StandardError => e
       e.message
     end
-
-    @head = response['cols'][0, 3] + ['error_message/relevant_links']
+    
+    # response['cols']: ["count","first_date", "suite", "job_owner", "relevant_links","error_message"]
+    @head = response['cols'][0, 2] + [response['cols'][3]] + ['error_message/relevant_links']
     response['data'][0, @top_num].each do |item|
       relevant_links = '/srv' + handle_long_str(item['relevant_links'], 134)
       error_message = handle_long_str(item['error_message'], 138)
