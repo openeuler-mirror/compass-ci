@@ -103,6 +103,12 @@ module Scheduler
     env.sched.get_deadline.to_s
   end
 
+  # get testbox info
+  # curl "http://localhost:3000/get_testbox?testbox=xxx
+  get "/get_testbox" do |env|
+    env.sched.get_testbox.to_json
+  end
+
   # file download server
   get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
     env.sched.download_file

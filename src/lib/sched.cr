@@ -236,6 +236,22 @@ class Sched
     @es.update_tbox(testbox.to_s, hash)
   end
 
+  def get_testbox
+    testbox = @env.params.query["testbox"]?.to_s
+    testbox_info = @es.get_tbox(testbox)
+    raise "cant find the testbox in es, testbox: #{testbox}" unless testbox_info
+
+    testbox_info
+  rescue e
+    @env.response.status_code = 500
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
+
+    return Hash(String, JSON::Any).new
+  end
+
   def get_type(testbox)
     return unless testbox
 
