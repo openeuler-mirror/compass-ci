@@ -287,10 +287,7 @@ class Job
   private def check_pkg_integrity(md5, dest_cgz_file)
     dest_cgz_md5 = Digest::MD5.hexdigest(File.read dest_cgz_file)
 
-    return if md5 == dest_cgz_md5
-
-    error_msg = "check pkg integrity failed."
-    raise error_msg
+    raise "check pkg integrity failed." if md5 != dest_cgz_md5
   end
 
   private def set_lkp_server
