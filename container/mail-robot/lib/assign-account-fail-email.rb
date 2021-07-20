@@ -6,6 +6,11 @@
 def email_err_message(message)
   err_message = ''
   case message
+  when 'NON_FORWARD_USER'
+    err_message = <<~EMAIL_MESSAGE
+      Only forward-issuers can forwarding the 'apply acccount' emails.
+      If you want to forward the emails, please contact the administrator to ensure you are a forward-issuer.
+    EMAIL_MESSAGE
   when 'NO_COMMIT_URL'
     err_message = <<~EMAIL_MESSAGE
       No commit url found.
