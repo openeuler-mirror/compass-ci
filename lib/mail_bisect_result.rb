@@ -22,7 +22,7 @@ class MailBisectResult
     @first_bad_commit_result_root = bisect_info['first_bad_commit_result_root']
     @git_commit = GitCommit.new(@work_dir, @commit_id)
     @to = @git_commit.author_email
-    @rto = @git_commit.author_email
+    @rto = @git_commit.author_email_name
   end
 
   def parse_mail_info
@@ -54,9 +54,9 @@ class MailBisectResult
     Hi #{@git_commit.author_name},
 
     Some error/warning(s) are found in
-    git url: #{@upstream_url}/commit/#{@commit_id}
-    git commit: #{@commit_id} ("#{@git_commit.subject}")
-    git commit author email: #{@rto}
+    url: #{@upstream_url}/commit/#{@commit_id}
+    commit: #{@commit_id} ("#{@git_commit.subject}")
+    author: #{@rto}
 
     All error/warning(s) (new ones prefixed by >>):
     #{@all_errors}

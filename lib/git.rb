@@ -15,6 +15,10 @@ class GitCommit
     `#{@git_prefix} log -n1 --pretty=format:'%ae' #{@commit}`.chomp
   end
 
+  def author_email_name
+    "#{author_name} <#{author_email}>"
+  end
+
   def subject
     `#{@git_prefix} log -n1 --pretty=format:'%s' #{@commit}`.chomp
   end
