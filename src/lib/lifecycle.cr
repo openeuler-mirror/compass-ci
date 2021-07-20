@@ -446,6 +446,7 @@ class Lifecycle
     @machines.delete(testbox)
     machine = @es.get_tbox(testbox)
     return unless machine
+    return unless machine["state"]?
     return if MACHINE_CLOSE_STATE.includes?(machine["state"])
 
     deadline = machine["deadline"]?.to_s
