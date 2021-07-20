@@ -661,9 +661,9 @@ class Job
       @hash["pkg_data"].as_h.each do |key, value|
         program = value.as_h
         temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-          JobHelper.service_path("#{SRV_INITRD}/#{key}/#{program["tag"]}-#{os_arch}.cgz")
+          JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{os_arch}/#{program["tag"]}.cgz")
         temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-          JobHelper.service_path("#{SRV_INITRD}/#{key}/#{program["md5"]}.cgz")
+          JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
       end
     else
       temp_initrds << "#{INITRD_HTTP_PREFIX}" +
