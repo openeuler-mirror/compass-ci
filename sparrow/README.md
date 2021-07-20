@@ -2,6 +2,11 @@
 
 在 openEuler 系统一键部署 compass-ci 环境，当前已支持 openEuler-aarch64-20.03-LTS 系统环境，以下配置仅供参考。
 
+>**说明：**    
+>本文只适用于在较为干净的openEuler系统一键部署compass-ci环境，如果您的环境中有如下设置，将无法成功部署：
+>1.lkp用户UID不是1090（如果没有该用户请忽略）
+>2.运行了Kubernetes（compass-ci需要使用docker，而非podman-docker，且compass-ci需要占用很多服务端口，例如es， redis， rabbitmq等，易与当前环境中已使用的端口冲突）
+
 ## 准备工作
 - 硬件    
 	服务器类型：ThaiShan200-2280 (建议)    
