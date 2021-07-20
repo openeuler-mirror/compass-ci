@@ -46,6 +46,8 @@ server_name=$(hostname | cut -f1 -d.)
 : ${DOCKER_PROXY_PORT:=3128}
 : ${jumper_host:=$server_ip}
 : ${JUMPER_PORT:=10000}
+: ${FORWARD_ISSUER:=/etc/compass-ci/forward-issuer.yaml}
+: ${ACCOUNT_ISSUER:=/etc/compass-ci/account-issuer.yaml}
 : ${monitor_host:=$server_ip}
 : ${MONITOR_PORT:=20001}
 : ${FETCH_MAIL_DIR:=/srv/cci/Maildir}
@@ -128,6 +130,8 @@ DOCKER_PROXY_HOST: $docker_proxy_host
 DOCKER_PROXY_PORT: $DOCKER_PROXY_PORT
 JUMPER_HOST: $jumper_host
 JUMPER_PORT: $JUMPER_PORT
+ACCOUNT_ISSUER: $ACCOUNT_ISSUER
+FORWARD_ISSUER: $FORWARD_ISSUER
 MONITOR_HOST: $monitor_host
 MONITOR_PORT: $MONITOR_PORT
 FETCH_MAIL_DIR: $FETCH_MAIL_DIR
@@ -168,6 +172,8 @@ DOCKER_REGISTRY_PORT:
 GIT_MIRROR_HOST:
 JUMPER_HOST:
 JUMPER_PORT:
+FORWARD_ISSUER:
+ACCOUNT_ISSUER:
 MONITOR_HOST:
 MONITOR_PORT:
 EOF
