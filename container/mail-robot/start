@@ -19,6 +19,7 @@ names = Set.new %w[
   ES_PASSWORD
   MAILDIR
   ACCOUNT_ISSUER
+  FORWARD_ISSUER
   lab
 ]
 
