@@ -87,6 +87,7 @@ sched_nodes.each do |node|
   -v /srv/result:/srv/result
   -v /srv/initrd:/srv/initrd:ro
   -v /srv/os:/srv/os:ro
+  -v /srv/upload-files:/srv/upload-files:rw
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
   --log-opt tag=scheduler-#{SCHED_PORT}
