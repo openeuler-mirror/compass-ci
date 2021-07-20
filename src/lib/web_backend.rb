@@ -865,3 +865,32 @@ def job_boot_time
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
+
+def get_top_boot_time
+  result = { 'hw' => [], 'vm' => [], 'dc' => [] }
+  threshold = { 'hw' => 600, 'vm' => 180, 'dc' => 60 }
+  job_list = es_query_boot_job
+  job_list.each do |job|
+    testbox_type = job['testbox'][0, 2]
+    testbox_type = 'hw' unless testbox_type.match?(/dc|vm/)
+    boot_time = (Time.now - Time.parse(job['boot_time'])).to_i
+    next if boot_time <= threshold[testbox_type]
+
+    result[testbox_type] << { 'job_id' => job['id'], 'boot_time' => boot_time, 'result_root' => job['result_root'] }
+  end
+  result.each_key do |k|
+    result[k].sort! { |a, b| b['boot_time'] <=> a['boot_time'] }
+    result[k] = result[k][0..29] if result[k].length > 30
+  end
+  result.to_json
+end
+
+def top_boot_time
+  begin
+    body = get_top_boot_time
+  rescue StandardError => e
+    warn e.message
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get top_boot_time error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end

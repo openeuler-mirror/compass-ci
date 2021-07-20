@@ -283,3 +283,37 @@ end
 post '/job_boot_time' do
   job_boot_time
 end
+
+# POST /top_boot_time
+# - header: "Content-Type: Application/json"
+# - body: json # just a empty {}
+# - output:
+# {
+#   "hw": [
+#     {
+#       "job_id1": $job_id1,
+#       "boot_time": $boot_time,
+#       "result_root": $result_root
+#     },
+#     ...
+#   ],
+#   "vm": [
+#     {
+#       "job_id2": $job_id2,
+#       "boot_time": $boot_time,
+#       "result_root": $result_root
+#     },
+#     ...
+#   ],
+#   "dc": [
+#     {
+#       "job_id3": $job_id3,
+#       "boot_time": $boot_time,
+#       "result_root": $result_root
+#     },
+#     ...
+#   ]
+# }
+post '/top_boot_time' do
+  top_boot_time
+end
