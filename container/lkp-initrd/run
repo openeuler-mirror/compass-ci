@@ -36,9 +36,18 @@ cmd=(
 "${cmd[@]}"
 
 echo "result: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz"
+
+# directory to store the base cgz is: /srv/upload-file/$repo_name/${ARCH}
 [[ -n $TAG ]] && {
-	cp "/srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz" "/srv/initrd/lkp/$TAG-${ARCH}.cgz"
-	echo "result: /srv/initrd/lkp/$TAG-${ARCH}.cgz"
+	repo_name=$(echo $LKP_SRC | awk -F'/' '{print $NF}')
+
+	[[ -d "/srv/upload-files/$repo_name/${ARCH}" ]] || mkdir -p "/srv/upload-files/$repo_name/${ARCH}"
+	cp "/srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz" "/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
+	echo "result: /srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
+
+	# when doing the package with new tag, sync the base cgz to z9 server.
+	rsync -aPz "/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz" "${lkp_initrd_user}@z9:/srv/upload-files/$repo_name/${ARCH}"
+	echo "z9 result: :/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
 }
 
 # rsync lkp-${ARCH}.cgz if needed
