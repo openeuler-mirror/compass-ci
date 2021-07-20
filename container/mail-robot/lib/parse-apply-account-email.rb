@@ -38,6 +38,8 @@ require_relative '../../../lib/build_account_info'
 class ParseApplyAccountEmail
   def initialize(mail_content)
     @mail_content = mail_content
+    # forward_issuer is email info for user who do the email forward
+    @forward_issuer =  File.exist?(ENV['FORWARD_ISSUER']) ? YAML.load_file(ENV['FORWARD_ISSUER']) : {}
 
     @my_info = {
       'my_email' => mail_content.from[0],
@@ -47,6 +49,18 @@ class ParseApplyAccountEmail
   end
 
   def build_my_info
+    email_subject = @mail_content.subject
+
+    # if the email's sender is a forward_issuer, it will re-extract the 
+    # my_email, my_name, from the forwarded original email content.
+    # case the email's sender is not a forward_issuer, it will throw error and
+    # send fail email to the sender
+    if email_subject =~ /fw: *apply account/i
+      raise 'NON_FORWARD_USER' unless @forward_issuer.include? @my_info['my_email']
+
+      extract_forwarded_email
+    end
+
     @my_info['my_commit_url'] = parse_commit_url
     @my_info['my_account'] = parse_my_account
     @my_info['my_ssh_pubkey'] << parse_pub_key
@@ -60,6 +74,14 @@ class ParseApplyAccountEmail
                         @mail_content.body.decoded
 
     return mail_content_body
+  end
+
+  def extract_forwarded_email
+    forwarded_email_content = extract_mail_content_body
+    forwarded_email = Mail.read_from_string(forwarded_email_content)
+
+    @my_info['my_email'] = forwarded_email.from[0]
+    @my_info['my_name'] = forwarded_email.From.unparsed_value.gsub(/ *<[^<>]*>/, '').gsub(/"/, '')
   end
 
   def extract_users
