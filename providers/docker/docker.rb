@@ -21,7 +21,7 @@ names = Set.new %w[
 defaults = relevant_defaults(names)
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT = defaults['SCHED_PORT'] || 3000
-LOG_DIR  = '/srv/cci/serial/logs'
+LOG_DIR = '/srv/cci/serial/logs'
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
@@ -43,15 +43,15 @@ def parse_response(url, uuid)
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
   restart_file = "/tmp/#{ENV['HOSTNAME']}/restart/#{uuid}"
 
-  while true do
+  loop do
     return nil if File.exist?(safe_stop_file)
     return nil if uuid && File.exist?(restart_file)
 
     response = %x(curl #{url})
     hash = response.is_a?(String) ? JSON.parse(response) : {}
-    next if hash["job_id"] == "0"
+    next if hash['job_id'] == '0'
 
-    unless hash.has_key?('job')
+    unless hash.key?('job')
       puts response
       return nil
     end
@@ -59,7 +59,6 @@ def parse_response(url, uuid)
     return hash
   end
 end
-
 
 def curl_cmd(path, url, name)
   system "curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
@@ -99,8 +98,7 @@ def start_container(hostname, load_path, hash)
       'hostname' => hostname,
       'docker_image' => docker_image,
       'load_path' => load_path,
-      'log_dir' => "#{LOG_DIR}/#{hostname}"
-    },
+      'log_dir' => "#{LOG_DIR}/#{hostname}" },
     ENV['CCI_SRC'] + '/providers/docker/run.sh'
   )
   clean_dir(load_path)
@@ -182,8 +180,8 @@ end
 
 def reboot_docker(hostname)
   mq = MQClient.new(MQ_HOST, MQ_PORT)
-  queue = mq.queue(hostname, {:durable => true})
-  queue.subscribe({:block => true, :manual_ack => true}) do |info,  _pro, msg|
+  queue = mq.queue(hostname, { :durable => true })
+  queue.subscribe({ :block => true, :manual_ack => true }) do |info, _pro, msg|
     Process.fork do
       puts msg
       machine_info = JSON.parse(msg)
