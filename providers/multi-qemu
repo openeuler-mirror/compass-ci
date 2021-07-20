@@ -13,7 +13,7 @@ require_relative '../lib/mq_client'
 
 opt = {}
 options = OptionParser.new do |opts|
-  opts.banner = 'Usage: multi-qemu -n -c -q'
+  opts.banner = 'Usage: multi-qemu -n -c -q -l -i -h'
 
   opts.separator ''
   opts.on('-n HOSTNAME_PREFIX', '--name HOSTNAME_PREFIX', 'format: $tbox_group.$HOSTNAME') do |name|
@@ -136,12 +136,7 @@ def reboot_vm(hostname)
   mq = MQClient.new(MQ_HOST, MQ_PORT)
   queue = mq.queue(hostname, { :durable => true })
   queue.subscribe({ :block => true, :manual_ack => true }) do |info, _pro, msg|
-    puts msg
-    machine_info = JSON.parse(msg)
-    job_id = machine_info['job_id']
-    res, msg = reboot('vm', job_id)
-    report_event(machine_info, res, msg)
-    mq.ack(info)
+    deal_reboot_msg(mq, msg, info, 'vm')
   end
 end
 
