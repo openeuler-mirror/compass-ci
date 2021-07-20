@@ -20,6 +20,7 @@ class MyData
     when 'physical'
       queues = [
         'taishan200-2280-2s64p-256g',
+        'taishan200-2280-2s64p-128g',
         'taishan200-2280-2s48p-512g',
         'taishan200-2280-2s48p-256g',
         '2288hv5-2s44p-384g'
