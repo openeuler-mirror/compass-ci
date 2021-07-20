@@ -10,18 +10,24 @@
 
     <h1 style="text-align:center">Git Mirror 服务状态</h1>
     <hr>
-    <div style="width:40%;margin-top:5%;margin-left:30%;">
+    <div style="width:20%;margin-top:5%;margin-left:40%;">
         <table style="width:100%;" border="1">
             <tr>
-                <th>状态</th>
+                <th width=70%>
+                    <font size='5'>状态</font>
+                </th>
                 <td id="state"></td>
             </tr>
             <tr>
-                <th>活跃线程数</th>
+                <th width=70%>
+                    <font size='5'>活跃线程数</font>
+                </th>
                 <td id="num"></td>
             </tr>
             <tr>
-                <th>每小时log数</th>
+                <th width=70%>
+                    <font size='5'>最近1小时log数</font>
+                </th>
                 <td id="lognum"></td>
             </tr>
         </table>
@@ -36,7 +42,6 @@
         ajax.onreadystatechange = function () {
             if (ajax.readyState == 4 && ajax.status == 200) {
                 var data = JSON.parse(ajax.responseText);
-                console.log(data);
                 showData(data);
             }
         }
