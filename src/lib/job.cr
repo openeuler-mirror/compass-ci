@@ -4,6 +4,8 @@
 require "json"
 require "yaml"
 require "any_merge"
+require "digest"
+require "base64"
 
 require "scheduler/constants.cr"
 require "scheduler/jobfile_operate.cr"
@@ -155,6 +157,7 @@ class Job
   end
 
   private def set_defaults
+    extract_user_pkg()
     append_init_field()
     set_os_arch()
     set_docker_os()
@@ -247,6 +250,47 @@ class Job
         self[k] = v
       end
     end
+  end
+
+  private def extract_user_pkg
+    return unless @hash.has_key?("pkg_data")
+
+    pkg_datas = @hash["pkg_data"].as_h
+    repos = pkg_datas.keys
+
+    repos.each do |repo|
+      repo_pkg_data = pkg_datas[repo].as_h
+      store_pkg(repo_pkg_data, repo)
+    end
+  end
+
+  private def store_pkg(repo_pkg_data, repo)
+    md5 = repo_pkg_data["md5"].to_s
+
+    dest_cgz_dir = "#{SRV_UPLOAD}/#{repo}/#{md5[0, 2]}"
+    FileUtils.mkdir_p(dest_cgz_dir) unless File.exists?(dest_cgz_dir)
+
+    dest_cgz_file = "#{dest_cgz_dir}/#{md5}.cgz"
+
+    return if File.exists? dest_cgz_file
+
+    pkg_tag = repo_pkg_data["tag"].to_s
+    pkg_content_base64 = repo_pkg_data["content"].to_s
+    dest_cgz_content = Base64.decode_string(pkg_content_base64)
+
+    File.touch(dest_cgz_file)
+    File.write(dest_cgz_file, dest_cgz_content)
+
+    check_pkg_integrity(md5, dest_cgz_file)
+  end
+
+  private def check_pkg_integrity(md5, dest_cgz_file)
+    dest_cgz_md5 = Digest::MD5.hexdigest(File.read dest_cgz_file)
+
+    return if md5 == dest_cgz_md5
+
+    error_msg = "check pkg integrity failed."
+    raise error_msg
   end
 
   private def set_lkp_server
