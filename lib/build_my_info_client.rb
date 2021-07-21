@@ -61,6 +61,7 @@ class BuildMyInfo
     lab_yaml_info['my_name'] = my_info['my_name']
     lab_yaml_info['my_email'] = my_info['my_email']
     lab_yaml_info['my_token'] = my_info['my_token']
+    lab_yaml_info['my_account'] = my_info['my_account']
 
     File.open(lab_yaml_file, 'w') do |f|
       f.puts lab_yaml_info.to_yaml
