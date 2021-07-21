@@ -217,7 +217,6 @@ def compare_matrixes(matrixes_list, suite_list, latest_jobs=nil, matrixes_titles
 
   options = { 'perf-profile': 5, theme: :none, no_print: false }.merge(options)
   matrixes_values = get_matrixes_values(matrixes_list, latest_jobs, options)
-  remove_unchanged_field(matrixes_values, suite_list) if matrixes_list.length > 1
   no_print = options[:no_print]
   result_str = group_key ? "\n\n\n\n\n" + group_key : ''
   result_str += get_all_result_str(
@@ -778,6 +777,7 @@ def get_values_str(matrixes, success, theme)
   values_str = ''
   compare_index = SUB_SHORT_COLUMN_WIDTH / 2
   matrixes.each do |index, values|
+    next unless values.is_a?(Hash)
     values_str += if success
                     get_success_str(
                       values, index, theme, compare_index
