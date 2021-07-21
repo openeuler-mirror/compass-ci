@@ -69,7 +69,6 @@ do_one_run()
 		done
 		[ -x first-run ] && ./first-run
 		[ -x start ] && ./start
-		[ "$container_name" == 'lkp-initrd' ] && ./run
 	)
 	lockfile-remove --lock-name "start_${container_name}".lock
 }
