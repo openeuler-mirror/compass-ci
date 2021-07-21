@@ -16,6 +16,10 @@ class MQClient
     @channel.queue(queue_name).bind(x)
   end
 
+  def fanout(exchange_name)
+    @channel.fanout(exchange_name)
+  end
+
   def queue(queue_name, opts = {})
     @channel.queue(queue_name, opts)
   end

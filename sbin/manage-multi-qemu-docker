@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'json'
+require 'optparse'
+require_relative '../lib/mq_client.rb'
+
+my_opts = {}
+
+options = OptionParser.new do |opts|
+  opts.banner = 'Usage: manage-multi-qemu-docker -s -r -c hostname1 hostname2 ...'
+  opts.separator '       manage multi-qemu and multi-docker to restart or safe-stop'
+  opts.separator 'hostname:'
+  opts.separator '       can be "all", means takes effect on all phycical machines'
+  opts.separator '       can be physical machine name like "taishan200-2280-2s48p-256g--a66"'
+  opts.separator 'example:'
+  opts.separator '       manage-multi-qemu-docker -s hostname1 hostname2 ...'
+  opts.separator '       manage-multi-qemu-docker -r -c xxxx hostname1 hostname2 ...'
+  opts.separator 'options:'
+
+  opts.on('-s', '--safe-stop', 'set the type to safe-stop') do
+    my_opts['type'] = 'safe-stop'
+  end
+
+  opts.on('-r', '--restart', 'set the type to restart') do
+    my_opts['type'] = 'restart'
+  end
+
+  opts.on('-c commit_id', '--commit_id commit_id', 'commit_id of the restart type for updating code') do |commit_id|
+    my_opts['commit_id'] = commit_id
+  end
+
+  opts.on('-h', '--help', 'show this message') do
+    puts opts
+    exit
+  end
+end
+
+options.parse!(ARGV)
+
+if ARGV.empty?
+  puts(options)
+  exit
+end
+
+unless my_opts.key?('type')
+  puts 'Please use -s or -r to set the type'
+  puts options
+  exit
+end
+
+if my_opts['type'] == 'restart' && !my_opts['commit_id']
+  puts 'restart type must set commit_id'
+  puts options
+  exit
+end
+
+my_opts['hostname'] = ARGV.join(',')
+puts my_opts
+
+mq = MQClient.new
+x = mq.fanout('multi-manage')
+
+# :expiration => 3000 means message timeout after 3 seconds
+# After that, the machine connected to the queue will not get the message
+x.publish(my_opts.to_json, :expiration => 3000)
