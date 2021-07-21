@@ -7,3 +7,5 @@
 . $CCI_SRC/lib/check_public_network.sh
 
 public_network_ok && $CCI_SRC/sbin/download-rootfs
+
+sh $CCI_SRC/container/lkp-initrd/run $lab-v1.0
