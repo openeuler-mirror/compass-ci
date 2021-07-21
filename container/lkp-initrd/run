@@ -7,6 +7,10 @@ DIR=$(dirname $(realpath $0))
 
 TAG=$1
 
+load_cci_defaults
+
+[[ $HOSTNAME == $lkp_pack_res_server ]] && [[ $USER == $lkp_pack_tag_user ]] || unset TAG
+
 [[ -n $TAG ]] && {
 	check_tag=$(git -C $LKP_SRC tag -l $TAG)
 	if [[ -n $check_tag ]]
@@ -15,8 +19,6 @@ TAG=$1
 		exit 1
 	fi
 }
-
-load_cci_defaults
 
 [[ $ARCH 	]] || ARCH=$(uname -m)
 [[ $LKP_SRC	]] || LKP_SRC=/c/lkp-tests
@@ -46,7 +48,7 @@ echo "result: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz"
 	echo "result: /srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
 
 	# when doing the package with new tag, sync the base cgz to z9 server.
-	rsync -aPz "/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz" "${lkp_initrd_user}@z9:/srv/upload-files/$repo_name/${ARCH}"
+	rsync -aPz "/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz" "${lkp_pack_tag_user}@${lkp_rsync_des_server}:/srv/upload-files/$repo_name/${ARCH}"
 	echo "z9 result: :/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
 }
 
