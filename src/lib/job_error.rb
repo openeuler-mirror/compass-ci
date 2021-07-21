@@ -67,7 +67,7 @@ class JobError
 end
 
 def error?(metric, job)
-  return metric if metric.start_with?('stderr')
+  return metric if metric.start_with?('stderr') && !metric.end_with?('has_stderr')
 
   if metric.end_with?('fail')
     return job[metric] || metric
