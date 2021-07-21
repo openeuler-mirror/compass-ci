@@ -86,6 +86,7 @@ main()
 		source "$CCI_SRC/providers/$provider/${template}.sh"
 	)
 
+	log_info "pwd: $(pwd), hostname: $hostname, mac: $mac" | tee -a $log_file
 	log_info "vm finish run, release lock: $lockfile, uuid: $UUID" | tee -a $log_file
 	lockfile-remove --lock-name $lockfile
 }
