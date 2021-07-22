@@ -13,6 +13,11 @@
 	<div id="scatter_vm" style="width:50%;height:600px;float:left;"></div>
 	<div id="scatter_dc" style="width:50%;height:600px;float:left;"></div>
 	<div id="scatter_hw" style="width:50%;height:600px;float:left;"></div>
+	<div style="margin-right:5%;margin-top:5%;float:right;">
+		<button style="width:200px;height:80px;" onclick="goTopLatency()">
+			<font size='6'>job list</font>
+		</button>
+	</div>
 	<script>
 		var chartDom_vm = document.getElementById('scatter_vm');
 		var myChart_vm = echarts.init(chartDom_vm);
@@ -122,6 +127,9 @@
 		};
 
 		getdata();
+		function goTopLatency() {
+			window.open('toplatency.html');
+		}
 	</script>
 </body>
 
