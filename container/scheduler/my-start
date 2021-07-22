@@ -81,6 +81,7 @@ cmd = %W[
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/result:/srv/result
   -v /srv/initrd:/srv/initrd:ro
+  -v /srv/upload-files:/srv/upload-files:rw
   -v /srv/os:/srv/os:ro
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
