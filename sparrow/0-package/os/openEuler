@@ -37,8 +37,10 @@ pkgs=(
 public_network_ok && {
 	yum install -y --skip-broken "${pkgs[@]}"
 
-	wget http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
-	wget http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
+	# lib64lockfile1 from http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
+	# lockfile-progs from http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
+	wget http://api.compass-ci.openeuler.org:${SRV_HTTP_INITRD_PORT:-20008}/initrd/deps/self-rpm-repo/lockfile/$(arch)/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
+	wget http://api.compass-ci.openeuler.org:${SRV_HTTP_INITRD_PORT:-20008}/initrd/deps/self-rpm-repo/lockfile/$(arch)/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
 
 	rpm -i --force lib64lockfile1-1.16-1-omv4002.$(arch).rpm lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
 	rm -rf *.rpm
