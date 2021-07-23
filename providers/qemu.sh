@@ -53,6 +53,9 @@ main()
 		retry_time=$(($retry_time + 1))
 	done
 
+	local vm_start_time=$(date "+%s")
+	log_info "starting QEMU: $hostname" | tee $log_file
+
 	# unicast prefix: x2, x6, xA, xE
 	export mac=$(echo $hostname | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/0a-\1-\2-\3-\4-\5/')
 	echo hostname: $hostname
@@ -88,6 +91,13 @@ main()
 
 	log_info "pwd: $(pwd), hostname: $hostname, mac: $mac" | tee -a $log_file
 	log_info "vm finish run, release lock: $lockfile, uuid: $UUID" | tee -a $log_file
+
+	local vm_end_time=$(date "+%s")
+	log_info "Total QEMU duration:  $(( ($vm_end_time - $vm_start_time) / 60 )) minutes" | tee -a $log_file
+
+	# Allow fluentd sufficient time to read the contents of the log file
+	sleep 2
+
 	lockfile-remove --lock-name $lockfile
 }
 

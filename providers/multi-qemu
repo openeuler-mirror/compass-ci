@@ -71,29 +71,7 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 def main(hostname)
   check_mem_quota
 
-  start_time = record_runtime_log(hostname)
   start_qemu(hostname)
-  record_runtime_log(hostname, start_time: start_time, is_start: false)
-end
-
-def record_runtime_log(hostname, start_time: Time.new, is_start: true)
-  log_file = "#{LOG_DIR}/#{hostname}"
-  if is_start
-    File.open(log_file, 'w') do |f|
-      # fluentd refresh time is 1s
-      # let fluentd to monitor this file first
-      sleep(2)
-      f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting QEMU"
-    end
-    return start_time
-  end
-
-  duration = ((Time.new - start_time) / 60).round(2)
-  File.open(log_file, 'a') do |f|
-    f.puts "\nTotal QEMU duration:  #{duration} minutes"
-  end
-  # Allow fluentd sufficient time to read the contents of the log file
-  sleep(2)
 end
 
 def start_qemu(hostname)
