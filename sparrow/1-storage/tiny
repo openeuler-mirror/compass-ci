@@ -27,6 +27,7 @@ dirs=(
 	/srv/cci/Maildir/.compass-ci/sent
 	/srv/rabbitmq
 	/srv/tmp/public
+	/srv/upload-files
 )
 
 mkdir -p "${dirs[@]}"

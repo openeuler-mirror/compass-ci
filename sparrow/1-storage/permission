@@ -16,6 +16,7 @@ chmod_dir=(
 		/srv/initrd
 		/srv/initrd/pkg
 		/srv/initrd/deps
+		/srv/upload-files
 )
 
 chmod 775 "${chmod_dir[@]}"
@@ -32,6 +33,7 @@ chown_dir=(
 		/srv/cci/libvirt-xml
 		/srv/rabbitmq
 		/srv/tmp/public
+		/srv/upload-files
 )
 
 chown lkp:lkp "${chown_dir[@]}"
