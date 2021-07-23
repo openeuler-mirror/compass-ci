@@ -142,6 +142,7 @@ module Utils
       job['bad_job_id'] = job_id
       job['testbox'] = job['tbox_group']
       job['group_id'] = "#{ENV['id']}"
+      job['runtime'] = 7200
 
       job.delete('id')
       job.delete('queue')

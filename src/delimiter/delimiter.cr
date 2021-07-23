@@ -67,7 +67,7 @@ class Delimiter
     key = task.key
     value = Hash(String, String).from_json(task.value.not_nil!)
     begin
-      response = %x(#{ENV["LKP_SRC"]}/sbin/submit bad_job_id=#{value["job_id"]} error_id=#{value["error_id"].inspect} bisect.yaml queue=dc-bisect)
+      response = %x(#{ENV["LKP_SRC"]}/sbin/submit runtime=36000 bad_job_id=#{value["job_id"]} error_id=#{value["error_id"].inspect} bisect.yaml queue=dc-bisect)
       puts response
       if /id=0/ =~ response
         channel.send(task)
