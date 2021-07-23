@@ -8,6 +8,7 @@ require 'json'
 require 'yaml'
 require 'set'
 require_relative '../lib/config_account'
+require_relative "#{ENV['LKP_SRC']}/lib/do_local_pack"
 
 # receive message and auto submit job
 class AutoSubmit
@@ -33,7 +34,7 @@ class AutoSubmit
     git_repo = newrefs_info['git_repo']
     puts "git_repo : #{git_repo}"
     url = Array(newrefs_info['url'])[0]
-    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit upstream_repo=#{git_repo} upstream_url=#{url}"]
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit --no-pack upstream_repo=#{git_repo} upstream_url=#{url}"]
 
     if newrefs_info['pkgbuild_repo']
       pkgbuild_repo = get_pkgbuild_repo(newrefs_info['pkgbuild_repo'])
@@ -171,6 +172,6 @@ class AutoSubmit
 end
 
 config_yaml('auto-submit')
-
+do_local_pack()
 auto_submitter = AutoSubmit.new
 auto_submitter.listen
