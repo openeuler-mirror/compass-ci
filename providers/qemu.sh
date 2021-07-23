@@ -6,6 +6,7 @@
 . $LKP_SRC/lib/yaml.sh
 . $CCI_SRC/container/defconfig.sh
 . $CCI_SRC/lib/log.sh
+. $LKP_SRC/lib/upload.sh
 
 load_cci_defaults
 
@@ -94,6 +95,8 @@ main()
 
 	local vm_end_time=$(date "+%s")
 	log_info "Total QEMU duration:  $(( ($vm_end_time - $vm_start_time) / 60 )) minutes" | tee -a $log_file
+
+	[ -n "$id" ] && upload_files -t $(cat job_id) $log_file
 
 	# Allow fluentd sufficient time to read the contents of the log file
 	sleep 2

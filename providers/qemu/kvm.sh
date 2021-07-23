@@ -123,6 +123,12 @@ parse_ipxe_script()
 				;;
 		esac
 	done < $ipxe_script
+
+	# why add job_id:
+	# - one vm executes different job in different time, but the runtime workdir for one vm won't change.
+	# - so job id of vm in different time is important obviously.
+	# - so we record the job id, and for the possible usage. such as business monitor, etc.
+	echo $job_id > job_id
 }
 
 check_kernel()
