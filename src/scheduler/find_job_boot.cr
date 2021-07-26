@@ -461,7 +461,7 @@ class Sched
 
   private def auto_submit_idle_job(testbox)
     full_path_patterns = "#{CCI_REPOS}/#{LAB_REPO}/allot/idle/#{testbox}/*.yaml"
-    fields = ["testbox=#{testbox}", "subqueue=idle"]
+    fields = ["testbox=#{testbox}", "subqueue=idle", "--no-pack"]
 
     Jobfile::Operate.auto_submit_job(full_path_patterns, fields) if Dir.glob(full_path_patterns).size > 0
   end

@@ -4,6 +4,7 @@
 require "scheduler/scheduler"
 require "./scheduler/constants.cr"
 require "./lib/json_logger"
+require "./lib/do_local_pack"
 require "./lib/create_secrets_yaml"
 
 module Scheduler
@@ -11,6 +12,7 @@ module Scheduler
 
   begin
     create_secrets_yaml("scheduler")
+    do_local_pack()
     Kemal.run(ENV["NODE_PORT"].to_i32)
   rescue e
     log.error(e)
