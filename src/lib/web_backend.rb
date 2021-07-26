@@ -880,7 +880,7 @@ def get_top_boot_time
   end
   result.each_key do |k|
     result[k].sort! { |a, b| b['boot_time'] <=> a['boot_time'] }
-    result[k] = result[k][0..29] if result[k].length > 30
+    result[k] = result[k][0..19] if result[k].length > 20
   end
   result.to_json
 end
