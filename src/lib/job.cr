@@ -262,6 +262,8 @@ class Job
       repo_pkg_data = pkg_datas[repo].as_h
       store_pkg(repo_pkg_data, repo)
     end
+
+    delete_pkg_data_content()
   end
 
   private def store_pkg(repo_pkg_data, repo)
@@ -873,5 +875,18 @@ class Job
   def get_uuid_tag
     uuid = self["uuid"]
     uuid != "" ? "/#{uuid}" : nil
+  end
+
+  def delete_pkg_data_content
+    return unless @hash.has_key?("pkg_data")
+
+    new_pkg_data = Hash(String, JSON::Any).new
+    pkg_datas = @hash["pkg_data"].as_h
+    pkg_datas.each do |k, v|
+      tmp = pkg_datas[k].as_h
+      tmp.delete("content") if tmp.has_key?("content")
+      new_pkg_data.merge!({k => JSON::Any.new(tmp)})
+    end
+    @hash["pkg_data"] = JSON::Any.new(new_pkg_data)
   end
 end
