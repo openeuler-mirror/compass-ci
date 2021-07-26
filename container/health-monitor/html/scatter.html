@@ -7,16 +7,40 @@
 	<script src="https://cdn.staticfile.org/echarts/4.3.0/echarts.min.js"></script>
 </head>
 
-<body>
+<body onload="onload()">
 	<h1 style="text-align:center">Compass CI jobs' boot time</h1>
 	<hr>
-	<div id="scatter_vm" style="width:50%;height:600px;float:left;"></div>
-	<div id="scatter_dc" style="width:50%;height:600px;float:left;"></div>
-	<div id="scatter_hw" style="width:50%;height:600px;float:left;"></div>
-	<div style="margin-right:5%;margin-top:5%;float:right;">
-		<button style="width:200px;height:80px;" onclick="goTopLatency()">
-			<font size='6'>job list</font>
-		</button>
+	<div id="scatter_vm" style="width:70%;height:800px;float:left;"></div>
+	<div style="width:20%;margin-left:5%;margin-top:2%;float:left;">
+		<table id="tbvm" style="width:100%;" border="1">
+			<caption>over boot time jobs on virtual machine</caption>
+			<tr>
+				<th width="55%">job_id</th>
+				<th>boot_time(Sec)</th>
+			</tr>
+		</table>
+	</div>
+
+	<div id="scatter_dc" style="width:70%;height:800px;float:left;"></div>
+	<div style="width:20%;margin-left:5%;margin-top:2%;float:left;">
+		<table id="tbdc" style="width:100%;" border="1">
+			<caption>over boot time jobs on docker</caption>
+			<tr>
+				<th width="55%">job_id</th>
+				<th>boot_time(Sec)</th>
+			</tr>
+		</table>
+	</div>
+
+	<div id="scatter_hw" style="width:70%;height:800px;float:left;"></div>
+	<div style="width:20%;margin-left:5%;margin-top:2%;float:left;">
+		<table id="tbhw" style="width:100%;" border="1">
+			<caption>over boot time jobs on physical</caption>
+			<tr>
+				<th width="55%">job_id</th>
+				<th>boot_time(Sec)</th>
+			</tr>
+		</table>
 	</div>
 	<script>
 		var chartDom_vm = document.getElementById('scatter_vm');
@@ -78,7 +102,7 @@
 				],
 				yAxis: [
 					{
-						name: "boot time(unit: second)",
+						name: "boot time(Sec)",
 						type: 'value',
 						minInterval: s_data.threshold
 					}
@@ -105,32 +129,69 @@
 			};
 			return option_any;
 		};
-
-		function getdata() {
-			var ajax = new XMLHttpRequest();
-			ajax.open("post", "/job_boot_time");
-			ajax.send();
-			ajax.onreadystatechange = function () {
-				if (ajax.readyState == 4 && ajax.status == 200) {
-					api_data = JSON.parse(ajax.responseText);
-
-					option_vm = get_option('vm', api_data.vm);
-					option_vm && myChart_vm.setOption(option_vm);
-
-					option_dc = get_option('dc', api_data.dc);
-					option_dc && myChart_dc.setOption(option_dc);
-
-					option_hw = get_option('hw', api_data.hw);
-					option_hw && myChart_hw.setOption(option_hw);
-				}
-			}
-		};
-
-		getdata();
-		function goTopLatency() {
-			window.open('toplatency.html');
-		}
 	</script>
 </body>
+<script>
+	function getScatterData() {
+		var ajax = new XMLHttpRequest();
+		ajax.open("post", "/job_boot_time");
+		ajax.send();
+		ajax.onreadystatechange = function () {
+			if (ajax.readyState == 4 && ajax.status == 200) {
+				api_data = JSON.parse(ajax.responseText);
+
+				option_vm = get_option('vm', api_data.vm);
+				option_vm && myChart_vm.setOption(option_vm);
+
+				option_dc = get_option('dc', api_data.dc);
+				option_dc && myChart_dc.setOption(option_dc);
+
+				option_hw = get_option('hw', api_data.hw);
+				option_hw && myChart_hw.setOption(option_hw);
+			}
+		}
+	};
+
+	function getTableData() {
+		var ajax = new XMLHttpRequest();
+		ajax.open("post", "/top_boot_time");
+		ajax.send();
+		ajax.onreadystatechange = function () {
+			if (ajax.readyState == 4 && ajax.status == 200) {
+				var data = JSON.parse(ajax.responseText);
+				showTableData(data.hw, 'tbhw');
+				showTableData(data.dc, 'tbdc');
+				showTableData(data.vm, 'tbvm');
+			}
+		}
+	};
+
+	function showTableData(data, tbid) {
+		for (var i = 0; i < data.length; i++) {
+			var tr = document.createElement('tr');
+			document.getElementById(tbid).appendChild(tr);
+
+			var td = document.createElement('td');
+			td.style.textAlign = 'center';
+			tr.appendChild(td);
+			var a = document.createElement('a');
+			td.appendChild(a);
+			a.innerText = data[i].job_id;
+			a.href = data[i].result_root;
+			a.target = '_blank';
+
+
+			var td = document.createElement('td');
+			td.style.textAlign = 'center';
+			tr.appendChild(td);
+			td.innerText = data[i].boot_time;
+		}
+	};
+
+	function onload() {
+		getScatterData();
+		getTableData();
+	};
+</script>
 
 </html>
