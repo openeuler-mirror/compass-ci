@@ -10,3 +10,9 @@ public_network_ok && $CCI_SRC/sbin/download-rootfs
 
 lab=$(awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml)
 sh $CCI_SRC/container/lkp-initrd/run $lab-v1.0
+
+lkp_cgz=/srv/upload-files/lkp-tests/"$(arch)"
+mkdir -p $lkp_cgz
+chown lkp:lkp $lkp_cgz
+chmod 775 $lkp_cgz
+cp -a  /srv/initrd/lkp/latest/lkp-aarch64.cgz $lkp_cgz/v1.0.cgz
