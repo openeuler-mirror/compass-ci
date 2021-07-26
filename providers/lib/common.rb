@@ -104,7 +104,7 @@ def deal_mq_manage_message(threads, msg)
   when 'restart'
     manage_restart(threads, msg)
   else
-    puts 'deal mq manage message: unknow type message'
+    puts "deal mq manage message: unknow type message -- #{msg["type"]}"
   end
 rescue StandardError => e
   puts e.backtrace.inspect
