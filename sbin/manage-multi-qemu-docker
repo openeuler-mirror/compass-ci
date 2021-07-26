@@ -13,7 +13,7 @@ options = OptionParser.new do |opts|
   opts.banner = 'Usage: manage-multi-qemu-docker -s -r -c hostname1 hostname2 ...'
   opts.separator '       manage multi-qemu and multi-docker to restart or safe-stop'
   opts.separator 'hostname:'
-  opts.separator '       can be "all", means takes effect on all phycical machines'
+  opts.separator '       can be "ALL", means takes effect on all phycical machines'
   opts.separator '       can be physical machine name like "taishan200-2280-2s48p-256g--a66"'
   opts.separator 'example:'
   opts.separator '       manage-multi-qemu-docker -s hostname1 hostname2 ...'
@@ -57,7 +57,7 @@ if my_opts['type'] == 'restart' && !my_opts['commit_id']
   exit
 end
 
-my_opts['hostname'] = ARGV.join(',')
+my_opts['hostname_array'] = ARGV
 puts my_opts
 
 mq = MQClient.new

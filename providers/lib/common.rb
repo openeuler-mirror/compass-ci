@@ -65,7 +65,7 @@ ensure
   f&.close
 end
 
-def manage(threads)
+def manage_multi_qemu_docker(threads)
   loop do
     begin
       puts 'manage thread begin'
@@ -78,8 +78,8 @@ def manage(threads)
 end
 
 # msg:
-# { "type" => "safe-stop/restart",
-#   "hostname" => "all" or "taishan.*--a11,taishan.*--a12,...",
+# { "type" => "safe-stop" or "restart",
+#   "hostname_array" => ["ALL"] or ["taishan200-2280-2s64p-256g--a1", "taishan200-2280-2s64p-256g--a2"]
 #   "commit_id" => "xxxxxx"
 # }
 def monitor_mq_message(threads)
@@ -93,7 +93,10 @@ end
 def deal_mq_manage_message(threads, msg)
   puts msg
   msg = JSON.parse(msg)
-  return unless fit_me?(msg)
+  unless fit_me?(msg)
+    puts 'This message is not for me'
+    return
+  end
 
   case msg['type']
   when 'safe-stop'
@@ -108,8 +111,8 @@ rescue StandardError => e
 end
 
 def fit_me?(msg)
-  return true if msg['hostname'] == 'all'
-  return true if msg['hostname'].to_s.include?(ENV['HOSTNAME'])
+  return true if msg['hostname_array'].include?('ALL')
+  return true if msg['hostname_array'].include?(ENV['HOSTNAME'])
 
   return false
 end
