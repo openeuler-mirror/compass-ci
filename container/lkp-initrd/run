@@ -15,8 +15,17 @@ load_cci_defaults
 	check_tag=$(git -C $LKP_SRC tag -l $TAG)
 	if [[ -n $check_tag ]]
 	then
-		echo "TAG: $TAG already exists, please use a new one."
-		exit 1
+		echo "Warning: Tag $TAG already exists."
+		echo "It will rollback to it if you want to use it to do the package."
+		echo -n "Continue(Y/y) or specify a new one(N/n): "
+		read answer
+
+		[[ $answer =~ ^[Nn] ]] && exit
+		# case use an existing tag to do the pkg,
+		# first roll back to the tag, and then do the pkg.
+		git -C $LKP_SRC reset --hard $TAG
+	else
+		git -C $LKP_SRC tag $TAG
 	fi
 }
 
@@ -32,7 +41,7 @@ cmd=(
 	-v $DIR/bin:/root/bin
 	-v /srv/initrd/lkp/${lkp_initrd_user:-latest}:/osimage/user/lkp
 	alpine:lkp
-	/root/bin/pack-lkp.sh $TAG
+	/root/bin/pack-lkp.sh
 )
 
 "${cmd[@]}"
@@ -56,3 +65,5 @@ echo "result: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz"
 if [ -x /usr/local/bin/rsync-lkp-cgz ]; then
 	/usr/local/bin/rsync-lkp-cgz "${lkp_initrd_user:-latest}" "${ARCH}"
 fi
+
+git -C $LKP_SRC pull > /dev/null
