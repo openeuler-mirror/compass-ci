@@ -478,12 +478,15 @@ class Lifecycle
     }.to_json)
   end
 
+  # dc and vm are deployed on different physical machines.
+  # The restart service is a thread of each multi-qemu or multi-docker on each physical machine.
+  # Therefore, the restart queue must be specific to the thread of the physical machine.
+  # However, physical machines are restarted on the IBMC service.
+  # The restart queue should be set to one.
   def get_machine_reboot_queue(testbox)
-    if testbox.includes?(".")
-      testbox =~ /(.*)-\d+$/
-    else
-      testbox =~ /(.*)--.*/
-    end
+    return "reboot_physical_machine" unless testbox.includes?(".")
+
+    testbox =~ /(.*)-\d+$/
     $1
   rescue
     testbox
