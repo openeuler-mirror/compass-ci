@@ -28,6 +28,7 @@ require "../scheduler/create_job_cpio"
 require "../scheduler/download_file"
 require "../scheduler/opt_job_in_etcd"
 require "../scheduler/report_event"
+require "../scheduler/report_ssh"
 require "../scheduler/plugins/pkgbuild"
 require "../scheduler/plugins/finally"
 require "../scheduler/plugins/cluster"
@@ -263,20 +264,6 @@ class Sched
       type = "physical"
     end
     type
-  end
-
-  def report_ssh_port
-    testbox = @env.params.query["tbox_name"]
-    ssh_port = @env.params.query["ssh_port"].to_s
-    job_id = @env.params.query["job_id"].to_s
-
-    if testbox && ssh_port
-      @redis.hash_set("sched/tbox2ssh_port", testbox, ssh_port)
-    end
-
-    @log.info(%({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"}))
-  rescue e
-    @log.warn(e.inspect_with_backtrace)
   end
 
   private def query_consumable_keys(shortest_queue_name)

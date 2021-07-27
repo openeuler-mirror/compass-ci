@@ -191,4 +191,12 @@ module Scheduler
 
     "Done"
   end
+
+  # content='{"tbox_name": "'$HOSTNAME'", "job_id": "'$id'", "ssh_port": "'$ssh_port'", "message": "'$message'"}'
+  # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/~lkp/cgi-bin/report_ssh_info" -d "$content"
+  post "/~lkp/cgi-bin/report_ssh_info" do |env|
+    env.sched.report_ssh_info
+
+    "Done"
+  end
 end
