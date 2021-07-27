@@ -84,12 +84,12 @@ end
 # - body: json
 #   eg:
 #     {
-#       "compare_metrics": ["fio.write_iops", "fio.read_iops"],
+#       "metrics": ["fio.write_iops", "fio.read_iops"],
 #       "filter":{
 #           "suite": ["fio-basic"],
 #           "os_arch": ["aarch64", "x86"]
 #         },
-#       "dimensions": [
+#       "series": [
 #           {
 #             "os": "debian",
 #             "os_version": "sid"

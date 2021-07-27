@@ -472,8 +472,8 @@ end
 
 def result_body(request_body)
   groups_matrices = create_groups_matrices(request_body)
-  compare_results, dims = compare_metrics_values(groups_matrices)
-  formatter = FormatEchartData.new(compare_results, request_body, dims)
+  compare_results, series = compare_metrics_values(groups_matrices)
+  formatter = FormatEchartData.new(compare_results, request_body, series)
   formatter.format_echart_data.to_json
 end
 
