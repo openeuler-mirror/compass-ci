@@ -196,7 +196,7 @@ def delete_running_suite
   f1.each_line do |line|
     arr << line.chomp
   end
-  arr.uniiq!
+  arr.uniq!
   arr.delete("#{HOSTNAME}-#{INDEX}")
 
   f2 = File.new(SUITE_FILE, 'w')
