@@ -139,6 +139,7 @@ module Utils
       job['my_name'] = ENV['secrets_my_name']
       job['my_email'] = ENV['secrets_my_email']
       job['my_token'] = ENV['secrets_my_token']
+      job['my_account'] = ENV['secrets_my_account']
       job['bad_job_id'] = job_id
       job['testbox'] = job['tbox_group']
       job['group_id'] = "#{ENV['id']}"
