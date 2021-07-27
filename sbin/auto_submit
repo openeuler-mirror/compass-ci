@@ -58,7 +58,7 @@ class AutoSubmit
     real_argvs = Array.new(submit_argv)
     real_argvs.push("upstream_branch=#{branch}")
     real_argvs.push("upstream_dir=#{belong}")
-    tag = %x(git -C #{mirror_dir} tag --points-at #{commit_id})
+    tag = %x(git -C #{mirror_dir} tag --points-at #{commit_id}).chomp
     real_argvs.push("upstream_tag=#{tag}") unless tag.empty?
     if git_repo.include?('my-sql_with_boostkit_patch')
       competi_argvs = get_argvs_for_competition(real_argvs, mirror_dir, branch, commit_id)
