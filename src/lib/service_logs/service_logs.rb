@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-CCI_SRC = ENV['CCI_SRC'] || '/c/compass-ci'
+CCI_SRC ||= ENV['CCI_SRC'] || '/c/compass-ci'
 require "#{CCI_SRC}/lib/constants.rb"
 
 require 'elasticsearch'
