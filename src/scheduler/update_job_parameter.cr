@@ -29,6 +29,8 @@ class Sched
       if JOB_STAGES.includes?(value)
         job_content["job_stage"] = value
         job["last_success_stage"] = value
+        job.set_time("#{value}_time")
+        job.set_boot_elapsed_time
         @env.set "job_stage", value
         @env.set "deadline", job.set_deadline(value).to_s
       else

@@ -223,6 +223,21 @@ class Job
     self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
+  def set_boot_elapsed_time
+    return if @hash.has_key?("boot_elapsed_time")
+    return unless @hash["running_time"]?
+
+    boot_time = Time.parse(self["boot_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    running_time = Time.parse(self["running_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
+
+    self["boot_elapsed_time"] = (running_time - boot_time).seconds
+  rescue e
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
+  end
+
   private def set_os_arch
     self["os_arch"] = @hash["arch"].to_s if @hash.has_key?("arch")
   end
