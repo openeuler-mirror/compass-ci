@@ -7,8 +7,16 @@ require 'set'
 require_relative '../defconfig.rb'
 
 names = Set.new %w[
+  SCHED_HOST
+  SCHED_PORT
   ES_USER
   ES_PASSWORD
+  ES_HOST
+  ES_PORT
+  REDIS_HOST
+  REDIS_PORT
+  ETCD_HOST
+  ETCD_PORT
 ]
 
 defaults = relevant_defaults(names)
