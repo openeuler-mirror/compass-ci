@@ -191,9 +191,12 @@ add_disk()
 	for disk in $hdd_partitions $rootfs_disk
 	do
 		local qcow2_file="${qemu_mount_point}/${hostname}-${disk##*/}.qcow2"
-		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index}"
-		((index++))
 
+		# about if=virtio:
+		# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
+		# - to avoid the given device name is not the same as the real device name.
+		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index},if=virtio"
+		((index++))
 		[ -f "$qcow2_file" ] || qemu-img create -q -f qcow2 "${qcow2_file}" 512G
 		kvm+=(-drive ${drive})
 	done
