@@ -3,10 +3,12 @@
 # frozen_string_literal: true
 
 require "../lib/etcd_client"
+require "../lib/json_logger"
 
 class Delimiter
   def initialize
     @ec = EtcdClient.new
+    @log = JSONLogger.new
   end
 
   def consume_delimiter(queue)
@@ -66,18 +68,15 @@ class Delimiter
   def submit_bisect_job(channel, task)
     key = task.key
     value = Hash(String, String).from_json(task.value.not_nil!)
-    begin
-      response = %x(#{ENV["LKP_SRC"]}/sbin/submit runtime=36000 bad_job_id=#{value["job_id"]} error_id=#{value["error_id"].inspect} bisect.yaml queue=dc-bisect)
-      puts response
-      if /id=0/ =~ response
-        channel.send(task)
-        return
-      end
+    response = %x(#{ENV["LKP_SRC"]}/sbin/submit runtime=36000 bad_job_id=#{value["job_id"]} error_id=#{value["error_id"].inspect} bisect.yaml queue=dc-bisect)
+    @log.info(response)
+    return if /id=0/ =~ response
 
-      @ec.delete(key)
-    rescue ex
-      puts ex
-      channel.send(task)
-    end
+    @ec.delete(key)
+  rescue ex
+    @log.warn({
+      "message" => ex.to_s,
+      "error_message" => ex.inspect_with_backtrace.to_s,
+    }.to_json)
   end
 end
