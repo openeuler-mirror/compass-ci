@@ -234,7 +234,7 @@ module StatsWrapper
       unless $CHILD_STATUS.exitstatus.zero?
         log_error({
           'message' => "#{PROGRAM_DIR}/#{@program} exit code #{$CHILD_STATUS.exitstatus}",
-          'error_message' => "#{PROGRAM_DIR}/#{@program} #{@log} < #{@log} exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile}"
+          'error_message' => "#{PROGRAM_DIR}/#{@program} #{@log} < #{@log} exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile} or #{RESULT_ROOT}/#{@program}"
         })
         create_status = false
       end
@@ -245,7 +245,7 @@ module StatsWrapper
       unless $CHILD_STATUS.exitstatus.zero?
         log_error({
           'message' => "#{PROGRAM_DIR}/#{@program} exit code #{$CHILD_STATUS.exitstatus}",
-          'error_message' => "#{PROGRAM_DIR}/#{@program} < /dev/null exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile}"
+          'error_message' => "#{PROGRAM_DIR}/#{@program} < /dev/null exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile} or #{RESULT_ROOT}/#{@program}"
         })
         create_status = false
       end
