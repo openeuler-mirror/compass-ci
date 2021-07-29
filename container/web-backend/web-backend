@@ -188,13 +188,13 @@ end
 #     "tbox_group": "vm-2p8g",
 #     "group_id": "wcl_ansible-openeuler-03-10"
 #   },
-#   "attributes": ["job_id", "error_id", "error_message", "link_to_result"],
+#   "attributes": ["job_id", "error_id", "error_message", "result_root"],
 #   "objects": [
 #      {
 #        "job_id": "crystal.1354921",
 #        "error_id": "ansible_test.error.Unable-to-start-service-httpd-Job-for-httpdservice-failed.fail",
 #        "error_message": "{\"changed\": false, \"msg\": \"Unable to start service httpd: Job for httpd.service failed because a timeout was exceeded.}",
-#        "link_to_result": "http://172.17.0.1:11300/result/ansible_test/2021-03-10/vm-2p16g--wcl1/openeuler-20.03-aarch64/yogeshraheja-ansible-httpdtemplate/crystal.1354921"
+#        "result_root": "/result/ansible_test/2021-03-10/vm-2p16g--wcl1/openeuler-20.03-aarch64/yogeshraheja-ansible-httpdtemplate/crystal.1354921"
 #      },
 #      ...
 #   ]

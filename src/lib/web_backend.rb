@@ -646,9 +646,9 @@ end
 
 # -------------------------------------------------------------------------------------------
 # job error table like:
-#   job_id           error_id           error_message           link to result
+#   job_id           error_id           error_message           result_root
 #   -------------------------------------------------------------------------------------
-#   crystal.630608   "stderr.xxx"       "messag:xxxx"           https://$host:$port/$result_root
+#   crystal.630608   "stderr.xxx"       "messag:xxxx"           $result_root
 #   ...
 # -------------------------------------------------------------------------------------------
 
@@ -667,7 +667,7 @@ def job_error_body(params)
   error_objects  = get_error_objects(params)
   {
     filter: params,
-    attributes: ['job_id', 'error_id', 'error_message', 'link_to_result'],
+    attributes: ['job_id', 'error_id', 'error_message', 'result_root'],
     objects: error_objects,
   }.to_json
 end
@@ -697,13 +697,11 @@ def get_error_from_job(job)
   job['stats'].each do |metric, value|
     next unless metric.end_with?('.message')
 
-    result_host = ENV['SRV_HTTP_RESULT_HOST'] || SRV_HTTP_RESULT_HOST
-    result_port = ENV['SRV_HTTP_RESULT_PORT'] || SRV_HTTP_RESULT_PORT
     error_id = metric.sub('.message', '.fail')
     job_error_obj['job_id'] = job['id']
     job_error_obj['error_id'] = error_id
     job_error_obj['error_message'] = value
-    job_error_obj['link_to_result'] = "http://#{result_host}:#{result_port}#{job['result_root']}"
+    job_error_obj['result_root'] = job['result_root']
   end
 
   job_error_obj
