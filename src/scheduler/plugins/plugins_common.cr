@@ -7,6 +7,7 @@ require "../../lib/utils"
 require "../../lib/json_logger"
 require "../../lib/etcd_client"
 require "../../lib/remote_git_client"
+require "../../lib/scheduler_api"
 
 class PluginsCommon
   def initialize
@@ -15,6 +16,7 @@ class PluginsCommon
     @es = Elasticsearch::Client.new
     @redis = Redis::Client.instance
     @log = JSONLogger.new
+    @scheduler_api = SchedulerAPI.new
   end
 
   def update_current(key, current)
@@ -87,8 +89,7 @@ class PluginsCommon
   def wait2die(wait)
     die = wait.gsub("sched/wait/", "sched/die/")
     @etcd.move(wait, die)
-    # delete sched/id2job/$id
-    @etcd.delete("sched/id2job#{wait.split("/")[-1]}")
+    close_die_job(die)
   end
 
   def wait2ready(wait, value)
@@ -99,8 +100,7 @@ class PluginsCommon
   def wait2die(wait, value)
     die = wait.gsub("sched/wait/", "sched/die/")
     @etcd.move(wait, die, value)
-    # delete sched/id2job/$id
-    @etcd.delete("sched/id2job#{wait.split("/")[-1]}")
+    close_die_job(die)
   end
 
   def save_job2es(job)
@@ -111,5 +111,9 @@ class PluginsCommon
 
   def save_job2etcd(job)
     @etcd.put("sched/id2job/#{job.id}", job.dump_to_json)
+  end
+
+  def close_die_job(die)
+    spawn @scheduler_api.close_job(die.split("/")[-1], job_health: "failed", source: "scheduler")
   end
 end
