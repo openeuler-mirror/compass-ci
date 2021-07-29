@@ -41,6 +41,7 @@ ES_CLIENT = Elasticsearch::Client.new(hosts: ES_HOSTS)
 LOGGING_ES_CLIENT = Elasticsearch::Client.new(hosts: LOGGING_ES_HOSTS)
 COMPARE_RECORDS_NUMBER = 100
 FIVE_DAYS_SECOND = 3600 * 24 * 5
+ONE_DAY_SECOND = 3600 * 24
 
 def es_query(query)
   ES_CLIENT.search index: 'jobs*', body: query
@@ -48,6 +49,13 @@ end
 
 def es_count(query)
   ES_CLIENT.count(index: 'jobs*', body: query)['count']
+end
+
+def page_es_query(must, size, from)
+  query = { query: { bool: { must: must } },
+            size: size,
+            from: from }
+  return es_query(query)['hits']['hits']
 end
 
 # delete $user after '--' or '.' or '~'
@@ -822,43 +830,69 @@ def five_days_query(now)
   }
 end
 
-def es_query_boot_job
-  query = {
-    query: {
-      bool: {
-        must: { term: { 'job_stage' => 'boot' } }
-      }
-    }, size: 10000
-  }
-  es_results = es_query(query)['hits']['hits']
+def es_query_boot_job(from, size, must)
   job_list = []
+  es_results = page_es_query(must, size, from)
   es_results.each do |es_result|
-    next unless es_result['_source']['boot_time']
+    next unless es_result['_source']['boot_elapsed_time']
 
     job_list << es_result['_source']
   end
   return job_list
 end
 
-def get_job_boot_time
+def get_one_day_must(now)
+  d1 = now - ONE_DAY_SECOND
+
+  [{ range: {
+    'start_time' => { gte: d1.strftime('%Y-%m-%d %H:%M:%S'), lte: now.strftime('%Y-%m-%d %H:%M:%S') }
+  } }]
+end
+
+def response_boot_time_by_pages(pages, interface, job_list, response, from, size)
+  pages.times do |i|
+    if interface == 'boot_time'
+      response_boot_time(job_list, response)
+    else
+      response = { 'hw' => [], 'vm' => [], 'dc' => [] }
+      response_top_boot_time(job_list, response)
+    end
+    from += size
+  end
+  response
+end
+
+def get_job_boot_time(interface)
+  size = 10000
+  from = 0
+  must = get_one_day_must(Time.now)
+  response = boot_time_response
+  pages = es_count({ query: { bool: { must: must } } }) / size + 1
+  job_list = es_query_boot_job(from, size, must)
+  response = response_boot_time_by_pages(pages, interface, job_list, response, from, size)
+  return response.to_json
+end
+
+def boot_time_response
   response = { 'dc' => { 'threshold' => 60 , 'x_params' => [], 'boot_time' => [] },
                'vm' => { 'threshold' => 180, 'x_params' => [], 'boot_time' => [] },
                'hw' => { 'threshold' => 600, 'x_params' => [], 'boot_time' => [] }
              }
-  job_list = es_query_boot_job
+end
+
+def response_boot_time(job_list, response)
   job_list.each do |job|
     testbox_type = job['testbox'][0, 2]
     testbox_type = 'hw' unless testbox_type.match?(/dc|vm/)
     response[testbox_type]['x_params'] << job['id']
-    boot_time = (Time.now - Time.parse(job['boot_time'])).to_i
-    response[testbox_type]['boot_time'] << boot_time
+    response[testbox_type]['boot_time'] << job['boot_elapsed_time']
   end
   return response.to_json
 end
 
 def job_boot_time
   begin
-    body = get_job_boot_time
+    body = get_job_boot_time('boot_time')
   rescue StandardError => e
     warn e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get job_boot_time error']
@@ -866,28 +900,26 @@ def job_boot_time
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
 
-def get_top_boot_time
-  result = { 'hw' => [], 'vm' => [], 'dc' => [] }
+def response_top_boot_time(job_list, response)
   threshold = { 'hw' => 600, 'vm' => 180, 'dc' => 60 }
-  job_list = es_query_boot_job
   job_list.each do |job|
     testbox_type = job['testbox'][0, 2]
     testbox_type = 'hw' unless testbox_type.match?(/dc|vm/)
-    boot_time = (Time.now - Time.parse(job['boot_time'])).to_i
+    boot_time = job['boot_elapsed_time']
     next if boot_time <= threshold[testbox_type]
 
-    result[testbox_type] << { 'job_id' => job['id'], 'boot_time' => boot_time, 'result_root' => job['result_root'] }
+    response[testbox_type] << { 'job_id' => job['id'], 'boot_time' => boot_time, 'result_root' => job['result_root'] }
   end
-  result.each_key do |k|
-    result[k].sort! { |a, b| b['boot_time'] <=> a['boot_time'] }
-    result[k] = result[k][0..19] if result[k].length > 20
+  response.each_key do |k|
+    response[k].sort! { |a, b| b['boot_time'] <=> a['boot_time'] }
+    response[k] = response[k][0..19] if response[k].length > 20
   end
-  result.to_json
+  response
 end
 
 def top_boot_time
   begin
-    body = get_top_boot_time
+    body = get_job_boot_time('top_boot_time')
   rescue StandardError => e
     warn e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get top_boot_time error']
