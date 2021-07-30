@@ -87,7 +87,7 @@ class PkgBuild < PluginsCommon
   def submit_pkgbuild_job(wait_id, pkg_name, pbp)
     job_yaml = create_pkgbuild_yaml(wait_id, pkg_name, pbp)
 
-    response = %x($LKP_SRC/sbin/submit queue=dc-test lkp_initrd_user=caoxl #{job_yaml})
+    response = %x($LKP_SRC/sbin/submit #{job_yaml})
     @log.info("submit pkgbuild job response: #{job_yaml}, #{response}")
 
     response = response.split("\n")[-2]
