@@ -3,6 +3,7 @@
 
 require "set"
 require "json"
+require "singleton"
 
 require "./parse_serial_logs"
 require "../lib/json_logger"
@@ -14,6 +15,10 @@ class Filter
     @hash = Hash(JSON::Any, Array(HTTP::WebSocket)).new
     @sp = SerialParser.new
     @log = JSONLogger.new
+  end
+
+  def self.instance
+    Singleton::Of(self).instance
   end
 
   def add_filter_rule(query : JSON::Any, socket : HTTP::WebSocket)
