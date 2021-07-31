@@ -847,8 +847,9 @@ def get_one_day_must(now)
   } }]
 end
 
-def response_boot_time_by_pages(pages, interface, job_list, response, from, size)
+def response_boot_time_by_pages(pages, interface, must, response, from, size)
   pages.times do |i|
+    job_list = es_query_boot_job(from, size, must)
     if interface == 'boot_time'
       response_boot_time(job_list, response)
     else
@@ -866,8 +867,7 @@ def get_job_boot_time(interface)
   must = get_one_day_must(Time.now)
   response = boot_time_response
   pages = es_count({ query: { bool: { must: must } } }) / size + 1
-  job_list = es_query_boot_job(from, size, must)
-  response = response_boot_time_by_pages(pages, interface, job_list, response, from, size)
+  response = response_boot_time_by_pages(pages, interface, must, response, from, size)
   return response.to_json
 end
 
