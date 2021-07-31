@@ -152,6 +152,7 @@ module StatsWrapper
   def self.check_exist_json
     return if File.exist?("#{RESULT_ROOT}/#{@stats_group}.json") || File.exist?("#{RESULT_ROOT}/#{@stats_group}.json.gz")
     return if File.exist?("#{RESULT_ROOT}/last_stat") && File.read("#{RESULT_ROOT}/last_state") =~ /is_incomplete_run/
+    return unless File.exist?("#{RESULT_ROOT}/stderr")
 
     log_warn({
       'message' => "no generate json file for #{@stats_group}",
