@@ -125,7 +125,7 @@ module StatsWrapper
     # kmsg may actually read the dmesg file
     # refer to the exception cases in check_empty_output()
     return unless File.exist?(@log)
-    return unless File.read(@log) =~ /\x0/
+    return unless File.read(@log) =~ /\x0\\/
 
     log_warn({
       'message' => "skip binary file #{@stats_group}",
