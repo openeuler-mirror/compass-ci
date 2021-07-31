@@ -118,6 +118,7 @@ class PkgBuild < PluginsCommon
     content["pkgbuild_repo"] = JSON::Any.new(pkgbuild_repo)
     content["upstream_url"] = upstream_info["url"][0]
     content["upstream_dir"] = JSON::Any.new("upstream")
+    content["pkgbuild_source"] = upstream_info["pkgbuild_source"] if upstream_info["pkgbuild_source"]?
     content["waited"] = JSON.parse([{job["id"] => "job_health"}].to_json)
     content["SCHED_PORT"] = JSON::Any.new("#{ENV["SCHED_PORT"]}")
     content["SCHED_HOST"] = JSON::Any.new("#{ENV["SCHED_HOST"]}")
@@ -144,7 +145,9 @@ class PkgBuild < PluginsCommon
   # input:
   # "t/test-pixz/test-pixz"
   # output:
-  # {"url" => ["https://gitee.com/cxl78320/test-pixz"], "pkgbuild_repo" => ["aur-t/test-pixz-git"]}
+  # {"url" => ["https://gitee.com/cxl78320/test-pixz"],
+  # "pkgbuild_repo" => ["aur-t/test-pixz-git"],
+  # "pkgbuild_source" => ["https://github.com/vasi/pixz"]}
   def get_upstream_info(upstream_repo)
     data = JSON.parse(%({"git_repo": "/upstream/u/upstream-repos/upstream-repos.git",
                       "git_command": ["git-show", "HEAD:#{upstream_repo}"]}))
