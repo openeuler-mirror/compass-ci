@@ -98,8 +98,16 @@ class PkgBuild < PluginsCommon
     return {"new" => id}
   end
 
+  # ss:
+  #   linux:
+  #     fork: linux-next
+  #     commit: xxxxx
+  # pkg_name = linux
+  # pkg_parms = {fork => linux-next, commit => xxxx}
   def init_pkgbuild_params(job, pkg_name, pkg_params)
-    upstream_repo = "#{pkg_name[0]}/#{pkg_name}/#{pkg_name}"
+    params = pkg_params == nil ? Hash(String, JSON::Any).new : pkg_params.as_h
+    repo_name =  params["fork"]? == nil ? pkg_name : params["fork"].to_s
+    upstream_repo = "#{pkg_name[0]}/#{pkg_name}/#{repo_name}"
     upstream_info = get_upstream_info(upstream_repo)
     pkgbuild_repo = "#{upstream_info["pkgbuild_repo"][0]}/#{upstream_info["pkgbuild_repo"][0].to_s.split("/")[-1]}.git"
     # now support openeuler:20.03-fat and archlinux:02-23-fat
@@ -123,7 +131,7 @@ class PkgBuild < PluginsCommon
     content["SCHED_PORT"] = JSON::Any.new("#{ENV["SCHED_PORT"]}")
     content["SCHED_HOST"] = JSON::Any.new("#{ENV["SCHED_HOST"]}")
 
-    params = pkg_params == nil ? Hash(String, JSON::Any).new : pkg_params.as_h
+    # add user specify build params
     params.each do |k, v|
       content[k] = v
     end
