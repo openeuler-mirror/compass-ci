@@ -51,7 +51,7 @@ def parse_response(url, uuid)
     hash = response.is_a?(String) ? JSON.parse(response) : {}
     next if hash['job_id'] == '0'
 
-    unless hash.key?('job')
+    unless hash.key?('initrds')
       puts response
       return nil
     end
@@ -61,7 +61,7 @@ def parse_response(url, uuid)
 end
 
 def curl_cmd(path, url, name)
-  system "curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -id -D #{path}"
+  %x(curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -idu -D #{path})
 end
 
 def build_load_path(hostname)
@@ -84,10 +84,11 @@ end
 def load_initrds(load_path, hash)
   clean_dir(load_path) if Dir.exist?(load_path)
   arch = RUBY_PLATFORM.split('-')[0]
-  job_url = hash['job']
-  lkp_url = hash['lkp']
-  curl_cmd(load_path, job_url, 'job.cgz')
-  curl_cmd(load_path, lkp_url, "lkp-#{arch}.cgz")
+  initrds = JSON.parse(hash['initrds'])
+  puts initrds
+  initrds.each do |initrd|
+    curl_cmd(load_path, initrd, "#{initrd}.cgz")
+  end
 end
 
 def start_container(hostname, load_path, hash)

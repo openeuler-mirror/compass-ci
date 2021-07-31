@@ -317,9 +317,7 @@ class Sched
     response = Hash(String, String).new
     response["job_id"] = job.id.to_s
     response["docker_image"] = "#{job.docker_image}"
-    response["lkp"] = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}" +
-                      JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user}/lkp-#{job.arch}.cgz")
-    response["job"] = "http://#{SCHED_HOST}:#{SCHED_PORT}/job_initrd_tmpfs/#{job.id}/job.cgz"
+    response["initrds"] = job.get_common_initrds().to_json
 
     return response.to_json
   end
