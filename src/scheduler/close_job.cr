@@ -28,7 +28,7 @@ class Sched
 
     if @env.params.query["source"]? != "lifecycle"
       deadline = job.get_deadline("finish")
-      @env.set "deadline", deadline
+      @env.set "deadline", deadline.to_s
       @es.update_tbox(job["testbox"].to_s, {"deadline" => deadline})
       job["last_success_stage"] = "finish"
     end

@@ -380,6 +380,8 @@ class Job
       time = (self["timeout"]? || self["runtime"]? || 3600).to_s.to_i32
       extra_time = 0 if self["timeout"]?
       extra_time ||= [time / 8, 300].max.to_i32 + Math.sqrt(time).to_i32
+    when "renew"
+      return @hash["renew_deadline"]?
     when "post_run"
       time = 1800
     when "manual_check"
@@ -403,7 +405,9 @@ class Job
 
   def renew_deadline(time)
     deadline = Time.parse(self["deadline"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    self["deadline"] = (deadline + time.to_i32.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+    deadline = (deadline + time.to_i32.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+    self["renew_deadline"] = deadline
+    self["deadline"] = deadline
   end
 
   def set_result_root
