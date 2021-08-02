@@ -9,7 +9,16 @@ class Sched
     @env.set "job_id", job_id
     @env.set "job_stage", "finish"
 
-    job = get_id2job(job_id)
+    job = nil
+    begin
+      job = get_id2job(job_id)
+    rescue e
+      @log.warn({
+        "message" => e.to_s,
+        "error_message" => e.inspect_with_backtrace.to_s
+      }.to_json)
+    end
+
     # whatever we should update job_state/stage/health
     # so we query job from es when can't find job from etcd
     job = @es.get_job(job_id) unless job
