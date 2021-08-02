@@ -26,7 +26,7 @@ Email template:
 
 ---
 
-- please replace the 4 parts in {{ }} with your information.
+- please replace the 4 parts in {{ }} with your information, no keep the '{{ }}'.
 
 - the email name should be in English or Chinese Pinyin, as: "David Rientjes" in the template.
 
