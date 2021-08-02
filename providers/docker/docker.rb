@@ -47,7 +47,7 @@ def parse_response(url, uuid)
     return nil if File.exist?(safe_stop_file)
     return nil if uuid && File.exist?(restart_file)
 
-    response = %x(curl #{url})
+    response = %x(curl -Ss #{url})
     hash = response.is_a?(String) ? JSON.parse(response) : {}
     next if hash['job_id'] == '0'
 
