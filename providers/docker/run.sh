@@ -26,6 +26,7 @@ cmd=(
 	--rm
 	--name ${job_id}
 	--hostname $host.compass-ci.net
+	--cpus $nr_cpu
 	-m $memory
 	--tmpfs /tmp:rw,exec,nosuid,nodev
 	-e CCI_SRC=/c/compass-ci
