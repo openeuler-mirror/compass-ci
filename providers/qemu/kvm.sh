@@ -175,6 +175,23 @@ set_helper()
        [ -f "$helper" ] || helper=/usr/lib/qemu/qemu-bridge-helper
 }
 
+prepare_disk()
+{
+	# - disk size:	required	default: 512G.
+	# - need_clean: optional	true|false, default: false
+
+	local disk_size=$1
+	local need_clean=${2:-"false"}
+
+	qcow2_file="${qemu_mount_point}/${hostname}-${disk##*/}.qcow2"
+
+	if [ "$need_clean" == "true" ]; then
+		qemu-img create -q -f qcow2 "${qcow2_file}" $disk_size
+	else
+		[ -f "$qcow2_file" ] || qemu-img create -q -f qcow2 "${qcow2_file}" $disk_size
+	fi
+}
+
 add_disk()
 {
 	# VM testbox has disk spec?
@@ -188,16 +205,28 @@ add_disk()
 
 	local index=0
 	local disk
-	for disk in $hdd_partitions $rootfs_disk
+
+	for disk in $hdd_partitions
 	do
-		local qcow2_file="${qemu_mount_point}/${hostname}-${disk##*/}.qcow2"
+		prepare_disk "512G" "true"
 
 		# about if=virtio:
 		# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
 		# - to avoid the given device name is not the same as the real device name.
 		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index},if=virtio"
 		((index++))
-		[ -f "$qcow2_file" ] || qemu-img create -q -f qcow2 "${qcow2_file}" 512G
+		kvm+=(-drive ${drive})
+	done
+
+	for disk in $rootfs_disk
+	do
+		prepare_disk "128G"
+
+		# about if=virtio:
+		# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
+		# - to avoid the given device name is not the same as the real device name.
+		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index},if=virtio"
+		((index++))
 		kvm+=(-drive ${drive})
 	done
 }
