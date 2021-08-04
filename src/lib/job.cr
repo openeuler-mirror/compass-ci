@@ -230,7 +230,7 @@ class Job
     boot_time = Time.parse(self["boot_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
     running_time = Time.parse(self["running_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
 
-    self["boot_elapsed_time"] = (running_time - boot_time).seconds
+    self["boot_elapsed_time"] = (running_time - boot_time).total_seconds.to_i
   rescue e
     @log.warn({
       "message" => e.to_s,
