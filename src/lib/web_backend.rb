@@ -667,7 +667,7 @@ def job_error_body(params)
   error_objects  = get_error_objects(params)
   {
     filter: params,
-    attributes: ['job_id', 'error_id', 'error_message', 'result_root'],
+    attributes: ['job_id', 'error_id', 'error_message', 'result_root', 'stderr'],
     objects: error_objects,
   }.to_json
 end
@@ -702,6 +702,7 @@ def get_error_from_job(job)
     job_error_obj['error_id'] = error_id
     job_error_obj['error_message'] = value
     job_error_obj['result_root'] = job['result_root']
+    job_error_obj['stderr'] = job['result_root'] + '/stderr'
   end
 
   job_error_obj
