@@ -79,7 +79,7 @@ get '/get_repos' do
   get_repos(params)
 end
 
-# POST /compare_template
+# POST /performance_result
 # - header: "Content-Type: Application/json"
 # - body: json
 #   eg:
@@ -103,7 +103,7 @@ end
 #     }
 #
 # Response:
-#   - compare result
+#   - performance result
 post '/performance_result' do
   request.body.rewind # in case someone already read it
   performance_result(request.body.read)

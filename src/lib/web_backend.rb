@@ -473,7 +473,7 @@ def performance_result(data)
     body = result_body(JSON.parse(data))
   rescue StandardError => e
     warn e.message
-    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'compare error']
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get performance result error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
