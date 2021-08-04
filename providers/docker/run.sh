@@ -31,6 +31,7 @@ cmd=(
 	--tmpfs /tmp:rw,exec,nosuid,nodev
 	-e CCI_SRC=/c/compass-ci
 	-v ${load_path}/lkp:/lkp
+	-v ${load_path}/opt:/opt
 	-v ${DIR}/bin:/root/sbin:ro
 	-v $CCI_SRC:/c/compass-ci:ro
 	-v /srv/git:/srv/git:ro
