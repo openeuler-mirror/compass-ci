@@ -12,11 +12,11 @@ require 'mail'
 require 'set'
 require 'optparse'
 require 'rest-client'
-require_relative '../defconfig'
-require_relative '../../lib/es_client'
-require_relative '../../lib/build_account_info'
-require_relative 'build-send-account-email'
-require_relative 'build-update-email'
+require_relative '../container/defconfig'
+require_relative '../lib/es_client'
+require_relative '../lib/build_account_info'
+require_relative '../container/assign-account/build-send-account-email'
+require_relative '../container/assign-account/build-update-email'
 
 names = Set.new %w[
   JUMPER_HOST
