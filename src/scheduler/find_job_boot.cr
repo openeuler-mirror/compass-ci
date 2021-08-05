@@ -69,7 +69,6 @@ class Sched
     default_queues = [] of String
     queues_str.split(',', remove_empty: true) do |item|
       default_queues << "sched/ready/#{item.strip}/"
-      default_queues << "sched/#{item.strip}/ready/"
     end
 
     return default_queues.uniq
