@@ -68,6 +68,8 @@ class ESQuery
       result = @client.scroll scroll: '10m', scroll_id: @scroll_id
     end
 
+    @client.clear_scroll scroll_id: @scroll_id
+
     return jobs
   end
 
