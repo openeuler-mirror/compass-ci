@@ -181,12 +181,12 @@ class Sched
     spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
   end
 
-  # input:  ["sched/dc-8g.aarch64/ready"]
-  # output: ["dc-8g.aarch64"]
+  # input:  ["sched/ready/$queue/$subqueue/$id"]
+  # output: ["$queue"]
   def fetch_queues(queues)
     new_queues = [] of String
     queues.each do |queue|
-      new_queues << queue.split("/")[1]
+      new_queues << queue.split("/")[2]
     end
     new_queues
   end
