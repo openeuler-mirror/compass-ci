@@ -55,6 +55,11 @@ class Elasticsearch::Client
     return response
   end
 
+  def update_job(job : Job)
+    job.set_time
+    update(job.dump_to_json_any, job.id)
+  end
+
   # caller should judge response["id"]?
   def get_job_content(job_id : String)
     if @client.exists({:index => "jobs", :type => "_doc", :id => job_id})
