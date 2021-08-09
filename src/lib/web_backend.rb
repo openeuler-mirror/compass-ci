@@ -17,6 +17,7 @@ require "#{CCI_SRC}/lib/matrix2.rb"
 require "#{CCI_SRC}/lib/params_group.rb"
 require "#{CCI_SRC}/lib/compare_data_format.rb"
 require_relative './job_error.rb'
+require_relative './constants.rb'
 
 UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
 
@@ -41,7 +42,6 @@ ES_CLIENT = Elasticsearch::Client.new(hosts: ES_HOSTS)
 LOGGING_ES_CLIENT = Elasticsearch::Client.new(hosts: LOGGING_ES_HOSTS)
 COMPARE_RECORDS_NUMBER = 100
 FIVE_DAYS_SECOND = 3600 * 24 * 5
-ONE_DAY_SECOND = 3600 * 24
 
 def es_query(query)
   ES_CLIENT.search index: 'jobs*', body: query

@@ -1,0 +1,1 @@
+ONE_DAY_SECOND = 3600 * 24

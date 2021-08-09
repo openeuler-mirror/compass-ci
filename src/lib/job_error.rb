@@ -2,7 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-ONE_DAY_SECOND = 3600 * 24
+require_relative './constants.rb'
+
 UTC_OFFSET = Time.new.utc_offset
 JOB_PAGE_URL = 'https://compass-ci.openeuler.org/jobs'
 
