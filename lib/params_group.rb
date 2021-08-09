@@ -204,7 +204,7 @@ def find_param_in_job(job, param)
 
   # handle pp.* params
   job['pp'].each_value do |v|
-    next unless v
+    next unless v.is_a?(Hash)
 
     return v[param] if v.key?(param)
   end
