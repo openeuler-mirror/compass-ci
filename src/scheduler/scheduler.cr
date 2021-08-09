@@ -84,6 +84,11 @@ module Scheduler
     env.sched.submit_job.to_json
   end
 
+  # delete jobs from queue
+  post "/cancel_jobs" do |env|
+    env.sched.cancel_jobs.to_json
+  end
+
   # for client to report event
   # this event is recorded in the log
   # curl -H 'Content-Type: application/json' -X POST #{SCHED_HOST}:#{SCHED_PORT}/report_event -d '#{data.to_json}'
