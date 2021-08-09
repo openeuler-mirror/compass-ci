@@ -14,6 +14,7 @@ require "scheduler/pp_params.cr"
 require "scheduler/testbox_env.cr"
 require "../scheduler/elasticsearch_client"
 require "./json_logger"
+require "./utils"
 
 struct JSON::Any
   def []=(key : String, value : String)
@@ -148,7 +149,11 @@ class Job
     self["job_stage"] = "submit"
 
     check_required_keys()
-    check_account_info()
+
+    account_info = @es.get_account(self["my_email"])
+    Utils.check_account_info(@hash, account_info)
+    @account_info = account_info.as(JSON::Any).as_h
+
     check_run_time()
     set_defaults()
     delete_account_info()
@@ -578,31 +583,6 @@ class Job
     end
   end
 
-  private def check_account_info
-    error_msg = "Failed to verify the account.\n"
-    error_msg += "Please refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md"
-
-    account_info = @es.get_account(self["my_email"])
-    unless @hash["my_account"]?
-      error_msg = "Missing required job key: my_account.\n"
-      error_msg += "We generated the my_account for you automatically.\n"
-      error_msg += "Add 'my_account: #{account_info["my_account"]}' to: "
-      error_msg += "~/.config/compass-ci/defaults/account.yaml\n"
-      error_msg += "You can also re-send 'apply account' email to specify a custom my_account name.\n"
-
-      flag = false
-    end
-
-    flag ||= is_valid_account?(account_info)
-    @log.warn({"msg" => "Invalid account",
-               "my_email" => self["my_email"],
-               "my_name" => self["my_name"],
-               "suite" => self["suite"],
-               "testbox" => self["testbox"]
-               }.to_json) unless flag
-    raise error_msg unless flag
-  end
-
   private def delete_account_info
     @hash.delete("my_uuid")
     @hash.delete("my_token")
@@ -631,19 +611,6 @@ class Job
     end
 
     raise error_msg if sleep_run_time.as_i > max_run_time
-  end
-
-  private def is_valid_account?(account_info)
-    return false unless account_info.is_a?(JSON::Any)
-
-    @account_info = account_info.as_h
-
-    # my_name can be nil in es
-    # my_token can't be nil in es
-    return false unless self["my_name"] == @account_info["my_name"]?.to_s
-    return false unless self["my_token"] == @account_info["my_token"]?
-    return false unless self["my_account"] == @account_info["my_account"]?
-    return true
   end
 
   private def get_initialized_keys
