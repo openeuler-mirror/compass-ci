@@ -50,7 +50,7 @@ module Services
     result-webdav
     rpm-repo
     rsync-server
-    scheduler
+    scheduler-3000
     scheduler-https
     scheduler-nginx
     send-internet-mail
