@@ -81,11 +81,11 @@ def clean_dir(path)
   end
 end
 
-def load_initrds(load_path, hash)
+def load_initrds(load_path, hash, log_file)
   clean_dir(load_path) if Dir.exist?(load_path)
   arch = RUBY_PLATFORM.split('-')[0]
   initrds = JSON.parse(hash['initrds'])
-  puts initrds
+  record_log(log_file, initrds)
   initrds.each do |initrd|
     curl_cmd(load_path, initrd, "#{initrd}.cgz")
   end
@@ -103,6 +103,14 @@ def start_container(hostname, load_path, hash)
     ENV['CCI_SRC'] + '/providers/docker/run.sh'
   )
   clean_dir(load_path)
+end
+
+def record_log(log_file, list)
+  File.open(log_file, 'a') do |f|
+    list.each do |line|
+      f.puts line
+    end
+  end
 end
 
 def record_start_log(log_file, hash: {})
@@ -144,7 +152,7 @@ def main(hostname, queues, uuid = nil)
   log_file = "#{LOG_DIR}/#{hostname}"
   start_time = record_start_log(log_file, hash: hash)
 
-  load_initrds(load_path, hash)
+  load_initrds(load_path, hash, log_file)
   start_container(hostname, load_path, hash)
 
   del_host2queues(hostname)
