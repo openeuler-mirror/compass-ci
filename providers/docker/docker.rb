@@ -86,7 +86,7 @@ def load_initrds(load_path, hash, log_file)
   initrds = JSON.parse(hash['initrds'])
   record_log(log_file, initrds)
   initrds.each do |initrd|
-    curl_cmd(load_path, initrd, "#{initrd}.cgz")
+    curl_cmd(load_path, initrd, "#{initrd}")
   end
 end
 
