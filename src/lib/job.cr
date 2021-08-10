@@ -40,14 +40,30 @@ end
 
 class Job
   getter hash : Hash(String, JSON::Any)
-
-  INIT_FIELD = {
-    os:              "openeuler",
+  DEFAULT_FIELD = {
     lab:             LAB,
-    os_arch:         "aarch64",
-    os_version:      "20.03",
     lkp_initrd_user: "latest",
-    docker_image:    "centos:7",
+  }
+
+  DEFAULT_OS = {
+    "openeuler" => {
+      "os" =>              "openeuler",
+      "os_arch" =>         "aarch64",
+      "os_version" =>      "20.03",
+    },
+    "centos" => {
+      "os" =>              "centos",
+      "os_arch" =>         "aarch64",
+      "os_version" =>      "7.6.1810",
+    },
+    "debian" => {
+      "os" =>              "debian",
+      "os_arch" =>         "aarch64",
+      "os_version" =>      "sid",
+    },
+    "docker" => {
+      "docker_image" => "centos:7"
+    }
   }
 
   def initialize(job_content : JSON::Any, id)
@@ -163,11 +179,11 @@ class Job
 
   private def set_defaults
     extract_user_pkg()
+    set_os_mount()
     append_init_field()
     set_os_arch()
     set_docker_os()
     set_user_lkp_src()
-    set_os_mount()
     set_os_dir()
     set_submit_date()
     set_pp_params()
@@ -264,8 +280,20 @@ class Job
   end
 
   private def append_init_field
-    INIT_FIELD.each do |k, v|
+    DEFAULT_FIELD.each do |k, v|
       k = k.to_s
+      if !@hash[k]? || @hash[k] == nil
+        self[k] = v
+      end
+    end
+
+    set_default_os
+  end
+
+  private def set_default_os
+    os = is_docker_job? ? "docker" : self["os"]
+    key = os == "" ? "openeuler" : os
+    DEFAULT_OS[key].each do |k, v|
       if !@hash[k]? || @hash[k] == nil
         self[k] = v
       end
@@ -624,11 +652,14 @@ class Job
       initialized_keys << key.to_s
     end
 
-    INIT_FIELD.each do |key, _value|
+    DEFAULT_FIELD.each do |key, _value|
       initialized_keys << key.to_s
     end
 
-    initialized_keys += ["result_service",
+    initialized_keys += ["os",
+                         "os_arch",
+                         "os_version",
+                         "result_service",
                          "LKP_SERVER",
                          "LKP_CGI_PORT",
                          "SCHED_HOST",
