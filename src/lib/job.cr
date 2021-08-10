@@ -642,16 +642,6 @@ class Job
                          "linux_vmlinuz_path"]
   end
 
-  private def initialized?
-    initialized_keys = get_initialized_keys
-    initialized_keys.each do |key|
-      return false unless @hash.has_key?(key)
-    end
-
-    return false if "#{@hash["id"]}" == ""
-    return true
-  end
-
   private def set_kernel_version
     boot_dir = "#{SRV_OS}/#{os_dir}/boot"
     self["kernel_version"] ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
