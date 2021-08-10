@@ -49,6 +49,7 @@ class SerialParser
   def initialize
     @host2head = Hash(String, Array(String)).new
     @host2rt = Hash(String, String).new
+    @host2file = Hash(String, File).new
     @mq = MQClient.instance
     @log = JSONLogger.new
   end
@@ -71,8 +72,16 @@ class SerialParser
     boundary_signal = detect_patterns(msg, signal)
     return unless boundary_signal
 
+    close_file(host)
     @host2head.delete(host)
     @host2rt.delete(host)
+  end
+
+  def close_file(host)
+    return unless @host2file.has_key?(host)
+
+    @host2file[host].close
+    @host2file.delete(host)
   end
 
   def mq_publish(msg, host)
@@ -132,9 +141,7 @@ class SerialParser
   def check_save_dmesg(msg, host)
     return unless @host2rt.has_key?(host)
 
-    File.open("#{@host2rt[host]}/dmesg", "a+") do |f|
-      f.puts msg["message"]
-    end
+    @host2file[host].puts msg["message"]
     return true
   end
 
@@ -156,10 +163,12 @@ class SerialParser
 
     result_root = File.join("/srv", job["result_root"].to_s)
     @host2rt[host] = result_root
-    File.open("#{result_root}/dmesg", "w") do |f|
-      f.puts @host2head[host].join("\n")
-      f.puts msg["message"]
-    end
+
+    f = File.new("#{result_root}/dmesg", "a")
+    f.puts @host2head[host].join("\n")
+    f.puts msg["message"]
+
+    @host2file[host] = f
     @host2head.delete(host)
     return true
   end
