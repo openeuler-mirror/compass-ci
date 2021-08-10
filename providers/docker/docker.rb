@@ -83,7 +83,6 @@ end
 
 def load_initrds(load_path, hash, log_file)
   clean_dir(load_path) if Dir.exist?(load_path)
-  arch = RUBY_PLATFORM.split('-')[0]
   initrds = JSON.parse(hash['initrds'])
   record_log(log_file, initrds)
   initrds.each do |initrd|
