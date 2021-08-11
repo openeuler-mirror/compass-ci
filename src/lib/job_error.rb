@@ -7,6 +7,7 @@ require_relative './constants.rb'
 UTC_OFFSET = Time.new.utc_offset
 JOB_PAGE_URL = 'https://compass-ci.openeuler.org/jobs'
 
+# output job errors
 class JobError
   def initialize(job_list, now = Time.now)
     @job_list = job_list
@@ -30,16 +31,16 @@ class JobError
 
   def assign_today_errors(job, start_time)
     job['stats'].each_key do |metric|
-      error =  error?(metric, job)
-      if error
-        @today_errors[error] ||= {'count' => 0}
-        @today_errors[error]['count'] += 1
-        @today_errors[error]['first_date'] = start_time
-        @today_errors[error]['suite'] ||= job['suite']
-        @today_errors[error]['job_owner'] ||= job['my_account']
-        @today_errors[error]['relevant_links'] ||= job['result_root']
-        @today_errors[error]['error_message'] = error
-      end
+      error = error?(metric, job)
+      next unless error
+
+      @today_errors[error] ||= { 'count' => 0 }
+      @today_errors[error]['count'] += 1
+      @today_errors[error]['first_date'] = start_time
+      @today_errors[error]['suite'] ||= job['suite']
+      @today_errors[error]['job_owner'] ||= job['my_account']
+      @today_errors[error]['relevant_links'] ||= job['result_root']
+      @today_errors[error]['error_message'] = error
     end
   end
 
@@ -57,7 +58,7 @@ class JobError
       jobs_errors << value
     end
 
-    jobs_errors.sort!{|x, y | y['count'] <=> x['count']}
+    jobs_errors.sort! { |x, y| y['count'] <=> x['count'] }
   end
 
   def first_date(error, value)
