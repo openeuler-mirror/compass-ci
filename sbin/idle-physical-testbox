@@ -10,7 +10,9 @@ def pub_idle_physical_testbox
   buckets = my.get_testbox_aggs['aggregations']['queue']['buckets']
   buckets.each do |bucket|
     testbox = bucket['key']
-    puts testbox if testbox.start_with? 'taishan200'
+    next unless testbox.start_with? 'taishan200'
+    puts testbox
+    break
   end
 end
 
