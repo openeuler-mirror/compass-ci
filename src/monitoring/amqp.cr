@@ -23,9 +23,13 @@ class MessageQueueClient
 
   private def filter_msg(conn, filter, exchange_name, queue_name)
     conn.channel do |channel|
+      count = 1
       queue = channel.queue(queue_name)
       queue.bind(exchange_name, "")
       queue.subscribe(tag: queue_name, block: true) do |msg|
+        count += 1
+        (count = 1; Fiber.yield) if count & 0xFF == 0
+
         begin
           filter.filter_msg(msg.body_io)
         rescue e
