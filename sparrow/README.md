@@ -107,7 +107,7 @@
 
 体验更多功能
 - [自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/test-oss-project.md)
-- [调测环境登录](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/log-in-machine-debug.md)
-- [测试结果分析](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/compare-results.md)
-- [borrow测试机](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/borrow-machine.md)
+- [调测环境登录](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/log-in-machine-debug.md)
+- [测试结果分析](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/compare-results.md)
+- [borrow测试机](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/borrow-machine.md)
 - [web页面](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/web.md)
