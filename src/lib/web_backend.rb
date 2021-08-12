@@ -18,6 +18,7 @@ require "#{CCI_SRC}/lib/params_group.rb"
 require "#{CCI_SRC}/lib/compare_data_format.rb"
 require_relative './job_error.rb'
 require_relative './constants.rb'
+require_relative './api_input_check.rb'
 
 UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
 
@@ -470,7 +471,11 @@ end
 
 def performance_result(data)
   begin
-    body = result_body(JSON.parse(data))
+    request_body = JSON.parse(data)
+    incorrect_input = check_performance_result(request_body)
+    return [406, headers.merge('Access-Control-Allow-Origin' => '*'), incorrect_input] if incorrect_input
+
+    body = result_body(request_body)
   rescue StandardError => e
     warn e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get performance result error']
