@@ -142,6 +142,7 @@ class SerialParser
     return unless @host2rt.has_key?(host)
 
     @host2file[host].puts msg["message"]
+    @host2file[host].flush
     return true
   end
 
@@ -167,6 +168,7 @@ class SerialParser
     f = File.new("#{result_root}/dmesg", "a")
     f.puts @host2head[host].join("\n")
     f.puts msg["message"]
+    f.flush
 
     @host2file[host] = f
     @host2head.delete(host)
