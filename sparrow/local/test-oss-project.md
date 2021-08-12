@@ -30,9 +30,6 @@
    	ls /srv/initrd/deps/container/centos/aarch64/7/sysbench-cpu/sysbench-cpu.cgz
    	```
 
-	> **说明：**           
-	> 每次修改完/c/lkp-tests目录下的文件之后，要将变动应用到下一次的job任务中，需要手动执行`sh /c/compass-ci/container/lkp-initrd/run`文件才能生效
-
 4. 添加待测试仓库 URL 到 upstream仓库
 	在/c/git-repos/upstream仓库下创建目录，一级目录为待测试仓库名的首字母"s"，二级目录为待测试仓库名称"sysbench"，并编辑与待测试仓库同名文件”sysbench“，将你的待测试仓库以如下格式写入该文件。
    	```
