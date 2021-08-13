@@ -23,8 +23,8 @@ class StderrTable
     # response['cols']: ["count","first_date", "suite", "job_owner", "relevant_links","error_message"]
     @head = response['cols'][0, 2] + [response['cols'][3]] + ['error_message/relevant_links']
     response['data'][0, @top_num].each do |item|
-      relevant_links = '/srv' + handle_long_str(item['relevant_links'], 134)
-      error_message = handle_long_str(item['error_message'], 138)
+      relevant_links = '/srv' + handle_long_str(item['relevant_links'], 124)
+      error_message = handle_long_str(item['error_message'], 128)
       @rows << [item['count'], item['first_date'], item['job_owner'], error_message + "\n  - " + relevant_links]
     end
   end
