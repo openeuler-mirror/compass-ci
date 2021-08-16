@@ -31,7 +31,7 @@ check_segment()
 check_selinux()
 {
 	selinux=$(getenforce)
-	[[ "$selinux" == "enforce" ]] && {
+	[[ "$selinux" == "Enforcing" ]] && {
 		log_error "selinux status is $selinux, please try: setenforce 0, and config /etc/selinux/config(set SELINUX=permissive or SELINUX=disabled)"
 		exit 1
 	}
