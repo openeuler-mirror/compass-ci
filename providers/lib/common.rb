@@ -36,20 +36,111 @@ def deal_reboot_msg(mq, msg, info, type)
   mq.ack(info)
 end
 
-def total_allocated_mem
-  qemus_allocated_mem = %x{echo "$(ps -ef | grep qemu | grep result)" | awk -F "-m " '{print $2}' | awk -F "G" '{print $1}' | awk '{sum += $1};END {print sum}'}.to_i
-  dockers_allocated_mem = %x{echo "$(ps -ef | grep docker | grep result)" | awk -F "-m " '{print $2}' | awk -F "g" '{print $1}' | awk '{sum += $1};END {print sum}'}.to_i
-  qemus_allocated_mem + dockers_allocated_mem
+def get_memory_from_hostname(hostname)
+  return hostname.split('.')[0][/[0-9]*g/][/[0-9]*/].to_i
 end
 
-def max_allocable_memory
-  (%x{cat /proc/meminfo | awk '/MemTotal/ {print $2}'}.to_i * 8 /10) >> 20
+def get_mem_free
+  return %x(echo $(($(grep MemFree /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
 end
 
-def check_mem_quota
-  while total_allocated_mem > max_allocable_memory
-    puts "Total Allocated Memory is bigger than Max Allocable memory: #{total_allocated_mem}G > #{max_allocable_memory}G, wait for memory release!"
-    sleep(30)
+def check_mem_free(hostname, memory)
+  return (get_mem_free - memory) < 20 ? false : true
+end
+
+def get_mem_idle(mem_info_file)
+  return %x(grep '^idle:' #{mem_info_file} | awk '{print $2}').to_i
+end
+
+def check_mem_idle(hostname, memory, mem_info_file)
+  return get_mem_idle(mem_info_file) < memory ? false : true
+end
+
+def add_hostname_to_meminfo(hostname, memory, mem_info_file)
+  if system("grep -q #{hostname}: #{mem_info_file}")
+    puts "testbox was already added in meminfo: #{hostname}"
+    return
+  end
+
+  mem_usage = %x(grep '^usage:' #{mem_info_file} | awk '{print $2}').to_i + memory
+  mem_idle = %x(grep '^idle:' #{mem_info_file} | awk '{print $2}').to_i - memory
+
+  cmd_update_usage = "sed -i 's/^usage: .*/usage: #{mem_usage} G/g' #{mem_info_file}"
+  cmd_update_idle = "sed -i 's/^idle: .*/idle: #{mem_idle} G/g' #{mem_info_file}"
+  cmd_add_testbox = "sed -i '$a#{hostname}: #{memory} G' #{mem_info_file}"
+
+  system cmd_update_usage
+  system cmd_update_idle
+  system cmd_add_testbox
+end
+
+def del_hostname_from_meminfo(hostname, memory, mem_info_file)
+  if not system("grep -q #{hostname}: #{mem_info_file}")
+    puts "testbox was already deleted in meminfo: #{hostname}"
+    return
+  end
+
+  mem_usage = %x(grep '^usage:' #{mem_info_file} | awk '{print $2}').to_i - memory
+  mem_idle = %x(grep '^idle:' #{mem_info_file} | awk '{print $2}').to_i + memory
+
+  cmd_update_usage = "sed -i 's/^usage: .*/usage: #{mem_usage} G/g' #{mem_info_file}"
+  cmd_update_idle = "sed -i 's/^idle: .*/idle: #{mem_idle} G/g' #{mem_info_file}"
+  cmd_delete_testbox = "sed -i '/#{hostname}: #{memory} G/d' #{mem_info_file}"
+
+  system cmd_update_usage
+  system cmd_update_idle
+  system cmd_delete_testbox
+end
+
+def request_mem(hostname)
+  mem_info_file = "/tmp/#{ENV['HOSTNAME']}/meminfo"
+  request_success = false
+
+  while not request_success
+    begin
+      memory = get_memory_from_hostname(hostname)
+      f = get_lock("#{mem_info_file}.lock")
+
+      if check_mem_free(hostname, memory) and check_mem_idle(hostname, memory, mem_info_file)
+        # if all resources are sufficient, then record this testbox to resource file, and release the lock.
+        add_hostname_to_meminfo(hostname, memory, mem_info_file)
+        request_success = true
+      end
+    rescue Exception => e
+      puts "request mem exception."
+      puts e.message
+      puts e.backtrace.inspect
+    ensure
+      f&.flock(File::LOCK_UN)
+      f&.close
+
+      # avoid all testboxes request lock at the same time
+      if not request_success
+        sleep(Random.rand(10))
+      end
+    end
+  end
+end
+
+def release_mem(hostname)
+  mem_info_file = "/tmp/#{ENV['HOSTNAME']}/meminfo"
+  release_success = false
+
+  while not release_success
+    begin
+      memory = get_memory_from_hostname(hostname)
+      f = get_lock("#{mem_info_file}.lock")
+
+      del_hostname_from_meminfo(hostname, memory, mem_info_file)
+      release_success = true
+    rescue Exception => e
+      puts "release mem exception."
+      puts e.message
+      puts e.backtrace.inspect
+    ensure
+      f&.flock(File::LOCK_UN)
+      f&.close
+    end
   end
 end
 

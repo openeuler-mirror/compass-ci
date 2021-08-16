@@ -69,9 +69,8 @@ MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
 def main(hostname)
-  check_mem_quota
-
   start_qemu(hostname)
+  release_mem(hostname)
 end
 
 def start_qemu(hostname)

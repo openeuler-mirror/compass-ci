@@ -90,6 +90,12 @@ write_logfile()
 			continue
 		}
 
+		# if kvm.sh is called by multi-qemu, reserve mem for this testbox.
+		[ -n "$UUID" ] && {
+			command -v ruby &&
+				ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "request_mem '$hostname'"
+		}
+
 		log_info "got job: $hostname" | tee -a $log_file
 		log_info "ipxe_script: $(cat $ipxe_script)" | tee -a $log_file
 		break

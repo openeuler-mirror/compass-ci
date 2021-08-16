@@ -140,8 +140,6 @@ def main(hostname, queues, uuid = nil)
   lock_file = load_path + "/#{hostname}.lock"
   f = get_lock(lock_file)
 
-  check_mem_quota
-
   set_host2queues(hostname, queues)
   url = get_url hostname
   puts url
@@ -152,7 +150,10 @@ def main(hostname, queues, uuid = nil)
   start_time = record_start_log(log_file, hash: hash)
 
   load_initrds(load_path, hash, log_file)
+
+  request_mem(hostname)
   start_container(hostname, load_path, hash)
+  release_mem(hostname)
 
   del_host2queues(hostname)
   record_end_log(log_file, start_time)
