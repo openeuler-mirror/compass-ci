@@ -267,7 +267,7 @@ module StatsWrapper
     unless $CHILD_STATUS.exitstatus.zero?
       log_error({
         'message' => "#{LKP_SRC}/sbin/dump-stat #{@program} exit code #{$CHILD_STATUS.exitstatus}",
-        'error_message' => "#{LKP_SRC}/sbin/dump-stat #{@program} exit code #{$CHILD_STATUS.exitstatus}, check #{file}"
+        'error_message' => "#{LKP_SRC}/sbin/dump-stat #{@program} exit code #{$CHILD_STATUS.exitstatus}, check #{file} or #{RESULT_ROOT}/#{stats_group}"
       })
       return nil
     end
