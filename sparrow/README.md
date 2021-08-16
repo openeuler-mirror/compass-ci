@@ -60,7 +60,7 @@
 
 5. 执行一键部署脚本 install-tiny
 	```bash
-	cd compass-ci/sparrow && ./install-tiny
+	cd /c/compass-ci/sparrow && ./install-tiny
 	```
 
 6. 注册账号
