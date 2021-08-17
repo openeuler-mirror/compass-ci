@@ -96,7 +96,6 @@ class Job
     result_root
     upload_dirs
     lkp_initrd_user
-    user_lkp_src
     boot_dir
     kernel_uri
     modules_uri
@@ -184,7 +183,6 @@ class Job
     append_init_field()
     set_os_arch()
     set_docker_os()
-    set_user_lkp_src()
     set_os_dir()
     set_submit_date()
     set_pp_params()
@@ -807,13 +805,6 @@ class Job
     temp = @hash["initrd_deps"].as_a
     temp << JSON::Any.new(initrd_uri)
     self["initrd_deps"] = temp
-  end
-
-  private def set_user_lkp_src
-    lkp_arch_cgz = "#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz"
-    raise "The #{lkp_arch_cgz} does not exist." unless File.exists?(lkp_arch_cgz)
-
-    self["user_lkp_src"] = Jobfile::Operate.prepare_lkp_tests(lkp_initrd_user, os_arch)
   end
 
   private def set_depends_initrd
