@@ -180,9 +180,7 @@ module Scheduler
   # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
   get "/~lkp/cgi-bin/lkp-post-run" do |env|
-    env.sched.close_job
-
-    "Done"
+    env.sched.close_job.to_json
   end
 
   get "/~lkp/cgi-bin/lkp-wtmp" do |env|

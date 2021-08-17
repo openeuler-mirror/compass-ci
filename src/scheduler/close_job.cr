@@ -30,7 +30,13 @@ class Sched
     job["job_state"] = "complete" if job["job_state"] == "boot"
 
     job["job_stage"] = "finish"
-    job["job_health"] = job["job_health"]? || @env.params.query["job_health"]? || "success"
+
+    job_health = @env.params.query["job_health"]?
+    job["job_health"] = job["job_health"]? || job_health || "success"
+    # if user returns this testbox
+    # job_health needs to be return
+    job["job_health"] = job_health if job_health == "return"
+
 
     job.set_time("close_time")
     @env.set "close_time", job["close_time"]
@@ -47,12 +53,14 @@ class Sched
       # es update fail, raise exception
       raise "es set job content fail!"
     end
+    "success"
   rescue e
     @env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
+    e.to_s
   ensure
     send_mq_msg if @env.params.query["source"]? != "lifecycle"
     if job

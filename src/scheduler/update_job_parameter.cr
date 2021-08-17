@@ -12,6 +12,10 @@ class Sched
     @env.set "job_id", job_id
     @env.set "time", get_time
 
+    # the user actively returned this testbox
+    # no need to update job
+    return if job["job_health"] == "return"
+
     # try to get report value and then update it
     job_content = {} of String => String
 
