@@ -130,7 +130,7 @@ def record_end_log(log_file, start_time)
     f.puts "\nTotal DOCKER duration:  #{duration} minutes"
   end
   # Allow fluentd sufficient time to read the contents of the log file
-  sleep(2)
+  sleep(5)
 end
 
 def main(hostname, queues, uuid = nil)
