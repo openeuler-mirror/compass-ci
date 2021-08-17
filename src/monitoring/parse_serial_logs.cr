@@ -68,9 +68,15 @@ class SerialParser
     end
   end
 
+  def is_signal?(msg, pattern_list)
+    message = msg["message"].to_s
+    pattern_list.each do |pattern|
+      return true if message.includes?(pattern)
+    end
+  end
+
   def delete_host(msg, host, signal)
-    boundary_signal = detect_patterns(msg, signal)
-    return unless boundary_signal
+    return unless is_signal?(msg, signal)
 
     close_file(host)
     @host2head.delete(host)
