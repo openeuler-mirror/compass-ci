@@ -350,6 +350,7 @@ class Sched
     response += "# nr_nic=" + job["nr_nic"] + "\n" if job.has_key?("nr_nic")
 
     _initrds_uri = Array(String).from_json(job.initrds_uri).map { |uri| "initrd #{uri}" }
+    _initrds_uri.insert(1, "initrd #{job.modules_uri}")
     response += _initrds_uri.join("\n") + "\n"
 
     _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + Array(String).from_json(job.ipxe_kernel_params)

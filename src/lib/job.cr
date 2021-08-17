@@ -97,12 +97,13 @@ class Job
     upload_dirs
     lkp_initrd_user
     user_lkp_src
+    boot_dir
     kernel_uri
+    modules_uri
     kernel_params
     ipxe_kernel_params
     docker_image
     kernel_version
-    linux_vmlinuz_path
     src_lv_suffix
     boot_lv_suffix
     pv_device
@@ -274,8 +275,10 @@ class Job
   private def set_kernel
     return if os_mount == "container"
 
+    set_boot_dir()
     set_kernel_version()
     set_kernel_uri()
+    set_modules_uri()
     set_kernel_params()
   end
 
@@ -666,24 +669,32 @@ class Job
                          "SCHED_PORT"]
 
     initialized_keys -= ["my_token",
+                         "boot_dir",
                          "kernel_version",
                          "kernel_uri",
+                         "modules_uri",
                          "kernel_params",
-                         "ipxe_kernel_params",
-                         "linux_vmlinuz_path"]
+                         "ipxe_kernel_params"]
+  end
+
+  private def set_boot_dir
+    self["boot_dir"] = "#{SRV_OS}/#{os_dir}/boot"
   end
 
   private def set_kernel_version
-    boot_dir = "#{SRV_OS}/#{os_dir}/boot"
     self["kernel_version"] ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
-    self["linux_vmlinuz_path"] = File.real_path("#{boot_dir}/vmlinuz-#{kernel_version}")
-    if "#{os_mount}" == "initramfs"
-      self["linux_modules_initrd"] = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
-    end
   end
 
   private def set_kernel_uri
-    self["kernel_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path("#{linux_vmlinuz_path}")
+    return if @hash.has_key?("kernel_uri")
+    vmlinuz_path = File.real_path("#{boot_dir}/vmlinuz-#{kernel_version}")
+    self["kernel_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(vmlinuz_path)
+  end
+
+  private def set_modules_uri
+    return if @hash.has_key?("modules_uri")
+    modules_path = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
+    self["modules_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
   end
 
   def get_common_initrds
@@ -738,8 +749,6 @@ class Job
                     JobHelper.service_path("#{osimage_dir}/current")
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
                     JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
-    temp_initrds << "#{OS_HTTP_PREFIX}" +
-                    JobHelper.service_path(self["linux_modules_initrd"])
 
     temp = [] of String
     deps = @hash["initrd_deps"].as_a
