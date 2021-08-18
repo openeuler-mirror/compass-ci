@@ -151,9 +151,9 @@ def main(hostname, queues, uuid = nil)
 
   load_initrds(load_path, hash, log_file)
 
-  request_mem(hostname)
+  request_mem(hostname) if uuid
   start_container(hostname, load_path, hash)
-  release_mem(hostname)
+  release_mem(hostname) if uuid
 
   del_host2queues(hostname)
   record_end_log(log_file, start_time)
