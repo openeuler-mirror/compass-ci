@@ -77,7 +77,6 @@ class Job
     os
     os_arch
     os_version
-    os_dir
     os_mount
     arch
     suite
@@ -94,7 +93,6 @@ class Job
     submit_date
     result_root
     upload_dirs
-    boot_dir
     kernel_uri
     modules_uri
     kernel_params
@@ -181,7 +179,7 @@ class Job
     append_init_field()
     set_os_arch()
     set_docker_os()
-    set_os_dir()
+    set_os_version()
     set_submit_date()
     set_pp_params()
     set_rootfs()
@@ -271,7 +269,6 @@ class Job
   private def set_kernel
     return if os_mount == "container"
 
-    set_boot_dir()
     set_kernel_version()
     set_kernel_uri()
     set_modules_uri()
@@ -377,9 +374,12 @@ class Job
     @es.update_account(JSON.parse(@account_info.to_json), self["my_email"].to_s)
   end
 
-  private def set_os_dir
+  private def set_os_version
     self["os_version"] = "#{os_version}".chomp("-iso") + "-iso" if "#{self.os_mount}" == "local"
-    self["os_dir"] = "#{os}/#{os_arch}/#{os_version}"
+  end
+
+  def os_dir
+    return "#{os}/#{os_arch}/#{os_version}"
   end
 
   private def set_submit_date
@@ -667,7 +667,6 @@ class Job
                          "SCHED_PORT"]
 
     initialized_keys -= ["my_token",
-                         "boot_dir",
                          "kernel_version",
                          "kernel_uri",
                          "modules_uri",
@@ -675,8 +674,8 @@ class Job
                          "ipxe_kernel_params"]
   end
 
-  private def set_boot_dir
-    self["boot_dir"] = "#{SRV_OS}/#{os_dir}/boot"
+  def boot_dir
+    return "#{SRV_OS}/#{os_dir}/boot"
   end
 
   private def set_kernel_version
