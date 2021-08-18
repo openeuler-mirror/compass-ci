@@ -41,8 +41,7 @@ end
 class Job
   getter hash : Hash(String, JSON::Any)
   DEFAULT_FIELD = {
-    lab:             LAB,
-    lkp_initrd_user: "latest",
+    lab: LAB,
   }
 
   DEFAULT_OS = {
@@ -95,7 +94,6 @@ class Job
     submit_date
     result_root
     upload_dirs
-    lkp_initrd_user
     boot_dir
     kernel_uri
     modules_uri
@@ -718,24 +716,21 @@ class Job
     #     tag: v1.0
     #     md5: xxxx
     #     content: yyy (base64)
-    if @hash.has_key?("pkg_data")
-      @hash["pkg_data"].as_h.each do |key, value|
-        program = value.as_h
-        temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-          JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{os_arch}/#{program["tag"]}.cgz")
-        temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-          JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
-      end
-    else
+    raise "you should update your lkp-tests repo." unless @hash.has_key?("pkg_data")
+
+    @hash["pkg_data"].as_h.each do |key, value|
+      program = value.as_h
       temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-        JobHelper.service_path("#{SRV_INITRD}/lkp/#{lkp_initrd_user}/lkp-#{os_arch}.cgz")
+        JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{os_arch}/#{program["tag"]}.cgz")
+      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+        JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
     end
 
     # init deps lkp.cgz
     mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
     deps_lkp_cgz = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/lkp/lkp.cgz"
     if File.exists?(deps_lkp_cgz)
-      temp_initrds <<  "#{INITRD_HTTP_PREFIX}" + JobHelper.service_path(deps_lkp_cgz)
+      temp_initrds << "#{INITRD_HTTP_PREFIX}" + JobHelper.service_path(deps_lkp_cgz)
     end
 
     return temp_initrds

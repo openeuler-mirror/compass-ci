@@ -7,22 +7,17 @@ class Cluster < PluginsCommon
     cluster_file = job["cluster"]
     return [job] if cluster_file.empty? || cluster_file == "cs-localhost"
 
-    cluster_config = get_cluster_config(cluster_file,
-      job.lkp_initrd_user,
-      job.os_arch).not_nil!
+    cluster_config = get_cluster_config(cluster_file, job.lab)
     jobs = split_cluster_job(job, cluster_config)
   end
 
-  def get_cluster_config(cluster_file, lkp_initrd_user, os_arch)
-    lkp_src = Jobfile::Operate.prepare_lkp_tests(lkp_initrd_user, os_arch)
+  def get_cluster_config(cluster_file, lab)
+    data = JSON.parse(%({"git_repo": "/gitee.com/wu_fengguang/lab-#{lab}.git",
+                      "git_command": ["git-show", "HEAD:cluster/#{cluster_file}"]}))
+    response = @rgc.git_command(data)
+    raise "can't get cluster info: #{cluster_file}" unless response.status_code == 200
 
-    cluster_file_paths = [
-      Path.new(CCI_REPOS, LAB_REPO, "cluster", cluster_file),
-      Path.new(lkp_src, "cluster", cluster_file),
-    ]
-    cluster_file_paths.each do |f|
-      return YAML.parse(File.read(f)) if File.file?(f)
-    end
+    return YAML.parse(response.body)
   end
 
   # return:

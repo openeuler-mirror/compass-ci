@@ -136,16 +136,8 @@ class Sched
 
     job_dir = base_dir + "/#{job_content["id"]}"
 
-    if job_sh_array.empty?
-      lkp_src = Jobfile::Operate.prepare_lkp_tests(job_content["lkp_initrd_user"],
-                                  job_content["os_arch"])
-
-      cmd = "#{lkp_src}/sbin/create-job-cpio.sh #{temp_yaml}"
-      idd = `#{cmd}`
-    else
-      cmd = "./create-job-cpio.sh #{job_dir}"
-      idd = `#{cmd}`
-    end
+    cmd = "./create-job-cpio.sh #{job_dir}"
+    idd = `#{cmd}`
 
     # if the create job cpio failed, what to do?
     puts idd if idd.match(/ERROR/)
