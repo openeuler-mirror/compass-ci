@@ -97,7 +97,7 @@ write_logfile()
 		}
 
 		log_info "got job: $hostname" | tee -a $log_file
-		log_info "ipxe_script: $(cat $ipxe_script)" | tee -a $log_file
+		echo "ipxe_script: $(cat $ipxe_script)"
 		break
 	done
 	cat $ipxe_script >> ${log_file}
