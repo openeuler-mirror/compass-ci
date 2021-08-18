@@ -294,6 +294,8 @@ class Job
   private def set_default_os
     os = is_docker_job? ? "docker" : self["os"]
     key = os == "" ? "openeuler" : os
+    return unless DEFAULT_OS.has_key?(key)
+
     DEFAULT_OS[key].each do |k, v|
       if !@hash[k]? || @hash[k] == nil
         self[k] = v
