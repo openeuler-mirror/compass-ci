@@ -64,7 +64,7 @@ class Sched
     job_content = JSON.parse(job_hash.to_json)
     job = Job.new(job_content, nil)
     job.submit
-    job["commit_date"] = get_commit_date(job)
+    set_commit_date(job)
 
     return job
   end
@@ -81,16 +81,14 @@ class Sched
     raise msg.to_s if response["error"]?
   end
 
-  def get_commit_date(job)
-    if (job["upstream_repo"] != "") && (job["upstream_commit"] != "")
-      data = JSON.parse(%({"git_repo": "#{job["upstream_repo"]}.git",
+  def set_commit_date(job)
+    return if job["upstream_repo"] == "" || job["upstream_commit"] == ""
+
+    data = JSON.parse(%({"git_repo": "#{job["upstream_repo"]}.git",
                    "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
                    "#{job["upstream_commit"]}", "-1"]}))
-      response = @rgc.git_command(data)
-      return response.body if response.status_code == 200
-    end
-
-    return nil
+    response = @rgc.git_command(data)
+    job["commit_date"] = response.body if response.status_code == 200
   end
 
   def save_secrets(job, job_id)
