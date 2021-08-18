@@ -151,13 +151,6 @@ module DumpStat
 end
 
 def check_string_value(key, value, monitor)
-  # value terminator is expected. If not, throw out an error warning.
-
-  log_warn({
-    'message' => "no line terminator in stats value: #{value}",
-    'error_message' => "no line terminator in stats value: #{value}, check #{RESULT_ROOT}/#{monitor}"
-  }) if value.chomp!.nil?
-
   value.strip!
   if value.empty?
     log_warn({
