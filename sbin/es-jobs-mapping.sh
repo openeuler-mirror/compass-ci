@@ -188,12 +188,10 @@ else
 		            "type": "text"
 		          },
 		          "start_time": {
-		            "type": "date",
-		            "format": "yyyy-MM-dd HH:mm:ss"
+		            "type": "date"
 		          },
 		          "end_time": {
-		            "type": "date",
-		            "format": "yyyy-MM-dd HH:mm:ss"
+		            "type": "date"
 		          }
 		        }
 		    }

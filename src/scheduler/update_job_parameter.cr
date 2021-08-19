@@ -24,7 +24,7 @@ class Sched
       next if value.nil? || value == ""
 
       if parameter == "start_time" || parameter == "end_time"
-        value = Time.unix(value.to_i).to_local.to_s("%Y-%m-%d %H:%M:%S")
+        value = Time.unix(value.to_i).to_local.to_s("%Y-%m-%dT%H:%M:%S+0800")
       end
 
       job_content[parameter] = value
