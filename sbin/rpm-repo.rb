@@ -5,6 +5,7 @@
 
 require 'fileutils'
 require 'json'
+require 'set'
 require_relative '../lib/mq_client'
 require_relative '../lib/json_logger.rb'
 
@@ -36,26 +37,30 @@ class HandleRepo
     @log = JSONLogger.new
   end
 
+  @@upload_flag = true
+  @@create_repo_path = Set.new
   def handle_new_rpm
-    queue = @mq.queue("update_repo")
-    queue.subscribe({:block => true, :manual_ack => true}) do |info,  _pro, msg|
-      begin
-        rpm_info = JSON.parse(msg)
-        check_upload_rpms(rpm_info)
-        rpm_info["upload_rpms"].each do |rpm|
-          rpm_path = File.dirname(rpm).sub("upload", "testing")
-          FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
+    queue = @mq.queue('update_repo')
+    queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
+      if @@upload_flag
+        begin
+          rpm_info = JSON.parse(msg)
+          check_upload_rpms(rpm_info)
+          rpm_info['upload_rpms'].each do |rpm|
+            rpm_path = File.dirname(rpm).sub('upload', 'testing')
+            FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
+            @@create_repo_path << rpm_path
 
-          dest = File.join(rpm_path.to_s, File.basename(rpm))
-          FileUtils.mv(rpm, dest)
-          system("createrepo --update $(dirname #{rpm_path})")
+            dest = File.join(rpm_path.to_s, File.basename(rpm))
+            FileUtils.mv(rpm, dest)
+          end
+          @mq.ack(info)
+        rescue StandardError => e
+          @log.warn({
+            "error message": e.message
+          }.to_json)
+          @mq.ack(info)
         end
-        @mq.ack(info)
-      rescue StandardError => e
-        @log.warn({
-          "error message": e.message
-        }.to_json)
-        @mq.ack(info)
       end
     end
   end
@@ -84,7 +89,26 @@ class HandleRepo
       FileUtils.cp_r(repodata_src, File.dirname(repodata_dest))
     end
   end
+
+  def create_repo
+    Thread.new do
+      loop do
+        sleep 180
+        next if @@create_repo_path.empty?
+
+        @@upload_flag = false
+        # Avoid mv in handle_new_rpm() is not over.
+        sleep 1
+        @@create_repo_path.each do |path|
+          system("createrepo --update $(dirname #{path})")
+        end
+        @@create_repo_path.clear
+        @@upload_flag = true
+      end
+    end
+  end
 end
 
 hr = HandleRepo.new
+hr.create_repo
 hr.handle_new_rpm
