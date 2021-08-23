@@ -72,6 +72,11 @@ check_service()
 			exit 1
 		}
 	done
+
+	docker images | grep -q qemu-efi || {
+		log_error "failed to build container qemu-efi"
+		exit 1
+	}
 }
 
 check_cmd()
