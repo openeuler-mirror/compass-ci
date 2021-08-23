@@ -117,12 +117,12 @@ parse_ipxe_script()
 				[ $file == "job.cgz" ] && {
 					job_id=$(basename $(dirname "$b"))
 				}
-				wget --timestamping -a ${log_file} --progress=bar:force $b
+				wget --timestamping -nv -a ${log_file} $b
 				initrds+="$file "
 				;;
 			kernel)
 				kernel=$(basename "$b")
-				wget --timestamping -a ${log_file} --progress=bar:force $b
+				wget --timestamping -nv -a ${log_file} $b
 				append=$(echo "$c" | sed -r "s/ initrd=[^ ]+//g")
 				;;
 			*)
