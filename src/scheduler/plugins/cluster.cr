@@ -7,11 +7,17 @@ class Cluster < PluginsCommon
     cluster_file = job["cluster"]
     return [job] if cluster_file.empty? || cluster_file == "cs-localhost"
 
-    cluster_config = get_cluster_config(cluster_file, job.lab)
-    jobs = split_cluster_job(job, cluster_config)
+    cluster_spec = get_cluster_spec_by_job(job)
+    cluster_spec = get_cluster_spec_by_lab(cluster_file, job.lab) unless cluster_spec
+    jobs = split_cluster_job(job, cluster_spec)
   end
 
-  def get_cluster_config(cluster_file, lab)
+  def get_cluster_spec_by_job(job)
+    return unless job.has_key?("cluster_spec")
+    return YAML.parse(job["cluster_spec"]?.not_nil!.to_yaml)
+  end
+
+  def get_cluster_spec_by_lab(cluster_file, lab)
     data = JSON.parse(%({"git_repo": "/gitee.com/wu_fengguang/lab-#{lab}.git",
                       "git_command": ["git-show", "HEAD:cluster/#{cluster_file}"]}))
     response = @rgc.git_command(data)
@@ -23,7 +29,7 @@ class Cluster < PluginsCommon
   # return:
   #   success: [{"job_id" => job_id1, "message => "", "job_state" => "submit"}, ...]
   #   failure: [..., {"job_id" => 0, "message" => err_msg, "job_state" => "submit"}]
-  def split_cluster_job(job, cluster_config)
+  def split_cluster_job(job, cluster_spec)
     job_messages = Array(Hash(String, String)).new
     lab = job.lab
     subqueue = job.subqueue
@@ -34,7 +40,7 @@ class Cluster < PluginsCommon
     jobs = [] of Job
 
     net_id = "192.168.222"
-    ip0 = cluster_config["ip0"]?
+    ip0 = cluster_spec["ip0"]?
     if ip0
       ip0 = ip0.as_i
     else
@@ -42,9 +48,9 @@ class Cluster < PluginsCommon
     end
 
     # steps for each host
-    cluster_config["nodes"].as_h.each do |host, config|
-      # continue if role in cluster config matches role in job
-      next if (config["roles"].as_a.map(&.to_s) & roles).empty?
+    cluster_spec["nodes"].as_h.each do |host, spec|
+      # continue if role in cluster spec matches role in job
+      next if (spec["roles"].as_a.map(&.to_s) & roles).empty?
 
       host_info = Utils.get_host_info(host.to_s)
       job.update(host_info)
@@ -63,9 +69,9 @@ class Cluster < PluginsCommon
       job["testbox"] = queue
       job["queue"] = queue
       job.update_tbox_group(queue)
-      job["node_roles"] = config["roles"].as_a.join(" ")
-      if config["macs"]?
-        direct_macs = config["macs"].as_a
+      job["node_roles"] = spec["roles"].as_a.join(" ")
+      if spec["macs"]?
+        direct_macs = spec["macs"].as_a
         direct_ips = [] of String
         direct_macs.size.times do
           raise "Host id is greater than 254, host_id: #{ip0}" if ip0 > 254
