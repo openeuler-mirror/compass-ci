@@ -89,7 +89,6 @@ class Job
     initrd_deps
     initrds_uri
     rootfs
-    pp_params
     submit_date
     result_root
     upload_dirs
@@ -181,7 +180,6 @@ class Job
     set_docker_os()
     set_os_version()
     set_submit_date()
-    set_pp_params()
     set_rootfs()
     set_result_root()
     set_result_service()
@@ -446,7 +444,7 @@ class Job
 
   def set_result_root
     update_tbox_group_from_testbox # id must exists, need update tbox_group
-    self["result_root"] = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{pp_params}", "#{id}")
+    self["result_root"] = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{sort_pp_params}", "#{id}")
     set_upload_dirs()
   end
 

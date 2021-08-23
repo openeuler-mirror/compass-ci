@@ -2,14 +2,14 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Job
-  private def set_pp_params
+  private def sort_pp_params
     temp_hash = Hash(String, JSON::Any).new
 
     if @hash["pp"]
       flat_hash(@hash["pp"].as_h, temp_hash)
     end
 
-    self["pp_params"] = sort_keys_return_values(temp_hash)
+    return sort_keys_return_values(temp_hash)
   end
 
   private def flat_hash(old_hash, new_hash)
