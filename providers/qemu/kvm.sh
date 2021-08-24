@@ -84,16 +84,15 @@ write_logfile()
 		}
 
 		log_info "start request job: $hostname" | tee -a $log_file
-		curl -s -S http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/boot.ipxe/mac/${mac} > $ipxe_script
+
+		url=ws://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/ws/boot.ipxe/mac/${mac}
+		ipxe_script_path="$(pwd)/${ipxe_script}"
+		command -v ruby &&
+			ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "ws_boot '$url','$hostname','$UUID','$ipxe_script_path'"
+
 		cat $ipxe_script | grep "No job now" && {
 			log_info "no job now: $hostname" | tee -a $log_file
 			continue
-		}
-
-		# if kvm.sh is called by multi-qemu, reserve mem for this testbox.
-		[ -n "$UUID" ] && {
-			command -v ruby &&
-				ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "request_mem '$hostname'"
 		}
 
 		log_info "got job: $hostname" | tee -a $log_file

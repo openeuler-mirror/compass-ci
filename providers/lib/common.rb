@@ -303,7 +303,7 @@ ensure
   f1&.close
 end
 
-def ws_boot(url, hostname, uuid)
+def ws_boot(url, hostname, uuid, ipxe_script_path = nil)
   threads = []
   response = nil
 
@@ -323,9 +323,19 @@ def ws_boot(url, hostname, uuid)
       EM.stop
     end
   end
+  additional_ipxe_script(response, ipxe_script_path)
   response
 rescue StandardError => e
   puts e
+end
+
+def additional_ipxe_script(response, ipxe_script_path)
+  return unless response
+  return unless ipxe_script_path
+
+  File.open(ipxe_script_path, 'w') do |f|
+    f.puts response
+  end
 end
 
 def deal_ws_event(event, threads, ws, hostname, uuid)
