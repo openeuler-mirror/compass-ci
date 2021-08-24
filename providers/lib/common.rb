@@ -290,7 +290,7 @@ def delete_running_suite
     arr << line.chomp
   end
   arr.uniq!
-  arr.delete("#{HOSTNAME}-#{INDEX}")
+  arr.delete("#{ENV['suite']}-#{INDEX}")
 
   f2 = File.new(SUITE_FILE, 'w')
   arr.each do |line|
