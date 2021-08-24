@@ -77,7 +77,7 @@
 	source /etc/profile.d/compass.sh
 	```
 
-- 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)提交测试用例
+- 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)提交测试用例
 	```bash
 	submit host-info.yaml
 	```

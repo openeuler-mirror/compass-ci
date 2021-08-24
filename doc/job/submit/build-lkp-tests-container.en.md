@@ -60,4 +60,4 @@ Also you can avoid installation failures from undesired dependency package(s).
 
     About submit:
 
-        For detailed usage for command submit, please reference to: [submit user manual](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.en.md)
+        For detailed usage for command submit, please reference to: [submit user manual](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md)

@@ -60,4 +60,4 @@
 
     submit命令：
 
-        了解更多submit命令的使用方法，请参考：[submit用户手册](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)
+        了解更多submit命令的使用方法，请参考：[submit用户手册](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)

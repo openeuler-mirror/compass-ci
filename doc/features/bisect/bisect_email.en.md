@@ -14,7 +14,7 @@ and send email report to the commit author.
 
 The first bad commit job result directory:
 you can read the below file to understand the content of each file.
-- https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/browse-results.en.md
+- https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/result/browse-results.en.md
 
 Notice:
 You may need to read the output file of the first bad commit job result directory,

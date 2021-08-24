@@ -54,7 +54,7 @@ def email_err_message(message)
 
       Reference the following url to learn how to register the repo:
 
-          https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/test-oss-project.en.md
+          https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/test-service/test-oss-project.en.md
     EMAIL_MESSAGE
   when 'COMMIT_AUTHOR_ERROR'
     err_message = <<~EMAIL_MESSAGE
@@ -89,7 +89,7 @@ def email_err_message(message)
 
     Manual for how to apply account:
 
-        https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md
+        https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md
   EMAIL_MESSAGE
 
   err_message

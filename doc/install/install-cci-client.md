@@ -4,7 +4,7 @@ Compass-CI 将 [lkp-tests](https://gitee.com/wu_fengguang/lkp-tests) 作为客�
 
 ## 申请帐号
 
-:exclamation: 前提条件：按照 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/apply-account.md) 完成如下动作：
+:exclamation: 前提条件：按照 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md) 完成如下动作：
 - send apply account email
 - receive email from compass-ci-robot@qq.com
 - get reply email and follow its instructions to
@@ -23,4 +23,4 @@ Run the following command to install/setup lkp-test:
 
 ## submit job
 
-Now try [submitting a job to compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/submit-job.zh.md)
+Now try [submitting a job to compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/sumit/submit-job.zh.md)

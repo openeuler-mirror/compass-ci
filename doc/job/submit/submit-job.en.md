@@ -2,7 +2,7 @@
 
 ### Prerequisites
 
-The Compass-CI client has been installed. For details, see [Installing the Local Compass-CI Client](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/manual/install-cci-client.md).
+The Compass-CI client has been installed. For details, see [Installing the Local Compass-CI Client](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/install/install-cci-client.md).
 
 ### Purpose
 
