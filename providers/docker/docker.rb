@@ -26,7 +26,7 @@ MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
 def get_url(hostname)
-  "http://#{SCHED_HOST}:#{SCHED_PORT}/boot.container/hostname/#{hostname}"
+  "ws://#{SCHED_HOST}:#{SCHED_PORT}/ws/boot.container/hostname/#{hostname}"
 end
 
 def set_host2queues(hostname, queues)
@@ -39,7 +39,7 @@ def del_host2queues(hostname)
   system cmd
 end
 
-def parse_response(url, uuid)
+def parse_response(url, hostname, uuid)
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
   restart_file = "/tmp/#{ENV['HOSTNAME']}/restart/#{uuid}"
 
@@ -47,7 +47,7 @@ def parse_response(url, uuid)
     return nil if File.exist?(safe_stop_file)
     return nil if uuid && File.exist?(restart_file)
 
-    response = %x(curl -Ss #{url})
+    response = ws_boot(url, hostname, uuid)
     hash = response.is_a?(String) ? JSON.parse(response) : {}
     next if hash['job_id'] == '0'
 
@@ -143,7 +143,7 @@ def main(hostname, queues, uuid = nil)
   set_host2queues(hostname, queues)
   url = get_url hostname
   puts url
-  hash = parse_response(url, uuid)
+  hash = parse_response(url, hostname, uuid)
   return del_host2queues(hostname) if hash.nil?
 
   log_file = "#{LOG_DIR}/#{hostname}"
@@ -151,7 +151,6 @@ def main(hostname, queues, uuid = nil)
 
   load_initrds(load_path, hash, log_file)
 
-  request_mem(hostname) if uuid
   start_container(hostname, load_path, hash)
   release_mem(hostname) if uuid
 

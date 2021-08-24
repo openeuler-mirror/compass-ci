@@ -4,6 +4,8 @@
 
 require 'json'
 require 'fileutils'
+require 'faye/websocket'
+require 'eventmachine'
 
 def reboot(type, job_id)
   r, io = IO.pipe
@@ -299,4 +301,62 @@ ensure
   f2&.close
   f1&.flock(File::LOCK_UN)
   f1&.close
+end
+
+def ws_boot(url, hostname, uuid)
+  threads = []
+  response = nil
+
+  EM.run do
+    ws = Faye::WebSocket::Client.new(url)
+
+    ws.on :open do |_event|
+      puts "connect to #{url}"
+    end
+
+    ws.on :message do |event|
+      response = deal_ws_event(event, threads, ws, hostname, uuid)
+    end
+
+    ws.on :close do
+      threads.map(&:exit)
+      EM.stop
+    end
+  end
+  response
+rescue StandardError => e
+  puts e
+end
+
+def deal_ws_event(event, threads, ws, hostname, uuid)
+  response = nil
+  data = JSON.parse(event.data)
+  case data['type']
+  when 'request_memory', 'release_memory'
+    thr = Thread.new do
+      ack_memory(data['type'], ws, hostname, uuid)
+    end
+    threads << thr
+  when 'boot'
+    response = data['response']
+  else
+    raise 'unknow message type'
+  end
+
+  response
+end
+
+def ack_memory(type, ws, hostname, uuid)
+  unless uuid
+    ws.send({ 'type' => type }.to_json)
+    return
+  end
+
+  if type == 'request_memory'
+    request_mem(hostname)
+  else
+    release_mem(hostname)
+  end
+
+  ws.send({ 'type' => type }.to_json)
 end
