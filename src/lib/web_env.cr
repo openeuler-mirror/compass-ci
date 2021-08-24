@@ -40,5 +40,21 @@ class HTTP::Server
     def create_repo
       @repo = Repo.new(self)
     end
+
+    def channel
+      @channel ||= create_channel
+    end
+
+    def create_channel
+      @channel = Channel(Hash(String, JSON::Any) | Hash(String, String)).new
+    end
+
+    def socket
+      @socket.as(HTTP::WebSocket)
+    end
+
+    def create_socket(socket : HTTP::WebSocket)
+      @socket = socket
+    end
   end
 end

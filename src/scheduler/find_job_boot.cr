@@ -5,8 +5,14 @@ class Sched
   def find_job_boot
     @env.set "job_stage", "boot"
 
-    value = @env.params.url["value"]
-    boot_type = @env.params.url["boot_type"]
+    if @env.get?("ws")
+      send_timeout_signal
+      value = @env.ws_route_lookup.params["value"]
+      boot_type = @env.ws_route_lookup.params["boot_type"]
+    else
+      value = @env.params.url["value"]
+      boot_type = @env.params.url["boot_type"]
+    end
 
     case boot_type
     when "ipxe", "libvirt"
@@ -23,7 +29,16 @@ class Sched
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     @env.set "job_id", job_id
 
-    response
+    if @env.get?("ws")
+      @env.socket.send({
+        "type" => "boot",
+        "response" => response
+      }.to_json)
+      @env.socket.close
+      @env.channel.close
+    else
+      response
+    end
   rescue e
     @env.response.status_code = 500
     @log.warn({
@@ -32,6 +47,13 @@ class Sched
     }.to_json)
   ensure
     send_mq_msg
+  end
+
+  def send_timeout_signal
+    spawn do
+      sleep 1800
+      @env.channel.send({"type" => "timeout"})
+    end
   end
 
   # auto submit a job to collect the host information.
@@ -116,17 +138,47 @@ class Sched
 
     spawn auto_submit_idle_job(testbox)
 
+    if @env.get?("ws")
+      return if ["timeout", "close"].includes?(@env.get?("ws_state"))
+
+      interact_with_client("release_memory") if @env.get?("client_memory") == "request"
+      return if ["timeout", "close"].includes?(@env.get?("ws_state"))
+
+      @env.set "client_memory", "release"
+    end
+
     consume_by_watch(queues, revision)
+  end
+
+  def interact_with_client(type)
+    @env.socket.send({"type" => type}.to_json)
+    while true
+      Fiber.yield
+      msg = @env.channel.receive
+      return true if msg["type"]? == type
+      next unless msg["type"]? == "timeout"
+
+      @env.set "ws_state", "timeout"
+      return
+    end
   end
 
   def consume_by_list(queues)
     loop do
       jobs, revision = get_history_jobs(queues)
       email_jobs = split_jobs_by_email(jobs)
+      return nil, revision if email_jobs.empty?
+
+      # connection mode is websocket
+      # the client has not been instructed to apply for memory
+      if @env.get?("ws") && @env.get?("client_memory") != "request"
+        res = interact_with_client("request_memory")
+        return nil, revision unless res
+
+        @env.set "client_memory", "request"
+      end
 
       loop do
-        return nil, revision if email_jobs.empty?
-
         job = pop_job_by_priority(email_jobs)
         return nil, revision unless job
 
@@ -233,12 +285,28 @@ class Sched
         return nil
       end
 
+      if @env.get?("ws")
+        unless interact_with_client("request_memory")
+          close_watch(ech)
+          channel.close
+          return
+        end
+      end
+
       events.each do |event|
         if ready2process(event.kv)
           close_watch(ech)
           channel.close
 
           return event.kv
+        end
+      end
+
+      if @env.get?("ws")
+        unless interact_with_client("release_memory")
+          close_watch(ech)
+          channel.close
+          return
         end
       end
     end

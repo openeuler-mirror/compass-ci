@@ -72,6 +72,22 @@ module Scheduler
     env.sched.find_job_boot
   end
 
+  ws "/ws/boot.:boot_type/:parameter/:value" do |socket, env|
+    env.set "ws", true
+    env.create_socket(socket)
+
+    spawn env.sched.find_job_boot
+
+    socket.on_message do |msg|
+      msg = JSON.parse(msg.to_s).as_h?
+      (spawn env.channel.send(msg)) if msg
+    end
+
+    socket.on_close do
+      spawn env.channel.send({"type" => "close"})
+    end
+  end
+
   # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
   get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
     env.sched.find_next_job_boot
