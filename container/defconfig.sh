@@ -28,6 +28,14 @@ load_service_authentication()
 	create_yaml_variables $file_name
 }
 
+load_pack_vars()
+{
+	shopt -s nullglob
+	file_name="$HOME/.config/compass-ci/pack.yaml"
+	[ -f $file_name ] || return
+	create_yaml_variables $file_name
+}
+
 docker_rm()
 {
 	container=$1
