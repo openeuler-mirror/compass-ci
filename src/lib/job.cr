@@ -60,6 +60,16 @@ class Job
       "os_arch" =>         "aarch64",
       "os_version" =>      "sid",
     },
+    "ubuntu" => {
+      "os" =>              "ubuntu",
+      "os_arch" =>         "aarch64",
+      "os_version" =>      "20.04",
+    },
+    "fedora" => {
+      "os" =>              "fedora",
+      "os_arch" =>         "aarch64",
+      "os_version" =>      "33",
+    },
     "docker" => {
       "docker_image" => "centos:7"
     }
