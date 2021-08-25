@@ -85,6 +85,10 @@ write_logfile()
 
 		log_info "start request job: $hostname" | tee -a $log_file
 
+		# empty file
+		# prevent the contents of the last file from being affected
+		echo -n '' > $ipxe_script
+
 		url=ws://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/ws/boot.ipxe/mac/${mac}
 		ipxe_script_path="$(pwd)/${ipxe_script}"
 		command -v ruby &&
