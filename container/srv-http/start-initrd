@@ -3,6 +3,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 . $CCI_SRC/container/defconfig.sh
+. ./docker_run.sh
 docker_rm srv-http-initrd
 
 cmd=(
@@ -17,6 +18,7 @@ cmd=(
 	-v /srv/initrd/osimage:/srv/initrd/osimage:ro
 	-v /srv/initrd/deps:/srv/initrd/deps:ro
 	-v /etc/localtime:/etc/localtime:ro
+	$(mount_ssl)
 	-d
 	srv-http
 )

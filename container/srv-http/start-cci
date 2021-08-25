@@ -3,6 +3,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 . $CCI_SRC/container/defconfig.sh
+. ./docker_run.sh
 docker_rm srv-http-cci
 
 cmd=(
@@ -13,6 +14,7 @@ cmd=(
 	-p 20011:20011
 	-v /srv/cci/libvirt-xml:/srv/cci/libvirt-xml:ro
 	-v /etc/localtime:/etc/localtime:ro
+	$(mount_ssl)
 	-d
 	srv-http
 )
