@@ -37,3 +37,13 @@ class JSONLogger < Logger
     super(logdev, formatter: formatter)
   end
 end
+
+def log_warn(msg)
+  log = JSONLogger.new
+  log.warn(msg)
+end
+
+def log_error(msg)
+  log = JSONLogger.new
+  log.error(msg)
+end

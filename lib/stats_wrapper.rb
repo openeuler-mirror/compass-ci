@@ -324,13 +324,3 @@ def parse_simple_log_yaml(log_lines)
 
   result
 end
-
-def log_warn(msg)
-  log = JSONLogger.new
-  log.warn(msg)
-end
-
-def log_error(msg)
-  log = JSONLogger.new
-  log.error(msg)
-end
