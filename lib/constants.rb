@@ -70,6 +70,9 @@ SRV_HTTP_GIT_PORT ||= config['SRV_HTTP_GIT_PORT'] || ENV['SRV_HTTP_GIT_PORT'] ||
 
 SRV_HTTP_DOMAIN ||= config['SRV_HTTP_DOMAIN'] || ENV['SRV_HTTP_DOMAIN'] || 'api.compass-ci.openeuler.org'
 
+SRV_HTTP_PROTOCOL ||=
+  File.exist?('/etc/ssl/certs/web-backend.key') && File.exist?('/etc/ssl/certs/web-backend.crt') ? 'https' : 'http'
+
 ASSISTANT_HOST ||= config['ASSISTANT_HOST'] || ENV['ASSISTANT_HOST'] || '172.17.0.1'
 ASSISTANT_PORT ||= config['ASSISTANT_PORT'] || ENV['ASSISTANT_PORT'] || 8101
 

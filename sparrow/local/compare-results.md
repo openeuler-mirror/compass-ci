@@ -6,7 +6,7 @@
 	submit -m cci-depends.yaml cci-depends.benchmark=iperf
 	```
 	
-2. 编辑os-matrix-dc.yaml，指定使用centos：7和 [openEuler：20.03-pre](http://api.compass-ci.openeuler.org:20008/initrd/dockerimage/openeuler-pre.tar)（由于dockerhub没有openeuler20.03的镜像，可以下载该链接并使用docker load -i openeuler-pre.tar加载到本地），如需要使用其他os，参考如下文件格式修改即可。
+2. 编辑os-matrix-dc.yaml，指定使用centos：7和 [openEuler：20.03-pre](https://api.compass-ci.openeuler.org:20008/initrd/dockerimage/openeuler-pre.tar)（由于dockerhub没有openeuler20.03的镜像，可以下载该链接并使用docker load -i openeuler-pre.tar加载到本地），如需要使用其他os，参考如下文件格式修改即可。
 	```
 	cat > /c/lkp-tests/jobs/os-matrix-dc.yaml << EOF
 	os_arch: aarch64
