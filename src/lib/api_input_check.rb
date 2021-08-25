@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-PERFORMANCE_RESULT_INPUT_KEYS = ['metrics', 'filter', 'series', 'x_params']
+PERFORMANCE_RESULT_INPUT_KEYS = Set.new(['metrics', 'filter', 'series', 'x_params'])
 
 # --------------------------------------------------------------------------------------------
 # check the input params for API: web-backend/performance_result
@@ -15,6 +15,9 @@ PERFORMANCE_RESULT_INPUT_KEYS = ['metrics', 'filter', 'series', 'x_params']
 #     }
 # --------------------------------------------------------------------------------------------
 def check_performance_result(request_body)
+  lack_param = lack_params?(PERFORMANCE_RESULT_INPUT_KEYS, Set.new(request_body.keys))
+  return lack_param if lack_param
+
   request_body.each do |key, value|
     next if PERFORMANCE_RESULT_INPUT_KEYS.include?(key)
 
@@ -22,4 +25,22 @@ def check_performance_result(request_body)
   end
 
   return nil
+end
+
+# @request_keys: Set
+# @expect_keys: Set
+#   eg: #<Set: {"metrics", "filter", "series", "x_params"}>
+def lack_params?(expect_keys, request_keys)
+  subtraction = expect_keys ^ request_keys
+  return false if subtraction.empty?
+
+  lack_params = subtraction & expect_keys
+  return false if lack_params.empty?
+
+  msg = 'lack params: '
+  lack_params.each do |param|
+    msg += "\"#{param}\", "
+  end
+
+  msg + 'please check you request'
 end
