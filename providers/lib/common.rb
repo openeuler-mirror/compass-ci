@@ -357,7 +357,7 @@ def deal_ws_event(event, threads, ws, hostname, uuid)
 end
 
 def ack_memory(type, ws, hostname, uuid)
-  unless uuid
+  if uuid.to_s.empty?
     ws.send({ 'type' => type }.to_json)
     return
   end
