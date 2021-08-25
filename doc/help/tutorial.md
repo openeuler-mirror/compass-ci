@@ -76,14 +76,9 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 
 - 测试脚本和参数（必选）
 
-	- 测试脚本位于```$LKP_SRC/tests```，```$LKP_SRC/daemon```路径下。job yaml 中写入与上述路径中脚本相匹配的文件，将其视为可执行脚本。
+	- 测试脚本位于```$LKP_SRC/tests```路径下。job yaml 中写入这个路径中脚本的脚本名，就会在测试时执行这个脚本，注意脚本需要有可执行权限。
+	- ```$LKP_SRC/daemon```路径下的脚本用于测试开始前，启动需要后台运行的程序。用法也是在job yaml写上脚本名和参数。
 
-	```
-	$LKP_SRC/setup
-	$LKP_SRC/monitors
-	$LKP_SRC/daemon
-	$LKP_SRC/tests
-	```
 	- 参数值作为环境变量传递，每个测试脚本将在其文件头的注释中记录可接受的参数。
 
 		```yaml
@@ -99,7 +94,8 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 		```
 - 测试资源相关变量（必选）
 
-	SUT/schduler/部署等资源相关变量。
+	已经在服务端准备好的系统资源的相关变量。
+
 	```yaml
 	    testbox: vm-2p8g
 	    os: openeuler
@@ -254,7 +250,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
           项目代码更新后自动触发构建任务，无需其他操作。
 
     3) 查看结果
-          web: https://compass-ci.openeuler.org/jobs。
+          web: https://compass-ci.openeuler.org/jobs
 
     4) 备注
           目前提供 archlinux 下已有 PKGBUILD 项目构建测试，暂不支持自主导入 PKGBUILD 文件。
