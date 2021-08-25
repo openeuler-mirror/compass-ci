@@ -19,6 +19,7 @@ require "#{CCI_SRC}/lib/compare_data_format.rb"
 require_relative './job_error.rb'
 require_relative './constants.rb'
 require_relative './api_input_check.rb'
+require_relative '../../lib/json_logger.rb'
 
 UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
 
@@ -127,7 +128,7 @@ def compare_candidates
   begin
     body = compare_candidates_body
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get compare candidates error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -240,7 +241,7 @@ def compare(params)
   begin
     body = get_compare_body(params)
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'compare error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -380,7 +381,7 @@ def get_jobs(params)
   begin
     body = get_jobs_body(params)
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get jobs error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -463,7 +464,7 @@ def get_repos(params)
   begin
    body = get_repos_body(params)
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get repos error']
  end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -477,7 +478,7 @@ def performance_result(data)
 
     body = result_body(request_body)
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get performance result error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -510,7 +511,7 @@ def query_testboxes
   begin
     body = testboxes_body
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get testboxes error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -536,7 +537,7 @@ def get_tbox_state(params)
   begin
     body = get_tbox_state_body(params)
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get testbox state error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -574,7 +575,7 @@ def new_refs_statistics(params)
   begin
     body = query_repo_statistics(params)
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'new refs statistics error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -643,7 +644,7 @@ def group_jobs_stats(params)
   begin
     body = get_jobs_stats(params)
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'group jobs table error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -661,7 +662,7 @@ def get_job_error(params)
   begin
     body = job_error_body(params)
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get error table error']
   end
 
@@ -758,7 +759,7 @@ def git_mirror_health
   begin
     body = git_mirror_state
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'git mirror health error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -777,7 +778,7 @@ def get_active_testbox
       'physical' => active_physical['aggregations']['queue']['buckets']
     }.to_json
   rescue StandardError => e
-    warn e.message
+    log_error e.message
 
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get active testbox error']
   end
@@ -796,7 +797,7 @@ def active_stderr
   begin
     body = active_stderr_body
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get active-stderr error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -897,7 +898,7 @@ def job_boot_time
   begin
     body = get_job_boot_time('boot_time')
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get job_boot_time error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -924,7 +925,7 @@ def top_boot_time
   begin
     body = get_job_boot_time('top_boot_time')
   rescue StandardError => e
-    warn e.message
+    log_error e.message
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get top_boot_time error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
