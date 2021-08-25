@@ -97,10 +97,10 @@ else
 		          "subqueue": {
 			    "type": "keyword"
 		          },
-		          "all_params_hash_value": {
+		          "all_params_md5": {
 			    "type": "keyword"
 			  },
-		          "pp_params_hash_value": {
+		          "pp_params_md5": {
 			    "type": "keyword"
 			  },
 		          "testbox": {

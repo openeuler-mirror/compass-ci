@@ -202,7 +202,7 @@ class Job
     set_subqueue()
     set_secrets()
     set_time("submit_time")
-    set_params_hash_value
+    set_params_md5
   end
 
   private def checkout_max_run
@@ -212,13 +212,13 @@ class Job
       "size" => 1,
       "query" => {
         "term" => {
-          "all_params_hash_value" => hash["all_params_hash_value"]
+          "all_params_md5" => hash["all_params_md5"]
         }
       },
       "sort" =>  [{
         "submit_time" => { "order" => "desc", "unmapped_type" => "date" }
       }],
-      "_source" => ["id", "all_params_hash_value"]
+      "_source" => ["id", "all_params_md5"]
     }
     total, latest_job_id = @es.get_hit_total("jobs", query)
 
@@ -226,21 +226,25 @@ class Job
     raise msg if total >= hash["max_run"].to_s.to_i32
   end
 
-  private def set_params_hash_value
-    hash["pp_params_hash_value"] = JSON::Any.new(get_hasher_result(hash["pp"]).to_s)
-
-    all_params_hash = {"pp" => hash["pp"]}
-    COMMON_PARAMS.each do |param|
-      all_params_hash[param] = hash[param]
+  def get_md5(data : Hash(String , JSON::Any))
+    tmp = Hash(String, String).new
+    data.each do |k, v|
+      tmp[k] = v.to_s
     end
-
-    hash["all_params_hash_value"] = JSON::Any.new(get_hasher_result(all_params_hash).to_s)
+    Digest::MD5.hexdigest(tmp.to_a.sort.to_s).to_s
   end
 
-  # Designated hasher seed
-  # A pseudorandom param's hash value is completely determined by the hasher seed
-  def get_hasher_result(param)
-    param.hash(Crystal::Hasher.new(1111111111111111111, 1111111111111111111)).result
+  private def set_params_md5
+    flat_pp_hash = Hash(String, JSON::Any).new
+    flat_hash(hash["pp"].as_h? || flat_pp_hash, flat_pp_hash)
+    hash["pp_params_md5"] = JSON::Any.new(get_md5(flat_pp_hash))
+
+    all_params = flat_pp_hash
+    COMMON_PARAMS.each do |param|
+      all_params[param] = hash[param]
+    end
+
+    hash["all_params_md5"] = JSON::Any.new(get_md5(all_params))
   end
 
   def set_time(key)
