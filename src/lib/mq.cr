@@ -46,6 +46,26 @@ class MQClient
     end
   end
 
+  def retry_publish_confirm(queue, msg, passive = false, durable = false, exclusive = false, auto_delete = false)
+    10.times do |i|
+      publish_confirm(queue, msg, passive, durable, exclusive, auto_delete)
+      break
+    rescue e
+      if i == 9
+        @log.warn({
+          "msg" => e,
+          "error_msg" => e.inspect_with_backtrace,
+          "source" => "retry_publish_confirm"
+        })
+        return
+      else
+        @log.info("publish confirm failed: #{e}")
+        sleep 10 * i * i
+        reconnect
+      end
+    end
+  end
+
   def publish(queue, msg, passive = false, durable = false, exclusive = false, auto_delete = false)
     q = @ch.queue(queue, passive, durable, exclusive, auto_delete)
     if durable
