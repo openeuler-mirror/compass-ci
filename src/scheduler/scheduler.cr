@@ -84,7 +84,7 @@ module Scheduler
     end
 
     socket.on_close do
-      spawn env.channel.send({"type" => "close"})
+      (spawn env.channel.send({"type" => "close"})) unless env.get?("ws_state") == "normal"
     end
   end
 

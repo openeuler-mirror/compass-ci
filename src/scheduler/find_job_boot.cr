@@ -34,6 +34,7 @@ class Sched
         "type" => "boot",
         "response" => response
       }.to_json)
+      @env.set "ws_state", "normal"
       @env.socket.close
       @env.channel.close
     else
@@ -52,7 +53,7 @@ class Sched
   def send_timeout_signal
     spawn do
       sleep 1800
-      @env.channel.send({"type" => "timeout"})
+      @env.channel.send({"type" => "timeout"}) unless @env.channel.closed?
     end
   end
 
