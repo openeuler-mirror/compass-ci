@@ -146,6 +146,7 @@ class SerialParser
 
   def check_save_dmesg(msg, host)
     return unless @host2rt.has_key?(host)
+    return unless @host2file.has_key?(host)
 
     @host2file[host].puts msg["message"]
     @host2file[host].flush
