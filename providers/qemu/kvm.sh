@@ -398,7 +398,6 @@ set_options()
 }
 
 check_logfile
-low_mem_wait
 write_logfile
 
 parse_ipxe_script
