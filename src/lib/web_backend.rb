@@ -825,7 +825,7 @@ def five_days_query(now)
   {:query => {
       :bool => {
         :must => [{:range => {
-          "start_time" => {:gte => d5.strftime("%Y-%m-%d %H:%M:%S"), :lte => now.strftime("%Y-%m-%d %H:%M:%S")}
+          "start_time" => {:gte => d5.strftime("%Y-%m-%dT%H:%M:%S+0800"), :lte => now.strftime("%Y-%m-%dT%H:%M:%S+0800")}
         }}]
       }
     },
@@ -849,7 +849,7 @@ def get_one_day_must(now)
   d1 = now - ONE_DAY_SECOND
 
   [{ range: {
-    'start_time' => { gte: d1.strftime('%Y-%m-%d %H:%M:%S'), lte: now.strftime('%Y-%m-%d %H:%M:%S') }
+    'start_time' => { gte: d1.strftime('%Y-%m-%dT%H:%M:%S+0800'), lte: now.strftime('%Y-%m-%dT%H:%M:%S+0800') }
   } }]
 end
 
