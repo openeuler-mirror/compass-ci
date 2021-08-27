@@ -75,8 +75,9 @@ module Scheduler
   ws "/ws/boot.:boot_type/:parameter/:value" do |socket, env|
     env.set "ws", true
     env.create_socket(socket)
+    sched = env.sched
 
-    spawn env.sched.find_job_boot
+    spawn sched.find_job_boot
 
     socket.on_message do |msg|
       msg = JSON.parse(msg.to_s).as_h?
@@ -84,6 +85,7 @@ module Scheduler
     end
 
     socket.on_close do
+      sched.etcd_close
       (spawn env.channel.send({"type" => "close"})) unless env.get?("ws_state") == "normal"
     end
   end
