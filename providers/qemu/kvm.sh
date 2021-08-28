@@ -314,6 +314,10 @@ print_message()
 
 public_option()
 {
+	# -realtime mlock=on|off
+	#    Run qemu with realtime features.  mlocking qemu and guest memory can be enabled via
+	#    mlock=on (enabled by default).
+
 	kvm=(
 		$qemu
 		-name guest=$hostname,process=$job_id
@@ -326,6 +330,7 @@ public_option()
 		-no-reboot
 		-nographic
 		-monitor null
+		-realtime mlock=on
 	)
 }
 
