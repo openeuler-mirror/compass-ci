@@ -630,12 +630,33 @@ def get_index(matrixes_number)
   index_line
 end
 
+# @dims
+# eg:
+#   [
+#     os=openeuler os_version=20.03,
+#     os=debian os_version=sid
+#   ]
 def get_dim(dims)
-  index_line = format("%#{SUB_LONG_COLUMN_WIDTH}s", dims[0])
-  (1...dims.size).each do |i|
-    index_line += INTERVAL_BLANK + format("%#{COLUMN_WIDTH}s", dims[i])
+  index_line = ''
+  dims_list = parse_dims(dims)
+  max_size = dims_list.max { |a, b| a.size <=> b.size }.size
+  (0...max_size).each do |i|
+    index_line += format("%#{SUB_LONG_COLUMN_WIDTH}s", dims_list[0][i] || ' ')
+    (1...dims.size).each do |j|
+      index_line += INTERVAL_BLANK + format("%#{COLUMN_WIDTH}s", dims_list[j][i] || ' ')
+    end
+    index_line += "\n" if i < (max_size - 1)
   end
   index_line + INTERVAL_BLANK + format("%-#{COLUMN_WIDTH}s\n", FIELD_STR)
+end
+
+def parse_dims(dims)
+  dims_list = []
+  dims.each do |dim|
+    dims_list << dim.split
+  end
+
+  dims_list
 end
 
 def get_liner(matrixes_number)

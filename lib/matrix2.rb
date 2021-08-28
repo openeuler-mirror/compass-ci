@@ -104,7 +104,7 @@ module Matrix
   # return: matrix
   def self.combine_query_data(query_data, options)
     job_list = extract_jobs_list(query_data['hits']['hits'])
-    return nil if job_list.size < options[:min_samples]
+    return nil if job_list.empty? || job_list.size < options[:min_samples]
 
     @fields = options[:fields]
     create_matrix(job_list)
