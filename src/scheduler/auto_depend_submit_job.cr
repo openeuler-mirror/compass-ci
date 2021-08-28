@@ -8,11 +8,11 @@ class Sched
 
     job_content = JSON.parse(body)
     origin_job = init_job(job_content)
-    jobs = @cluster.handle_job(origin_job)
+    jobs = @env.cluster.handle_job(origin_job)
     jobs.each do |job|
       init_job_id(job)
-      @pkgbuild.handle_job(job)
-      @finally.handle_job(job)
+      @env.pkgbuild.handle_job(job)
+      @env.finally.handle_job(job)
 
       response << {
         "job_id"      => job.id,

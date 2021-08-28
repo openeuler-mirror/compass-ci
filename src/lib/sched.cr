@@ -51,9 +51,6 @@ class Sched
     @rgc = RemoteGitClient.new
     @env = env
     @log = env.log.as(JSONLogger)
-    @cluster = Cluster.new
-    @pkgbuild = PkgBuild.new
-    @finally = Finally.new
   end
 
   def debug_message(response)

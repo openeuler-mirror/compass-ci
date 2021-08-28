@@ -56,5 +56,29 @@ class HTTP::Server
     def create_socket(socket : HTTP::WebSocket)
       @socket = socket
     end
+
+    def cluster
+      @cluster ||= create_cluster
+    end
+
+    def create_cluster
+      @cluster = Cluster.new
+    end
+
+    def pkgbuild
+      @pkgbuild ||= create_pkgbuild
+    end
+
+    def create_pkgbuild
+      @pkgbuild = PkgBuild.new
+    end
+
+    def finally
+      @finally ||= create_finally
+    end
+
+    def create_finally
+      @finally = Finally.new
+    end
   end
 end
