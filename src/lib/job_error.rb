@@ -62,9 +62,9 @@ class JobError
   end
 
   def first_date(error, value)
-    return @other_errors[error].split[0] if @other_errors.key?(error)
+    fitst_date = @other_errors[error] || value['first_date']
 
-    value['first_date'].split[0]
+    fitst_date.slice(0, fitst_date.index('T'))
   end
 end
 
