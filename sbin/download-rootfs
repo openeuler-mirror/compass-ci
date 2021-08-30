@@ -21,6 +21,9 @@ load_cci_defaults
 rootfs_dir="/srv/os/${os}/${os_arch}/${os_version}"
 osimage_dir="/srv/initrd/osimage/${os}/${os_arch}/${os_version}"
 
+# fix files permissions cause failed to run qemu test
+umask 002
+
 mkdir -p $rootfs_dir $osimage_dir
 
 wget_download()
