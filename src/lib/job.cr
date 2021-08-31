@@ -95,7 +95,7 @@ class Job
     lab
     queue
     subqueue
-    initrd_pkg
+    initrd_pkgs
     initrd_deps
     initrds_uri
     rootfs
@@ -759,7 +759,7 @@ class Job
     temp = [] of String
     deps = @hash["initrd_deps"].as_a
     deps.map{ |item| temp << item.to_s }
-    pkg = @hash["initrd_pkg"].as_a
+    pkg = @hash["initrd_pkgs"].as_a
     pkg.map{ |item| temp << item.to_s }
 
     temp_initrds.concat(temp)
@@ -817,12 +817,12 @@ class Job
 
   private def set_depends_initrd
     initrd_deps_arr = Array(String).new
-    initrd_pkg_arr = Array(String).new
+    initrd_pkgs_arr = Array(String).new
 
-    get_depends_initrd(get_program_params(), initrd_deps_arr, initrd_pkg_arr)
+    get_depends_initrd(get_program_params(), initrd_deps_arr, initrd_pkgs_arr)
 
     self["initrd_deps"] = initrd_deps_arr.uniq
-    self["initrd_pkg"] = initrd_pkg_arr.uniq
+    self["initrd_pkgs"] = initrd_pkgs_arr.uniq
   end
 
   private def get_program_params
@@ -838,7 +838,7 @@ class Job
     return program_params
   end
 
-  private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkg_arr)
+  private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkgs_arr)
     initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
     mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
 
@@ -860,7 +860,7 @@ class Job
         initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
       end
       if File.exists?(pkg_dest_file)
-        initrd_pkg_arr << "#{initrd_http_prefix}" + JobHelper.service_path(pkg_dest_file)
+        initrd_pkgs_arr << "#{initrd_http_prefix}" + JobHelper.service_path(pkg_dest_file)
       end
     end
   end
