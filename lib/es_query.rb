@@ -59,7 +59,7 @@ class ESQuery
     }
     query.merge!(assign_desc_body(desc_keyword)) if desc_keyword
 
-    result = @client.search index: @index, scroll: '10m', body: query
+    result = @client.search index: @index + '*', scroll: '10m', body: query
     jobs = []
     @scroll_id = result['_scroll_id'] unless result.empty? && result.include?('_scroll_id')
 
