@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+[ "$prepare_testboxes" = "false" ] && exit
+
 : ${vm_hostname:=vm-2p8g}
 : ${vm_count:=10}
 
