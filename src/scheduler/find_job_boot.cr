@@ -420,9 +420,10 @@ class Sched
 
     _initrds_uri = Array(String).from_json(job.initrds_uri).map { |uri| "initrd #{uri}" }
     _initrds_uri.insert(1, "initrd #{job.modules_uri}")
+    _kernel_initrds = _initrds_uri.map { |initrd| " initrd=#{File.basename(initrd.split("initrd ")[-1])}"}
     response += _initrds_uri.join("\n") + "\n"
 
-    _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + Array(String).from_json(job.ipxe_kernel_params)
+    _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + _kernel_initrds
     response += _kernel_params.join(" ") + " rootfs_disk=#{JSON.parse(job["rootfs_disk"]).as_a.join(",")}" + " crashkernel=#{job["crashkernel"]}"
 
     response += "\nboot\n"

@@ -46,8 +46,5 @@ class Job
     kernel_params_values = "#{kernel_common_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
     kernel_params_values = kernel_params_values.split(" ").map(&.strip()).reject!(&.empty?)
     @hash["kernel_params"] = JSON.parse(kernel_params_values.to_json)
-    initrds = initrds_basename()
-    initrds.insert(1, "initrd=#{File.basename(self["modules_uri"])}")
-    @hash["ipxe_kernel_params"] = JSON.parse(initrds.to_json)
   end
 end
