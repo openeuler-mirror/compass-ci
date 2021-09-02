@@ -170,6 +170,7 @@ class Job
     self["job_stage"] = "submit"
 
     check_required_keys()
+    check_fields_format()
 
     account_info = @es.get_account(self["my_email"])
     Utils.check_account_info(@hash, account_info)
@@ -624,6 +625,10 @@ class Job
     end
   end
 
+  private def check_fields_format
+    check_rootfs_disk()
+  end
+
   private def delete_account_info
     @hash.delete("my_uuid")
     @hash.delete("my_token")
@@ -883,6 +888,12 @@ class Job
     #  so when update id, we need redo set_
     set_result_root()
     set_initrds_uri()
+  end
+
+  private def check_rootfs_disk
+    @hash["rootfs_disk"].as_a if @hash.has_key?("rootfs_disk")
+  rescue
+    raise "rootfs_disk must be in array type if you want to specify it."
   end
 
   def set_rootfs_disk(rootfs_disk)

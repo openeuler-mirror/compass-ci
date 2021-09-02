@@ -129,7 +129,7 @@ class Sched
 
   def update_kernel_params(job)
     host_info = Utils.get_host_info(job.testbox)
-    job.set_rootfs_disk(get_rootfs_disk(host_info))
+    job.set_rootfs_disk(get_rootfs_disk(host_info)) unless job.has_key?("rootfs_disk")
     job.set_crashkernel(get_crashkernel(host_info))
   end
 
@@ -424,7 +424,8 @@ class Sched
     response += _initrds_uri.join("\n") + "\n"
 
     _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + _kernel_initrds
-    response += _kernel_params.join(" ") + " rootfs_disk=#{JSON.parse(job["rootfs_disk"]).as_a.join(",")}" + " crashkernel=#{job["crashkernel"]}"
+    _rootfs_disk = " rootfs_disk=#{JSON.parse(job["rootfs_disk"]).as_a.join(",")}"
+    response += _kernel_params.join(" ") + _rootfs_disk + " crashkernel=#{job["crashkernel"]}"
 
     response += "\nboot\n"
 
