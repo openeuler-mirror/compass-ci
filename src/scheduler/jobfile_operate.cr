@@ -68,4 +68,16 @@ module Jobfile::Operate
     cmd += fields.join(" ")
     puts `#{cmd}`
   end
+
+  def self.auto_submit_job(job_file, fields : Hash(String, JSON::Any | String))
+    array = Array(String).new
+    fields.each do |k, v|
+      array << "#{k}=#{v}"
+    end
+
+    cmd = "#{ENV["LKP_SRC"]}/sbin/submit "
+    cmd += "#{job_file} "
+    cmd += array.join(" ")
+    puts `#{cmd}`
+  end
 end
