@@ -3,6 +3,7 @@
 
 require "kemal"
 require "yaml"
+require "any_merge"
 
 require "./mq"
 require "./job"
@@ -30,6 +31,7 @@ require "../scheduler/download_file"
 require "../scheduler/opt_job_in_etcd"
 require "../scheduler/report_event"
 require "../scheduler/report_ssh"
+require "../scheduler/depend_rpmbuild"
 require "../scheduler/plugins/pkgbuild"
 require "../scheduler/plugins/finally"
 require "../scheduler/plugins/cluster"
