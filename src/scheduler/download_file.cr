@@ -21,4 +21,15 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   end
+
+  def download
+    path =  @env.params.query["path"]?.to_s
+    send_file @env, path
+  rescue e
+    @env.response.status_code = 500
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
+  end
 end

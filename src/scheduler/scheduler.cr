@@ -137,6 +137,10 @@ module Scheduler
     env.sched.download_file
   end
 
+  get "/download" do |env|
+    env.sched.download
+  end
+
   # client(runner) report its hostname and mac
   #  - when a runner pull jobs with it's mac infor, scheduler find out what hostname is it
   # /set_host_mac?hostname=$hostname&mac=$mac (mac like ef-01-02-03-04-05)
