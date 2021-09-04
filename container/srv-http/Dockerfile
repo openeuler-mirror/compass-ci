@@ -11,7 +11,7 @@ RUN apk update
 
 RUN apk add git
 
-RUN git clone https://gitee.com/luweitao_y/h5ai.git /h5ai
+COPY ./h5ai /h5ai
 
 WORKDIR /h5ai
 
