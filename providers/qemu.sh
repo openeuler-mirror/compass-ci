@@ -28,6 +28,18 @@ del_host_info()
 	curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/del_host2queues?host=${hostname}" > /dev/null 2>&1
 }
 
+release_mem()
+{
+	[ -n "$UUID" ] && command -v ruby && ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "release_mem '$hostname'"
+}
+
+post_work()
+{
+	del_host_info
+	release_mem
+	lockfile-remove --lock-name $lockfile
+}
+
 get_lock()
 {
 	[[ $(($retry_time % $retry_remain_times)) -eq 0 ]] && {
@@ -45,7 +57,7 @@ main()
 	# why lock this?
 	# because one mac match one vm, and only one vm with unique mac can running/requesting at any time.
 
-	local lockfile="${hostname}.lock"
+	lockfile="${hostname}.lock"
 
 	local retry_remain_times=600
 	local retry_time=0
@@ -66,7 +78,7 @@ main()
 	chmod +x ip.sh
 
 	set_host_info
-	trap del_host_info EXIT
+	trap post_work EXIT
 
 	(
 		if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
@@ -99,9 +111,7 @@ main()
 	[ -n "$id" ] && upload_files -t $(cat job_id) $log_file
 
 	# Allow fluentd sufficient time to read the contents of the log file
-	sleep 2
-
-	lockfile-remove --lock-name $lockfile
+	sleep 5
 }
 
 main

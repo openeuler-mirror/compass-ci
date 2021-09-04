@@ -70,7 +70,6 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 
 def main(hostname)
   start_qemu(hostname)
-  release_mem(hostname)
 end
 
 def start_qemu(hostname)
