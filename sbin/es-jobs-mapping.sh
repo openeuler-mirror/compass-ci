@@ -76,6 +76,9 @@ else
 		          "suite": {
 		            "type": "keyword"
 		          },
+		          "result_root": {
+		            "type": "keyword"
+		          },
 		          "submit_time": {
 		            "type": "date"
 		          },
