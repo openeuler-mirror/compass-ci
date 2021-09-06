@@ -228,7 +228,7 @@ add_disk()
 
 	for disk in ${hdd_partitions[@]}
 	do
-		prepare_disk "512G" "true"
+		prepare_disk "128G" "true"
 
 		# about if=virtio:
 		# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
