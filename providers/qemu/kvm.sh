@@ -214,9 +214,9 @@ add_disk()
 	local index=0
 	local disk
 
-	for disk in ${hdd_partitions[@]}
+	for disk in $rootfs_disk
 	do
-		prepare_disk "512G" "true"
+		prepare_disk "128G"
 
 		# about if=virtio:
 		# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
@@ -226,9 +226,9 @@ add_disk()
 		kvm+=(-drive ${drive})
 	done
 
-	for disk in $rootfs_disk
+	for disk in ${hdd_partitions[@]}
 	do
-		prepare_disk "128G"
+		prepare_disk "512G" "true"
 
 		# about if=virtio:
 		# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
