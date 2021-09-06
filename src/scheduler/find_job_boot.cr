@@ -52,7 +52,11 @@ class Sched
 
   def send_timeout_signal
     spawn do
-      sleep 1800
+      900.times do
+        sleep 2
+        break if @env.channel.closed?
+      end
+
       @env.channel.send({"type" => "timeout"}) unless @env.channel.closed?
     end
   end
@@ -253,7 +257,11 @@ class Sched
 
   def close_consume(channel)
     spawn {
-      sleep 1800
+      900.times do
+        sleep 2
+        break if channel.closed?
+      end
+
       channel.send("close") unless channel.closed?
     }
   end
