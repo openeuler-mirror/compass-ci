@@ -214,7 +214,7 @@ add_disk()
 	local index=0
 	local disk
 
-	for disk in $hdd_partitions
+	for disk in ${hdd_partitions[@]}
 	do
 		prepare_disk "512G" "true"
 
