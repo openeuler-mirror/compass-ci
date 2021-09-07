@@ -13,6 +13,7 @@ cmd=(
 	-e LISTEN_PORT=20012
 	-p 20012:20012
 	-v /srv/rpm/pub:/srv/rpm/pub:ro
+	-v /srv/tmp/rpm:/srv/tmp/rpm:ro
 	-v /etc/localtime:/etc/localtime:ro
 	$(mount_ssl)
 	-d
