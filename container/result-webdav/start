@@ -21,6 +21,7 @@ cmd=(
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result/:/srv/result/
 	-v /srv/initrd/:/srv/initrd/
+	-v /srv/kernel/:/srv/kernel/
 	-v /srv/rpm/:/srv/rpm/
 	-v /srv/cci/build-config/:/srv/cci/build-config/
 	result-webdav

@@ -49,26 +49,31 @@ class Job
       "os" =>              "openeuler",
       "os_arch" =>         "aarch64",
       "os_version" =>      "20.03",
+      "config" =>          "config-4.19.90-2003.4.0.0036.oe1.aarch64",
     },
     "centos" => {
       "os" =>              "centos",
       "os_arch" =>         "aarch64",
       "os_version" =>      "7.6.1810",
+      "config" =>          "config-4.14.0-115.el7.0.1.aarch64",
     },
     "debian" => {
       "os" =>              "debian",
       "os_arch" =>         "aarch64",
       "os_version" =>      "sid",
+      "config" =>          "config-5.4.0-4-arm64",
     },
     "ubuntu" => {
       "os" =>              "ubuntu",
       "os_arch" =>         "aarch64",
       "os_version" =>      "20.04",
+      "config" =>          "config-5.4.0-65-generic",
     },
     "fedora" => {
       "os" =>              "fedora",
       "os_arch" =>         "aarch64",
       "os_version" =>      "33",
+      "config" =>          "config-5.8.15-301.fc33.aarch64",
     },
     "docker" => {
       "docker_image" => "centos:7"
@@ -502,14 +507,14 @@ class Job
       package_dir = ",/initrd/deps/#{common_dir}/#{@hash["cci-depends"]["benchmark"]}"
     elsif @hash["rpmbuild"]?
       package_dir = ",/rpm/upload/#{common_dir}"
-    elsif @hash["build-pkg"]?
+    elsif @hash["build-pkg"]? || @hash["pkgbuild"]?
       package_name = @hash["upstream_repo"].to_s.split("/")[-1]
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
       package_dir += ",/cci/build-config" if @hash["config"]?
-    elsif @hash["pkgbuild"]?
-      package_name = @hash["upstream_repo"].to_s.split("/")[-1]
-      package_dir = ",/initrd/pkgbuild/#{common_dir}/#{package_name}"
-      package_dir += ",/cci/build-config" if @hash["config"]?
+      if @hash["upstream_repo"].to_s =~ /^l\/linux\//
+        self["config"] = DEFAULT_OS[self["os"]]["config"] unless @hash["config"]?
+        package_dir += ",/kernel/#{os_arch}/#{self["config"]}/#{@hash["upstream_commit"]}"
+      end
     end
 
     return package_dir
