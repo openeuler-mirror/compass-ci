@@ -183,6 +183,39 @@ set_helper()
        [ -f "$helper" ] || helper=/usr/lib/qemu/qemu-bridge-helper
 }
 
+is_full()
+{
+	local used_size=$1
+	local disk_size=$2
+
+	if [ ${used_size: -1} != "G" ] && [ ${used_size: -1} != "g" ]; then
+		return -1
+	fi
+
+	local num_used=$(echo $used_size | tr -dc "[0-9.]" | cut -d '.' -f1)
+	local num_disk=$(echo $disk_size | tr -dc "[0-9.]")
+
+	if [ $num_used -lt $num_disk ]; then
+		return -1
+	fi
+
+	return 0
+}
+
+over_time()
+{
+	local file_path=$1
+	local mtime=$(stat -c %Y $file_path)
+	local now_time=$(date +%s)
+	local ten_day_sec= 864000
+
+	if [ $((now_time - mtime)) -gt "$ten_day_sec" ]; then
+		return 0
+	fi
+
+	return -1
+}
+
 prepare_disk()
 {
 	# - disk size:	required	default: 512G.
@@ -192,6 +225,16 @@ prepare_disk()
 	local need_clean=${2:-"false"}
 
 	qcow2_file="${qemu_mount_point}/${hostname}-${disk##*/}.qcow2"
+
+	if [ -f "$qcow2_file" ]; then
+		local used_size=$(du -h "${qcow2_file}" | awk -F ' ' '{print $1}')
+
+		if over_time "$qcow2_file" && is_full "$used_size" "$disk_size"; then
+			need_clean=true
+		else
+			need_clean=false
+		fi
+	fi
 
 	if [ "$need_clean" == "true" ]; then
 		qemu-img create -q -f qcow2 "${qcow2_file}" $disk_size
