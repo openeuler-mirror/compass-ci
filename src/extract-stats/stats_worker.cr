@@ -47,9 +47,29 @@ class StatsWorker
     @log.info("extract-stats delete id2job from etcd #{id}: #{res}")
   end
 
+  def boards_store(result_root : String)
+    file_path = "#{result_root}/boards-scan"
+    return unless File.exists?(file_path)
+
+    file_info = File.open(file_path)
+    boards_info = JSON.parse(file_info)
+
+    @es.@client.index(
+      {
+        :index => "machines",
+        :type => "_doc",
+        :refresh => "wait_for",
+        :id => boards_info["id"],
+        :body => boards_info,
+      }
+    )
+  end
+
   def result_post_processing(job_id : String, result_root : String, queue_path : String)
     return nil unless result_root && File.exists?(result_root)
 
+    suite = result_root.split("/")[2]
+    boards_store(result_root) if suite == "boards-scan"
     # extract stats.json
     system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
     # storage stats to job in es
