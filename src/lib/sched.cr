@@ -203,38 +203,59 @@ class Sched
     end
   end
 
-  def set_lifecycle(job, testbox, queues)
-    if job
-      deadline = job.set_deadline("boot")
-      job["job_state"] = "boot"
-      job["job_stage"] = "boot"
-      state = "booting"
-      job_id = job["id"]
-      suite = job["suite"]
-    else
-      deadline = nil
-      job_id = ""
-      state = "requesting"
-      suite = nil
-    end
+  def update_job_when_boot(job)
+    return unless job
 
-    tbox_group = JobHelper.match_tbox_group(testbox.to_s)
-    type = get_type(testbox)
-    queues = JSON.parse(fetch_queues(queues).to_json)
+    job.set_deadline("boot")
+    job["job_state"] = "boot"
+    job["job_stage"] = "boot"
+  end
+
+  def update_testbox_boot_info(job, hash)
+    return hash unless job
+
+    hash["deadline"] = job["deadline"]
+    hash["job_id"] = job["id"]
+    hash["suite"] = job["suite"]
+    hash["my_account"] = job["my_account"]
+    hash["state"] = "booting"
+  end
+
+  def update_testbox_and_job(job, testbox, queues)
     hash = {
-      "job_id" => job_id,
-      "state" => state,
+      "deadline" => nil,
+      "job_id" => "",
+      "state" => "requesting",
+      "suite" => nil,
+      "my_account" => nil,
       "time" => get_time,
-      "deadline" => deadline,
-      "queues" => queues,
-      "type" => type,
+      "queues" => JSON.parse(fetch_queues(queues).to_json),
+      "type" => get_type(testbox),
       "name" => testbox,
-      "tbox_group" => tbox_group,
-      "suite" => suite
+      "tbox_group" => JobHelper.match_tbox_group(testbox.to_s),
+      "arch" => get_testbox_arch(testbox.to_s)
     }
+    update_job_when_boot(job)
+    update_testbox_boot_info(job, hash)
 
     @redis.update_wtmp(testbox.to_s, hash)
     @es.update_tbox(testbox.to_s, hash)
+  end
+
+  def get_host_machine(testbox)
+    return testbox unless testbox =~ /^(vm-|dc-)/
+
+    # dc-16g.taishan200-2280-2s64p-256g--a1001-1252549 => taishan200-2280-2s64p-256g--a1001
+    testbox.split(".")[1].reverse.split("-", 2)[1].reverse
+  end
+
+  def get_testbox_arch(testbox)
+    host_machine = get_host_machine(testbox)
+    host_machine_file = "#{CCI_REPOS}/#{LAB_REPO}/hosts/#{host_machine}"
+    return "unknow" unless File.exists?(host_machine_file)
+
+    host_machine_info = YAML.parse(File.read(host_machine_file)).as_h
+    return host_machine_info["arch"].to_s
   end
 
   def get_testbox

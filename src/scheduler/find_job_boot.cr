@@ -358,12 +358,12 @@ class Sched
     # do before get job from etcd
     # because if no job will hang
     # need to update information in a timely manner
-    set_lifecycle(nil, host, queues)
+    update_testbox_and_job(nil, host, queues)
     @env.set "state", "requesting"
     send_mq_msg
 
     job = get_job_from_queues(queues, host)
-    set_lifecycle(job, host, queues) if job
+    update_testbox_and_job(job, host, queues) if job
 
     if job
       job["last_success_stage"] = "boot"
