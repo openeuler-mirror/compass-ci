@@ -71,9 +71,7 @@ def add_hostname_to_meminfo(hostname, memory, mem_info_file)
   cmd_update_idle = "sed -i 's/^idle: .*/idle: #{mem_idle} G/g' #{mem_info_file}"
   cmd_add_testbox = "sed -i '$a#{hostname}: #{memory} G' #{mem_info_file}"
 
-  system cmd_update_usage
-  system cmd_update_idle
-  system cmd_add_testbox
+  system "#{cmd_update_usage} && #{cmd_update_idle} && #{cmd_add_testbox}"
 end
 
 def del_hostname_from_meminfo(hostname, memory, mem_info_file)
@@ -89,9 +87,7 @@ def del_hostname_from_meminfo(hostname, memory, mem_info_file)
   cmd_update_idle = "sed -i 's/^idle: .*/idle: #{mem_idle} G/g' #{mem_info_file}"
   cmd_delete_testbox = "sed -i '/#{hostname}: #{memory} G/d' #{mem_info_file}"
 
-  system cmd_update_usage
-  system cmd_update_idle
-  system cmd_delete_testbox
+  system "#{cmd_update_usage} && #{cmd_update_idle} && #{cmd_delete_testbox}"
 end
 
 def request_mem(hostname)
