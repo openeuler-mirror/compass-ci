@@ -225,8 +225,8 @@ module Scheduler
     "Done"
   end
 
-  # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/rpmbuild/depend" -d "$content"
-  post "/rpmbuild/depend" do |env|
-    env.sched.depend_rpmbuild
+  # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/rpmbuild/submit_reverse_depend_jobs" -d "$content"
+  post "/rpmbuild/submit_reverse_depend_jobs" do |env|
+    env.sched.submit_reverse_depend_jobs
   end
 end

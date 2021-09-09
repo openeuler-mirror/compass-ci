@@ -83,8 +83,6 @@ cmd = %W[
   -v /srv/initrd:/srv/initrd:ro
   -v /srv/upload-files:/srv/upload-files:rw
   -v /srv/os:/srv/os:ro
-  -v /srv/rpm:/srv/rpm
-  -v /srv/tmp/rpm:/srv/tmp/rpm
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
   --log-opt tag=scheduler-#{SCHED_PORT}
