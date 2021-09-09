@@ -23,6 +23,7 @@ cmd=(
 	-v /srv/initrd/:/srv/initrd/
 	-v /srv/kernel/:/srv/kernel/
 	-v /srv/rpm/:/srv/rpm/
+	-v /srv/tmp/rpm/:/srv/tmp/rpm/
 	-v /srv/cci/build-config/:/srv/cci/build-config/
 	result-webdav
 )
