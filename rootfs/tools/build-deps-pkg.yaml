@@ -9,4 +9,4 @@ os_version:              <%= ENV['os_version'] %>
 "<%= ENV['suite'] %>":
   benchmark:             <%= ENV['benchmark'] %>
 
-testbox: dc-16g
+testbox: vm-2p16g

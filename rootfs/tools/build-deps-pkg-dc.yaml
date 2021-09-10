@@ -1,0 +1,9 @@
+---
+suite:                   <%= ENV['suite'] %>
+category: functional
+docker_image:            <%= ENV['docker_image'] %>
+
+"<%= ENV['suite'] %>":
+  benchmark:             <%= ENV['benchmark'] %>
+
+testbox: dc-16g
