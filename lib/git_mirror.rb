@@ -126,10 +126,12 @@ class MirrorMain
     @git_queue = Queue.new
     @log = JSONLogger.new
     @es_client = Elasticsearch::Client.new(hosts: ES_HOSTS)
+    @git_mirror = GitMirror.new(@git_queue, @feedback_queue)
     clone_upstream_repo
     load_fork_info
     connection_init
     handle_webhook
+    handle_pr_webhook
   end
 
   def connection_init
@@ -138,6 +140,7 @@ class MirrorMain
     channel = connection.create_channel
     @message_queue = channel.queue('new_refs')
     @webhook_queue = channel.queue('web_hook')
+    @webhook_pr_queue = connection.create_channel.queue('openeuler-pr-webhook')
   end
 
   def fork_stat_init(git_repo)
@@ -181,8 +184,7 @@ class MirrorMain
     @worker_threads = []
     10.times do
       @worker_threads << Thread.new do
-        git_mirror = GitMirror.new(@git_queue, @feedback_queue)
-        git_mirror.git_mirror
+        @git_mirror.git_mirror
       end
       sleep(0.1)
     end
@@ -400,6 +402,32 @@ class MirrorMain
         do_push(git_repo) if git_repo
         sleep(0.1)
       end
+    end
+  end
+
+  def handle_pr_webhook
+    Thread.new do
+      @webhook_pr_queue.subscribe(block: true) do |_delivery, _properties, msg|
+        msg = JSON.parse(msg)
+        git_repo = get_git_repo(msg['url'])
+        next unless git_repo
+
+        mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git"
+        @git_mirror.git_fetch(mirror_dir)
+
+        update_pr_msg(msg, git_repo)
+        @message_queue.publish(msg.to_json)
+        sleep 0.1
+      end
+    end
+  end
+
+  def update_pr_msg(msg, git_repo)
+    msg.merge!(@git_info[git_repo])
+    return unless msg['submit_command']
+
+    msg['submit_command'].each do |k, v|
+      msg['submit'][0]['command'] += " #{k}=#{v}"
     end
   end
 
