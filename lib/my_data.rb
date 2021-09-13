@@ -15,43 +15,55 @@ class MyData
     raise 'Connect logging es error!' unless @logging_es.ping
   end
 
-  def get_public_queues(type)
-    case type
-    when 'physical'
-      queues = [
-        'taishan200-2280-2s64p-256g',
-        'taishan200-2280-2s64p-128g',
-        'taishan200-2280-2s48p-512g',
-        'taishan200-2280-2s48p-256g',
-        '2288hv5-2s44p-384g'
-      ]
-    when 'dc'
-      queues = [
-        'dc-1g.aarch64',
-        'dc-2g.aarch64',
-        'dc-4g.aarch64',
-        'dc-8g.aarch64',
-        'dc-16g.aarch64',
-        'dc-32g.aarch64'
-      ]
-    when 'vm'
-      queues = [
-        'vm-1p1g.aarch64',
-        'vm-2p1g.aarch64',
-        'vm-2p4g.aarch64',
-        'vm-2p8g.aarch64',
-        'vm-2p16g.aarch64',
-        'vm-2p32g.aarch64'
-      ]
-    else
-      queues = []
-    end
-
-    queues
+  def get_physical_queues
+    [
+      'taishan200-2280-2s64p-256g',
+      'taishan200-2280-2s64p-128g',
+      'taishan200-2280-2s48p-512g',
+      'taishan200-2280-2s48p-256g',
+      '2288hv5-2s44p-384g'
+    ]
   end
 
-  def get_testbox_aggs(type: 'physical', time1: '30m', time2: 'now', size: 0, state: 'requesting')
-    queues = get_public_queues(type)
+  def get_dc_queues(arch)
+    queues = [
+      'dc-1g',
+      'dc-2g',
+      'dc-4g',
+      'dc-8g',
+      'dc-16g',
+      'dc-32g'
+    ]
+    queues.map { |item| item + ".#{arch}" }
+  end
+
+  def get_vm_queues(arch)
+    queues = [
+      'vm-1p1g',
+      'vm-2p1g',
+      'vm-2p4g',
+      'vm-2p8g',
+      'vm-2p16g',
+      'vm-2p32g'
+    ]
+    queues.map { |item| item + ".#{arch}" }
+  end
+
+  def get_public_queues(type, arch)
+    case type
+    when 'physical'
+      return get_physical_queues
+    when 'dc'
+      return get_dc_queues(arch)
+    when 'vm'
+      return get_vm_queues(arch)
+    else
+      return []
+    end
+  end
+
+  def get_testbox_aggs(type: 'physical', time1: '30m', time2: 'now', size: 0, state: 'requesting', arch: 'aarch64')
+    queues = get_public_queues(type, arch)
 
     query = {
       'size' => size,
@@ -66,6 +78,11 @@ class MyData
             {
               'term' => {
                 'type' => { 'value' => type }
+              }
+            },
+            {
+              'term' => {
+                'arch' => { 'value' => arch }
               }
             },
             {
