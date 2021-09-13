@@ -42,12 +42,12 @@ def get_memory_from_hostname(hostname)
   return hostname.split('.')[0][/[0-9]*g/][/[0-9]*/].to_i
 end
 
-def get_mem_free
-  return %x(echo $(($(grep MemFree /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
+def get_mem_available
+  return %x(echo $(($(grep MemAvailable /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
 end
 
-def check_mem_free(hostname, memory)
-  return (get_mem_free - memory) < 20 ? false : true
+def check_mem_available(hostname, memory)
+  return (get_mem_available - memory) < 20 ? false : true
 end
 
 def get_mem_idle(mem_info_file)
@@ -99,7 +99,7 @@ def request_mem(hostname)
       memory = get_memory_from_hostname(hostname)
       f = get_lock("#{mem_info_file}.lock")
 
-      if check_mem_free(hostname, memory) and check_mem_idle(hostname, memory, mem_info_file)
+      if check_mem_available(hostname, memory) and check_mem_idle(hostname, memory, mem_info_file)
         # if all resources are sufficient, then record this testbox to resource file, and release the lock.
         add_hostname_to_meminfo(hostname, memory, mem_info_file)
         request_success = true
