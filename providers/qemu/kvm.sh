@@ -92,7 +92,7 @@ write_logfile()
 		url=ws://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/ws/boot.ipxe/mac/${mac}
 		ipxe_script_path="$(pwd)/${ipxe_script}"
 		command -v ruby &&
-			ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "ws_boot '$url','$hostname','$UUID','$ipxe_script_path'"
+			ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "ws_boot '$url','$hostname','$index','$ipxe_script_path'"
 
 		cat $ipxe_script | grep "No job now" && {
 			log_info "no job now: $hostname" | tee -a $log_file

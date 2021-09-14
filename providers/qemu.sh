@@ -30,7 +30,7 @@ del_host_info()
 
 release_mem()
 {
-	[ -n "$UUID" ] && command -v ruby && ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "release_mem '$hostname'"
+	[ -n "$index" ] && command -v ruby && ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "release_mem '$hostname'"
 }
 
 post_work()

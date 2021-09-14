@@ -299,7 +299,7 @@ ensure
   f1&.close
 end
 
-def ws_boot(url, hostname, uuid, ipxe_script_path = nil)
+def ws_boot(url, hostname, index, ipxe_script_path = nil)
   threads = []
   response = nil
 
@@ -311,7 +311,7 @@ def ws_boot(url, hostname, uuid, ipxe_script_path = nil)
     end
 
     ws.on :message do |event|
-      response = deal_ws_event(event, threads, ws, hostname, uuid)
+      response = deal_ws_event(event, threads, ws, hostname, index)
     end
 
     ws.on :close do
@@ -334,13 +334,13 @@ def additional_ipxe_script(response, ipxe_script_path)
   end
 end
 
-def deal_ws_event(event, threads, ws, hostname, uuid)
+def deal_ws_event(event, threads, ws, hostname, index)
   response = nil
   data = JSON.parse(event.data)
   case data['type']
   when 'request_memory', 'release_memory'
     thr = Thread.new do
-      ack_memory(data['type'], ws, hostname, uuid)
+      ack_memory(data['type'], ws, hostname, index)
     end
     threads << thr
   when 'boot'
@@ -352,8 +352,8 @@ def deal_ws_event(event, threads, ws, hostname, uuid)
   response
 end
 
-def ack_memory(type, ws, hostname, uuid)
-  if uuid.to_s.empty?
+def ack_memory(type, ws, hostname, index)
+  if index.to_s.empty?
     ws.send({ 'type' => type }.to_json)
     return
   end

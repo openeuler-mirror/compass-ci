@@ -77,7 +77,12 @@ def start_qemu(hostname)
   FileUtils.mkdir_p(pwd_hostname) unless File.exist?(pwd_hostname)
   FileUtils.cd(pwd_hostname)
   system(
-    { 'hostname' => hostname, 'queues' => "#{QUEUES},#{hostname}", 'log_dir' => LOG_DIR, 'UUID' => UUID },
+    { 'hostname' => hostname,
+      'queues' => "#{QUEUES},#{hostname}",
+      'log_dir' => LOG_DIR,
+      'UUID' => UUID,
+      'index' => INDEX
+    },
     ENV['CCI_SRC'] + '/providers/qemu.sh'
   )
 end

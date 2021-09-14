@@ -115,7 +115,7 @@ def loop_main(hostname, thr)
     begin
       thr.exit if File.exist?(SAFE_STOP_FILE)
       system(
-        { 'hostname' => hostname, 'queues' => QUEUES, 'uuid' => UUID },
+        { 'hostname' => hostname, 'queues' => QUEUES, 'uuid' => UUID, 'index' => INDEX },
         ENV['CCI_SRC'] + '/providers/docker.rb'
       )
     rescue StandardError => e
