@@ -252,10 +252,17 @@ class Sched
   def get_testbox_arch(testbox)
     host_machine = get_host_machine(testbox)
     host_machine_file = "#{CCI_REPOS}/#{LAB_REPO}/hosts/#{host_machine}"
-    return "unknow" unless File.exists?(host_machine_file)
+    return "unknown" unless File.exists?(host_machine_file)
 
     host_machine_info = YAML.parse(File.read(host_machine_file)).as_h
     return host_machine_info["arch"].to_s
+  rescue e
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s,
+      "testbox" => testbox
+    }.to_json)
+    "unknown"
   end
 
   def get_testbox
