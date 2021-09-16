@@ -1,31 +1,34 @@
 culture
 =======
 
-How To Ask Questions The Smart Way
-https://zhuanlan.zhihu.com/p/19779979
-
-The Cathedral and the Bazaar
-https://www.ruanyifeng.com/blog/2008/02/notes_on_the_cathedral_and_the_bazaar.html
-http://www.catb.org/~esr/writings/cathedral-bazaar/cathedral-bazaar/
+- [How To Ask Questions The Smart Way](https://zhuanlan.zhihu.com/p/19779979)
+- [The Cathedral and the Bazaar](https://www.ruanyifeng.com/blog/2008/02/notes_on_the_cathedral_and_the_bazaar.html)
+- <http://www.catb.org/~esr/writings/cathedral-bazaar/cathedral-bazaar/>
 
 ruby
 ====
 
-## introduction
-man pry  # for trying out code snippets below
-https://learnxinyminutes.com/docs/ruby/
-https://github.com/ThibaultJanBeyer/cheatsheets/blob/master/Ruby-Cheatsheet.md
-https://www.vikingcodeschool.com/professional-development-with-ruby/ruby-cheat-sheet
-http://www.cheat-sheets.org/saved-copy/RubyCheat.pdf  # skip the cryptic "Predefined Variables" and "Ruby arguments" tables
-http://www.testingeducation.org/conference/wtst3_pettichord9.pdf
+## ruby tutorial
 
-https://www.ruby-lang.org/en/documentation/ruby-from-other-languages/to-ruby-from-python/
+	man pry  # for trying out code snippets below
 
-## API
-man ri
-http://overapi.com/ruby
+- <https://learnxinyminutes.com/docs/ruby/>
+- <https://github.com/ThibaultJanBeyer/cheatsheets/blob/master/Ruby-Cheatsheet.md>
+- <https://www.vikingcodeschool.com/professional-development-with-ruby/ruby-cheat-sheet>
+- <http://www.cheat-sheets.org/saved-copy/RubyCheat.pdf>  # skip the cryptic "Predefined Variables" and "Ruby arguments" tables
+- <http://www.testingeducation.org/conference/wtst3_pettichord9.pdf>
+- <https://www.ruby-lang.org/en/documentation/ruby-from-other-languages/to-ruby-from-python/>
 
-### example: ri system
+## ruby API
+
+<http://overapi.com/ruby>
+
+	man ri
+
+Example:
+
+	$ ri system
+	...
 	=== Implementation from Kernel
 	------------------------------------------------------------------------
 	  system([env,] command... [,options])    -> true, false or nil
@@ -59,49 +62,42 @@ http://overapi.com/ruby
 	......
 
 ## coding style
-https://rubystyle.guide/
-https://ruby-china.org/wiki/coding-style
+- <https://rubystyle.guide/>
+- <https://ruby-china.org/wiki/coding-style>
 
 ## resources
-https://github.com/markets/awesome-ruby
+- <https://github.com/markets/awesome-ruby>
 
 ## debug
-https://github.com/deivid-rodriguez/pry-byebug
-https://github.com/JoshCheek/seeing_is_believing
-
+- <https://github.com/deivid-rodriguez/pry-byebug>
+- <https://github.com/JoshCheek/seeing_is_believing>
 
 crystal
 =======
 
-https://getgood.at/in-a-day/crystal
-https://crystal-lang.org/2018/01/08/top-5-reasons-for-ruby-ists-to-use-crystal.htmL
+- <https://getgood.at/in-a-day/crystal>
+- <https://crystal-lang.org/2018/01/08/top-5-reasons-for-ruby-ists-to-use-crystal.htmL>
+- <https://crystal-lang.org/api>
+- <https://crystal-lang.org/reference>
 
-/c/crystal/crystal/src/
-https://crystal-lang.org/api
-https://crystal-lang.org/reference
-
-https://github.com/veelenga/awesome-crystal
-https://github.com/DocSpring/ruby_crystal_codemod
+- <https://github.com/veelenga/awesome-crystal>
+- <https://github.com/DocSpring/ruby_crystal_codemod>
 
 
 shell
 =====
 
-Linux 的概念与体系
-https://www.cnblogs.com/vamei/archive/2012/10/10/2718229.html
+	man bash
 
-man bash
-https://devhints.io/bash
-https://github.com/denysdovhan/bash-handbook/blob/master/translations/zh-CN/README.md
-
-https://juejin.im/post/5e4123e3e51d45271515501f
-https://juejin.im/post/5e42858de51d45270d53022e
-
-https://shellmagic.xyz/
-https://ngte-ac.gitbook.io/i/infrastructure/linux-command-cheatsheet
-https://github.com/jlevy/the-art-of-command-line/blob/master/README-zh.md
-
-https://google.github.io/styleguide/shellguide.html
+- [Linux 的概念与体系](https://www.cnblogs.com/vamei/archive/2012/10/10/2718229.html)
+- <https://devhints.io/bash>
+- <https://github.com/denysdovhan/bash-handbook/blob/master/translations/zh-CN/README.md>
+- <https://juejin.im/post/5e4123e3e51d45271515501f>
+- <https://juejin.im/post/5e42858de51d45270d53022e>
+- <https://shellmagic.xyz/>
+- <https://ngte-ac.gitbook.io/i/infrastructure/linux-command-cheatsheet>
+- <https://github.com/jlevy/the-art-of-command-line/blob/master/README-zh.md>
+- <https://google.github.io/styleguide/shellguide.html>
 
 ## zsh keys (customized)
 
@@ -122,15 +118,15 @@ https://google.github.io/styleguide/shellguide.html
 python
 ======
 
-https://learnxinyminutes.com/docs/python/
+- <https://learnxinyminutes.com/docs/python/>
 
 
 Vim
 ===
 
-https://www.jianshu.com/p/bcbe916f97e1
-https://coolshell.cn/articles/5426.html
-https://devhints.io/vim
+- <https://www.jianshu.com/p/bcbe916f97e1>
+- <https://coolshell.cn/articles/5426.html>
+- <https://devhints.io/vim>
 
 ## vim keys (customized)
 
@@ -163,7 +159,7 @@ Tmux
 Mutt
 ====
 
-http://www.ctex.org/documents/shredder/mutt_frame.html  # enough to read the 1st section
+- <http://www.ctex.org/documents/shredder/mutt_frame.html>  # enough to read the 1st section
 
 ## mutt keys (customized)
 
@@ -191,35 +187,35 @@ The most used ones are:
 Regular Expression
 ==================
 
-Regular expression is powerful but cryptic.
-The right way is to learn by examples:
-https://www.rubyguides.com/2015/06/ruby-regex/
+	ri Regexp
 
-ri Regexp
-https://cheatography.com/davechild/cheat-sheets/regular-expressions/
+Regular expression is powerful but cryptic.
+The right way is to [learn by examples](https://www.rubyguides.com/2015/06/ruby-regex/)
+
+- <https://cheatography.com/davechild/cheat-sheets/regular-expressions/>
 
 
 Docker
 ======
 
-https://ngte-ac.gitbook.io/i/infrastructure/docker-cheatsheet
+- <https://ngte-ac.gitbook.io/i/infrastructure/docker-cheatsheet>
 
 
 Git
 ===
 
-http://justinhileman.info/article/git-pretty/git-pretty.png
-https://github.com/k88hudson/git-flight-rules/blob/master/README_zh-CN.md
-https://github.com/521xueweihan/git-tips
-https://github.com/arslanbilal/git-cheat-sheet/blob/master/other-sheets/git-cheat-sheet-zh.md
-https://www.codementor.io/@citizen428/git-tutorial-10-common-git-problems-and-how-to-fix-them-aajv0katd
-http://www.columbia.edu/~zjn2101/intermediate-git/
-https://git-scm.com/book/zh/v2
+- <http://justinhileman.info/article/git-pretty/git-pretty.png>
+- <https://github.com/k88hudson/git-flight-rules/blob/master/README_zh-CN.md>
+- <https://github.com/521xueweihan/git-tips>
+- <https://github.com/arslanbilal/git-cheat-sheet/blob/master/other-sheets/git-cheat-sheet-zh.md>
+- <https://www.codementor.io/@citizen428/git-tutorial-10-common-git-problems-and-how-to-fix-them-aajv0katd>
+- <http://www.columbia.edu/~zjn2101/intermediate-git/>
+- <https://git-scm.com/book/zh/v2>
 
 ## resolve conflicts
 
-https://githowto.com/resolving_conflicts
-https://easyengine.io/tutorials/git/git-resolve-merge-conflicts/
+- <https://githowto.com/resolving_conflicts>
+- <https://easyengine.io/tutorials/git/git-resolve-merge-conflicts/>
 
 ## edit emailed patch then apply
 
@@ -237,13 +233,13 @@ btw, quilt and wiggle are also good patch tools.
 Markdown
 ========
 
-https://guides.github.com/pdfs/markdown-cheatsheet-online.pdf
-https://shd101wyy.github.io/markdown-preview-enhanced/#/zh-cn/
-http://support.typora.io/Draw-Diagrams-With-Markdown/
+- <https://guides.github.com/pdfs/markdown-cheatsheet-online.pdf>
+- <https://shd101wyy.github.io/markdown-preview-enhanced/#/zh-cn/>
+- <http://support.typora.io/Draw-Diagrams-With-Markdown/>
 
 
 YAML
 ====
 
-https://yaml.org/YAML_for_ruby.html
-https://alexharv074.github.io/puppet/2020/03/06/why-erb-should-be-preferred-to-jinja2-for-devops-templating.html
+- <https://yaml.org/YAML_for_ruby.html>
+- <https://alexharv074.github.io/puppet/2020/03/06/why-erb-should-be-preferred-to-jinja2-for-devops-templating.html>
