@@ -101,19 +101,19 @@ shell
 
 ## zsh keys (customized)
 
-	ctrl-p		history-beginning-search-backward
-	ctrl-n		history-beginning-search-forwardd
-	alt-p		history-search-backward
-	alt-n		history-search-forward
-	alt-.		insert-last-word
-	alt-<space>	vi-cmd-mode
+	ctrl-p          history-beginning-search-backward
+	ctrl-n          history-beginning-search-forwardd
+	alt-p           history-search-backward
+	alt-n           history-search-forward
+	alt-.           insert-last-word
+	alt-<space>     vi-cmd-mode
 
-	alt-f		forward-word
-	alt-b		backward-word
-	ctrl-a		beginning-of-line
-	ctrl-e		end-of-line
+	alt-f           forward-word
+	alt-b           backward-word
+	ctrl-a          beginning-of-line
+	ctrl-e          end-of-line
 
-	bindkey		show all key bindings
+	bindkey         show all key bindings
 
 python
 ======
@@ -130,30 +130,30 @@ Vim
 
 ## vim keys (customized)
 
-	F2  		toggle number/cursorline
-	F3  		toggle spell check
-	F4  		toggle paste/nowrap
-	F10/F11  	prev/next color scheme
-	g.		search in subdir
-	g/		search whole git repo
-	alt-n/p		next/prev search result
-	ctrl-n/p	next/prev file
-	ctrl-j/k	left/right buffer
-	<Tab>     	next buffer
-	alt-c		toggle comment
+	F2              toggle number/cursorline
+	F3              toggle spell check
+	F4              toggle paste/nowrap
+	F10/F11         prev/next color scheme
+	g.              search in subdir
+	g/              search whole git repo
+	alt-n/p         next/prev search result
+	ctrl-n/p        next/prev file
+	ctrl-j/k        left/right buffer
+	<Tab>           next buffer
+	alt-c           toggle comment
 
 Tmux
 ====
 
 ## tmux keys (customized)
 
-	ctrl-s ?	list-keys
-	ctrl-s c	create new window
-	ctrl-s x	kill-pane
-	alt-j/k		switch to left/right window
-	alt-1/2/3... 	switch to the 1st, 2nd, 3rd, ... window
+	ctrl-s ?        list-keys
+	ctrl-s c        create new window
+	ctrl-s x        kill-pane
+	alt-j/k         switch to left/right window
+	alt-1/2/3...    switch to the 1st, 2nd, 3rd, ... window
 	ctrl-s ctrl-u   page up (press ctrl-u to continue paging up, <Enter> to exit)
-	ctrl-s [/]	copy-mode/paste-buffer
+	ctrl-s [/]      copy-mode/paste-buffer
 	shift-(left mouse button/right mouse button) copy/paste to/from system clipboard
 
 Mutt
@@ -167,21 +167,21 @@ Check /etc/mutt/key.muttrc for our customized key bindings.
 Type "?" in mutt will show you the complete key bindings.
 The most used ones are:
 
-	g       	reply to all recipients
-	m       	compose a new mail message
-	j/k		move up/down one line
-	-/<space>	move up/down one page
-	ctrl-u/ctrl-d	move up/down half page
-	9/G		move to bottom
-	0		move to top
-	<Tab>		next-unread
-	/		search
-	l		limit
-	i		limit: toggle to me/all
+	g               reply to all recipients
+	m               compose a new mail message
+	j/k             move up/down one line
+	-/<space>       move up/down one page
+	ctrl-u/ctrl-d   move up/down half page
+	9/G             move to bottom
+	0               move to top
+	<Tab>           next-unread
+	/               search
+	l               limit
+	i               limit: toggle to me/all
 
 	# for committer
-	a		apply patch
-	p		apply patch + git push
+	a               apply patch
+	p               apply patch + git push
 
 
 Regular Expression
