@@ -42,7 +42,9 @@ class HandleRepo
   def handle_new_rpm
     queue = @mq.queue('update_repo')
     queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
-      if @@upload_flag
+      loop do
+        next unless @@upload_flag
+
         begin
           rpm_info = JSON.parse(msg)
           check_upload_rpms(rpm_info)
@@ -55,11 +57,13 @@ class HandleRepo
             FileUtils.mv(rpm, dest)
           end
           @mq.ack(info)
+          break
         rescue StandardError => e
           @log.warn({
             "error message": e.message
           }.to_json)
           @mq.ack(info)
+          break
         end
       end
     end
