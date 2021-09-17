@@ -59,7 +59,7 @@ do_one_run()
 	(
 		cd "$container"
 		declare -A dic
-		local dic=(['ssh-r']='ssh_r' ['etcd']='etcd-server' ['rabbitmq']='rabbitmq' ['es']='es-server01' ['redis']='redis507s01')
+		local dic=(['ssh-r']='ssh_r' ['etcd']='etcd-server' ['rabbitmq']='rabbitmq' ['es']='es-server01' ['redis']='redis507s01' ['rpm-repo']='update-repodata')
 		for item in ${!dic[@]}
 		do
 			[ "$container_name"  == ${item} ] && {
