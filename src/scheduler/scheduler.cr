@@ -177,6 +177,16 @@ module Scheduler
     "Done"
   end
 
+  # client(runner) report job's stage
+  # /~lkp/cgi-bin/set-job-stage
+  #   ?job_stage=on_fail&job_id=10
+  #   ?job_stage=on_fail&job_id=10&timeout=21400
+  get "/~lkp/cgi-bin/set-job-stage" do |env|
+    env.sched.set_job_stage
+
+    "Done"
+  end
+
   # node in cluster requests cluster state
   # wget 'http://localhost:3000/~lkp/cgi-bin/lkp-cluster-sync?job_id=<job_id>&state=<state>'
   # 1) state   : "wait_ready"

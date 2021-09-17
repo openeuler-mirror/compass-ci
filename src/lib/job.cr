@@ -424,7 +424,9 @@ class Job
     return 60
   end
 
-  def get_deadline(stage)
+  def get_deadline(stage, timeout=0)
+    return format_add_time(timeout) unless timeout == 0
+
     case stage
     when "boot"
       time = get_boot_time
@@ -445,11 +447,15 @@ class Job
     end
 
     extra_time ||= 0
-    (Time.local + (time + extra_time).second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+    format_add_time(time + extra_time)
   end
 
-  def set_deadline(stage)
-    deadline = get_deadline(stage)
+  def format_add_time(time)
+    (Time.local + time.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
+  def set_deadline(stage, timeout=0)
+    deadline = get_deadline(stage, timeout)
     return nil unless deadline
 
     self["deadline"] = deadline
