@@ -63,7 +63,7 @@ total 120K
 -rw-r--r--. 1 root root  74 2020-11-02 14:54 vm-snb-i386
 ```
 
->![](./../public_sys-resources/icon-note.gif) **说明：**
+>![](./../../public_sys-resources/icon-note.gif) **说明：**
 >
 >使用 "=" 更新 yaml 中的字段，"=" 在命令行中的位置不同优先级不同：.
 > * submit iperf.yaml testbox=vm-2p8g  命令中 "=" 定义在 yaml 文件之后，则 "=" 的优先级高于 yaml 文件,testbox=vm-2p8g 会覆盖 yaml 文件中已经定义的 testbox 字段。

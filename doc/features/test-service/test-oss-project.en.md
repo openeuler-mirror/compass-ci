@@ -8,7 +8,7 @@ Perform the following steps to add the information of the code repository to be 
 
 1. Fork the upstream-repos repository and clone it to the local host. This document uses the **backlight** repository (https://github.com/baskerville/backlight) as an example.
 
-![](./../pictures/fork_backlight.png)
+![](./../../pictures/fork_backlight.png)
 
 2. Run the following command to create a file path named with the repository name and its initial letter:
 
@@ -37,7 +37,7 @@ Perform the following steps to add the information of the code repository to be 
    - https://github.com/baskerville/backlight
    ```
 
-   > ![](./../public_sys-resources/icon-notice.gif) **Note**
+   > ![](./../../public_sys-resources/icon-notice.gif) **Note**
    >
    > You can refer to the existing file format in the **upstream-repos** repository. Ensure that the formats are consistent.
 
