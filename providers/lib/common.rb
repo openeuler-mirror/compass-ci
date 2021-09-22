@@ -97,21 +97,22 @@ def request_mem(hostname)
   while not request_success
     begin
       memory = get_memory_from_hostname(hostname)
-      f = get_lock("#{mem_info_file}.lock")
+      File.open("#{mem_info_file}.lock", 'a') do |f|
+        puts "#{hostname}-request: try to get meminfo lock"
+        f.flock(File::LOCK_EX)
+        puts "#{hostname}-request: get meminfo lock success"
 
-      if check_mem_available(hostname, memory) and check_mem_idle(hostname, memory, mem_info_file)
-        # if all resources are sufficient, then record this testbox to resource file, and release the lock.
-        add_hostname_to_meminfo(hostname, memory, mem_info_file)
-        request_success = true
+        if check_mem_available(hostname, memory) and check_mem_idle(hostname, memory, mem_info_file)
+          # if all resources are sufficient, then record this testbox to resource file, and release the lock.
+          add_hostname_to_meminfo(hostname, memory, mem_info_file)
+          request_success = true
+        end
       end
     rescue Exception => e
       puts "request mem exception."
       puts e.message
       puts e.backtrace.inspect
     ensure
-      f&.flock(File::LOCK_UN)
-      f&.close
-
       # avoid all testboxes request lock at the same time
       if not request_success
         sleep(Random.rand(10))
@@ -127,17 +128,18 @@ def release_mem(hostname)
   while not release_success
     begin
       memory = get_memory_from_hostname(hostname)
-      f = get_lock("#{mem_info_file}.lock")
+      File.open("#{mem_info_file}.lock", 'a') do |f|
+        puts "#{hostname}-release: try to get meminfo lock"
+        f.flock(File::LOCK_EX)
+        puts "#{hostname}-release: get meminfo lock success"
 
-      del_hostname_from_meminfo(hostname, memory, mem_info_file)
-      release_success = true
+        del_hostname_from_meminfo(hostname, memory, mem_info_file)
+        release_success = true
+      end
     rescue Exception => e
       puts "release mem exception."
       puts e.message
       puts e.backtrace.inspect
-    ensure
-      f&.flock(File::LOCK_UN)
-      f&.close
     end
   end
 end
