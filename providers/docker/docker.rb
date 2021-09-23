@@ -21,7 +21,10 @@ names = Set.new %w[
 defaults = relevant_defaults(names)
 SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT = defaults['SCHED_PORT'] || 3000
+
 LOG_DIR = '/srv/cci/serial/logs'
+Dir.mkdir(LOG_DIR) unless File.exists?(LOG_DIR)
+
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
