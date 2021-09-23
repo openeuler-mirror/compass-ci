@@ -102,7 +102,6 @@ write_logfile()
 		log_info "got job: $hostname" | tee -a $log_file
 		break
 	done
-	cat $ipxe_script >> ${log_file}
 }
 
 parse_ipxe_script()
@@ -440,12 +439,25 @@ set_options()
 	set_qemu
 }
 
+write_dmesg_flag()
+{
+	if [ "$1" == "start" ];then
+		log_info "starting QEMU: $hostname" | tee $log_file
+		cat $ipxe_script >> ${log_file}
+		vm_start_time=$(date "+%s")
+	else
+		vm_end_time=$(date "+%s")
+		log_info "Total QEMU duration:  $(( ($vm_end_time - $vm_start_time) / 60 )) minutes" | tee -a $log_file
+	fi
+}
+
 check_logfile
 write_logfile
 
 parse_ipxe_script
 
 check_kernel
+write_dmesg_flag 'start'
 check_initrds
 
 set_options
@@ -457,3 +469,4 @@ add_disk
 individual_option
 
 run_qemu
+write_dmesg_flag 'end'
