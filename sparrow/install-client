@@ -30,6 +30,7 @@ install_env()
 	2-network/iptables
 	3-code/git
 	3-code/dev-env
+	7-systemd/iBMA-install
 	. /etc/profile.d/compass.sh
 }
 

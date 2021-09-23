@@ -1,0 +1,59 @@
+#!/bin/bash
+# install ibma for HW that collecting performance information from os 
+# and then could displayed on the IBMC page
+
+systemctl list-units | grep iBMA && {
+	echo "iBMA.service has installed!"	
+	exit
+}
+
+file_server='api.compass-ci.openeuler.com'
+
+yum install -y unzip tar
+
+download_file()
+{
+	mkdir -p /opt/
+	cd /opt/
+
+	arch=''
+	[ $(arch) == 'aarch64' ] && arch='-aarch64'
+	
+	zip_file="iBMA-Linux-pkg-2.2.0.3.001${arch}.zip"
+	tar_file="iBMA-Linux-2.2.0.3.001${arch}.tar.gz"
+
+	[ -f "$zip_file" ] || wget https://$file_server:20006/pub/ibma/$zip_file --no-check-certificate
+}
+
+decompress()
+{
+	mkdir -p /opt/ibma
+	cd /opt/ibma
+
+	[ -f "$tar_file" ] || unzip ../$zip_file
+}
+
+install()
+{
+	[ -d "iBMA2.0" ] || tar xf $tar_file
+	
+	cd iBMA2.0 || exit 2
+	./install.sh -s --enable-iBMC_event=true --enable-iBMA_https=true
+	
+	sleep 10
+	[ $(systemctl is-active iBMA) == 'active' ] && {
+		echo "Progress iBMA is running!"
+		iptables -A INPUT -p tcp --dport 8090 -j ACCEPT
+	}
+}
+
+main()
+{
+	download_file
+	decompress
+	install
+}
+
+main
+
+exit 0
