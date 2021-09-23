@@ -56,7 +56,8 @@ Which contains account information for you:
 	setup ~/.config/compass-ci/defaults/account.yaml
 	      ~/.config/compass-ci/include/lab/{{ lab }}.yaml
 
-## step 4: try it out
+## step 4: Now try
 
-Now try [submitting a job to compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
+[install-cci-client](https://gitee.com/openeuler/compass-ci/blob/master/doc/install/install-cci-client.md)
+[submitting a job to compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
 

@@ -56,5 +56,6 @@
 
 ## 4. 现在开始
 
+[安装cci客户端](https://gitee.com/openeuler/compass-ci/blob/master/doc/install/install-cci-client.md)
 [提交job到compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
 
