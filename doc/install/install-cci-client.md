@@ -23,4 +23,4 @@ Run the following command to install/setup lkp-test:
 
 ## submit job
 
-Now try [submitting a job to compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/sumit/submit-job.zh.md)
+Now try [submitting a job to compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
