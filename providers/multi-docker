@@ -55,8 +55,6 @@ SAFE_STOP_FILE = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
 RESTART_FILE = "/tmp/#{ENV['HOSTNAME']}/restart/#{UUID}"
 RESTART_LOCK_FILE = "/tmp/#{ENV['HOSTNAME']}/restart/lock"
 
-SCHED_HOST = ENV['LKP_SERVER'] || '172.17.0.1'
-SCHED_PORT = ENV['LKP_CGI_PORT'] || '3000'
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
