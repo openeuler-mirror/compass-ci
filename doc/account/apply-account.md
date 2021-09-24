@@ -19,14 +19,21 @@ Email template:
 	To: compass-ci-robot@qq.com
 	Subject: apply account
 
+	my_name: {{ David Rientjes }}
 	my_account: {{ rientjes }}
+	my_purpose: {{ purpose for applying account }}
+	my_college: {{ your college }}
+	my_company: {{ your company }}
+	my_gitee_account: {{ your gitee account }}
 	my_oss_commit: {{ https://github.com/torvalds/linux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03 }}
 
 	{{ attach your ssh pubkey file(s), e.g. ~/.ssh/id_rsa.pub }}
 
 ---
 
-- please replace the 4 parts in {{ }} with your information, no keep the '{{ }}'.
+- please replace the parts in {{ }} with your information, no keep the '{{ }}'.
+
+- my_account and my_purpose is required, other items are optional.
 
 - the email name should be in English or Chinese Pinyin, as: "David Rientjes" in the template.
 
