@@ -81,6 +81,7 @@ cmd = %W[
   -v /srv/initrd:/srv/initrd:ro
   -v /srv/os:/srv/os:ro
   -v /etc/compass-ci:/etc/compass-ci:ro
+  -v /srv/upload-files:/srv/upload-files:rw
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
   --log-opt tag=scheduler-#{SCHED_HTTPS_PORT}
