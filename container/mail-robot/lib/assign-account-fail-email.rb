@@ -6,6 +6,13 @@
 def email_err_message(message)
   err_message = ''
   case message
+  when 'NO_PURPOSE'
+    err_message = <<~EMAIL_MESSAGE
+      You provides no purpose for your application.
+      Please add your purpose for your application in the apply account email.
+      example:
+        my_purpose: learning compass-ci usage
+    EMAIL_MESSAGE
   when 'NON_FORWARD_USER'
     err_message = <<~EMAIL_MESSAGE
       Only forward-issuers can forwarding the 'apply acccount' emails.
