@@ -38,6 +38,7 @@ require_relative '../../../lib/build_account_info'
 class ParseApplyAccountEmail
   def initialize(mail_content)
     @mail_content = mail_content
+    @mail_content_body = ''
     # forward_issuer is email info for user who do the email forward
     @forward_issuer =  File.exist?(ENV['FORWARD_ISSUER']) ? YAML.load_file(ENV['FORWARD_ISSUER']) : {}
 
@@ -46,6 +47,12 @@ class ParseApplyAccountEmail
       'my_name' => mail_content.From.unparsed_value.gsub(/ *<[^<>]*>/, '').gsub(/"/, ''),
       'my_ssh_pubkey' => []
     }
+  end
+
+  def extract_mail_content_body
+    @mail_content_body = @mail_content.part[0].part[0].body.decoded || \
+                        @mail_content.part[0].body.decoded || \
+                        @mail_content.body.decoded
   end
 
   def build_my_info
@@ -61,24 +68,18 @@ class ParseApplyAccountEmail
       extract_forwarded_email
     end
 
-    @my_info['my_commit_url'] = parse_commit_url
+    extract_mail_content_body
+
+    @my_info['my_commit_url'] = parse_commit_url unless parse_commit_url.nil?
     @my_info['my_account'] = parse_my_account
     @my_info['my_ssh_pubkey'] << parse_pub_key
+    parse_apply_info
 
     return @my_info
   end
 
-  def extract_mail_content_body
-    mail_content_body = @mail_content.part[0].part[0].body.decoded || \
-                        @mail_content.part[0].body.decoded || \
-                        @mail_content.body.decoded
-
-    return mail_content_body
-  end
-
   def extract_forwarded_email
-    forwarded_email_content = extract_mail_content_body
-    forwarded_email = Mail.read_from_string(forwarded_email_content)
+    forwarded_email = Mail.read_from_string(@mail_content_body)
 
     @my_info['my_email'] = forwarded_email.from[0]
     @my_info['my_name'] = forwarded_email.From.unparsed_value.gsub(/ *<[^<>]*>/, '').gsub(/"/, '')
@@ -87,7 +88,7 @@ class ParseApplyAccountEmail
   def extract_users
     users_info = []
 
-    users = extract_mail_content_body.split(/---+/)
+    users = @mail_content_body.split(/---+/)
     users.delete('')
     users.each do |user|
       user_info = YAML.safe_load(user)
@@ -101,7 +102,7 @@ class ParseApplyAccountEmail
   end
 
   def extract_commit_url
-    mail_content_line = extract_mail_content_body.gsub(/\n/, '')
+    mail_content_line = @mail_content_body.gsub(/\n/, '')
     # the commit url should be headed with a prefix: my_oss_commit
     # the commit url should be in a standart format, example:
     # my_oss_commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
@@ -116,6 +117,8 @@ class ParseApplyAccountEmail
 
   def parse_commit_url
     url = extract_commit_url
+    return nil if url.nil?
+
     base_url = url.gsub(%r{/commit/[\w\d]{40}$}, '')
 
     base_url_in_upstream_repos('/c/upstream-repos', base_url)
@@ -142,6 +145,26 @@ class ParseApplyAccountEmail
     return if check_account_unique(@my_info, check_account)
 
     raise "MY_ACCOUNT_EXIST"
+  end
+
+  def parse_apply_info
+    mail_content_lines = @mail_content_body.split("\n")
+    mail_content_lines.each do |line|
+      case line
+      when /my_name:\s*(.*)/
+        @my_info['my_name'] = $1
+      when /my_gitee_account:\s*(.*)/
+        @my_info['my_gitee_account'] = $1
+      when /my_purpose:\s*(.*)/
+        @my_info['my_purpose'] = $1
+      when /my_company:\s*(.*)/
+        @my_info['my_company'] = $1
+      when /my_college:\s*(.*)/
+        @my_info['my_college'] = $1
+      end
+    end
+
+    raise 'NO_PURPOSE' unless @my_info.key?('my_purpose')
   end
 
   def base_url_in_upstream_repos(upstream_dir, base_url)
