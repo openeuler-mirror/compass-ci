@@ -12,6 +12,12 @@ submit 命令的作用是提交测试任务。该命令提供了多个选项帮�
 
 测试任务以 yaml 文件的方式提交，因此，您需要事先准备好测试任务的 yaml 文件（本文以 iperf.yaml 为例）。
 
+若您没有本地部署compass-ci服务端且收到的邮件中lab为z9，可以使用我们的服务端，只需要提交时添加SCHED_HOST和SCHED_PORT：
+
+```
+submit iperf.yaml SCHED_HOST=api.compass-ci.openeuler.org SCHED_PORT=20002
+```
+
 若您的yaml文件不包含testbox字段，直接提交将会报错：
 
 ```shell
@@ -84,6 +90,7 @@ options:
     -s, --set 'KEY: VALUE'           add YAML hash to job
     -o, --output DIR                 save job yaml to DIR/
     -a, --auto-define-files          auto add define_files
+        --no-pack                    don't do pack, just use the last one
     -i, --include include.yaml       include other job yamls
     -c, --connect                    auto connect to the host
     -r, --result                     mirror job result dir
@@ -191,6 +198,8 @@ options:
 * **-c的用法**
 
     -c 参数需要搭配 -m 参数来使用，可以使申请设备的任务实现自动登入功能。
+
+    提交前需要先执行```ssh-keygen -t rsa```生成密钥文件和私钥文件。
 
     示例命令如下：
 
