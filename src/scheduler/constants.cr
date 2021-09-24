@@ -14,6 +14,11 @@ JOB_INDEX_TYPE    = "jobs/_doc"
 
 JOB_MQ = "job_mq"
 
+# this is the compass-ci release lkp-tests base tag
+# the user's lkp-tests tag need equal the BASE_TAG
+# otherwise, we will prompt the user to upgrade the lkp-tests code
+BASE_TAG = "v2021.09.23"
+
 LAB = (ENV.has_key?("lab") ? ENV["lab"] : "z9")
 
 SCHED_HOST = (ENV.has_key?("SCHED_HOST") ? ENV["SCHED_HOST"] : "172.17.0.1")

@@ -322,12 +322,22 @@ class Job
     pkg_datas = @hash["pkg_data"].as_h
     repos = pkg_datas.keys
 
+    # no check for now, release the comment when need that.
+    # check_base_tag(pkg_datas["lkp-tests"]["tag"].to_s)
+
     repos.each do |repo|
       repo_pkg_data = pkg_datas[repo].as_h
       store_pkg(repo_pkg_data, repo)
     end
 
     delete_pkg_data_content()
+  end
+
+  private def check_base_tag(user_tag)
+    raise "
+    \nyour lkp-tests code tag: #{user_tag} is not the latest release tag: #{BASE_TAG},
+    \nyou can run the cmd \"git -C $LKP_SRC pull --ff-only\" to update your code,
+    \notherwise you will can't use some new functions." unless user_tag == BASE_TAG
   end
 
   private def store_pkg(repo_pkg_data, repo)
