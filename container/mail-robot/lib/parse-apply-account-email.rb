@@ -152,15 +152,15 @@ class ParseApplyAccountEmail
     mail_content_lines.each do |line|
       case line
       when /my_name:\s*(.*)/
-        @my_info['my_name'] = $1
+        @my_info['my_name'] = $1.chomp
       when /my_gitee_account:\s*(.*)/
-        @my_info['my_gitee_account'] = $1
+        @my_info['my_gitee_account'] = $1.chomp
       when /my_purpose:\s*(.*)/
-        @my_info['my_purpose'] = $1
+        @my_info['my_purpose'] = $1.chomp
       when /my_company:\s*(.*)/
-        @my_info['my_company'] = $1
+        @my_info['my_company'] = $1.chomp
       when /my_college:\s*(.*)/
-        @my_info['my_college'] = $1
+        @my_info['my_college'] = $1.chomp
       end
     end
 
