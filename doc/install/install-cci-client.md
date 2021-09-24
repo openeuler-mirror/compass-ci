@@ -18,6 +18,8 @@ Run the following command to install/setup lkp-test:
     git clone https://gitee.com/wu_fengguang/lkp-tests.git
     cd lkp-tests
     make install
+    echo "export LKP_SRC=$PWD" >> $HOME/.${SHELL##*/}rc
+    echo "PATH=\$PATH:$PWD/sbin:$PWD/bin" >> $HOME/.${SHELL##*/}rc
     source ~/.${SHELL##*/}rc
 ```
 
