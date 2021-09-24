@@ -54,6 +54,13 @@ get_lock()
 
 main()
 {
+	WORKSPACE=${WORKSPACE:-$(pwd)}
+
+	log_info "start vm: $hostname" | tee -a $log_file
+	log_info "chdir to workspace: $WORKSPACE" | tee -a $log_file
+
+	cd $WORKSPACE
+
 	# why lock this?
 	# because one mac match one vm, and only one vm with unique mac can running/requesting at any time.
 
