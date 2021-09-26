@@ -148,6 +148,9 @@ else
 		          "upstream_repo": {
 		            "type": "keyword"
 		          },
+		  	  "upstream_dir": {
+		            "type": "keyword"
+		          },
 		          "upstream_commit": {
 		            "type": "keyword"
 		          },
