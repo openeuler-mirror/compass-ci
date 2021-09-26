@@ -5,10 +5,13 @@ FROM centos:7
 
 MAINTAINER Yu Chuan <13186087857@163.com>, Shi Zhichao <angus_robot@163.com>
 
+ARG ARCH
+
 RUN rpm --import /etc/pki/rpm-gpg/RPM*
 
 RUN rm -rf /etc/yum.repos.d/*
 COPY root /
+COPY root/$ARCH /
 RUN yum makecache && \
     yum install -y --skip-broken libvirt libguestfs-tools xz expect openssl && \
     yum clean all
