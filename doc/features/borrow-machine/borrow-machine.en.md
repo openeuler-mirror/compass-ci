@@ -92,13 +92,13 @@ If you have not completed above works, reference to [apply-account.md](https://g
 
     For a full list of testbox, reference to https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts
 
-    >![](./../public_sys-resources/icon-note.gif) **instruction:**
+    >![](./../../public_sys-resources/icon-note.gif) **instruction:**
     >
     > - DCs: dc-xxx
     > - VMs: vm-xxx
     > - HWs: taishan200-2280-xxx
 
-    >![](./../public_sys-resources/icon-notice.gif) **attention:**
+    >![](./../../public_sys-resources/icon-notice.gif) **attention:**
     > - It means that you choosed a specified physical machine if the testbox name is end with `--axx`.
     > - You will need to wait if there are already tasks in the task queue for the machine.
     > - Your job will be randomly assigned to a machine that meets the requirements if the testbox name is not end with '-axx'.

@@ -35,7 +35,7 @@ PKGBUILD includes variables and functions.
 
   Optional. It is used for running the test suite of the program package.
 
-> ![](./../public_sys-resources/icon-notice.gif) **Notice**
+> ![](./../../public_sys-resources/icon-notice.gif) **Notice**
 >
 > **srcdir** is the directory for extracting or copying source files. All packaging functions run in the **srcdir** directory. **pkgdir** is the root directory for building software packages and is used only in the package function.
 

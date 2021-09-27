@@ -91,7 +91,7 @@
 
     查看可选的testbox列表，请参考：https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts
 
-    >![](./../public_sys-resources/icon-note.gif) **说明：**
+    >![](./../../public_sys-resources/icon-note.gif) **说明：**
     >
     > - 容  器: dc-xxx
     > - 虚拟机: vm-xxx
@@ -99,7 +99,7 @@
 
 
 
-    >![](./../public_sys-resources/icon-notice.gif) **注意：**
+    >![](./../../public_sys-resources/icon-notice.gif) **注意：**
     > - 物理机的testbox若选择以`--axx`结尾的，则表示指定到了具体的某一个物理机。若此物理机任务队列中已经有任务在排队，则需要等待队列中前面的任务执行完毕后，才会轮到你提交的borrow任务。
     > - 物理机的testbox若不选择以`-axx`结尾的，表示不指定具体的某一个物理机。则此时集群中的空闲物理机会即时被分配执行你的borrow任务。
 
