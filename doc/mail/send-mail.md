@@ -83,13 +83,13 @@ to failure when access the api, encode the data before use it.
 
 ## example
 
-	```ruby
-	data = "
-	To: test_email@163.com
-	Subject: test mail 10
+```ruby
+    data = "
+    To: test_email@163.com
+    Subject: test mail 10
 
-	test msg 1010
-	"
+    test msg 1010
+    "
 
-	%x(curl -XPOST 'localhost:10001/send_mail_text' -d "#{data}")
-	```
+    %x(curl -XPOST 'localhost:10001/send_mail_text' -d "#{data}")
+```
