@@ -74,6 +74,7 @@ module Scheduler
 
   ws "/ws/boot.:boot_type/:parameter/:value" do |socket, env|
     env.set "ws", true
+    env.set "ws_state", "normal"
     env.create_socket(socket)
     sched = env.sched
 
@@ -85,8 +86,13 @@ module Scheduler
     end
 
     socket.on_close do
+      env.set "ws_state", "close"
       sched.etcd_close
-      (spawn env.channel.send({"type" => "close"})) unless env.get?("ws_state") == "normal"
+      spawn env.watch_channel.send("close") if env.get?("watch_state") == "watching"
+      env.log.info({
+        "from" => env.request.remote_address.to_s,
+        "message" => "access_record"
+      }.to_json)
     end
   end
 

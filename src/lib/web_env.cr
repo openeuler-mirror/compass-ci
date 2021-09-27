@@ -49,6 +49,14 @@ class HTTP::Server
       @channel = Channel(Hash(String, JSON::Any) | Hash(String, String)).new
     end
 
+    def watch_channel
+      @watch_channel ||= create_watch_channel
+    end
+
+    def create_watch_channel
+      @watch_channel = Channel(Array(Etcd::Model::WatchEvent) | String).new
+    end
+
     def socket
       @socket.as(HTTP::WebSocket)
     end

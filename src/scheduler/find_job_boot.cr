@@ -33,10 +33,7 @@ class Sched
       @env.socket.send({
         "type" => "boot",
         "response" => response
-      }.to_json)
-      @env.set "ws_state", "normal"
-      @env.socket.close
-      @env.channel.close
+      }.to_json) unless @env.get?("ws_state") == "close"
     else
       response
     end
@@ -47,6 +44,8 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
+    @env.socket.close
+    @env.channel.close
     send_mq_msg
   end
 
@@ -147,6 +146,7 @@ class Sched
       return if ["timeout", "close"].includes?(@env.get?("ws_state"))
 
       interact_with_client("release_memory") if @env.get?("client_memory") == "request"
+
       return if ["timeout", "close"].includes?(@env.get?("ws_state"))
 
       @env.set "client_memory", "release"
@@ -166,6 +166,8 @@ class Sched
       @env.set "ws_state", "timeout"
       return
     end
+  rescue
+    return
   end
 
   def consume_by_list(queues)
@@ -240,29 +242,29 @@ class Sched
   def consume_by_watch(queues, revision)
     ready_queues = split_ready_queues(queues)
 
-    channel = Channel(Array(Etcd::Model::WatchEvent) | String).new
-    close_consume(channel)
+    close_consume()
+
     ech = Hash(EtcdClient, Etcd::Watch::Watcher).new
     ready_queues.each do |queue|
       ec = EtcdClient.new
       watcher = ec.watch_prefix(queue, start_revision: revision.to_i64, progress_notify: false, filters: [Etcd::Watch::Filter::NODELETE]) do |events|
-        channel.send(events) unless channel.closed?
+        @env.watch_channel.send(events) unless @env.watch_channel.closed?
       end
       ech[ec] = watcher
     end
 
     watchers = start_watcher(ech)
-    loop_handle_event(channel, ech)
+    loop_handle_event(ech)
   end
 
-  def close_consume(channel)
+  def close_consume()
     spawn {
       900.times do
         sleep 2
-        break if channel.closed?
+        break if @env.watch_channel.closed?
       end
 
-      channel.send("close") unless channel.closed?
+      @env.watch_channel.send("close") unless @env.watch_channel.closed?
     }
   end
 
@@ -285,47 +287,36 @@ class Sched
     end
   end
 
-  def loop_handle_event(channel, ech)
+  def loop_handle_event(ech)
+    @env.set "watch_state", "watching"
     while true
-      events = channel.receive
-      if events.is_a?(String)
-        close_watch(ech)
-        channel.close
-        return nil
-      end
+      events = @env.watch_channel.receive
+      return if events.is_a?(String)
 
       if @env.get?("ws")
-        unless interact_with_client("request_memory")
-          close_watch(ech)
-          channel.close
-          return
-        end
+        return unless interact_with_client("request_memory")
       end
 
       events.each do |event|
-        if ready2process(event.kv)
-          close_watch(ech)
-          channel.close
-
-          return event.kv
-        end
+        return event.kv if ready2process(event.kv)
       end
 
       if @env.get?("ws")
-        unless interact_with_client("release_memory")
-          close_watch(ech)
-          channel.close
-          return
-        end
+        return unless interact_with_client("release_memory")
       end
     end
+  ensure
+     close_watch(ech)
   end
 
   def close_watch(ech)
+    @env.set "watch_state", "finished"
     ech.each do |ec, watcher|
       watcher.stop
       ec.close
     end
+
+    @env.watch_channel.close
   end
 
   def ready2process(job)
