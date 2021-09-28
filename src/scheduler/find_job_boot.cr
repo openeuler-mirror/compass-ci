@@ -44,8 +44,10 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    @env.socket.close
-    @env.channel.close
+    if @env.get?("ws")
+      @env.socket.close
+      @env.channel.close
+    end
     send_mq_msg
   end
 
