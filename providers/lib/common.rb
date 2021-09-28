@@ -2,6 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
+require 'yaml'
 require 'json'
 require 'fileutils'
 require 'faye/websocket'
@@ -47,47 +48,35 @@ def get_mem_available
 end
 
 def check_mem_available(hostname, memory)
-  return (get_mem_available - memory) < 20 ? false : true
+  return (get_mem_available - memory) >= 20
 end
 
-def get_mem_idle(mem_info_file)
-  return %x(grep '^idle:' #{mem_info_file} | awk '{print $2}').to_i
+def get_mem_figure(value)
+  return value.split[0].to_i
 end
 
-def check_mem_idle(hostname, memory, mem_info_file)
-  return get_mem_idle(mem_info_file) < memory ? false : true
+def check_mem_idle(memory, idle_memory)
+  return get_mem_figure(idle_memory) >= memory
 end
 
-def add_hostname_to_meminfo(hostname, memory, mem_info_file)
-  if system("grep -q #{hostname}: #{mem_info_file}")
-    puts "testbox was already added in meminfo: #{hostname}"
-    return
+def add_hostname_to_meminfo(hostname, memory, mem_info, mem_info_file)
+  mem_info['usage'] = "#{get_mem_figure(mem_info['usage']) + memory} G"
+  mem_info['idle'] = "#{get_mem_figure(mem_info['idle']) - memory} G"
+  mem_info[hostname] = "#{memory} G"
+  save_mem_yaml_file(mem_info, mem_info_file)
+end
+
+def save_mem_yaml_file(mem_info, file)
+  File.open(file, 'w') do |f|
+    f.write(YAML.dump(mem_info))
   end
-
-  mem_usage = %x(grep '^usage:' #{mem_info_file} | awk '{print $2}').to_i + memory
-  mem_idle = %x(grep '^idle:' #{mem_info_file} | awk '{print $2}').to_i - memory
-
-  cmd_update_usage = "sed -i 's/^usage: .*/usage: #{mem_usage} G/g' #{mem_info_file}"
-  cmd_update_idle = "sed -i 's/^idle: .*/idle: #{mem_idle} G/g' #{mem_info_file}"
-  cmd_add_testbox = "sed -i '$a#{hostname}: #{memory} G' #{mem_info_file}"
-
-  system "#{cmd_update_usage} && #{cmd_update_idle} && #{cmd_add_testbox}"
 end
 
-def del_hostname_from_meminfo(hostname, memory, mem_info_file)
-  if not system("grep -q #{hostname}: #{mem_info_file}")
-    puts "testbox was already deleted in meminfo: #{hostname}"
-    return
-  end
-
-  mem_usage = %x(grep '^usage:' #{mem_info_file} | awk '{print $2}').to_i - memory
-  mem_idle = %x(grep '^idle:' #{mem_info_file} | awk '{print $2}').to_i + memory
-
-  cmd_update_usage = "sed -i 's/^usage: .*/usage: #{mem_usage} G/g' #{mem_info_file}"
-  cmd_update_idle = "sed -i 's/^idle: .*/idle: #{mem_idle} G/g' #{mem_info_file}"
-  cmd_delete_testbox = "sed -i '/#{hostname}: #{memory} G/d' #{mem_info_file}"
-
-  system "#{cmd_update_usage} && #{cmd_update_idle} && #{cmd_delete_testbox}"
+def del_hostname_from_meminfo(hostname, memory, mem_info, mem_info_file)
+  mem_info['usage'] = "#{get_mem_figure(mem_info['usage']) - memory} G"
+  mem_info['idle'] = "#{get_mem_figure(mem_info['idle']) + memory} G"
+  mem_info.delete(hostname)
+  save_mem_yaml_file(mem_info, mem_info_file)
 end
 
 def request_mem(hostname)
@@ -102,11 +91,20 @@ def request_mem(hostname)
         f.flock(File::LOCK_EX)
         puts "#{hostname}-request: get meminfo lock success"
 
-        if check_mem_available(hostname, memory) and check_mem_idle(hostname, memory, mem_info_file)
-          # if all resources are sufficient, then record this testbox to resource file, and release the lock.
-          add_hostname_to_meminfo(hostname, memory, mem_info_file)
+        next unless check_mem_available(hostname, memory)
+
+        mem_info = YAML.load_file(mem_info_file)
+        if mem_info.has_key?(hostname)
+          puts "testbox was already added in meminfo: #{hostname}"
           request_success = true
+          break
         end
+
+        next unless check_mem_idle(memory, mem_info['idle'])
+
+        # if all resources are sufficient, then record this testbox to resource file, and release the lock.
+        add_hostname_to_meminfo(hostname, memory, mem_info, mem_info_file)
+        request_success = true
       end
     rescue Exception => e
       puts "request mem exception."
@@ -133,7 +131,10 @@ def release_mem(hostname)
         f.flock(File::LOCK_EX)
         puts "#{hostname}-release: get meminfo lock success"
 
-        del_hostname_from_meminfo(hostname, memory, mem_info_file)
+        mem_info = YAML.load_file(mem_info_file)
+        return unless mem_info.has_key?(hostname)
+
+        del_hostname_from_meminfo(hostname, memory, mem_info, mem_info_file)
         release_success = true
       end
     rescue Exception => e
