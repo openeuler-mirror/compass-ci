@@ -145,6 +145,12 @@ else
 		          "os_version": {
 		            "type": "keyword"
 		          },
+		          "depend_job_id": {
+			    "type": "keyword"
+		          },
+		          "pr_merge_reference_name": {
+			    "type": "keyword"
+		          },
 		          "upstream_repo": {
 		            "type": "keyword"
 		          },
