@@ -930,3 +930,19 @@ def top_boot_time
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
+
+def get_srpm_info(params)
+  begin
+    my_data = MyData.new
+    info=[]
+    srpm_infos =  my_data.get_srpm_info(size: params['page_size'], from: params['page_num'])
+    srpm_infos['hits']['hits'].each do |source|
+      info << source['_source']
+    end
+  rescue StandardError => e
+    log_error e.message
+
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get active testbox error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), info]
+end

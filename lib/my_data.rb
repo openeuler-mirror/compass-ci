@@ -119,4 +119,13 @@ class MyData
   def logging_es_query(index, query)
     @logging_es.search(index: index + '*', body: query)
   end
+
+  def get_srpm_info(size: 10, from: 0)
+    from = from * size
+    query = {
+      'size' => size,
+      'from' => from
+    }
+    es_query('srpm-info', query)
+  end
 end

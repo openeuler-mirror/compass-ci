@@ -65,6 +65,14 @@ get '/active_testbox' do
   get_active_testbox
 end
 
+# GET /srpm_info?page_size=1&page_num=2
+# - page_size
+# - page_from
+
+get '/srpm_info' do
+  get_srpm_info(params)
+end
+
 # GET /get_repos?git_repo=a&page_size=12&page_num=3
 # optional:
 # - git_repo
