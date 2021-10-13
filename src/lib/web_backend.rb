@@ -942,7 +942,7 @@ def get_srpm_info(params)
   rescue StandardError => e
     log_error e.message
 
-    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get active testbox error']
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get srpm info error']
   end
-  [200, headers.merge('Access-Control-Allow-Origin' => '*'), info]
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), info.to_json]
 end
