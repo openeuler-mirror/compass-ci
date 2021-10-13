@@ -935,7 +935,7 @@ def get_srpm_info(params)
   begin
     my_data = MyData.new
     info=[]
-    srpm_infos =  my_data.get_srpm_info(size: params['page_size'], from: params['page_num'])
+    srpm_infos =  my_data.get_srpm_info(size: params['page_size'].to_i, from: params['page_num'].to_i)
     srpm_infos['hits']['hits'].each do |source|
       info << source['_source']
     end
