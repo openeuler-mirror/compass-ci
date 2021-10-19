@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Srpm List</title>
+</head>
+
+<body onload="onload()">
+
+    <h1 style="text-align:center">Compass CI Srpm List</h1>
+    <hr>
+    <div style="width:90%;margin:auto">
+        <label>page size : </label>
+        <input type="number" id="page_size" style="width:50px;" min="1" max="100" value=25>
+        <label style="margin-left:50px;">page number : </label>
+        <input type="number" id="page_num" style="width:50px;" min="1" max="1000" value=1>
+        <input type="button" style="width:80px;margin-left:20px;" value="search" onclick="getdata()">
+        <br>
+        <table id="srpm_list" style="width:100%;margin-top:5px;" border="1">
+            <th width=20%>os</th>
+            <th width=30%>repo_name</th>
+            <th width=40%>srpm</th>
+        </table>
+    </div>
+
+</body>
+<script>
+    function getdata() {
+        var tb = document.getElementById("srpm_list");
+        row_length = tb.rows.length;
+        if (row_length > 1) {
+            for (var index = row_length - 1; index > 0; index--) {
+                tb.deleteRow(index);
+            }
+        }
+        var ajax = new XMLHttpRequest();
+        if (page_size.value < 1) {
+            page_size.value = 1;
+        }
+        if (page_num.value < 1) {
+            page_num.value = 1;
+        }
+        var data = "/srpm_info?page_size=" + page_size.value + "&page_num=" + (page_num.value - 1);
+        console.log(data);
+        ajax.open("get", data);
+        ajax.send();
+        ajax.onreadystatechange = function () {
+            if (ajax.readyState == 4 && ajax.status == 200) {
+                var data = JSON.parse(ajax.responseText);
+                showData(data, 'srpm_list');
+            }
+        }
+    };
+
+    function showData(data, tbid) {
+        var tb = document.getElementById(tbid);
+        for (var i = 0; i < data.length; i++) {
+            var tr = document.createElement('tr');
+            tb.appendChild(tr);
+
+            var td = document.createElement('td');
+            tr.appendChild(td);
+            td.style.textAlign = 'center';
+            td.innerText = data[i].os;
+
+            var td = document.createElement('td');
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            td.innerText = data[i].repo_name;
+
+            var td = document.createElement('td');
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            td.innerText = data[i].srpm;
+        }
+    };
+
+    function onload() {
+        getdata();
+    };
+</script>
+
+</html>
