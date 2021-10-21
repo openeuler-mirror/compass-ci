@@ -6,6 +6,7 @@ require "yaml"
 require "json"
 require "any_merge"
 require "elasticsearch-crystal/elasticsearch/api"
+require "elasticsearch-crystal/elasticsearch/api/utils"
 require "./constants"
 require "../lib/job"
 
@@ -37,6 +38,8 @@ class Elasticsearch::Client
       password = ENV["ES_PASSWORD"]?
       host = "#{user}:#{URI.encode_www_form(password)}@#{host}" if user && password
     end
+    @host = host.as(String)
+    @port = port.to_s.as(String)
     @client = Elasticsearch::API::Client.new({:host => host, :port => port})
   end
 
@@ -188,5 +191,55 @@ class Elasticsearch::Client
   def add(documents_path : String, fullpath_file : String, id : String)
     yaml = YAML.parse(File.read(fullpath_file))
     return add(documents_path, yaml, id)
+  end
+
+  def perform_bulk_request(path, body)
+    endpoint = "http://#{@host}:#{@port}/#{path}"
+    headers = HTTP::Headers{ "Content-Type" => "application/x-ndjson"}
+    response = HTTP::Client.post(endpoint, body: body, headers: headers)
+    result = response.as(HTTP::Client::Response)
+    JSON.parse(result.body)
+  end
+
+  def bulk(body, index="", type="_doc")
+    method = "POST"
+    body = bulkify(body)
+    path = Elasticsearch::API::Utils.__pathify Elasticsearch::API::Utils.__escape(index), Elasticsearch::API::Utils.__escape(type), "_bulk"
+    perform_bulk_request(path, body)
+  end
+
+  # Convert an array of body into Elasticsearch format
+  # Input: [
+  # { :update => { :index => "1", :_type => "mytype", :_id => "1", :data => { :title => "update"}}},
+  # { :create => { :index => "2", :_type => "mytype", :_id => "2", :data => { :title => "create"}}}
+  # ]
+  #
+  # Output:
+  # {"update":{"_index":"1","_type":"mytype","_id":"1"}}
+  # { "doc": {"title":"update"}}
+  # {"create":{"_index":"2","_type":"mytype","_id":"2"}}
+  # {"title":"create"}
+  #
+  def bulkify(body)
+    return body unless body.is_a?(Array)
+
+    tmp = Array(String).new
+    body.each do |item|
+      unless item.is_a?(Hash)
+        tmp << item
+        next
+      end
+      data = item.values[0].delete("data")
+      tmp << item.to_json
+      next unless data
+
+      if item.has_key?("update")
+        tmp << {"doc" => data}.to_json
+      else
+        tmp << data.to_json
+      end
+    end
+    tmp << ""
+    tmp.join("\n")
   end
 end
