@@ -11,6 +11,14 @@ class MQClient
     @channel = @conn.create_channel
   end
 
+  # How to use:
+  # MQClient.new(:hostname => mq_host, :port => mq_port, :automatically_recover => false)
+  def initialize(opts)
+    @conn = Bunny.new(opts)
+    @conn.start
+    @channel = @conn.create_channel
+  end
+
   def fanout_queue(exchange_name, queue_name)
     x = @channel.fanout(exchange_name)
     @channel.queue(queue_name).bind(x)
