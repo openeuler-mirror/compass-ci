@@ -8,6 +8,31 @@ require 'fileutils'
 require 'faye/websocket'
 require 'eventmachine'
 
+def loop_reboot_testbox(hostname, type, mq_host, mq_port)
+  loop do
+    begin
+      reboot_testbox(hostname, type, mq_host, mq_port)
+    rescue Exception => e
+      puts e.backtrace.inspect
+      sleep 5
+    end
+  end
+end
+
+def reboot_testbox(hostname, type, mq_host, mq_port)
+  mq = MQClient.new(:hostname => mq_host, :port => mq_port, :automatically_recover => false, :recovery_attempts => 0)
+  queue = mq.queue(hostname, { :durable => true })
+  queue.subscribe({ :block => true, :manual_ack => true }) do |info, _pro, msg|
+    Process.fork do
+      deal_reboot_msg(mq, msg, info, type)
+    end
+  end
+rescue Bunny::NetworkFailure => e
+  puts e
+  sleep 5
+  retry
+end
+
 def reboot(type, job_id)
   r, io = IO.pipe
   if type == 'dc'
@@ -37,6 +62,8 @@ def deal_reboot_msg(mq, msg, info, type)
   res, msg = reboot(type, job_id)
   report_event(machine_info, res, msg)
   mq.ack(info)
+rescue Exception => e
+  puts e.backtrace.inspect
 end
 
 def get_memory_from_hostname(hostname)
@@ -175,11 +202,15 @@ end
 #   "commit_id" => "xxxxxx"
 # }
 def monitor_mq_message(threads)
-  mq = MQClient.new(MQ_HOST, MQ_PORT)
+  mq = MQClient.new(:hostname => mq_host, :port => mq_port, :automatically_recover => false, :recovery_attempts => 0)
   queue = mq.fanout_queue('multi-manage', "#{HOSTNAME}-manage")
   queue.subscribe({ :block => true }) do |_info, _pro, msg|
     deal_mq_manage_message(threads, msg)
   end
+rescue Bunny::NetworkFailure => e
+    puts e
+    sleep 5
+    retry
 end
 
 def deal_mq_manage_message(threads, msg)

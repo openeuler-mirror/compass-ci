@@ -60,30 +60,9 @@ SCHED_PORT = ENV['LKP_CGI_PORT'] || ENV['SCHED_PORT'] || '3000'
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
-def loop_reboot_docker(hostname)
-  loop do
-    begin
-      reboot_docker(hostname)
-    rescue StandardError => e
-      puts e.backtrace
-      sleep 5
-    end
-  end
-end
-
-def reboot_docker(hostname)
-  mq = MQClient.new(MQ_HOST, MQ_PORT)
-  queue = mq.queue(hostname, {:durable => true})
-  queue.subscribe({:block => true, :manual_ack => true}) do |info,  _pro, msg|
-    Process.fork do
-      deal_reboot_msg(mq, msg, info, 'dc')
-    end
-  end
-end
-
 def start
   reboot_thr = Thread.new do
-    loop_reboot_docker(HOSTNAME)
+    loop_reboot_testbox(HOSTNAME, 'dc', MQ_HOST, MQ_PORT)
   end
 
   threads = {}
