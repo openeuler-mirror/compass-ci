@@ -2,16 +2,14 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 require "./lib/json_logger"
+require "monitoring/amqp"
 require "monitoring/monitoring"
-require "monitoring/filter"
 require "monitoring/constants"
 
 module Monitoring
   log = JSONLogger.new
-  filter = Filter.instance
   message_queue_client = MessageQueueClient.new
-  spawn message_queue_client.monitoring_message_queue(filter, "serial-logging", "serial-logging")
-  spawn message_queue_client.monitoring_message_queue(filter, "docker-logging", "docker-logging")
+  spawn message_queue_client.loop_monitoring_message_queue("docker-logging", "docker-logging", "docker")
 
   begin
     Kemal.run(MONITOR_PORT)

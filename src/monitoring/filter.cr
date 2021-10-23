@@ -5,7 +5,6 @@ require "set"
 require "json"
 require "singleton"
 
-require "./parse_serial_logs"
 require "../lib/json_logger"
 
 class Filter
@@ -13,7 +12,6 @@ class Filter
     # use @hash to save query and socket
     # like {query => [socket1, socket2]}
     @hash = Hash(JSON::Any, Array(HTTP::WebSocket)).new
-    @sp = SerialParser.new
     @log = JSONLogger.new
   end
 
@@ -62,10 +60,6 @@ class Filter
   end
 
   def filter_msg(msg)
-    msg = JSON.parse(msg.to_s).as_h?
-    return unless msg
-
-    @sp.deal_serial_log(msg)
     @hash.keys.each do |query|
       if match_query(query.as_h, msg)
         send_msg(query, msg)

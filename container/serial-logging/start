@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  MQ_PORT
+  MQ_HOST
+  ES_USER
+  ES_PASSWORD
+]
+
+defaults = relevant_defaults(names)
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
+env = docker_env(defaults)
+
+DEFAULT_CCI = '/c/cci'
+docker_name = "serial-logging"
+docker_rm docker_name
+
+cmd = %W[
+  docker run
+  --restart=always
+  --name #{docker_name}
+  -d
+  -u 1090:1090
+] + env + %W[
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -v /etc/localtime:/etc/localtime:ro
+  -v /srv/result:/srv/result
+  #{docker_name}
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./serial-logging']
+
+system(*cmd)
