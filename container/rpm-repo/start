@@ -7,17 +7,23 @@ require 'set'
 require_relative '../defconfig.rb'
 
 DOCKER_CCI = '/c/compass-ci'
+DOCKER_LKP = '/c/lkp-tests'
 
 names = Set.new %w[
   MQ_HOST
   MQ_PORT
   LKP_SERVER
+  ES_USER
+  ES_PASSWORD
 ]
 
 defaults = relevant_defaults(names)
 defaults['MQ_HOST'] ||= defaults['LKP_SERVER'] ||= '172.17.0.1'
 defaults['LKP_SERVER'] ||= '172.17.0.1'
 defaults['MQ_PORT'] ||= 5672
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
 env = docker_env(defaults)
 
 docker_rm "update-repodata"
@@ -30,8 +36,12 @@ cmd = %W[
 ] + env + %W[
   -d
   -e CCI_SRC=#{DOCKER_CCI}
+  -e LKP_SRC=#{DOCKER_LKP}
+  -v #{ENV['LKP_SRC']}:#{DOCKER_LKP}
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
   -v /etc/localtime:/etc/localtime:ro
+  -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
+  -v /etc/compass-ci/register:/etc/compass-ci/register:ro
   -v /srv/rpm:/srv/rpm
   -w /c/compass-ci/sbin
   fedora:update-repodata

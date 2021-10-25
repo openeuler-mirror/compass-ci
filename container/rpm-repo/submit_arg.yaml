@@ -1,0 +1,3 @@
+testbox: dc-8g
+docker_image: openeuler:20.03-LTS-SP1-CLEAN
+yaml: rpmbuild-without-arch.yaml

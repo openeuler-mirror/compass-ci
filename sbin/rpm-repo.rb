@@ -8,6 +8,8 @@ require 'json'
 require 'set'
 require_relative '../lib/mq_client'
 require_relative '../lib/json_logger.rb'
+require_relative '../lib/config_account'
+require_relative "#{ENV['LKP_SRC']}/lib/do_local_pack"
 
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
@@ -41,6 +43,7 @@ class HandleRepo
   @@create_repo_path = Set.new
   def handle_new_rpm
     queue = @mq.queue('update_repo')
+    createrepodata_queue = @mq.queue('createrepodata')
     queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
       loop do
         next unless @@upload_flag
@@ -48,6 +51,8 @@ class HandleRepo
         begin
           rpm_info = JSON.parse(msg)
           check_upload_rpms(rpm_info)
+          createrepodata_queue.publish(msg)
+
           rpm_info['upload_rpms'].each do |rpm|
             rpm_path = File.dirname(rpm).sub('upload', 'testing')
             FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
@@ -56,11 +61,12 @@ class HandleRepo
             dest = File.join(rpm_path.to_s, File.basename(rpm))
             FileUtils.mv(rpm, dest)
           end
+
           @mq.ack(info)
           break
         rescue StandardError => e
           @log.warn({
-            "error message": e.message
+            "handle_new_rpm error message": e.message
           }.to_json)
           @mq.ack(info)
           break
@@ -95,6 +101,8 @@ class HandleRepo
   end
 
   def create_repo
+    createrepodata_queue = @mq.queue('createrepodata')
+    createrepodata_complete_queue = @mq.queue('createrepodata_complete')
     Thread.new do
       loop do
         sleep 180
@@ -106,13 +114,78 @@ class HandleRepo
         @@create_repo_path.each do |path|
           system("createrepo --update $(dirname #{path})")
         end
+
+        q = createrepodata_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
+          begin
+            createrepodata_complete_queue.publish(msg)
+            @mq.ack(info)
+          rescue StandardError => e
+            @log.warn({
+              "create_repo error message": e.message
+            }.to_json)
+            @mq.ack(info)
+          end
+        end
+
+        sleep 1
+        q.cancel
         @@create_repo_path.clear
         @@upload_flag = true
       end
     end
   end
+
+  def parse_arg(rpm_path)
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit --no-pack"]
+    rpm_path = File.dirname(rpm_path).sub('upload', 'testing')
+    rpm_path.sub!('/srv', '')
+    rpm_path = "https://api.compass-ci.openeuler.org:20018#{rpm_path}"
+    rpm_path = rpm_path.delete_suffix('/Packages')
+    submit_arch = rpm_path.split('/')[-1]
+    submit_argv.push("custom_repo_addr=#{rpm_path}")
+    submit_argv.push("arch=#{submit_arch}")
+    submit_argv.push("custom_repo_name=#{rpm_path.split('/')[-2]}")
+
+    fixed_arg = YAML.load_file("/etc/submit_arg.yaml")
+    submit_argv.push("docker_image=#{fixed_arg['docker_image']}")
+    submit_argv.push("testbox=#{fixed_arg['testbox']}")
+    submit_argv.push("#{fixed_arg['yaml']}")
+
+    return submit_argv, submit_arch
+  end
+
+  def submit_install_rpm
+    queue = @mq.queue('createrepodata_complete')
+    queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
+      begin
+        group_id = Time.new.strftime('%Y-%m-%d')+'-auto-install-rpm'
+        rpm_info = JSON.parse(msg)
+        rpm_info['upload_rpms'].each do |rpm|
+          submit_argv, submit_arch = parse_arg(rpm)
+          real_argvs = Array.new(submit_argv)
+          next if submit_arch == 'source'
+
+          # zziplib-0.13.62-12.aarch64.rpm => zziplib
+          rpm_name = $1 if File.basename(rpm) =~ %r{(.*)(-[^-]+){2}}
+          real_argvs.push("rpm_name=#{rpm_name}")
+          real_argvs.push("group_id=#{group_id}")
+          system(real_argvs.join(' '))
+        end
+        @mq.ack(info)
+      rescue StandardError => e
+        @log.warn({
+          "submit_install_rpm error message": e.message
+        }.to_json)
+        @mq.ack(info)
+      end
+    end
+  end
+
 end
 
+config_yaml('auto-submit')
+do_local_pack()
 hr = HandleRepo.new
 hr.create_repo
+hr.submit_install_rpm
 hr.handle_new_rpm
