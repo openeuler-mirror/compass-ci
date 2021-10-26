@@ -116,7 +116,7 @@ def multiqemu
   end
 
   manage_thr = Thread.new do
-    manage_multi_qemu_docker(threads.merge({ 'manage' => manage_thr }))
+    manage_multi_qemu_docker(threads.merge({ 'manage' => manage_thr }), MQ_HOST, MQ_PORT)
   end
 
   threads.each do |_, thr|

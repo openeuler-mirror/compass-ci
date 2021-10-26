@@ -184,11 +184,11 @@ ensure
   f&.close
 end
 
-def manage_multi_qemu_docker(threads)
+def manage_multi_qemu_docker(threads, mq_host, mq_port)
   loop do
     begin
       puts 'manage thread begin'
-      monitor_mq_message(threads)
+      monitor_mq_message(threads, mq_host, mq_port)
     rescue StandardError => e
       puts e.backtrace
       sleep 5
@@ -201,7 +201,7 @@ end
 #   "hostname_array" => ["ALL"] or ["taishan200-2280-2s64p-256g--a1", "taishan200-2280-2s64p-256g--a2"]
 #   "commit_id" => "xxxxxx"
 # }
-def monitor_mq_message(threads)
+def monitor_mq_message(threads, mq_host, mq_port)
   mq = MQClient.new(:hostname => mq_host, :port => mq_port, :automatically_recover => false, :recovery_attempts => 0)
   queue = mq.fanout_queue('multi-manage', "#{HOSTNAME}-manage")
   queue.subscribe({ :block => true }) do |_info, _pro, msg|
