@@ -4,5 +4,3 @@
 FROM nginx:1.20.0-alpine
 
 MAINTAINER Cao Xueliang <caoxl78320@163.com>
-
-COPY nginx.conf /etc/nginx/

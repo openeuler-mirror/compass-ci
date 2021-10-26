@@ -6,6 +6,15 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+cert_path = '/etc/ssl/certs'
+certificate_file = "#{cert_path}/web-backend.crt"
+certificate_key_file = "#{cert_path}/web-backend.key"
+
+# If the server has an SSL certificate,
+# the initiated scheduler supports both HTTP and HTTPS
+conf_file = 'nginx-https.conf' if File.exist?(certificate_file) && File.exist?(certificate_key_file)
+conf_file ||= 'nginx.conf'
+
 names = Set.new %w[
   SCHED_PORT
 ]
@@ -23,6 +32,8 @@ cmd = %w[
   -d
 ] + env + %W[
   -p #{SCHED_PORT}:#{SCHED_PORT}
+  -v #{cert_path}:#{cert_path}
+  -v #{ENV['CCI_SRC']}/container/scheduler-nginx/#{conf_file}:/etc/nginx/nginx.conf
   -v /etc/localtime:/etc/localtime:ro
   --log-opt mode=non-blocking
   --log-opt max-buffer-size=4m
