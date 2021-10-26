@@ -994,3 +994,22 @@ def get_srpm_info(params)
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), info.to_json]
 end
+
+def get_compat_software_info(params)
+  begin
+    my_data = MyData.new
+    info=[]
+    srpm_infos =  my_data.get_compat_software_info(size: params['page_size'].to_i, from: params['page_num'].to_i)
+    srpm_infos['hits']['hits'].each do |source|
+      info << source['_source']
+    end
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "get_compat_software_info error, input: #{params}"
+    })
+
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get compat software info error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), info.to_json]
+end

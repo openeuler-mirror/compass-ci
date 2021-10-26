@@ -128,4 +128,14 @@ class MyData
     }
     es_query('srpm-info', query)
   end
+
+  def get_compat_software_info(size: 10, from: 0)
+    from = from * size
+    query = {
+      'size' => size,
+      'from' => from
+    }
+    es_query('compat-software-info', query)
+  end
+
 end
