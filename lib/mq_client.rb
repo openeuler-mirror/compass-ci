@@ -13,7 +13,9 @@ class MQClient
 
   # How to use:
   # MQClient.new(:hostname => mq_host, :port => mq_port, :automatically_recover => false)
-  def initialize(opts)
+  def initialize(opts = {})
+    opts[:hostname] = 'localhost' unless opts[:hostname]
+    opts[:port] = '5672' unless opts[:port]
     @conn = Bunny.new(opts)
     @conn.start
     @channel = @conn.create_channel
