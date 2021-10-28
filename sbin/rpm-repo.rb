@@ -35,7 +35,7 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 class HandleRepo
   @@upload_dir_prefix = "/srv/rpm/upload/"
   def initialize
-    @mq = MQClient.new(MQ_HOST, MQ_PORT)
+    @mq = MQClient.new(:hostname => MQ_HOST, :port => MQ_PORT)
     @log = JSONLogger.new
   end
 

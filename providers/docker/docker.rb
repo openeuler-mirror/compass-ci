@@ -190,7 +190,7 @@ def loop_reboot_docker(hostname)
 end
 
 def reboot_docker(hostname)
-  mq = MQClient.new(MQ_HOST, MQ_PORT)
+  mq = MQClient.new(:hostname => MQ_HOST, :port => MQ_PORT)
   queue = mq.queue(hostname, { :durable => true })
   queue.subscribe({ :block => true, :manual_ack => true }) do |info, _pro, msg|
     Process.fork do
