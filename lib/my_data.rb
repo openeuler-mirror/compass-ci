@@ -140,9 +140,9 @@ class MyData
     type_list = []
     arch_list = []
 
-    body['OS'].each do |x| os_list << x['key'] end
-    body['Type'].each do |x| type_list << x['key'] end
-    body['Arch'].each do |x| arch_list << x['key'] end
+    body['OS'].each do |x| os_list << x['key'] if x['key'].size.to_i > 0 end
+    body['Type'].each do |x| type_list << x['key'] if x['key'].size.to_i > 0 end
+    body['Arch'].each do |x| arch_list << x['key'] if x['key'].size.to_i > 0 end
 
     data = {
       'OS' => os_list,
