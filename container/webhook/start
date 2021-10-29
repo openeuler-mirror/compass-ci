@@ -7,14 +7,15 @@ require_relative '../defconfig.rb'
 
 docker_rm "webhook"
 
-cmd = %w[
+cmd = %W[
   docker run
   --restart=always
   --name webhook
   -d
+  -v #{ENV['CCI_SRC']}/container/webhook/root:/js
   -p 20005:20005
   node:webhook
 ]
 
-cmd += ['sh', '-c', 'node webhook.js']
+cmd += ['sh', '-c', 'node /js/webhook.js']
 system(*cmd)
