@@ -73,12 +73,20 @@ get '/srpm_info' do
   get_srpm_info(params)
 end
 
-# GET /compat_software_info?page_size=1&page_num=2
+# GET /compat_software_info?page_size=1&page_num=2&os="openeuler 20.03 LTS"&arch=aarch64&keyword=vim-enhanced
 # - page_size
-# - page_from
-
+# - page_num
+# - os
+# - arch
+# - type
+# - keyword
 get '/compat_software_info' do
-  get_compat_software_info(params)
+  get_compat_software(params)
+end
+
+# GET /query_compat_software
+get '/query_compat_software' do
+  get_compat_software_info_detail
 end
 
 # GET /get_repos?git_repo=a&page_size=12&page_num=3

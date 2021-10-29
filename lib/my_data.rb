@@ -129,13 +129,40 @@ class MyData
     es_query('srpm-info', query)
   end
 
-  def get_compat_software_info(size: 10, from: 0)
-    from = from * size
-    query = {
-      'size' => size,
-      'from' => from
+  def query_compat_software
+    body = {
+      'OS' => es_query('compat-software-info', aggs_query('os'))['aggregations']['all_os']['buckets'],
+      'Type' => es_query('compat-software-info', aggs_query('type'))['aggregations']['all_type']['buckets'],
+      'Arch' => es_query('compat-software-info', aggs_query('arch'))['aggregations']['all_arch']['buckets']
     }
-    es_query('compat-software-info', query)
+
+    os_list = []
+    type_list = []
+    arch_list = []
+
+    body['OS'].each do |x| os_list << x['key'] end
+    body['Type'].each do |x| type_list << x['key'] end
+    body['Arch'].each do |x| arch_list << x['key'] end
+
+    data = {
+      'OS' => os_list,
+      'Type' => type_list,
+      'Arch' => arch_list
+    }
+
+    JSON.dump data
   end
 
+  def aggs_query(field)
+      {
+        'aggs' => {
+          "all_#{field}" => {
+            'terms' => {
+              'field' => "#{field}.keyword",
+              'size' => '10000'
+            }
+          }
+        }
+      }
+  end
 end

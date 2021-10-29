@@ -995,21 +995,73 @@ def get_srpm_info(params)
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), info.to_json]
 end
 
-def get_compat_software_info(params)
+def get_compat_software_body(params)
+  page_size = get_positive_number(params.delete(:page_size), 10)
+  page_num = get_positive_number(params.delete(:page_num), 1) - 1
+
+  total_query =  {
+      query: {
+        bool: {
+          must: build_multi_field_body(params)
+        }
+      }
+    }
+
+  compats_query = {
+      query: {
+        bool: {
+          must: build_multi_field_body(params)
+        }
+      },
+      size: page_size,
+      from: page_num
+  }
+
+  total = ES_CLIENT.count(index: 'compat-software-info*', body: total_query)['count']
+  compats = ES_CLIENT.search index: 'compat-software-info*', body: compats_query
+  {
+    total: total,
+    filter: params,
+    compats: compats,
+  }.to_json
+end
+
+def get_compat_software(params)
   begin
-    my_data = MyData.new
-    info=[]
-    srpm_infos =  my_data.get_compat_software_info(size: params['page_size'].to_i, from: params['page_num'].to_i)
-    srpm_infos['hits']['hits'].each do |source|
+    info = []
+    body = get_compat_software_body(params)
+
+    JSON.parse(body)['compats']['hits']['hits'].each do |source|
       info << source['_source']
     end
   rescue StandardError => e
     log_error({
       'message' => e.message,
-      'error_message' => "get_compat_software_info error, input: #{params}"
+      'error_message' => "get_compat_software_body error, input: #{params}"
     })
-
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get compat software info error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), info.to_json]
+end
+
+def build_multi_field_body(items)
+  query_fields = []
+  items.each do |key, value|
+    if value.is_a?(Array)
+      inner_query = build_multi_field_or_query_body(key, value)
+      query_fields.push({ bool: { should: inner_query } })
+    else
+      if key == 'keyword'
+        query_fields.push({ regexp: { "softwareName.keyword" => ".*#{value}.*" } })
+      else
+        query_fields.push({ term: { "#{key}.keyword" => value } })
+      end
+    end
+  end
+  query_fields
+end
+
+def get_compat_software_info_detail
+  my_data = MyData.new
+  my_data.query_compat_software
 end
