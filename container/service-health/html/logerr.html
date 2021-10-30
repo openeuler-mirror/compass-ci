@@ -13,6 +13,13 @@
     <div style="width:90%;margin:auto">
         <label>total lines : </label>
         <label id="lines">0</label>
+        <br>
+        <label>page size : </label>
+        <input type="number" id="page_size" style="width:50px;" min="1" max="100" value=25>
+        <label style="margin-left:50px;">page number : </label>
+        <input type="number" id="page_num" style="width:50px;" min="1" max="1000" value=1>
+        <input type="button" style="width:80px;margin-left:20px;" value="search" onclick="showData()">
+        <br>
         <table id="logerr" style="width:100%;work-break:break-all;" border="1">
             <th width=15%>first_date</th>
             <th width=10%>service</th>
@@ -23,23 +30,50 @@
 
 </body>
 <script>
+    var err_data;
     function getdata() {
         var ajax = new XMLHttpRequest();
         ajax.open("post", "/active_service_error_log");
         ajax.send();
         ajax.onreadystatechange = function () {
             if (ajax.readyState == 4 && ajax.status == 200) {
-                var data = JSON.parse(ajax.responseText);
-                document.getElementById('lines').innerText = data.total;
-                showData(data.data, 'logerr');
+                err_data = JSON.parse(ajax.responseText);
+                document.getElementById('lines').innerText = err_data.total;
+                showData();
             }
         }
     };
 
-    function showData(data, tbid) {
-        for (var i = 0; i < data.length; i++) {
+    function cleanTable() {
+        var tb = document.getElementById("logerr");
+        row_length = tb.rows.length;
+        if (row_length > 1) {
+            for (var index = row_length - 1; index > 0; index--) {
+                tb.deleteRow(index);
+            }
+        }
+    };
+
+    function showData() {
+        if (page_num.value < 1) {
+            page_num.value = 1;
+        }
+        if (page_size.value < 1) {
+            page_size.value = 1;
+        }
+        var data = err_data.data;
+        var start = (page_num.value - 1) * page_size.value;
+        var end = page_num.value * page_size.value;
+        if (start >= data.length) {
+            return;
+        }
+        if (end > data.length) {
+            end = data.length;
+        }
+        cleanTable();
+        for (var i = start; i < end; i++) {
             var tr = document.createElement('tr');
-            document.getElementById(tbid).appendChild(tr);
+            document.getElementById('logerr').appendChild(tr);
 
             var td = document.createElement('td');
             tr.appendChild(td);
