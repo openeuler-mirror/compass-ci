@@ -997,7 +997,7 @@ end
 
 def get_compat_software_body(params)
   page_size = get_positive_number(params.delete(:page_size), 10)
-  page_num = get_positive_number(params.delete(:page_num), 1) - 1
+  page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
 
   total_query =  {
       query: {
@@ -1028,12 +1028,16 @@ end
 
 def get_compat_software(params)
   begin
+    all = {}
     info = []
     body = get_compat_software_body(params)
+    total = JSON.parse(body)['total']
 
+    all.store('total', total)
     JSON.parse(body)['compats']['hits']['hits'].each do |source|
       info << source['_source']
     end
+    all.store('info', info)
   rescue StandardError => e
     log_error({
       'message' => e.message,
@@ -1041,7 +1045,7 @@ def get_compat_software(params)
     })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get compat software info error']
   end
-  [200, headers.merge('Access-Control-Allow-Origin' => '*'), info.to_json]
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), all.to_json]
 end
 
 def build_multi_field_body(items)
