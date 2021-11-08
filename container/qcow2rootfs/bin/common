@@ -161,10 +161,30 @@ create_get_initrd() {
 	echo "initrd_lkp: $ROOTFS_INITRD_LKP"
 }
 
-create_links_vmlinuz_initrd() {
+create_get_modules() {
+	echo "Creating modules.cgz..."
+
+	export ROOTFS_MODULES_CGZ="modules-${ROOTFS_KERNEL}.cgz"
+
+	docker run -it --rm -v $ROOTFS_DIR:/mnt centos:7 bash -c "
+		cd /mnt
+		find lib/modules/$ROOTFS_KERNEL | cpio -o -Hnewc | gzip -9 > boot/$ROOTFS_MODULES_CGZ
+	"
+
+	[ -f $ROOTFS_DIR/boot/$ROOTFS_MODULES_CGZ ] || {
+		echo "Failed to generate modules.cgz"
+		exit 9
+	}
+
+	echo
+	echo "module_cgz: $ROOTFS_MODULES_CGZ"
+}
+
+create_links() {
 
 	get_rootfs_kernel
 	create_get_initrd
+	create_get_modules
 
 	echo "Creating links to initrd.lkp and vmlinuz..."
 	local cmds
@@ -177,6 +197,8 @@ create_links_vmlinuz_initrd() {
 			ln -sf $ROOTFS_INITRD_LKP initrd.lkp
 			cd $EXTRACT_ROOT/rootfs-dir/boot
 			ln -sf $ROOTFS_VMLINUZ vmlinuz
+			chmod a+r $ROOTFS_MODULES_CGZ
+			ln -sf $ROOTFS_MODULES_CGZ modules.cgz
 		"
 	)
 	if "${cmds[@]}" ; then
