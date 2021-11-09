@@ -166,7 +166,7 @@ create_get_modules() {
 
 	export ROOTFS_MODULES_CGZ="modules-${ROOTFS_KERNEL}.cgz"
 
-	docker run -it --rm -v $ROOTFS_DIR:/mnt centos:7 bash -c "
+	docker run --rm -v $ROOTFS_DIR:/mnt centos:7 bash -c "
 		cd /mnt
 		find lib/modules/$ROOTFS_KERNEL | cpio -o -Hnewc | gzip -9 > boot/$ROOTFS_MODULES_CGZ
 	"
