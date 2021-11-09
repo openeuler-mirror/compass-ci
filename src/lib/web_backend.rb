@@ -329,7 +329,7 @@ end
 MAX_JOBS_NUM = 1000000
 def search_job(condition_fields, page_size, page_num)
   must = []
-  FIELDS.each do |field|
+  condition_fields.keys.each do |field|
     value = space_to_nil(condition_fields[field])
     next unless value
 
