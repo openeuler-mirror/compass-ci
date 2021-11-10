@@ -7,7 +7,7 @@ systemctl list-units | grep iBMA && {
 	exit
 }
 
-file_server='api.compass-ci.openeuler.com'
+file_server='api.compass-ci.openeuler.org'
 
 yum install -y unzip tar
 
