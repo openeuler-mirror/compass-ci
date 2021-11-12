@@ -12,6 +12,7 @@ require 'English'
 require 'elasticsearch'
 require_relative 'constants.rb'
 require_relative 'json_logger.rb'
+require 'erb'
 
 # worker threads
 class GitMirror
@@ -253,6 +254,11 @@ class MirrorMain
     return if git_info.nil? || git_info['url'].nil? || Array(git_info['url'])[0].nil?
 
     return wrong_repo_warn(git_repo) unless git_repo =~ %r{^([a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/\S+){1,2})$}
+
+    if File.exist?("#{REPO_DIR}/#{belong}/erb_template")
+      template = ERB.new File.open("#{REPO_DIR}/#{belong}/erb_template").read
+      git_info = YAML.safe_load(template.result(binding))
+    end
 
     @git_info[git_repo] = git_info
     @git_info[git_repo]['git_repo'] = git_repo
