@@ -88,23 +88,64 @@ class FormatEchartData
   #   ...
   # ]
   # -------------------------------------------------------------------------------------------------
-  def format_echart_data
-    # kv[0]: x_param
+  def format_echart_data(transposed = true)
+    # kv[0]: group
     # kv[1]: metrics_vaules
-    sort_compare_result(@compare_results).each do |kv|
-      kv[1].each do |metric, values|
-        @data_set[metric] ||= {}
-        @data_set[metric]['title'] = metric
-        @data_set[metric]['datas'] ||= {}
-        assign_change_datas(kv[0], metric, values)
-        assign_avg_datas(kv[0], metric)
+    if transposed
+      sort_compare_result(@compare_results).each do |kv|
+        kv[1].each do |metric, values|
+          @data_set[metric] ||= {}
+          @data_set[metric]['title'] = metric
+          @data_set[metric]['datas'] ||= {}
+          assign_transposed_change_datas(kv[0], metric, values)
+          assign_transposed_avg_datas(kv[0], metric)
+        end
+      end
+    else
+      sort_compare_result(@compare_results).each do |kv|
+        group = kv[0]
+        @data_set[group] ||= {}
+        @data_set[group]['title'] = group
+        @data_set[group]['datas'] ||= {}
+        kv[1].each do |metric, values|
+          assign_change_datas(group, metric)
+          assign_avg_datas(group, metric)
+        end
       end
     end
 
     convert_echart_line_data
   end
 
-  def assign_change_datas(x_param, metric, values)
+  def assign_change_datas(group, metric)
+    @data_set[group]['datas']['change'] ||= {}
+    @compare_dims.each do |dim|
+      @data_set[group]['datas']['change'][dim] ||= {}
+      @data_set[group]['datas']['change'][dim]['series'] = dim
+      @data_set[group]['datas']['change'][dim]['data'] ||= []
+      @data_set[group]['datas']['change'][dim]['x_params'] ||= []
+
+      @data_set[group]['datas']['change'][dim]['x_params'] << metric
+      @data_set[group]['datas']['change'][dim]['data'] << assign_value(group, metric, 'change', dim)
+    end
+  end
+
+  def assign_avg_datas(group, metric)
+    @data_set[group]['datas']['average'] ||= {}
+    @dims.each do |dim|
+      @data_set[group]['datas']['average'][dim] ||= {}
+      @data_set[group]['datas']['average'][dim]['series'] = dim
+      @data_set[group]['datas']['average'][dim]['data'] ||= []
+      @data_set[group]['datas']['average'][dim]['deviation'] ||= []
+      @data_set[group]['datas']['average'][dim]['x_params'] ||= []
+
+      @data_set[group]['datas']['average'][dim]['x_params'] << metric
+      @data_set[group]['datas']['average'][dim]['data'] << assign_value(group, metric, 'average', dim)
+      @data_set[group]['datas']['average'][dim]['deviation'] << assign_value(group, metric, 'standard_deviation', dim)
+    end
+  end
+
+  def assign_transposed_change_datas(x_param, metric, values)
     @data_set[metric]['datas']['change'] ||= {}
     @compare_dims.each do |dim|
       @data_set[metric]['datas']['change'][dim] ||= {}
@@ -117,7 +158,7 @@ class FormatEchartData
     end
   end
 
-  def assign_avg_datas(x_param, metric)
+  def assign_transposed_avg_datas(x_param, metric)
     @data_set[metric]['datas']['average'] ||= {}
     @dims.each do |dim|
       @data_set[metric]['datas']['average'][dim] ||= {}

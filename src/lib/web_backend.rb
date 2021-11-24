@@ -500,11 +500,17 @@ def performance_result(data)
 end
 
 def result_body(request_body)
+  transposed = true
+  if request_body['x_params'].include?('metric')
+    request_body['x_params'] = ['suite']
+    transposed = false
+  end
+
   groups_matrices = create_groups_matrices(request_body)
   series = combine_compare_dims(request_body['series'])
   compare_results = compare_metrics_values(groups_matrices, series)
   formatter = FormatEchartData.new(compare_results, request_body, series)
-  formatter.format_echart_data.to_json
+  formatter.format_echart_data(transposed).to_json
 end
 
 def search_testboxes
