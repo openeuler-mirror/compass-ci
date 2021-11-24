@@ -17,7 +17,7 @@ fi
 
 cp -a /lkp 				"$NEWROOT"/
 
-for i in /lkp/lkp/src/rootfs/addon/* /usr/local/* /opt/*
+for i in /lkp/lkp/src/rootfs/addon/*
 do
 	dir=$(basename "$i")
 
@@ -46,6 +46,13 @@ do
 		done
 	done
 done
+
+[ -d /opt ] &&
+	cp -a /opt			"$NEWROOT"/
+
+mkdir -p "$NEWROOT"/usr
+[ -d /usr/local ] &&
+	cp -a /usr/local		"$NEWROOT"/usr/
 
 [ -d /usr/src ] &&
 	cp -a /usr/src			"$NEWROOT"/usr/
