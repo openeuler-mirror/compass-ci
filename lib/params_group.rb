@@ -244,11 +244,17 @@ end
 def get_new_job(job, metrics)
   return {} unless job['stats']
 
-  new_job = {}
-  metrics.each do |metric|
-    if job['stats'].key?(metric)
-      new_job['stats'] ||= {}
-      new_job['stats'][metric] = job['stats'][metric]
+  new_job = {'stats' => {}}
+  if metrics.empty?
+    suite = job['suite']
+    job['stats'].each_key do |key|
+      new_job['stats'][key] = job['stats'][key] if key.start_with?(suite)
+    end
+  else
+    metrics.each do |metric|
+      if job['stats'].key?(metric)
+        new_job['stats'][metric] = job['stats'][metric]
+      end
     end
   end
 
