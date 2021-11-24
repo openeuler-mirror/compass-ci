@@ -459,25 +459,23 @@ end
 #     metric_2 => {...}
 #   }
 # }
-def compare_metrics_values(groups_matrices)
+def compare_metrics_values(groups_matrices, cmp_series)
   metrics_compare_values = {}
-  dims = Set.new
   groups_matrices.each do |group_key, dimensions|
-    dims += dimensions.keys
-    metrics_compare_values[group_key] = get_metric_values(dimensions)
+    metrics_compare_values[group_key] = get_metric_values(dimensions, cmp_series)
   end
 
-  return metrics_compare_values, dims
+  return metrics_compare_values
 end
 
-def get_metric_values(dimensions)
+def get_metric_values(dimensions, cmp_series)
   metrics_values = {}
   dimensions.each do |dim, matrix|
     matrix.each do |metric, values|
       assign_metric_values(metrics_values, dim, metric, values)
     end
   end
-  assign_metric_change(metrics_values)
+  assign_metric_change(metrics_values, cmp_series)
 
   metrics_values
 end
@@ -491,14 +489,14 @@ def assign_metric_values(metrics_values, dim, metric, values)
   metrics_values[metric]['standard_deviation'][dim] = metric_value[:stddev_percent] || 0
 end
 
-def assign_metric_change(metrics_values)
+def assign_metric_change(metrics_values, cmp_series)
   metrics_values.each do |metric, values|
     next if values['average'].size < 2
 
     metrics_values[metric]['change'] = {}
 
-    dimension_list = values['average'].keys
-    dimension_groups = get_dimensions_combination(dimension_list)
+    # dimension_list = values['average'].keys
+    dimension_groups = get_dimensions_combination(cmp_series)
     dimension_groups.each do |base_dimension, challenge_dimension|
       change = get_compare_value(values['average'][base_dimension], values['average'][challenge_dimension], true)
       values['change'] = { "#{challenge_dimension} vs #{base_dimension}" => change }

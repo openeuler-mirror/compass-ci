@@ -114,7 +114,8 @@ end
 def compare_by_template(template, options)
   template_params = load_template(template)
   groups_matrices = create_groups_matrices(template_params)
-  compare_results, _ = compare_metrics_values(groups_matrices)
+  cmp_series = combine_compare_dims(template_params['series'])
+  compare_results = compare_metrics_values(groups_matrices, cmp_series)
   show_compare_result(compare_results, template_params, options)
 end
 
@@ -151,4 +152,21 @@ def create_groups_matrices(template_params)
     template_params['series'],
     template_params['metrics']
   )
+end
+
+# input eg:
+#   [{"os" => "openeuler", "os_version" => "20.03"}, {"os" => "centos", "os_version" => "7.6"}]
+# return eg:
+#   ["openeuler 20.03", "centos 7.6"]
+def combine_compare_dims(dims)
+  cmp_dims = []
+  dims.each do |dim|
+    cmp_dim = ''
+    dim.each_value do |v|
+      cmp_dim += " #{v}"
+    end
+    cmp_dims << cmp_dim.strip
+  end
+
+  cmp_dims
 end
