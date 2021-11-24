@@ -763,13 +763,6 @@ class Job
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
     end
 
-    # init deps lkp.cgz
-    mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
-    deps_lkp_cgz = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/lkp/lkp.cgz"
-    if File.exists?(deps_lkp_cgz)
-      temp_initrds << "#{INITRD_HTTP_PREFIX}" + JobHelper.service_path(deps_lkp_cgz)
-    end
-
     return temp_initrds
   end
 
@@ -867,6 +860,13 @@ class Job
   private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkgs_arr)
     initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
     mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
+
+    # init deps lkp.cgz
+    mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
+    deps_lkp_cgz = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/lkp/lkp.cgz"
+    if File.exists?(deps_lkp_cgz)
+      initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_lkp_cgz)
+    end
 
     program_params.keys.each do |program|
       if program =~ /^(.*)-\d+$/
