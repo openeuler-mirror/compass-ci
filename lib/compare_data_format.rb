@@ -8,10 +8,11 @@ require 'terminal-table'
 # format compare results for a specific format
 #
 class FormatEchartData
-  def initialize(compare_results, template_params, dims = {})
+  def initialize(compare_results, template_params, dims = [])
     @compare_results = compare_results
     @template_params = template_params
     @dims = dims
+    @compare_dims = compare_dims(dims)
     @data_set = {}
   end
 
@@ -95,29 +96,45 @@ class FormatEchartData
         @data_set[metric] ||= {}
         @data_set[metric]['title'] = metric
         @data_set[metric]['datas'] ||= {}
-        assign_datas(kv[0], metric)
+        assign_change_datas(kv[0], metric, values)
+        assign_avg_datas(kv[0], metric)
       end
     end
 
     convert_echart_line_data
   end
 
-  def assign_datas(x_param, metric)
-    @dims.each do |dim|
-      @data_set[metric]['datas'][dim] ||= {}
-      @data_set[metric]['datas'][dim]['name'] = dim
-      @data_set[metric]['datas'][dim]['data'] ||= []
-      @data_set[metric]['datas'][dim]['deviation'] ||= []
-      @data_set[metric]['datas'][dim]['x_params'] ||= []
+  def assign_change_datas(x_param, metric, values)
+    @data_set[metric]['datas']['change'] ||= {}
+    @compare_dims.each do |dim|
+      @data_set[metric]['datas']['change'][dim] ||= {}
+      @data_set[metric]['datas']['change'][dim]['series'] = dim
+      @data_set[metric]['datas']['change'][dim]['data'] ||= []
+      @data_set[metric]['datas']['change'][dim]['x_params'] ||= []
 
-      @data_set[metric]['datas'][dim]['x_params'] << x_param
-      @data_set[metric]['datas'][dim]['data'] << assign_data(x_param, metric, 'average', dim)
-      @data_set[metric]['datas'][dim]['deviation'] << assign_data(x_param, metric, 'standard_deviation', dim)
+      @data_set[metric]['datas']['change'][dim]['x_params'] << x_param
+      @data_set[metric]['datas']['change'][dim]['data'] << assign_value(x_param, metric, 'change', dim)
     end
   end
 
-  def assign_data(x_param, metric, type, dim)
+  def assign_avg_datas(x_param, metric)
+    @data_set[metric]['datas']['average'] ||= {}
+    @dims.each do |dim|
+      @data_set[metric]['datas']['average'][dim] ||= {}
+      @data_set[metric]['datas']['average'][dim]['series'] = dim
+      @data_set[metric]['datas']['average'][dim]['data'] ||= []
+      @data_set[metric]['datas']['average'][dim]['deviation'] ||= []
+      @data_set[metric]['datas']['average'][dim]['x_params'] ||= []
+
+      @data_set[metric]['datas']['average'][dim]['x_params'] << x_param
+      @data_set[metric]['datas']['average'][dim]['data'] << assign_value(x_param, metric, 'average', dim)
+      @data_set[metric]['datas']['average'][dim]['deviation'] << assign_value(x_param, metric, 'standard_deviation', dim)
+    end
+  end
+
+  def assign_value(x_param, metric, type, dim)
     return 0 unless @compare_results[x_param].key?(metric)
+    return 0 unless @compare_results[x_param][metric].key?(type)
     return 0 unless @compare_results[x_param][metric][type].key?(dim)
     return @compare_results[x_param][metric][type][dim]
   end
@@ -125,18 +142,26 @@ class FormatEchartData
   def convert_echart_line_data
     echart_data = []
     @data_set.each_value do |metric_values|
-      datas = {}
-      metric_values.each do |key, value|
+      table_datas = {}
+
+      metric_values.each do |key, values|
         if key != 'datas'
-          datas.merge!({key => value})
+          table_datas.merge!({key => values})
           next
         end
-        datas[key] = []
-        value.each_value do |v|
-          datas[key] << v
+
+        # change data: {"change" => {...}} --> {"change" => []}
+        datas = {}
+        values.each do |type, data|
+          type_data = []
+          data.each do |_k, value|
+            type_data << value
+          end
+          datas[type] = type_data
         end
+        table_datas['datas'] = datas
       end
-      echart_data << datas
+      echart_data << table_datas
     end
 
     echart_data
@@ -293,4 +318,17 @@ end
 # ]
 def sort_compare_result(compare_result)
   compare_result.sort{|a, b| score(a[0]) <=> score(b[0])}
+end
+
+# input eg:
+#   ["openeuler", "centos", "debian"]
+# return eg:
+#   ["centos vs openeuler", "debian vs openeuler"]
+def compare_dims(dims)
+  compare_dims = []
+  (1...dims.size).each do |i|
+    compare_dims << dims[i] + ' vs ' + dims[0]
+  end
+
+  compare_dims
 end
