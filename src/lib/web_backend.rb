@@ -315,10 +315,17 @@ def get_job_query_range(condition_fields)
   start_date = condition_fields[:start_date]
   end_date = condition_fields[:end_date]
 
-  range[:start_time][:gte] = "#{start_date} 00:00:00" if start_date
-  range[:start_time][:lte] = "#{end_date} 23:59:59" if end_date
+  if start_date
+    range[:start_time][:gte] = "#{start_date}T00:00:00+0800" if start_date
+    condition_fields.delete('start_date')
+  end
 
-  unless start_date && end_date
+  if end_date
+    range[:start_time][:lte] = "#{end_date}T23:59:59+0800" if end_date
+    condition_fields.delete('end_date')
+  end
+
+  unless start_date || end_date
     return nil
   end
 
@@ -328,6 +335,11 @@ end
 MAX_JOBS_NUM = 1000000
 def search_job(condition_fields, page_size, page_num)
   must = []
+  range = get_job_query_range(condition_fields)
+  if range
+    must << range if range[:range][:start_time]
+  end
+
   condition_fields.keys.each do |field|
     value = space_to_nil(condition_fields[field])
     next unless value
@@ -337,10 +349,6 @@ def search_job(condition_fields, page_size, page_num)
             else
               { term: { field => value } }
             end
-  end
-  range = get_job_query_range(condition_fields)
-  if range
-    must << range if range[:range][:start_time]
   end
 
   result, total = es_search(must, page_size, page_num * page_size)
