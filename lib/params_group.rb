@@ -253,12 +253,19 @@ def get_new_job(job, metrics)
   if metrics.empty?
     suite = job['suite']
     job['stats'].each_key do |key|
-      new_job['stats'][key] = job['stats'][key] if key.start_with?(suite)
+      # such metric: fio.write_iops, include '.', will cause incorrect parse in web component
+      #   Javascript-lang object get value like obj[key] or obj.key
+      #   when the key is:'fio.write_iops',
+      #     our web component use: obj.key, will get value like:
+      #       obj.fio(ignore 'write_iops')
+      new_key = key.gsub('.', '-')
+      new_job['stats'][new_key] = job['stats'][key] if key.start_with?(suite)
     end
   else
     metrics.each do |metric|
       if job['stats'].key?(metric)
-        new_job['stats'][metric] = job['stats'][metric]
+        new_metric = metric.gsub('.', '-')
+        new_job['stats'][new_metric] = job['stats'][metric]
       end
     end
   end
