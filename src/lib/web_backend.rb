@@ -278,11 +278,6 @@ def wrong_size?(size, from)
 end
 
 def es_search(must, size, from)
-  FIELDS.each do |f|
-    next if NOT_NEED_EXIST_FIELDS.include? f
-
-    must << { exists: { field: f } }
-  end
   count_query = { query: { bool: { must: must } } }
   total = es_count(count_query)
   unless size
@@ -323,6 +318,10 @@ def get_job_query_range(condition_fields)
   range[:start_time][:gte] = "#{start_date} 00:00:00" if start_date
   range[:start_time][:lte] = "#{end_date} 23:59:59" if end_date
 
+  unless start_date && end_date
+    return nil
+  end
+
   { range: range }
 end
 
@@ -340,7 +339,10 @@ def search_job(condition_fields, page_size, page_num)
             end
   end
   range = get_job_query_range(condition_fields)
-  must << range if range[:range][:start_time]
+  if range
+    must << range if range[:range][:start_time]
+  end
+
   result, total = es_search(must, page_size, page_num * page_size)
   total = MAX_JOBS_NUM if total > MAX_JOBS_NUM
   return get_jobs_result(result), total
