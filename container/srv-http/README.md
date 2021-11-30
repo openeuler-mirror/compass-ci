@@ -27,7 +27,7 @@
 	单独运行某个start-*，则可以单独启动对应的容器
 
       - ENV配置
-        每个容器在启动前需要在环境变量中声明对用的SRV_HTTP_*_HOST, SRV_HTTP_*_PORT,
+        每个容器在启动前需要在环境变量中声明对应的SRV_HTTP_*_HOST, SRV_HTTP_*_PORT,
 	例如:
 	```
 	/etc/compass-ci/service/service-env.yaml:
