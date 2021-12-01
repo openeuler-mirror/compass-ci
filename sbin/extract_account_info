@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require 'optparse'
+require 'terminal-table'
+require_relative '../lib/es_client'
+
+check_info = {
+  'my_email' => nil,
+  'my_account' => nil
+}
+
+options = OptionParser.new do |opts|
+  opts.banner = "Usage: extract_account_info [-e email]\n"
+  opts.banner += '       extract_account_info [-a account]'
+
+  opts.separator ''
+  opts.separator 'options:'
+
+  opts.on('-e email_address', '--email email_address', 'appoint email address') do |email_address|
+    check_info['my_email'] = email_address
+  end
+
+  opts.on('-a account', '--account account', 'appoint account') do |account|
+    check_info['my_account'] = account
+  end
+
+  opts.on_tail('-h', '--help', 'show this message') do
+    puts opts
+    exit
+  end
+end
+
+if ARGV.empty?
+  ARGV << '-h'
+elsif (['-e', '-a'] - ARGV).eql? ['-e', '-a']
+  ARGV.clear
+  ARGV << '-h'
+end
+
+options.parse!(ARGV)
+
+def extract_account_info(check_info)
+  es = ESClient.new(index: 'accounts')
+  if check_info['my_email']
+    account_info = es.multi_field_query({ 'my_email' => check_info['my_email'] }, single_index: true)['hits']['hits']
+    return account_info
+  elsif check_info['my_account']
+    account_info = es.multi_field_query({ 'my_account' => check_info['my_account'] }, single_index: true)['hits']['hits']
+    return account_info
+  end
+end
+
+account_info = extract_account_info(check_info)
+account_info_hash = account_info[0]['_source']
+account_info_hash.delete('my_ssh_pubkey')
+
+tb = Terminal::Table.new
+tb.title = 'account info'
+tb.headings = %w[key value]
+account_info_hash.each do |k, v|
+  tb.add_row([k, v])
+end
+tb.align_column(0, :right)
+puts tb
