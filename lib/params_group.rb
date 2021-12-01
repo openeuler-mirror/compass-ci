@@ -228,7 +228,12 @@ def get_user_dimension(job, dimensions)
         dimension_list << value
       end
     end
-    return nil if !dimension_list.empty? && dimension_list.size < dim.size
+    if dimension_list.size < dim.size
+      dimension_list = []
+      next
+    else
+      break
+    end
   end
   return nil if dimension_list.empty?
 
