@@ -9,6 +9,37 @@ my_name: xxx
 # email address
 my_email: xxx@xxx.com
 
+# a local git repository name about cluster
+my_lab: nolab
+
+# choose the interface about the 'dhcp-range' subnet.
+# such as the dhcp-range is 172.168.x.x
+# the result of 'ip addr | grep 172.168 | awk '{print $NF}'' is the value we need.
+interface:
+
+# The lease time is in seconds, or minutes (eg 45m) or hours (eg 1h) or
+# "infinite". If not given, the default lease time is one hour for IPv4
+# and one day for IPv6.
+# http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html
+dhcp_range:
+
+# add fixed default gateway
+dhcp_option:
+
+# when one physical machine has two nics(br0 and br1 bridge network cards) for multi-node tests,
+# choose the br1 interface about the 'dhcp-range' subnet.
+# such as the br1 dhcp-range is 172.20.x.x
+# the result of 'ip addr | grep 172.20 | awk '{print $NF}'' is the value we need.
+br1_interface:
+
+br1_dhcp_range:
+
+# ignore the default gateway
+br1_ignore_dhcp_option:
+
+# add static route
+br1_dhcp_option:
+
 # when you deploy compass-ci client, fill the compass-ci server's ip,
 # then client can access server service.
 server_ip:
