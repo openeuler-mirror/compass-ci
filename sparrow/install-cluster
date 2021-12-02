@@ -1,0 +1,8 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# For your reference only.
+# It's better to run the below scripts step by step.
+
+./install-tiny
+3-code/cluster-dev-env
