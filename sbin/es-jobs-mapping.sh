@@ -112,6 +112,9 @@ else
 		          "tbox_group": {
 		            "type": "keyword"
 		          },
+		          "interval_type": {
+			    "type": "keyword"
+			  },
 		          "submit_id": {
 		            "type": "keyword"
 		          },
