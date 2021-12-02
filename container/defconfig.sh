@@ -36,6 +36,14 @@ load_pack_vars()
 	create_yaml_variables $file_name
 }
 
+load_service_config()
+{
+        shopt -s nullglob
+        file_name="/etc/compass-ci/setup.yaml"
+        [ -f $file_name ] || return
+        create_yaml_variables $file_name
+}
+
 docker_rm()
 {
 	container=$1
