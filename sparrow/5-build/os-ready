@@ -14,5 +14,5 @@ sh $CCI_SRC/container/lkp-initrd/run $lab-v1.0
 lkp_cgz=/srv/upload-files/lkp-tests/"$(arch)"
 mkdir -p $lkp_cgz
 chmod 775 $lkp_cgz
-cp -a  /srv/initrd/lkp/latest/lkp-aarch64.cgz $lkp_cgz/v1.0.cgz
+cp -a  /srv/initrd/lkp/latest/lkp-$(arch).cgz $lkp_cgz/v1.0.cgz
 chown -R lkp:lkp /srv/upload-files
