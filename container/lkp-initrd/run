@@ -2,6 +2,20 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+# this script is used to do base pack for lkp-tests.
+# if you want to do the pack with a tag, use:
+#   ./run {{ tag }}
+# case the tag already exists, you may need to confirm to use the existing tag or not.
+# case the tag is new, it will add the new tag and use it do to the pack.
+# before use this tool, you need to set following keys to $home/.config/compass-ci/pack.yaml first:
+#   - lkp_pack_server
+#   - lkp_pack_tag_user
+#   - lkp_rsync_server
+# lkp_pack_server: the server on which you do the pack action to generate the base package.
+# lkp_pack_tag_user: the user you do the pack action to generate the base package.
+# lkp_rsync_server: the destination server that you rsync the base pack to.
+# case you want to do the pack action without rsync it, just set lkp_rsync_server the same as lkp_pack_server.
+
 DIR=$(dirname $(realpath $0))
 . $(dirname $DIR)/defconfig.sh
 
@@ -56,9 +70,12 @@ echo "result: /srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz"
 	cp "/srv/initrd/lkp/${lkp_initrd_user:-latest}/lkp-${ARCH}.cgz" "/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
 	echo "result: /srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
 
-	# when doing the package with new tag, sync the base cgz to z9 server.
-	rsync -aPz "/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz" "${lkp_pack_tag_user}@${lkp_rsync_server}:/srv/upload-files/$repo_name/${ARCH}"
-	echo "z9 result: :/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
+	# when doing the package with new tag, sync the base cgz to ${lkp_rsync_server} server.
+	# case $lkp_pack_server == $lkp_rsync_server, ignore the rsync
+	[[ $lkp_pack_server == $lkp_rsync_server ]] || {
+		rsync -aPz "/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz" "${lkp_pack_tag_user}@${lkp_rsync_server}:/srv/upload-files/$repo_name/${ARCH}"
+		echo "$lkp_rsync_server result: :/srv/upload-files/$repo_name/${ARCH}/$TAG.cgz"
+	}
 }
 
 # rsync lkp-${ARCH}.cgz if needed
