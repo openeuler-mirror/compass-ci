@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
-FROM debian
+FROM debian:buster
 
 MAINTAINER Lu Weitao <luweitaobe@163.com>
 
