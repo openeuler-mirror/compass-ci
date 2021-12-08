@@ -23,7 +23,7 @@ def build_account_info(option)
 
   info_es['my_token'] = %x(uuidgen).chomp if info_es['my_token'].nil?
   info_es['my_ssh_pubkey'] = [] if info_es['my_ssh_pubkey'].nil?
-  unless my_ssh_pubkey.empty?
+  unless my_ssh_pubkey.nil? || my_ssh_pubkey.empty?
     info_es['my_ssh_pubkey'] = info_es['my_ssh_pubkey'] + my_ssh_pubkey
     info_es['my_ssh_pubkey'].uniq!
   end
