@@ -3,16 +3,12 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 [[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
+[[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
 
 . $CCI_SRC/lib/check_public_network.sh
 
 public_network_ok && $CCI_SRC/sbin/download-rootfs
 
-lab=$(awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml)
-sh $CCI_SRC/container/lkp-initrd/run $lab-v1.0
-
-lkp_cgz=/srv/upload-files/lkp-tests/"$(arch)"
-mkdir -p $lkp_cgz
-chmod 775 $lkp_cgz
-cp -a  /srv/initrd/lkp/latest/lkp-$(arch).cgz $lkp_cgz/v1.0.cgz
+tag=$(git -C $LKP_SRC tag | tail -n 1)
+echo "y/n" | sh $CCI_SRC/container/lkp-initrd/run $tag
 chown -R lkp:lkp /srv/upload-files
