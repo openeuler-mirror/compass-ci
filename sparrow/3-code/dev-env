@@ -97,6 +97,7 @@ LKP_SERVER: $server_ip
 GIT_SERVER: $git_server
 OS_HTTP_HOST: $OS_HTTP_HOST
 OS_HTTP_PORT: $OS_HTTP_PORT
+WEB_BACKEND_HOST: $WEB_BACKEND_HOST
 SRV_HTTP_RESULT_HOST: $srv_http_result_host
 SRV_HTTP_OS_HOST: $srv_http_os_host
 SRV_HTTP_GIT_HOST: $srv_http_git_host
