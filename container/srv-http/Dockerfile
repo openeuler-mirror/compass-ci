@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-FROM node:alpine as Builder
+FROM node:lts-alpine3.14 as Builder
 
 MAINTAINER Lu Weitao <luweitaobe@163.com>
 
