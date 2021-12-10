@@ -1,0 +1,206 @@
+yuchuan@crystal ~% my-submit -m -c testbox=vm-2p8g borrow-1h.yaml os_mount=cifs
+submit_id=bcf7b254-8806-45eb-beb7-c2eec7aa0b1c
+2021-12-06 16:28:43 +0800 WARN -- skip non-executable /home/yuchuan/lkp-tests/daemon/multi-qemu-0.service
+2021-12-06 16:28:43 +0800 WARN -- skip non-executable /home/yuchuan/lkp-tests/daemon/multi-qemu-1.service
+2021-12-06 16:28:43 +0800 WARN -- skip non-executable /home/yuchuan/lkp-tests/daemon/multi-qemu-1.service-
+submit /home/yuchuan/lkp-tests/jobs/borrow-1h.yaml, got job id=crystal.3608505
+query=>{"job_id":["crystal.3608505"]}
+connect to ws://172.168.131.113:20001/filter
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:28:49.990+0800","job_id":"crystal.3608505","message":"","job_state":"submit","result_root":"/srv/result/borrow/2021-12-06/vm-2p8g/openeuler-20.03-aarch64/3600/crystal.3608505","status_code":200,"method":"POST","resource":"/submit_job","api":"submit_job","elapsed_time":5382.601043,"elapsed":"5382.6ms"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:28:58.109+0800","job_id":"crystal.3608505","result_root":"/srv/result/borrow/2021-12-06/vm-2p8g/openeuler-20.03-aarch64/3600/crystal.3608505","job_state":"set result root","status_code":101,"method":"GET","resource":"/ws/boot.ipxe/mac/0a-19-ad-0e-a1-d7","testbox":"vm-2p8g.yuchuan-2353824"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:29:06.831+0800","from":"172.17.0.1:44082","message":"access_record","status_code":200,"method":"GET","resource":"/job_initrd_tmpfs/crystal.3608505/job.cgz","job_id":"crystal.3608505","job_state":"download","api":"job_initrd_tmpfs","elapsed_time":0.619699,"elapsed":"619.7µs"}
+
+The vm-2p8g testbox is starting. Please wait about 3 minutes
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:29:06.806+0800","from":"172.17.0.1:42042","message":"access_record","status_code":101,"method":"GET","resource":"/ws/boot.ipxe/mac/0a-19-ad-0e-a1-d7","testbox":"vm-2p8g.yuchuan-2353824","job_id":"crystal.3608505"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:35:00+0800","mac":"0a-19-ad-0e-a1-d7","ip":"172.18.101.69","job_id":"crystal.3608505","state":"running","testbox":"vm-2p8g.yuchuan-2353824","status_code":200,"method":"GET","resource":"/~lkp/cgi-bin/lkp-wtmp?tbox_name=vm-2p8g.yuchuan-2353824&tbox_state=running&mac=0a-19-ad-0e-a1-d7&ip=172.18.101.69&job_id=crystal.3608505","api":"lkp-wtmp","elapsed_time":1666.357903,"elapsed":"1666.36ms"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:35:23.009+0800","from":"172.17.0.1:63742","message":"access_record","status_code":200,"method":"GET","resource":"/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_id=crystal.3608505&job_state=running","job_id":"crystal.3608505","api":"lkp-jobfile-append-var","elapsed_time":3292.776327,"elapsed":"3292.78ms","job_state":"running","job_stage":"running"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:35:23.934+0800","tbox_name":"vm-2p8g.yuchuan-2353824","job_id":"crystal.3608505","ssh_port":"21792","message":"","state":"set ssh port","status_code":200,"method":"POST","resource":"/~lkp/cgi-bin/report_ssh_info","api":"report_ssh_info","elapsed_time":0.496468,"elapsed":"496.47µs"}
+ssh root@172.168.131.113 -p 21792 -o StrictHostKeyChecking=no -o LogLevel=error
+
+Authorized users only. All activities may be monitored and reported.
+Activate the web console with: systemctl enable --now cockpit.socket
+
+Last login: Tue Aug 11 12:18:46 2020
+Remaining runtime 0 day 0:53:44
+
+
+
+
+Welcome to 4.19.90-2003.4.0.0036.oe1.aarch64
+
+System information as of time:  Mon Dec  6 16:35:32 CST 2021
+
+System load:    1.61
+Processes:      110
+Memory used:    6.3%
+Swap used:      0.0%
+Usage On:       11%
+IP address:     172.18.101.69
+Users online:   1
+
+
+
+root@vm-2p8g.yuchuan-2353824 ~# df -h;echo =========;lsblk;echo =========; mount;echo =========; ps faux
+Filesystem                                                        Size  Used Avail Use% Mounted on
+devtmpfs                                                          3.7G     0  3.7G   0% /dev
+tmpfs                                                             4.0G  192K  4.0G   1% /dev/shm
+tmpfs                                                             4.0G   14M  4.0G   1% /run
+tmpfs                                                             5.0M     0  5.0M   0% /run/lock
+tmpfs                                                             4.0G     0  4.0G   0% /sys/fs/cgroup
+overlay                                                           4.0G  430M  3.6G  11% /
+tmpfs                                                             4.0G  430M  3.6G  11% /live/cow
+//172.168.131.113/os/openeuler/aarch64/20.03-2021-05-18-15-08-52  2.0T  1.8T  217G  90% /live/image
+tmpfs                                                             4.0G  1.2M  4.0G   1% /tmp
+/dev/mapper/os-cache                                              7.9G   36M  7.4G   1% /tmp/cache
+tmpfs                                                             810M     0  810M   0% /run/user/0
+=========
+NAME       MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+vda        252:0    0  128G  0 disk
+vdb        252:16   0  128G  0 disk
+└─os-cache 253:0    0    8G  0 lvm  /tmp/cache
+=========
+sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime)
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+devtmpfs on /dev type devtmpfs (rw,nosuid,size=3848960k,nr_inodes=60140,mode=755)
+securityfs on /sys/kernel/security type securityfs (rw,nosuid,nodev,noexec,relatime)
+tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev)
+devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000)
+tmpfs on /run type tmpfs (rw,nosuid,nodev,mode=755)
+tmpfs on /run/lock type tmpfs (rw,nosuid,nodev,noexec,relatime,size=5120k)
+tmpfs on /sys/fs/cgroup type tmpfs (ro,nosuid,nodev,noexec,mode=755)
+cgroup2 on /sys/fs/cgroup/unified type cgroup2 (rw,nosuid,nodev,noexec,relatime,nsdelegate)
+cgroup on /sys/fs/cgroup/systemd type cgroup (rw,nosuid,nodev,noexec,relatime,xattr,name=systemd)
+pstore on /sys/fs/pstore type pstore (rw,nosuid,nodev,noexec,relatime)
+efivarfs on /sys/firmware/efi/efivars type efivarfs (rw,nosuid,nodev,noexec,relatime)
+bpf on /sys/fs/bpf type bpf (rw,nosuid,nodev,noexec,relatime,mode=700)
+cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (rw,nosuid,nodev,noexec,relatime,cpu,cpuacct)
+cgroup on /sys/fs/cgroup/blkio type cgroup (rw,nosuid,nodev,noexec,relatime,blkio)
+cgroup on /sys/fs/cgroup/devices type cgroup (rw,nosuid,nodev,noexec,relatime,devices)
+cgroup on /sys/fs/cgroup/perf_event type cgroup (rw,nosuid,nodev,noexec,relatime,perf_event)
+cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
+cgroup on /sys/fs/cgroup/net_cls,net_prio type cgroup (rw,nosuid,nodev,noexec,relatime,net_cls,net_prio)
+cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,memory)
+cgroup on /sys/fs/cgroup/hugetlb type cgroup (rw,nosuid,nodev,noexec,relatime,hugetlb)
+cgroup on /sys/fs/cgroup/cpuset type cgroup (rw,nosuid,nodev,noexec,relatime,cpuset)
+cgroup on /sys/fs/cgroup/files type cgroup (rw,nosuid,nodev,noexec,relatime,files)
+cgroup on /sys/fs/cgroup/freezer type cgroup (rw,nosuid,nodev,noexec,relatime,freezer)
+cgroup on /sys/fs/cgroup/pids type cgroup (rw,nosuid,nodev,noexec,relatime,pids)
+configfs on /sys/kernel/config type configfs (rw,relatime)
+overlay on / type overlay (rw,noatime,lowerdir=/live/image,upperdir=/cow/rw,workdir=/cow/work,default_permissions)
+tmpfs on /live/cow type tmpfs (rw,relatime,mode=755)
+//172.168.131.113/os/openeuler/aarch64/20.03-2021-05-18-15-08-52 on /live/image type cifs (ro,relatime,vers=1.0,sec=none,cache=strict,uid=0,noforceuid,gid=0,noforcegid,addr=172.168.131.113,hard,unix,posixpaths,nouser_xattr,mapposix,rsize=1048576,wsize=65536,echo_interval=60,actimeo=1)
+rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw,relatime)
+systemd-1 on /proc/sys/fs/binfmt_misc type autofs (rw,relatime,fd=29,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=32119)
+hugetlbfs on /dev/hugepages type hugetlbfs (rw,relatime,pagesize=512M)
+debugfs on /sys/kernel/debug type debugfs (rw,nosuid,nodev,noexec,relatime)
+tmpfs on /tmp type tmpfs (rw,nosuid,nodev)
+mqueue on /dev/mqueue type mqueue (rw,nosuid,nodev,noexec,relatime)
+/dev/mapper/os-cache on /tmp/cache type ext4 (rw,relatime)
+tmpfs on /run/user/0 type tmpfs (rw,nosuid,nodev,relatime,size=828736k,mode=700)
+=========
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           2  0.0  0.0      0     0 ?        S    16:29   0:00 [kthreadd]
+root           3  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [rcu_gp]
+root           4  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [rcu_par_gp]
+root           6  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kworker/0:0H-kblockd]
+root           7  0.0  0.0      0     0 ?        I    16:29   0:00  \_ [kworker/u4:0-events_unbound]
+root           8  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [mm_percpu_wq]
+root           9  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [ksoftirqd/0]
+root          10  0.0  0.0      0     0 ?        I    16:29   0:00  \_ [rcu_sched]
+root          11  0.0  0.0      0     0 ?        I    16:29   0:00  \_ [rcu_bh]
+root          12  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [migration/0]
+root          13  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [cpuhp/0]
+root          14  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [cpuhp/1]
+root          15  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [migration/1]
+root          16  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [ksoftirqd/1]
+root          18  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kworker/1:0H-kblockd]
+root          19  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [kdevtmpfs]
+root          20  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [netns]
+root          21  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [kauditd]
+root          23  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [khungtaskd]
+root          24  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [oom_reaper]
+root          25  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [writeback]
+root          26  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [kcompactd0]
+root          27  0.0  0.0      0     0 ?        SN   16:29   0:00  \_ [ksmd]
+root          28  0.0  0.0      0     0 ?        SN   16:29   0:00  \_ [khugepaged]
+root          29  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [crypto]
+root          30  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kintegrityd]
+root          31  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kblockd]
+root          32  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [md]
+root          33  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [edac-poller]
+root          34  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [watchdogd]
+root          35  0.0  0.0      0     0 ?        I    16:29   0:00  \_ [kworker/1:1-mm_percpu_wq]
+root          37  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [kswapd0]
+root          56  0.0  0.0      0     0 ?        I    16:29   0:00  \_ [kworker/u4:1-flush-252:16]
+root         115  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kthrotld]
+root         116  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [acpi_thermal_pm]
+root         117  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kmpath_rdacd]
+root         118  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kaluad]
+root         119  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [ipv6_addrconf]
+root         129  0.0  0.0      0     0 ?        S    16:29   0:00  \_ [irq/43-ACPI:Eve]
+root         130  0.0  0.0      0     0 ?        I    16:29   0:00  \_ [kworker/0:2-events]
+root         188  0.0  0.0      0     0 ?        I    16:29   0:00  \_ [kworker/1:2-rcu_gp]
+root         290  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [rpciod]
+root         291  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kworker/u5:0]
+root         292  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [xprtiod]
+root         389  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [kworker/1:1H-kblockd]
+root         543  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [cifsiod]
+root         544  0.0  0.0      0     0 ?        I<   16:29   0:00  \_ [cifsoplockd]
+root         549  0.2  0.0      0     0 ?        S    16:29   0:01  \_ [cifsd]
+root         742  0.0  0.0      0     0 ?        I    16:29   0:00  \_ [kworker/0:6-cgroup_destroy]
+root        1994  0.0  0.0      0     0 ?        I    16:34   0:00  \_ [kworker/1:0-cgroup_destroy]
+root        2000  0.0  0.0      0     0 ?        I<   16:34   0:00  \_ [kdmflush]
+root        2012  0.0  0.0      0     0 ?        I<   16:34   0:00  \_ [kworker/0:1H-kblockd]
+root        2026  0.0  0.0      0     0 ?        I    16:34   0:00  \_ [kworker/u4:2-events_unbound]
+root        2032  0.0  0.0      0     0 ?        S    16:34   0:00  \_ [jbd2/dm-0-8]
+root        2033  0.0  0.0      0     0 ?        I<   16:34   0:00  \_ [ext4-rsv-conver]
+root           1  0.3  0.1  26816 16384 ?        Ss   16:29   0:02 /lib/systemd/systemd --switched-root --system --deserialize 31
+root         772  0.0  0.1  42816 14336 ?        Ss   16:29   0:00 /usr/lib/systemd/systemd-journald
+root         782  0.0  0.0 236416  3456 ?        Ss   16:29   0:00 /usr/sbin/lvmetad -f -t 3600
+root         785  0.1  0.2  37056 16640 ?        Ss   16:29   0:00 /usr/lib/systemd/systemd-udevd
+root        1322  0.0  0.0   3328   640 ?        Ss   16:29   0:00 /sbin/mdadm --monitor --scan --syslog -f --pid-file=/run/mdadm/mdadm.pid
+root        1325  0.0  0.0  94656  6848 ?        S<sl 16:29   0:00 /sbin/auditd
+root        1328  0.0  0.0   8320  4096 ?        S<   16:29   0:00  \_ /usr/sbin/sedispatch
+root        1343  0.0  0.2 321728 19200 ?        Ssl  16:29   0:00 /usr/sbin/ModemManager
+dbus        1346  0.0  0.0   9792  6144 ?        Ss   16:29   0:00 /usr/bin/dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+libstor+    1351  0.0  0.0   3136  2624 ?        Ss   16:29   0:00 /usr/bin/lsmd -d
+polkitd     1354  0.0  0.2 1523904 23040 ?       Ssl  16:29   0:00 /usr/lib/polkit-1/polkitd --no-debug
+root        1355  0.3  0.1  20288  8512 ?        Ss   16:29   0:01 /sbin/rngd -f
+root        1356  1.0  0.7 294784 61632 ?        Ssl  16:29   0:05 /usr/sbin/rsyslogd -n -iNONE
+root        1357  0.0  0.0   8064  3328 ?        Ss   16:29   0:00 /usr/sbin/smartd -n -q never
+root        1358  0.0  0.1  16960 10624 ?        Ss   16:29   0:00 /usr/sbin/sshd -D
+root        4322  0.0  0.2  30080 19200 ?        Ss   16:35   0:00  \_ sshd: root [priv]
+root        4734  0.0  0.1  30080 12672 ?        S    16:35   0:00      \_ sshd: root@pts/0
+root        4743  0.0  0.0 216896  6720 pts/0    Ss   16:35   0:00          \_ -bash
+root       10141  0.0  0.0 217920  5568 pts/0    R+   16:37   0:00              \_ ps faux
+root        1362  0.0  0.0   3456   640 ?        Ss   16:29   0:00 /usr/sbin/gpm -m /dev/input/mice -t exps2
+root        1363  0.0  0.4 473024 34112 ?        Ssl  16:29   0:00 /usr/bin/python3 -Es /usr/sbin/tuned -l -P
+chrony      1365  0.0  0.0  79488  4160 ?        S    16:29   0:00 /usr/sbin/chronyd
+root        1368  0.0  0.1  22592 12864 ?        Ss   16:29   0:00 /usr/lib/systemd/systemd-logind
+root        1369  0.0  0.0   5376  4224 ?        Ss   16:29   0:00 /usr/sbin/atd -f
+root        1370  0.0  0.0 216064  4928 ?        Ss   16:29   0:00 /usr/sbin/crond -n
+root        1373  0.0  0.0 213568  2368 tty1     Ss+  16:29   0:00 /sbin/agetty -o -p -- \u --noclear tty1 linux
+root        1418  0.0  0.0  80832  3264 ?        Ssl  16:30   0:00 /usr/sbin/irqbalance --pid=/var/run/irqbalance.pid
+root        1437  0.0  0.1 461760 15552 ?        Ssl  16:30   0:00 /usr/sbin/abrtd -d -s
+root        1463  0.0  0.0 215040  1408 ?        S    16:30   0:00 /bin/sh /etc/init.d/lkp-bootstrap
+root        1464  0.0  0.0 216128  5696 ?        S    16:30   0:00  \_ /bin/sh /lkp/lkp/src/bin/lkp-setup-rootfs
+root        1531  0.0  0.0 212736   960 ?        S    16:30   0:00      \_ tail -f /tmp/stdout
+root        1532  4.1  1.2 315264 102144 ?       S    16:30   0:18      \_ sed -u -r s/^(.{0,900}).*$/<5>\1/
+root        1533  0.0  0.0 212736   960 ?        S    16:30   0:00      \_ tail -f /tmp/stderr
+root        1534  4.0  1.2 314752 102144 ?       S    16:30   0:18      \_ sed -u -r s/^(.{0,900}).*$/<3>\1/
+root        2118  0.0  0.0 215616  5120 ?        S    16:35   0:00      \_ /bin/sh /lkp/lkp/src/bin/run-lkp /lkp/scheduled/job.yaml
+root        2122  0.0  0.0 212736   960 ?        S    16:35   0:00          \_ tail -n 0 -f /tmp/stdout
+root        2123  0.0  0.0 212736   960 ?        S    16:35   0:00          \_ tail -n 0 -f /tmp/stderr
+root        2124  0.0  0.0 212736   960 ?        S    16:35   0:00          \_ tail -n 0 -f /tmp/stdout /tmp/stderr
+root        3504  0.0  0.0 215232  4736 ?        S    16:35   0:00          \_ /bin/sh /lkp/scheduled/job.sh run_job
+root        4304  0.0  0.0 212736  1024 ?        S    16:35   0:00              \_ sleep 3600
+root        4356  0.0  0.0 212736   960 ?        S    16:35   0:00                  \_ tee -a /tmp/lkp/result/sleep
+root        1975  0.1  0.4 547840 35776 ?        Ssl  16:34   0:00 /usr/bin/python3 /usr/sbin/lvmdbusd
+root        3700  0.0  0.0 221824  3200 ?        Ss   16:35   0:00 ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o TCPKeepAlive=yes -Nf -R 21792:localhost:22 sshr@172.168.131.113 -p 5051 -i /root/
+root        3701  0.0  0.0 215040  2880 ?        S    16:35   0:00 /bin/sh /lkp/lkp/src/setup/sshd
+root       10137  0.0  0.0 212736   960 ?        S    16:37   0:00  \_ sleep 30
+root        4027  0.0  0.0    448   128 ?        Ss   16:35   0:00 /lkp/lkp/src/bin/event/wakeup activate-monitor
+root        4029  0.0  0.0    448   192 ?        Ss   16:35   0:00 /lkp/lkp/src/bin/event/wakeup pre-test
+root        4657  0.0  0.1  24320 14464 ?        Ss   16:35   0:00 /usr/lib/systemd/systemd --user
+root        4668  0.0  0.1  33600 11008 ?        S    16:35   0:00  \_ (sd-pam)
+root@vm-2p8g.yuchuan-2353824 ~#

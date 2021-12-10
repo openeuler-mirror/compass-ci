@@ -1,0 +1,174 @@
+yuchuan@crystal ~% my-submit -m -c testbox=dc-8g borrow-1h.yaml
+submit_id=6fae66d8-d729-4954-8458-f241ce80a9ac
+2021-12-06 16:40:00 +0800 WARN -- skip non-executable /home/yuchuan/lkp-tests/daemon/multi-qemu-0.service
+2021-12-06 16:40:00 +0800 WARN -- skip non-executable /home/yuchuan/lkp-tests/daemon/multi-qemu-1.service
+2021-12-06 16:40:00 +0800 WARN -- skip non-executable /home/yuchuan/lkp-tests/daemon/multi-qemu-1.service-
+submit /home/yuchuan/lkp-tests/jobs/borrow-1h.yaml, got job id=crystal.3608530
+query=>{"job_id":["crystal.3608530"]}
+connect to ws://172.168.131.113:20001/filter
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:40:01.567+0800","job_id":"crystal.3608530","message":"","job_state":"submit","result_root":"/srv/result/borrow/2021-12-06/dc-8g/centos-7-aarch64/3600/crystal.3608530","status_code":200,"method":"POST","resource":"/submit_job","api":"submit_job","elapsed_time":673.599728,"elapsed":"673.6ms"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:40:07.810+0800","job_id":"crystal.3608530","result_root":"/srv/result/borrow/2021-12-06/dc-8g/centos-7-aarch64/3600/crystal.3608530","job_state":"set result root","status_code":101,"method":"GET","resource":"/ws/boot.container/hostname/dc-8g.yuchuan-2374823","testbox":"dc-8g.yuchuan-2374823"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:40:12.250+0800","from":"172.17.0.1:58054","message":"access_record","status_code":101,"method":"GET","resource":"/ws/boot.container/hostname/dc-8g.yuchuan-2374823","testbox":"dc-8g.yuchuan-2374823","job_id":"crystal.3608530"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:40:14.391+0800","from":"172.17.0.1:56348","message":"access_record","status_code":200,"method":"GET","resource":"/job_initrd_tmpfs/crystal.3608530/job.cgz","job_id":"crystal.3608530","job_state":"download","api":"job_initrd_tmpfs","elapsed_time":0.589788,"elapsed":"589.79µs"}
+
+The dc-8g testbox is starting. Please wait about 30 seconds
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:40:18+0800","mac":"02-42-ac-11-00-52","ip":"","job_id":"crystal.3608530","state":"running","testbox":"dc-8g.yuchuan-2374823","status_code":200,"method":"GET","resource":"/~lkp/cgi-bin/lkp-wtmp?tbox_name=dc-8g.yuchuan-2374823&tbox_state=running&mac=02-42-ac-11-00-52&ip=&job_id=crystal.3608530","api":"lkp-wtmp","elapsed_time":1044.714606,"elapsed":"1044.71ms"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:40:39.420+0800","from":"172.17.0.1:49634","message":"access_record","status_code":200,"method":"GET","resource":"/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_id=crystal.3608530&job_state=running","job_id":"crystal.3608530","api":"lkp-jobfile-append-var","elapsed_time":5835.310176,"elapsed":"5835.31ms","job_state":"running","job_stage":"running"}
+{"level_num":2,"level":"INFO","time":"2021-12-06T16:40:39.812+0800","tbox_name":"dc-8g.yuchuan-2374823","job_id":"crystal.3608530","ssh_port":"21665","message":"","state":"set ssh port","status_code":200,"method":"POST","resource":"/~lkp/cgi-bin/report_ssh_info","api":"report_ssh_info","elapsed_time":0.418146,"elapsed":"418.15µs"}
+ssh root@172.168.131.113 -p 21665 -o StrictHostKeyChecking=no -o LogLevel=error
+root@dc-8g.compass-ci.net ~# df -h;echo =========;lsblk;echo =========; mount;echo =========; ps faux
+Filesystem                     Size  Used Avail Use% Mounted on
+overlay                        1.1T  450G  602G  43% /
+tmpfs                           64M  256K   64M   1% /dev
+tmpfs                          479G     0  479G   0% /sys/fs/cgroup
+/dev/mapper/openeuler-root      50G   34G   17G  68% /lkp
+tmpfs                          479G  1.1M  479G   1% /tmp
+/dev/mapper/14t_1-srv_result   200G  179G   21G  90% /srv/result
+/dev/mapper/openeuler-home     1.1T  572G  491G  54% /root/sbin
+/dev/mapper/vg--os-lv--docker  1.1T  450G  602G  43% /etc/hosts
+shm                             64M     0   64M   0% /dev/shm
+/dev/mapper/14t_1-srv_git      4.0T  3.5T  549G  87% /srv/git
+tmpfs                          479G     0  479G   0% /proc/acpi
+tmpfs                          479G     0  479G   0% /proc/livepatch
+tmpfs                          479G     0  479G   0% /proc/scsi
+tmpfs                          479G     0  479G   0% /sys/firmware
+=========
+lsblk: dm-20: failed to get device path
+lsblk: dm-1: failed to get device path
+lsblk: dm-31: failed to get device path
+lsblk: dm-30: failed to get device path
+lsblk: dm-10: failed to get device path
+lsblk: dm-29: failed to get device path
+lsblk: dm-19: failed to get device path
+lsblk: dm-20: failed to get device path
+lsblk: dm-29: failed to get device path
+lsblk: dm-19: failed to get device path
+lsblk: dm-27: failed to get device path
+lsblk: dm-17: failed to get device path
+lsblk: dm-25: failed to get device path
+lsblk: dm-23: failed to get device path
+lsblk: dm-21: failed to get device path
+lsblk: dm-28: failed to get device path
+lsblk: dm-18: failed to get device path
+lsblk: dm-26: failed to get device path
+lsblk: dm-24: failed to get device path
+lsblk: dm-22: failed to get device path
+lsblk: dm-27: failed to get device path
+lsblk: dm-8: failed to get device path
+lsblk: dm-17: failed to get device path
+lsblk: dm-16: failed to get device path
+lsblk: dm-25: failed to get device path
+lsblk: dm-6: failed to get device path
+lsblk: dm-15: failed to get device path
+lsblk: dm-33: failed to get device path
+lsblk: dm-23: failed to get device path
+lsblk: dm-4: failed to get device path
+lsblk: dm-13: failed to get device path
+lsblk: dm-31: failed to get device path
+lsblk: dm-21: failed to get device path
+lsblk: dm-2: failed to get device path
+lsblk: dm-33: failed to get device path
+lsblk: dm-32: failed to get device path
+lsblk: dm-11: failed to get device path
+lsblk: dm-0: failed to get device path
+lsblk: dm-28: failed to get device path
+lsblk: dm-9: failed to get device path
+lsblk: dm-18: failed to get device path
+lsblk: dm-1: failed to get device path
+lsblk: dm-0: failed to get device path
+lsblk: dm-26: failed to get device path
+lsblk: dm-7: failed to get device path
+lsblk: dm-16: failed to get device path
+lsblk: dm-1: failed to get device path
+lsblk: dm-2: failed to get device path
+lsblk: dm-0: failed to get device path
+lsblk: dm-24: failed to get device path
+lsblk: dm-5: failed to get device path
+lsblk: dm-14: failed to get device path
+lsblk: dm-32: failed to get device path
+lsblk: dm-22: failed to get device path
+lsblk: dm-3: failed to get device path
+lsblk: dm-12: failed to get device path
+lsblk: dm-30: failed to get device path
+NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sdf      8:80   0  7.3T  0 disk
+sdd      8:48   0 12.8T  0 disk
+sdb      8:16   0  1.1T  0 disk
+sdg      8:96   0  7.3T  0 disk
+sdc      8:32   0  1.1T  0 disk
+sda      8:0    0  1.1T  0 disk
+├─sda2   8:2    0    1G  0 part
+├─sda3   8:3    0  1.1T  0 part
+└─sda1   8:1       200M  0 part
+=========
+overlay on / type overlay (rw,relatime,seclabel,lowerdir=/var/lib/docker/overlay2/l/KPY46F73LFNGC6XBJ4A3GLO5AH:/var/lib/docker/overlay2/l/2MF5GD7KVFKH6XN5FEIP5CQ5GH,upperdir=/var/lib/docker/overlay2/ce1e841fb41bd792a79d097f1584080c820558fc48e7e0cf08e0089c2fa08227/diff,workdir=/var/lib/docker/overlay2/ce1e841fb41bd792a79d097f1584080c820558fc48e7e0cf08e0089c2fa08227/work)
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+tmpfs on /dev type tmpfs (rw,nosuid,seclabel,size=65536k,mode=755)
+devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,seclabel,gid=5,mode=620,ptmxmode=666)
+sysfs on /sys type sysfs (ro,nosuid,nodev,noexec,relatime,seclabel)
+tmpfs on /sys/fs/cgroup type tmpfs (ro,nosuid,nodev,noexec,relatime,seclabel,mode=755)
+cgroup on /sys/fs/cgroup/systemd type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,xattr,name=systemd)
+cgroup on /sys/fs/cgroup/rdma type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,rdma)
+cgroup on /sys/fs/cgroup/perf_event type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,perf_event)
+cgroup on /sys/fs/cgroup/hugetlb type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,hugetlb)
+cgroup on /sys/fs/cgroup/blkio type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,blkio)
+cgroup on /sys/fs/cgroup/freezer type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,freezer)
+cgroup on /sys/fs/cgroup/devices type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,devices)
+cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,cpu,cpuacct)
+cgroup on /sys/fs/cgroup/net_cls,net_prio type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,net_cls,net_prio)
+cgroup on /sys/fs/cgroup/files type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,files)
+cgroup on /sys/fs/cgroup/memory type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,memory)
+cgroup on /sys/fs/cgroup/cpuset type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,cpuset)
+cgroup on /sys/fs/cgroup/pids type cgroup (ro,nosuid,nodev,noexec,relatime,seclabel,pids)
+mqueue on /dev/mqueue type mqueue (rw,nosuid,nodev,noexec,relatime,seclabel)
+/dev/mapper/openeuler-root on /lkp type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+/dev/mapper/openeuler-root on /opt type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+tmpfs on /tmp type tmpfs (rw,nosuid,nodev,relatime,seclabel)
+/dev/mapper/14t_1-srv_result on /srv/result type btrfs (ro,relatime,seclabel,space_cache,subvolid=5,subvol=/)
+/dev/mapper/openeuler-home on /root/sbin type xfs (ro,relatime,seclabel,attr2,inode64,usrquota,grpquota)
+/dev/mapper/openeuler-home on /c/compass-ci type xfs (ro,relatime,seclabel,attr2,inode64,usrquota,grpquota)
+/dev/mapper/openeuler-root on /usr/share/zoneinfo/UTC type xfs (ro,relatime,seclabel,attr2,inode64,noquota)
+/dev/mapper/vg--os-lv--docker on /etc/resolv.conf type ext4 (rw,relatime,seclabel)
+/dev/mapper/vg--os-lv--docker on /etc/hostname type ext4 (rw,relatime,seclabel)
+/dev/mapper/vg--os-lv--docker on /etc/hosts type ext4 (rw,relatime,seclabel)
+shm on /dev/shm type tmpfs (rw,nosuid,nodev,noexec,relatime,seclabel,size=65536k)
+/dev/mapper/14t_1-srv_git on /srv/git type btrfs (ro,relatime,seclabel,space_cache,subvolid=5,subvol=/)
+/dev/mapper/openeuler-root on /usr/local/bin/busybox type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+proc on /proc/bus type proc (ro,relatime)
+proc on /proc/fs type proc (ro,relatime)
+proc on /proc/irq type proc (ro,relatime)
+proc on /proc/sys type proc (ro,relatime)
+proc on /proc/sysrq-trigger type proc (ro,relatime)
+tmpfs on /proc/acpi type tmpfs (ro,relatime,seclabel)
+tmpfs on /proc/kcore type tmpfs (rw,nosuid,seclabel,size=65536k,mode=755)
+tmpfs on /proc/keys type tmpfs (rw,nosuid,seclabel,size=65536k,mode=755)
+tmpfs on /proc/livepatch type tmpfs (ro,relatime,seclabel)
+tmpfs on /proc/sched_debug type tmpfs (rw,nosuid,seclabel,size=65536k,mode=755)
+tmpfs on /proc/scsi type tmpfs (ro,relatime,seclabel)
+tmpfs on /proc/timer_list type tmpfs (rw,nosuid,seclabel,size=65536k,mode=755)
+tmpfs on /sys/firmware type tmpfs (ro,relatime,seclabel)
+=========
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.1  0.0   4096  3264 ?        Ss   16:40   0:00 /bin/bash /root/sbin/entrypoint.sh
+root          11  0.0  0.0   4160  3200 ?        S    16:40   0:00 sh /lkp/lkp/src/rootfs/addon/etc/init.d/lkp-bootstrap
+root          15  0.0  0.0   4864  4032 ?        S    16:40   0:00  \_ /bin/sh /lkp/lkp/src/bin/lkp-setup-rootfs
+root          25  0.0  0.0   2624   832 ?        S    16:40   0:00      \_ tail -f /tmp/stdout
+root          26  0.0  0.0   2624   896 ?        S    16:40   0:00      \_ tail -f /tmp/stderr
+root         173  0.0  0.0   4544  3840 ?        S    16:40   0:00      \_ /bin/sh /lkp/lkp/src/bin/run-lkp /lkp/scheduled/job.yaml
+root         177  0.0  0.0   2624   896 ?        S    16:40   0:00          \_ tail -n 0 -f /tmp/stdout
+root         178  0.0  0.0   2624   832 ?        S    16:40   0:00          \_ tail -n 0 -f /tmp/stderr
+root         179  0.0  0.0   2624   896 ?        S    16:40   0:00          \_ tail -n 0 -f /tmp/stdout /tmp/stderr
+root         204  0.0  0.0   4352  3520 ?        S    16:40   0:00          \_ /bin/sh /lkp/scheduled/job.sh run_job
+root         266  0.0  0.0   2560   832 ?        S    16:40   0:00              \_ sleep 3600
+root         269  0.0  0.0   2560   832 ?        S    16:40   0:00                  \_ tee -a /tmp/lkp/result/sleep
+root         217  0.0  0.0  20608  8384 ?        Ss   16:40   0:00 /usr/sbin/sshd -q
+root         229  0.0  0.0  24128 17472 ?        Ss   16:40   0:00  \_ sshd: root@pts/0
+root         239  0.0  0.0   8256  4224 pts/0    Ss   16:40   0:00      \_ -bash
+root         278  0.0  0.0  13504  6912 pts/0    R+   16:41   0:00          \_ ps faux
+root         222  0.0  0.0  15488  6336 ?        Ss   16:40   0:00 ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o TCPKeepAlive=yes -Nf -R 21665:localhost:22 sshr@172.168.131.113 -p 5051 -i /root/
+root         223  0.0  0.0   4352  2432 ?        S    16:40   0:00 /bin/sh /lkp/lkp/src/setup/sshd
+root         274  0.0  0.0   2560   832 ?        S    16:41   0:00  \_ sleep 30
+root         235  0.0  0.0    448   128 ?        Ss   16:40   0:00 /lkp/lkp/src/bin/event/wakeup activate-monitor
+root         237  0.0  0.0    448   192 ?        Ss   16:40   0:00 /lkp/lkp/src/bin/event/wakeup pre-test
+root@dc-8g.compass-ci.net ~#
+
