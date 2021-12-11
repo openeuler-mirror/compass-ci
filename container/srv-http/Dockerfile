@@ -35,4 +35,7 @@ COPY --from=Builder /h5ai/build/_h5ai /srv/_h5ai
 
 RUN chown -R nginx:nginx /srv/_h5ai
 
+# Disable access logs without affecting the printing of error logs
+RUN sed -i '/server {/a \ \ \ \ access_log off;' /etc/nginx/conf.d/default.conf
+
 ENTRYPOINT ["/sbin/entrypoint.sh"]
