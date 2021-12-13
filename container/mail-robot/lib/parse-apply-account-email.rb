@@ -107,10 +107,7 @@ class ParseApplyAccountEmail
     # the commit url should be in a standart format, example:
     # my_oss_commit: https://github.com/torvalds/aalinux/commit/7be74942f184fdfba34ddd19a0d995deb34d4a03
     # the prefix is renamed to 'my_oss_commit', but 'my oss commit' is still supportted.
-    unless mail_content_line.match?(%r{my[ _]oss[ _]commit:\s*https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})
-      raise 'URL_PREFIX_ERR' unless mail_content_line.match?(%r{my[ _]oss[ _]commit:\s*https?://})
-      raise 'NO_COMMIT_URL' unless mail_content_line.match?(%r{https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})
-    end
+    return unless mail_content_line.match?(%r{my[ _]oss[ _]commit:\s*https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})
 
     mail_content_line.match(%r{https?://[^/]*/[^/]*/[^/]*/commit/[\w\d]{40}})[0]
   end
