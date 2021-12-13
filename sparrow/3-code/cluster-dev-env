@@ -10,13 +10,4 @@ cat > $CCI_SRC/container/dnsmasq/dnsmasq.d/${lab}.conf <<EOF
 interface=$interface
 dhcp-authoritative
 dhcp-range=$dhcp_range
-dhcp-option=$dhcp_option
-EOF
-
-cat > $CCI_SRC/container/dnsmasq/dnsmasq.d/multi-node.conf <<EOF
-interface=$br1_interface
-dhcp-authoritative
-dhcp-range=$br1_dhcp_range
-dhcp-option=$br1_ignore_dhcp_option
-dhcp-option=$br1_dhcp_option
 EOF
