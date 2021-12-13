@@ -4,6 +4,8 @@
 
 [ -z $server_ip ] && server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 server_name=$(hostname | cut -f1 -d.)
+lab=$(awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/sparrow/setup.yaml)
+
 : ${lab:=nolab}
 : ${sched_host:=$server_ip}
 : ${sched_port:=3000}

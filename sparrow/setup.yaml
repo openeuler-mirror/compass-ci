@@ -10,7 +10,7 @@ my_name: xxx
 my_email: xxx@xxx.com
 
 # a local git repository name about cluster
-my_lab: nolab
+lab:
 
 # choose the interface about the 'dhcp-range' subnet.
 # such as the dhcp-range is 172.168.x.x

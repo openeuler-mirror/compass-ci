@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-repo=$(awk '/^my_lab:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+repo=lab-$(awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
 
 [ -d "/c/$repo/.git" ] || {
 	mkdir -p /c/"$repo".git

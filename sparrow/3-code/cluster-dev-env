@@ -6,7 +6,7 @@
 
 load_service_config
 
-cat > $CCI_SRC/container/dnsmasq/dnsmasq.d/${my_lab}.conf <<EOF
+cat > $CCI_SRC/container/dnsmasq/dnsmasq.d/${lab}.conf <<EOF
 interface=$interface
 dhcp-authoritative
 dhcp-range=$dhcp_range
