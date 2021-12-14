@@ -1073,9 +1073,10 @@ def build_multi_field_body(items)
       query_fields.push({ bool: { should: inner_query } })
     else
       if key == 'keyword'
-        query_fields.push({ regexp: { "softwareName.keyword" => ".*#{value}.*" } })
+        query_fields.push({ regexp: { "softwareName" => ".*#{value}.*" } })
       else
-        query_fields.push({ term: { "#{key}.keyword" => value } })
+        next if key == 'rnd'
+        query_fields.push({ term: { "#{key}" => value } })
       end
     end
   end
@@ -1083,6 +1084,16 @@ def build_multi_field_body(items)
 end
 
 def get_compat_software_info_detail
-  my_data = MyData.new
-  my_data.query_compat_software
+  begin
+    my_data = MyData.new
+
+    data = my_data.query_compat_software
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "query_compat_software error"
+    })
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query compat software info error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), data.to_json]
 end
