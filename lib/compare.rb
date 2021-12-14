@@ -118,7 +118,7 @@ def compare_by_template(template, options)
   result = {}
   groups_matrices.each do |group, group_matrices|
     compare_results = compare_metrics_values(group_matrices, cmp_series)
-    formatter = FormatEchartData.new(compare_results, request_body, cmp_series)
+    formatter = FormatEchartData.new(compare_results, request_body, group, cmp_series)
     echart_data = formatter.format_echart_data(transposed)
     result[group] = echart_data
   end
@@ -151,14 +151,43 @@ end
 # }
 def create_groups_matrices(template_params)
   es = ESQuery.new
-  query_results = es.multi_field_query(template_params['filter'])
+  if template_params.key?('max_series_num')
+    max_job_num = template_params['max_series_num'] * 200
+    query_results = es.multi_field_query(template_params['filter'], size: max_job_num, desc_keyword: 'start_time')
+  else
+    query_results = es.multi_field_query(template_params['filter'], desc_keyword: 'start_time')
+  end
   job_list = query_results['hits']['hits']
-  groups = auto_group_by_template(job_list, template_params['x_params'], template_params['series'], template_params['metrics'])
+  groups, cmp_series = create_group_jobs(template_params, job_list)
+
   groups.each do |first_group_key, first_group|
     groups[first_group_key] = Matrix.combine_group_jobs_list(first_group)
   end
 
-  groups
+
+  return groups, cmp_series
+end
+
+def create_group_jobs(template_params, job_list)
+  cmp_series = []
+
+  # if user haven't give the detail compare_seriesm just give the seies key
+  #   "series"=>["group_id"],
+  # we will get few latest dimensions by such series,
+  # and there should be a max_series_num for get how many dimension
+  if template_params.key?('max_series_num')
+    groups, cmp_series = auto_group_by_template(
+      job_list,
+      template_params['x_params'],
+      template_params['series'],
+      template_params['metrics'],
+      template_params['max_series_num']
+    )
+  else
+    groups, _ = auto_group_by_template(job_list, template_params['x_params'], template_params['series'], template_params['metrics'])
+  end
+
+  return groups, cmp_series
 end
 
 # input eg:

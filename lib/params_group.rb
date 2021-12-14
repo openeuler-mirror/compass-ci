@@ -163,21 +163,27 @@ end
 #           },
 #       }
 
-def auto_group_by_template(jobs_list, group_params, dimensions, metrics)
+def auto_group_by_template(jobs_list, group_params, dimensions, metrics, max_series_num = nil)
   jobs_list = extract_jobs_list(jobs_list)
   dimensions_key = get_dims_key(dimensions)
-  get_group_by_template(jobs_list, group_params, dimensions_key, dimensions, metrics)
+  groups, cmp_series = get_group_by_template(jobs_list, group_params, dimensions_key, dimensions, metrics, max_series_num)
+  return groups, cmp_series
 end
 
-def get_group_by_template(job_list, group_params, dimensions_key, dimensions, metrics)
+def get_group_by_template(job_list, group_params, dimensions_key, dimensions, metrics, max_series_num)
   groups = {}
+  exists_dims = Set.new()
   job_list.each do |job|
     new_job = get_new_job(job, metrics)
     next if new_job.empty?
 
     first_group_key = get_first_group_key(job, group_params, dimensions_key)
     group_key = get_user_group_key(job, group_params)
-    dimension = get_user_dimension(job, dimensions)
+    if max_series_num
+      dimension = auto_get_user_dimension(job, dimensions, max_series_num, exists_dims)
+    else
+      dimension = get_user_dimension(job, dimensions)
+    end
     next unless group_key && dimension
 
     groups[first_group_key] ||= {}
@@ -186,7 +192,7 @@ def get_group_by_template(job_list, group_params, dimensions_key, dimensions, me
     groups[first_group_key][group_key][dimension] << new_job
   end
 
-  groups
+  return groups, exists_dims.to_a
 end
 
 # @group_params Array(String)
@@ -211,7 +217,6 @@ def get_first_group_key(job, group_params, dimensions_key)
     key = "pp.#{job['suite']}.#{p}"
     first_group_params.delete(key)
   end
-
   get_group_key(first_group_params)
 end
 
@@ -271,6 +276,34 @@ def get_user_dimension(job, dimensions)
   return nil if dimension_list.empty?
 
   dimension_list.join(' ')
+end
+
+# @dimension Array(String)
+# eg:
+#   ["group_id", "suite"]
+# return eg:
+#   "daily_perf_test_2021-12-7 netperf"
+def auto_get_user_dimension(job, dimensions, max_series_num, exists_dims)
+  dimension_list = []
+  dimensions.each do |dim|
+    if job.key?(dim)
+      dim_value = job[dim]
+      dimension_list << dim_value
+    end
+  end
+  return nil if dimension_list.empty?
+
+  dims = dimension_list.join(' ')
+  if exists_dims.size < max_series_num
+    exists_dims << dims
+    return dims
+  else
+    if exists_dims.include?(dims)
+      return dims
+    else
+      return nil
+    end
+  end
 end
 
 # @metrics Array(String)

@@ -3,6 +3,7 @@
 # frozen_string_literal: true
 
 PERFORMANCE_RESULT_INPUT_KEYS = Set.new(['metrics', 'filter', 'series', 'x_params'])
+PERFORMANCE_RESULT_IGNORE_KEYS = Set.new(['max_series_num'])
 
 # --------------------------------------------------------------------------------------------
 # check the input params for API: web-backend/performance_result
@@ -19,7 +20,7 @@ def check_performance_result(request_body)
   return lack_param if lack_param
 
   request_body.each do |key, value|
-    next if PERFORMANCE_RESULT_INPUT_KEYS.include?(key)
+    next if (PERFORMANCE_RESULT_INPUT_KEYS | PERFORMANCE_RESULT_IGNORE_KEYS).include?(key)
 
     return "incorrerct input \"#{key}\""
   end
@@ -32,10 +33,10 @@ end
 #   eg: #<Set: {"metrics", "filter", "series", "x_params"}>
 def lack_params?(expect_keys, request_keys)
   subtraction = expect_keys ^ request_keys
-  return false if subtraction.empty?
+  return false if subtraction.empty? || subtraction == PERFORMANCE_RESULT_IGNORE_KEYS
 
   lack_params = subtraction & expect_keys
-  return false if lack_params.empty?
+  return false if lack_params.empty? || lack_params == PERFORMANCE_RESULT_IGNORE_KEYS
 
   msg = 'lack params: '
   lack_params.each do |param|

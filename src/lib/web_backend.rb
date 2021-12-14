@@ -516,8 +516,9 @@ def result_body(request_body)
     transposed = false
   end
 
-  groups_matrices = create_groups_matrices(request_body)
-  series = combine_compare_dims(request_body['series'])
+  groups_matrices, series = create_groups_matrices(request_body)
+  series = combine_compare_dims(request_body['series']) if series.empty?
+
   result = []
   groups_matrices.each do |group, group_matrices|
     compare_results = compare_metrics_values(group_matrices, series)
