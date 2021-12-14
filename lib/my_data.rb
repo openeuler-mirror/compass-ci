@@ -116,6 +116,31 @@ class MyData
     @es.search(index: index + '*', body: query)
   end
 
+  def es_search_all(index, query)
+    result = @es.search index: index, scroll: '10m', body: query
+    results = []
+    scroll_id = result['_scroll_id'] unless result.empty? && result.include?('_scroll_id')
+
+    while result['hits']['hits'].size.positive?
+      results += result['hits']['hits']
+      result = @es.scroll scroll: '10m', scroll_id: scroll_id
+    end
+
+    return results
+  end
+
+  def es_delete(index, id)
+    @es.delete(index: index, 'id': id)
+  end
+
+  def es_update(index, id, data)
+    @es.update(index: index, 'id': id, body: {doc: data})
+  end
+
+  def es_add(index, id, data)
+    @es.index(index: index, 'id': id, body: data)
+  end
+
   def logging_es_query(index, query)
     @logging_es.search(index: index + '*', body: query)
   end
@@ -140,9 +165,9 @@ class MyData
     type_list = []
     arch_list = []
 
-    body['OS'].each do |x| os_list << x['key'] if x['key'].size.to_i > 0 end
-    body['Type'].each do |x| type_list << x['key'] if x['key'].size.to_i > 0 end
-    body['Arch'].each do |x| arch_list << x['key'] if x['key'].size.to_i > 0 end
+    body['OS'].each do |x| os_list << x['key'] end
+    body['Type'].each do |x| type_list << x['key'] end
+    body['Arch'].each do |x| arch_list << x['key'] end
 
     data = {
       'OS' => os_list,
@@ -150,7 +175,7 @@ class MyData
       'Arch' => arch_list
     }
 
-    JSON.dump data
+    return data
   end
 
   def aggs_query(field)
@@ -158,7 +183,7 @@ class MyData
         'aggs' => {
           "all_#{field}" => {
             'terms' => {
-              'field' => "#{field}.keyword",
+              'field' => "#{field}",
               'size' => '10000'
             }
           }
