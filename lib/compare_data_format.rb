@@ -8,9 +8,10 @@ require 'terminal-table'
 # format compare results for a specific format
 #
 class FormatEchartData
-  def initialize(compare_results, template_params, dims = [])
+  def initialize(compare_results, template_params, group_params, dims = [])
     @compare_results = compare_results
     @template_params = template_params
+    @group_params = group_params
     @dims = dims
     @compare_dims = compare_dims(dims)
     @data_set = {}
@@ -96,6 +97,7 @@ class FormatEchartData
         kv[1].each do |metric, values|
           @data_set[metric] ||= {}
           @data_set[metric]['title'] = metric
+          @data_set[metric]['test_params'] = @group_params
           @data_set[metric]['datas'] ||= {}
           assign_transposed_change_datas(kv[0], metric, values)
           assign_transposed_avg_datas(kv[0], metric)
@@ -106,6 +108,7 @@ class FormatEchartData
         group = kv[0]
         @data_set[group] ||= {}
         @data_set[group]['title'] = group
+        @data_set[metric]['test_params'] = @group_params
         @data_set[group]['datas'] ||= {}
         kv[1].each do |metric, values|
           assign_change_datas(group, metric)

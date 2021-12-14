@@ -148,36 +148,42 @@ end
 #   Output:
 #     eg:
 #       {
-#         '4K|1G' => {
-#           'openeuler 20.03' => [
-#             {'stats' => {'fio.write_iops' => 312821.002387, 'fio.read_iops' => 212821.2387}},
-#             {'stats' => {'fio.write_iops' => 289661.878453}},
+#         "os_arch=aarch64 pp.fio.nr_threads=1 pp.fio.runtime=60, ..." =>
+#           {
+#             '4K|1G' => {
+#               'openeuler 20.03' => [
+#                 {'stats' => {'fio.write_iops' => 312821.002387, 'fio.read_iops' => 212821.2387}},
+#                 {'stats' => {'fio.write_iops' => 289661.878453}},
+#                 ...
+#               ],
+#               'centos 7.6' => [...]
+#             },
+#             '16K|1G' => {...},
 #             ...
-#           ],
-#           'centos 7.6' => [...]
-#         },
-#         '16K|1G' => {...},
-#         ...
+#           },
 #       }
 
 def auto_group_by_template(jobs_list, group_params, dimensions, metrics)
   jobs_list = extract_jobs_list(jobs_list)
-  get_group_by_template(jobs_list, group_params, dimensions, metrics)
+  dimensions_key = get_dims_key(dimensions)
+  get_group_by_template(jobs_list, group_params, dimensions_key, dimensions, metrics)
 end
 
-def get_group_by_template(job_list, group_params, dimensions, metrics)
+def get_group_by_template(job_list, group_params, dimensions_key, dimensions, metrics)
   groups = {}
   job_list.each do |job|
     new_job = get_new_job(job, metrics)
     next if new_job.empty?
 
+    first_group_key = get_first_group_key(job, group_params, dimensions_key)
     group_key = get_user_group_key(job, group_params)
     dimension = get_user_dimension(job, dimensions)
     next unless group_key && dimension
 
-    groups[group_key] ||= {}
-    groups[group_key][dimension] ||= []
-    groups[group_key][dimension] << new_job
+    groups[first_group_key] ||= {}
+    groups[first_group_key][group_key] ||= {}
+    groups[first_group_key][group_key][dimension] ||= []
+    groups[first_group_key][group_key][dimension] << new_job
   end
 
   groups
@@ -197,6 +203,33 @@ def get_user_group_key(job, group_params)
   return nil if group_key_list.size < group_params.size || group_key_list.empty?
 
   group_key_list.join('|')
+end
+
+def get_first_group_key(job, group_params, dimensions_key)
+  first_group_params, _ = get_group_dimension_params(job, dimensions_key)
+  group_params.each do |p|
+    key = "pp.#{job['suite']}.#{p}"
+    first_group_params.delete(key)
+  end
+
+  get_group_key(first_group_params)
+end
+
+# input eg:
+#   [{"os"=>"openeuler", "os_version"=>"21.09-iso"}, {"os"=>"openeuler", "os_version"=>"21.03-iso"}]
+# return eg:
+#   {"os", openeuler}
+def get_dims_key(dimensions)
+  dims_key = Set.new()
+  dimensions.each do |dims|
+    if dims.is_a?(Hash)
+      dims_key += dims.keys.to_set
+    else
+      dims_key << dims
+    end
+  end
+
+  dims_key
 end
 
 def find_param_in_job(job, param)

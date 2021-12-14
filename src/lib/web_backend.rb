@@ -518,9 +518,14 @@ def result_body(request_body)
 
   groups_matrices = create_groups_matrices(request_body)
   series = combine_compare_dims(request_body['series'])
-  compare_results = compare_metrics_values(groups_matrices, series)
-  formatter = FormatEchartData.new(compare_results, request_body, series)
-  formatter.format_echart_data(transposed).to_json
+  result = []
+  groups_matrices.each do |group, group_matrices|
+    compare_results = compare_metrics_values(group_matrices, series)
+    formatter = FormatEchartData.new(compare_results, request_body, group, series)
+    echart_data = formatter.format_echart_data(transposed)
+    result += echart_data
+  end
+  result.to_json
 end
 
 def search_testboxes

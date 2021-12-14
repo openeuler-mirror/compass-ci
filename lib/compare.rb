@@ -115,8 +115,14 @@ def compare_by_template(template, options)
   template_params = load_template(template)
   groups_matrices = create_groups_matrices(template_params)
   cmp_series = combine_compare_dims(template_params['series'])
-  compare_results = compare_metrics_values(groups_matrices, cmp_series)
-  show_compare_result(compare_results, template_params, options)
+  result = {}
+  groups_matrices.each do |group, group_matrices|
+    compare_results = compare_metrics_values(group_matrices, cmp_series)
+    formatter = FormatEchartData.new(compare_results, request_body, cmp_series)
+    echart_data = formatter.format_echart_data(transposed)
+    result[group] = echart_data
+  end
+  result
 end
 
 def load_template(template)
@@ -146,12 +152,13 @@ end
 def create_groups_matrices(template_params)
   es = ESQuery.new
   query_results = es.multi_field_query(template_params['filter'])
-  Matrix.combine_group_jobs_list(
-    query_results,
-    template_params['x_params'],
-    template_params['series'],
-    template_params['metrics']
-  )
+  job_list = query_results['hits']['hits']
+  groups = auto_group_by_template(job_list, template_params['x_params'], template_params['series'], template_params['metrics'])
+  groups.each do |first_group_key, first_group|
+    groups[first_group_key] = Matrix.combine_group_jobs_list(first_group)
+  end
+
+  groups
 end
 
 # input eg:
