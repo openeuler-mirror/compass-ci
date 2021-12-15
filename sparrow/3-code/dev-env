@@ -219,6 +219,7 @@ mkdir -p /root/.config/compass-ci
 cat > /root/.config/compass-ci/pack.yaml <<EOF
 lkp_pack_server: ${HOSTNAME}
 lkp_pack_tag_user: root
+lkp_rsync_server: ${HOSTNAME}
 EOF
 
 chmod 664 /root/.config/compass-ci/pack.yaml
