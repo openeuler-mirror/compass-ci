@@ -21,6 +21,11 @@ grep -q '^mailer:' /etc/passwd || useradd -u 1144 mailer
 grep -q '^team:' /etc/group || groupadd team
 grep -q '^committer:' /etc/group || groupadd -g 1999 committer
 
+sed -i '/^net.ipv4.ip_forward=/d' /etc/sysctl.conf
+sed -i '/^net.ipv6.bindv6only=/d' /etc/sysctl.conf
+sed -i '/^vm.max_map_count=/d' /etc/sysctl.conf
+sed -i '/^net.ipv4.ip_local_port_range/d' /etc/sysctl.conf
+
 cat >> /etc/sysctl.conf <<EOF
 net.ipv4.ip_forward=1
 net.ipv6.bindv6only=1
@@ -30,10 +35,19 @@ EOF
 
 sysctl -p
 
+[[ -f /etc/modules-load.d/nfs ]] && {
+	sed -i '/^nfs$/d' /etc/modules-load.d/nfs
+	sed -i '/^nfsd$/d' /etc/modules-load.d/nfs
+}
+
 cat >> /etc/modules-load.d/nfs <<EOF
 nfs
 nfsd
 EOF
+
+[[ -f /etc/modules-load.d/cifs ]] && {
+	sed -i '/^cifs$/d' /etc/modules-load.d/cifs
+}
 
 cat >> /etc/modules-load.d/cifs <<EOF
 cifs
