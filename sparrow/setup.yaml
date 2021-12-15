@@ -1,19 +1,21 @@
 # please fill the configuration according to comments.
 
-# account
-my_account: xxx
+# customize $my_account, $my_name for root, $my_email is your frequently used email address.
+# eg:
+#   my_account: zs
+#   my_name: zhangsan
+#   my_email: zhangsan@xxx.com
+my_account:
+my_name:
+my_email:
 
-# name
-my_name: xxx
-
-# email address
-my_email: xxx@xxx.com
-
-# a local git repository name about cluster
+# a local git repository name about local Compass-CI cluster, like [z9](https://gitee.com/wu_fengguang/lab-z9.git)
+# eg:
+#   lab: z9
 lab:
 
 # choose the interface about the 'dhcp-range' subnet.
-# such as the dhcp-range is 172.168.x.x
+# such as the dhcp-range is 172.168.x.x(internal ip address),
 # the result of 'ip addr | grep 172.168 | awk '{print $NF}'' is the value we need.
 interface:
 
