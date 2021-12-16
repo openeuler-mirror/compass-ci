@@ -42,6 +42,7 @@ NOT_NEED_EXIST_FIELDS = %w[error_ids upstream_repo].freeze
 PREFIX_SEARCH_FIELDS = ['tbox_group'].freeze
 ES_CLIENT = Elasticsearch::Client.new(hosts: ES_HOSTS)
 LOGGING_ES_CLIENT = Elasticsearch::Client.new(hosts: LOGGING_ES_HOSTS)
+ES_QUERY = ESQuery.new(ES_HOSTS)
 COMPARE_RECORDS_NUMBER = 100
 FIVE_DAYS_SECOND = 3600 * 24 * 5
 
@@ -490,6 +491,29 @@ def get_repos(params)
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get repos error']
  end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+def query_filed(params)
+  begin
+   body = get_job_field(params)
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "query_filed error, input: #{params}"
+    })
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query_filed error']
+ end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+def get_job_field(params)
+  request_body = JSON.parse(params)
+  items = request_body["filter"]
+  count_keywords = [request_body["field"]]
+  query_result = ES_QUERY.query_fields(count_keywords, items)
+  return [].to_json unless query_result
+
+  query_result.keys.to_json
 end
 
 def performance_result(data)

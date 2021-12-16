@@ -133,6 +133,21 @@ post '/performance_result' do
   performance_result(request.body.read)
 end
 
+# POST /query_field
+# - header: "Content-Type: Application/json"
+# - body: json
+#   eg:
+#   {
+#     "filter": {"suite": ["stream"]},
+#     "field": "os"
+#   }
+#   return:
+#   eg: ["openeuler", "centos", "debian", "openanolis", "kylin", "uniontechos"]
+post '/query_field' do
+  request.body.rewind
+  query_filed(request.body.read)
+end
+
 # GET /get_testboxes
 # Response:
 #   - { total: total, testboxes[ 'testbox1', 'testbox2', ... ] }
