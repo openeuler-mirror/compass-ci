@@ -175,7 +175,7 @@ def get_group_by_template(job_list, group_params, dimensions_key, dimensions, me
   exists_dims = Set.new()
   job_list.each do |job|
     new_job = get_new_job(job, metrics)
-    next if new_job.empty?
+    next if new_job['stats'].empty?
 
     first_group_key = get_first_group_key(job, group_params, dimensions_key)
     group_key = get_user_group_key(job, group_params)
