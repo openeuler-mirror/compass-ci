@@ -255,7 +255,7 @@ class MirrorMain
 
     return wrong_repo_warn(git_repo) unless git_repo =~ %r{^([a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/\S+){1,2})$}
 
-    if File.exist?("#{REPO_DIR}/#{belong}/erb_template")
+    if File.exist?("#{REPO_DIR}/#{belong}/erb_template") && git_info['erb_enable'] == true
       template = ERB.new File.open("#{REPO_DIR}/#{belong}/erb_template").read
       git_info = YAML.safe_load(template.result(binding))
     end
