@@ -19,8 +19,23 @@ host=${tbox_group%.*}
 
 create_yaml_variables "$LKP_SRC/hosts/${host}"
 
+check_busybox()
+{
+	local list
+	list=($(type -a busybox | xargs | awk '{gsub("busybox is ", ""); print $0}'))
+	busybox_path=$(command -v busybox)
+
+	for i in ${list[@]}
+	do
+		if ${i} --list | grep -wq wget; then
+			busybox_path="${i}"
+			break
+		fi
+	done
+}
+
 DIR=$(dirname $(realpath $0))
-busybox_path=$(command -v busybox)
+check_busybox
 cmd=(
 	docker run
 	--rm
