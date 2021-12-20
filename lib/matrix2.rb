@@ -83,6 +83,7 @@ module Matrix
         next if useless_stat?(key)
 
         matrix[key] = [] unless matrix[key]
+        value = value.to_f if key.end_with?('log')
         matrix[key] << value
       end
     end
