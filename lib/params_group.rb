@@ -192,7 +192,7 @@ def get_group_by_template(job_list, group_params, dimensions_key, dimensions, me
     groups[first_group_key][group_key][dimension] << new_job
   end
 
-  return groups, exists_dims.to_a
+  return groups, exists_dims.to_a.reverse
 end
 
 # @group_params Array(String)
