@@ -11,7 +11,7 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 RUN apk update && \
     apk upgrade && \
     apk add --no-cache git && \
-    apk add npm ruby-dev
+    apk add npm ruby-dev make gcc g++
 
 RUN gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 
