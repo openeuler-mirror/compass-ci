@@ -335,9 +335,13 @@ def score(item)
   items.each do |i|
     v = i.sub(/[a-zA-Z]+/, '')
     if v.empty?
-      return item
+      return 0
     else
-      score += v.to_f * mutil
+      if numeric?(v)
+        score += v.to_f * mutil
+      else
+        return 0
+      end
     end
     mutil *= 10
   end
