@@ -9,5 +9,6 @@ docker_skip_rebuild "openresty:proxy_cache"
 [ -d "openresty" ] && rm -rf openresty
 
 git clone http://gitee.com/cuiyili/openresty.git || exit 1
+sed -i "/FROM/aRUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories" openresty/Dockerfile
 
 docker build -t openresty:proxy_cache . -f openresty/Dockerfile
