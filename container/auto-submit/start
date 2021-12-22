@@ -9,7 +9,10 @@ require_relative '../defconfig.rb'
 names = Set.new %w[
   ES_USER
   ES_PASSWORD
+  lab
 ]
+
+defaults = relevant_defaults(names)
 
 service_authentication = relevant_service_authentication(names)
 env = docker_env(service_authentication)
@@ -30,7 +33,7 @@ cmd = %w[
   -e CCI_REPOS=/c
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
   -v #{ENV['LKP_SRC']}:#{DOCKER_LKP}
-  -v /c/lab-z9:/c/lab-z9
+  -v /c/lab-#{defaults['lab']}:/c/lab-#{defaults['lab']}
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
