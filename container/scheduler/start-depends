@@ -1,5 +1,4 @@
 redis
 es
-taskqueue
 rabbitmq
 etcd

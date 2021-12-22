@@ -9,7 +9,7 @@ DEFAULT_LKP=/c/lkp-tests
 [[ $LKP_SRC ]] || LKP_SRC=$DEFAULT_LKP
 
 if [ ! $1 ]; then
-  echo "Usage: $0 [scheduler | taskqueue ...]"
+  echo "Usage: $0 [scheduler ...]"
   exit 1
 fi
 
