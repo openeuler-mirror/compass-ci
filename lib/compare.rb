@@ -160,12 +160,46 @@ def create_groups_matrices(template_params)
   job_list = query_results['hits']['hits']
   groups, cmp_series = create_group_jobs(template_params, job_list)
 
+  new_groups = {}
+  common_group_key = extract_common_group_key(groups.keys)
   groups.each do |first_group_key, first_group|
-    groups[first_group_key] = Matrix.combine_group_jobs_list(first_group)
+    new_group = create_new_key(first_group_key, common_group_key, template_params['series'])
+    new_groups[new_group] = Matrix.combine_group_jobs_list(first_group)
   end
 
+  return new_groups, cmp_series
+end
 
-  return groups, cmp_series
+def create_new_key(first_group_key, common_group_key, series)
+  new_group_key = Set.new(first_group_key.split) ^ common_group_key
+  series.each do |item|
+    if item.is_a?(Hash)
+      item.each do |k, v|
+        param = "#{k}=#{v}"
+        new_group_key.delete(param) if new_group_key.include?(param)
+      end
+    else
+    end
+  end
+
+  new_group = new_group_key.to_a.join(' ')
+end
+
+# input:
+# [
+#   "os_arch=aarch64 pp.stream.array_size=50000000 pp.stream.nr_threads=32"
+#   "os_arch=aarch64 pp.stream.array_size=50000000 pp.stream.nr_threads=128"
+#   ...
+# ]
+# return:
+# [ "os_arch=aarch64", "pp.stream.array_size=50000000"]
+def extract_common_group_key(group_keys)
+  common_params = group_keys[0].split
+  group_keys.each do |group_key|
+      common_params = common_params & group_key.split
+  end
+
+  Set.new(common_params)
 end
 
 def create_group_jobs(template_params, job_list)
