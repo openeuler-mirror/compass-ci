@@ -70,7 +70,7 @@ module StatsWrapper
     check_incomplete_run(@log)
     check_soft_timeout
     return if check_empty_output
-    return if check_binary_output
+    #return if check_binary_output
 
     true
   end
