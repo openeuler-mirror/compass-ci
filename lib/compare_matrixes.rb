@@ -485,8 +485,8 @@ def assign_metric_values(metrics_values, dim, metric, values)
   metrics_values[metric]['average'] ||= {}
   metrics_values[metric]['standard_deviation'] ||= {}
   metric_value = get_values(values, true)
-  metrics_values[metric]['average'][dim] = metric_value[:average]
-  metrics_values[metric]['standard_deviation'][dim] = metric_value[:stddev_percent] || 0
+  metrics_values[metric]['average'][dim] = format( "%.4f", metric_value[:average]).to_f
+  metrics_values[metric]['standard_deviation'][dim] = format( "%.4f", metric_value[:stddev_percent] || 0).to_f
 end
 
 def assign_metric_change(metrics_values, cmp_series)
