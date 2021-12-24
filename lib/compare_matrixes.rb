@@ -461,11 +461,48 @@ end
 # }
 def compare_metrics_values(groups_matrices, cmp_series)
   metrics_compare_values = {}
+  extra_matrices = fill_extra_metric(groups_matrices)
+  groups_matrices.merge!(extra_matrices) if extra_matrices
   groups_matrices.each do |group_key, dimensions|
     metrics_compare_values[group_key] = get_metric_values(dimensions, cmp_series)
   end
 
   return metrics_compare_values
+end
+
+# now, we need caculate all score for a group unixbench result
+# in feature, may caculate more test specally
+def fill_extra_metric(groups)
+  extra_values = {'System_Benchmarks_Index_Score' => {}}
+
+  groups.each do |x_param, dim_values|
+    dim_values.each do |dim, metric_values|
+      extra_values['System_Benchmarks_Index_Score'][dim] ||= {}
+      metric_values.each do |metric, values|
+        return nil unless metric.start_with?('unixbench')
+        next unless metric == 'unixbench-score'
+
+        extra_values['System_Benchmarks_Index_Score'][dim][metric] ||= []
+        (0...values.size).each do |i|
+          unless extra_values['System_Benchmarks_Index_Score'][dim][metric][i]
+            extra_values['System_Benchmarks_Index_Score'][dim][metric] << values[i]
+            next
+          end
+
+          extra_values['System_Benchmarks_Index_Score'][dim][metric][i] *= values[i]
+        end
+      end
+    end
+  end
+  extra_values['System_Benchmarks_Index_Score'].each do |dim, values|
+    (0...extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'].size).each do |i|
+      score = extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'][i] ** (1.0/groups.size)
+      extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'][i] = score
+    end
+  end
+  return nil if extra_values['System_Benchmarks_Index_Score'].empty?
+
+  extra_values
 end
 
 def get_metric_values(dimensions, cmp_series)
