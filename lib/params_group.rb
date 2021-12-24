@@ -214,7 +214,11 @@ end
 def get_first_group_key(job, group_params, dimensions_key)
   first_group_params, _ = get_group_dimension_params(job, dimensions_key)
   group_params.each do |p|
-    key = "pp.#{job['suite']}.#{p}"
+    if job['suite'] == 'fio-basic'
+      key = "pp.fio-setup-basic.#{p}"
+    else
+      key = "pp.#{job['suite']}.#{p}"
+    end
     first_group_params.delete(key)
   end
   get_group_key(first_group_params)
