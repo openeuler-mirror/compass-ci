@@ -161,7 +161,9 @@ def create_groups_matrices(template_params)
   groups, cmp_series = create_group_jobs(template_params, job_list)
 
   new_groups = {}
-  common_group_key = extract_common_group_key(groups.keys)
+  common_group_key = {}
+  common_group_key = extract_common_group_key(groups.keys) if groups.size > 1
+
   groups.each do |first_group_key, first_group|
     new_group = create_new_key(first_group_key, common_group_key, template_params['series'])
     new_groups[new_group] = Matrix.combine_group_jobs_list(first_group)
@@ -172,13 +174,17 @@ end
 
 def create_new_key(first_group_key, common_group_key, series)
   new_group_key = Set.new(first_group_key.split) ^ common_group_key
-  series.each do |item|
-    if item.is_a?(Hash)
-      item.each do |k, v|
-        param = "#{k}=#{v}"
-        new_group_key.delete(param) if new_group_key.include?(param)
+  if common_group_key.empty?
+    new_group_key.delete_if { |item| !item.start_with?('pp')}
+  else
+    series.each do |item|
+      if item.is_a?(Hash)
+        item.each do |k, v|
+          param = "#{k}=#{v}"
+          new_group_key.delete(param) if new_group_key.include?(param)
+        end
+      else
       end
-    else
     end
   end
 
