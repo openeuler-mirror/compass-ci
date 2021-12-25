@@ -8,7 +8,6 @@
   CCI_SRC: ~/code/compass-ci   # path to your compass-ci repo
   SCHED_HOST: 172.17.0.1       # hostname or ip of the scheduler
   SCHED_PORT: 3000             # port of the scheduler
-  JOB_INDEX_TYPE: "jobs/_doc"  # es job document index and type
 - '$'{variable} is used at shell command, means the value of variable
 - '#'{variable} is used at crystal languange, means the value of variable
 - <variable> is just let this variable can be show stronger
