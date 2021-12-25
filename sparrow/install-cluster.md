@@ -3,7 +3,7 @@
 目前Compass-CI支持两种本地搭建模式，第一种是最小环境安装[本地Compass-CI节点](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/README.md)（只需一台虚拟机），第二种是本地搭建Compass-CI集群（需要一台物理机作为服务端，一台或多台物理机作为物理测试机）。
 
 在 openEuler 系统搭建Compass-CI集群，该集群需要使用一台物理机作为服务端，另外一台或多台物理机作为测试机用于执行任务,
-本文以两台物理机搭建compass-ci集群为例。后续想要扩大集群规模，只需重复执行添加测试机步骤即可。
+本文以两台物理机搭建compass-ci集群为例。后续想要扩大集群规模，只需重复执行[添加测试机步骤](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/add_testbox_to_cci_cluster.zh.md)。
 
 注意：
 compass-ci集群搭建过程中，需要在本地运行dnsmasq服务，同一个局域网内运行两个dnsmasq服务将影响compass-ci集群正常运行,
@@ -11,6 +11,77 @@ compass-ci集群搭建过程中，需要在本地运行dnsmasq服务，同一个
 有冲突，请重新规划网络配置。
 
 ## 环境准备
+>**说明：**
+>本文只适用于在较为干净的openEuler系统一键部署CCI环境，如果您的环境中有如下设置，将无法成功部署：
+>1.lkp用户UID不是1090（如果没有该用户请忽略）
+>2.运行了Kubernetes（CCI需要使用docker，而非podman-docker，且CCI需要占用很多服务端口，例如es， redis， rabbitmq等，易与当前环境中已使用的端口冲突）
+
+### 硬件要求
+        服务器类型：ThaiShan200-2280 (建议)
+        架构：aarch64
+        内存：>= 32GB
+        CPU：64 nuclear (建议)
+        硬盘：>= 500G
+
+x86 verified, however may no longer work, welcome bug report/fix
+
+### 软件要求
+        OS：openEuler-aarch64-20.03 LTS
+
+centos/debian verified, less quality guarantee, welcome bug fix
+
+        git：2.2 (we are using this version)
+        docker: 18.09 (we are using this version)
+        网络：可以访问互联网
+        (firewall: work on openEuler, risky on other OS, if run into problems, check firewall)
+
+        >**说明：**
+        >[openEuler 系统安装](https://openeuler.org/zh/docs/20.03_LTS/docs/Installation/%E5%AE%89%E8%A3%85%E5%87%86%E5%A4%87.html)
+
+#### 划分独立分区
+##### /srv
+承载了CCI的数据存储，是CCI数据服务的根目录。
+/srv
+├── cache
+├── cci
+├── es
+├── etcd
+├── git
+├── initrd
+├── os
+├── pub
+├── rabbitmq
+├── redis
+├── result
+├── rpm
+├── tmp
+└── upload-files
+
+##### /srv/result
+每个 Job 的结果保存路径，建议划分独立分区，定期清理。
+
+以CCI官方服务器上的job结果空间使用情况为例
+较小的job结果所占的空间：
+du -sh /srv/result/host-info/2021-12-23/vm-2p8g/openeuler-20.03-aarch64/z9.13207965
+1.2M    /srv/result/host-info/2021-12-23/vm-2p8g/openeuler-20.03-aarch64/z9.13207965
+
+较大的job结果所占用的空间：
+du -sh /srv/result/multi-qemu-docker/2021-10-08/taishan200-2280-2s48p-256g--a25/openeuler-
+20.03-aarch64/6-ext4-raid0-10-dc-1g-10-dc-2g-10-dc-4g-20-dc-8g-10/z9.11023894
+470M    /srv/result/multi-qemu-docker/2021-10-08/taishan200-2280-2s48p-256g--a25/openeuler
+-20.03-aarch64/6-ext4-raid0-10-dc-1g-10-dc-2g-10-dc-4g-20-dc-8g-10/z9.11023894
+
+所以建议该目录独立划分200G的空间，建议使用LVM，方便后续动态扩容。
+
+###### /srv/result 定期清理脚本(待补充)
+
+##### /var/lib/docker
+以CCI官方服务器上的/var/lib/docker空间使用情况为例
+df -h /var/lib/docker
+Filesystem                     Size  Used Avail Use% Mounted on
+/dev/mapper/vg--os-lv--docker  1.1T  480G  573G  46% /var/lib/docker
+
+CCI所有的微服务的安装目录，建议划200G分独立分区，建议使用LVM，方便后续动态扩容。
 
 ## 开始搭建
 请使用root用户开始搭建。
