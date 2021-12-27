@@ -221,6 +221,7 @@ def get_first_group_key(job, group_params, dimensions_key)
     end
     first_group_params.delete(key)
   end
+  first_group_params.delete("pp.lmbench3.test") if job['suite'] == 'lmbench3'
   get_group_key(first_group_params)
 end
 
