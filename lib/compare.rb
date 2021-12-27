@@ -163,19 +163,28 @@ def create_groups_matrices(template_params)
   new_groups = {}
   common_group_key = {}
   common_group_key = extract_common_group_key(groups.keys) if groups.size > 1
+  test_params = template_params['test_params'] || nil
 
   groups.each do |first_group_key, first_group|
-    new_group = create_new_key(first_group_key, common_group_key, template_params['series'])
+    new_group = create_new_key(first_group_key, common_group_key, template_params['series'], test_params)
     new_groups[new_group] = Matrix.combine_group_jobs_list(first_group)
   end
 
   return new_groups, cmp_series
 end
 
-def create_new_key(first_group_key, common_group_key, series)
+def create_new_key(first_group_key, common_group_key, series, test_params)
   new_group_key = Set.new(first_group_key.split) ^ common_group_key
   if common_group_key.empty?
-    new_group_key.delete_if { |item| !item.start_with?('pp')}
+    if test_params
+      new_group_key.delete_if { |item| need_delete?(item, test_params)}
+    else
+      if new_group_key.size > 4
+        new_group_key.delete_if { |item| !item.start_with?('pp')}
+      else
+        new_group_key.delete_if { |item| item.start_with?('os_version', 'os=')}
+      end
+    end
   else
     series.each do |item|
       if item.is_a?(Hash)
@@ -189,6 +198,13 @@ def create_new_key(first_group_key, common_group_key, series)
   end
 
   new_group = new_group_key.to_a.join(' ')
+end
+
+def need_delete?(item, test_params)
+  test_params.each do |param|
+    return false if item.include?(param)
+  end
+  true
 end
 
 # input:
