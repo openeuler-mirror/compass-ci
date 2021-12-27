@@ -356,3 +356,7 @@ end
 post '/top_boot_time' do
   top_boot_time
 end
+
+get '/test_matrix' do
+  query_test_matrix(params)
+end

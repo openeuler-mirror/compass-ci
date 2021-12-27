@@ -2,6 +2,37 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
+  def submit_install_rpm
+    body = @env.request.body.not_nil!.gets_to_end
+    body = JSON.parse(body).as_h
+    return if body["rpm_dest"].to_s.empty?
+    job = @es.get_job(body["rpmbuild_job_id"].to_s)
+    return unless job
+
+    job_info = get_job_info(job)
+    job_info.any_merge!(body)
+
+    spawn Jobfile::Operate.auto_submit_job("install-rpm.yaml",job_info)
+  rescue e
+    @env.response.status_code = 500
+    @log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
+  end
+
+  def get_job_info(job)
+    job_info = Hash(String, String | JSON::Any ).new
+    need_keys = ["os","os_version","os_arch","docker_image"]
+    need_keys.each do |k|
+      job_info[k] = job[k]
+    end
+    job_info["testbox"] = job["tbox_group"]
+    job_info["custom_repo_name"] = "aarch64-budding-openeuler"
+    job_info["custom_repo_addr"] = "https://api.compass-ci.openeuler.org:20012/rpm/pub/openeuler-20.03-LTS-SP1/budding-openeuler/\\$basearch/"
+    job_info
+  end
+
   def submit_reverse_depend_jobs
     body = @env.request.body.not_nil!.gets_to_end
     @env.set "log", body

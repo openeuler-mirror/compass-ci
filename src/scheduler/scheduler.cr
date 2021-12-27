@@ -246,6 +246,10 @@ module Scheduler
     env.sched.submit_reverse_depend_jobs
   end
 
+  post "/rpmbuild/submit_install_rpm" do |env|
+    env.sched.submit_install_rpm
+  end
+
   # content='{"type": "create", "job_id": "1", "srpms": [{"os":"centos7", "srpm":"test", "repo_name": "base"}]}'
   # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/repo/set-srpm-info" -d "$content"
   post "/repo/set-srpm-info" do |env|

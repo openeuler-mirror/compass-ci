@@ -1127,3 +1127,72 @@ def get_compat_software_info_detail
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), data.to_json]
 end
+
+
+def query_test_matrix_result(params)
+  es = ESQuery.new
+  install_rpm_es_result = es.multi_field_query({'group_id'=>params[:group_id],'suite'=>'install-rpm'})
+  result_install = Hash.new
+  install_rpm_es_result['hits']['hits'].each do |r|
+    key = "#{r['_source']['os']}-#{r['_source']['os_version']}-#{r['_source']['os_arch']}"
+    result_install[key] = get_install_info(r)
+  end
+
+  rpmbuild_es_result = es.multi_field_query({'group_id'=>params[:group_id],'suite'=>'rpmbuild'})
+  result = Array.new
+  rpmbuild_es_result['hits']['hits'].each do |r|
+    item = Hash.new
+    item['os'] = r['_source']['os']
+    item['os_version'] = r['_source']['os_version']
+    item['os_arch'] = r['_source']['os_arch']
+    item['build_id'] = r['_id']
+    item['build_job_health'] = r['_source']['job_health']
+    key = "#{r['_source']['os']}-#{r['_source']['os_version']}-#{r['_source']['os_arch']}"
+    if(result_install.has_key?(key))
+      item['install_id'] = result_install["#{key}"]['id']
+      item['install_job_health'] = result_install["#{key}"]['job_health']
+    end
+    if(r['_source']['stats'].has_key?('rpmbuild.start_time.message'))
+      item['func_job_health'] = r['_source']['stats']['rpmbuild.start_time.message']
+    end
+    result << item
+  end
+  result
+end
+
+def query_test_matrix(params)
+  begin
+    result = query_test_matrix_result(params)
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "query_result_error"
+    })
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query result error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
+end
+
+def get_install_info(result)
+  install_info = Hash.new
+  install_info['id'] = result['_id']
+  result = result['_source']['stats']
+
+  result.each do |k,v|
+    case k
+    when /install-rpm\.(.*)_(?:install|uninstall|)\.(.*)/
+      if ($2 == 'fail')
+        install_info['job_health'] = 'fail'
+        return install_info
+      end
+
+    when /install-rpm\.(.*)_(?:cmd|service)_(.*)\.(.*)/
+      if ($3 == 'fail')
+        install_info['job_health'] = 'fail'
+        return install_info
+      end
+    end
+  end
+  install_info['job_health'] = 'success'
+  install_info
+end
