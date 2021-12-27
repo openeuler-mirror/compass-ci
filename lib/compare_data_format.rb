@@ -15,6 +15,7 @@ class FormatEchartData
     @dims = dims
     @compare_dims = compare_dims(dims)
     @data_set = {}
+    @title = template_params['title'] || nil
   end
 
   def format_for_echart
@@ -107,7 +108,7 @@ class FormatEchartData
       sort_compare_result(@compare_results).each do |kv|
         group = kv[0]
         @data_set[group] ||= {}
-        @data_set[group]['title'] = group
+        @data_set[group]['title'] = @title || group
         @data_set[group]['test_params'] = @group_params
         @data_set[group]['datas'] ||= {}
         kv[1].each do |metric, values|

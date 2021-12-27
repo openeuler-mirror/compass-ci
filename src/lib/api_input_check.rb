@@ -3,7 +3,7 @@
 # frozen_string_literal: true
 
 PERFORMANCE_RESULT_INPUT_KEYS = Set.new(['metrics', 'filter', 'series', 'x_params'])
-PERFORMANCE_RESULT_IGNORE_KEYS = Set.new(['max_series_num', 'test_params'])
+PERFORMANCE_RESULT_IGNORE_KEYS = Set.new(['max_series_num', 'test_params', 'title'])
 
 # --------------------------------------------------------------------------------------------
 # check the input params for API: web-backend/performance_result
