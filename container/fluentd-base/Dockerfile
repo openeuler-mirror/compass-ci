@@ -20,7 +20,7 @@ RUN umask 002 && \
     gem install fluent-plugin-tail-ex && \
     gem install fluent-plugin-tail-multiline && \
     gem install json && \
-    gem install async && \
+    gem install async:1.28.9 && \
     gem install webrick && \
     gem install io-console && \
     gem install etc
