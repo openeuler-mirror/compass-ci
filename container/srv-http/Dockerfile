@@ -29,6 +29,7 @@ RUN apk add --no-cache php7 php7-fpm php7-session php7-json php7-exif php7-imagi
 RUN sed -i '/\[global\]/a daemonize = no' /etc/php7/php-fpm.conf
 RUN sed -i "s/user = nobody/user = nginx/g" /etc/php7/php-fpm.d/www.conf
 RUN sed -i "s/group = nobody/group = nginx/g" /etc/php7/php-fpm.d/www.conf
+RUN sed -i "s/expose_php = On/expose_php = Off/g" /etc/php7/php.ini
 
 
 COPY --from=Builder /h5ai/build/_h5ai /srv/_h5ai
