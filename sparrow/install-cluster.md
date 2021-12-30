@@ -18,27 +18,22 @@ compass-ci集群搭建过程中，需要在本地运行dnsmasq服务，同一个
 
 ### 硬件要求
         服务器类型：ThaiShan200-2280 (建议)
-        架构：aarch64
+        架构：aarch64（支持x86架构，可能会遇到问题，欢迎向我们报告或fix bug）
         内存：>= 32GB
         CPU：64 nuclear (建议)
         硬盘：>= 500G
 
-x86 verified, however may no longer work, welcome bug report/fix
-
 ### 软件要求
-        OS：openEuler-aarch64-20.03 LTS
-
-centos/debian verified, less quality guarantee, welcome bug fix
+        OS：openEuler-aarch64-20.03 LTS（支持centos/debian，可能会遇到问题，欢迎向我们报告或fix bug）
 
         git：2.2 (we are using this version)
         docker: 18.09 (we are using this version)
-        网络：可以访问互联网
-        (firewall: work on openEuler, risky on other OS, if run into problems, check firewall)
+        网络：可以访问互联网(本文中所使用的openeuler系统防火墙开启或关闭均可正常部署，其他系统有风险，如果部署出现网络问题，请检查防火墙)
 
         >**说明：**
         >[openEuler 系统安装](https://openeuler.org/zh/docs/20.03_LTS/docs/Installation/%E5%AE%89%E8%A3%85%E5%87%86%E5%A4%87.html)
 
-#### 划分独立分区
+#### [划分独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/create_partition.md)
 ##### /srv
 承载了CCI的数据存储，是CCI数据服务的根目录。
 /srv
@@ -103,37 +98,31 @@ git clone https://gitee.com/wu_fengguang/compass-ci.git /c/compass-ci
 ```bash
 vi /c/compass-ci/sparrow/setup.yaml
 ```
-请根据如下说明填写setup.yaml文件，集群部署过程中将首先copy该文件到/etc/compass-ci/setup.yaml，方便部署过程中读取该配置。
+>**说明：**
+>请根据如下说明填写setup.yaml文件，在下个步骤执行部署集群脚本脚本install-cluster中，将自动copy该文件到/etc/compass-ci/setup.yaml，方便部署过程中读取该配置。
+>请注意yaml文件格式，冒号后面必须有一个空格。
 
-lab（必填）： 需要自定义一个本地git仓库的名称，我们官方Compass-CI集群正在使用的是[z9](https://gitee.com/wu_fengguang/lab-z9.git)，当本地部署Compass-CI集群时，将在本地/c目录下创建一个新的名为lab-$lab的git仓库，用于后续步骤添加测试机。
+>lab（必填）： 需要自定义一个本地git仓库的名称，我们官方Compass-CI集群自定义的本地仓库名称为[z9](https://gitee.com/wu_fengguang/lab-z9.git)，
+>当执行部署脚本install-cluster时，将自动在本地/c目录下初始化一个新的名为lab-$lab的git仓库并克隆下来，用于后续步骤添加测试机，无需手动创建。
+>/c/lab-$lab.git
+>/c/lab-$lab
 
-my_account, my_name, my_email（必填）：请为root用户填写帐号，用户名，邮箱，用于注册本地搭建compass-ci集群帐号，
-注册帐号后才能通过校验，成功向本地搭建的compass-ci提交测试任务，否则提交任务失败，报错如下所示：
-root@taishan200-2280-2s64p-256g--a1001 ~# submit host-info.yaml
-submit_id=b0994b81-08f0-4bc4-999e-7220b85e280b
-submit /c/lkp-tests/jobs/host-info.yaml failed, got job id=0, error: Missing required job key: 'my_token'.
-Please refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md
-帐号注册成功之后，帐号信息会被存储在es数据库中，并在本地目录生成对应的yaml文件：
-~/.config/compass-ci/defaults/account.yaml
-~/.config/compass-ci/include/lab/$lab.yaml
+>my_account, my_name, my_email（必填）：用于注册本地搭建compass-ci集群帐号，请自定义一个帐号和用户名，邮箱只需填写您的常用邮箱地址即可。
+>该文档中提到的注册帐号是向本地搭建的compass-ci集群注册帐号，与官方的compass-ci帐号注册没有关系，
+>当执行部署脚本install-cluster时，自动将root用户的帐号信息存储在es数据库中，并在本地目录生成对应的yaml文件，无需手动注册。
+>~/.config/compass-ci/defaults/account.yaml
+>~/.config/compass-ci/include/lab/$lab.yaml（此处的$lab就是上文中提到的自定义的lab名称）
 
-注意：
-该文档中提到的注册帐号是向本地搭建的compass-ci集群注册帐号，与官方的compass-ci帐号注册没有关系，只需填写您的常用邮箱地址，
-并自定义一个用户名和帐号即可，下文中提到的非root用户注册帐号同理。
+>interface（必填）, dhcp-range（必填）： [配置dnsmasq服务](http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html)，以便执行测试任务时为测试机分发ip地址。
+>interface为compass-ci集群服务端的内网ip地址对应的网卡名称,例如您的内网ip地址为172.168.xx.xx，网卡名称可使用如下命令获取'ip addr | grep 172.168 | awk '{print $NF}''。
+>dhcp-range为dhcp为物理测试机分配的ip地址范围，建议该范围要大于测试机的数量，租期建议设置久一些（建议设置1440h）。
+>当执行部署脚本install-cluster时，将读取dnsmasq配置并自动在本地目录生成对应的conf文件，无需手动创建，此处的$lab就是上文中提到的自定义的lab名称：
+>/c/compass-ci/container/dnsmasq/dnsmasq.d/$lab.conf（此处的$lab就是上文中提到的自定义的lab名称）
 
-interface（必填）, dhcp-range（必填）： [配置dnsmasq服务](http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html)，以便执行测试任务时为测试机分发ip地址。
-interface为compass-ci集群服务端的内网ip地址对应的网卡名称。
-dhcp-range为dhcp分配的地址范围，建议该范围要大于测试机的数量，租期建议设置久一些（建议设置1440h）。
-dnsmasq服务配置将被用于在本地目录生成对应的conf文件，此处的$lab就是上文中提到的自定义的lab名称：
-/c/compass-ci/container/dnsmasq/dnsmasq.d/$lab.conf
+>br0_segment（选填）： br0网段前两位，默认值为172.18，如果当前环境中的172.18网段未被占用可不填。
 
-br0_segment（选填）： br0网段前两位，默认值为172.18，如果当前环境中的172.18网段未被占用可不填。
+>setup.yaml中的其他配置项与compass-ci集群搭建无关，请忽略。按照如上所述修改好配置文件setup.yaml后保存退出文本即可。
 
-setup.yaml中的其他配置项与compass-ci集群搭建无关，请忽略。
-按照如上所述修改好配置文件后保存退出文本即可。
-
-**说明：**
-请注意yaml文件格式，冒号后面必须有一个空格。
 
 - 执行部署集群脚本 install-cluster
 ```bash
@@ -164,7 +153,8 @@ submit /c/lkp-tests/jobs/host-info.yaml, got job id=$lab.1
 ```
 
 - 查看任务结果
-等待约1分钟，可根据上一步骤中打印的job id查看任务结果(请将下行命令中的$lab.1替换为上一步骤中打印出的job id)。
+等待约1分钟，可根据上一步骤中打印的job id（“got job id=”等号后面才是job id，submit_id=xxx并不是job id，只是一个代表该任务的唯一标识）查看任务结果。
+请将下行命令中的$lab.1替换为上一步骤中打印出的job id。
 ```bash
 cd $(es-find id=$lab.1 |grep result_root|awk -F '"' '{print "/srv/"$4}') && ls
 ```
@@ -189,8 +179,9 @@ Compass-CI服务端搭建完毕。
 如果需要使用其他os版本，请使用该脚本/c/compass-ci/sbin/download-rootfs下载，用法见脚本内注释。
 
 - 非root用户注册账号
+执行部署集群脚本 install-cluster时已经为root用户注册帐号，非root用户也需要注册帐号才能提交任务。
 注册帐号需要将帐号信息写入es数据库，只有在微服务es运行的状态下才能注册成功，可使用'docker ps  | grep es-server01'检查该容器是否在up状态。
-非root用户也需要注册帐号才能提交任务，该用户登录系统后直接使用build-my-info命令注册（该命令已添加到PATH环境变量中，直接执行即可）
+该用户登录系统后直接使用build-my-info命令注册（该命令已添加到PATH环境变量中，直接执行即可）
 
 ```bash
 build-my-info -e $my_email -n $my_name -a $my_account

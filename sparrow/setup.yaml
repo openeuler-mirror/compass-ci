@@ -23,6 +23,8 @@ interface:
 # "infinite". If not given, the default lease time is one hour for IPv4
 # and one day for IPv6.
 # http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html
+# eg:
+#   dncp_range: 172.168.xx.xx,172.168.xx.xx,1440h
 dhcp_range:
 
 # when you deploy compass-ci client, fill the compass-ci server's ip,
