@@ -18,18 +18,48 @@ testbox				  CCI scheduler
    |<-----------------------------------|
 
 ## 添加物理机
-1. 物理机与CCIC通信的网卡须支持pxe
-2. 物理机hostname=服务器型号-CPU规格-内存规格-后缀，须集群唯一
-3. 指定该物理机消费哪些队列的job，队列之间用','隔开，一般指定1～2个队列
+需要定义 mac, hostname, queues 三个变量。
+1. mac
+	物理机与CCI集群通信的网卡须支持pxe，需要提供该网卡的mac地址（从环境运维人员获取）
+	mac="43-67-47-85-11-22" （实际mac为准，连接符号为英文中划线'-'）
 
-mac="43-67-47-85-xx-xx"
-hostname="taishan200-2280-2s64p-256g--a1001"
-queues="taishan200-2280-2s64p-256g--a1001,iperf"
+2. hostname
+	hostname格式为 服务器型号-CPU规格-内存规格--编号，须集群唯一（物理机规格从环境运维人员获取）
+	以要添加的物理机为例
+	服务器型号为：taishan200-2280
+	CPU规格为：2s64p
+	内存规格为：256g
+	编号为：a1001（自定义）
+
+	hostname="taishan200-2280-2s64p-256g--a1001"（实际hostname为准）
+
+3. queues
+	物理机消费job的队列列表，用来指定物理机有消费哪些队列的job的能力，
+	该队列列表用英文','隔开，一般指定1～2个队列，
+	格式为 "taishan200-2280-2s64p-256g--a1001,iperf"（iperf为自定义的队列，以实际需要消费的job队列为准）
+	例如在注册物理机的时候指定如上queues，
+	那么该物理机可以消费添加到taishan200-2280-2s64p-256g--a1001和iperf队列的任务，
+	通常会注册一个和物理机hostname相同的队列。
+
+	queues="taishan200-2280-2s64p-256g--a1001,iperf"
+
 
 4. 注册物理机
-SCHED_HOST, SCHED_PORT 是CCI集群的调度器HOST/PORT
-首选绑定mac和hostname,然后绑定hostname和queues
+首先绑定mac和hostname，然后绑定hostname和queues。
+下面命令中的 ${mac},${hostname},${queues} 需要替换成上面定义的值。
+SCHED_HOST, SCHED_PORT 是CCI集群的调度器HOST/PORT，如果已经部署完CCI集群服务端，可通过配置文件获取。
+
+将定义好的 mac, hostname, queues 导入到shell中。
 '''
+export mac="43-67-47-85-11-22"
+export hostname="taishan200-2280-2s64p-256g--a1001"
+export queues="taishan200-2280-2s64p-256g--a1001,iperf"
+'''
+以便下面的命令可以直接使用 mac, hostname, queues变量
+
+'''
+SCHED_HOST=$(cat /etc/compass-ci/service/service-env.yaml | grep 'SCHED_HOST' | awk '{print $2}')
+SCHED_PORT=$(cat /etc/compass-ci/service/service-env.yaml | grep 'SCHED_PORT' | awk '{print $2}')
 curl -X PUT "http://${SCHED_HOST}:${SCHED_PORT}/set_host_mac?hostname=${hostname}&mac=${mac}"
 curl -X PUT "http://${SCHED_HOST}:${SCHED_PORT}/set_host2queues?host=${hostname}&queues=${queues}"
 '''
@@ -110,7 +140,7 @@ model_name: Kunpeng-920
 ipmi_ip: 9.3.6.1
 
 ### 设置rootfs_disk
-选择一块硬盘作为rootfs_disk, 本物理选择ssd_partitions中的第一块
+选择一块硬盘作为rootfs_disk, 本物理机选择ssd_partitions中的第一块
 所以删除 nr_ssd_partitions: 1
 修改 ssd_partitions: 为rootfs_disk:
 memory: 255G
