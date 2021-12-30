@@ -11,3 +11,6 @@ interface=$interface
 dhcp-authoritative
 dhcp-range=$dhcp_range
 EOF
+
+SCHED_HOST=$(awk '/^SCHED_HOST:\s/ {print $2;exit}' /etc/compass-ci/defaults/*.yaml)
+sed -i "s%172.17.0.1%${SCHED_HOST}%g" /tftpboot/boot.ipxe
