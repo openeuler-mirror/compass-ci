@@ -172,6 +172,9 @@ else
 		          "my_email": {
 		            "type": "keyword"
 		          },
+		          "my_account": {
+			    "type": "keyword"
+			  },
 		          "enqueue_time": {
 		            "type": "date",
 		            "format": "yyyy-MM-dd HH:mm:ss"
