@@ -14,6 +14,8 @@ BR0_IFACE=br0
 # iptables -t nat -F
 iptables -w 10 -I FORWARD 1 -j ACCEPT
 iptables -w 10 -t nat -A POSTROUTING -o "$PUB_IFACE" -s $BR0_SUBNET -j MASQUERADE
+iptables -I INPUT -p udp --dport 67 -j ACCEPT
+iptables -I INPUT -p udp --dport 69 -j ACCEPT
 
 command -v firewall-cmd > /dev/null || {
 	exit 0
