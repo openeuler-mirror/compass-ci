@@ -2,16 +2,18 @@
 
 ---
 # restful-API
-- First of all, you should deploy the lkp-tests and compass-ci project
-- And set the environment variables needed for running (modify "/etc/compass-ci/defaults/crystal.yaml", and run $CCI_SRC/container/defconfig.rb | defconfig.sh)
-  LKP_SRC: ~/code/lkp-tests    # path to your lkp-tests repo
-  CCI_SRC: ~/code/compass-ci   # path to your compass-ci repo
-  SCHED_HOST: 172.17.0.1       # hostname or ip of the scheduler
-  SCHED_PORT: 3000             # port of the scheduler
-- '$'{variable} is used at shell command, means the value of variable
-- '#'{variable} is used at crystal languange, means the value of variable
-- <variable> is just let this variable can be show stronger
-- [variable] means this variable is optional
+First of all, you should deploy the lkp-tests and compass-ci project
+And set the environment variables needed for running (modify "/etc/profile.d/compass.sh")
+```  
+LKP_SRC: ~/code/lkp-tests    # path to your lkp-tests repo
+CCI_SRC: ~/code/compass-ci   # path to your compass-ci repo
+SCHED_HOST: 172.17.0.1       # hostname or ip of the scheduler
+SCHED_PORT: 3000             # port of the scheduler
+```    
+* '${variable}' is used at shell command, means the value of variable
+* '#{variable}' is used at crystal languange, means the value of variable
+* '\<variable>' is just let this variable can be show stronger
+* '[variable]' means this variable is optional
 
 ## submit a job
 - restAPI: POST "/submit_job"
