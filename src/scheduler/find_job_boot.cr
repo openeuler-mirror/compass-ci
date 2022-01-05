@@ -16,7 +16,9 @@ class Sched
 
     case boot_type
     when "ipxe", "libvirt"
-      host = @redis.hash_get("sched/mac2host", normalize_mac(value))
+      mac = normalize_mac(value)
+      host = @redis.hash_get("sched/mac2host", mac)
+      host = handle_new_hw(mac) unless host
     when "grub"
       host = @redis.hash_get("sched/mac2host", normalize_mac(value))
       submit_host_info_job(value) unless host
@@ -49,6 +51,16 @@ class Sched
       @env.channel.close
     end
     send_mq_msg
+  end
+
+  def handle_new_hw(mac)
+    host = "sched-#{LAB}-#{mac}"
+    queues = host
+    @redis.hash_set("sched/mac2host", normalize_mac(mac), host)
+    @redis.hash_set("sched/host2queues", host, queues)
+    Jobfile::Operate.auto_submit_job(
+      "#{ENV["LKP_SRC"]}/jobs/host-info.yaml", ["testbox=vm-2p8g", "queue=#{host}"])
+    return host
   end
 
   def send_timeout_signal
