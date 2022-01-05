@@ -114,7 +114,7 @@ options:
   You can run the **-o DIR** command to save the generated YAML file to the specified directory **DIR**. An example is shown in the following figure:
 
   ```
-  submit -o ~/iperf.yaml
+  submit iperf.yaml testbox=vm-2p8g -o /tmp
   ```
 
   After the command is executed, the YAML file that has been processed by the **submit** command is generated in the specified directory.

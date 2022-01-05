@@ -18,13 +18,6 @@ submit 命令的作用是提交测试任务。该命令提供了多个选项帮�
 submit iperf.yaml SCHED_HOST=api.compass-ci.openeuler.org SCHED_PORT=20002
 ```
 
-若您的yaml文件不包含testbox字段，直接提交将会报错：
-
-```shell
-hi8109@account-vm ~% submit iperf.yaml
-submit iperf.yaml failed, got job_id=0, error: Missing required job key: 'testbox'
-```
-
 因为testbox是必填字段，您可以在 yaml 文件中添加 testbox 字段，或使用如下命令：
 
 ```shell
@@ -115,7 +108,7 @@ options:
     使用-o DIR 命令可以将最终生成的yaml文件保存到指定目录 DIR 下。示例如下所示：
 
     ```
-    submit -o ~/iperf.yaml testbox=vm-2p8g
+    submit iperf.yaml testbox=vm-2p8g -o /tmp
     ```
 
     运行命令之后会在指定目录生成经过 submit 处理过的 yaml 文件。
