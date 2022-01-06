@@ -27,6 +27,20 @@ interface:
 #   dncp_range: 172.168.xx.xx,172.168.xx.xx,1440h
 dhcp_range:
 
+# Please apply for a dedicated email address for the send email robot.
+# Do not mix it with a private email address.
+# eg:
+#   SMTP_ADDRESS: smtp.qq.com
+#   SMTP_PORT: 25
+#   SMTP_DOMAIN: qq.com
+#   ROBOT_EMAIL_ADDRESS: xxxxx@qq.com
+#   ROBOT_EMAIL_PASSWORD: xxxxxx
+SMTP_ADDRESS:
+SMTP_PORT:
+SMTP_DOMAIN:
+ROBOT_EMAIL_ADDRESS:
+ROBOT_EMAIL_PASSWORD:
+
 # when you deploy compass-ci client, fill the compass-ci server's ip,
 # then client can access server service.
 server_ip:
