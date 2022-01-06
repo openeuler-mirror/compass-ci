@@ -330,6 +330,7 @@ end
 def score(item)
   score = 0
   return item.to_f*0.1 if numeric?(item)
+  return 1000 if item == 'System_Benchmarks_Index_Score'
 
   items = item.split('|')
   mutil = 1
