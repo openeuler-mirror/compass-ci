@@ -14,3 +14,11 @@ EOF
 
 SCHED_HOST=$(awk '/^SCHED_HOST:\s/ {print $2;exit}' /etc/compass-ci/defaults/*.yaml)
 sed -i "s%172.17.0.1%${SCHED_HOST}%g" /tftpboot/boot.ipxe
+
+cat > /etc/compass-ci/accounts/account_conf.yaml <<'EOF'
+SMTP_ADDRESS: $SMTP_ADDRESS
+SMTP_PORT: $SMTP_PORT
+SMTP_DOMAIN: $SMTP_DOMAIN
+ROBOT_EMAIL_ADDRESS: $ROBOT_EMAIL_ADDRESS
+ROBOT_EMAIL_PASSWORD: $ROBOT_EMAIL_PASSWORD
+EOF
