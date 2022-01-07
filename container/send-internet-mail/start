@@ -10,8 +10,8 @@ docker_rm 'send-internet-mail'
 
 names = Set.new %w[
   SMTP_ADDRESS
-  SMPT_PORT
-  SMPT_DOMAIN
+  SMTP_PORT
+  SMTP_DOMAIN
   ROBOT_EMAIL_ADDRESS
   ROBOT_EMAIL_PASSWORD
   SEND_MAIL_PORT
