@@ -12,9 +12,9 @@ REDIS_PORT = ENV['REDIS_PORT']
 require_relative '../../lib/mail-post'
 
 smtp = {
-  address: 'smtp.qq.com',
-  port: 25,
-  domain: 'qq.com',
+  address: ENV['SMTP_ADDRESS'],
+  port: ENV['SMTP_PORT'],
+  domain: ENV['SMTP_DOMAIN'],
   user_name: ENV['ROBOT_EMAIL_ADDRESS'],
   password: ENV['ROBOT_EMAIL_PASSWORD'],
   openssl_verify_mode: 'none',
