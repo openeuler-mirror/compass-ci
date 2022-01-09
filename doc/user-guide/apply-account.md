@@ -43,7 +43,7 @@ Email template:
   The git repo should be in our test coverage and registered in
   [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos).
   If your contributed OSS project is not in upstream-repos, you may refer to
-  [test-oss-project](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/test-service/test-oss-project.en.md)
+  [test-oss-project](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.en.md)
   to add it to compass-ci testing.
 
 ## step 2: receive an email

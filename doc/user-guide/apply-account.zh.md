@@ -40,7 +40,7 @@
   您的仓库需要在平台测试覆盖的范围内，并且注册到：
   [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos).
   如果贡献的OSS工程仓库不在upstream-repos中，请参考：
-  [test-oss-project](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/test-service/test-oss-project.zh.md)
+  [test-oss-project](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.zh.md)
   将仓库注册到compass-ci测试池中。
 
 ## 2. 接收邮件

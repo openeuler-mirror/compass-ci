@@ -11,12 +11,12 @@ Compass-CI架构图
 功能介绍
 ========
 
-- [自动化测试](./features/test-service/test-oss-project.zh.md)
+- [自动化测试](./test-guide/test-oss-project.zh.md)
 - [调测环境登录](./user-guide/log-in-machine-debug.md)
 - [租借机器](./user-guide/borrow-machine.zh.md)
 - [bisect定位error commit](./user-guide/bisect_email.en.md)
-- [多机联合测试](./features/multi-device-test/multi-device-test.md)
-- [PKGBUILD功能](./features/PKGBUILD/write-PKGBUILD.zh.md)
+- [多机联合测试](./test-guide/multi-device-test.md)
+- [PKGBUILD功能](./test-guide/write-PKGBUILD.zh.md)
 
 模块介绍
 ========
