@@ -8,7 +8,7 @@
 
 1. Fork upstream-repos 仓库并 git clone 到本地，本文以 backlight 仓库（https://github.com/baskerville/backlight ）为例说明。
 
-![](./../../pictures/fork_backlight.png)
+![](../images/fork_backlight.png)
 
 2. 执行以下命令，以首字母和仓库名创建文件路径。
 

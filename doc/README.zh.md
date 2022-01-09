@@ -1,7 +1,7 @@
 Compass-CI架构图
 ================
 
-![](./pictures/compass-ci-architecture.png)
+![](./images/compass-ci-architecture.png)
 
 安装
 ====
@@ -66,4 +66,4 @@ job
 图片素材
 --------
 
-- [图片素材1](./pictures/)
+- [图片素材1](./images/)

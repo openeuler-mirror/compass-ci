@@ -4,7 +4,7 @@
 
 可以根据提交时定义的 suite 或者提交任务返回的 id 在网站上找到自己的任务，点击任务对应的 job_state 列即可查看任务结果。
 
-![](./../pictures/jobs.png)
+![](../images/jobs.png)
 
 ## 结果文件介绍
 

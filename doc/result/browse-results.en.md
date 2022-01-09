@@ -4,7 +4,7 @@ After a test case is executed, you can log in to the https://compass-ci.openeule
 
 You can find the task on the website using the suite defined during task submission or the ID returned after the task is submitted, and click the **job\_state** column corresponding to the task to view the task result.
 
-![](./../pictures/jobs.png)
+![](../images/jobs.png)
 
 ## Result Files
 
