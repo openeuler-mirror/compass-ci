@@ -3,7 +3,7 @@
 1 序
 ====
 
-Compass-CI的使用是通过[提交job](../../job/submit/submit-job.zh.md)来进行的。
+Compass-CI的使用是通过[提交job](../job/submit/submit-job.zh.md)来进行的。
 
 你提交的job对应着有其测试脚本，测试脚本的运行是要在某一个执行机（`testbox`）上，在某一个系统（`os`, `os_arch`, `os_version`）上运行的。
 
@@ -150,8 +150,8 @@ local与cifs/nfs现阶段的区别如下：
 3 使用指南
 ==========
 
-[提交job](../../job/submit/submit-job.zh.md)
-[os_mount](../../job/fields/os_mount.md)
+[提交job](../job/submit/submit-job.zh.md)
+[os_mount](../job/fields/os_mount.md)
 如何查看当前compass-ci集群支持的rootfs都有哪些？ # 待补充
 
 

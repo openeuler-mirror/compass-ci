@@ -37,7 +37,7 @@ Perform the following steps to add the information of the code repository to be 
    - https://github.com/baskerville/backlight
    ```
 
-   > ![](./../../icons/icon-notice.gif) **Note**
+   > ![](../icons/icon-notice.gif) **Note**
    >
    > You can refer to the existing file format in the **upstream-repos** repository. Ensure that the formats are consistent.
 
