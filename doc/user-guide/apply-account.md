@@ -65,6 +65,6 @@ Which contains account information for you:
 
 ## step 4: Now try
 
-[install-cci-client](https://gitee.com/openeuler/compass-ci/blob/master/doc/install/install-cci-client.md)
+[install-cci-client](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/install-cci-client.md)
 [submitting a job to compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
 

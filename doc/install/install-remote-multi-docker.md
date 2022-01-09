@@ -4,7 +4,7 @@
 
 ## 申请帐号
 
-1. :exclamation: 前提条件：按照 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md) 完成如下动作：
+1. :exclamation: 前提条件：按照 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md) 完成如下动作：
 - send apply account email
 - receive email from compass-ci-robot@qq.com
 - get reply email and follow its instructions to

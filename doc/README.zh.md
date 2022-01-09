@@ -6,15 +6,15 @@ Compass-CI架构图
 安装
 ====
 
-- [安装Compass-CI客户端](./install/install-cci-client.md)
+- [安装Compass-CI客户端](./user-guide/install-cci-client.md)
 
 功能介绍
 ========
 
 - [自动化测试](./features/test-service/test-oss-project.zh.md)
-- [调测环境登录](./features/login-to-testbox/log-in-machine-debug.md)
-- [租借机器](./features/borrow-machine/borrow-machine.zh.md)
-- [bisect定位error commit](./features/bisect/bisect_email.en.md)
+- [调测环境登录](./user-guide/log-in-machine-debug.md)
+- [租借机器](./user-guide/borrow-machine.zh.md)
+- [bisect定位error commit](./user-guide/bisect_email.en.md)
 - [多机联合测试](./features/multi-device-test/multi-device-test.md)
 - [PKGBUILD功能](./features/PKGBUILD/write-PKGBUILD.zh.md)
 
@@ -24,7 +24,7 @@ Compass-CI架构图
 账户
 ----
 
-- [申请账户](./account/apply-account.zh.md)
+- [申请账户](./user-guide/apply-account.zh.md)
 - [邮件答复机器人](../container/mail-robot/README.md)
 
 job
@@ -60,7 +60,7 @@ job
 - [语言选择](./help/lang-choice.md)
 - [编码原则](./help/principles.md)
 - [如何配置Compass-CI的本地开发环境](./help/develop-enviroment.md)
-- [Compass-CI教程](./help/tutorial.md)
+- [Compass-CI教程](./user-guide/tutorial.md)
 - [其他学习资料](./help/learning-resources.md)
 
 图片素材

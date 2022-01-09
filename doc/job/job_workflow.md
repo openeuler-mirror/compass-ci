@@ -2,7 +2,7 @@
 
 # 前提条件：
     
-已经按照compass-ci/doc/install/install-cci-client.md本地安装了compass-ci客户端。
+已经按照compass-ci/doc/user-guide/install-cci-client.md本地安装了compass-ci客户端。
 下面的测试环境中就会有$LKP_SRC这个变量。
 
 # job流程概述
