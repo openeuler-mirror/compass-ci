@@ -56,12 +56,12 @@ job
 帮助
 ----
 
-- [编码规范](./help/code-spec.md)
-- [语言选择](./help/lang-choice.md)
-- [编码原则](./help/principles.md)
-- [如何配置Compass-CI的本地开发环境](./help/develop-enviroment.md)
+- [编码规范](./development/code-spec.md)
+- [语言选择](./development/lang-choice.md)
+- [编码原则](./development/principles.md)
+- [如何配置Compass-CI的本地开发环境](./development/develop-enviroment.md)
 - [Compass-CI教程](./user-guide/tutorial.md)
-- [其他学习资料](./help/learning-resources.md)
+- [其他学习资料](./development/learning-resources.md)
 
 图片素材
 --------
