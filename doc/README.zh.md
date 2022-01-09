@@ -25,7 +25,7 @@ Compass-CI架构图
 ----
 
 - [申请账户](./account/apply-account.zh.md)
-- [邮件答复机器人](./account/mail-robot.md)
+- [邮件答复机器人](../container/mail-robot/README.md)
 
 job
 ---
@@ -48,7 +48,7 @@ job
 邮件
 ----
 
-- [发送邮件功能](./mail/send-mail.md)
+- [发送邮件功能](../container/send-mail/README.md)
 
 其他
 ====
