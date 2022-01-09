@@ -35,7 +35,7 @@
     - https://github.com/baskerville/backlight
     ```
 
-    >![](./../../public_sys-resources/icon-notice.gif) **注意：**
+    >![](./../../icons/icon-notice.gif) **注意：**
 	>
     >可参考 upstream-repos 仓库中已有文件格式,请保持格式一致。
 

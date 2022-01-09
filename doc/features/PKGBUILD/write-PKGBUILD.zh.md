@@ -28,7 +28,7 @@ PKGBUILD包含两部分内容：变量和函数。
 - check函数
   定义可选的check函数，用于运行程序包的测试套件。
 
->![](./../../public_sys-resources/icon-notice.gif) **注意：**
+>![](./../../icons/icon-notice.gif) **注意：**
 >
 > srcdir 是提取或复制源文件的目录，所有打包功能都在 srcdir 目录内部运行；pkgdir 是构建软件包的根目录，仅在 package 函数中使用。
 

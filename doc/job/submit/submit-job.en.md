@@ -73,7 +73,7 @@ total 120K
 -rw-r--r--. 1 root root  74 2020-11-02 14:54 vm-snb-i386
 ```
 
-> ![](./../../public_sys-resources/icon-note.gif) **Note**
+> ![](./../../icons/icon-note.gif) **Note**
 >
 > Use the equal sign (=) to update the fields in the YAML file. The priority of the ***=*** varies with its position in the command line.
 >

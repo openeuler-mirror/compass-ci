@@ -67,4 +67,3 @@ job
 --------
 
 - [图片素材1](./pictures/)
-- [图片素材2](./public_sys-resources/)
