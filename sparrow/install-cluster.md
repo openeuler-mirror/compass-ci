@@ -36,6 +36,7 @@ compass-ci集群搭建过程中，需要在本地运行dnsmasq服务，同一个
 #### [划分独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/create_partition.md)
 ##### /srv
 承载了CCI的数据存储，是CCI数据服务的根目录。
+```
 /srv
 ├── cache
 ├── cci
@@ -51,20 +52,25 @@ compass-ci集群搭建过程中，需要在本地运行dnsmasq服务，同一个
 ├── rpm
 ├── tmp
 └── upload-files
+```
 
 ##### /srv/result
 每个 Job 的结果保存路径，建议划分独立分区，定期清理。
 
 以CCI官方服务器上的job结果空间使用情况为例
 较小的job结果所占的空间：
+```
 du -sh /srv/result/host-info/2021-12-23/vm-2p8g/openeuler-20.03-aarch64/z9.13207965
 1.2M    /srv/result/host-info/2021-12-23/vm-2p8g/openeuler-20.03-aarch64/z9.13207965
+```
 
 较大的job结果所占用的空间：
+```
 du -sh /srv/result/multi-qemu-docker/2021-10-08/taishan200-2280-2s48p-256g--a25/openeuler-
 20.03-aarch64/6-ext4-raid0-10-dc-1g-10-dc-2g-10-dc-4g-20-dc-8g-10/z9.11023894
 470M    /srv/result/multi-qemu-docker/2021-10-08/taishan200-2280-2s48p-256g--a25/openeuler
 -20.03-aarch64/6-ext4-raid0-10-dc-1g-10-dc-2g-10-dc-4g-20-dc-8g-10/z9.11023894
+```
 
 所以建议该目录独立划分200G的空间，建议使用LVM，方便后续动态扩容。
 
@@ -72,9 +78,11 @@ du -sh /srv/result/multi-qemu-docker/2021-10-08/taishan200-2280-2s48p-256g--a25/
 
 ##### /var/lib/docker
 以CCI官方服务器上的/var/lib/docker空间使用情况为例
+```
 df -h /var/lib/docker
 Filesystem                     Size  Used Avail Use% Mounted on
 /dev/mapper/vg--os-lv--docker  1.1T  480G  573G  46% /var/lib/docker
+```
 
 CCI所有的微服务的安装目录，建议划200G分独立分区，建议使用LVM，方便后续动态扩容。
 
@@ -102,37 +110,37 @@ vi /c/compass-ci/sparrow/setup.yaml
 >**说明：**
 >请根据如下说明填写setup.yaml文件，在下个步骤执行部署集群脚本脚本install-cluster中，将自动copy该文件到/etc/compass-ci/setup.yaml，方便部署过程中读取该配置。
 >请注意yaml文件格式，冒号后面必须有一个空格。
-
->my_account, my_name, my_email（必填）：用于注册本地搭建compass-ci集群帐号，请自定义一个帐号和用户名，邮箱只需填写您的常用邮箱地址即可。
->该文档中提到的注册帐号是向本地搭建的compass-ci集群注册帐号，与官方的compass-ci帐号注册没有关系，
->当执行部署脚本install-cluster时，自动将root用户的帐号信息存储在es数据库中，并在本地目录生成对应的yaml文件，无需手动注册。
->~/.config/compass-ci/defaults/account.yaml
->~/.config/compass-ci/include/lab/$lab.yaml（此处的$lab就是上文中提到的自定义的lab名称）
-
->lab（必填）： 需要自定义一个本地git仓库的名称，我们官方Compass-CI集群自定义的本地仓库名称为[z9](https://gitee.com/wu_fengguang/lab-z9.git)，
->当执行部署脚本install-cluster时，将自动在本地/c目录下初始化一个新的名为lab-$lab的git仓库并克隆下来，用于后续步骤添加测试机，无需手动创建。
->/c/lab-$lab.git
->/c/lab-$lab
-
->interface（必填）, dhcp-range（必填）： [配置dnsmasq服务](http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html)，以便执行测试任务时为测试机分发ip地址。
->interface为compass-ci集群服务端的内网ip地址对应的网卡名称,例如您的内网ip地址为172.168.xx.xx，网卡名称可使用如下命令获取'ip addr | grep 172.168 | awk '{print $NF}''。
->dhcp-range为dhcp为物理测试机分配的ip地址范围和租期，建议该范围要大于测试机的数量且要与服务端的内网ip地址在同一网段才能建立连接，租期建议设置久一些（建议设置1440h）。
->当执行部署脚本install-cluster时，将读取dnsmasq配置并自动在本地目录生成对应的conf文件，无需手动创建，此处的$lab就是上文中提到的自定义的lab名称：
->/c/compass-ci/container/dnsmasq/dnsmasq.d/$lab.conf（此处的$lab就是上文中提到的自定义的lab名称）
-
->br0_segment（选填）： br0网段前两位，默认值为172.18，如果当前环境中的172.18网段未被占用可不填。
-
->setup.yaml中的其他配置项与compass-ci集群搭建无关，请忽略。按照如上所述修改好配置文件setup.yaml后保存退出文本即可。
-
+>          
+>my_account, my_name, my_email（必填）：用于注册本地搭建compass-ci集群帐号，请自定义一个帐号和用户名，邮箱只需填写您的常用邮箱地址即可。该文档中提到的注册帐号是向本地搭建的compass-ci集群注册帐号，与官方的compass-ci帐号注册没有关系。当执行部署脚本install-cluster时，自动将root用户的帐号信息存储在es数据库中，并在本地目录生成对应的yaml文件，无需手动创建。            
+>```      
+>~/.config/compass-ci/defaults/account.yaml      
+>~/.config/compass-ci/include/lab/$lab.yaml（此处的$lab就是上文中提到的自定义的lab名称）        
+>```      
+>lab（必填）： 需要自定义一个本地git仓库的名称，我们官方Compass-CI集群自定义的本地仓库名称为[z9](https://gitee.com/wu_fengguang/lab-z9.git)，当执行部署脚本install-cluster时，将自动在本地/c目录下初始化一个新的名为lab-$lab的git仓库并克隆下来，用于后续步骤添加测试机，无需手动创建。         
+>```
+>/c/lab-$lab.git            
+>/c/lab-$lab          
+>```    
+>interface（必填）, dhcp-range（必填）： [配置dnsmasq服务](http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html)，以便执行测试任务时为测试机分发ip地址。interface为compass-ci集群服务端的内网ip地址对应的网卡名称,例如您的内网ip地址为172.168.xx.xx，网卡名称可使用如下命令获取:          
+>```
+>ip addr | grep 172.168 | awk '{print $NF}'        
+>```
+>dhcp-range为dhcp为物理测试机分配的ip地址范围和租期，建议该范围要大于测试机的数量且要与服务端的内网ip地址，当执行部署脚本install-cluster时，将读取dnsmasq配置并自动在本地目录生成对应的conf文件，无需手动创建。          
+>```
+>/c/compass-ci/container/dnsmasq/dnsmasq.d/$lab.conf（此处的$lab就是上文中提到的自定义的lab名称）          
+>```
+>br0_segment（选填）： br0网段前两位，默认值为172.18，如果当前环境中的172.18网段未被占用可不填。          
+>
+>setup.yaml中的其他配置项与compass-ci集群搭建无关，请忽略。按照如上所述修改好配置文件setup.yaml后保存退出文本即可。          
 
 - 执行部署集群脚本 install-cluster
 ```bash
 cd /c/compass-ci/sparrow && ./install-cluster
 ```
 
-install-cluster脚本大概需要运行一个小时，主要耗时在将数十个dockerfile文件构建成微服务镜像并运行在服务端。
-调用了脚本/c/compass-ci/sparrow/4-docker/buildall，/c/compass-ci/container目录下就是所有微服务，例如rabbitmq，
-redis，es，scheduler等，请耐心等待脚本执行结束。
+install-cluster脚本大概需要运行一个小时，主要耗时在将数十个dockerfile文件构建成微服务镜像并运行在服务端。          
+调用了脚本/c/compass-ci/sparrow/4-docker/buildall，/c/compass-ci/container目录下就是所有微服务，例如rabbitmq，          
+redis，es，scheduler等，请耐心等待脚本执行结束。          
 
 - 重启dnsmasq服务
 为了使dnsmasq配置生效，需要重启dnsmasq，容器微服务的重启均由container目录下各个微服务对应的start脚本完成。
