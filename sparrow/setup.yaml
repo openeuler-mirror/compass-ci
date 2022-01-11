@@ -29,12 +29,15 @@ dhcp_range:
 
 # Please apply for a dedicated email address for the send email robot.
 # Do not mix it with a private email address.
+# Refer to https://www.yiyisoft.com/news/402.html for how to get password
 # eg:
 #   SMTP_ADDRESS: smtp.qq.com
 #   SMTP_PORT: 25
 #   SMTP_DOMAIN: qq.com
 #   ROBOT_EMAIL_ADDRESS: xxxxx@qq.com
 #   ROBOT_EMAIL_PASSWORD: xxxxxx
+# If your email's SMTP server/port exists in the file /c/compass-ci/sparrow/well-known-smtp-servers,
+# no need to fill in SMTP_ADDRESS, SMTP_PORT, SMTP_DOMAIN.
 SMTP_ADDRESS:
 SMTP_PORT:
 SMTP_DOMAIN:

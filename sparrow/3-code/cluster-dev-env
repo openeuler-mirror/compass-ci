@@ -15,6 +15,21 @@ EOF
 SCHED_HOST=$(awk '/^SCHED_HOST:\s/ {print $2;exit}' /etc/compass-ci/defaults/*.yaml)
 sed -i "s%172.17.0.1%${SCHED_HOST}%g" /tftpboot/boot.ipxe
 
+get_smtp_conf()
+{
+	SMTP_DOMAIN=${ROBOT_EMAIL_ADDRESS##*@}
+	line=$(grep -m1 -e "smtp.$SMTP_DOMAIN" -e "@$SMTP_DOMAIN" $CCI_SRC/sparrow/well-known-smtp-servers)
+	if [ -n "$line" ]; then
+		SMTP_PORT=$(echo $line | awk '{print $1}')
+		SMTP_ADDRESS=$(echo $line | awk '{print $2}')
+	else
+		SMTP_PORT="25"
+		SMTP_ADDRESS="smtp.${SMTP_DOMAIN}"
+	fi
+}
+
+[ -n "$SMTP_ADDRESS" ] && [ -n "$SMTP_PORT" ] && [ -n "$SMTP_DOMAIN" ] || get_smtp_conf
+
 cat > /etc/compass-ci/accounts/robot-email.yaml <<EOF
 SMTP_ADDRESS: $SMTP_ADDRESS
 SMTP_PORT: $SMTP_PORT
