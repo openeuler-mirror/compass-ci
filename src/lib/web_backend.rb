@@ -540,13 +540,13 @@ def result_body(request_body)
     transposed = false
   end
 
-  groups_matrices, series = create_groups_matrices(request_body)
+  groups_matrices, series, group_testbox = create_groups_matrices(request_body)
   series = combine_compare_dims(request_body['series']) if series.empty?
 
   result = []
   groups_matrices.each do |group, group_matrices|
     compare_results = compare_metrics_values(group_matrices, series)
-    formatter = FormatEchartData.new(compare_results, request_body, group, series)
+    formatter = FormatEchartData.new(compare_results, request_body, group, series, group_testbox)
     echart_data = formatter.format_echart_data(transposed)
     result += echart_data
   end

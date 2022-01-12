@@ -188,6 +188,7 @@ def get_group_by_template(job_list, group_params, dimensions_key, dimensions, me
 
     groups[first_group_key] ||= {}
     groups[first_group_key][group_key] ||= {}
+    groups[first_group_key]['testbox'] ||= job['testbox']
     groups[first_group_key][group_key][dimension] ||= []
     groups[first_group_key][group_key][dimension] << new_job
   end

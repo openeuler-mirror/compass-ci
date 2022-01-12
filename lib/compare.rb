@@ -162,15 +162,18 @@ def create_groups_matrices(template_params)
 
   new_groups = {}
   common_group_key = {}
+  group_testbox = {}
   common_group_key = extract_common_group_key(groups.keys) if groups.size > 1
   test_params = template_params['test_params'] || nil
 
   groups.each do |first_group_key, first_group|
     new_group = create_new_key(first_group_key, common_group_key, template_params['series'], test_params)
+    group_testbox[new_group] = first_group['testbox']
+    first_group.delete('testbox')
     new_groups[new_group] = Matrix.combine_group_jobs_list(first_group)
   end
 
-  return new_groups, cmp_series
+  return new_groups, cmp_series, group_testbox
 end
 
 def create_new_key(first_group_key, common_group_key, series, test_params)
