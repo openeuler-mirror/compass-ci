@@ -18,7 +18,7 @@ class Sched
     when "ipxe", "libvirt"
       mac = normalize_mac(value)
       host = @redis.hash_get("sched/mac2host", mac)
-      host = handle_new_hw(mac) unless host
+      #host = handle_new_hw(mac) unless host
     when "grub"
       host = @redis.hash_get("sched/mac2host", normalize_mac(value))
       submit_host_info_job(value) unless host
