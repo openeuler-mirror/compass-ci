@@ -194,12 +194,15 @@ cat > /etc/compass-ci/register/register.yaml <<'EOF'
 delimiter:
   my_email: delimiter@localhost
   my_name: delimiter
+  my_account: delimiter
 auto-submit:
   my_email: auto-submit@localhost
   my_name: auto-submit
+  my_account: auto-submit
 scheduler:
   my_email: compass-ci@localhost
   my_name: compass-ci
+  my_account: compass-ci
 EOF
 
 [[ -f /etc/compass-ci/passwd.yaml ]] || {
