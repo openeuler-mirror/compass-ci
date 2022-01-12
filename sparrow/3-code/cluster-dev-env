@@ -37,4 +37,4 @@ SMTP_DOMAIN: $SMTP_DOMAIN
 ROBOT_EMAIL_ADDRESS: $ROBOT_EMAIL_ADDRESS
 ROBOT_EMAIL_PASSWORD: $ROBOT_EMAIL_PASSWORD
 EOF
-chmod 600 /etc/compass-ci/accounts/robot-email.yaml
+chmod 644 /etc/compass-ci/accounts/robot-email.yaml
