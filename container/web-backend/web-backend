@@ -360,3 +360,11 @@ end
 get '/test_matrix' do
   query_test_matrix(params)
 end
+
+
+# GET /host_info?testbox=taishan200-2280-2s48p-256g--a1008
+# Response:
+#   - host_info(JSON)
+get '/host_info' do
+  query_host_info(params)
+end

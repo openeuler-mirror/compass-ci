@@ -81,3 +81,5 @@ ASSIST_RESULT_PORT ||= config['ASSIST_RESULT_PORT'] || ENV['ASSIST_RESULT_PORT']
 
 SCHED_HOST ||= config['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT ||= config['SCHED_PORT'] || 3000
+
+LAB ||= config['LAB'] || ENV['LAB'] || 'z9'

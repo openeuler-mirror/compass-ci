@@ -1196,3 +1196,27 @@ def get_install_info(result)
   install_info['job_health'] = 'success'
   install_info
 end
+
+def query_host_info(params)
+  begin
+    result = get_host_content(params)
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "query host info error"
+    })
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query host info error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
+end
+
+def get_host_content(params)
+  testbox = params['testbox'] || nil
+  return "please give testbox params" unless testbox
+
+  # read host file
+  file_path = "/c/lab-#{LAB}/hosts/#{testbox}"
+  return "the testbox: #{testbox} doesn't exists" unless File.file?(file_path)
+
+  YAML.load_file(file_path)
+end
