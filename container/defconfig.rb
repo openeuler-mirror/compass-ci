@@ -7,11 +7,11 @@ require 'yaml'
 
 def cci_defaults
   hash = {}
-  Dir.glob(['/etc/compass-ci/defaults/*.yaml',
+  Dir.glob(['/etc/compass-ci/*.yaml',
+            '/etc/compass-ci/defaults/*.yaml',
             '/etc/compass-ci/service/*.yaml',
             '/etc/compass-ci/accounts/*.yaml',
             '/etc/compass-ci/register/*.yaml',
-            '/etc/compass-ci/*.yaml',
             "#{ENV['HOME']}/.config/compass-ci/defaults/*.yaml"]).each do |file|
     hash.update YAML.load_file(file) || {}
   end
