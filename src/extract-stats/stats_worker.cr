@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+require "yaml"
+
 require "../lib/etcd_client"
 require "../lib/json_logger"
 require "../scheduler/elasticsearch_client"
@@ -27,8 +29,7 @@ class StatsWorker
 
       job_id = queue_path.split("/")[-1]
       job = @es.get_job_content(job_id)
-      result_root = job["result_root"]?
-      result_post_processing(job_id, result_root.to_s, queue_path)
+      result_post_processing(job_id, queue_path, job)
       commit_channel.send(job["upstream_commit"].to_s) if job["nr_run"]? && job["upstream_commit"]? && job["base_commit"]?
       @etcd.delete(queue_path)
     rescue e
@@ -65,11 +66,45 @@ class StatsWorker
     )
   end
 
-  def result_post_processing(job_id : String, result_root : String, queue_path : String)
+  def store_host_info(result_root : String, job)
+    is_store = job["is_store"]?
+    return if is_store != "yes"
+
+    testbox = job["testbox"]?
+    file_path = "#{result_root}/host-info"
+    return unless File.exists?(file_path)
+
+    content = File.open(file_path) do |f|
+      YAML.parse(f)
+    end
+
+    host_info = JSON.parse(content.to_json)
+    @es.@client.index(
+      {
+        :index => "hostinfo",
+        :type => "_doc",
+        :id => testbox,
+        :body => host_info,
+      }
+    )
+  end
+
+  def result_post_processing(job_id : String, queue_path : String, job)
+    result_root = "#{job["result_root"]?}"
     return nil unless result_root && File.exists?(result_root)
 
-    suite = result_root.split("/")[2]
+    suite = "#{job["suite"]?}"
     boards_store(result_root) if suite == "boards-scan"
+    begin
+      store_host_info(result_root, job) if suite == "host-info"
+    rescue e
+      msg = %({"job_id": "#{job_id}", "store_host_info error": "#{e}"})
+      @log.warn({
+        "message" => "job_id #{job_id}, store host info error #{e}",
+        "error_message" => e.inspect_with_backtrace.to_s
+      })
+    end
+
     # extract stats.json
     system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
     # storage stats to job in es

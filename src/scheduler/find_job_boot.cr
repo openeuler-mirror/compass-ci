@@ -59,7 +59,7 @@ class Sched
     @redis.hash_set("sched/mac2host", normalize_mac(mac), host)
     @redis.hash_set("sched/host2queues", host, queues)
     Jobfile::Operate.auto_submit_job(
-      "#{ENV["LKP_SRC"]}/jobs/host-info.yaml", ["testbox=vm-2p8g", "queue=#{host}"])
+      "#{ENV["LKP_SRC"]}/jobs/host-info.yaml", ["testbox=vm-2p8g", "queue=#{host}", "is_store=yes"])
     return host
   end
 
