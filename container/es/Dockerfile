@@ -18,15 +18,17 @@ RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/elastic
     echo "-Xms${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options && \
     echo "-Xmx${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options
 
-RUN mkdir /usr/share/elasticsearch/tmp && \
-    chown -R 1090:1090 /usr/share/elasticsearch
-
+RUN yum install -y -q git python38
+RUN mkdir /usr/share/elasticsearch/tmp
 WORKDIR /usr/share/elasticsearch
 
-RUN ./bin/elasticsearch-users useradd ${USER} -p ${PASSWORD} -r superuser
-
 ENV PATH /usr/share/elasticsearch/bin:$PATH
+ENV JAVA_HOME /usr/share/elasticsearch/jdk
 ENV ES_TMPDIR /usr/share/elasticsearch/tmp
+
+RUN ./bin/elasticsearch-users useradd ${USER} -p ${PASSWORD} -r superuser && \
+    ./bin/elasticsearch-plugin install https://github.com/NLPchina/elasticsearch-sql/releases/download/7.11.1.0/elasticsearch-sql-7.11.1.0.zip && \
+    chown -R 1090:1090 /usr/share/elasticsearch
 
 VOLUME ["/srv/es"]
 
