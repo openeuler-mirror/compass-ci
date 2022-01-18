@@ -105,14 +105,19 @@ class Elasticsearch::Client
     return total, id
   end
 
-  def search(index, query)
+  def search(index, query, ignore_error = true)
     results = @client.search({:index => index, :body => query})
     raise results unless results.is_a?(JSON::Any)
 
     return results["hits"]["hits"].as_a unless results.as_h.has_key?("error")
 
-    puts results
-    Array(JSON::Any).new
+    error_results = Array(JSON::Any).new
+    if ignore_error
+      puts results
+    else
+      error_results << results
+    end
+    return error_results
   end
 
   def update_account(account_content : JSON::Any, my_email : String)
