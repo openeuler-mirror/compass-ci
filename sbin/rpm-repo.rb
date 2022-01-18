@@ -10,6 +10,11 @@ require_relative '../lib/mq_client'
 require_relative '../lib/json_logger.rb'
 require_relative '../lib/config_account'
 require_relative "#{ENV['LKP_SRC']}/lib/do_local_pack"
+require_relative '../lib/parse_install_rpm'
+require_relative './build-compat-list'
+require_relative '../lib/es_query.rb'
+require_relative '../lib/constants.rb'
+
 
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
@@ -35,6 +40,7 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 class HandleRepo
   @@upload_dir_prefix = "/srv/rpm/upload/"
   def initialize
+    @es = ESQuery.new(ES_HOSTS)
     @mq = MQClient.new(:hostname => MQ_HOST, :port => MQ_PORT)
     @log = JSONLogger.new
   end
@@ -75,8 +81,31 @@ class HandleRepo
     end
   end
 
+  def get_results_by_group_id(group_id)
+    query = { 'group_id' => group_id }
+    tmp_stats_hash = get_install_rpm_result_by_group_id(query)
+    stats_hash = parse_install_rpm_result_to_json(tmp_stats_hash)
+    refine_json(stats_hash)
+  end
+
+  def deal_pub_dir(group_id)
+    result_list = get_results_by_group_id(group_id)
+    update = []
+    result_list.each do |pkg_info|
+      next unless pkg_info["install"] == "pass"
+      next unless pkg_info["downloadLink"]
+      next unless pkg_info["src_location"]
+      location = "/srv" + pkg_info["downloadLink"].delete_prefix!('https://api.compass-ci.openeuler.org:20018')
+      src_location = "/srv" + pkg_info["src_location"][0].delete_prefix!('https://api.compass-ci.openeuler.org:20018')
+      update << location
+      update << src_location
+    end
+    update_pub_dir(update)
+  end
+
   def check_upload_rpms(data)
     raise JSON.dump({ "errcode" => "200", "errmsg" => "no upload_rpms params" }) unless data.key?("upload_rpms")
+    raise JSON.dump({ "errcode" => "200", "errmsg" => "no job_id params" }) unless data.key?("job_id")
     raise JSON.dump({ "errcode" => "200", "errmsg" => "upload_rpms params type error" }) if data["upload_rpms"].class != Array
     data["upload_rpms"].each do |rpm|
       raise JSON.dump({ "errcode" => "200", "errmsg" => "#{rpm} not exist" }) unless File.exist?(rpm)
@@ -85,18 +114,18 @@ class HandleRepo
   end
 
   def update_pub_dir(update)
+    pub_path_list = Set.new
     update.each do |rpm|
       pub_path = File.dirname(rpm).sub("testing", "pub")
       FileUtils.mkdir_p(pub_path) unless File.directory?(pub_path)
 
       dest = File.join(pub_path, File.basename(rpm))
       FileUtils.cp(rpm, dest)
+      pub_path_list << pub_path
+    end
 
-      repodata_dest = File.join(File.dirname(pub_path), "repodata")
-      repodata_src = File.dirname(rpm).sub("Packages", "repodata")
-
-      FileUtils.rm_r(repodata_dest) if Dir.exist?(repodata_dest)
-      FileUtils.cp_r(repodata_src, File.dirname(repodata_dest))
+    pub_path_list.each do |pub_path|
+      system("createrepo --update $(dirname #{pub_path})")
     end
   end
 
@@ -135,20 +164,24 @@ class HandleRepo
     end
   end
 
-  def parse_arg(rpm_path)
-    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit --no-pack"]
+  def parse_arg(rpm_path, job_id)
+    query_result = @es.query_by_id(job_id)
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit"]
     rpm_path = File.dirname(rpm_path).sub('upload', 'testing')
     rpm_path.sub!('/srv', '')
+    mount_repo_name = rpm_path.split('/')[4..-3].join('/')
     rpm_path = "https://api.compass-ci.openeuler.org:20018#{rpm_path}"
     rpm_path = rpm_path.delete_suffix('/Packages')
     submit_arch = rpm_path.split('/')[-1]
-    submit_argv.push("custom_repo_addr=#{rpm_path}")
+    submit_argv.push("mount_repo_addr=#{rpm_path}")
     submit_argv.push("arch=#{submit_arch}")
-    submit_argv.push("custom_repo_name=#{rpm_path.split('/')[-2]}")
+    submit_argv.push("mount_repo_name=#{mount_repo_name}")
+    submit_argv.push("os=#{query_result['os']}")
+    submit_argv.push("os_version=#{query_result['os_version']}")
+    submit_argv.push("tbox_group=#{query_result['tbox_group']}")
+    submit_argv.push("docker_image=#{query_result['docker_image']}") if query_result.key?('docker_image')
 
     fixed_arg = YAML.load_file("/etc/submit_arg.yaml")
-    submit_argv.push("docker_image=#{fixed_arg['docker_image']}")
-    submit_argv.push("testbox=#{fixed_arg['testbox']}")
     submit_argv.push("#{fixed_arg['yaml']}")
 
     return submit_argv, submit_arch
@@ -160,8 +193,9 @@ class HandleRepo
       begin
         group_id = Time.new.strftime('%Y-%m-%d')+'-auto-install-rpm'
         rpm_info = JSON.parse(msg)
+        job_id = rpm_info['job_id']
         rpm_info['upload_rpms'].each do |rpm|
-          submit_argv, submit_arch = parse_arg(rpm)
+          submit_argv, submit_arch = parse_arg(rpm, job_id)
           real_argvs = Array.new(submit_argv)
           next if submit_arch == 'source'
 
@@ -170,6 +204,7 @@ class HandleRepo
           real_argvs.push("rpm_name=#{rpm_name}")
           real_argvs.push("group_id=#{group_id}")
           system(real_argvs.join(' '))
+          deal_pub_dir(group_id)
         end
         @mq.ack(info)
       rescue StandardError => e
