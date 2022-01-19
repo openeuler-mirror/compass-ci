@@ -48,25 +48,34 @@ class StatsWorker
     @log.info("extract-stats delete id2job from etcd #{id}: #{res}")
   end
 
-  def boards_store(result_root : String)
+  def store_device(result_root, job)
+    job_id = job["id"]?
     file_path = "#{result_root}/boards-scan"
     return unless File.exists?(file_path)
 
-    file_info = File.open(file_path)
-    boards_info = JSON.parse(file_info)
+    content = File.open(file_path) do |f|
+      YAML.parse(f)
+    end
 
+    board_info = JSON.parse(content.to_json)
     @es.@client.index(
       {
-        :index => "machines",
+        :index => "devices",
         :type => "_doc",
-        :refresh => "wait_for",
-        :id => boards_info["id"],
-        :body => boards_info,
+        :id => board_info["id"],
+        :body => board_info,
       }
     )
+  rescue e
+    msg = %({"job_id": "#{job_id}", "store_device error": "#{e}"})
+    @log.warn({
+      "message" => "job_id #{job_id}, store device error #{e}",
+      "error_message" => e.inspect_with_backtrace.to_s
+    })
   end
 
   def store_host_info(result_root : String, job)
+    job_id = job["id"]?
     is_store = job["is_store"]?
     return if is_store != "yes"
 
@@ -87,6 +96,12 @@ class StatsWorker
         :body => host_info,
       }
     )
+  rescue e
+    msg = %({"job_id": "#{job_id}", "store_host_info error": "#{e}"})
+    @log.warn({
+      "message" => "job_id #{job_id}, store host info error #{e}",
+      "error_message" => e.inspect_with_backtrace.to_s
+    })
   end
 
   def result_post_processing(job_id : String, queue_path : String, job)
@@ -94,16 +109,8 @@ class StatsWorker
     return nil unless result_root && File.exists?(result_root)
 
     suite = "#{job["suite"]?}"
-    boards_store(result_root) if suite == "boards-scan"
-    begin
-      store_host_info(result_root, job) if suite == "host-info"
-    rescue e
-      msg = %({"job_id": "#{job_id}", "store_host_info error": "#{e}"})
-      @log.warn({
-        "message" => "job_id #{job_id}, store host info error #{e}",
-        "error_message" => e.inspect_with_backtrace.to_s
-      })
-    end
+    store_device(result_root, job) if suite == "boards-scan"
+    store_host_info(result_root, job) if suite == "host-info"
 
     # extract stats.json
     system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
