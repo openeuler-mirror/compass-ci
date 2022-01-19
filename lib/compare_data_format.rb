@@ -112,7 +112,7 @@ class FormatEchartData
         @data_set[group] ||= {}
         @data_set[group]['title'] = @title || group
         @data_set[group]['test_params'] = @group_params
-        @data_set[metric]['testbox'] = @group_testbox[@group_params]
+        @data_set[group]['testbox'] = @group_testbox[@group_params]
         @data_set[group]['datas'] ||= {}
         kv[1].each do |metric, values|
           assign_change_datas(group, metric)
