@@ -9,7 +9,7 @@ export_config_variables()
 {
 	[[ -n "$my_email" && -n "$my_name" && -n "$my_account" ]] && return
 
-	options=( server_ip my_name my_email my_account)
+	options=( server_ip my_name my_email my_account lab)
 
 	for option in ${options[@]}
 	do
@@ -41,8 +41,9 @@ mkdir -p /etc/compass-ci/
 cp -a $CCI_SRC/sparrow/setup.yaml /etc/compass-ci/setup.yaml
 export_config_variables
 
-[[ -n "$my_email" && -n "$my_name" ]] || {
-	log_error "ENV \$my_email or \$my_name doesn't exist, please config $CCI_SRC/sparrow/setup.yaml"
+[[ -n "$my_email" && -n "$my_name" && -n "$my_account" && -n "$lab" ]] || {
+	log_error "A least one of the below variable is empty, please config $CCI_SRC/sparrow/setup.yaml"
+	echo -e "my_email=$my_email\nmy_name=$my_name\nmy_account=$my_account\nlab=$lab"
 	exit 1
 }
 
