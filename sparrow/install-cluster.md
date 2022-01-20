@@ -193,6 +193,7 @@ Compass-CI服务端搭建完毕。
 - 增加rootfs
 启动测试机需要使用我们自制的rootfs文件，集群部署脚本install-cluster会自动准备好一个openeuler（系统版本为openeuler/aarch64/20.03）的rootfs文件，
 如果需要使用其他os版本，请使用该脚本/c/compass-ci/sbin/download-rootfs下载，用法见脚本内注释。
+如果需要测试自制的发行版，可使用工具将发行版iso文件制作成compass-ci需要的[rootfs](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/rootfs/compass-ci-use-rootfs)，详细制作方法请[参考文档](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/rootfs/how-to-get-rootfs)。
 
 - 非root用户注册账号
 执行部署集群脚本 install-cluster时已经为root用户注册帐号，非root用户也需要注册帐号才能提交任务。
