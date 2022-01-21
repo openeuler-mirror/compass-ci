@@ -1,0 +1,14 @@
+#!/bin/bash
+# Refer to: https://github.com/tuna/tunasync
+# License: GPL-3.0
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+. ../defconfig.sh
+
+[ "$(arch)" == "aarch64" ] && ARCH=arm64
+[ "$(arch)" == "x86_64" ] && ARCH=amd64
+
+docker_skip_rebuild "repo-mirror"
+
+docker build -t repo-mirror --build-arg ARCH=${ARCH} .

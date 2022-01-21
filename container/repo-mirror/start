@@ -1,0 +1,22 @@
+#!/bin/bash
+# Refer to: https://github.com/tuna/tunasync
+# License: GPL-3.0
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+. $CCI_SRC/container/defconfig.sh
+
+docker_rm repo-mirror
+
+cmd=(
+	docker run -d
+	--name repo-mirror
+	--restart=always
+	-p 32345:32345
+	-p 32346:32346
+	-v /etc/localtime:/etc/localtime:ro
+	-v /srv/os-repo:/srv/os-repo
+	repo-mirror
+)
+
+"${cmd[@]}"
