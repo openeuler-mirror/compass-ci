@@ -1,0 +1,8 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+. ../defconfig.sh
+
+docker_skip_rebuild "debian:data-api"
+
+docker build -t debian:data-api .

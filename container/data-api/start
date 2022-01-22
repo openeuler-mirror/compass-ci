@@ -1,0 +1,48 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+
+[[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
+[[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
+[[ $UPSTREAM_REPOS_PATH ]] || UPSTREAM_REPOS_PATH=/c/upstream-repos
+
+. $CCI_SRC/container/defconfig.sh
+docker_rm data-api
+
+load_cci_defaults
+[[ $SRV_HTTP_RESULT_HOST ]] || SRV_HTTP_RESULT_HOST=$(curl ip.sb)
+[[ $SRV_HTTP_RESULT_PORT ]] || SRV_HTTP_RESULT_PORT=20007
+
+load_service_authentication
+
+cmd=(
+	docker run
+	--name data-api
+	--restart=always
+	-d
+	-p 10005:10005
+
+	-e ES_PORT=9200
+	-e SRV_HTTP_RESULT_HOST=$SRV_HTTP_RESULT_HOST
+	-e SRV_HTTP_RESULT_PORT=$SRV_HTTP_RESULT_PORT
+	-e CCI_SRC=/c/compass-ci
+	-e LKP_SRC=/c/lkp-tests
+	-e UPSTREAM_REPOS_PATH=/c/upstream-repos
+	-e ES_USER=$ES_USER
+	-e ES_PASSWORD=$ES_PASSWORD
+	-e LOGGING_ES_USER=$LOGGING_ES_USER
+	-e LOGGING_ES_PASSWORD=$LOGGING_ES_PASSWORD
+
+	-v $CCI_SRC:/c/compass-ci
+	-v $LKP_SRC:/c/lkp-tests
+	-v $UPSTREAM_REPOS_PATH:/c/upstream-repos
+	-v /etc/compass-ci:/etc/compass-ci:ro
+	-v /etc/localtime:/etc/localtime:ro
+
+	--log-opt mode=non-blocking
+	--log-opt max-buffer-size=4m
+
+	debian:data-api
+)
+
+"${cmd[@]}"

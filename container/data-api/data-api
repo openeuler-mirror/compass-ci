@@ -1,0 +1,31 @@
+#!/usr/bin/ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'sinatra'
+
+CCI_SRC = ENV['CCI_SRC'] || '/c/compass-ci'
+require "#{CCI_SRC}/src/lib/data_api.rb"
+require "#{CCI_SRC}/src/lib/service_logs/service_logs.rb"
+require "#{CCI_SRC}/lib/es_query.rb"
+
+set :bind, '0.0.0.0'
+set :port, 10005
+set :show_exceptions, false
+set :environment, :production
+
+# POST
+# eg:
+#   curl -X POST localhost:10005/es_find -H 'Content-Type: application/json' -d '{
+#     "query": {"size":10, "sort": [{"start_time": {"order": "desc"}}]},
+#     "index": "jobs",
+#     "my_token": "16132550-...",
+#     "my_account": "auto-submit"
+#   }'
+# Response:
+#   - es_result : JSON
+post '/data_api/es_find' do
+  request.body.rewind # in case someone already read it
+  es_find(request.body.read)
+end
