@@ -12,6 +12,7 @@ require_relative '../../lib/json_logger.rb'
 
 ES_ACCOUNTS = ESQuery.new(index: 'accounts')
 REQUIRED_TOKEN_INDEX = Set.new(['jobs'])
+UNOPEN_INDEX = Set.new(['accounts'])
 ES_QUERY_KEYWORD = Set.new(['term', 'match'])
 
 def es_find(params)
@@ -31,13 +32,13 @@ def query_es(params)
   request_body = JSON.parse(params)
   index = request_body['index'] || 'jobs'
   query = request_body['query'] || {'query' => {}}
-  my_account = request_body['my_account']
-  my_token = request_body['my_token']
-  return "missed my_account" unless my_account
-  return "missed my_token " unless my_token
+  return "#{index} is not opened" if UNOPEN_INDEX.any? { |unopen_index| index.include?(unopen_index) }
 
-
-  if REQUIRED_TOKEN_INDEX.include?(index)
+  if REQUIRED_TOKEN_INDEX.any? { |req_index| index.include?(req_index) }
+    my_account = request_body['my_account']
+    my_token = request_body['my_token']
+    return "missed my_account" unless my_account
+    return "missed my_token" unless my_token
     return "user authentication failed" unless verify_user(my_account, my_token)
 
     build_account_query(query, my_account)
