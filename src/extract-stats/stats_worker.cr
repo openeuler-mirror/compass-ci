@@ -50,6 +50,7 @@ class StatsWorker
 
   def store_device(result_root, job)
     job_id = job["id"]?
+    testbox = job["testbox"]?
     file_path = "#{result_root}/boards-scan"
     return unless File.exists?(file_path)
 
@@ -57,12 +58,20 @@ class StatsWorker
       YAML.parse(f)
     end
 
-    board_info = JSON.parse(content.to_json)
+    host_content = get_host_content(testbox)
+    if host_content
+      host_content_hash = host_content.as_h
+      host_content_hash["device"] = JSON.parse(content.to_json)
+      board_info = JSON.parse(host_content_hash.to_json)
+    else
+      board_info = JSON.parse({"device" => content}.to_json)
+    end
+
     @es.@client.index(
       {
-        :index => "devices",
+        :index => "hosts",
         :type => "_doc",
-        :id => board_info["id"],
+        :id => testbox,
         :body => board_info,
       }
     )
@@ -87,10 +96,20 @@ class StatsWorker
       YAML.parse(f)
     end
 
+    host_content = get_host_content(testbox)
+    if host_content
+      host_content_hash = host_content.as_h
+      device = host_content_hash["device"]?
+      if device
+        content = JSON.parse(content.to_json).as_h
+        content.any_merge!({"device" => device})
+      end
+    end
+
     host_info = JSON.parse(content.to_json)
     @es.@client.index(
       {
-        :index => "hostinfo",
+        :index => "hosts",
         :type => "_doc",
         :id => testbox,
         :body => host_info,
@@ -102,6 +121,16 @@ class StatsWorker
       "message" => "job_id #{job_id}, store host info error #{e}",
       "error_message" => e.inspect_with_backtrace.to_s
     })
+  end
+
+  def get_host_content(testbox)
+    query = {:index => "hosts", :type => "_doc", :id => testbox.to_s}
+    if @es.@client.exists(query)
+      result = @es.@client.get_source(query)
+      return nil unless result.is_a?(JSON::Any)
+
+      return result
+    end
   end
 
   def result_post_processing(job_id : String, queue_path : String, job)

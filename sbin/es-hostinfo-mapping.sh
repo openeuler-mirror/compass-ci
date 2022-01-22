@@ -7,14 +7,14 @@
 load_service_authentication
 
 # check whether accounts index has created
-status_code=$(curl -sSIL -u "${ES_USER}:${ES_PASSWORD}" -w "%{http_code}\\n" -o /dev/null http://localhost:9200/hostinfo1)
+status_code=$(curl -sSIL -u "${ES_USER}:${ES_PASSWORD}" -w "%{http_code}\\n" -o /dev/null http://localhost:9200/hosts1)
 
 if [ "$status_code" -eq 200 ]
 then
 	echo "hostinfo index has been created, exit."
 else
 	echo "begin create index."
-	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/hostinfo1' -u "${ES_USER}:${ES_PASSWORD}" -d '{
+	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/hosts1' -u "${ES_USER}:${ES_PASSWORD}" -d '{
 		"mappings": {
 			"dynamic": false,
 			"properties": {
