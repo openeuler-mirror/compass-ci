@@ -16,12 +16,21 @@ set :show_exceptions, false
 set :environment, :production
 
 # POST
-# eg:
+# eg1:
 #   curl -X POST localhost:10005/es_find -H 'Content-Type: application/json' -d '{
 #     "query": {"size":10, "sort": [{"start_time": {"order": "desc"}}]},
 #     "index": "jobs",
 #     "my_token": "16132550-...",
-#     "my_account": "auto-submit"
+#     "my_account": "auto-submit",
+#     "query_type": "eql"  # can be omitted in this scenario
+#   }'
+# eg2:
+#   curl -X POST localhost:10005/es_find -H 'Content-Type: application/json' -d '{
+#     "query": "SELECT * FROM jobs WHERE ...",
+#     "index": "jobs",
+#     "my_token": "16132550-...",
+#     "my_account": "auto-submit",
+#     "query_type": "sql" # required
 #   }'
 # Response:
 #   - es_result : JSON

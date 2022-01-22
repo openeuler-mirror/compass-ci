@@ -8,6 +8,7 @@ require 'elasticsearch'
 require 'set'
 require_relative '../../lib/constants.rb'
 require_relative '../../lib/es_query.rb'
+require_relative '../../lib/es_client.rb'
 require_relative '../../lib/json_logger.rb'
 
 ES_ACCOUNTS = ESQuery.new(index: 'accounts')
@@ -41,11 +42,16 @@ def query_es(params)
     return "missed my_token" unless my_token
     return "user authentication failed" unless verify_user(my_account, my_token)
 
-    build_account_query(query, my_account)
+    query = build_account_query(query, my_account, request_body['query_type'], index)
   end
 
-  es = Elasticsearch::Client.new(hosts: ES_HOSTS)
-  es.search index: index + '*', body: query
+  if request_body['query_type'] == 'sql'
+    es = ESClient.new(index: index)
+    return es.query_by_sql(query).body
+  else
+    es = Elasticsearch::Client.new(hosts: ES_HOSTS)
+    return es.search index: index + '*', body: query
+  end
 end
 
 def verify_user(my_account, my_token)
@@ -59,16 +65,28 @@ def verify_user(my_account, my_token)
 	result[0]['_source']['my_token'] == my_token
 end
 
-def build_account_query(query, my_account)
-  query['query'] ||= {}
-  query['query']['bool'] ||= {}
-  query['query']['bool']['must'] ||= []
-  query['query']['bool']['must'] << {'term' => {'my_account' => my_account}}
+def build_account_query(query, my_account, query_type, index)
+  if query_type == 'sql'
+    user_limit = "my_account='#{my_account}'"
+    if query =~ /where/i
+      query = query.gsub(/FROM\s*\S+/i, "FROM #{index} ")
+      query = query.gsub(/where/i, "WHERE #{user_limit} AND")
+    else
+      query = query.gsub(/from\s*\S+/i, "FROM #{index} WHERE #{user_limit}")
+    end
+  else
+    query['query'] ||= {}
+    query['query']['bool'] ||= {}
+    query['query']['bool']['must'] ||= []
+    query['query']['bool']['must'] << {'term' => {'my_account' => my_account}}
 
-  query['query'].each do |k, v|
-    if ES_QUERY_KEYWORD.include?(k)
-      query['query']['bool']['must'] << {k => v}
-      query['query'].delete(k)
+    query['query'].each do |k, v|
+      if ES_QUERY_KEYWORD.include?(k)
+        query['query']['bool']['must'] << {k => v}
+        query['query'].delete(k)
+      end
     end
   end
+
+  query
 end
