@@ -2,17 +2,13 @@
 | os        | os_arch | os_version    | os_mount=cifs | os_mount=nfs | os_mount=initramfs |
 |-----------|---------|---------------|---------------|--------------|--------------------|
 | openeuler | aarch64 | 1.0           | ok            | ok           | ok                 |
-| openeuler | aarch64 | 20            | ok            | ok           | ok                 |
-| openeuler | aarch64 | 20.03         | ok            | ok           | ok                 |
 | openeuler | aarch64 | 20.03-LTS     | ok            | ok           | ok                 |
-| openeuler | aarch64 | 20.03-SP1     | ok            | ok           | ok                 |
 | openeuler | aarch64 | 20.03-LTS-SP1 | ok            | ok           | ok                 |
 | openeuler | aarch64 | 20.03-LTS-SP2 | ok            | ok           | ok                 |
 | openeuler | aarch64 | 20.09         | ok            | ok           | ok                 |
 | openeuler | aarch64 | 21.03         | ok            | ok           | ok                 |
 | openeuler | aarch64 | 21.09         | ok            | ok           | ok                 |
-| openeuler | x86_64  | 20.03         | ok            | ok           | ok                 |
-| openeuler | x86_64  | 20.03-SP1     | ok            | ok           | ok                 |
+| openeuler | x86_64  | 20.03-LTS     | ok            | ok           | ok                 |
 | openeuler | x86_64  | 20.03-LTS-SP1 | ok            | ok           | ok                 |
 | openeuler | x86_64  | 20.09         | ok            | ok           | ok                 |
 | openeuler | x86_64  | 21.03         | ok            | ok           | ok                 |
