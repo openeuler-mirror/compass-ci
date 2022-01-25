@@ -1,5 +1,5 @@
 # 自动化测试
-本文以待测试仓库[sysbench](https://github.com/akopytov/sysbench)为例，测试用例sysbench-cpu.yaml，测试脚本sysbench-cpu和PKGBUILD文件均为/c/lkp-tests目录下已有的，为了方便git push该仓库触发自动化测试，实际使用的是fork该仓库后的[gitee](https://gitee.com/liu-yinsi/sysbench)地址。
+本文以待测试仓库[sysbench](https://github.com/akopytov/sysbench)为例，测试用例sysbench-cpu.yaml，测试脚本sysbench-cpu和PKGBUILD文件均为/c/lkp-tests目录下已有的，为了方便git push该仓库触发自动化测试，实际使用的是fork该仓库后的[gitee](https://gitee.com/liu-yinsi/sysbench)地址。fork的git仓库请设置成开源（所有人可见）。
 
 1. [编写测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
 	本文中测试用例使用/c/lkp-tests/jobs/sysbench-cpu.yaml，测试脚本使用/c/lkp-tests/tests/sysbench-cpu，测试用例和测试脚本既可以使用c/lkp-tests目录下已存在的，也可自己编写并分别添加到上述两个目录下。
@@ -12,8 +12,8 @@
    	使用cci-makepkg.yaml根据编写好的PKGBUILD文件生成latest.cgz包
    	```
    	submit -m cci-makepkg.yaml cci-makepkg.benchmark=sysbench-cpu
+   	如果cci-makepkg任务失败，在对应的结果文件output中打印了访问github 443的报错信息，可将PKGBUILD文件中的source值替换为fork github仓库后的gitee地址。
    	ls /srv/initrd/pkg/container/centos/aarch64/7/sysbench-cpu/latest.cgz
-   	#如遇访问github 443的网络问题，可将PKGBUILD文件中的source值替换为fork github仓库后的gitee地址
    	```
 
 3. 使用cci-depends.yaml生成执行测试任务sysbench-cpu所需的依赖包
