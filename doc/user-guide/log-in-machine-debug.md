@@ -2,8 +2,8 @@
 
 # 1. 前提条件：
 ## 请先学习:
-* [配置个人邮箱](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md)
-* [如何申请测试机](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/functions/borrow-machine/borrow-machine.zh.md)
+* [配置个人邮箱](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md)
+* [如何申请测试机](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/borrow-machine.zh.md)
 * [submit命令详解](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
 
 # 2. 操作方法

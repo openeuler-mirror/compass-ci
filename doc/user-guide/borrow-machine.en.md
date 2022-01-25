@@ -3,7 +3,7 @@
 - Apply account
 - Config default yaml files
 
-If you have not completed above works, reference to [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md) to finish it.
+If you have not completed above works, reference to [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md) to finish it.
 
 # Apply testbox
 

@@ -3,7 +3,7 @@
 - 申请account
 - 配置默认yaml文件
 
-如果未完成以上步骤，请参考 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md) 完成操作。
+如果未完成以上步骤，请参考 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md) 完成操作。
 
 # 申请测试机
 
