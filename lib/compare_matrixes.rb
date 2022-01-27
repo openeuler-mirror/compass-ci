@@ -527,14 +527,15 @@ def assign_metric_values(metrics_values, dim, metric, values)
 end
 
 def assign_metric_change(metrics_values, cmp_series)
+  dimension_groups = get_dimensions_combination(cmp_series)
   metrics_values.each do |metric, values|
     next if values['average'].size < 2
 
     metrics_values[metric]['change'] = {}
 
-    # dimension_list = values['average'].keys
-    dimension_groups = get_dimensions_combination(cmp_series)
     dimension_groups.each do |base_dimension, challenge_dimension|
+      next unless values['average'][base_dimension] && values['average'][challenge_dimension]
+
       change = get_compare_value(values['average'][base_dimension], values['average'][challenge_dimension], true)
       values['change'] = { "#{challenge_dimension} vs #{base_dimension}" => change }
     end
