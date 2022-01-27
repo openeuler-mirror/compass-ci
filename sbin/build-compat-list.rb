@@ -146,6 +146,7 @@ def delete_data(option)
   my_data = MyData.new
   result_list = get_all_data
   result_list.each do |source|
+    info = source['_source']
     key, value = option['delete_data'].split('=')
     next unless key
 
