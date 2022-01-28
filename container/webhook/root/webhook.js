@@ -27,7 +27,7 @@ handler.on('Merge Request Hook', function(event){
 			"pr_merge_reference_name" : event.payload.pull_request.merge_reference_name
 		}
 	}
-
+	console.log(msg)
 	spawn('ruby', ['/js/pr_hook.rb', JSON.stringify(msg)])
 })
 
