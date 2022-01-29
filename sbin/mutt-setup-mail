@@ -1,0 +1,56 @@
+#!/bin/bash
+
+info_file=$1
+
+[[ -n $info_file ]] || {
+        echo "add info_file for email config"
+        exit 1
+}
+
+source $info_file
+
+# add config for procmail
+cat >> $HOME/.procmailrc <<-EOF
+	DROPPRIVS=yes
+	PATH=$HOME/bin:/usr/local/bin:/usr/bin:/bin
+	MAILDIR=${MAIL_DIR}
+	AILLIST=${MAIL_DIR}
+	EFAULT=${MAIL_DIR}/${MAIL_BOX}
+	ORGMAIL=${MAIL_DIR}/${MAIL_BOX}
+	LOGFILE=${MAIL_DIR}/log/procmail
+	UMASK=002
+	DISPLAY=:0
+	XAUTHORITY=$HOME/.Xauthority
+	:0 Wh: $MAILDIR/.msgid.lock
+	| formail -D 655360 $MAILDIR/log/msgid
+EOF
+
+# add config for fetchmail
+cat >> $HOME/.fetchmailrc <<-EOF
+	poll imap.exmail.qq.com with proto IMAP
+	username "${EMAIL_ADDR}"
+	password "${EMAIL_PASS}"
+	mda "/usr/bin/procmail -f %F -d %T"
+	nokeep
+EOF
+
+# add config for mutt
+cat >> $HOME/.muttrc <<-EOF
+	set ssl_starttls=yes
+	set ssl_force_tls=yes
+	set ssl_use_sslv3=yes
+	set timeout=60
+	set smtp_authenticators="login"
+	set realname="${EMAIL_NAME}"
+	set from="${EMAIL_ADDR}"
+	set smtp_url="${EMAIL_SMTP_URL}"
+	set smtp_pass="${EMAIL_PASS}"
+EOF
+
+chmod 700 $HOME/.fetchmailrc $HOME/.procmailrc
+
+# start fetchmail process immediately.
+fetchmail -d 60
+
+# add crontab jobs to start fetchmail at server's per reboot for users.
+( crontab -l | grep -v "@reboot fetchmail -d 60"; echo "@reboot fetchmail -d 60" ) | crontab -
