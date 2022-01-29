@@ -540,10 +540,12 @@ def result_body(request_body)
     transposed = false
   end
 
-  groups_matrices, series, group_testbox = create_groups_matrices(request_body)
-  series = combine_compare_dims(request_body['series']) if series.empty?
-
   result = []
+  groups_matrices, series, group_testbox = create_groups_matrices(request_body)
+  return result.to_json if groups_matrices.empty?
+
+  series = combine_compare_dims(request_body['series']) unless request_body['max_series_num'] && request_body['max_series_num'] > 0
+
   groups_matrices.each do |group, group_matrices|
     compare_results = compare_metrics_values(group_matrices, series)
     formatter = FormatEchartData.new(compare_results, request_body, group, series, group_testbox)
