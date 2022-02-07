@@ -1028,8 +1028,10 @@ end
 def get_srpm_info(params)
   begin
     my_data = MyData.new
+    page_size = (params['page_size'] || 10).to_i
+    page_num = (params['page_num'] || 0).to_i
     info=[]
-    srpm_infos =  my_data.get_srpm_info(size: params['page_size'].to_i, from: params['page_num'].to_i)
+    srpm_infos =  my_data.get_srpm_info(size: page_size, from: page_num)
     srpm_infos['hits']['hits'].each do |source|
       info << source['_source']
     end
