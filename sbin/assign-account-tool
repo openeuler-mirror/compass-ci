@@ -36,14 +36,7 @@ LAB ||= defaults['lab']
 TOOL_SERVER = 'z9'
 
 my_info = {
-  'my_email' => nil,
-  'my_name' => nil,
-  'my_commit_url' => nil,
-  'my_token' => nil,
-  'my_login_name' => nil,
-  'my_ssh_pubkey' => [],
   'lab' => LAB,
-  'my_account' => nil
 }
 
 # stdin_info is used to store infos added with option:
@@ -66,6 +59,7 @@ email_info = {}
 my_info_es = {}
 conf_info = {
   'enable_login' => true,
+  'account_vm' => true,
   'is_update_account' => false
 }
 
@@ -90,17 +84,17 @@ options = OptionParser.new do |opts|
   opts.banner += '       answerback-mail.rb [-f|--raw-email email_file] '
   opts.banner += "[--login y|n] [--update]\n"
   opts.banner += "       -e|-f is required when applying account or updating account\n"
-  opts.banner += "       -n is required when assigning account with -e\n"
-  opts.banner += "       -a is required when assigning account with -e\n"
-  opts.banner += "       -s is optional when use -e\n"
-  opts.banner += "       -u is required when updating an account\n"
+  opts.banner += "       -n is required when no my_name specified for the account\n"
+  opts.banner += "       -a is required when no my_account specified for the account\n"
+  opts.banner += "       -s is required when there is no ssh_key for the account\n"
+  opts.banner += "       -u is required for an existing account, used to update the account and re-send the assign-account email\n"
   opts.banner += '       -l is optional, used to enable/disable login permission'
 
   opts.separator ''
   opts.separator 'options:'
 
   opts.on('-e email_address', '--email email_address', 'appoint email address') do |email_address|
-    unless email_address =~ /[^@]+@[\d\w]+\.[\w\d]+/
+    unless email_address =~ /[^@]+@[\d\w-]+\.[\w\d]+/
       message = "Not a standard format email: #{email_address}.\n\n"
       puts message
 
@@ -153,6 +147,10 @@ options = OptionParser.new do |opts|
     end
     mail_content = Mail.read(email_file)
     init_info(mail_content, email_info, my_info, my_info_es)
+  end
+
+  opts.on('-t', '--token', 'generate new token') do
+    stdin_info['my_token'] = %x(uuidgen).chomp
   end
 
   opts.on('-u', '--update', 'update configurations') do
@@ -212,20 +210,24 @@ def check_my_email(my_info)
 end
 
 def check_my_account_exist(my_info)
-  return unless my_info['my_account'].nil?
+  return true unless my_info['my_account'].nil?
 
   message = "No my_account specified\n"
   message += "use option '-a' to add one and try again\n"
-  raise message
+  puts message
+
+  return false
 end
 
 def check_my_account_unique(my_info)
   check_account = BuildMyInfo.new(my_info['my_email'])
-  return if check_account_unique(my_info, check_account)
+  return true if check_account_unique(my_info, check_account)
 
   message = "Offered my_account: #{my_info['my_account']} is already used!\n"
   message += "Please use a new one and try again."
-  raise message
+  puts message
+
+  return false
 end
 
 def build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
@@ -236,16 +238,24 @@ def build_my_info_from_input(my_info, email_info, my_info_es, stdin_info)
   update_my_info(my_info, my_info_es, email_info, stdin_info)
 
   return if new_pubkey.nil?
-  return if my_info['my_ssh_pubkey'].include? new_pubkey
 
-  my_info['my_ssh_pubkey'].insert(0, new_pubkey)
+  if my_info['my_ssh_pubkey'].nil?
+    my_info['my_ssh_pubkey'] = [new_pubkey]
+    return
+  end
+
+  unless my_info['my_ssh_pubkey'].include? new_pubkey
+    my_info['my_ssh_pubkey'].insert(0, new_pubkey)
+    return
+  end
 end
 
 def update_my_info(my_info, my_info_es, email_info, stdin_info)
-  my_info['my_token'] = my_info_es['my_uuid'] if my_info['my_token'].nil?
+  my_info['my_token'] = my_info_es['my_token'] if my_info['my_token'].nil?
+  my_info_es.update my_info
+  my_info_es.update email_info
+  my_info_es.update stdin_info
   my_info.update my_info_es
-  my_info.update email_info
-  my_info.update stdin_info
 end
 
 def build_my_info_from_account_info(my_info, account_info, conf_info)
@@ -271,6 +281,16 @@ def check_my_name_exist(my_info)
   return true if my_info['my_name']
 
   message = 'No my_name found, please use -n to add one'
+  puts message
+
+  return false
+end
+
+def check_my_pubkey_exist(my_info)
+  return true if my_info['my_ssh_pubkey'] && my_info['my_ssh_pubkey'].size.positive?
+
+  message = "No my_ssh_pubkey found.\n"
+  message += 'The account-vm is only allowd login with secret key, please use -s to add one'
   puts message
 
   return false
@@ -303,8 +323,10 @@ def send_account(my_info, conf_info, email_info, my_info_es, stdin_info)
 
   return unless check_my_name_exist(my_info)
 
-  check_my_account_exist(my_info)
-  check_my_account_unique(my_info)
+  return unless check_my_account_exist(my_info)
+  return unless check_my_account_unique(my_info)
+
+  return unless check_my_pubkey_exist(my_info)
 
   account_info = apply_account(my_info, conf_info)
   build_my_info_from_account_info(my_info, account_info, conf_info)
