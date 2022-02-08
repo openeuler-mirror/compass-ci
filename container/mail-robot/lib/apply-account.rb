@@ -58,7 +58,10 @@ class ApplyAccount
     # email info file for account issuers.
     @account_issuer = File.exist?(ENV['ACCOUNT_ISSUER']) ? YAML.load_file(ENV['ACCOUNT_ISSUER']) : {}
 
-    @my_info = {}
+    @my_info = {
+      'account_vm' => false,
+      'enable_login' => true
+    }
   end
 
   def check_to_send_account
@@ -86,7 +89,7 @@ class ApplyAccount
         # for forwarded email for multi users, avoid rezidual information from the last,
         # need to clear the old data for my_info.
         @my_info.clear
-        assign_account_vm = user_info.delete('account_vm')
+        assign_account_vm = user_info['account_vm']
         @my_info.update user_info
 
         applying_account(assign_account_vm)
@@ -157,7 +160,6 @@ class ApplyAccount
       my_token = %x(uuidgen).chomp
       @my_info['my_token'] = my_token
       apply_info.update @my_info
-      apply_info['enable_login'] = true
     end
     apply_new_account(apply_info, my_account_es)
   end
