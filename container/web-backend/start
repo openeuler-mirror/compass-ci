@@ -12,8 +12,8 @@ docker_rm web-backend
 load_cci_defaults
 [[ $SRV_HTTP_RESULT_HOST ]] || SRV_HTTP_RESULT_HOST=$(curl ip.sb)
 [[ $SRV_HTTP_RESULT_PORT ]] || SRV_HTTP_RESULT_PORT=20007
-[[$LAB]] || LAB=z9
-LAB_PATH="/c/lab-$LAB"
+[[$lab]] || lab=z9
+LAB_PATH="/c/lab-$lab"
 
 load_service_authentication
 
@@ -34,7 +34,7 @@ cmd=(
 	-e ES_PASSWORD=$ES_PASSWORD
 	-e LOGGING_ES_USER=$LOGGING_ES_USER
 	-e LOGGING_ES_PASSWORD=$LOGGING_ES_PASSWORD
-	-e LAB=$LAB
+	-e LAB=$lab
 
 	-v $CCI_SRC:/c/compass-ci
 	-v $LKP_SRC:/c/lkp-tests
