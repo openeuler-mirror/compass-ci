@@ -131,3 +131,47 @@ here:
   - dependencies/assumptions
   - input parameters
   - input/output example
+
+接口变更
+========
+- 变更原则：
+
+  <font color="#4590a3">
+    接口的变更会影响用户使用，变更时需要兼容旧的接口功能，过渡期为1年，过渡期结束后可废弃旧功能
+  </font>
+
+- 接口变更引发的问题，例如：
+  ```
+    submit rpmbuild.yaml
+    eg rpmbuild.yaml：
+      ...
+      custom_repo_name: centos7
+  ```
+
+  用户提交构建任务时需要指定`custom_repo_name`,
+  如用户未指定，那么系统默认赋值：
+  ```
+  custom_repo_name: openeuler-20.03
+  ```
+  这样用户构建的结果将上传到默认仓库：`openeuler-20.03`
+
+  如果用户期望将构建结果上传至 `centos7`, 但job.yaml中忘记指定 `custom_repo_name`,
+  那么系统结果将不符合用户预期。
+
+  为了避免这样的操作失误:
+
+  我们强制用户提交任务时，在 `rpmbuild.yaml` 中指定 `custom_repo_name`
+
+  但是，像这样的接口变更，导致用户使用旧的 `rpmbuild.yaml` 提交任务失败
+
+  因此，<font color="#4590a3">功能变更一定要平滑过渡</font>
+
+- 通用接口变更流程：
+  1. 加入新代码，保留旧代码并确保它们正常工作
+  2. 添加warn，提示用户旧功能：xxx 于2023-2-10（1年）后弃用
+  3. 在旧功能代码处添加注释，如：
+     ```
+     //TODO： remove it after 2023-2-10
+     < old code >
+     ```
+  4. 2023-2-10（1年）后删除旧功能对应代码
