@@ -88,15 +88,42 @@ class HandleRepo
     refine_json(stats_hash)
   end
 
+  def get_srpm_addr(job_id)
+    result_hash = {}
+    query_result = @es.query_by_id(job_id)
+    rpmbuild_job_id = query_result['rpmbuild_job_id']
+    rpmbuild_query_result = @es.query_by_id(rpmbuild_job_id)
+    result_hash['srpm_addr'] = rpmbuild_query_result['repo_addr'] || rpmbuild_query_result['upstream_repo']
+    result_hash['rpmbuild_result_url'] = "https://api.compass-ci.openeuler.org:20007#{rpmbuild_query_result['result_root']}"
+    result_hash['repo_name'] = rpmbuild_query_result['custom_repo_name']
+    result_hash
+  end
+
   def deal_pub_dir(group_id)
     result_list = get_results_by_group_id(group_id)
     update = []
     result_list.each do |pkg_info|
+      query = {
+        'query' => {
+          'query_string' => {
+            'query' => "softwareName:#{pkg_info['softwareName']}"
+          }
+        }
+      }.to_json
+
       next unless pkg_info["install"] == "pass"
       next unless pkg_info["downloadLink"]
       next unless pkg_info["src_location"]
-      location = "/srv" + pkg_info["downloadLink"].delete_prefix!('https://api.compass-ci.openeuler.org:20018')
-      src_location = "/srv" + pkg_info["src_location"][0].delete_prefix!('https://api.compass-ci.openeuler.org:20018')
+
+      job_id = pkg_info["result_root"].split('/')[-1]
+      pkg_info.merge!(get_srpm_addr(job_id))
+      update_compat_software?("srpm-info", query, pkg_info)
+
+      rpm_path = pkg_info['downloadLink'].delete_prefix!("https://api.compass-ci.openeuler.org:20018")
+      srpm_path = pkg_info['src_location'].delete_prefix!("https://api.compass-ci.openeuler.org:20018")
+
+      location = "/srv" + rpm_path
+      src_location = "/srv" + srpm_path
       update << location
       update << src_location
     end
@@ -179,6 +206,7 @@ class HandleRepo
     submit_argv.push("os=#{query_result['os']}")
     submit_argv.push("os_version=#{query_result['os_version']}")
     submit_argv.push("tbox_group=#{query_result['tbox_group']}")
+    submit_argv.push("rpmbuild_job_id=#{job_id}")
     submit_argv.push("docker_image=#{query_result['docker_image']}") if query_result.key?('docker_image')
 
     fixed_arg = YAML.load_file("/etc/submit_arg.yaml")

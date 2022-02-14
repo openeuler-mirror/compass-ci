@@ -163,11 +163,11 @@ def delete_data(option)
   end
 end
 
-def query_location(version, pkg_info)
+def query_location(version, field, pkg_info)
   location = ''
-  if pkg_info.key?('location')
-    unless pkg_info['location'].empty?
-      pkg_info['location'].each do |loc|
+  if pkg_info.key?(field)
+    unless pkg_info[field].empty?
+      pkg_info[field].each do |loc|
         location = loc if loc.include?(version)
       end
     end
@@ -188,24 +188,27 @@ def refine_json(data)
     pkg_info = data[pkg]
     next unless pkg_info['evr']
 
-    tmp_hash = {}
-    tmp_hash.merge!({ 'os' => pkg_info['os'], 'arch' => pkg_info['arch'] })
-    tmp_hash.merge!({ 'property' => pkg_info['property'], 'result_url' => pkg_info['result_url'] })
-    tmp_hash.merge!(pkg_info).delete('evr')
-    tmp_hash.delete('location')
     pkg_info['evr'].each do |version|
+      tmp_hash = {}
+      tmp_hash.merge!({ 'os' => pkg_info['os'], 'arch' => pkg_info['arch'] })
+      tmp_hash.merge!({ 'property' => pkg_info['property'], 'result_url' => pkg_info['result_url'] })
+      tmp_hash.merge!(pkg_info).delete('evr')
+      tmp_hash.delete('location')
+      tmp_hash.delete('src_location')
       version = version.split(':')[-1]
       category = libs_or_cmds(version, pkg_info)
-      location = query_location(version, pkg_info)
+      location = query_location(version, 'location', pkg_info)
+      src_location = query_location(version, 'src_location', pkg_info)
       license = pkg_info['license'][0]
-      next if location.start_with?('http://repo.openeuler')
-      next if location.start_with?('https://repo.huaweicloud')
+      next unless location.start_with?('https://api.compass-ci.openeuler.org:20018')
+      next unless src_location.start_with?('https://api.compass-ci.openeuler.org:20018')
 
       tmp_hash['type'] = pkg_info['group']
       tmp_hash['softwareName'] = pkg
       tmp_hash['category'] = category
       tmp_hash['version'] = version
       tmp_hash['downloadLink'] = location
+      tmp_hash['src_location'] = src_location
       tmp_hash['license'] = license
       tmp_hash['install'] = pkg_info['install']
       result_list << tmp_hash
