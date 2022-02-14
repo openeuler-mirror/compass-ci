@@ -2,6 +2,12 @@
 
 info_file=$1
 
+# when redo the email configration, delete the old config files
+rm $HOME/.muttrc
+rm $HOME/.mutt/local.muttrc
+rm $HOME/.procmailrc
+rm $HOME/.fetchmailrc
+
 [[ -n $info_file ]] || {
         echo "add info_file for email config"
         exit 1
@@ -9,20 +15,27 @@ info_file=$1
 
 source $info_file
 
+[[ -d ${MAIL_DIR}/${MAIL_BOX} ]] || {
+
+        mkdir -p ${MAIL_DIR}/${MAIL_BOX}/new
+        mkdir -p ${MAIL_DIR}/${MAIL_BOX}/cur
+        mkdir -p ${MAIL_DIR}/${MAIL_BOX}/tmp
+}
+
+[[ -d ${MAIL_DIR}/log ]] || {
+        mkdir -p ${MAIL_DIR}/log
+}
+
+
 # add config for procmail
 cat >> $HOME/.procmailrc <<-EOF
-	DROPPRIVS=yes
-	PATH=$HOME/bin:/usr/local/bin:/usr/bin:/bin
+	VERBOSE=off
 	MAILDIR=${MAIL_DIR}
-	AILLIST=${MAIL_DIR}
-	EFAULT=${MAIL_DIR}/${MAIL_BOX}
-	ORGMAIL=${MAIL_DIR}/${MAIL_BOX}
+	DEFAULT=${MAIL_DIR}/${MAIL_BOX}
 	LOGFILE=${MAIL_DIR}/log/procmail
-	UMASK=002
-	DISPLAY=:0
-	XAUTHORITY=$HOME/.Xauthority
-	:0 Wh: $MAILDIR/.msgid.lock
-	| formail -D 655360 $MAILDIR/log/msgid
+
+	:0:
+	${MAIL_BOX}/
 EOF
 
 # add config for fetchmail
@@ -35,7 +48,7 @@ cat >> $HOME/.fetchmailrc <<-EOF
 EOF
 
 # add config for mutt
-cat >> $HOME/.muttrc <<-EOF
+cat >> $HOME/.mutt/local.muttrc <<-EOF
 	set ssl_starttls=yes
 	set ssl_force_tls=yes
 	set ssl_use_sslv3=yes
@@ -45,11 +58,19 @@ cat >> $HOME/.muttrc <<-EOF
 	set from="${EMAIL_ADDR}"
 	set smtp_url="${EMAIL_SMTP_URL}"
 	set smtp_pass="${EMAIL_PASS}"
+
+	set mbox_type=Maildir
+	set folder="~/Maildir"
+	set mbox="~/Maildir/.tencent"
+	set spoolfile="~/Maildir/.tencent"
+
+	source /etc/mutt/aliases.muttrc.cf
 EOF
 
 chmod 700 $HOME/.fetchmailrc $HOME/.procmailrc
 
 # start fetchmail process immediately.
+ps -ef | grep fetchmail | grep -v grep | grep $USER | awk '{print $2}' | xargs kill -9
 fetchmail -d 60
 
 # add crontab jobs to start fetchmail at server's per reboot for users.
