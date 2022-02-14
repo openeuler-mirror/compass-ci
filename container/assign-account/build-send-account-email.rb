@@ -16,10 +16,17 @@ def build_message(email, account_info)
       Login command:
         ssh -p #{account_info['jumper_port']} #{account_info['my_login_name']}@#{account_info['jumper_host']}
 
-      Account password:
-        #{account_info['my_password']}
+      You can directly use the public key you offered to login the account-ver server.
 
-      You can use your pub_key to login if you have offered one.
+      Case your private key for the public key you offered has changed and lead to login failures, you can contact our technical support staff for help:
+
+        name:       Zhang Dewan
+        phone:      18969058870
+        email:      zhangdewan1@compass-ci.org
+
+        name:       Luan Shengde
+        phone:      15109218229
+        email:      luanshengde@compass-ci.org
 
       Suggest:
         If you use the password to login, change it in time.
