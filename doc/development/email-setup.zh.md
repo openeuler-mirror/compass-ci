@@ -72,8 +72,10 @@ email-info文件内容如下：
         # 对于有些邮箱，比如腾讯企业邮箱，用'smpts://'替代'smpt://'.
         EMAIL_SMTP_URL="smtps://zhangsan\@compass-ci.org@smtp.exmail.qq.com:465"
 
-        # 根据本地邮箱目录配置添加以下行
+        # 根据本地实际邮件目录配置MAIL_DIR
         MAIL_DIR="~/Maildir"
+
+        # 指定mailbox名，如果该目录已存在，则指定一个新的名字
         MAIL_BOX=".inbox"
 ---
 

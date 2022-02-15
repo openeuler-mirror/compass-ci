@@ -77,6 +77,9 @@ The email-info file content as follows:
 
         # add the following line according to your local mailbox config
         MAIL_DIR="~/Maildir"
+
+        # mailbox name used for the EMAIL_ADDR
+        # case the mailbox name exists, specify a new one
         MAIL_BOX=".inbox"
 ---
 
