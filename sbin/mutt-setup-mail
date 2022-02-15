@@ -59,7 +59,6 @@ fetchmail_pid=$(ps -ef | grep fetchmail | grep -v grep | grep $USER | awk '{prin
 cat >> $HOME/.procmailrc <<-EOF
 	VERBOSE=off
 	MAILDIR=${MAIL_DIR}
-	DEFAULT=${MAIL_DIR}/${MAIL_BOX}
 	LOGFILE=${MAIL_DIR}/log/procmail
 
 	:0:
@@ -69,6 +68,9 @@ cat >> $HOME/.procmailrc <<-EOF
 	:0:
 	* ^To:.*compass-ci.org
 	${MAIL_BOX}/
+
+	:0:
+	.inbox/
 EOF
 
 # add config for fetchmail
