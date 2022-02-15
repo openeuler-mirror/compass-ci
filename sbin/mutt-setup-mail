@@ -2,11 +2,16 @@
 
 info_file=$1
 
-# when redo the email configration, delete the old config files
-rm $HOME/.muttrc
-rm $HOME/.mutt/local.muttrc
-rm $HOME/.procmailrc
-rm $HOME/.fetchmailrc
+# the email address info file for user that will be used
+# the file content may in a standard format, for example:
+# ---
+#       EMAIL_ADDR=zhangsan@compass-ci.org
+#       EMAIL_PASS={{ email passwd }}
+#       EMAIL_NAME="Zhang San"
+#       EMAIL_SMTP_URL="smtps://zhangsan\@compass-ci.org@smtp.exmail.qq.com:465"
+#       MAIL_DIR="~/Maildir"
+#       MAIL_BOX=".inbox"
+# ---
 
 [[ -n $info_file ]] || {
         echo "add info_file for email config"
@@ -15,8 +20,25 @@ rm $HOME/.fetchmailrc
 
 source $info_file
 
-[[ -d ${MAIL_DIR}/${MAIL_BOX} ]] || {
+# when redo the email configration, backup the old config files
+[[ -f $HOME/.mutt/local.muttrc ]] && {
+        mv $HOME/.mutt/local.muttrc $HOME/.mutt/local.muttrc.bk
+}
 
+[[ -f $HOME/.procmailrc ]] && {
+        mv $HOME/.procmailrc $HOME/.procmailrc.bk
+}
+
+[[ -f $HOME/.fetchmailrc ]] && {
+        mv $HOME/.fetchmailrc $HOME/.fetchmailrc.bk
+}
+
+# kill the old process before redo the config 
+fetchmail_pid=$(ps -ef | grep fetchmail | grep -v grep | grep $USER | awk '{print $2}')
+[[ -n $fetchmail_pid ]] && kill -9 $fetchmail_pid
+
+# build standard mailbox directories
+[[ -d ${MAIL_DIR}/${MAIL_BOX} ]] || {
         mkdir -p ${MAIL_DIR}/${MAIL_BOX}/new
         mkdir -p ${MAIL_DIR}/${MAIL_BOX}/cur
         mkdir -p ${MAIL_DIR}/${MAIL_BOX}/tmp
@@ -26,8 +48,14 @@ source $info_file
         mkdir -p ${MAIL_DIR}/log
 }
 
-
 # add config for procmail
+# case you have multi mailboxes to config, add config as below:
+# all emails to {{ EMAIL_ADDR }} will be stored to .inbox/
+# ---
+#       :0:
+#       * ^To:.{{ EMAIL_ADDR }}
+#       {{ MAIL_BOX }}/
+# ---
 cat >> $HOME/.procmailrc <<-EOF
 	VERBOSE=off
 	MAILDIR=${MAIL_DIR}
@@ -35,6 +63,11 @@ cat >> $HOME/.procmailrc <<-EOF
 	LOGFILE=${MAIL_DIR}/log/procmail
 
 	:0:
+	* ^To:.*crystal.ci
+	.inbox/
+
+	:0:
+	* ^To:.*compass-ci.org
 	${MAIL_BOX}/
 EOF
 
@@ -48,6 +81,8 @@ cat >> $HOME/.fetchmailrc <<-EOF
 EOF
 
 # add config for mutt
+[[ -d $HOME/.mutt ]] || mkdir -p $HOME/.mutt
+
 cat >> $HOME/.mutt/local.muttrc <<-EOF
 	set ssl_starttls=yes
 	set ssl_force_tls=yes
@@ -70,7 +105,6 @@ EOF
 chmod 700 $HOME/.fetchmailrc $HOME/.procmailrc
 
 # start fetchmail process immediately.
-ps -ef | grep fetchmail | grep -v grep | grep $USER | awk '{print $2}' | xargs kill -9
 fetchmail -d 60
 
 # add crontab jobs to start fetchmail at server's per reboot for users.
