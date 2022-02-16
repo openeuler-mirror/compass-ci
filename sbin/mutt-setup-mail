@@ -10,7 +10,7 @@ info_file=$1
 #       EMAIL_NAME="Zhang San"
 #       EMAIL_SMTP_URL="smtps://zhangsan\@compass-ci.org@smtp.exmail.qq.com:465"
 #       MAIL_DIR="~/Maildir"
-#       MAIL_BOX=".inbox"
+#       MAIL_BOX="inbox"
 # ---
 
 [[ -n $info_file ]] || {
@@ -21,8 +21,8 @@ info_file=$1
 source $info_file
 
 # when redo the email configration, backup the old config files
-[[ -f $HOME/.mutt/local.muttrc ]] && {
-        mv $HOME/.mutt/local.muttrc $HOME/.mutt/local.muttrc.bk
+[[ -f $HOME/.mutt/${MAIL_BOX}.muttrc ]] && {
+        mv $HOME/.mutt/${MAIL_BOX}.muttrc $HOME/.mutt/${MAIL_BOX}.muttrc.bk
 }
 
 [[ -f $HOME/.procmailrc ]] && {
@@ -38,10 +38,10 @@ fetchmail_pid=$(ps -ef | grep fetchmail | grep -v grep | grep $USER | awk '{prin
 [[ -n $fetchmail_pid ]] && kill -9 $fetchmail_pid
 
 # build standard mailbox directories
-[[ -d ${MAIL_DIR}/${MAIL_BOX} ]] || {
-        mkdir -p ${MAIL_DIR}/${MAIL_BOX}/new
-        mkdir -p ${MAIL_DIR}/${MAIL_BOX}/cur
-        mkdir -p ${MAIL_DIR}/${MAIL_BOX}/tmp
+[[ -d ${MAIL_DIR}/.${MAIL_BOX} ]] || {
+        mkdir -p ${MAIL_DIR}/.${MAIL_BOX}/new
+        mkdir -p ${MAIL_DIR}/.${MAIL_BOX}/cur
+        mkdir -p ${MAIL_DIR}/.${MAIL_BOX}/tmp
 }
 
 [[ -d ${MAIL_DIR}/log ]] || {
@@ -54,7 +54,7 @@ fetchmail_pid=$(ps -ef | grep fetchmail | grep -v grep | grep $USER | awk '{prin
 # ---
 #       :0:
 #       * ^To:.{{ EMAIL_ADDR }}
-#       {{ MAIL_BOX }}/
+#       .{{ MAIL_BOX }}/
 # ---
 cat >> $HOME/.procmailrc <<-EOF
 	VERBOSE=off
@@ -67,7 +67,7 @@ cat >> $HOME/.procmailrc <<-EOF
 
 	:0:
 	* ^To:.*compass-ci.org
-	${MAIL_BOX}/
+	.${MAIL_BOX}/
 
 	:0:
 	.inbox/
@@ -85,7 +85,7 @@ EOF
 # add config for mutt
 [[ -d $HOME/.mutt ]] || mkdir -p $HOME/.mutt
 
-cat >> $HOME/.mutt/local.muttrc <<-EOF
+cat >> $HOME/.mutt/${MAIL_BOX}.muttrc <<-EOF
 	set ssl_starttls=yes
 	set ssl_force_tls=yes
 	set ssl_use_sslv3=yes
@@ -98,8 +98,8 @@ cat >> $HOME/.mutt/local.muttrc <<-EOF
 
 	set mbox_type=Maildir
 	set folder="~/Maildir"
-	set mbox="~/Maildir/.tencent"
-	set spoolfile="~/Maildir/.tencent"
+	set mbox="~/Maildir/.${MAIL_BOX}"
+	set spoolfile="~/Maildir/.${MAIL_BOX}"
 
 	source /etc/mutt/aliases.muttrc.cf
 EOF
