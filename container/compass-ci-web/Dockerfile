@@ -10,7 +10,7 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 COPY ./crystal-ci /compass-ci-web
 WORKDIR /compass-ci-web
 
-RUN npm i --legacy-peer-deps &&\
+RUN npm i --legacy-peer-deps --registry=https://mirrors.huaweicloud.com/repository/npm/&&\
     npm install && \
     npm run build
 
