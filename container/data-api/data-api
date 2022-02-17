@@ -7,8 +7,6 @@ require 'sinatra'
 
 CCI_SRC = ENV['CCI_SRC'] || '/c/compass-ci'
 require "#{CCI_SRC}/src/lib/data_api.rb"
-require "#{CCI_SRC}/src/lib/service_logs/service_logs.rb"
-require "#{CCI_SRC}/lib/es_query.rb"
 
 set :bind, '0.0.0.0'
 set :port, 10005
@@ -17,24 +15,32 @@ set :environment, :production
 
 # POST
 # eg1:
-#   curl -X POST localhost:10005/es_find -H 'Content-Type: application/json' -d '{
+#   curl -X POST localhost:10005/data_api/es/jobs/_search -H 'Content-Type: application/json' -d '{
 #     "query": {"size":10, "sort": [{"start_time": {"order": "desc"}}]},
-#     "index": "jobs",
-#     "my_token": "16132550-...",
-#     "my_account": "auto-submit",
-#     "query_type": "eql"  # can be omitted in this scenario
-#   }'
-# eg2:
-#   curl -X POST localhost:10005/es_find -H 'Content-Type: application/json' -d '{
-#     "query": "SELECT * FROM jobs WHERE ...",
-#     "index": "jobs",
-#     "my_token": "16132550-...",
-#     "my_account": "auto-submit",
-#     "query_type": "sql" # required
+#     "cci_credentials": {
+#       "my_token": "16132550-...",
+#       "my_account": "auto-submit"
+#     }
 #   }'
 # Response:
 #   - es_result : JSON
-post '/data_api/es_find' do
+post '/data_api/es/:index/_search' do
   request.body.rewind # in case someone already read it
-  es_find(request.body.read)
+  es_search(params['index'], request.body.read)
+end
+
+# POST
+# eg1:
+#   curl -X POST localhost:10005/data_api/_opendistro/_sql -H 'Content-Type: application/json' -d '{
+#     "query": "SELECT * FROM jobs WHERE ...",
+#     "cci_credentials": {
+#       "my_token": "16132550-...",
+#       "my_account": "auto-submit"
+#     }
+#   }'
+# Response:
+#   - es_result : JSON
+post '/data_api/_opendistro/_sql' do
+  request.body.rewind # in case someone already read it
+  es_opendistro_sql(request.body.read)
 end

@@ -6,9 +6,9 @@ require_relative 'es_query.rb'
 # -------------------------------------------------------------------------------------------
 # put_source_by_id(source_id, source_content)
 #  - put a source to ES /<target>/_doc/<_id>, ingore the existence of source
-# 
-# query_by_sql(query_sql)
-#  - query es db by query_sql, query_sql is sql, like "SELECT * FROM JOBS WHERE ..." 
+#
+# opendistro_sql(search_sql)
+#  - search es db by search_sql, search_sql is sql, like "SELECT * FROM JOBS WHERE ..."
 #
 # -------------------------------------------------------------------------------------------
 class ESClient < ESQuery
@@ -29,12 +29,12 @@ class ESClient < ESQuery
     )
   end
 
-  # query es db by query_sql, query_sql is sql, like:
+  # search es db by search_sql, search_sql is sql, like:
   #   - "SELECT id, suite FROM JOBS"
   #   - "SELECT * FROM accounts WHERE my_account='test_user'"
   # this plugin from: https://github.com/NLPchina/elasticsearch-sql
-  def query_by_sql(query_sql)
-    @client.perform_request('GET', '_nlpcn/sql', {}, query_sql)
+  # this will be update to api: _opendistro/_sql
+  def opendistro_sql(search_sql)
+    @client.perform_request('GET', '_nlpcn/sql', {}, search_sql)
   end
-
 end
