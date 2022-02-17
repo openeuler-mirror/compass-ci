@@ -18,7 +18,12 @@ RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/elastic
     echo "-Xms${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options && \
     echo "-Xmx${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options
 
-RUN yum install -y -q git python38
+RUN mkdir /etc/yum.repos.d.backup && \
+    mv /etc/yum.repos.d/*.repo /etc/yum.repos.d.backup && \
+    curl https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo > /etc/yum.repos.d/CentOS-Base.repo && \
+    yum makecache && \
+    yum install -y -q git python38
+
 RUN mkdir /usr/share/elasticsearch/tmp
 WORKDIR /usr/share/elasticsearch
 
