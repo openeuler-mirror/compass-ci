@@ -72,7 +72,7 @@ class Sched
   end
 
   def normalize_mac(mac : String)
-    mac.gsub(":", "-")
+    mac.gsub(":", "-").downcase()
   end
 
   def set_host_mac
