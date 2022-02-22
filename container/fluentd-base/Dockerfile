@@ -16,7 +16,7 @@ RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
     gem install fluentd && \
     gem install fluent-plugin-rabbitmq && \
-    gem install fluent-plugin-elasticsearch && \
+    gem install fluent-plugin-elasticsearch:7.11.1 && \
     gem install fluent-plugin-tail-ex && \
     gem install fluent-plugin-tail-multiline && \
     gem install json && \

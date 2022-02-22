@@ -16,6 +16,6 @@ RUN apk update && \
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-    gem install bunny json PriorityQueue elasticsearch --no-rdoc --no-ri
+    gem install bunny json PriorityQueue elasticsearch:7.11.1 --no-rdoc --no-ri
 
 ENTRYPOINT ["/sbin/tini", "--"]

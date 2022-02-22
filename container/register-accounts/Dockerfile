@@ -12,4 +12,4 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-    gem install rest-client activesupport json yaml elasticsearch io-console
+    gem install rest-client activesupport json yaml elasticsearch:7.11.1 io-console

@@ -12,4 +12,4 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-    gem install rest-client activesupport:6.1.4.4 json yaml elasticsearch sinatra puma terminal-table
+    gem install rest-client activesupport:6.1.4.4 json yaml elasticsearch:7.11.1 sinatra puma terminal-table

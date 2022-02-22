@@ -14,7 +14,7 @@ RUN groupadd -g 1090 lkp && useradd -m -u 1090 -g 1090 lkp
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-    gem install yaml io-console elasticsearch
+    gem install yaml io-console elasticsearch:7.11.1
 
 
 ENV SCHED_RUNTIME_DIR /c/cci/scheduler

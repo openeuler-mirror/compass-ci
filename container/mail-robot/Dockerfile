@@ -14,4 +14,4 @@ RUN        apt-get update && \
 
 
 RUN        gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-           gem install fileutils elasticsearch activesupport:6.1.4.4
+           gem install fileutils elasticsearch:7.11.1 activesupport:6.1.4.4

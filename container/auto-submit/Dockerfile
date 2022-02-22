@@ -14,4 +14,4 @@ RUN apk update && \
 RUN gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 
 RUN umask 002 && \
-    gem install bunny json activesupport:6.1.4.4 git rest-client io-console elasticsearch md5sum base64
+    gem install bunny json activesupport:6.1.4.4 git rest-client io-console elasticsearch:7.11.1 md5sum base64
