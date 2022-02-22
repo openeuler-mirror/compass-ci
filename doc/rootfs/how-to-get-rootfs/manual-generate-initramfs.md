@@ -31,9 +31,9 @@
    ln -sf $(basename $initramfs_cgz) current
 
    ############
-   # 如何获得../../../deps/nfs/debian/aarch64/sid/run-ipconfig.cgz：
+   # 如何获得../../../../deps/nfs/debian/aarch64/sid/run-ipconfig.cgz：
    # - 从Compass-CI官网下载：https://api.compass-ci.openeuler.org:20008/initrd/deps/nfs/debian/aarch64/sid/
    ############
 
-   ln -sf ../../../deps/nfs/debian/aarch64/sid/run-ipconfig.cgz run-ipconfig.cgz
+   ln -sf ../../../../deps/nfs/debian/aarch64/sid/run-ipconfig.cgz run-ipconfig.cgz
    ```
