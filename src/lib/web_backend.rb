@@ -1027,23 +1027,24 @@ end
 
 def get_srpm_info(params)
   begin
-    my_data = MyData.new
-    page_size = (params['page_size'] || 10).to_i
-    page_num = (params['page_num'] || 0).to_i
-    info=[]
-    srpm_infos =  my_data.get_srpm_info(size: page_size, from: page_num)
-    srpm_infos['hits']['hits'].each do |source|
+    all = {}
+    info = []
+    body = get_srpm_software_body(params)
+    total = JSON.parse(body)['total']
+
+    all.store('total', total)
+    JSON.parse(body)['compats']['hits']['hits'].each do |source|
       info << source['_source']
     end
+    all.store('info', info)
   rescue StandardError => e
     log_error({
       'message' => e.message,
-      'error_message' => "get_srpm_info error, input: #{params}"
+      'error_message' => "get_srpm_software_body error, input: #{params}"
     })
-
-    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get srpm info error']
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get srpm software info error']
   end
-  [200, headers.merge('Access-Control-Allow-Origin' => '*'), info.to_json]
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), all.to_json]
 end
 
 def get_compat_software_body(params)
@@ -1099,6 +1100,37 @@ def get_compat_software(params)
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), all.to_json]
 end
 
+def get_srpm_software_body(params)
+  page_size = get_positive_number(params.delete(:page_size), 10)
+  page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
+
+  total_query =  {
+      query: {
+        bool: {
+          must: build_multi_field_body(params)
+        }
+      }
+    }
+
+  srpm_query = {
+      query: {
+        bool: {
+          must: build_multi_field_body(params)
+        }
+      },
+      size: page_size,
+      from: page_num
+  }
+
+  total = ES_CLIENT.count(index: 'srpm-info*', body: total_query)['count']
+  compats = ES_CLIENT.search index: 'srpm-info*', body: srpm_query
+  {
+    total: total,
+    filter: params,
+    compats: compats,
+  }.to_json
+end
+
 def build_multi_field_body(items)
   query_fields = []
   items.each do |key, value|
@@ -1106,7 +1138,7 @@ def build_multi_field_body(items)
       inner_query = build_multi_field_or_query_body(key, value)
       query_fields.push({ bool: { should: inner_query } })
     else
-      if key == 'keyword'
+      if key == 'softwareName' || key == 'keyword'
         query_fields.push({ regexp: { "softwareName" => ".*#{value}.*" } })
       else
         next if key == 'rnd'
