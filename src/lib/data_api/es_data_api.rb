@@ -58,36 +58,36 @@ module EsDataApi
     return es.search index: index + '*', body: query
   end
 
-  def self.get_index_from_sql(sql)
-    return $1 if sql =~ /from\s+(\S+)\s*/i
+  def self.join_query_sql(index = nil, field = nil)
+    raise 'Can not get query index, please input the correct index' if index.nil?
+    raise 'Can not get query field, please input the correct field' if field.nil?
+    raise "#{index} is not opened for user query" unless OPEN_INDEX.include?(index)
 
-    raise 'Can not get query table, please submmit the correct sql query statement'
+    "SELECT #{field} FROM #{index}"
   end
 
-  def self.credentials_for_sql(query, my_account, index)
+  def self.credentials_for_sql(query_sql, request_body)
+    query_where = request_body['query_where']
+    my_account = check_my_account(request_body)
     user_limit = "my_account='#{my_account}'"
-    if query =~ /where/i
-      query = query.gsub(/FROM\s*\S+/i, "FROM #{index} ")
-      query = query.gsub(/where/i, "WHERE #{user_limit} AND")
-    else
-      query = query.gsub(/from\s*\S+/i, "FROM #{index} WHERE #{user_limit}")
-    end
-    return query
+    query_sql += if query_where.nil?
+                   " WHERE #{user_limit}"
+                 else
+                   " WHERE #{user_limit} AND (#{query_where})"
+                 end
+    return query_sql
   end
 
   def self.opendistro_sql(params)
     request_body = JSON.parse(params)
-    query = request_body['query']
-    index = get_index_from_sql(query)
-    raise "#{index} is not opened for user query" unless OPEN_INDEX.include?(index)
-
-    if REQUIRED_TOKEN_INDEX.include?(index)
-      my_account = check_my_account(request_body)
-      query = credentials_for_sql(query, my_account, index)
-    end
-
-    es = ESClient.new(index: index)
-    return es.opendistro_sql(query).body
+    query_field = request_body['query_field']
+    query_index = request_body['query_index']
+    query_condition = request_body['query_condition']
+    query_sql = join_query_sql(query_index, query_field)
+    query_sql = credentials_for_sql(query_sql, request_body) if REQUIRED_TOKEN_INDEX.include?(query_index)
+    query_sql += query_condition unless query_condition.nil?
+    es = ESClient.new(index: query_index)
+    return es.opendistro_sql(query_sql).body
   end
 
   def self.verify_user(my_account, my_token)

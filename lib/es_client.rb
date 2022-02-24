@@ -35,6 +35,6 @@ class ESClient < ESQuery
   # this plugin from: https://github.com/NLPchina/elasticsearch-sql
   # this will be update to api: _opendistro/_sql
   def opendistro_sql(search_sql)
-    @client.perform_request('GET', '_nlpcn/sql', {}, search_sql)
+    @client.perform_request('POST', '_nlpcn/sql', {}, search_sql)
   end
 end
