@@ -1105,21 +1105,29 @@ def get_srpm_software_body(params)
   page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
 
   total_query =  {
-      query: {
-        bool: {
+    query: {
+      bool: {
+        filter: [
+          exists: {
+            field: "softwareName"
+          }],
           must: build_multi_field_body(params)
-        }
       }
     }
+  }
 
   srpm_query = {
-      query: {
-        bool: {
+    query: {
+      bool: {
+        filter: [
+          exists: {
+            field: "softwareName"
+          }],
           must: build_multi_field_body(params)
-        }
-      },
-      size: page_size,
-      from: page_num
+      }
+    },
+    size: page_size,
+    from: page_num
   }
 
   total = ES_CLIENT.count(index: 'srpm-info*', body: total_query)['count']
