@@ -5,9 +5,8 @@
 
 require 'sinatra'
 
-CCI_SRC = ENV['CCI_SRC'] || '/c/compass-ci'
-require "#{CCI_SRC}/src/lib/web_backend.rb"
-require "#{CCI_SRC}/src/lib/service_logs/service_logs.rb"
+require_relative '../../src/lib/web_backend.rb'
+require_relative '../../src/lib/service_logs/service_logs.rb'
 
 set :bind, '0.0.0.0'
 set :port, 10002
