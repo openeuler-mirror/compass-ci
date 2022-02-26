@@ -5,7 +5,7 @@
 
 # Usage:
 #       es-find key=val ...
-#       es-find -r "start_time=2021-1-1 00:00:00,2021-1-1 23:59:59;..."
+#       es-find -r "start_time=2021-01-01T00:00:00+0800,2021-01-01T23:59:59+0800;..."
 #       es-find tbox_group=vm-2p8g -c suite,job_state
 # if given multi keys, they create AND conditions
 # if given val1,val2,... for a key, they create OR conditions
@@ -35,8 +35,8 @@ end
 #   eg:
 #   {
 #     start_time => {
-#       gte: '2020-09-10 01:50:00',
-#       lte: '2020-09-10 01:53:00'
+#       gte: '2020-09-10T01:50:00+0800',
+#       lte: '2020-09-10T01:53:00+0800'
 #     },
 #     ...
 #   }
@@ -53,11 +53,16 @@ def prase_range(range)
 end
 
 def check_range_args(key, value)
-  return if key && value
-
-  warn "error: range value of \"#{key}\" missing", "tips: should give the input of -r like:
-  \"#{key}=2021-1-1 00:00:00,2021-1-1 23:59:59\" "
-  exit
+  unless key && value
+    warn "error: range value of \"#{key}\" missing", "tips: should give the input of -r like:
+    \"#{key}=2021-01-01T00:00:00+0800,2021-01-01T23:59:59+0800\" "
+    exit
+  end
+  unless value =~ /^\d+-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d+/
+    warn "error: incorrect format \"#{key}=#{value}\"", "tips: should give the input of -r like:
+    \"#{key}=2021-01-01T00:00:00+0800,2021-01-01T23:59:59+0800\" "
+    exit
+  end
 end
 
 def assign_range(value)
