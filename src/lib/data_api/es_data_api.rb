@@ -13,7 +13,7 @@ require "#{CCI_SRC}/lib/es_client.rb"
 # - opendistro_sql(search by sql)
 module EsDataApi
   ES_ACCOUNTS = ESClient.new(index: 'accounts')
-  OPEN_INDEX = Set.new(['jobs'])
+  OPEN_INDEX = Set.new(%w[jobs hosts])
   REQUIRED_TOKEN_INDEX = Set.new(['jobs'])
   ES_QUERY_KEYWORD = Set.new(%w[term match])
 
@@ -68,6 +68,12 @@ module EsDataApi
 
   def self.credentials_for_sql(query_sql, request_body)
     query_where = request_body['query_where']
+    query_index = request_body['query_index']
+    unless REQUIRED_TOKEN_INDEX.include?(query_index)
+      query_sql += " WHERE #{query_where}" unless query_where.nil?
+      return query_sql
+    end
+
     my_account = check_my_account(request_body)
     user_limit = "my_account='#{my_account}'"
     query_sql += if query_where.nil?
@@ -84,7 +90,7 @@ module EsDataApi
     query_index = request_body['query_index']
     query_condition = request_body['query_condition']
     query_sql = join_query_sql(query_index, query_field)
-    query_sql = credentials_for_sql(query_sql, request_body) if REQUIRED_TOKEN_INDEX.include?(query_index)
+    query_sql = credentials_for_sql(query_sql, request_body)
     query_sql += query_condition unless query_condition.nil?
     es = ESClient.new(index: query_index)
     return es.opendistro_sql(query_sql).body
