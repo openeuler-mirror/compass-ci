@@ -206,7 +206,7 @@ over_time()
 	local file_path=$1
 	local mtime=$(stat -c %Y $file_path)
 	local now_time=$(date +%s)
-	local ten_day_sec= 864000
+	local ten_day_sec=864000
 
 	if [ $((now_time - mtime)) -gt "$ten_day_sec" ]; then
 		return 0
