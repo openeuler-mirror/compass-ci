@@ -13,14 +13,14 @@ set :port, 10002
 set :show_exceptions, false
 set :environment, :production
 
-# GET /compare_candidates
+# GET /web_backend/compare_candidates
 # Response:
 # - {"query_conditions": {...}, "dimension": [...]}
-get '/compare_candidates' do
+get '/web_backend/compare_candidates' do
   compare_candidates
 end
 
-# GET /compare?suite=borrow&dimension=tbox_group
+# GET /web_backend/compare?suite=borrow&dimension=tbox_group
 # must:
 # - query_conditions
 #   - os / os_version / suite / os_arch / tbox_group
@@ -29,11 +29,11 @@ end
 #
 # Response:
 #   - compare result string / "No Data." / "No Difference."
-get '/compare' do
+get '/web_backend/compare' do
   compare(params)
 end
 
-# GET /get_jobs?upstream_repo=a&page_size=12&start_date=2020-11-03&end_date=2020-11-03
+# GET /web_backend/get_jobs?upstream_repo=a&page_size=12&start_date=2020-11-03&end_date=2020-11-03
 # optional:
 # - upstream_repo
 #   - regex search
@@ -54,41 +54,41 @@ end
 #
 # Response:
 #   - default: 20 jobs
-get '/get_jobs' do
+get '/web_backend/get_jobs' do
   get_jobs(params)
 end
 
-# GET /active_testbox
+# GET /web_backend/active_testbox
 # return to testbox that are active within 30 minutes
-get '/active_testbox' do
+get '/web_backend/active_testbox' do
   get_active_testbox
 end
 
-# GET /srpm_info?page_size=1&page_num=2&softwareName=vim-enhanced
+# GET /web_backend/srpm_info?page_size=1&page_num=2&softwareName=vim-enhanced
 # - page_size
 # - page_from
 
-get '/srpm_info' do
+get '/web_backend/srpm_info' do
   get_srpm_info(params)
 end
 
-# GET /compat_software_info?page_size=1&page_num=2&os="openeuler 20.03 LTS"&arch=aarch64&keyword=vim-enhanced
+# GET /web_backend/compat_software_info?page_size=1&page_num=2&os="openeuler 20.03 LTS"&arch=aarch64&keyword=vim-enhanced
 # - page_size
 # - page_num
 # - os
 # - arch
 # - type
 # - keyword
-get '/compat_software_info' do
+get '/web_backend/compat_software_info' do
   get_compat_software(params)
 end
 
-# GET /query_compat_software
-get '/query_compat_software' do
+# GET /web_backend/query_compat_software
+get '/web_backend/query_compat_software' do
   get_compat_software_info_detail
 end
 
-# GET /get_repos?git_repo=a&page_size=12&page_num=3
+# GET /web_backend/get_repos?git_repo=a&page_size=12&page_num=3
 # optional:
 # - git_repo
 # - page_size
@@ -98,11 +98,11 @@ end
 #
 # Response:
 #   - default: 20 repos
-get '/get_repos' do
+get '/web_backend/get_repos' do
   get_repos(params)
 end
 
-# POST /performance_result
+# POST /web_backend/performance_result
 # - header: "Content-Type: Application/json"
 # - body: json
 #   eg:
@@ -127,12 +127,12 @@ end
 #
 # Response:
 #   - performance result
-post '/performance_result' do
+post '/web_backend/performance_result' do
   request.body.rewind # in case someone already read it
   performance_result(request.body.read)
 end
 
-# POST /query_field
+# POST /web_backend/query_field
 # - header: "Content-Type: Application/json"
 # - body: json
 #   eg:
@@ -142,19 +142,19 @@ end
 #   }
 #   return:
 #   eg: ["openeuler", "centos", "debian", "openanolis", "kylin", "uniontechos"]
-post '/query_field' do
+post '/web_backend/query_field' do
   request.body.rewind
   query_filed(request.body.read)
 end
 
-# GET /get_testboxes
+# GET /web_backend/get_testboxes
 # Response:
 #   - { total: total, testboxes[ 'testbox1', 'testbox2', ... ] }
-get '/get_testboxes' do
+get '/web_backend/get_testboxes' do
   query_testboxes
 end
 
-# GET /get_tbox_state?testbox=$testbox
+# GET /web_backend/get_tbox_state?testbox=$testbox
 # Response:
 #   - {
 #       testbox: $testbox,
@@ -173,11 +173,11 @@ end
 #         ]
 #       }
 #     }
-get '/get_tbox_state' do
+get '/web_backend/get_tbox_state' do
   get_tbox_state(params)
 end
 
-# GET /get_repo_statistics?git_repo=$git_repo
+# GET /web_backend/get_repo_statistics?git_repo=$git_repo
 # Response:
 #   - {
 #       "title": "new refs statistics",
@@ -186,11 +186,11 @@ end
 #       "source": [["x_params", $date1, ..., $date_today],
 #                  ["new_ref_times", $times_1, ..., $times_today]]
 #     }
-get '/get_repo_statistics' do
+get '/web_backend/get_repo_statistics' do
   new_refs_statistics(params)
 end
 
-# GET /get_jobs_summary?suite=iperf&GROUP_BY=my_name
+# GET /web_backend/get_jobs_summary?suite=iperf&GROUP_BY=my_name
 # must:
 # - query_conditions
 #   - suite / group_id / ...
@@ -214,11 +214,11 @@ end
 #         ...
 #       ]
 #     }
-get '/get_jobs_summary' do
+get '/web_backend/get_jobs_summary' do
   group_jobs_stats(params)
 end
 
-# GET /get_job_error?suite=virttest&tbox_group=vm-2p8g&group_id=wcl_ansible-openeuler-03-10
+# GET /web_backend/get_job_error?suite=virttest&tbox_group=vm-2p8g&group_id=wcl_ansible-openeuler-03-10
 # Response
 # {
 #   "filter": {
@@ -237,18 +237,18 @@ end
 #      ...
 #   ]
 # }
-get '/get_job_error' do
+get '/web_backend/get_job_error' do
   get_job_error(params)
 end
 
-# GET /git_mirror_health
+# GET /web_backend/git_mirror_health
 # Response:
 # - [ "state", "alive_num", "msg_count" ]
-get '/git_mirror_health' do
+get '/web_backend/git_mirror_health' do
   git_mirror_health
 end
 
-# POST /active_service_error_log
+# POST /web_backend/active_service_error_log
 # - header: "Content-Type: Application/json"
 # - body: json
 #
@@ -265,11 +265,11 @@ end
 #                  {"first_date":"2021-06-18 01:24:54","service":"scheduler-3000", "count":"3", "error_message":"Missing hash key: \"pkgbuild_repo\""}
 #              ]
 #     }
-post '/active_service_error_log' do
+post '/web_backend/active_service_error_log' do
   active_service_error_log
 end
 
-# POST /active_stderr
+# POST /web_backend/active_stderr
 # - header: "Content-Type: Application/json"
 # - body: json # just a empty {}
 # - output:
@@ -288,11 +288,11 @@ end
 #     ...
 #   ]
 # }
-post '/active_stderr' do
+post '/web_backend/active_stderr' do
   active_stderr
 end
 
-# POST /job_boot_time
+# POST /web_backend/job_boot_time
 # - header: "Content-Type: Application/json"
 # - body: json
 #
@@ -318,11 +318,11 @@ end
 #         "boot_time": [100, 0, 110, ...]
 #       }
 #     }
-post '/job_boot_time' do
+post '/web_backend/job_boot_time' do
   job_boot_time
 end
 
-# POST /top_boot_time
+# POST /web_backend/top_boot_time
 # - header: "Content-Type: Application/json"
 # - body: json # just a empty {}
 # - output:
@@ -352,18 +352,18 @@ end
 #     ...
 #   ]
 # }
-post '/top_boot_time' do
+post '/web_backend/top_boot_time' do
   top_boot_time
 end
 
-get '/test_matrix' do
+get '/web_backend/test_matrix' do
   query_test_matrix(params)
 end
 
 
-# GET /host_info?testbox=taishan200-2280-2s48p-256g--a1008
+# GET /web_backend/host_info?testbox=taishan200-2280-2s48p-256g--a1008
 # Response:
 #   - host_info(JSON)
-get '/host_info' do
+get '/web_backend/host_info' do
   query_host_info(params)
 end
