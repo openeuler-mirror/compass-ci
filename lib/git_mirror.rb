@@ -28,8 +28,8 @@ class GitMirror
     @feedback_info = {}
   end
 
-  def feedback(git_repo, possible_new_refs)
-    @feedback_info = { git_repo: git_repo, possible_new_refs: possible_new_refs }
+  def feedback(git_repo, possible_new_refs, last_commit_time)
+    @feedback_info = { git_repo: git_repo, possible_new_refs: possible_new_refs, last_commit_time: last_commit_time }
     @feedback_queue.push(@feedback_info)
   end
 
@@ -104,7 +104,8 @@ class GitMirror
     mirror_dir = "/srv/git/#{fork_info['belong']}/#{fork_info['git_repo']}"
     mirror_dir = "#{mirror_dir}.git" unless fork_info['is_submodule']
     possible_new_refs = git_repo_download(fork_info['url'], mirror_dir)
-    feedback(fork_info['git_repo'], possible_new_refs)
+    last_commit_time = %x(git -C #{mirror_dir} log --pretty=format:"%ct" -1 2>/dev/null).to_i
+    feedback(fork_info['git_repo'], possible_new_refs, last_commit_time)
   end
 
   def git_mirror
@@ -482,7 +483,8 @@ class MirrorMain
       offset_fetch: 0,
       new_refs_time: [],
       offset_new_refs: 0,
-      new_refs_count: {}
+      new_refs_count: {},
+      last_commit_time: 0
     }
     query = { query: { match: { _id: git_repo } } }
     return fork_stat unless @es_client.count(index: 'repo', body: query)['count'].positive?
@@ -683,7 +685,7 @@ class MirrorMain
   end
 
   def cal_priority(mirror_dir, old_pri, git_repo)
-    last_commit_time = %x(git -C #{mirror_dir} log --pretty=format:"%ct" -1 2>/dev/null).to_i
+    last_commit_time = @fork_stat[git_repo][:last_commit_time]
     step = (@fork_stat[git_repo][:fetch_fail_cnt] + 1) * Math.cbrt(STEP_SECONDS)
     return old_pri + step if last_commit_time.zero?
 
