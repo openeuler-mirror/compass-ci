@@ -4,6 +4,8 @@
 # For your reference only.
 # It's better to run the below scripts step by step.
 
+export prepare_testboxes=false
+
 source ./install-tiny
 . /etc/profile.d/compass.sh
 3-code/cluster-dev-env

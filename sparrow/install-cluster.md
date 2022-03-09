@@ -159,8 +159,9 @@ source /etc/profile.d/compass.sh
 
 - 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)提交测试用例
 ```bash
-submit host-info.yaml
+submit host-info.yaml queue=dc-8g~$USER
 ```
+# 需要指定队列queue=dc-8g~$USER，下一步骤中的my-docker才能执行该任务，特殊的测试机需要指定特殊的队列。
 
 执行上述命令会打印提示信息如下:
 ```
@@ -168,8 +169,15 @@ submit_id=bf5e7ad7-839d-48ec-a033-23281323c750
 submit /c/lkp-tests/jobs/host-info.yaml, got job id=$lab.1
 ```
 
+- 运行my-docker执行测试任务
+```
+cd /c/compass-ci/provides
+./my-docker
+```
+# my-docker脚本将会启动一个docker测试机，且该测试机队列queue=dc-8g～$USER，来执行上一步骤中提交的测试任务。
+
 - 查看任务结果
-等待约1分钟，可根据上一步骤中打印的job id（“got job id=”等号后面才是job id，submit_id=xxx并不是job id，只是一个代表该任务的唯一标识）查看任务结果。
+my-docker脚本执行完毕后，等待约1分钟，任务结果文件将自动从测试机上传到compass-ci服务端的/srv/result目录下，可根据使用submit命令提交测试用例后打印出的job id（“got job id=”等号后面才是job id，submit_id=xxx并不是job id，只是一个代表该任务的唯一标识）查看任务结果。
 请将下行命令中的$lab.1替换为上一步骤中打印出的job id。
 ```bash
 cd $(es-find id=$lab.1 |grep result_root|awk -F '"' '{print "/srv/"$4}') && ls
