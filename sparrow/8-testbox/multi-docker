@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+: ${dc_hostname:=dc-8g}
+: ${dc_count:=10}
+
 [ "$prepare_testboxes" = "false" ] && exit
 
-nohup $CCI_SRC/providers/multi-docker -n dc-8g -c 10 -q dc-8g.$(arch) &
+nohup $CCI_SRC/providers/multi-docker -n $dc_hostname -c $dc_count -q $dc_hostname.$(arch) &
