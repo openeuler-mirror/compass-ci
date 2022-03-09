@@ -158,27 +158,36 @@ class MirrorMain
   end
 
   def traverse_repodir(repodir, belong)
-    if File.directory? repodir
-      load_defaults(repodir, belong)
-      entry_list = Dir.children(repodir) - ['DEFAULTS']
-      entry_list.each do |entry|
-        next if entry.start_with? '.'
+    defaults_list = %x(git -C #{repodir} ls-files | grep 'DEFAULTS')
+    defaults_list.each_line do |defaults|
+      file = defaults.chomp
+      file_path = "#{repodir}/#{File.dirname(file)}"
+      load_defaults(file_path, belong)
+    end
 
-        traverse_repodir("#{repodir}/#{entry}", belong)
+    file_list = %x(git -C #{repodir} ls-files | grep -v 'DEFAULTS').lines
+    t_list = []
+    10.times do
+      t_list << Thread.new do
+        while file_list.length > 0 do
+          repo = file_list.shift.chomp
+          repo_path = "#{repodir}/#{repo}"
+          load_repo_file(repo_path, belong)
+        end
       end
-    else
-      return if File.dirname(repodir) == REPO_DIR
-
-      project = File.dirname(repodir).delete_prefix("#{REPO_DIR}/#{belong}/")
-      fork_name = File.basename(repodir)
-      load_repo_file(repodir, project, fork_name, belong)
+    end
+    t_list.each do |t|
+      t.join
     end
   end
 
   def load_fork_info
+    puts 'start load repo files !'
     @upstreams['upstreams'].each do |repo|
       traverse_repodir("#{REPO_DIR}/#{repo['location']}", repo['location'])
+      puts "load #{repo['location']} repo files success !"
     end
+    puts 'load ALL repo files success !!!'
   end
 
   def create_workers
@@ -246,24 +255,24 @@ end
 
 # main thread
 class MirrorMain
-  def load_repo_file(repodir, project, fork_name, belong)
+  def load_repo_file(repodir, belong)
     return unless ascii_text?(repodir)
 
-    git_repo = "#{project}/#{fork_name}"
+    git_repo = repodir.delete_prefix("#{REPO_DIR}/#{belong}/")
+    return wrong_repo_warn(git_repo) unless git_repo =~ %r{^([a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/\S+){1,2})$}
+
     git_info = YAML.safe_load(File.open(repodir))
     return if git_info.nil? || git_info['url'].nil? || Array(git_info['url'])[0].nil?
-
-    return wrong_repo_warn(git_repo) unless git_repo =~ %r{^([a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/\S+){1,2})$}
 
     if File.exist?("#{REPO_DIR}/#{belong}/erb_template") && git_info['erb_enable'] == true
       template = ERB.new File.open("#{REPO_DIR}/#{belong}/erb_template").read
       git_info = YAML.safe_load(template.result(binding))
     end
 
+    git_info['git_repo'] = git_repo
+    git_info['belong'] = belong
+    git_info = merge_defaults(git_repo, git_info, belong)
     @git_info[git_repo] = git_info
-    @git_info[git_repo]['git_repo'] = git_repo
-    @git_info[git_repo]['belong'] = belong
-    @git_info[git_repo] = merge_defaults(git_repo, @git_info[git_repo], belong)
 
     fork_stat_init(git_repo)
     @priority_queue.push git_repo, get_repo_priority(git_repo, 0)
@@ -326,7 +335,7 @@ class MirrorMain
       next if File.basename(file) == '.ignore' || File.basename(file) == 'DEFAULTS'
 
       repo_dir = "#{REPO_DIR}/#{belong}/#{file}"
-      load_repo_file(repo_dir, File.dirname(file), File.basename(file), belong) if File.file?(repo_dir)
+      load_repo_file(repo_dir, belong) if File.file?(repo_dir)
     end
   end
 
