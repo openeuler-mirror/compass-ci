@@ -344,7 +344,13 @@ class MirrorMain
     repo_info = { 'git_repo' => git_repo, 'url' => @git_info[git_repo]['url'] }
     repo_info = repo_info.merge(@fork_stat[git_repo])
     body = repo_info
-    @es_client.index(index: 'repo', type: '_doc', id: git_repo, body: body)
+    begin
+      @es_client.index(index: 'repo', type: '_doc', id: git_repo, body: body)
+    rescue StandardError
+      puts $ERROR_INFO
+      sleep 1
+      retry
+    end
   end
 
   def update_fail_count(git_repo, possible_new_refs)
