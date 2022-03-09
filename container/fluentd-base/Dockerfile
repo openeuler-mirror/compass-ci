@@ -14,6 +14,7 @@ RUN apk add --no-cache 'ruby-dev' \
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
+    gem install elasticsearch:7.11.1 && \
     gem install fluentd && \
     gem install fluent-plugin-rabbitmq && \
     gem install fluent-plugin-elasticsearch && \
