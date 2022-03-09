@@ -2,11 +2,16 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-[ "$prepare_testboxes" = "false" ] && exit
-
 : ${vm_hostname:=vm-2p8g}
 : ${vm_count:=10}
 
-dmidecode -s system-product-name | grep -iq "virtual" && exit
+run_multi_qemu()
+{
+	[ "$prepare_testboxes" = "false" ] && return 0
 
-nohup $CCI_SRC/providers/multi-qemu -n $vm_hostname -c $vm_count -q $vm_hostname.$(arch) &
+	dmidecode -s system-product-name | grep -iq "virtual" && return 0
+
+	nohup $CCI_SRC/providers/multi-qemu -n $vm_hostname -c $vm_count -q $vm_hostname.$(arch) &
+}
+
+run_multi_qemu

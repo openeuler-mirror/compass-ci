@@ -5,6 +5,11 @@
 : ${dc_hostname:=dc-8g}
 : ${dc_count:=10}
 
-[ "$prepare_testboxes" = "false" ] && exit
+run_multi_docker()
+{
+	[ "$prepare_testboxes" = "false" ] && return 0
 
-nohup $CCI_SRC/providers/multi-docker -n $dc_hostname -c $dc_count -q $dc_hostname.$(arch) &
+	nohup $CCI_SRC/providers/multi-docker -n $dc_hostname -c $dc_count -q $dc_hostname.$(arch) &
+}
+
+run_multi_docker
