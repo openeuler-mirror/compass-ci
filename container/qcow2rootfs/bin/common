@@ -232,10 +232,11 @@ get_vmlinuz_start_postion() {
 	export VMLINUZ_START_POSTION=${vmlinuz_start_postion}
 }
 
+# in some situations, (perhaps ipxe + arm), vmlinuz will boot fail, but vmlinux will success, so try unzip the kernel in place
 unzip_vmlinuz() {
 	get_rootfs_kernel
 
-	file ${ROOTFS_VMLINUZ_FILE} | grep -q gzip || return
+	file ${ROOTFS_VMLINUZ_FILE} | grep -q gzip || return 0
 
 	get_vmlinuz_start_postion ${ROOTFS_VMLINUZ_FILE}
 	[ $VMLINUZ_START_POSTION -eq -1 ] && return
