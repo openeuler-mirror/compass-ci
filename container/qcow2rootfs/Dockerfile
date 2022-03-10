@@ -13,7 +13,7 @@ RUN rm -rf /etc/yum.repos.d/*
 COPY root /
 COPY root/$ARCH /
 RUN yum makecache && \
-    yum install -y --skip-broken libvirt libguestfs-tools xz expect openssl && \
+    yum install -y -q --skip-broken libvirt libguestfs-tools xz expect openssl && \
     yum clean all
 
 ENV EXTRACT_USER=extract
