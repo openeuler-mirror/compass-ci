@@ -12,6 +12,8 @@ PUB_IFACE=$(ip route get 1.2.3.4 | awk '{print $5; exit}')
 BR0_IFACE=br0
 
 # iptables -t nat -F
+iptables -I FORWARD -s 172.17.0.0/16 -j ACCEPT
+iptables -I INPUT -s 172.17.0.0/16 -j ACCEPT
 iptables -w 10 -I FORWARD 1 -j ACCEPT
 iptables -w 10 -t nat -A POSTROUTING -o "$PUB_IFACE" -s $BR0_SUBNET -j MASQUERADE
 iptables -I INPUT -p udp --dport 67 -j ACCEPT
