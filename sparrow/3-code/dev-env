@@ -21,6 +21,7 @@ lab=$(awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
 : ${srv_http_git_host:=$server_ip}
 : ${srv_http_cci_host:=$server_ip}
 : ${WEB_BACKEND_HOST:=$server_ip}
+: ${WEB_BACKEND_PORT:=10002}
 : ${SRV_HTTP_RESULT_PORT:=20007}
 : ${SRV_HTTP_INITRD_PORT:=20008}
 : ${SRV_HTTP_OS_PORT:=20009}
@@ -61,6 +62,7 @@ lab=$(awk '/^lab:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
 : ${MAILDIR:=/srv/cci/Maildir/.compass-ci}
 : ${SENT_MAILDIR:=/srv/cci/Maildir/.sent}
 : ${NETDATA_PORT:=20013}
+: ${WEB_BACKEND_PROTOCOL:=http}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -98,6 +100,7 @@ GIT_SERVER: $git_server
 OS_HTTP_HOST: $os_http_host
 OS_HTTP_PORT: $OS_HTTP_PORT
 WEB_BACKEND_HOST: $WEB_BACKEND_HOST
+WEB_BACKEND_PORT: $WEB_BACKEND_PORT
 SRV_HTTP_RESULT_HOST: $srv_http_result_host
 SRV_HTTP_OS_HOST: $srv_http_os_host
 SRV_HTTP_GIT_HOST: $srv_http_git_host
@@ -143,6 +146,8 @@ GIT_MIRROR_HOST: $git_mirror_host
 REDIS_PORT: $REDIS_PORT
 MAILDIR: $MAILDIR
 SENT_MAILDIR: $SENT_MAILDIR
+BASE_RESULT_URL: $WEB_BACKEND_PROTOCOL://$server_ip:$SRV_HTTP_RESULT_PORT
+BASE_WEB_BACKEND_URL: $WEB_BACKEND_PROTOCOL://$server_ip:$WEB_BACKEND_PORT/web_backend
 EOF
 
 mkdir -p /etc/compass-ci/scheduler
