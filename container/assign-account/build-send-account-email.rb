@@ -11,25 +11,19 @@ def build_message(email, account_info)
     Dear user:
 
     Thank you for joining us.
-    You can use the following command to login the jumper server:
 
-      Login command:
-        ssh -p #{account_info['jumper_port']} #{account_info['my_login_name']}@#{account_info['jumper_host']}
+    You can login the jumper server cross the following url:
 
-      You can directly use the public key you offered to login the account-ver server.
+      https://jumper.compass-ci.openeuler.org/?hostname=#{account_info['jumper_host']}&username=#{account_info['my_login_name']}&port=#{account_info['jumper_port']}
 
+    Notice:
+
+      The account-vm server is only allowed to login with secret key, please save your private key.
       Case your private key for the public key you offered has changed and lead to login failures, you can contact our technical support staff for help:
-
-        name:       Zhang Dewan
-        phone:      18969058870
-        email:      zhangdewan1@compass-ci.org
 
         name:       Luan Shengde
         phone:      15109218229
         email:      luanshengde@compass-ci.org
-
-      Suggest:
-        If you use the password to login, change it in time.
 
     regards
     compass-ci
