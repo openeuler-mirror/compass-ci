@@ -5,34 +5,17 @@
 . ../defconfig.sh
 
 load_cci_defaults
-if [ -f "/etc/ssl/certs/web-backend.key" ] && [ -f "/etc/ssl/certs/web-backend.crt" ]; then
-	default_protocol='https'
-else
-	default_protocol='http'
-fi
 
-[[ $SRV_HTTP_PROTOCOL ]] || SRV_HTTP_PROTOCOL=$default_protocol
-[[ $SRV_HTTP_RESULT_HOST ]] || SRV_HTTP_RESULT_HOST=172.17.0.1
-[[ $SRV_HTTP_RESULT_PORT ]] || SRV_HTTP_RESULT_PORT=20007
-result_url="export const BASEURLRESULT = '$SRV_HTTP_PROTOCOL:\/\/$SRV_HTTP_RESULT_HOST:$SRV_HTTP_RESULT_PORT';"
-
-[[ $WEB_BACKEND_PROTOCOL ]] || WEB_BACKEND_PROTOCOL=$default_protocol
-[[ $WEB_BACKEND_HOST ]] || WEB_BACKEND_HOST=172.17.0.1
-if [ $default_protocol == 'https' ]; then
-	default_web_backend_port=20003
-else
-	default_web_backend_port=10002
-fi
-[[ $WEB_BACKEND_PORT ]] || WEB_BACKEND_PORT=$default_web_backend_port
-web_backend_url="const BASEURL = '$WEB_BACKEND_PROTOCOL:\/\/$WEB_BACKEND_HOST:$WEB_BACKEND_PORT';"
+[[ $BASE_RESULT_URL ]] || BASE_RESUTL_URL='https://api.compass-ci.openeuler.org'
+[[ $BASE_WEB_BACKEND_URL ]] || BASE_WEB_BACKEND_URL='https://api.compass-ci.openeuler.org/web_backend'
 
 if [ -d "./crystal-ci" ]; then
 	rm -rf ./crystal-ci
 fi
-git clone https://gitee.com/theprocess/crystal-ci
-sed -i "s/export const BASEURLRESULT = 'https:\/\/api.compass-ci.openeuler.org:20007';/$result_url/g" ./crystal-ci/src/utils/baseUrl.js
-sed -i "s/const BASEURL = 'https:\/\/api.compass-ci.openeuler.org:20003';/$web_backend_url/g" ./crystal-ci/src/utils/axios.utils.js
 
+git clone https://gitee.com/theprocess/crystal-ci
+sed -i "s#export const BASEURLRESULT = 'https://api.compass-ci.openeuler.org';#export const BASEURLRESULT = '$BASE_RESUTL_URL';#g" ./crystal-ci/src/utils/baseUrl.js
+sed -i "s#const BASEURL = 'https://api.compass-ci.openeuler.org/web_backend';#export const BASEURL = '$BASE_WEB_BACKEND_URL';#g" ./crystal-ci/src/utils/axios.utils.js
 
 docker_skip_rebuild "compass-ci-web"
 
