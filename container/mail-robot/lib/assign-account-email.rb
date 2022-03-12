@@ -12,13 +12,19 @@ def build_apply_account_email(my_info, account_info, assign_account_vm)
 
   login_msg = <<~LOGIN_MSG
 
-    You can use the following command to login the jumper server:
+    You can login the jumper server cross the following url:
 
-      Login command:
-        ssh -p #{account_info['jumper_port']} #{account_info['my_login_name']}@#{account_info['jumper_host']}
+      https://jumper.compass-ci.openeuler.org/?hostname=#{account_info['jumper_host']}&username=#{account_info['my_login_name']}&port=#{account_info['jumper_port']}
 
-      Account password:
-        #{account_info['my_password']}
+    Notice:
+
+      The account-vm server is only allowed to login with secret key, please save your private key.
+      Case your private key for the public key you offered has changed and lead to login failures, you can contact our technical support staff for help:
+
+        name:       Luan Shengde
+        phone:      15109218229
+        email:      luanshengde@compass-ci.org
+
   LOGIN_MSG
 
   login_account_vm = assign_account_vm ? login_msg : ''
