@@ -43,13 +43,19 @@
 	>umask 002 只是暂时设置umask值，需要修改/etc/bashrc中的umask值为002才能长期有效    
 	>执行下个步骤前请确保当前umask值为002，否则因文件权限问题将导致部分服务无法正常运行。   
 
-3. 创建工作目录并克隆 compass-ci 项目代码
+3. 创建工作目录并克隆 compass-ci和lkp-tests项目代码，并使用指定的commit id
 	```bash
 	mkdir -p /c/
 	git clone https://gitee.com/wu_fengguang/compass-ci.git /c/compass-ci
-	ln -s /c/compass-ci /c/cci
+	git clone https://gitee.com/wu_fengguang/lkp-tests.git /c/lkp-tests
+	cd /c/compass-ci
+	git reset --hard a595011f85608e0e88fe718e539869b296f564aa
+	cd /c/lkp-tests
+	git reset --hard c133a1d8867c4dff94f821c03a9eccfe49b75b15
 	```
-	
+	>**说明：**
+	>该版本已经过验证，可以正常进行部署。
+
 4. 编辑setup.yaml配置用户名和邮箱
 	```bash
 	vi /c/compass-ci/sparrow/setup.yaml
