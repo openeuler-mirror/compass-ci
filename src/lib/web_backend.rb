@@ -1172,34 +1172,53 @@ def get_compat_software_info_detail
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), data.to_json]
 end
 
+def query_latest_commit_id(params)
+  num=params[:group_id].split("-").count
+  if(params[:group_id].split("-").count == 1)
+    es = ESQuery.new
+    upstream_repo = params[:group_id][0,1]+'/'+params[:group_id]+'/'+params[:group_id]
+    query_result = es.multi_field_query({'upstream_repo'=>upstream_repo}, desc_keyword: 'start_time')['hits']['hits'] 
+    upstream_commit = query_result[0]['_source']['upstream_commit']
+    params[:group_id] = params[:group_id] +'-'+ upstream_commit
+  end
+  params
+end
 
 def query_test_matrix_result(params)
   es = ESQuery.new
-  install_rpm_es_result = es.multi_field_query({'group_id'=>params[:group_id],'suite'=>'install-rpm'})
-  result_install = Hash.new
-  install_rpm_es_result['hits']['hits'].each do |r|
-    key = "#{r['_source']['os']}-#{r['_source']['os_version']}-#{r['_source']['os_arch']}"
-    result_install[key] = get_install_info(r)
-  end
+  params = query_latest_commit_id(params)
 
-  rpmbuild_es_result = es.multi_field_query({'group_id'=>params[:group_id],'suite'=>'rpmbuild'})
-  result = Array.new
-  rpmbuild_es_result['hits']['hits'].each do |r|
+  query_result = es.multi_field_query({'group_id'=>params[:group_id]})
+  result_hash = Hash.new
+  query_result['hits']['hits'].each do |r|
     item = Hash.new
-    item['os'] = r['_source']['os']
-    item['os_version'] = r['_source']['os_version']
-    item['os_arch'] = r['_source']['os_arch']
-    item['build_id'] = r['_id']
-    item['build_job_health'] = r['_source']['job_health']
     key = "#{r['_source']['os']}-#{r['_source']['os_version']}-#{r['_source']['os_arch']}"
-    if(result_install.has_key?(key))
-      item['install_id'] = result_install["#{key}"]['id']
-      item['install_job_health'] = result_install["#{key}"]['job_health']
+    if(result_hash.key?(key))
+      item = result_hash[key]
+    else
+      item['os'] = r['_source']['os']
+      item['os_version'] = r['_source']['os_version']
+      item['os_arch'] = r['_source']['os_arch']
     end
-    if(r['_source']['stats'].has_key?('rpmbuild.start_time.message'))
-      item['func_job_health'] = r['_source']['stats']['rpmbuild.start_time.message']
+
+    if(r['_source']['suite'] == 'rpmbuild')
+      item['build_id'] = r['_id']
+      item['build_job_health'] = r['_source']['job_health']
+      if(r['_source']['stats'].nil? == false and r['_source']['stats'].has_key?('rpmbuild.func.message'))
+        item['func_job_health'] = r['_source']['stats']['rpmbuild.func.message']
+      end
     end
-    result << item
+
+    if(r['_source']['suite'] == 'install-rpm')
+      install_item = get_install_info(r)
+      item['install_id'] = install_item['id']
+      item['install_job_health'] = install_item['job_health']
+    end
+    result_hash[key] = item
+  end
+  result=Array.new
+  result_hash.each_value do |v|
+    result << v
   end
   result
 end
