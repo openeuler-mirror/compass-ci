@@ -10,6 +10,6 @@ RUN yum install -y createrepo ruby ruby-devel make gcc gcc-c++ util-linux bash r
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
-    gem install bunny json activesupport git rest-client io-console elasticsearch:7.11.1 md5sum base64
+    gem install bunny json activesupport git rest-client io-console elasticsearch:7.11.1 md5sum base64 clockwork
 
 COPY submit_arg.yaml /etc/

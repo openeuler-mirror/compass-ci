@@ -32,6 +32,20 @@ def get_install_rpm_result_by_group_id(group_id)
   job_list.compact
 end
 
+def parse_rpm_name(tmp_hash, result)
+  rpm_name = result['rpm_name']
+  rpm_name_list = rpm_name.split(' ')
+  rpm_name_list.each do |rpm_name|
+    tmp_hash[rpm_name] = {} unless tmp_hash.key?(rpm_name)
+    tmp_hash[rpm_name].merge!(result[result['rpm_name']])
+    if rpm_name =~ %r{(.*)(-[^-]+){2}}
+      tmp_hash[$1] = tmp_hash[rpm_name]
+      tmp_hash.delete(rpm_name)
+    end
+  end
+  tmp_hash
+end
+
 def parse_install_rpm_result_to_json(result_list)
   tmp_hash = {}
   result_list.each do |result|
@@ -87,11 +101,9 @@ def parse_install_rpm_result_to_json(result_list)
       when /install-rpm\.(.*)_license.element/
         tmp_hash[$1] = {} unless tmp_hash.key?($1)
         tmp_hash[$1].merge!({ 'license' => v })
-        end
-      rpm_name = result['rpm_name']
-      tmp_hash[rpm_name] = {} unless tmp_hash.key?(rpm_name)
-      tmp_hash[rpm_name].merge!(result[rpm_name])
+      end
     end
+    tmp_hash = parse_rpm_name(tmp_hash, result)
   end
 
   tmp_hash

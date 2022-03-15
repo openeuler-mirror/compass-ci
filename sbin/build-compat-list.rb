@@ -199,7 +199,6 @@ def refine_json(data)
       category = libs_or_cmds(version, pkg_info)
       location = query_location(version, 'location', pkg_info)
       src_location = query_location(version, 'src_location', pkg_info)
-      license = pkg_info['license'][0]
       next unless location.start_with?('https://api.compass-ci.openeuler.org:20018')
       next unless src_location.start_with?('https://api.compass-ci.openeuler.org:20018')
 
@@ -209,7 +208,7 @@ def refine_json(data)
       tmp_hash['version'] = version
       tmp_hash['downloadLink'] = location
       tmp_hash['src_location'] = src_location
-      tmp_hash['license'] = license
+      tmp_hash['license'] = pkg_info['license'][0] if pkg_info['license']
       tmp_hash['install'] = pkg_info['install']
       result_list << tmp_hash
     end

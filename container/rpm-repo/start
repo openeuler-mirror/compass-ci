@@ -42,10 +42,11 @@ cmd = %W[
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
+  -v /etc/compass-ci/service:/etc/compass-ci/service:ro
   -v /srv/rpm:/srv/rpm
   -w /c/compass-ci/sbin
   fedora:update-repodata
 ]
 
-cmd += ['sh', '-c', 'umask 002 && ./rpm-repo.rb']
+cmd += ['sh', '-c', 'umask 002 && clockwork rpm-repo.rb']
 system(*cmd)

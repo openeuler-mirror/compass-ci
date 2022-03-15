@@ -6,6 +6,7 @@
 require 'fileutils'
 require 'json'
 require 'set'
+require 'clockwork'
 require_relative '../lib/mq_client'
 require_relative '../lib/json_logger.rb'
 require_relative '../lib/config_account'
@@ -161,7 +162,7 @@ class HandleRepo
     createrepodata_complete_queue = @mq.queue('createrepodata_complete')
     Thread.new do
       loop do
-        sleep 180
+        sleep 20
         next if @@create_repo_path.empty?
 
         @@upload_flag = false
@@ -222,18 +223,25 @@ class HandleRepo
         group_id = Time.new.strftime('%Y-%m-%d')+'-auto-install-rpm'
         rpm_info = JSON.parse(msg)
         job_id = rpm_info['job_id']
+
+
+        rpm_names = []
+        real_argvs = []
         rpm_info['upload_rpms'].each do |rpm|
           submit_argv, submit_arch = parse_arg(rpm, job_id)
-          real_argvs = Array.new(submit_argv)
           next if submit_arch == 'source'
 
-          # zziplib-0.13.62-12.aarch64.rpm => zziplib
-          rpm_name = $1 if File.basename(rpm) =~ %r{(.*)(-[^-]+){2}}
-          real_argvs.push("rpm_name=#{rpm_name}")
-          real_argvs.push("group_id=#{group_id}")
-          system(real_argvs.join(' '))
-          deal_pub_dir(group_id)
+          # zziplib-0.13.62-12.aarch64.rpm => zziplib-0.13.62-12.aarch64
+          # zziplib-help.rpm
+          # zziplib-doc.rpm
+          rpm_name = File.basename(rpm).delete_suffix('.rpm')
+          rpm_names << rpm_name
+          real_argvs = Array.new(submit_argv)
         end
+        rpm_names = rpm_names.join(",")
+        real_argvs.push("rpm_name=#{rpm_names}")
+        real_argvs.push("group_id=#{group_id}")
+        system(real_argvs.join(' '))
         @mq.ack(info)
       rescue StandardError => e
         @log.warn({
@@ -246,9 +254,19 @@ class HandleRepo
 
 end
 
+include Clockwork
+
 config_yaml('auto-submit')
 do_local_pack()
 hr = HandleRepo.new
 hr.create_repo
 hr.submit_install_rpm
 hr.handle_new_rpm
+
+handler do |job|
+  group_id = Time.new.strftime('%Y-%m-%d')+'-auto-install-rpm'
+  puts "Running #{job}"
+  hr.deal_pub_dir(group_id)
+end
+
+every(1.day, 'update pub dir', :at => '23:59')
