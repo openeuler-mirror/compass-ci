@@ -149,10 +149,10 @@ class MirrorMain
     @fork_stat[git_repo] = get_fork_stat(git_repo)
   end
 
-  def load_defaults(repodir, belong)
-    defaults_file = "#{repodir}/DEFAULTS"
+  def load_defaults(defaults_file, belong)
     return unless File.exist?(defaults_file)
 
+    repodir = File.dirname(defaults_file)
     defaults_key = repodir == "#{REPO_DIR}/#{belong}" ? belong : repodir.delete_prefix("#{REPO_DIR}/#{belong}/")
     @defaults[defaults_key] = YAML.safe_load(File.open(defaults_file))
     @defaults[defaults_key] = merge_defaults(defaults_key, @defaults[defaults_key], belong)
@@ -162,7 +162,7 @@ class MirrorMain
     defaults_list = %x(git -C #{repodir} ls-files | grep 'DEFAULTS')
     defaults_list.each_line do |defaults|
       file = defaults.chomp
-      file_path = "#{repodir}/#{File.dirname(file)}"
+      file_path = "#{repodir}/#{file}"
       load_defaults(file_path, belong)
     end
 
@@ -616,7 +616,7 @@ class MirrorMain
       file = file.chomp
       next unless File.basename(file) == 'DEFAULTS'
 
-      repodir = "#{REPO_DIR}/#{belong}/#{File.dirname(file)}"
+      repodir = "#{REPO_DIR}/#{belong}/#{file}"
       load_defaults(repodir, belong)
       traverse_repodir(repodir, belong)
     end
