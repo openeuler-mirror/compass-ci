@@ -449,7 +449,9 @@ class MirrorMain
     return unless msg['submit_command']
 
     msg['submit_command'].each do |k, v|
-      msg['submit'][0]['command'] += " #{k}=#{v}"
+      msg['submit'].each_index do |t|
+        msg['submit'][t]['command'] += " #{k}=#{v}"
+      end
     end
   end
 
