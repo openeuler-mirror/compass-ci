@@ -28,8 +28,6 @@ class Sched
       job_info[k] = job[k]
     end
     job_info["testbox"] = job["tbox_group"]
-    job_info["mount_repo_name"] = "aarch64-budding-openeuler"
-    job_info["mount_repo_addr"] = "https://api.compass-ci.openeuler.org:20012/rpm/pub/openeuler-20.03-LTS-SP1/budding-openeuler/\\$basearch/"
     job_info
   end
 
