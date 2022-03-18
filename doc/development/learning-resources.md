@@ -2,7 +2,8 @@ culture
 =======
 
 - [How To Ask Questions The Smart Way](https://zhuanlan.zhihu.com/p/19779979)
-- [The Cathedral and the Bazaar](https://www.ruanyifeng.com/blog/2008/02/notes_on_the_cathedral_and_the_bazaar.html)
+
+[The Cathedral and the Bazaar](https://www.ruanyifeng.com/blog/2008/02/notes_on_the_cathedral_and_the_bazaar.html)
 - <http://www.catb.org/~esr/writings/cathedral-bazaar/cathedral-bazaar/>
 
 ruby
@@ -12,7 +13,7 @@ ruby
 
 	man pry  # for trying out code snippets below
 
-- <https://learnxinyminutes.com/docs/ruby/>
+- <https://learnxinyminutes.com/docs/crystal/>
 - <https://github.com/ThibaultJanBeyer/cheatsheets/blob/master/Ruby-Cheatsheet.md>
 - <https://www.vikingcodeschool.com/professional-development-with-ruby/ruby-cheat-sheet>
 - <http://www.cheat-sheets.org/saved-copy/RubyCheat.pdf>  # skip the cryptic "Predefined Variables" and "Ruby arguments" tables
@@ -75,8 +76,7 @@ Example:
 crystal
 =======
 
-- <https://getgood.at/in-a-day/crystal>
-- <https://crystal-lang.org/2018/01/08/top-5-reasons-for-ruby-ists-to-use-crystal.htmL>
+- <https://learnxinyminutes.com/docs/crystal>
 - <https://crystal-lang.org/api>
 - <https://crystal-lang.org/reference>
 
@@ -94,7 +94,6 @@ shell
 - <https://github.com/denysdovhan/bash-handbook/blob/master/translations/zh-CN/README.md>
 - <https://juejin.im/post/5e4123e3e51d45271515501f>
 - <https://juejin.im/post/5e42858de51d45270d53022e>
-- <https://shellmagic.xyz/>
 - <https://ngte-ac.gitbook.io/i/infrastructure/linux-command-cheatsheet>
 - <https://github.com/jlevy/the-art-of-command-line/blob/master/README-zh.md>
 - <https://google.github.io/styleguide/shellguide.html>
@@ -159,7 +158,6 @@ Tmux
 Mutt
 ====
 
-- <http://www.ctex.org/documents/shredder/mutt_frame.html>  # enough to read the 1st section
 
 ## mutt keys (customized)
 
