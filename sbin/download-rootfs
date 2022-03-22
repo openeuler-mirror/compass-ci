@@ -38,7 +38,7 @@ wget_download()
 download_os_rootfs()
 {
 	cd $rootfs_dir && {
-		wget_download "https://api.compass-ci.openeuler.org/os/${os}/${os_arch}/${os_version}.cgz"
+		wget_download "http://116.205.137.186/os/${os}/${os_arch}/${os_version}.cgz"
 	
 		gzip -dc ${os_version}.cgz | cpio -id --quiet
 		rm -rf ${os_version}.cgz
@@ -48,8 +48,8 @@ download_os_rootfs()
 download_osimage()
 {
 	cd $osimage_dir && {
-		wget_download "https://api.compass-ci.openeuler.org/initrd/osimage/${os}/${os_arch}/${os_version}/current"
-		wget_download "https://api.compass-ci.openeuler.org/initrd/deps/nfs/debian/aarch64/sid/run-ipconfig.cgz"
+		wget_download "http://116.205.137.186/initrd/osimage/${os}/${os_arch}/${os_version}/current"
+		wget_download "http://116.205.137.186/initrd/deps/nfs/debian/${os_arch}/sid/run-ipconfig.cgz"
 	}
 }
 
