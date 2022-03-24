@@ -11,7 +11,7 @@ RUN echo -e "[url \"git://\"]\n\tinsteadOf = https://" >> /etc/gitconfig
 COPY shard.yml /usr/share/crystal/app/shard.yml
 
 WORKDIR /usr/share/crystal/app
-RUN shards
+RUN shards || git config --global url."https://ghproxy.com/https://github.com".insteadOf "https://github.com"; sh -c shards
 RUN sed -i 's:data):data, headers\: HTTP\:\:Headers{"Content-Type" => "application/json"}):' /usr/share/crystal/app/lib/elasticsearch-crystal/src/elasticsearch/api/namespace/common.cr; \
 sed -i '99s/arguments\[:id]/arguments\[:id]?/'  /usr/share/crystal/app/lib/elasticsearch-crystal/src/elasticsearch/api/actions/index.cr; \
 sed -i 's/, Utils.__listify(arguments\[:q].as(String))/ /'  /usr/share/crystal/app/lib/elasticsearch-crystal/src/elasticsearch/api/actions/search.cr;\
