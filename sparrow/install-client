@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-[[ $CCI_SRC ]] || export CCI_SRC=$(git rev-parse --show-toplevel)
+[ "$CCI_SRC" ] || export CCI_SRC=$(git rev-parse --show-toplevel)
 
 . $CCI_SRC/lib/log.sh
 
