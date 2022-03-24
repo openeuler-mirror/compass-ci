@@ -49,9 +49,9 @@
 	git clone https://gitee.com/wu_fengguang/compass-ci.git /c/compass-ci
 	git clone https://gitee.com/wu_fengguang/lkp-tests.git /c/lkp-tests
 	cd /c/compass-ci
-	git reset --hard a595011f85608e0e88fe718e539869b296f564aa
+	git reset --hard 0b0a132469d9ba2a624ef36a136b7b47c6626eab
 	cd /c/lkp-tests
-	git reset --hard c133a1d8867c4dff94f821c03a9eccfe49b75b15
+	git reset --hard 54653df2ca76b6382ecf5990e857deacdead1497
 	```
 	>**说明：**
 	>该版本已经过验证，可以正常进行部署。
