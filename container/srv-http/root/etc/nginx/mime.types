@@ -18,5 +18,5 @@ types {
     image/x-ms-bmp                                   bmp;
 
     application/json                                 json;
-    application/x-gzip                               gz tgz cgz;
+    application/x-gzip                               gz tgz cgz rpm zip;
 }
