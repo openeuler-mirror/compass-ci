@@ -30,4 +30,5 @@ pkgs=(
 )
 
 apt-get update
+apt-get --fix-broken install -y
 apt-get install -y --fix-missing "${pkgs[@]}"
