@@ -914,7 +914,8 @@ def five_days_query(now)
       :bool => {
         :must => [{:range => {
           "start_time" => {:gte => d5.strftime("%Y-%m-%dT%H:%M:%S+0800"), :lte => now.strftime("%Y-%m-%dT%H:%M:%S+0800")}
-        }}]
+        }}],
+        :must_not => {:bool=>{:should=>[{:term=>{"suite"=>"rpmbuild"}}, {:term=>{"suite"=>"build-pkg"}}]}}
       }
     },
     :size => 10000,
