@@ -3,7 +3,9 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # 2020.3 by wufengguang
 
-br0_segment=$(awk '/^br0_segment:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+[[ -f /etc/compass-ci/setup.yaml ]] && {
+	br0_segment=$(awk '/^br0_segment:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+}
 
 : ${br0_segment:=172.18}
 
