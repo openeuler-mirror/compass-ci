@@ -55,11 +55,11 @@ email subscription
 
          https://open.work.weixin.qq.com/help?person_id=0&doc_id=301&helpType=exmail
 
-### local add email info file
+### add $HOME/.email_info file at home dir
 
-An email_info file is required when executing the script: mutt-setup-mail to do the email configuration. Add one at your work directory.
+An .email_info file is required when executing the script: mutt-setup-mail to do the email configuration. Add one at your home dir.
 
-The email-info file content as follows:
+The .email-info file content as follows:
 
 ---
         # add the following line according to user's own email
@@ -80,11 +80,11 @@ The email-info file content as follows:
 
         # mailbox name used for the EMAIL_ADDR
         # case the mailbox name exists, specify a new one
-        MAIL_BOX=".inbox"
+        MAIL_BOX="pubbox"
 ---
 
 ## One click to do the email config
 
 run the following command to finish the email config:
 
-        mutt-setup-mail email-info
+        mutt-setup-mail $HOME/.email-info

@@ -52,11 +52,11 @@
 
         https://open.work.weixin.qq.com/help?person_id=0&doc_id=301&helpType=exmail
 
-### 本地创建邮件信息文件
+### 用户主目录创建‘$HOME/.email-info’文件
 
-执行mutt-setup-mail脚本进行配置前需要先添加email-info文件，在工作目录下创建该文件。
+执行mutt-setup-mail脚本进行配置前需要先添加‘.email-info’文件，在用户主目录下创建该文件。
 
-email-info文件内容如下：
+.email-info文件内容如下：
 
 ---
         # 根据自己的邮箱添加以下行
@@ -76,10 +76,10 @@ email-info文件内容如下：
         MAIL_DIR="~/Maildir"
 
         # 指定mailbox名，如果该目录已存在，则指定一个新的名字
-        MAIL_BOX=".inbox"
+        MAIL_BOX="pubbox"
 ---
 
 ## 一键完成配置
 
 执行下面命令完成邮箱配置：
-        mutt-setup-mail email-info
+        mutt-setup-mail $HOME/.email-info
