@@ -26,6 +26,7 @@ pkgs=(
 	qemu-system-riscv64
 	sudo
 	iputils
+	libvirt-daemon-system
 )
 
 apt-get update
