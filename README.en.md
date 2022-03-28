@@ -8,11 +8,11 @@ Compass-CI is an open-source software platform supporting continuous integration
 
 **Test Service**
 
-Compass-CI monitors Git repositories of many open-source software. Once a code update is detected, Compass-CI automatically triggers the [automated test](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/test-service/test-oss-project.zh.md). Developers can also [manually submit for test](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md).
+Compass-CI monitors Git repositories of many open-source software. Once a code update is detected, Compass-CI automatically triggers the [automated test](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.en.md). Developers can also [manually submit for test](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md).
 
 **Logging In to the Commissioning Environment**
 
-Using SSH to [log in to the test environment for commissioning](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/login-to-testbox/log-in-machine-debug.md)
+Using SSH to [log in to the test environment for commissioning](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/log-in-machine-debug.md)
 
 **Test Result Analysis**
 
@@ -30,15 +30,15 @@ If a new error ID is generated, the bisect is automatically triggered to locate 
 
 **Automated Test**
 
-1. Add the URL of the repository to be tested to the [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos.git) repository. [Compiling test cases](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md) and add the URL to the [lkp-tests](https://gitee.com/wu_fengguang/lkp-tests) repository. For details, see [this document](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/test-service/test-oss-project.zh.md).
+1. Add the URL of the repository to be tested to the [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos.git) repository. [Compiling test cases](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md) and add the URL to the [lkp-tests](https://gitee.com/wu_fengguang/lkp-tests) repository. For details, see [this document](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.en.md).
 2. Run the git push command to update the repository. The test is automatically triggered.
-3. On the web page, click [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/browse-results.zh.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/compare-results.zh.md) to view the test result. (web: <https://compass-ci.openeuler.org/jobs>)
+3. On the web page, click [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/browse-results.en.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/compare-results.en.md) to view the test result. (web: <https://compass-ci.openeuler.org/jobs>)
 
 **Automatic Test Example**
 
 How can I automatically test my repository <https://github.com/baskerville/backlight> on Compass-CI?
 
-1. Fork upstream-repos repository ([https://gitee.com/wu_fengguang/upstream-repos) ](https://gitee.com/wu_fengguang/upstream-repos %EF %BC %89) and git clone it to the local host.
+1. Fork upstream-repos repository (https://gitee.com/wu_fengguang/upstream-repos) and git clone it to the local host.
 
 2. Create the **b/backlight/backlight** file. The file content is as follows:
 
@@ -72,13 +72,13 @@ How can I automatically test my repository <https://github.com/baskerville/backl
 
 **Manually Submitting a Test Task**
 
-1. [Install the compass-ci client.](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/install/install-cci-client.md)
-2. [Compile test cases](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md) [to manually submit a test task.](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
+1. [Install the compass-ci client.](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/install-cci-client.md)
+2. [Compile test cases](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md) then [manually submit a test task.](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
 3. On the [web page](https://compass-ci.openeuler.org/jobs), click [view](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/browse-results.zh.md) and [compare](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/compare-results.zh.md) to view the test result.
 
 **Example**
 
-1. The Compass-CI client has been installed following the procedure in [Installing‧the‧Compass-ci‧Client‧on‧the‧Local‧PC]([doc/install/install-cci-client.md · Fengguang/compass-ci - Gitee.com](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/install/install-cci-client.md) ).
+1. The Compass-CI client has been installed following the procedure in [Install the compass-ci client](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/install-cci-client.md) ).
 
 2. Submit the test in a YAML file. You need to prepare the YAML file of the test task in advance.
 
@@ -114,9 +114,9 @@ How can I automatically test my repository <https://github.com/baskerville/backl
 
 **Logging in to the Test Environment**
 
-1. Send an email to [compass-ci-robot@qq.com](mailto:compass-ci-robot@qq.com) to [apply for an account](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md).
+1. Send an email to [compass-ci-robot@qq.com](mailto:compass-ci-robot@qq.com) to [apply for an account](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md).
 2. Complete the environment configuration based on the email feedback.
-3. Add the sshd field to the test task and submit the corresponding task. [Log in to the test environment](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/login-to-testbox/log-in-machine-debug.md).
+3. Add the sshd field to the test task and submit the corresponding task. [Log in to the test environment](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/log-in-machine-debug.md).
 
 **Example**
 
@@ -192,7 +192,7 @@ spinlock:
 
 ## Contributing to Compass-CI
 
-We welcome new contributors, and we are happy to provide guidance to our contributors. Compass-CI is mainly a project developed using Ruby, and we follow the [Ruby Community Code Style](https://ruby-china.org/wiki/coding-style). If you want to participate in the community and contribute to the Compass-CI project, [this page](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/help/learning-resources.md) will provide you with more information, including all languages and tools used by Compass-CI.
+We welcome new contributors, and we are happy to provide guidance to our contributors. Compass-CI is mainly a project developed using Ruby, and we follow the [Ruby Community Code Style](https://ruby-china.org/wiki/coding-style). If you want to participate in the community and contribute to the Compass-CI project, [this page](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/development/learning-resources.md) will provide you with more information, including all languages and tools used by Compass-CI.
 
 ## Website
 
