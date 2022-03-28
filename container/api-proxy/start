@@ -1,0 +1,21 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+
+[[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
+
+. $CCI_SRC/container/defconfig.sh
+docker_rm api-proxy
+
+cmd=(
+	docker run
+	--name api-proxy
+	-p 10011:9092
+	-d
+	--log-opt mode=non-blocking
+	--log-opt max-buffer-size=4m
+	api-proxy
+
+)
+
+"${cmd[@]}"
