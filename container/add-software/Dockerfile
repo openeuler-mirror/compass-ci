@@ -5,4 +5,8 @@ FROM centos:8
 
 MAINTAINER Xu Xijian <hdxuxijian@163.com>
 
-RUN yum install -y rsync
+RUN mkdir /etc/yum.repos.d.backup && \
+    mv /etc/yum.repos.d/*.repo /etc/yum.repos.d.backup && \
+    curl https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo > /etc/yum.repos.d/CentOS-Base.repo && \
+    yum makecache && \
+    yum install -y rsync
