@@ -32,7 +32,7 @@ ENV JAVA_HOME /usr/share/elasticsearch/jdk
 ENV ES_TMPDIR /usr/share/elasticsearch/tmp
 
 RUN ./bin/elasticsearch-users useradd ${USER} -p ${PASSWORD} -r superuser && \
-    ./bin/elasticsearch-plugin install http://116.205.137.186/initrd/deps/self-rpm-repo/elasticsearch-sql-7.11.1.0.zip && \
+    ./bin/elasticsearch-plugin install https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/elasticsearch/elasticsearch-sql-7.11.1.0.zip && \
     chown -R 1090:1090 /usr/share/elasticsearch
 
 VOLUME ["/srv/es"]

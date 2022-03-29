@@ -50,8 +50,8 @@ public_network_ok && {
 
 	# lib64lockfile1 from http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
 	# lockfile-progs from http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
-	wget_rpm http://116.205.137.186/initrd/deps/self-rpm-repo/lockfile/$(arch)/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
-	wget_rpm http://116.205.137.186/initrd/deps/self-rpm-repo/lockfile/$(arch)/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
+	wget_rpm https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/lockfile/$(arch)/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
+	wget_rpm https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/lockfile/$(arch)/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
 
 	rpm -i --force lib64lockfile1-1.16-1-omv4002.$(arch).rpm lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
 	rm -rf *.rpm
