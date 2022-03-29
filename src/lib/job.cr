@@ -732,6 +732,16 @@ class Job
     self["modules_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
   end
 
+  # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/vmlinuz
+  def update_kernel_uri(full_kernel_uri)
+    self["kernel_uri"] = full_kernel_uri
+  end
+
+  # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/modules.cgz
+  def update_modules_uri(full_modules_uri)
+    self["modules_uri"] = full_modules_uri
+  end
+
   def get_common_initrds
     temp_initrds = [] of String
     # init custom_bootstrap cgz
