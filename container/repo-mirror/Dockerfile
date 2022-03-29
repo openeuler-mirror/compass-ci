@@ -18,7 +18,7 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 	&& apk add --no-cache go rsync\
 	&& mkdir -p /tmp/log \
 	&& chmod +x /setup.sh \
-	&& wget https://github.com/tuna/tunasync/releases/download/v0.8.0/tunasync-linux-${ARCH}-bin.tar.gz \
+	&& wget https://ghproxy.com/https://github.com/tuna/tunasync/releases/download/v0.8.0/tunasync-linux-${ARCH}-bin.tar.gz \
 	&& tar -xf tunasync-linux-${ARCH}-bin.tar.gz -C /usr/bin \
 	&& rm -f tunasync-linux-${ARCH}-bin.tar.gz
 

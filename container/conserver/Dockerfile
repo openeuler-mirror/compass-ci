@@ -9,7 +9,7 @@ RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweiclou
 
 RUN apk update
 RUN apk add gcc make g++ bash ipmitool
-RUN wget https://github.com/bstansell/conserver/releases/download/v8.2.4/conserver-8.2.4.tar.gz && \
+RUN wget https://ghproxy.com/https://github.com/bstansell/conserver/releases/download/v8.2.4/conserver-8.2.4.tar.gz && \
     tar -xf conserver-8.2.4.tar.gz && \
     cd conserver-8.2.4 && \
     ./configure && make && make install && mkdir -p /var/consoles/
