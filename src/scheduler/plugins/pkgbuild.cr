@@ -26,6 +26,8 @@ class PkgBuild < PluginsCommon
     ss.each do |pkg_name, pkg_params|
       pbp = init_pkgbuild_params(job, pkg_name, pkg_params)
       cgz, exists = cgz_exists?(pbp)
+      # if pkg_name is linux, we should init vmlinuz and modules to job
+      update_kernel(job, pbp) if pkg_name == "linux"
       # add cgz to wait job initrd uri
       job.append_initrd_uri(cgz)
       # if cgz exist no need submit pkgbuild job and handle next pkg
@@ -70,6 +72,12 @@ class PkgBuild < PluginsCommon
     return key
   end
 
+  def update_kernel(job, pbp)
+    server_prefix = "#{INITRD_HTTP_PREFIX}/kernel/#{pbp["os_arch"]}/#{pbp["config"]}/#{pbp["upstream_commit"]}"
+    job.update_kernel_uri("#{server_prefix}/vmlinuz")
+    job.update_modules_uri("#{server_prefix}/modules.cgz")
+  end
+
   def delete_job4queue(job)
     key = "sched/wait/#{job.queue}/#{job.subqueue}/#{job.id}"
     @etcd.delete(key)
@@ -109,16 +117,26 @@ class PkgBuild < PluginsCommon
     repo_name =  params["fork"]? == nil ? pkg_name : params["fork"].to_s
     upstream_repo = "#{pkg_name[0]}/#{pkg_name}/#{repo_name}"
     upstream_info = get_upstream_info(upstream_repo)
-    pkgbuild_repo = "#{upstream_info["pkgbuild_repo"][0]}/#{upstream_info["pkgbuild_repo"][0].to_s.split("/")[-1]}.git"
+    pkgbuild_repo = "pkgbuild/#{upstream_info["pkgbuild_repo"][0]}"
+    pkgbuild_repos = upstream_info["pkgbuild_repo"].as_a
+    pkgbuild_repos.each do |repo|
+      next unless "#{repo}" =~ /(-git|linux)$/
+      pkgbuild_repo = "pkgbuild/#{repo}"
+    end
     # now support openeuler:20.03-fat and archlinux:02-23-fat
     os_version = "#{job.os_version}".split("-pre")[0].split("-fat")[0]
     docker_image = "#{job.os}:#{os_version}-fat"
+    if pkg_name == "linux"
+      testbox = "dc-32g"
+    else
+      testbox = "dc-16g"
+    end
 
     content = Hash(String, JSON::Any).new
     content["os"] = JSON::Any.new(job.os)
     content["os_version"] = JSON::Any.new("#{os_version}-fat")
     content["os_arch"] = JSON::Any.new(job.os_arch)
-    content["testbox"] = JSON::Any.new("dc-16g")
+    content["testbox"] = JSON::Any.new(testbox)
     content["os_mount"] = JSON::Any.new("container")
     content["docker_image"] = JSON::Any.new(docker_image)
     content["commit"] = JSON::Any.new("HEAD")
@@ -130,6 +148,7 @@ class PkgBuild < PluginsCommon
     content["waited"] = JSON.parse([{job["id"] => "job_health"}].to_json)
     content["SCHED_PORT"] = JSON::Any.new("#{ENV["SCHED_PORT"]}")
     content["SCHED_HOST"] = JSON::Any.new("#{ENV["SCHED_HOST"]}")
+    content["runtime"] = JSON::Any.new("36000")
 
     # add user specify build params
     params.each do |k, v|
