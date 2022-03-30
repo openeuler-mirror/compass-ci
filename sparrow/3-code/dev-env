@@ -47,7 +47,6 @@ server_name=$(hostname | cut -f1 -d.)
 : ${DOCKER_REGISTRY_PORT:=5001}
 : ${LOCAL_SEND_MAIL_PORT:=11311}
 : ${LOCAL_ROBOT_EMAIL_ADDRESS:=Crystal_TEAM}
-: ${git_server:=$server_ip}
 : ${SCHED_HTTPS_HOST:=$server_ip}
 : ${SCHED_HTTPS_PORT:=20002}
 : ${docker_proxy_host:=$server_ip}
@@ -100,7 +99,7 @@ SCHED_NODES:
   - host: $sched_host
     port: 3003
 LKP_SERVER: $server_ip
-GIT_SERVER: $git_server
+GIT_SERVER: $GIT_SERVER
 OS_HTTP_HOST: $os_http_host
 OS_HTTP_PORT: $OS_HTTP_PORT
 WEB_BACKEND_HOST: $WEB_BACKEND_HOST
