@@ -451,6 +451,7 @@ class MirrorMain
     msg['submit_command'].each do |k, v|
       msg['submit'].each_index do |t|
         msg['submit'][t]['command'] += " #{k}=#{v}"
+        msg['submit'][t]['command'] += " rpm_name=#{git_repo.split("/")[-1]}"
       end
     end
   end

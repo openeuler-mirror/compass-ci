@@ -1226,7 +1226,7 @@ end
 
 def query_test_matrix(params)
   begin
-    result = query_test_matrix_result(params)
+    result = query_matrix_result(params)
   rescue StandardError => e
     log_error({
       'message' => e.message,
@@ -1235,6 +1235,61 @@ def query_test_matrix(params)
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query result error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
+end
+
+def query_matrix_result(params)
+  es = ESQuery.new
+  params = query_latest_commit_id(params)
+
+  query_result = es.multi_field_query({'group_id'=>params[:group_id]})
+  result = Array.new
+  query_result['hits']['hits'].each do |r|
+    item = get_job_info(r)
+    result << item
+  end
+  result
+end
+
+# eg:
+# input: ES job query result['hits']['hits']
+# output: {"os"=>"openeuler", "os_version"=>"20.03-LTS-SP1", "os_arch"=>"aarch64", "result_root"=>"/result/rpmbuild/2022-03-23/dc-16g/openeuler-20.03-LTS-SP1-aarch64/elrepo-aarch64-e-elrepo-elrepo/crystal.5236306", "id"=>"crystal.5236306", "build_job_health"=>"success", "install_job_health"=>"success"}
+def get_job_info(job)
+  job_info = Hash.new
+  need_keys = ["os","os_version","os_arch","result_root"]
+  need_keys.each do |k|
+    job_info[k] = job['_source'][k]
+  end
+  job_info['id'] = job['_id']
+  stats = job['_source']['stats']
+  return job_info if stats.nil?
+
+  if(stats.key?('rpmbuild.start_time.message'))
+    job_info['build_job_health'] = 'success'
+  else
+    job_info['build_job_health'] = 'fail'
+  end
+  job_info['func_job_health'] = 'success' if stats.key?('rpmbuild.func.message')
+  job_info['install_job_health'] = 'fail'
+  stats.each do |k,v|
+    case k
+    when /install-rpm\.(.*)_(?:install|uninstall|)\.(.*)/
+      if ($2 == 'fail')
+        job_info['install_job_health'] = 'fail'
+        return job_info
+      else
+        job_info['install_job_health'] = 'success'
+      end
+
+    when /install-rpm\.(.*)_(?:cmd|service)_(.*)\.(.*)/
+      if ($3 == 'fail')
+        job_info['install_job_health'] = 'fail'
+        return job_info
+      else
+        job_info['install_job_health'] = 'success'
+      end
+    end
+  end
+  job_info
 end
 
 def get_install_info(result)
