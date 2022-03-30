@@ -91,7 +91,7 @@ push_image()
 docker_skip_rebuild()
 {
 	tag=$1
-	[ "$action" != "run-only" ] && return
+	[ "$skip_build_image" != "true" ] && return
 	docker image inspect $tag > /dev/null 2>&1
 	[ "$?" == "0" ] && exit 1
 }

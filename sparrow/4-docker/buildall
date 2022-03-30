@@ -3,7 +3,6 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 CONTAINER_PATH="$CCI_SRC/container"
-export action=$1
 
 source ${CCI_SRC}/lib/log.sh
 
@@ -94,7 +93,7 @@ start_all()
 
 tmpdir=$(mktemp -d)
 
-[ "$action" == "start-only" ] || build_all
+build_all
 start_all
 
 rm -fr $tmpdir

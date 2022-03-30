@@ -59,7 +59,7 @@ def get_available_memory
 end
 
 def docker_skip_rebuild(tag)
-  return if ENV['action'] != 'run-only'
+  return if ENV['skip_build_image'] != 'true'
 
   exit 1 if system "docker image inspect #{tag} > /dev/null 2>&1"
 end
