@@ -22,7 +22,13 @@ dirs=(
 	/c
 	/c/git-repos
 	/etc/qemu
+	/etc/compass-ci
 	/etc/compass-ci/accounts
+	/etc/compass-ci/defaults
+	/etc/compass-ci/service
+	/etc/compass-ci/scheduler
+	/etc/compass-ci/register
+	/etc/compass-ci/dnsmasq
 	/srv/cci/Maildir/.compass-ci/new
 	/srv/cci/Maildir/.compass-ci/cur
 	/srv/cci/Maildir/.compass-ci/sent

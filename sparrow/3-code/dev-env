@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+umask 002
+
 [ -z $server_ip ] && server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 server_name=$(hostname | cut -f1 -d.)
 [[ -f /etc/compass-ci/setup.yaml ]] && {

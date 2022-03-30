@@ -7,7 +7,7 @@
 docker_skip_rebuild "dnsmasq:alpine"
 
 [[ -e /tftpboot/boot.ipxe ]] || {
-    cp tftpboot/boot.ipxe /tftpboot/boot.ipxe
+    cp -a tftpboot/boot.ipxe /tftpboot/boot.ipxe
 }
 
 docker build -t dnsmasq:alpine .

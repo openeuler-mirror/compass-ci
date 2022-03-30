@@ -17,6 +17,13 @@ chmod_dir=(
 		/srv/initrd/pkg
 		/srv/initrd/deps
 		/srv/upload-files
+		/etc/compass-ci
+		/etc/compass-ci/accounts
+		/etc/compass-ci/defaults
+		/etc/compass-ci/service
+		/etc/compass-ci/scheduler
+		/etc/compass-ci/register
+		/etc/compass-ci/dnsmasq
 )
 
 chmod 775 "${chmod_dir[@]}"

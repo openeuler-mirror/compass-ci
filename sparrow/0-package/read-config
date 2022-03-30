@@ -38,6 +38,7 @@ check_selinux()
 }
 
 mkdir -p /etc/compass-ci/
+chmod 775 /etc/compass-ci/
 cp -a $CCI_SRC/sparrow/setup.yaml /etc/compass-ci/setup.yaml
 export_config_variables
 

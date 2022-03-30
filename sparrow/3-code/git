@@ -12,6 +12,7 @@ download_repo()
 
 	[ -d "/c/$repo/.git" ] || {
 		git clone https://gitee.com/wu_fengguang/"$repo".git /c/"$repo"
+		chmod -R o+r /c/"$repo"
 		
 		[ "$repo" == "compass-ci" ] && ln -s /c/"$repo" /c/cci
 	}
