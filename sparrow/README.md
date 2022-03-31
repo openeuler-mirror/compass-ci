@@ -11,7 +11,7 @@
 - 硬件    
 	服务器类型：ThaiShan200-2280 (建议)    
 	架构：aarch64    
-	内存：>= 32GB    
+	内存：>= 64GB
 	CPU：64 nuclear (建议)    
 	硬盘：>= 500G (建议划分独立分区)    
 	
@@ -49,9 +49,9 @@
 	git clone https://gitee.com/wu_fengguang/compass-ci.git /c/compass-ci
 	git clone https://gitee.com/wu_fengguang/lkp-tests.git /c/lkp-tests
 	cd /c/compass-ci
-	git reset --hard 0b0a132469d9ba2a624ef36a136b7b47c6626eab
+	git reset --hard 82fa77d62cc40a72db5dfa3617c9a50f963b8fa4
 	cd /c/lkp-tests
-	git reset --hard 54653df2ca76b6382ecf5990e857deacdead1497
+	git reset --hard 1d8d8f5ea2c4a3b8fd5d7dd0c845f2a5fc929c41
 	```
 	>**说明：**
 	>该版本已经过验证，可以正常进行部署。
@@ -66,8 +66,11 @@
 
 5. 执行一键部署脚本 install-tiny
 	```bash
+	export skip_build_image=true
 	cd /c/compass-ci/sparrow && ./install-tiny
 	```
+	skip_build_image=true表示除了少数几个容器(例如es, logging-es, dnsmasq)必须在用户本地通过Dockerfile构建出来以外，其他镜像是不需要本地构建的，
+	部署脚本将直接从[此处](https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker)下载镜像tar包使用，以解决本地构建镜像耗时，且网络不稳定易造成构建失败的问题。
 
 6. 注册账号
 	非root用户注册帐号，该用户登录系统后直接使用build-my-info命令注册。

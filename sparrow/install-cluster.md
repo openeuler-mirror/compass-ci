@@ -19,7 +19,7 @@ compass-ci集群搭建过程中，需要在本地运行dnsmasq服务，同一个
 ### 硬件要求
         服务器类型：ThaiShan200-2280 (建议)
         架构：aarch64（支持x86架构，可能会遇到问题，欢迎向我们报告或fix bug）
-        内存：>= 32GB
+        内存：>= 64GB
         CPU：64 nuclear (建议)
         硬盘：>= 500G
 
@@ -103,9 +103,9 @@ yum install -y git
 git clone https://gitee.com/wu_fengguang/compass-ci.git /c/compass-ci
 git clone https://gitee.com/wu_fengguang/lkp-tests.git /c/lkp-tests
 cd /c/compass-ci
-git reset --hard 0b0a132469d9ba2a624ef36a136b7b47c6626eab
+git reset --hard 82fa77d62cc40a72db5dfa3617c9a50f963b8fa4
 cd /c/lkp-tests
-git reset --hard 54653df2ca76b6382ecf5990e857deacdead1497
+git reset --hard 1d8d8f5ea2c4a3b8fd5d7dd0c845f2a5fc929c41
 ```
 
 >**说明：**
@@ -142,8 +142,11 @@ vi /c/compass-ci/sparrow/setup.yaml
 
 - 执行部署集群脚本 install-cluster
 ```bash
+export skip_build_image=true
 cd /c/compass-ci/sparrow && ./install-cluster
 ```
+skip_build_image=true表示除了少数几个容器(例如es, logging-es, dnsmasq)必须在用户本地通过Dockerfile构建出来以外，其他镜像是不需要本地构建的，
+部署脚本将直接从[此处](https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker)下载镜像tar包使用，以解决本地构建镜像耗时，且网络不稳定易造成构建失败的问题。
 
 install-cluster脚本大概需要运行一个小时，主要耗时在将数十个dockerfile文件构建成微服务镜像并运行在服务端。          
 调用了脚本/c/compass-ci/sparrow/4-docker/buildall，/c/compass-ci/container目录下就是所有微服务，例如rabbitmq，          
