@@ -86,13 +86,15 @@ docker_load_images()
 	images_dir=/tmp/docker_images
 
 	mkdir -p $images_dir
-	wget -O $images_dir/images.cgz https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker/$(arch)/images.cgz || return 1
-	gzip -dc $images_dir/images.cgz | cpio -id --quiet -D $images_dir
-
-	for i in $(ls $images_dir/*.tar)
+	wget -O $images_dir/docker_list https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker/$(arch)/docker_list || return 1
+	while read line
 	do
-		docker load -i $i
-	done
+		(
+			wget -O $images_dir/$line https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker/$(arch)/$line || return 1
+			docker load -i $images_dir/$line
+		) &
+	done < $images_dir/docker_list
+	wait
 	rm -rf $images_dir
 }
 
