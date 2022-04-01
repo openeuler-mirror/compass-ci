@@ -152,6 +152,10 @@ install-cluster脚本大概需要运行一个小时，主要耗时在将数十�
 调用了脚本/c/compass-ci/sparrow/4-docker/buildall，/c/compass-ci/container目录下就是所有微服务，例如rabbitmq，          
 redis，es，scheduler等，请耐心等待脚本执行结束。          
 
+- 使环境变量生效
+```bash
+source /etc/profile.d/compass.sh
+```
 - 重启dnsmasq服务
 为了使dnsmasq配置生效，需要重启dnsmasq，容器微服务的重启均由container目录下各个微服务对应的start脚本完成。
 ```bash
@@ -162,10 +166,6 @@ cd /c/compass-ci/container/dnsmasq
 ## 环境测试
 本文以/c/lkp-tests/jobs/目录下已有的测试用例host-info.yaml为例，用来检测当前部署的集群环境是否正常，该host-info.yaml是用来测试测试机的cpu，内存，硬盘等信息的，
 详情见测试脚本/c/lkp-tests/tests/host-info。
-- 使环境变量生效
-```bash
-source /etc/profile.d/compass.sh
-```
 
 - 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)提交测试用例
 ```bash
@@ -181,7 +181,7 @@ submit /c/lkp-tests/jobs/host-info.yaml, got job id=$lab.1
 
 - 运行my-docker执行测试任务
 ```
-cd /c/compass-ci/provides
+cd /c/compass-ci/providers
 ./my-docker
 ```
 # my-docker脚本将会启动一个docker测试机，且该测试机队列queue=dc-8g～$USER，来执行上一步骤中提交的测试任务。
