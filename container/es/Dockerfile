@@ -16,7 +16,8 @@ RUN sed -i 's:#network.host\: _site_:network.host\: 0.0.0.0:' /usr/share/elastic
     sed -i '$a xpack.license.self_generated.type: basic' /usr/share/elasticsearch/config/elasticsearch.yml && \
     sed -i '$a xpack.security.transport.ssl.enabled: true' /usr/share/elasticsearch/config/elasticsearch.yml && \
     echo "-Xms${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options && \
-    echo "-Xmx${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options
+    echo "-Xmx${MEMORY}m" >> /usr/share/elasticsearch/config/jvm.options && \
+    echo "-Dlog4j2.formatMsgNoLookups=true" >> /usr/share/elasticsearch/config/jvm.options
 
 RUN mkdir /etc/yum.repos.d.backup && \
     mv /etc/yum.repos.d/*.repo /etc/yum.repos.d.backup && \
@@ -34,6 +35,18 @@ ENV ES_TMPDIR /usr/share/elasticsearch/tmp
 RUN ./bin/elasticsearch-users useradd ${USER} -p ${PASSWORD} -r superuser && \
     ./bin/elasticsearch-plugin install https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/elasticsearch/elasticsearch-sql-7.11.1.0.zip && \
     chown -R 1090:1090 /usr/share/elasticsearch
+
+RUN rm lib/log4j-core*.jar && \
+    rm lib/log4j-api*.jar && \
+    rm modules/x-pack-core/log4j-1.2-api*.jar && \
+    rm modules/x-pack-identity-provider/log4j-slf4j-impl*.jar && \
+    rm modules/x-pack-security/log4j-slf4j-impl*.jar
+
+COPY ./apache-log4j-2.17.2-bin/log4j-core-2.17.2.jar /usr/share/elasticsearch/lib
+COPY ./apache-log4j-2.17.2-bin/log4j-api-2.17.2.jar /usr/share/elasticsearch/lib
+COPY ./apache-log4j-2.17.2-bin/log4j-1.2-api-2.17.2.jar /usr/share/elasticsearch/modules/x-pack-core
+COPY ./apache-log4j-2.17.2-bin/log4j-slf4j-impl-2.17.2.jar /usr/share/elasticsearch/modules/x-pack-identity-provider
+COPY ./apache-log4j-2.17.2-bin/log4j-slf4j-impl-2.17.2.jar /usr/share/elasticsearch/modules/x-pack-security
 
 VOLUME ["/srv/es"]
 
