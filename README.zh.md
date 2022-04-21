@@ -42,7 +42,7 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 **自动化测试示例**
 
 如何在 compass-ci 上自动化测试我的仓库 https://github.com/baskerville/backlight ?
-1. Fork upstream-repos 仓库（https://gitee.com/wu_fengguang/upstream-repos） 并 git clone 到本地
+1. Fork [upstream-repos 仓库](https://gitee.com/wu_fengguang/upstream-repos) 并 git clone 到本地
 2. 新建文件 b/backlight/backlight，内容为：
 
     ```
