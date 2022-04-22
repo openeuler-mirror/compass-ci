@@ -1,5 +1,7 @@
 # system wide setup
 
+test
+
 ## debian packages
 
 	sudo apt-get install docker.io

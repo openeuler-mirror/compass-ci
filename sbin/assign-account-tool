@@ -332,8 +332,11 @@ def send_account(my_info, conf_info, email_info, my_info_es, stdin_info)
   build_my_info_from_account_info(my_info, account_info, conf_info)
 
   store_account_info(my_info)
+  p my_info
+  p account_info
+  p conf_info
 
-  send_mail(my_info, account_info, conf_info)
+  #send_mail(my_info, account_info, conf_info)
 end
 
 def send_mail(my_info, account_info, conf_info)
