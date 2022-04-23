@@ -66,6 +66,10 @@ server_name=$(hostname | cut -f1 -d.)
 : ${SENT_MAILDIR:=/srv/cci/Maildir/.sent}
 : ${NETDATA_PORT:=20013}
 : ${WEB_BACKEND_PROTOCOL:=http}
+: ${COMPASS_WEB_PROTOCOL:=http}
+: ${COMPASS_WEB_PORT:=20030}
+: ${OAUTH_CLIENT_ID:=your_client_id_here}
+: ${OAUTH_CLIENT_SECRET:=your_client_secret_here}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -152,6 +156,9 @@ MAILDIR: $MAILDIR
 SENT_MAILDIR: $SENT_MAILDIR
 BASE_RESULT_URL: $WEB_BACKEND_PROTOCOL://$server_ip:$SRV_HTTP_RESULT_PORT
 BASE_WEB_BACKEND_URL: $WEB_BACKEND_PROTOCOL://$server_ip:$WEB_BACKEND_PORT/web_backend
+OAUTH_CLIENT_ID: $OAUTH_CLIENT_ID
+OAUTH_CLIENT_SECRET: $OAUTH_CLIENT_SECRET
+OAUTH_REDIRECT_URL: $COMPASS_WEB_PROTOCOL://$server_ip:$COMPASS_WEB_PORT/oauth_authorize
 EOF
 
 mkdir -p /etc/compass-ci/scheduler
