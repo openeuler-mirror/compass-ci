@@ -35,6 +35,9 @@ else
 				},
 				"my_account": {
 					"type": "keyword"
+				},
+				"gitee_id": {
+					"type": "keyword"
 				}
 			}
 		}
