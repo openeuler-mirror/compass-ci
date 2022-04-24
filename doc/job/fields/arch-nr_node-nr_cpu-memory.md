@@ -10,7 +10,7 @@ Meaning:
   memory:  memory size of the machine.
 ```
 
-- These fields are from the file which in $LAB_SRC/hosts.
+- These fields are from the file which in $LKP_SRC/hosts.
 - Here is an example of these fields in the host file:
 ```YAML
   arch:    aarch64
