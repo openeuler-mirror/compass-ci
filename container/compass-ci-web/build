@@ -8,7 +8,7 @@ docker_skip_rebuild "compass-ci-web"
 
 load_cci_defaults
 
-[[ $BASE_RESULT_URL ]] || BASE_RESUTL_URL='https://api.compass-ci.openeuler.org'
+[[ $BASE_RESULT_URL ]] || BASE_RESULT_URL='https://api.compass-ci.openeuler.org'
 [[ $BASE_WEB_BACKEND_URL ]] || BASE_WEB_BACKEND_URL='https://api.compass-ci.openeuler.org/web_backend'
 
 if [ -d "./crystal-ci" ]; then
@@ -16,7 +16,7 @@ if [ -d "./crystal-ci" ]; then
 fi
 
 git clone https://gitee.com/theprocess/crystal-ci
-sed -i "s#export const BASEURLRESULT = 'https://api.compass-ci.openeuler.org';#export const BASEURLRESULT = '$BASE_RESUTL_URL';#g" ./crystal-ci/src/utils/baseUrl.js
+sed -i "s#export const BASEURLRESULT = 'https://api.compass-ci.openeuler.org';#export const BASEURLRESULT = '$BASE_RESULT_URL';#g" ./crystal-ci/src/utils/baseUrl.js
 sed -i "s#const BASEURL = 'https://api.compass-ci.openeuler.org/web_backend';#export const BASEURL = '$BASE_WEB_BACKEND_URL';#g" ./crystal-ci/src/utils/axios.utils.js
 
 
