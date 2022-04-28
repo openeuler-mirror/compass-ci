@@ -6,11 +6,5 @@
 
 docker_skip_rebuild "srv-http"
 
-if [ -d "./h5ai" ]; then
-	rm -rf ./h5ai
-fi
-git clone https://gitee.com/luweitao_y/h5ai.git
-
 docker build -t srv-http .
 
-rm -rf ./h5ai

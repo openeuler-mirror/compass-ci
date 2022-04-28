@@ -13,5 +13,4 @@ else
 	sed -i "s/listen 11300;/listen $LISTEN_PORT;/g" /etc/nginx/conf.d/default.conf
 fi
 
-nginx
-/usr/sbin/php-fpm7
+nginx -g "daemon off;"
