@@ -78,6 +78,7 @@ module Jobfile::Operate
     cmd = "#{ENV["LKP_SRC"]}/sbin/submit "
     cmd += "#{job_file} "
     cmd += array.join(" ")
+    cmd += " --no-pack"
     puts `#{cmd}`
   end
 end
