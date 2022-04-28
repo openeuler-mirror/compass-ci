@@ -10,9 +10,6 @@ class MyData
   def initialize
     @es = Elasticsearch::Client.new hosts: ES_HOSTS
     raise 'Connect es  error!' unless @es.ping
-
-    @logging_es = Elasticsearch::Client.new hosts: LOGGING_ES_HOSTS
-    raise 'Connect logging es error!' unless @logging_es.ping
   end
 
   def get_physical_queues
@@ -139,10 +136,6 @@ class MyData
 
   def es_add(index, id, data)
     @es.index(index: index, 'id': id, body: data)
-  end
-
-  def logging_es_query(index, query)
-    @logging_es.search(index: index + '*', body: query)
   end
 
   def get_srpm_info(size: 10, from: 0)
