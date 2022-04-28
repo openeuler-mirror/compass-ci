@@ -1070,8 +1070,8 @@ def get_compat_software_body(params)
       from: page_num
   }
 
-  total = ES_CLIENT.count(index: 'compat-software-info*', body: total_query)['count']
-  compats = ES_CLIENT.search index: 'compat-software-info*', body: compats_query
+  total = ES_CLIENT.count(index: 'compat-software-info', body: total_query)['count']
+  compats = ES_CLIENT.search index: 'compat-software-info', body: compats_query
   {
     total: total,
     filter: params,
