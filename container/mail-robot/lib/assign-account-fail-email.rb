@@ -43,7 +43,7 @@ def email_err_message(message)
 
       Reference the following url to learn how to register the repo:
 
-          https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/test-service/test-oss-project.en.md
+          https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.en.md
     EMAIL_MESSAGE
   when 'COMMIT_AUTHOR_ERROR'
     err_message = <<~EMAIL_MESSAGE

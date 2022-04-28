@@ -4,7 +4,7 @@
 1. [编写测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
 	本文中测试用例使用/c/lkp-tests/jobs/sysbench-cpu.yaml，测试脚本使用/c/lkp-tests/tests/sysbench-cpu，测试用例和测试脚本既可以使用c/lkp-tests目录下已存在的，也可自己编写并分别添加到上述两个目录下。
 
-2. [编写PKGBUILD](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/features/PKGBUILD/write-PKGBUILD.zh.md)（无法通过命令安装的软件如yum install/apt-get add，才需要编写PKGBUILD，可以直接安装的情况下请跳过该步骤）
+2. [编写PKGBUILD](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/write-PKGBUILD.zh.md)（无法通过命令安装的软件如yum install/apt-get add，才需要编写PKGBUILD，可以直接安装的情况下请跳过该步骤）
 	在/c/lkp-tests/pkg目录下创建与测试用例同名文件夹，并编辑PKGBUILD文件。此文直接使用已存在的PKGBUILD文件
    	```
    	ls /c/lkp-tests/pkg/sysbench-cpu/PKGBUILD
