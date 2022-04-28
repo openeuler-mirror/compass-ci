@@ -253,34 +253,48 @@ add_disk()
 	done
 	[ -n "$qemu_mount_point" ] || qemu_mount_point=$(pwd)
 
-	local index=0
 	local disk
+	disk_encode=('/vdb' '/vdc' '/vdd' '/vde' '/vdf' '/vdg' '/vdh' '/vdi' '/vdj' '/vdk' '/vdl' '/vdm' '/vdn' '/vdo' '/vdp' '/vdq' '/vdr' '/vds' '/vdt' '/vdu' '/vdv' '/vdw' '/vdx' '/vdy')
 
-	for disk in $rootfs_disk
-	do
-		prepare_disk "128G"
+	# create rootfs disk
+	create_disk 0 "/dev/vda"
 
-		# about if=virtio:
-		# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
-		# - to avoid the given device name is not the same as the real device name.
-		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index},if=virtio"
-		((index++))
-		kvm+=(-drive ${drive})
-	done
+	local index=1
+	if([ -n "$nr_hdd_partitions" ]); then
+		for((i=0;i<$nr_hdd_partitions;i++)); do
+			disk=${disk_encode[$index-1]}
+			create_disk $index $disk
+			((index++))
+		done
+	else
+		for disk in ${hdd_partitions[@]}
+		do
+			create_disk $index $disk
+			((index++))
+		done
+	fi
 
-	for disk in ${hdd_partitions[@]}
-	do
-		prepare_disk "128G" "true"
-
-		# about if=virtio:
-		# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
-		# - to avoid the given device name is not the same as the real device name.
-		local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index},if=virtio"
-		((index++))
-		kvm+=(-drive ${drive})
-	done
+	if [ -n "$nr_ssd_partitions" ]; then
+		for((i=0;i<$nr_ssd_partitions;i++)); do
+			disk=${disk_encode[$index-1]}
+			create_disk $index $disk
+			((index++))
+		done
+	fi
 }
 
+create_disk()
+{
+	local index=$1
+	local disk=$2
+	prepare_disk "128G" "true"
+
+	# about if=virtio:
+	# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
+	# - to avoid the given device name is not the same as the real device name.
+	local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index},if=virtio"
+	kvm+=(-drive ${drive})
+}
 set_mac()
 {
 	job_id=$(awk -F'/' '/job_initrd_tmpfs/{print $(NF-1)}' $ipxe_script)
@@ -451,10 +465,18 @@ write_dmesg_flag()
 	fi
 }
 
+custom_vm_info()
+{
+	gzip -dc job.cgz | cpio -div
+	grep "nr_" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
+	create_yaml_variables "lkp/scheduled/job_vm.yaml"
+}
+
 check_logfile
 write_logfile
 
 parse_ipxe_script
+custom_vm_info
 
 check_kernel
 write_dmesg_flag 'start'
