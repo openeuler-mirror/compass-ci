@@ -28,7 +28,7 @@ post '/send_mail_yaml' do
     'bcc' => data['bcc'],
     'body' => data['body'],
     'attach_name' => data['attach_name'],
-    'attach_content' => data['attach_content'],
+    'attach_content' => data['attach_content']
   }
 
   send_mail(mail_info)
@@ -98,7 +98,7 @@ def send_mail(mail_info)
     body mail_info['body']
 
     if mail_info.key?('attach_name') && mail_info['attach_name']
-      add_file :filename => mail_info['attach_name'], :content => mail_info['attach_content']
+      add_file filename: mail_info['attach_name'], content: mail_info['attach_content']
     end
   end
 

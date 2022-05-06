@@ -5,7 +5,7 @@
 
 require_relative '../defconfig.rb'
 
-docker_rm "webhook"
+docker_rm 'webhook'
 
 cmd = %W[
   docker run

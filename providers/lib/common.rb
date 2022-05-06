@@ -20,9 +20,9 @@ def loop_reboot_testbox(hostname, type, mq_host, mq_port)
 end
 
 def reboot_testbox(hostname, type, mq_host, mq_port)
-  mq = MQClient.new(:hostname => mq_host, :port => mq_port, :automatically_recover => false, :recovery_attempts => 0)
-  queue = mq.queue(hostname, { :durable => true })
-  queue.subscribe({ :block => true, :manual_ack => true }) do |info, _pro, msg|
+  mq = MQClient.new(hostname: mq_host, port: mq_port, automatically_recover: false, recovery_attempts: 0)
+  queue = mq.queue(hostname, { durable: true })
+  queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
     Process.fork do
       deal_reboot_msg(mq, msg, info, type)
     end
@@ -35,11 +35,11 @@ end
 
 def reboot(type, job_id)
   r, io = IO.pipe
-  if type == 'dc'
-    res = system("docker rm -f #{job_id}", out: io, err: io)
-  else
-    res = system("pkill #{job_id}", out: io, err: io)
-  end
+  res = if type == 'dc'
+          system("docker rm -f #{job_id}", out: io, err: io)
+        else
+          system("pkill #{job_id}", out: io, err: io)
+        end
   io.close
 
   msg = []
@@ -74,7 +74,7 @@ def get_mem_available
   return %x(echo $(($(grep MemAvailable /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
 end
 
-def check_mem_available(hostname, memory)
+def check_mem_available(_hostname, memory)
   return (get_mem_available - memory) >= 20
 end
 
@@ -110,7 +110,7 @@ def request_mem(hostname)
   mem_info_file = "/tmp/#{ENV['HOSTNAME']}/meminfo"
   request_success = false
 
-  while not request_success
+  until request_success
     begin
       memory = get_memory_from_hostname(hostname)
       File.open("#{mem_info_file}.lock", 'a') do |f|
@@ -134,12 +134,12 @@ def request_mem(hostname)
         request_success = true
       end
     rescue Exception => e
-      puts "request mem exception."
+      puts 'request mem exception.'
       puts e.message
       puts e.backtrace.inspect
     ensure
       # avoid all testboxes request lock at the same time
-      if not request_success
+      unless request_success
         sleep(Random.rand(10))
       end
     end
@@ -150,7 +150,7 @@ def release_mem(hostname)
   mem_info_file = "/tmp/#{ENV['HOSTNAME']}/meminfo"
   release_success = false
 
-  while not release_success
+  until release_success
     begin
       memory = get_memory_from_hostname(hostname)
       File.open("#{mem_info_file}.lock", 'a') do |f|
@@ -165,7 +165,7 @@ def release_mem(hostname)
         release_success = true
       end
     rescue Exception => e
-      puts "release mem exception."
+      puts 'release mem exception.'
       puts e.message
       puts e.backtrace.inspect
     end
@@ -202,15 +202,15 @@ end
 #   "commit_id" => "xxxxxx"
 # }
 def monitor_mq_message(threads, mq_host, mq_port)
-  mq = MQClient.new(:hostname => mq_host, :port => mq_port, :automatically_recover => false, :recovery_attempts => 0)
+  mq = MQClient.new(hostname: mq_host, port: mq_port, automatically_recover: false, recovery_attempts: 0)
   queue = mq.fanout_queue('multi-manage', "#{HOSTNAME}-manage")
-  queue.subscribe({ :block => true }) do |_info, _pro, msg|
+  queue.subscribe({ block: true }) do |_info, _pro, msg|
     deal_mq_manage_message(threads, msg)
   end
 rescue Bunny::NetworkFailure => e
-    puts e
-    sleep 5
-    retry
+  puts e
+  sleep 5
+  retry
 end
 
 def deal_mq_manage_message(threads, msg)
@@ -227,7 +227,7 @@ def deal_mq_manage_message(threads, msg)
   when 'restart'
     manage_restart(threads, msg)
   else
-    puts "deal mq manage message: unknow type message -- #{msg["type"]}"
+    puts "deal mq manage message: unknow type message -- #{msg['type']}"
   end
 rescue StandardError => e
   puts e.backtrace.inspect

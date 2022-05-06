@@ -16,7 +16,7 @@ class AssistResult
 
   def get_job_yaml(job_id)
     resource = RestClient::Resource.new("http://#{@host}:#{@port}/get_job_yaml/#{job_id}")
-    response = resource.get()
+    response = resource.get
     return nil unless response.code == 200
 
     return response.body
@@ -37,7 +37,7 @@ class AssistResult
 
   def get_job_content(job_id)
     resource = RestClient::Resource.new("http://#{@host}:#{@port}/get_job_content/#{job_id}")
-    response = resource.get()
+    response = resource.get
     return nil unless response.code == 200
 
     return response.body
@@ -45,7 +45,7 @@ class AssistResult
 
   def get_compare_errors(pre_id, cur_id)
     resource = RestClient::Resource.new("http://#{@host}:#{@port}/get_compare_errors/#{pre_id},#{cur_id}")
-    response = resource.get()
+    response = resource.get
     return nil unless response.code == 200
 
     return JSON.parse(response.body)

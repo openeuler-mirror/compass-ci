@@ -81,8 +81,7 @@ def start_qemu(hostname)
       'log_dir' => LOG_DIR,
       'UUID' => UUID,
       'index' => INDEX,
-      'WORKSPACE' => pwd_hostname
-    },
+      'WORKSPACE' => pwd_hostname },
     ENV['CCI_SRC'] + '/providers/qemu.sh'
   )
 end

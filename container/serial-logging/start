@@ -21,7 +21,7 @@ defaults.merge!(service_authentication)
 env = docker_env(defaults)
 
 DEFAULT_CCI = '/c/cci'
-docker_name = "serial-logging"
+docker_name = 'serial-logging'
 docker_rm docker_name
 
 cmd = %W[

@@ -34,7 +34,7 @@ ES_HOSTS = [{
   port: ES_PORT,
   user: ES_USER,
   password: ES_PASSWORD
-}]
+}].freeze
 
 if ENV['LOGGING_ES_USER']
   LOGGING_ES_USER = ENV['LOGGING_ES_USER']
@@ -50,7 +50,7 @@ LOGGING_ES_HOSTS = [{
   port: LOGGING_ES_PORT,
   user: LOGGING_ES_USER,
   password: LOGGING_ES_PASSWORD
-}]
+}].freeze
 
 KIBANA_HOST ||= config['KIBANA_HOST'] || '172.17.0.1'
 KIBANA_PORT ||= config['KIBANA_PORT'] || '20017'

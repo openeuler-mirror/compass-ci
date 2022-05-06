@@ -19,7 +19,7 @@ class StderrTable
     rescue StandardError => e
       e.message
     end
-    
+
     # response['cols']: ["count","first_date", "suite", "job_owner", "relevant_links","error_message"]
     @head = response['cols'][0, 2] + [response['cols'][3]] + ['error_message/relevant_links']
     response['data'][0, @top_num].each do |item|
@@ -33,14 +33,12 @@ class StderrTable
     init
 
     Terminal::Table::Style.defaults = { border: :unicode_round }
-    table = Terminal::Table.new do |t|
+    Terminal::Table.new do |t|
       t.title = 'Compass-ci Daily Stderr'
       t.headings = @head
       t.rows = @rows
       t.style = { all_separators: true }
     end
-
-    table
   end
 end
 

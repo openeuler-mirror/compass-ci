@@ -35,7 +35,7 @@ post '/check_job_credible' do
     return [400, e.backtrace.inspect]
   end
 
-  return [200, {'credible' => result}.to_json]
+  return [200, { 'credible' => result }.to_json]
 end
 
 get '/get_job_content/:job_id' do

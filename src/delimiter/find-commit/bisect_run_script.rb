@@ -25,17 +25,15 @@ class GitBisectRun
   private
 
   def get_bisect_status(job)
-    begin
-      status = Utils.get_job_status(job, @error_id)
-      exit 125 unless status
+    status = Utils.get_job_status(job, @error_id)
+    exit 125 unless status
 
-      exit 1 if status.eql?('bad')
+    exit 1 if status.eql?('bad')
 
-      exit 0
-    rescue StandardError => e
-      puts e.backtrace.inspect
-      exit -1
-    end
+    exit 0
+  rescue StandardError => e
+    puts e.backtrace.inspect
+    exit(-1)
   end
 end
 
@@ -48,5 +46,5 @@ begin
   run.git_bisect
 rescue StandardError => e
   puts e.backtrace.inspect
-  exit -1
+  exit(-1)
 end

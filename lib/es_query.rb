@@ -17,7 +17,7 @@ class ESQuery
   # Example @items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # Example @unmatch_items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # means to query: key1 == value1 && (key2 in [value2, value3, ..])
-  def multi_field_query(items, unmatch_items: {}, size: 10_000, desc_keyword: nil, regexp: nil, single_index: false )
+  def multi_field_query(items, unmatch_items: {}, size: 10_000, desc_keyword: nil, regexp: nil, single_index: false)
     unless items
       warn 'empty filter!'
       exit

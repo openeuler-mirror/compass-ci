@@ -5,6 +5,6 @@
 
 require_relative '../defconfig'
 
-docker_skip_rebuild "sub-fluentd:alpine"
+docker_skip_rebuild 'sub-fluentd:alpine'
 
 system 'docker build -t sub-fluentd:alpine .'

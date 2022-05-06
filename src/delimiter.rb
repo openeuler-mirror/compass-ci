@@ -8,8 +8,8 @@ require_relative '../lib/config_account'
 def config_secrets_yaml
   account = YAML.load_file "#{ENV['HOME']}/.config/compass-ci/defaults/account.yaml"
   lab = YAML.load_file "#{ENV['HOME']}/.config/compass-ci/include/lab/#{account['lab']}.yaml"
-  secrets = Hash["secrets" => lab]
-  File.open("#{ENV['HOME']}/.config/compass-ci/defaults/secrets.yaml", "w") { |f| YAML.dump(secrets, f) }
+  secrets = Hash['secrets' => lab]
+  File.open("#{ENV['HOME']}/.config/compass-ci/defaults/secrets.yaml", 'w') { |f| YAML.dump(secrets, f) }
 end
 
 begin

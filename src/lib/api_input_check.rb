@@ -2,8 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-PERFORMANCE_RESULT_INPUT_KEYS = Set.new(['metrics', 'filter', 'series', 'x_params'])
-PERFORMANCE_RESULT_IGNORE_KEYS = Set.new(['max_series_num', 'test_params', 'title'])
+PERFORMANCE_RESULT_INPUT_KEYS = Set.new(%w[metrics filter series x_params])
+PERFORMANCE_RESULT_IGNORE_KEYS = Set.new(%w[max_series_num test_params title])
 
 # --------------------------------------------------------------------------------------------
 # check the input params for API: web-backend/performance_result
@@ -19,7 +19,7 @@ def check_performance_result(request_body)
   lack_param = lack_params?(PERFORMANCE_RESULT_INPUT_KEYS, Set.new(request_body.keys))
   return lack_param if lack_param
 
-  request_body.each do |key, value|
+  request_body.each do |key, _value|
     next if (PERFORMANCE_RESULT_INPUT_KEYS | PERFORMANCE_RESULT_IGNORE_KEYS).include?(key)
 
     return "incorrerct input \"#{key}\""

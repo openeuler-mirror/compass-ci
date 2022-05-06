@@ -7,14 +7,14 @@ require_relative "#{ENV['CCI_SRC']}/lib/assign_account_client"
 
 def send_account_mail(user_info)
   account_info = ESQuery.new(index: 'accounts').query_by_id(user_info['my_email'])
-  return {'status'=> true} if account_info
+  return { 'status' => true } if account_info
 
   begin
     apply_account = AutoAssignAccount.new(user_info)
     apply_account.send_account
-  rescue
-    return {'status' => false}
+  rescue StandardError
+    return { 'status' => false }
   end
 
-  return {'status' => true}
+  return { 'status' => true }
 end

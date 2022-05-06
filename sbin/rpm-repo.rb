@@ -16,7 +16,6 @@ require_relative './build-compat-list'
 require_relative '../lib/es_query.rb'
 require_relative '../lib/constants.rb'
 
-
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
 
@@ -39,10 +38,10 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 #    change /srv/rpm/pub/**/repodate
 # @mq.ack(info)
 class HandleRepo
-  @@upload_dir_prefix = "/srv/rpm/upload/"
+  @@upload_dir_prefix = '/srv/rpm/upload/'
   def initialize
     @es = ESQuery.new(ES_HOSTS)
-    @mq = MQClient.new(:hostname => MQ_HOST, :port => MQ_PORT)
+    @mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
     @log = JSONLogger.new
   end
 
@@ -112,19 +111,19 @@ class HandleRepo
         }
       }.to_json
 
-      next unless pkg_info["install"] == "pass"
-      next unless pkg_info["downloadLink"]
-      next unless pkg_info["src_location"]
+      next unless pkg_info['install'] == 'pass'
+      next unless pkg_info['downloadLink']
+      next unless pkg_info['src_location']
 
-      job_id = pkg_info["result_root"].split('/')[-1]
+      job_id = pkg_info['result_root'].split('/')[-1]
       pkg_info.merge!(get_srpm_addr(job_id))
-      update_compat_software?("srpm-info", query, pkg_info)
+      update_compat_software?('srpm-info', query, pkg_info)
 
-      rpm_path = pkg_info['downloadLink'].delete_prefix!("https://api.compass-ci.openeuler.org:20018")
-      srpm_path = pkg_info['src_location'].delete_prefix!("https://api.compass-ci.openeuler.org:20018")
+      rpm_path = pkg_info['downloadLink'].delete_prefix!('https://api.compass-ci.openeuler.org:20018')
+      srpm_path = pkg_info['src_location'].delete_prefix!('https://api.compass-ci.openeuler.org:20018')
 
-      location = "/srv" + rpm_path
-      src_location = "/srv" + srpm_path
+      location = '/srv' + rpm_path
+      src_location = '/srv' + srpm_path
       update << location
       update << src_location
     end
@@ -132,19 +131,20 @@ class HandleRepo
   end
 
   def check_upload_rpms(data)
-    raise JSON.dump({ "errcode" => "200", "errmsg" => "no upload_rpms params" }) unless data.key?("upload_rpms")
-    raise JSON.dump({ "errcode" => "200", "errmsg" => "no job_id params" }) unless data.key?("job_id")
-    raise JSON.dump({ "errcode" => "200", "errmsg" => "upload_rpms params type error" }) if data["upload_rpms"].class != Array
-    data["upload_rpms"].each do |rpm|
-      raise JSON.dump({ "errcode" => "200", "errmsg" => "#{rpm} not exist" }) unless File.exist?(rpm)
-      raise JSON.dump({ "errcode" => "200", "errmsg" => "the upload directory is incorrect" }) unless File.dirname(rpm).start_with?(@@upload_dir_prefix)
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no upload_rpms params' }) unless data.key?('upload_rpms')
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no job_id params' }) unless data.key?('job_id')
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'upload_rpms params type error' }) if data['upload_rpms'].class != Array
+
+    data['upload_rpms'].each do |rpm|
+      raise JSON.dump({ 'errcode' => '200', 'errmsg' => "#{rpm} not exist" }) unless File.exist?(rpm)
+      raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'the upload directory is incorrect' }) unless File.dirname(rpm).start_with?(@@upload_dir_prefix)
     end
   end
 
   def update_pub_dir(update)
     pub_path_list = Set.new
     update.each do |rpm|
-      pub_path = File.dirname(rpm).sub("testing", "pub")
+      pub_path = File.dirname(rpm).sub('testing', 'pub')
       FileUtils.mkdir_p(pub_path) unless File.directory?(pub_path)
 
       dest = File.join(pub_path, File.basename(rpm))
@@ -210,8 +210,8 @@ class HandleRepo
     submit_argv.push("rpmbuild_job_id=#{job_id}")
     submit_argv.push("docker_image=#{query_result['docker_image']}") if query_result.key?('docker_image')
 
-    fixed_arg = YAML.load_file("/etc/submit_arg.yaml")
-    submit_argv.push("#{fixed_arg['yaml']}")
+    fixed_arg = YAML.load_file('/etc/submit_arg.yaml')
+    submit_argv.push((fixed_arg['yaml']).to_s)
 
     return submit_argv, submit_arch
   end
@@ -220,10 +220,9 @@ class HandleRepo
     queue = @mq.queue('createrepodata_complete')
     queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
       begin
-        group_id = Time.new.strftime('%Y-%m-%d')+'-auto-install-rpm'
+        group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
         rpm_info = JSON.parse(msg)
         job_id = rpm_info['job_id']
-
 
         rpm_names = []
         real_argvs = []
@@ -238,7 +237,7 @@ class HandleRepo
           rpm_names << rpm_name
           real_argvs = Array.new(submit_argv)
         end
-        rpm_names = rpm_names.join(",")
+        rpm_names = rpm_names.join(',')
         real_argvs.push("rpm_name=#{rpm_names}")
         real_argvs.push("group_id=#{group_id}")
         system(real_argvs.join(' '))
@@ -251,22 +250,21 @@ class HandleRepo
       end
     end
   end
-
 end
 
 include Clockwork
 
 config_yaml('auto-submit')
-do_local_pack()
+do_local_pack
 hr = HandleRepo.new
 hr.create_repo
 hr.submit_install_rpm
 hr.handle_new_rpm
 
 handler do |job|
-  group_id = Time.new.strftime('%Y-%m-%d')+'-auto-install-rpm'
+  group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
   puts "Running #{job}"
   hr.deal_pub_dir(group_id)
 end
 
-every(1.day, 'update pub dir', :at => '23:59')
+every(1.day, 'update pub dir', at: '23:59')

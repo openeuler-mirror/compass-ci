@@ -13,35 +13,35 @@ class MyData
   end
 
   def get_physical_queues
-    [
-      'taishan200-2280-2s64p-256g',
-      'taishan200-2280-2s64p-128g',
-      'taishan200-2280-2s48p-512g',
-      'taishan200-2280-2s48p-256g',
-      '2288hv5-2s44p-384g'
+    %w[
+      taishan200-2280-2s64p-256g
+      taishan200-2280-2s64p-128g
+      taishan200-2280-2s48p-512g
+      taishan200-2280-2s48p-256g
+      2288hv5-2s44p-384g
     ]
   end
 
   def get_dc_queues(arch)
-    queues = [
-      'dc-1g',
-      'dc-2g',
-      'dc-4g',
-      'dc-8g',
-      'dc-16g',
-      'dc-32g'
+    queues = %w[
+      dc-1g
+      dc-2g
+      dc-4g
+      dc-8g
+      dc-16g
+      dc-32g
     ]
     queues.map { |item| item + ".#{arch}" }
   end
 
   def get_vm_queues(arch)
-    queues = [
-      'vm-1p1g',
-      'vm-2p1g',
-      'vm-2p4g',
-      'vm-2p8g',
-      'vm-2p16g',
-      'vm-2p32g'
+    queues = %w[
+      vm-1p1g
+      vm-2p1g
+      vm-2p4g
+      vm-2p8g
+      vm-2p16g
+      vm-2p32g
     ]
     queues.map { |item| item + ".#{arch}" }
   end
@@ -131,7 +131,7 @@ class MyData
   end
 
   def es_update(index, id, data)
-    @es.update(index: index, 'id': id, body: {doc: data})
+    @es.update(index: index, 'id': id, body: { doc: data })
   end
 
   def es_add(index, id, data)
@@ -139,7 +139,7 @@ class MyData
   end
 
   def get_srpm_info(size: 10, from: 0)
-    from = from * size
+    from *= size
     query = {
       'size' => size,
       'from' => from
@@ -158,9 +158,9 @@ class MyData
     type_list = []
     arch_list = []
 
-    body['OS'].each do |x| os_list << x['key'] if x['key'].size.to_i > 0 end
-    body['Type'].each do |x| type_list << x['key'] if x['key'].size.to_i > 0 end
-    body['Arch'].each do |x| arch_list << x['key'] if x['key'].size.to_i > 0 end
+    body['OS'].each { |x| os_list << x['key'] if x['key'].size.to_i > 0 }
+    body['Type'].each { |x| type_list << x['key'] if x['key'].size.to_i > 0 }
+    body['Arch'].each { |x| arch_list << x['key'] if x['key'].size.to_i > 0 }
 
     data = {
       'OS' => os_list,
@@ -172,15 +172,15 @@ class MyData
   end
 
   def aggs_query(field)
-      {
-        'aggs' => {
-          "all_#{field}" => {
-            'terms' => {
-              'field' => "#{field}",
-              'size' => '10000'
-            }
+    {
+      'aggs' => {
+        "all_#{field}" => {
+          'terms' => {
+            'field' => field.to_s,
+            'size' => '10000'
           }
         }
       }
+    }
   end
 end

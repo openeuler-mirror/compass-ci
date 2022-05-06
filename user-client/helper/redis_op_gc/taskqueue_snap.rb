@@ -7,7 +7,7 @@
 require 'json'
 require_relative './basic_env'
 
-if !ARGV.empty?
+unless ARGV.empty?
   puts 'Usage:'
   puts "input: #{__FILE__}"
   puts 'output: taskqueue_snap_yyyymmdd.md'

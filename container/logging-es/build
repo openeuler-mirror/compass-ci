@@ -12,7 +12,7 @@ names = Set.new %w[
 ]
 
 defaults = relevant_service_authentication(names)
-docker_skip_rebuild "logging-es:7.11.1"
+docker_skip_rebuild 'logging-es:7.11.1'
 
 BASE_IMAGE_DICT = {
   'aarch64' => 'elasticsearch:7.11.1@sha256:d52cda1e73d1b1915ba2d76ca1e426620c7b5d6942d9d2f432259503974ba786',

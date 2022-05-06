@@ -170,7 +170,7 @@ class MirrorMain
     t_list = []
     10.times do
       t_list << Thread.new do
-        while file_list.length > 0 do
+        while file_list.length > 0
           repo = file_list.shift.chomp
           repo_path = "#{repodir}/#{repo}"
           load_repo_file(repo_path, belong)
@@ -451,7 +451,7 @@ class MirrorMain
     msg['submit_command'].each do |k, v|
       msg['submit'].each_index do |t|
         msg['submit'][t]['command'] += " #{k}=#{v}"
-        msg['submit'][t]['command'] += " rpm_name=#{git_repo.split("/")[-1]}"
+        msg['submit'][t]['command'] += " rpm_name=#{git_repo.split('/')[-1]}"
       end
     end
   end
@@ -627,52 +627,52 @@ class MirrorMain
 
   def new_repo_log(git_repo)
     @log.info({
-      msg: 'new repo',
-      repo: git_repo
-    })
+                msg: 'new repo',
+                repo: git_repo
+              })
   end
 
   def git_fail_log(git_repo, possible_new_refs)
     msg = possible_new_refs == -1 ? 'git fetch fail' : 'git clone fail'
     @log.info({
-      msg: msg,
-      repo: git_repo
-    })
+                msg: msg,
+                repo: git_repo
+              })
   end
 
   def new_refs_log(git_repo, nr_new_branch)
     @log.info({
-      msg: 'new refs',
-      repo: git_repo,
-      nr_new_branch: nr_new_branch
-    })
+                msg: 'new refs',
+                repo: git_repo,
+                nr_new_branch: nr_new_branch
+              })
   end
 
   def worker_threads_warn(alive)
     @log.warn({
-      state: 'some workers died',
-      alive_num: alive
-    })
+                state: 'some workers died',
+                alive_num: alive
+              })
   end
 
   def worker_threads_error(alive)
     @log.error({
-      state: 'most workers died',
-      alive_num: alive
-    })
+                 state: 'most workers died',
+                 alive_num: alive
+               })
   end
 
   def wrong_repo_warn(git_repo)
     @log.warn({
-      msg: 'wrong repos',
-      repo: git_repo
-    })
+                msg: 'wrong repos',
+                repo: git_repo
+              })
   end
 
   def no_repo_warn
     @log.warn({
-      msg: 'no repo files'
-    })
+                msg: 'no repo files'
+              })
   end
 
   def last_commit_new?(git_repo)
@@ -693,7 +693,7 @@ class MirrorMain
     return cal_priority(mirror_dir, old_pri, git_repo)
   end
 
-  def cal_priority(mirror_dir, old_pri, git_repo)
+  def cal_priority(_mirror_dir, old_pri, git_repo)
     last_commit_time = @fork_stat[git_repo][:last_commit_time]
     step = (@fork_stat[git_repo][:fetch_fail_cnt] + 1) * Math.cbrt(STEP_SECONDS)
     return old_pri + step if last_commit_time.zero?

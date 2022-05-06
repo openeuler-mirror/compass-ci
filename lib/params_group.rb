@@ -172,18 +172,18 @@ end
 
 def get_group_by_template(job_list, group_params, dimensions_key, dimensions, metrics, max_series_num)
   groups = {}
-  exists_dims = Set.new()
+  exists_dims = Set.new
   job_list.each do |job|
     new_job = get_new_job(job, metrics)
     next if new_job['stats'].empty?
 
     first_group_key = get_first_group_key(job, group_params, dimensions_key)
     group_key = get_user_group_key(job, group_params)
-    if max_series_num
-      dimension = auto_get_user_dimension(job, dimensions, max_series_num, exists_dims)
-    else
-      dimension = get_user_dimension(job, dimensions)
-    end
+    dimension = if max_series_num
+                  auto_get_user_dimension(job, dimensions, max_series_num, exists_dims)
+                else
+                  get_user_dimension(job, dimensions)
+                end
     next unless group_key && dimension
 
     groups[first_group_key] ||= {}
@@ -213,16 +213,16 @@ def get_user_group_key(job, group_params)
 end
 
 def get_first_group_key(job, group_params, dimensions_key)
-  first_group_params, _ = get_group_dimension_params(job, dimensions_key)
+  first_group_params, = get_group_dimension_params(job, dimensions_key)
   group_params.each do |p|
-    if job['suite'] == 'fio-basic'
-      key = "pp.fio-setup-basic.#{p}"
-    else
-      key = "pp.#{job['suite']}.#{p}"
-    end
+    key = if job['suite'] == 'fio-basic'
+            "pp.fio-setup-basic.#{p}"
+          else
+            "pp.#{job['suite']}.#{p}"
+          end
     first_group_params.delete(key)
   end
-  first_group_params.delete("pp.lmbench3.test") if job['suite'] == 'lmbench3'
+  first_group_params.delete('pp.lmbench3.test') if job['suite'] == 'lmbench3'
   get_group_key(first_group_params)
 end
 
@@ -231,7 +231,7 @@ end
 # return eg:
 #   {"os", openeuler}
 def get_dims_key(dimensions)
-  dims_key = Set.new()
+  dims_key = Set.new
   dimensions.each do |dims|
     if dims.is_a?(Hash)
       dims_key += dims.keys.to_set
@@ -321,7 +321,7 @@ end
 def get_new_job(job, metrics)
   return {} unless job['stats']
 
-  new_job = {'stats' => {}}
+  new_job = { 'stats' => {} }
   if metrics.empty?
     suite = job['suite']
     job['stats'].each_key do |key|

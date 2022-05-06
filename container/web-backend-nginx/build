@@ -11,6 +11,6 @@ names = Set.new %w[
 ]
 
 defaults = relevant_service_authentication(names)
-docker_skip_rebuild "web-backend-nginx"
+docker_skip_rebuild 'web-backend-nginx'
 
 system "docker build -t web-backend-nginx --build-arg KIBANA_GUEST=#{defaults['KIBANA_GUEST']} ."

@@ -67,7 +67,7 @@ class AutoSubmit
     real_argvs.push("upstream_commit=#{commit_id}")
     branch_command = get_branch_command(mirror_dir, branch)
     real_argvs.push(branch_command) if branch_command
-    real_argvs.push("group_id=#{git_repo.split("/")[-1]}-#{commit_id}")
+    real_argvs.push("group_id=#{git_repo.split('/')[-1]}-#{commit_id}")
     system(real_argvs.join(' '))
   end
 
@@ -172,6 +172,6 @@ class AutoSubmit
 end
 
 config_yaml('auto-submit')
-do_local_pack()
+do_local_pack
 auto_submitter = AutoSubmit.new
 auto_submitter.listen

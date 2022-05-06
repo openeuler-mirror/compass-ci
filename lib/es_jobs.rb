@@ -180,11 +180,11 @@ class ESJobs
 
   def output_yaml(prefix, result)
     result.each do |key, value|
-      if prefix.empty?
-        prefix_key = "#{key}"
-      else
-        prefix_key = "#{prefix}.#{key}"
-      end
+      prefix_key = if prefix.empty?
+                     key.to_s
+                   else
+                     "#{prefix}.#{key}"
+                   end
 
       if value.is_a? Hash
         output_yaml(prefix_key, value)

@@ -11,6 +11,7 @@ def pub_idle_physical_testbox
   buckets.each do |bucket|
     testbox = bucket['key']
     next unless testbox.start_with? 'taishan200'
+
     puts testbox
     break
   end

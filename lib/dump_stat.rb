@@ -40,9 +40,9 @@ module DumpStat
       if key =~ /[ \t]/
         @invalid_records.push @record_index
         log_warn({
-          'message' => "whitespace in stats name: #{key}",
-          'error_message' =>  "whitespace in stats name: #{key}, check #{RESULT_ROOT}/#{@monitor}"
-        })
+                   'message' => "whitespace in stats name: #{key}",
+                   'error_message' => "whitespace in stats name: #{key}, check #{RESULT_ROOT}/#{@monitor}"
+                 })
         return nil # for exit current stats/script dump-stat
       end
       next if assign_log_message(key, value)
@@ -143,9 +143,9 @@ module DumpStat
       puts "Last record seems incomplete. Truncated #{RESULT_ROOT}/#{@monitor}.json"
     else
       log_warn({
-        'message' => "Not a matrix: value size is different",
-        'error_message' => "Not a matrix: value size is different - #{@min_cols_stat}: #{@min_cols} != #{@max_cols_stat}: #{@max_cols}: #{RESULT_ROOT}/#{@monitor}.json, #{@monitor}"
-      })
+                 'message' => 'Not a matrix: value size is different',
+                 'error_message' => "Not a matrix: value size is different - #{@min_cols_stat}: #{@min_cols} != #{@max_cols_stat}: #{@max_cols}: #{RESULT_ROOT}/#{@monitor}.json, #{@monitor}"
+               })
     end
   end
 end
@@ -154,9 +154,9 @@ def check_string_value(key, value, monitor)
   value.strip!
   if value.empty?
     log_warn({
-      'message' => "empty stat value of #{key}",
-      'error_message' => "empty stat value of #{key}, check #{RESULT_ROOT}/#{monitor}"
-    })
+               'message' => "empty stat value of #{key}",
+               'error_message' => "empty stat value of #{key}, check #{RESULT_ROOT}/#{monitor}"
+             })
     return nil
   end
 
@@ -168,9 +168,9 @@ def number?(key, value, invalid_records, record_index, monitor)
   unless value.numeric?
     invalid_records.push record_index
     log_warn({
-      'message' => "invalid stats key-value",
-      'error_message' => "invalid stats key-value: key: #{key}, value: #{value}, check #{RESULT_ROOT}/#{monitor}"
-    })
+               'message' => 'invalid stats key-value',
+               'error_message' => "invalid stats key-value: key: #{key}, value: #{value}, check #{RESULT_ROOT}/#{monitor}"
+             })
     return nil
   end
 

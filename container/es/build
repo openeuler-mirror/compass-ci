@@ -12,18 +12,19 @@ names = Set.new %w[
 ]
 
 defaults = relevant_service_authentication(names)
-docker_skip_rebuild "es:7.11.1"
+docker_skip_rebuild 'es:7.11.1'
 
 BASE_IMAGE_DICT = {
   'aarch64' => 'elasticsearch:7.11.1@sha256:d52cda1e73d1b1915ba2d76ca1e426620c7b5d6942d9d2f432259503974ba786',
-  'x86_64' => 'elasticsearch:7.11.1' }.freeze
+  'x86_64' => 'elasticsearch:7.11.1'
+}.freeze
 
 BASE_IMAGE = BASE_IMAGE_DICT[%x(arch).chomp]
 
 available_memory = get_available_memory
 
-system "git clone https://gitee.com/theprocess/apache-log4j-2.17.2-bin"
+system 'git clone https://gitee.com/theprocess/apache-log4j-2.17.2-bin'
 
 system "docker build -t es:7.11.1 --build-arg MEMORY=#{available_memory} --build-arg USER=#{defaults['ES_USER']} --build-arg PASSWORD=#{defaults['ES_PASSWORD']} --build-arg BASE_IMAGE=#{BASE_IMAGE} --network=host ."
 
-system "rm -rf apache-log4j-2.17.2-bin"
+system 'rm -rf apache-log4j-2.17.2-bin'

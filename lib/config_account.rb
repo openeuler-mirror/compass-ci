@@ -3,11 +3,11 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-require_relative "./build_my_info_client"
-require_relative "../container/defconfig"
+require_relative './build_my_info_client'
+require_relative '../container/defconfig'
 
 def my_email(account)
-  names = %W(#{account})
+  names = %W[#{account}]
 
   defaults = relevant_defaults(names)
   defaults[account]['my_email']
@@ -16,7 +16,7 @@ end
 def config_yaml(account)
   build_my_info = BuildMyInfo.new(my_email(account))
 
-  for i in 1..20
+  (1..20).each do |_i|
     my_info = build_my_info.search_my_info
     break if my_info['my_email']
 

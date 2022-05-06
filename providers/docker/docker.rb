@@ -23,7 +23,7 @@ SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT = defaults['SCHED_PORT'] || 3000
 
 LOG_DIR = '/srv/cci/serial/logs'
-Dir.mkdir(LOG_DIR) unless File.exists?(LOG_DIR)
+Dir.mkdir(LOG_DIR) unless File.exist?(LOG_DIR)
 
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
 MQ_PORT = ENV['MQ_PORT'] || 5672
@@ -89,7 +89,7 @@ def load_initrds(load_path, hash, log_file)
   initrds = JSON.parse(hash['initrds'])
   record_log(log_file, initrds)
   initrds.each do |initrd|
-    curl_cmd(load_path, initrd, "#{initrd}")
+    curl_cmd(load_path, initrd, initrd.to_s)
   end
 end
 
@@ -190,9 +190,9 @@ def loop_reboot_docker(hostname)
 end
 
 def reboot_docker(hostname)
-  mq = MQClient.new(:hostname => MQ_HOST, :port => MQ_PORT)
-  queue = mq.queue(hostname, { :durable => true })
-  queue.subscribe({ :block => true, :manual_ack => true }) do |info, _pro, msg|
+  mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
+  queue = mq.queue(hostname, { durable: true })
+  queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
     Process.fork do
       puts msg
       machine_info = JSON.parse(msg)

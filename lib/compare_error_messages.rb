@@ -62,7 +62,7 @@ module CEM
     previous_error_ids = es.query_by_id(previous_job_id)['error_ids']
     later_es_result = es.query_by_id(later_job_id)
     later_error_ids = later_es_result['error_ids']
-    later_result_file = File.join('/srv', later_es_result['result_root'], "build-pkg")
+    later_result_file = File.join('/srv', later_es_result['result_root'], 'build-pkg')
 
     new_error_ids =  get_new_error_ids(later_error_ids, previous_error_ids)
     error_messages = ErrorMessages.new(later_result_file).obtain_error_messages
@@ -74,7 +74,7 @@ module CEM
 
   def get_error_messages(job_id, error_id)
     es_result = ESQuery.new.query_by_id(job_id)
-    result_file = File.join('/srv', es_result['result_root'], "build-pkg")
+    result_file = File.join('/srv', es_result['result_root'], 'build-pkg')
     return ErrorMessages.new(result_file).obtain_error_messages_by_error_id(error_id)
   end
 

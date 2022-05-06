@@ -9,5 +9,5 @@ require_relative "#{ENV['CCI_SRC']}/lib/es_query"
 def get_job_yaml(job_id)
   content = ESQuery.new.query_by_id(job_id)
   result_root = content['result_root']
-  return YAML.load_file(File.join('/srv', "#{result_root}", 'job.yaml'))
+  return YAML.load_file(File.join('/srv', result_root.to_s, 'job.yaml'))
 end

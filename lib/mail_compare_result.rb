@@ -19,6 +19,7 @@ class MailJobResult
   def send_mail
     data = compose_mail
     return nil unless data
+
     MailClient.new.send_mail_encode(data)
   end
 
@@ -30,7 +31,7 @@ class MailJobResult
     subject = "[Compass-CI] #{@job['commit_title'] || @job['id']} comparsion"
     signature = "Regards\nCompass-CI\nhttps://gitee.com/openeuler/compass-ci"
 
-    data = <<~BODY
+    <<~BODY
     To: #{@email_to}
     Bcc: #{@email_cc}
     Subject: #{subject}
@@ -48,11 +49,9 @@ class MailJobResult
 
     compare command:
     \tcompare upstream_commit=#{@job['base_commit']}  upstream_commit=#{@job['upstream_commit']} --min_samples #{@job['nr_run']}
-    #{context.to_s}
+    #{context}
     \n\n#{signature}
     BODY
-
-    data
   end
 
   def set_submitter_info
@@ -69,7 +68,7 @@ class MailJobResult
     es = ESQuery.new
     query_result = es.multi_field_query({ 'upstream_commit' => @upstream_commit })
     if query_result['hits']['hits'].empty?
-      warn "Non-existent jobs"
+      warn 'Non-existent jobs'
       return nil
     end
 
@@ -83,8 +82,8 @@ def get_compare_result(job)
   commit_id = job['upstream_commit']
   return nil unless base_commit && commit_id
 
-  condition_list = [{'upstream_commit' => base_commit}, {'upstream_commit' => commit_id}]
-  options = { :min_samples => min_samples, :no_print => true}
+  condition_list = [{ 'upstream_commit' => base_commit }, { 'upstream_commit' => commit_id }]
+  options = { min_samples: min_samples, no_print: true }
 
   matrices_list, suite_list = create_matrices_list(condition_list, options[:min_samples])
   return nil if matrices_list.size < 2
@@ -94,5 +93,5 @@ def get_compare_result(job)
 end
 
 def keep_100_lines(context)
-  context.split("\n")[0,99].join("\n")
+  context.split("\n")[0, 99].join("\n")
 end

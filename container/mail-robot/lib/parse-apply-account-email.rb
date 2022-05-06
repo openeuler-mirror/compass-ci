@@ -51,14 +51,14 @@ class ParseApplyAccountEmail
 
   def extract_mail_content_body
     @mail_content_body = @mail_content.part[0].part[0].body.decoded || \
-                        @mail_content.part[0].body.decoded || \
-                        @mail_content.body.decoded
+                         @mail_content.part[0].body.decoded || \
+                         @mail_content.body.decoded
   end
 
   def build_my_info
     email_subject = @mail_content.subject
 
-    # if the email's sender is a forward_issuer, it will re-extract the 
+    # if the email's sender is a forward_issuer, it will re-extract the
     # my_email, my_name, from the forwarded original email content.
     # case the email's sender is not a forward_issuer, it will throw error and
     # send fail email to the sender
@@ -125,7 +125,7 @@ class ParseApplyAccountEmail
   end
 
   def parse_my_account
-    my_account_line = extract_mail_content_body.match(/my_account:\s*[\w\-\_]+/).to_s
+    my_account_line = extract_mail_content_body.match(/my_account:\s*[\w\-_]+/).to_s
     raise 'NO_MY_ACCOUNT' if  my_account_line.nil? ||  my_account_line.empty?
 
     my_account = YAML.safe_load(my_account_line)['my_account']
@@ -136,12 +136,12 @@ class ParseApplyAccountEmail
     return my_account
   end
 
-  def check_my_account_uniq(my_account)
+  def check_my_account_uniq(_my_account)
     check_account = BuildMyInfo.new(@my_info['my_email'])
 
     return if check_account_unique(@my_info, check_account)
 
-    raise "MY_ACCOUNT_EXIST"
+    raise 'MY_ACCOUNT_EXIST'
   end
 
   def parse_apply_info

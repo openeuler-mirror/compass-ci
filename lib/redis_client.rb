@@ -6,7 +6,7 @@
 require 'redis'
 require 'json'
 
-# used to handle the redis queues 
+# used to handle the redis queues
 class RedisClient
   RDS_HOST = ENV['REDIS_HOST'] || REDIS_HOST
   RDS_PORT = ENV['REDIS_PORT'] || REDIS_PORT

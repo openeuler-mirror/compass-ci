@@ -36,7 +36,7 @@ LAB ||= defaults['lab']
 TOOL_SERVER = 'z9'
 
 my_info = {
-  'lab' => LAB,
+  'lab' => LAB
 }
 
 # stdin_info is used to store infos added with option:
@@ -117,7 +117,7 @@ options = OptionParser.new do |opts|
   end
 
   opts.on('-a account', '--account account', 'appoint account') do |account|
-    unless account =~ /^\w[\w|\-|\_]+$/
+    unless account =~ /^\w[\w|\-|_]+$/
       message = "my_account should only contains letters, digits, '-' or '_'\n\n"
       puts message
 
@@ -224,7 +224,7 @@ def check_my_account_unique(my_info)
   return true if check_account_unique(my_info, check_account)
 
   message = "Offered my_account: #{my_info['my_account']} is already used!\n"
-  message += "Please use a new one and try again."
+  message += 'Please use a new one and try again.'
   puts message
 
   return false
@@ -287,7 +287,7 @@ def check_my_name_exist(my_info)
 end
 
 def check_my_pubkey_exist(my_info)
-  return true if my_info['my_ssh_pubkey'] && my_info['my_ssh_pubkey'].size.positive?
+  return true if my_info['my_ssh_pubkey']&.size&.positive?
 
   message = "No my_ssh_pubkey found.\n"
   message += 'The account-vm is only allowd login with secret key, please use -s to add one'

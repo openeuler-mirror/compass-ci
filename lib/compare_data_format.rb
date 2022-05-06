@@ -114,7 +114,7 @@ class FormatEchartData
         @data_set[group]['test_params'] = @group_params
         @data_set[group]['testbox'] = @group_testbox[@group_params]
         @data_set[group]['datas'] ||= {}
-        kv[1].each do |metric, values|
+        kv[1].each do |metric, _values|
           assign_change_datas(group, metric)
           assign_avg_datas(group, metric)
         end
@@ -152,7 +152,7 @@ class FormatEchartData
     end
   end
 
-  def assign_transposed_change_datas(x_param, metric, values)
+  def assign_transposed_change_datas(x_param, metric, _values)
     @data_set[metric]['datas']['change'] ||= {}
     @compare_dims.each do |dim|
       @data_set[metric]['datas']['change'][dim] ||= {}
@@ -184,6 +184,7 @@ class FormatEchartData
     return 0 unless @compare_results[x_param].key?(metric)
     return 0 unless @compare_results[x_param][metric].key?(type)
     return 0 unless @compare_results[x_param][metric][type].key?(dim)
+
     return @compare_results[x_param][metric][type][dim]
   end
 
@@ -194,7 +195,7 @@ class FormatEchartData
 
       metric_values.each do |key, values|
         if key != 'datas'
-          table_datas.merge!({key => values})
+          table_datas.merge!({ key => values })
           next
         end
 
@@ -326,13 +327,13 @@ end
 
 def numeric?(item)
   Float(item)
-rescue
+rescue StandardError
   nil
 end
 
 def score(item)
   score = 0
-  return item.to_f*0.1 if numeric?(item)
+  return item.to_f * 0.1 if numeric?(item)
   return 1000 if item == 'System_Benchmarks_Index_Score'
 
   items = item.split('|')
@@ -348,6 +349,7 @@ def score(item)
         return 0
       end
     end
+
     mutil *= 10
   end
 
@@ -370,7 +372,7 @@ end
 #  ["2G|4k", {...}]
 # ]
 def sort_compare_result(compare_result)
-  compare_result.sort{|a, b| score(a[0]) <=> score(b[0])}
+  compare_result.sort { |a, b| score(a[0]) <=> score(b[0]) }
 end
 
 # input eg:

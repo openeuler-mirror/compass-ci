@@ -13,11 +13,12 @@ names = Set.new %w[
 
 defaults = relevant_service_authentication(names)
 
-docker_skip_rebuild "kibana:7.11.1"
+docker_skip_rebuild 'kibana:7.11.1'
 
 BASE_IMAGE_DICT = {
   'aarch64' => 'jamesgarside/kibana:7.11.1',
-  'x86_64' => 'kibana:7.11.1' }.freeze
+  'x86_64' => 'kibana:7.11.1'
+}.freeze
 
 BASE_IMAGE = BASE_IMAGE_DICT[%x(arch).chomp]
 

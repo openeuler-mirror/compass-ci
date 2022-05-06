@@ -86,10 +86,11 @@ module Utils
       query = { 'job_id': new_job_id, 'job_state': 'extract_finished' }
       extract_finished = monitor_run_stop(query)
       return nil unless extract_finished.zero?
+
       puts "#{bad_job_id}, #{new_job_id}, #{error_id}"
 
       check_result = AssistResult.new.check_job_credible(bad_job_id, new_job_id, error_id)
-      raise "check job credible failed:  #{bad_job_id}, #{new_job_id}, #{error_id}" if check_result == nil
+      raise "check job credible failed:  #{bad_job_id}, #{new_job_id}, #{error_id}" if check_result.nil?
       raise "the job is incredible for bisect: #{new_job_id}" unless check_result['credible']
 
       stats = query_stats(new_job_id, 10)
@@ -142,7 +143,7 @@ module Utils
       job['my_account'] = ENV['secrets_my_account']
       job['bad_job_id'] = job_id
       job['testbox'] = job['tbox_group']
-      job['group_id'] = "#{ENV['id']}"
+      job['group_id'] = (ENV['id']).to_s
       job['runtime'] = 7200
 
       job.delete('id')

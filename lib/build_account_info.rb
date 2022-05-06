@@ -32,7 +32,7 @@ def build_account_info(option)
 
   unless check_account_unique(info_es, build_my_info)
     error_msg = "Offered my_account: #{info_es['my_account']} is already used!\n"
-    error_msg += "Please use a new one and try again."
+    error_msg += 'Please use a new one and try again.'
 
     raise error_msg
   end
@@ -57,5 +57,5 @@ def check_required_keys(info_es)
   required_keys = %w[my_email my_name my_account lab my_ssh_pubkey]
   lacked_keys = required_keys - info_es.keys
 
-  raise "Lack of required keys: #{lacked_keys.join(", ")}" unless lacked_keys.empty?
+  raise "Lack of required keys: #{lacked_keys.join(', ')}" unless lacked_keys.empty?
 end

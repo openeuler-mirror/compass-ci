@@ -6,7 +6,7 @@ require 'fileutils'
 require 'yaml'
 
 lab = 'z9'
-lab = 'crystal' if ENV['HOSTNAME'].include?("crystal")
+lab = 'crystal' if ENV['HOSTNAME'].include?('crystal')
 CCI_REPOS = ENV['CCI_REPOS'] || '/c'
 
 exit 1 unless File.exist?('conserver-head.cf')
@@ -34,27 +34,27 @@ def generate_conserver_by_lab(lab)
 end
 
 def generate_conserver_by_cfg(host_file, server_file)
-  hosts = Hash.new
-  servers = Hash.new
+  hosts = {}
+  servers = {}
 
   host_ff = File.open(host_file)
   host_ff.each_line do |line|
     # line e.g.: pe-c cc-05-77-fe-cf-86 taishan200-2280-2s64p-256g--a143
-    if line =~ %r|(p[^ ]*) ([^ ]*) (taishan.*)|
-        num = $1.chomp
-        name = $3.chomp
-        hosts[num] = name
-    end
+    next unless line =~ /(p[^ ]*) ([^ ]*) (taishan.*)/
+
+    num = $1.chomp
+    name = $3.chomp
+    hosts[num] = name
   end
 
   server_ff = %x(awk '{print $1" "$2}' #{server_file})
   server_ff.each_line do |line|
     # line e.g.: 9.3.14.12 pe-c
-    if line =~ %r|(^9[^ ]*) (p[^ ]*)|
-        ip = $1.strip
-        num = $2.strip
-        servers[num] = ip
-    end
+    next unless line =~ /(^9[^ ]*) (p[^ ]*)/
+
+    ip = $1.strip
+    num = $2.strip
+    servers[num] = ip
   end
 
   hosts.each do |num, name|
@@ -65,13 +65,12 @@ def generate_conserver_by_cfg(host_file, server_file)
     HEREDOC
     File.open('conserver.cf', 'a') { |f| f << console }
   end
-
 end
 
-host_file = "/etc/mac2host"
-server_file = "/etc/servers.info"
+host_file = '/etc/mac2host'
+server_file = '/etc/servers.info'
 
-if File.exist?(host_file) and File.exist?(server_file)
+if File.exist?(host_file) && File.exist?(server_file)
   generate_conserver_by_cfg(host_file, server_file)
 else
   generate_conserver_by_lab(lab)

@@ -19,7 +19,7 @@ env = docker_env(service_authentication)
 
 DOCKER_CCI = '/c/compass-ci'
 DOCKER_LKP = '/c/lkp-tests'
-docker_rm "auto-submit"
+docker_rm 'auto-submit'
 
 cmd = %w[
   docker run

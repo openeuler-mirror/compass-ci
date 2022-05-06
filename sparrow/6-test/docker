@@ -7,7 +7,7 @@ require_relative '../../providers/docker/docker'
 
 def run_job(hostname)
   system "submit -s 'testbox: #{hostname}' #{ENV['CCI_SRC']}/user-client/jobs/iperf-sparrow.yaml"
-  main "#{hostname}"
+  main hostname.to_s
 end
 
-run_job "dc-1g"
+run_job 'dc-1g'

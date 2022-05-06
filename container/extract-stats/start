@@ -32,7 +32,7 @@ DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'
 SRV_HTTP_RESULT_HOST = defaults['SRV_HTTP_RESULT_HOST'] || Open3.capture3('curl ip.sb')[0].chomp
 SRV_HTTP_RESULT_PORT = defaults['SRV_HTTP_RESULT_PORT'] || '20007'
-docker_rm "extract-stats"
+docker_rm 'extract-stats'
 
 cmd = %w[
   docker run

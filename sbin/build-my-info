@@ -28,7 +28,7 @@ if $PROGRAM_NAME == __FILE__
     end
 
     opts.on('-a my_account', 'my_account') do |account|
-      unless account =~ /^\w[\w|\-|\_]+$/
+      unless account =~ /^\w[\w|\-|_]+$/
         message = "my_account should only contains letters, digits, '-' or '_'\n\n"
         puts message
         exit

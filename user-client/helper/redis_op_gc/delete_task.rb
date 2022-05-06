@@ -6,7 +6,7 @@
 
 require_relative './force_delete'
 
-if ARGV.empty? || ARGV.include?("-h") || ARGV.include?("--help")
+if ARGV.empty? || ARGV.include?('-h') || ARGV.include?('--help')
   puts "Usage: #{__FILE__} task_id[|task_ids]"
   puts '       delete special task with [task_id]'
   puts '    or delete special task from [task_ids] file'

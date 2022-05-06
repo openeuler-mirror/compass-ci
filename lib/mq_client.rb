@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-require "bunny"
+require 'bunny'
 
 class MQClient
   # How to use:

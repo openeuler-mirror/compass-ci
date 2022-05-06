@@ -89,7 +89,7 @@ def email_mapping(r_name, d_email, map_conf)
   elsif map_conf['del_map']
     email_mapping.delete_hash_key(r_name)
   elsif map_conf['search_map']
-    mapped_email =  email_mapping.search_hash_key(r_name)
+    mapped_email = email_mapping.search_hash_key(r_name)
     if mapped_email.nil? || mapped_email.empty?
       puts "#{r_name} has not been mapped an email yet."
     else

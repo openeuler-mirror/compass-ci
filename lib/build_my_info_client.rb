@@ -68,7 +68,7 @@ class BuildMyInfo
     end
   end
 
-  # when update/add item that with a unique attribute, 
+  # when update/add item that with a unique attribute,
   # we need to check if the item already exists.
   def check_item_unique(email, key, value)
     doc = @es.multi_field_query({ key => value }, single_index: true)['hits']['hits']

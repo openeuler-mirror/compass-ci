@@ -360,7 +360,6 @@ get '/web_backend/test_matrix' do
   query_test_matrix(params)
 end
 
-
 # GET /web_backend/host_info?testbox=taishan200-2280-2s48p-256g--a1008
 # Response:
 #   - host_info(JSON)

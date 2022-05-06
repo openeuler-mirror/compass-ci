@@ -26,9 +26,9 @@ service_authentication = relevant_service_authentication(names)
 defaults.merge!(service_authentication)
 env = docker_env(defaults)
 
-docker_rm "update-repodata"
+docker_rm 'update-repodata'
 
-cmd = %W[
+cmd = %w[
   docker run
   --restart=always
   --name update-repodata

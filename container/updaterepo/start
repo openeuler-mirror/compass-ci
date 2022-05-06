@@ -5,18 +5,18 @@
 
 require_relative '../defconfig.rb'
 
-docker_rm "update-repo"
+docker_rm 'update-repo'
 
-cmd = %W[
-	docker run
-	--restart=always
-	--name update-repo
-	-u 1090:1090
-	-p 10003:10003
-	-d
-	-v /srv/rpm/:/srv/rpm/
-	-v /etc/localtime:/etc/localtime:ro
-	update-repo
+cmd = %w[
+  docker run
+  --restart=always
+  --name update-repo
+  -u 1090:1090
+  -p 10003:10003
+  -d
+  -v /srv/rpm/:/srv/rpm/
+  -v /etc/localtime:/etc/localtime:ro
+  update-repo
 ]
 
 cmd += ['sh', '-c', 'umask 002 && ./updaterepo']

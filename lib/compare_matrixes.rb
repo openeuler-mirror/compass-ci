@@ -124,18 +124,18 @@ def set_compare_values(index, values, field, success, options)
   )
 end
 
-def get_values_by_field(matrixes_list, field, matrixes_size, success, options)
+def get_values_by_field(matrixes_list, field, _matrixes_size, success, options)
   # get values by field, values struct example: values[0][:average]
   #
   values = {}
   matrixes_list.length.times do |index|
     value_list = matrixes_list[index][field]
     unless value_list
-      if success
-        value_list = [0] unless value_list
-      else
-        value_list = [1] unless value_list
-      end
+      value_list ||= if success
+                       [0]
+                     else
+                       [1]
+                     end
     end
 
     values[index] = get_values(value_list, success)
@@ -183,10 +183,11 @@ end
 
 def latest_failure?(field, latest_jobs)
   return true unless latest_jobs
+
   latest_jobs.any? { |job| job['stats'][field] }
 end
 
-def remove_unchanged_field(matrixes_values, suite_list)
+def remove_unchanged_field(matrixes_values, _suite_list)
   # remove unchanged field from matrixes values and remove :changed key
   #
   matrixes_values.each_key do |success|
@@ -207,7 +208,7 @@ def matrixes_empty?(matrixes_list)
   return matrixes_list.any?(&:empty?)
 end
 
-def compare_matrixes(matrixes_list, suite_list, latest_jobs=nil, matrixes_titles = nil, group_key = nil, options: {})
+def compare_matrixes(matrixes_list, suite_list, latest_jobs = nil, matrixes_titles = nil, group_key = nil, options: {})
   # compare matrix in matrixes_list and print info
   # @matrixes_list: list consisting of matrix
   # @matrixes_titles: number or dimension of matrix
@@ -473,9 +474,9 @@ end
 # now, we need caculate all score for a group unixbench result
 # in feature, may caculate more test specally
 def fill_extra_metric(groups)
-  extra_values = {'System_Benchmarks_Index_Score' => {}}
+  extra_values = { 'System_Benchmarks_Index_Score' => {} }
 
-  groups.each do |x_param, dim_values|
+  groups.each do |_x_param, dim_values|
     dim_values.each do |dim, metric_values|
       extra_values['System_Benchmarks_Index_Score'][dim] ||= {}
       metric_values.each do |metric, values|
@@ -494,9 +495,9 @@ def fill_extra_metric(groups)
       end
     end
   end
-  extra_values['System_Benchmarks_Index_Score'].each do |dim, values|
+  extra_values['System_Benchmarks_Index_Score'].each do |dim, _values|
     (0...extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'].size).each do |i|
-      score = extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'][i] ** (1.0/groups.size)
+      score = extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'][i]**(1.0 / groups.size)
       extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'][i] = score
     end
   end
@@ -522,8 +523,8 @@ def assign_metric_values(metrics_values, dim, metric, values)
   metrics_values[metric]['average'] ||= {}
   metrics_values[metric]['standard_deviation'] ||= {}
   metric_value = get_values(values, true)
-  metrics_values[metric]['average'][dim] = format( "%.4f", metric_value[:average]).to_f
-  metrics_values[metric]['standard_deviation'][dim] = format( "%.4f", metric_value[:stddev_percent] || 0).to_f
+  metrics_values[metric]['average'][dim] = format('%.4f', metric_value[:average]).to_f
+  metrics_values[metric]['standard_deviation'][dim] = format('%.4f', metric_value[:stddev_percent] || 0).to_f
 end
 
 def assign_metric_change(metrics_values, cmp_series)
@@ -835,6 +836,7 @@ def get_values_str(matrixes, success, theme)
   compare_index = SUB_SHORT_COLUMN_WIDTH / 2
   matrixes.each do |index, values|
     next unless values.is_a?(Hash)
+
     values_str += if success
                     get_success_str(
                       values, index, theme, compare_index
@@ -918,11 +920,12 @@ end
 #                         centos            2.638681e+10 ± 23%              2.638853e+10 ± 23%
 #                      openeuler     -0.1%  2.636343e+10 ± 22%       +0.1%  2.641691e+10 ± 22%
 # ----------------------------------------------------------------------------------------------------------
-def get_transposed_result(values, suite_list, matrixes_titles, options)
+def get_transposed_result(values, _suite_list, matrixes_titles, options)
   return '' if values.empty?
 
   result_str = "\n\n\n"
-  stddev_title, change_title = STDDEV_STR, REA_STR
+  stddev_title = STDDEV_STR
+  change_title = REA_STR
   metrics = values.keys
   result_str += get_transposed_header(metrics, matrixes_titles, stddev_title, change_title, options[:dims])
   ranked_str = transposed_ranked_str(values, metrics, matrixes_titles, options[:theme])
@@ -931,7 +934,7 @@ def get_transposed_result(values, suite_list, matrixes_titles, options)
   result_str
 end
 
-def get_transposed_header(stats_metrics, matrixes_titles, stddev_title, change_title, dims)
+def get_transposed_header(stats_metrics, _matrixes_titles, stddev_title, change_title, dims)
   # average + " + " + standard_deviation
   common_index = STDDEV_AVERAGE_PROPORTION * SUB_LONG_COLUMN_WIDTH + 1
   metrics_count = stats_metrics.size

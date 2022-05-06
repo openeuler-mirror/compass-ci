@@ -24,7 +24,7 @@ def compare_matrices_list(argv, common_conditions, options)
   if matrices_list.size < 2
     return nil if options[:no_print]
 
-    warn "matrix less than min_samples"
+    warn 'matrix less than min_samples'
   end
 
   compare_matrixes(matrices_list, suite_list, nil, titles, options: options)
@@ -111,7 +111,7 @@ end
 #   unit: KB/s
 #
 
-def compare_by_template(template, options)
+def compare_by_template(template, _options)
   template_params = load_template(template)
   groups_matrices = create_groups_matrices(template_params)
   cmp_series = combine_compare_dims(template_params['series'])
@@ -180,22 +180,21 @@ def create_new_key(first_group_key, common_group_key, series, test_params)
   new_group_key = Set.new(first_group_key.split) ^ common_group_key
   if common_group_key.empty?
     if test_params
-      new_group_key.delete_if { |item| need_delete?(item, test_params)}
+      new_group_key.delete_if { |item| need_delete?(item, test_params) }
     else
       if new_group_key.size > 4
-        new_group_key.delete_if { |item| !item.start_with?('pp')}
+        new_group_key.delete_if { |item| !item.start_with?('pp') }
       else
-        new_group_key.delete_if { |item| item.start_with?('os_version', 'os=')}
+        new_group_key.delete_if { |item| item.start_with?('os_version', 'os=') }
       end
     end
   else
     series.each do |item|
-      if item.is_a?(Hash)
-        item.each do |k, v|
-          param = "#{k}=#{v}"
-          new_group_key.delete(param) if new_group_key.include?(param)
-        end
-      else
+      next unless item.is_a?(Hash)
+
+      item.each do |k, v|
+        param = "#{k}=#{v}"
+        new_group_key.delete(param) if new_group_key.include?(param)
       end
     end
   end
@@ -221,7 +220,7 @@ end
 def extract_common_group_key(group_keys)
   common_params = group_keys[0].split
   group_keys.each do |group_key|
-      common_params = common_params & group_key.split
+    common_params &= group_key.split
   end
 
   Set.new(common_params)
@@ -243,7 +242,7 @@ def create_group_jobs(template_params, job_list)
       template_params['max_series_num']
     )
   else
-    groups, _ = auto_group_by_template(job_list, template_params['x_params'], template_params['series'], template_params['metrics'])
+    groups, = auto_group_by_template(job_list, template_params['x_params'], template_params['series'], template_params['metrics'])
   end
 
   return groups, cmp_series

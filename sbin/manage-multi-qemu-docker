@@ -65,4 +65,4 @@ x = mq.fanout('multi-manage')
 
 # :expiration => 3000 means message timeout after 3 seconds
 # After that, the machine connected to the queue will not get the message
-x.publish(my_opts.to_json, :expiration => 3000)
+x.publish(my_opts.to_json, expiration: 3000)

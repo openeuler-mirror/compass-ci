@@ -17,12 +17,12 @@ class JSONLogger < Logger
     'FATAL' => 6
   }.freeze
 
-  FORMATTER = proc { |severity, datetime, progname, msg|
+  FORMATTER = proc { |severity, _datetime, progname, msg|
     level_num = LEVEL_INFO[severity]
     logger_hash = {
       'level' => severity.to_s,
       'level_num' => level_num,
-      'time' => Time.now.strftime("%Y-%m-%dT%H:%M:%S.%3N+0800")
+      'time' => Time.now.strftime('%Y-%m-%dT%H:%M:%S.%3N+0800')
     }
 
     logger_hash['progname'] = progname if progname

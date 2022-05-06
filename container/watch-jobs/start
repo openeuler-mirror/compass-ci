@@ -26,15 +26,15 @@ defaults.merge!(service_authentication)
 
 env = docker_env(defaults)
 
-docker_rm "watch-jobs"
+docker_rm 'watch-jobs'
 
-cmd = %W[
+cmd = %w[
   docker run
   --restart=always
   --name watch-jobs
   -d
   -u 1090:1090
-] + env + %W[
+] + env + %w[
   -v /etc/localtime:/etc/localtime:ro
   watch-jobs
 ]

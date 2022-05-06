@@ -5,6 +5,6 @@
 
 require_relative '../defconfig'
 
-docker_skip_rebuild "service-health"
+docker_skip_rebuild 'service-health'
 
-system "docker build -t service-health ."
+system 'docker build -t service-health .'

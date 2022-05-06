@@ -130,9 +130,9 @@ def compare_candidates
     body = compare_candidates_body
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => 'compare_candidates error'
-    })
+                'message' => e.message,
+                'error_message' => 'compare_candidates error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get compare candidates error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -246,9 +246,9 @@ def compare(params)
     body = get_compare_body(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "compare error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "compare error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'compare error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -399,9 +399,9 @@ def get_jobs(params)
     body = get_jobs_body(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "get_jobs error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "get_jobs error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get jobs error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -485,9 +485,9 @@ def get_repos(params)
    body = get_repos_body(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "get_repos error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "get_repos error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get repos error']
  end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -498,9 +498,9 @@ def query_filed(params)
    body = get_job_field(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "query_filed error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "query_filed error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query_filed error']
  end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -508,8 +508,8 @@ end
 
 def get_job_field(params)
   request_body = JSON.parse(params)
-  items = request_body["filter"]
-  count_keywords = [request_body["field"]]
+  items = request_body['filter']
+  count_keywords = [request_body['field']]
   query_result = ES_QUERY.query_fields(count_keywords, items)
   return [].to_json unless query_result
 
@@ -525,9 +525,9 @@ def performance_result(data)
     body = result_body(request_body)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "performance_result error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "performance_result error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get performance result error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -576,9 +576,9 @@ def query_testboxes
     body = testboxes_body
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "query_testboxes error"
-    })
+                'message' => e.message,
+                'error_message' => 'query_testboxes error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get testboxes error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -605,9 +605,9 @@ def get_tbox_state(params)
     body = get_tbox_state_body(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "get_tbox_state error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "get_tbox_state error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get testbox state error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -646,9 +646,9 @@ def new_refs_statistics(params)
     body = query_repo_statistics(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "new_refs_statistics error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "new_refs_statistics error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'new refs statistics error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -708,8 +708,8 @@ def get_jobs_stats(params)
   objects = get_stats_by_dimension(conditions, dimension, must, 1000, 0)
   {
     filter: params,
-    attributes: [ dimension[0], 'nr_all', 'nr_pass', 'nr_fail' ],
-    objects: objects,
+    attributes: [dimension[0], 'nr_all', 'nr_pass', 'nr_fail'],
+    objects: objects
   }.to_json
 end
 
@@ -718,9 +718,9 @@ def group_jobs_stats(params)
     body = get_jobs_stats(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "group_jobs_stats error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "group_jobs_stats error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'group jobs table error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -739,9 +739,9 @@ def get_job_error(params)
     body = job_error_body(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "get_job_error error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "get_job_error error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get error table error']
   end
 
@@ -749,11 +749,11 @@ def get_job_error(params)
 end
 
 def job_error_body(params)
-  error_objects  = get_error_objects(params)
+  error_objects = get_error_objects(params)
   {
     filter: params,
-    attributes: ['job_id', 'error_message', 'result_root', 'stderr'],
-    objects: error_objects,
+    attributes: %w[job_id error_message result_root stderr],
+    objects: error_objects
   }.to_json
 end
 
@@ -797,8 +797,8 @@ def msg_per_hour
     "query": {
       "bool": {
         "filter": [
-          { "exists": { "field": "msg" } },
-          { "range": { "time": { "gt": "now-1h" } } }
+          { "exists": { "field": 'msg' } },
+          { "range": { "time": { "gt": 'now-1h' } } }
         ]
       }
     }
@@ -811,8 +811,8 @@ def worker_threads_alive
     query: {
       bool: {
         filter: [
-          { exists: { field: "state" } },
-          { range: { time: { gt: "now-5m" } } }
+          { exists: { field: 'state' } },
+          { range: { time: { gt: 'now-5m' } } }
         ]
       }
     },
@@ -823,15 +823,16 @@ def worker_threads_alive
   }
   result = LOGGING_ES_CLIENT.search(index: 'git-mirror', body: query)['hits']
   num = result['total']['value']
-  return [ 'OK', 10 ] if num.zero?
-  return [ result['hits'][0]['_source']['level'], result['hits'][0]['_source']['alive_num'] ]
+  return ['OK', 10] if num.zero?
+
+  return [result['hits'][0]['_source']['level'], result['hits'][0]['_source']['alive_num']]
 end
 
 def git_mirror_state
   msg_count = msg_per_hour
   state, alive_num = worker_threads_alive
   state = 'WARN' if state == 'OK' && msg_count.zero?
-  [ state, alive_num, msg_count ].to_json
+  [state, alive_num, msg_count].to_json
 end
 
 def git_mirror_health
@@ -839,9 +840,9 @@ def git_mirror_health
     body = git_mirror_state
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "git_mirror_health error"
-    })
+                'message' => e.message,
+                'error_message' => 'git_mirror_health error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'git mirror health error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -861,9 +862,9 @@ def get_active_testbox
     }.to_json
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "get_active_testbox error"
-    })
+                'message' => e.message,
+                'error_message' => 'get_active_testbox error'
+              })
 
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get active testbox error']
   end
@@ -883,16 +884,16 @@ def active_stderr
     body = active_stderr_body
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "active_stderr error"
-    })
+                'message' => e.message,
+                'error_message' => 'active_stderr error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get active-stderr error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
 end
 
 def active_stderr_body
-  now = Time.now  # like: 2021-06-23 17:21:55 +0800
+  now = Time.now # like: 2021-06-23 17:21:55 +0800
   query_result = es_query(five_days_query(now))['hits']['hits']
   job_list = extract_jobs_list(query_result)
 
@@ -902,7 +903,7 @@ def active_stderr_body
 
   {
     'total' => jobs_errors.size,
-    'cols' => ['count', 'first_date', 'suite', 'job_owner', 'relevant_links', 'error_message'],
+    'cols' => %w[count first_date suite job_owner relevant_links error_message],
     'data' => jobs_errors
   }.to_json
 end
@@ -910,17 +911,16 @@ end
 def five_days_query(now)
   d5 = now - FIVE_DAYS_SECOND
 
-  {:query => {
-      :bool => {
-        :must => [{:range => {
-          "start_time" => {:gte => d5.strftime("%Y-%m-%dT%H:%M:%S+0800"), :lte => now.strftime("%Y-%m-%dT%H:%M:%S+0800")}
-        }}],
-        :must_not => {:bool=>{:should=>[{:term=>{"suite"=>"rpmbuild"}}, {:term=>{"suite"=>"build-pkg"}}]}}
-      }
-    },
-    :size => 10000,
-    :sort => [{"start_time" => {:order=>"desc"}}]
-  }
+  { query: {
+    bool: {
+      must: [{ range: {
+        'start_time' => { gte: d5.strftime('%Y-%m-%dT%H:%M:%S+0800'), lte: now.strftime('%Y-%m-%dT%H:%M:%S+0800') }
+      } }],
+      must_not: { bool: { should: [{ term: { 'suite' => 'rpmbuild' } }, { term: { 'suite' => 'build-pkg' } }] } }
+    }
+  },
+    size: 10000,
+    sort: [{ 'start_time' => { order: 'desc' } }] }
 end
 
 def es_query_boot_job(from, size, must)
@@ -943,7 +943,7 @@ def get_one_day_must(now)
 end
 
 def response_boot_time_by_pages(pages, interface, must, response, from, size)
-  pages.times do |i|
+  pages.times do |_i|
     job_list = es_query_boot_job(from, size, must)
     if interface == 'boot_time'
       response_boot_time(job_list, response)
@@ -967,10 +967,9 @@ def get_job_boot_time(interface)
 end
 
 def boot_time_response
-  response = { 'dc' => { 'threshold' => 60 , 'x_params' => [], 'boot_time' => [] },
+  response = { 'dc' => { 'threshold' => 60, 'x_params' => [], 'boot_time' => [] },
                'vm' => { 'threshold' => 180, 'x_params' => [], 'boot_time' => [] },
-               'hw' => { 'threshold' => 600, 'x_params' => [], 'boot_time' => [] }
-             }
+               'hw' => { 'threshold' => 600, 'x_params' => [], 'boot_time' => [] } }
 end
 
 def response_boot_time(job_list, response)
@@ -988,9 +987,9 @@ def job_boot_time
     body = get_job_boot_time('boot_time')
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "job_boot_time error"
-    })
+                'message' => e.message,
+                'error_message' => 'job_boot_time error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get job_boot_time error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -1018,9 +1017,9 @@ def top_boot_time
     body = get_job_boot_time('top_boot_time')
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "top_boot_time error"
-    })
+                'message' => e.message,
+                'error_message' => 'top_boot_time error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get top_boot_time error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
@@ -1040,9 +1039,9 @@ def get_srpm_info(params)
     all.store('info', info)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "get_srpm_software_body error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "get_srpm_software_body error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get srpm software info error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), all.to_json]
@@ -1052,22 +1051,22 @@ def get_compat_software_body(params)
   page_size = get_positive_number(params.delete(:page_size), 10)
   page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
 
-  total_query =  {
-      query: {
-        bool: {
-          must: build_multi_field_body(params)
-        }
+  total_query = {
+    query: {
+      bool: {
+        must: build_multi_field_body(params)
       }
     }
+  }
 
   compats_query = {
-      query: {
-        bool: {
-          must: build_multi_field_body(params)
-        }
-      },
-      size: page_size,
-      from: page_num
+    query: {
+      bool: {
+        must: build_multi_field_body(params)
+      }
+    },
+    size: page_size,
+    from: page_num
   }
 
   total = ES_CLIENT.count(index: 'compat-software-info', body: total_query)['count']
@@ -1075,7 +1074,7 @@ def get_compat_software_body(params)
   {
     total: total,
     filter: params,
-    compats: compats,
+    compats: compats
   }.to_json
 end
 
@@ -1093,9 +1092,9 @@ def get_compat_software(params)
     all.store('info', info)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "get_compat_software_body error, input: #{params}"
-    })
+                'message' => e.message,
+                'error_message' => "get_compat_software_body error, input: #{params}"
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get compat software info error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), all.to_json]
@@ -1105,14 +1104,15 @@ def get_srpm_software_body(params)
   page_size = get_positive_number(params.delete(:page_size), 10)
   page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
 
-  total_query =  {
+  total_query = {
     query: {
       bool: {
         filter: [
           exists: {
-            field: "softwareName"
-          }],
-          must: build_multi_field_body(params)
+            field: 'softwareName'
+          }
+        ],
+        must: build_multi_field_body(params)
       }
     }
   }
@@ -1122,9 +1122,10 @@ def get_srpm_software_body(params)
       bool: {
         filter: [
           exists: {
-            field: "softwareName"
-          }],
-          must: build_multi_field_body(params)
+            field: 'softwareName'
+          }
+        ],
+        must: build_multi_field_body(params)
       }
     },
     size: page_size,
@@ -1136,7 +1137,7 @@ def get_srpm_software_body(params)
   {
     total: total,
     filter: params,
-    compats: compats,
+    compats: compats
   }.to_json
 end
 
@@ -1148,10 +1149,11 @@ def build_multi_field_body(items)
       query_fields.push({ bool: { should: inner_query } })
     else
       if key == 'softwareName' || key == 'keyword'
-        query_fields.push({ regexp: { "softwareName" => ".*#{value}.*" } })
+        query_fields.push({ regexp: { 'softwareName' => ".*#{value}.*" } })
       else
         next if key == 'rnd'
-        query_fields.push({ term: { "#{key}" => value } })
+
+        query_fields.push({ term: { key.to_s => value } })
       end
     end
   end
@@ -1165,22 +1167,22 @@ def get_compat_software_info_detail
     data = my_data.query_compat_software
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "query_compat_software error"
-    })
+                'message' => e.message,
+                'error_message' => 'query_compat_software error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query compat software info error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), data.to_json]
 end
 
 def query_latest_commit_id(params)
-  num=params[:group_id].split("-").count
-  if(params[:group_id].split("-").count == 1)
+  num = params[:group_id].split('-').count
+  if params[:group_id].split('-').count == 1
     es = ESQuery.new
-    upstream_repo = params[:group_id][0,1]+'/'+params[:group_id]+'/'+params[:group_id]
-    query_result = es.multi_field_query({'upstream_repo'=>upstream_repo}, desc_keyword: 'start_time')['hits']['hits'] 
+    upstream_repo = params[:group_id][0, 1] + '/' + params[:group_id] + '/' + params[:group_id]
+    query_result = es.multi_field_query({ 'upstream_repo' => upstream_repo }, desc_keyword: 'start_time')['hits']['hits']
     upstream_commit = query_result[0]['_source']['upstream_commit']
-    params[:group_id] = params[:group_id] +'-'+ upstream_commit
+    params[:group_id] = params[:group_id] + '-' + upstream_commit
   end
   params
 end
@@ -1189,12 +1191,12 @@ def query_test_matrix_result(params)
   es = ESQuery.new
   params = query_latest_commit_id(params)
 
-  query_result = es.multi_field_query({'group_id'=>params[:group_id]})
-  result_hash = Hash.new
+  query_result = es.multi_field_query({ 'group_id' => params[:group_id] })
+  result_hash = {}
   query_result['hits']['hits'].each do |r|
-    item = Hash.new
+    item = {}
     key = "#{r['_source']['os']}-#{r['_source']['os_version']}-#{r['_source']['os_arch']}"
-    if(result_hash.key?(key))
+    if result_hash.key?(key)
       item = result_hash[key]
     else
       item['os'] = r['_source']['os']
@@ -1202,22 +1204,22 @@ def query_test_matrix_result(params)
       item['os_arch'] = r['_source']['os_arch']
     end
 
-    if(r['_source']['suite'] == 'rpmbuild')
+    if r['_source']['suite'] == 'rpmbuild'
       item['build_id'] = r['_id']
       item['build_job_health'] = r['_source']['job_health']
-      if(r['_source']['stats'].nil? == false and r['_source']['stats'].has_key?('rpmbuild.func.message'))
+      if (r['_source']['stats'].nil? == false) && r['_source']['stats'].has_key?('rpmbuild.func.message')
         item['func_job_health'] = r['_source']['stats']['rpmbuild.func.message']
       end
     end
 
-    if(r['_source']['suite'] == 'install-rpm')
+    if r['_source']['suite'] == 'install-rpm'
       install_item = get_install_info(r)
       item['install_id'] = install_item['id']
       item['install_job_health'] = install_item['job_health']
     end
     result_hash[key] = item
   end
-  result=Array.new
+  result = []
   result_hash.each_value do |v|
     result << v
   end
@@ -1229,9 +1231,9 @@ def query_test_matrix(params)
     result = query_matrix_result(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "query_result_error"
-    })
+                'message' => e.message,
+                'error_message' => 'query_result_error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query result error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
@@ -1241,8 +1243,8 @@ def query_matrix_result(params)
   es = ESQuery.new
   params = query_latest_commit_id(params)
 
-  query_result = es.multi_field_query({'group_id'=>params[:group_id]})
-  result = Array.new
+  query_result = es.multi_field_query({ 'group_id' => params[:group_id] })
+  result = []
   query_result['hits']['hits'].each do |r|
     item = get_job_info(r)
     result << item
@@ -1254,8 +1256,8 @@ end
 # input: ES job query result['hits']['hits']
 # output: {"os"=>"openeuler", "os_version"=>"20.03-LTS-SP1", "os_arch"=>"aarch64", "result_root"=>"/result/rpmbuild/2022-03-23/dc-16g/openeuler-20.03-LTS-SP1-aarch64/elrepo-aarch64-e-elrepo-elrepo/crystal.5236306", "id"=>"crystal.5236306", "build_job_health"=>"success", "install_job_health"=>"success"}
 def get_job_info(job)
-  job_info = Hash.new
-  need_keys = ["os","os_version","os_arch","result_root"]
+  job_info = {}
+  need_keys = %w[os os_version os_arch result_root]
   need_keys.each do |k|
     job_info[k] = job['_source'][k]
   end
@@ -1263,17 +1265,17 @@ def get_job_info(job)
   stats = job['_source']['stats']
   return job_info if stats.nil?
 
-  if(stats.key?('rpmbuild.start_time.message'))
-    job_info['build_job_health'] = 'success'
-  else
-    job_info['build_job_health'] = 'fail'
-  end
+  job_info['build_job_health'] = if stats.key?('rpmbuild.start_time.message')
+                                   'success'
+                                 else
+                                   'fail'
+                                 end
   job_info['func_job_health'] = 'success' if stats.key?('rpmbuild.func.message')
   job_info['install_job_health'] = 'fail'
-  stats.each do |k,v|
+  stats.each do |k, _v|
     case k
     when /install-rpm\.(.*)_(?:install|uninstall|)\.(.*)/
-      if ($2 == 'fail')
+      if $2 == 'fail'
         job_info['install_job_health'] = 'fail'
         return job_info
       else
@@ -1281,7 +1283,7 @@ def get_job_info(job)
       end
 
     when /install-rpm\.(.*)_(?:cmd|service)_(.*)\.(.*)/
-      if ($3 == 'fail')
+      if $3 == 'fail'
         job_info['install_job_health'] = 'fail'
         return job_info
       else
@@ -1293,20 +1295,20 @@ def get_job_info(job)
 end
 
 def get_install_info(result)
-  install_info = Hash.new
+  install_info = {}
   install_info['id'] = result['_id']
   result = result['_source']['stats']
 
-  result.each do |k,v|
+  result.each do |k, _v|
     case k
     when /install-rpm\.(.*)_(?:install|uninstall|)\.(.*)/
-      if ($2 == 'fail')
+      if $2 == 'fail'
         install_info['job_health'] = 'fail'
         return install_info
       end
 
     when /install-rpm\.(.*)_(?:cmd|service)_(.*)\.(.*)/
-      if ($3 == 'fail')
+      if $3 == 'fail'
         install_info['job_health'] = 'fail'
         return install_info
       end
@@ -1321,9 +1323,9 @@ def query_host_info(params)
     result = get_host_content(params)
   rescue StandardError => e
     log_error({
-      'message' => e.message,
-      'error_message' => "query host info error"
-    })
+                'message' => e.message,
+                'error_message' => 'query host info error'
+              })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query host info error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
@@ -1331,7 +1333,7 @@ end
 
 def get_host_content(params)
   testbox = params['testbox'] || nil
-  return "please give testbox params" unless testbox
+  return 'please give testbox params' unless testbox
 
   # read host file
   file_path = "/c/lab-#{LAB}/hosts/#{testbox}"
