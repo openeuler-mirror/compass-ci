@@ -12,7 +12,7 @@ module Scheduler
 
   begin
     create_secrets_yaml("scheduler")
-    do_local_pack()
+    do_local_pack
     Kemal.run(ENV["NODE_PORT"].to_i32)
   rescue e
     log.error(e)

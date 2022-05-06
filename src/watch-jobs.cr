@@ -7,7 +7,7 @@ require "./lib/json_logger"
 log = JSONLogger.new
 
 begin
-  WatchJobs.new().handle_jobs()
+  WatchJobs.new.handle_jobs
 rescue e
   log.error(e)
 end

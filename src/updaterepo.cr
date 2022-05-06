@@ -5,7 +5,6 @@ require "./updaterepo/updaterepo"
 require "./updaterepo/constants"
 require "./lib/json_logger"
 
-
 module Updaterepo
   log = JSONLogger.new
 

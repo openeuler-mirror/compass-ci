@@ -9,7 +9,7 @@ require "../lib/json_logger"
 
 module Cycle
   VERSION = "0.1.0"
-  get "/" do |env|
+  get "/" do |_env|
     "done"
   end
 end

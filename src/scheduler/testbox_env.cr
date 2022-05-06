@@ -23,7 +23,7 @@ class Job
 
     hash.merge!(Hash(String, JSON::Any).from_json(yaml_any.to_json))
     hash.each do |key, value|
-      if value == nil
+      if value.nil?
         hash[key] = service_env[key]
       end
     end

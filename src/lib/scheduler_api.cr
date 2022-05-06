@@ -16,7 +16,7 @@ class SchedulerAPI
     url += "&job_health=#{job_health}" if job_health
     client = HTTP::Client.new(@host, port: @port)
     response = client.get(url)
-    client.close()
+    client.close
     return response
   end
 end

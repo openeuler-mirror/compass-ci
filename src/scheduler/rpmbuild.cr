@@ -6,13 +6,14 @@ class Sched
     body = @env.request.body.not_nil!.gets_to_end
     body = JSON.parse(body).as_h
     return if body["rpm_dest"].to_s.empty?
+
     job = @es.get_job(body["rpmbuild_job_id"].to_s)
     return unless job
 
     job_info = get_job_info(job)
     job_info.any_merge!(body)
 
-    spawn Jobfile::Operate.auto_submit_job("install-rpm.yaml",job_info)
+    spawn Jobfile::Operate.auto_submit_job("install-rpm.yaml", job_info)
   rescue e
     @env.response.status_code = 500
     @log.warn({
@@ -22,8 +23,8 @@ class Sched
   end
 
   def get_job_info(job)
-    job_info = Hash(String, String | JSON::Any ).new
-    need_keys = ["os","os_version","os_arch","docker_image"]
+    job_info = Hash(String, String | JSON::Any).new
+    need_keys = %w[os os_version os_arch docker_image]
     need_keys.each do |k|
       job_info[k] = job[k]
     end
@@ -57,22 +58,22 @@ class Sched
     reverse_depends = common_info["reverse_depends"].to_s.gsub(" ", ",")
     reverse_depends.split(",").each do |package|
       job_content = common_info.any_merge({
-        "reverse_depends" => reverse_depends,
-        "upstream_repo" => "#{package.to_s[0]}/#{package}/#{package}",
-        "testbox" => "dc-16g",
-      })
+                                            "reverse_depends" => reverse_depends,
+                                            "upstream_repo" => "#{package.to_s[0]}/#{package}/#{package}",
+                                            "testbox" => "dc-16g"
+                                          })
       spawn Jobfile::Operate.auto_submit_job("rpmbuild-without-arch.yaml", job_content)
     end
   end
 
   def get_common_info(job)
     common_info = Hash(String, String | JSON::Any).new
-    depend_keys = ["commit_id", "upstream_branch", "upstream_repo"]
+    depend_keys = %w[commit_id upstream_branch upstream_repo]
     depend_keys.each do |k|
       common_info["depend_#{k}"] = job[k]
     end
 
-    need_keys = ["upstream_dir", "os", "os_version", "arch", "docker_image"]
+    need_keys = %w[upstream_dir os os_version arch docker_image]
     need_keys.each do |k|
       common_info[k] = job[k]
     end
