@@ -438,7 +438,8 @@ class Sched
 
     _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + _kernel_initrds
     _rootfs_disk = " rootfs_disk=#{JSON.parse(job["rootfs_disk"]).as_a.join(",")}"
-    response += _kernel_params.join(" ") + _rootfs_disk + " crashkernel=#{job["crashkernel"]}"
+    response += _kernel_params.join(" ") + _rootfs_disk
+    response += " crashkernel=#{job["crashkernel"]}" unless response.includes?("crashkernel=")
 
     response += "\nboot\n"
 
