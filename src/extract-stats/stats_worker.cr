@@ -31,6 +31,8 @@ class StatsWorker
       job = @es.get_job_content(job_id)
       result_post_processing(job_id, queue_path, job)
       commit_channel.send(job["upstream_commit"].to_s) if job["nr_run"]? && job["upstream_commit"]? && job["base_commit"]?
+      target_queue_path = "/queues/post-extract/#{job_id}"
+      @etcd.put(target_queue_path,job_id)
       @etcd.delete(queue_path)
     rescue e
       channel.send(queue_path)

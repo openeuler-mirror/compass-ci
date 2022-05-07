@@ -1,0 +1,52 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require 'open3'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  REDIS_HOST
+  REDIS_PORT
+  ES_HOST
+  ES_PORT
+  ES_USER
+  ES_PASSWORD
+  LOCAL_SEND_MAIL_PORT
+  PR_BUILD_EMAIL_RECEIVER
+  lab
+]
+
+defaults = relevant_defaults(names)
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
+env = docker_env(defaults)
+
+DEFAULT_LKP = '/c/lkp-tests'
+DEFAULT_CCI = '/c/compass-ci'
+docker_rm "post-extract"
+
+cmd = %w[
+  docker run
+  --name post-extract
+  --restart=always
+  -d
+] + env + %W[
+  -e LKP_SRC=#{DEFAULT_LKP}
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
+  -v /etc/localtime:/etc/localtime:ro
+  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+  -v /srv/result:/result
+  --log-opt mode=non-blocking
+  --log-opt max-buffer-size=4m
+  post-extract
+]
+
+cmd += ['sh', '-c', 'umask 002 && ./post-extract']
+
+system(*cmd)
