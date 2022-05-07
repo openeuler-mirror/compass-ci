@@ -102,4 +102,4 @@ systemctl daemon-reload
 systemctl restart docker
 systemctl start libvirtd
 
-docker_load_images
+[ "$skip_build_image" = "true" ] && docker_load_images
