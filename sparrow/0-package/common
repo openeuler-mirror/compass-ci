@@ -86,12 +86,12 @@ docker_load_images()
 	images_dir=/tmp/docker_images
 
 	mkdir -p $images_dir
-	wget -O $images_dir/docker_list https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker/$(arch)/docker_list || return 1
+	wget -q -O $images_dir/docker_list https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker/$(arch)/docker_list || return 1
 	while read line
 	do
 		(
-			wget -O $images_dir/$line https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker/$(arch)/$line || return 1
-			docker load -i $images_dir/$line
+			wget -q -O $images_dir/$line https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker/$(arch)/$line || return 1
+			docker load -q -i $images_dir/$line
 		) &
 	done < $images_dir/docker_list
 	wait
