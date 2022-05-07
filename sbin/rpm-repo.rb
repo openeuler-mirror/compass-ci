@@ -94,8 +94,8 @@ class HandleRepo
     rpmbuild_job_id = query_result['rpmbuild_job_id']
     rpmbuild_query_result = @es.query_by_id(rpmbuild_job_id)
     result_hash['srpm_addr'] = rpmbuild_query_result['repo_addr'] || rpmbuild_query_result['upstream_repo']
-    result_hash['rpmbuild_result_url'] = "https://api.compass-ci.openeuler.org:20007#{rpmbuild_query_result['result_root']}"
-    result_hash['repo_name'] = rpmbuild_query_result['custom_repo_name']
+    result_hash['rpmbuild_result_url'] = "https://api.compass-ci.openeuler.org#{rpmbuild_query_result['result_root']}"
+    result_hash['repo_name'] = rpmbuild_query_result['custom_repo_name'] || rpmbuild_query_result['rpmbuild']['custom_repo_name']
     result_hash
   end
 

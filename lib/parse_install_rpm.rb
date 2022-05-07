@@ -19,9 +19,8 @@ def get_install_rpm_result_by_group_id(group_id)
     key = job['_source']['rpm_name']
     tmp_hash[key] = {}
     srv_http_result_host = job['SRV_HTTP_RESULT_HOST'] || 'api.compass-ci.openeuler.org'
-    srv_http_result_port = job['SRV_HTTP_RESULT_PORT'] || '20007'
     srv_http_protocol = job['SRV_HTTP_PROTOCOL'] || 'https'
-    tmp_hash[key]['result_url'] = "#{srv_http_protocol}://#{srv_http_result_host}:#{srv_http_result_port}#{job['_source']['result_root']}"
+    tmp_hash[key]['result_url'] = "#{srv_http_protocol}://#{srv_http_result_host}#{job['_source']['result_root']}"
     tmp_hash[key]['result_root'] = "/srv#{job['_source']['result_root']}"
     tmp_hash[key]['arch'] = job['_source']['arch']
     tmp_hash[key]['property'] = job['_source']['property'] || 'Open Source'
