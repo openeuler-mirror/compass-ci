@@ -728,6 +728,8 @@ class Job
 
   private def set_modules_uri
     return if @hash.has_key?("modules_uri")
+    return if @hash["os_mount"] == "local"
+
     modules_path = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
     self["modules_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
   end

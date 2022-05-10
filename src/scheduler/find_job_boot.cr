@@ -432,7 +432,7 @@ class Sched
     response += "# nr_nic=" + job["nr_nic"] + "\n" if job.has_key?("nr_nic")
 
     _initrds_uri = Array(String).from_json(job.initrds_uri).map { |uri| "initrd #{uri}" }
-    _initrds_uri.insert(1, "initrd #{job.modules_uri}")
+    _initrds_uri.insert(1, "initrd #{job.modules_uri}") if job.has_key?("modules_uri")
     _kernel_initrds = _initrds_uri.map { |initrd| " initrd=#{File.basename(initrd.split("initrd ")[-1])}"}
     response += _initrds_uri.join("\n") + "\n"
 
