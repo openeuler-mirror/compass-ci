@@ -82,13 +82,17 @@ def get_values(value_list, success)
   end
 end
 
-def get_compare_value(base_value_average, value_average, success)
+def get_compare_value(base_value_average, value_average, success, field)
   # get compare value(change)
   #
   return unless success
   return if base_value_average.zero?
 
-  (100 * value_average / base_value_average - 100).round(1)
+  if latency?(field)
+    return (100 - 100 * value_average / base_value_average).round(1)
+  else
+    return (100 * value_average / base_value_average - 100).round(1)
+  end
 end
 
 def field_changed?(base_values, values, success, field, options)
@@ -113,7 +117,8 @@ def set_compare_values(index, values, field, success, options)
   values[index][compare_str] = get_compare_value(
     values[0][:average],
     values[index][:average],
-    success
+    success,
+    field
   )
   values[:changed] |= field_changed?(
     values[0],
@@ -537,7 +542,7 @@ def assign_metric_change(metrics_values, cmp_series)
     dimension_groups.each do |base_dimension, challenge_dimension|
       next unless values['average'][base_dimension] && values['average'][challenge_dimension]
 
-      change = get_compare_value(values['average'][base_dimension], values['average'][challenge_dimension], true)
+      change = get_compare_value(values['average'][base_dimension], values['average'][challenge_dimension], true, metric)
       values['change'] = { "#{challenge_dimension} vs #{base_dimension}" => change }
     end
   end
