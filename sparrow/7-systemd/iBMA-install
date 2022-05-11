@@ -7,7 +7,7 @@ systemctl list-units | grep iBMA && {
 	exit
 }
 
-file_server='api.compass-ci.openeuler.org'
+file_server='repo.oepkgs.net'
 
 yum install -y unzip tar
 
@@ -22,7 +22,7 @@ download_file()
 	zip_file="iBMA-Linux-pkg-2.2.0.3.001${arch}.zip"
 	tar_file="iBMA-Linux-2.2.0.3.001${arch}.tar.gz"
 
-	[ -f "$zip_file" ] || wget https://$file_server:20006/pub/ibma/$zip_file --no-check-certificate
+	[ -f "$zip_file" ] || wget https://$file_server/openEuler/compass-ci/cci-deps/ibma/$zip_file
 }
 
 decompress()
