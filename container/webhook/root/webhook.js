@@ -19,7 +19,7 @@ handler.on('Merge Request Hook', function(event){
 	var msg = {
 		"new_refs" : {
 			"heads" : {
-				"master" : event.payload.pull_request.base.sha
+				"master" : event.payload.pull_request.head.sha
 			}
 		},
 		"url" : event.payload.pull_request.base.repo.url,
