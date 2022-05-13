@@ -13,15 +13,15 @@ require "#{CCI_SRC}/lib/es_client.rb"
 # - opendistro_sql(search by sql)
 module EsDataApi
   ES_ACCOUNTS = ESClient.new(index: 'accounts')
+  ES_AUTHORIZED = ESClient.new(index: 'authorized')
   OPEN_INDEX = Set.new(%w[jobs hosts])
   REQUIRED_TOKEN_INDEX = Set.new(['jobs'])
   ES_QUERY_KEYWORD = Set.new(%w[term match])
 
-  def self.credentials_for_dsl(query, my_account)
+  def self.credentials_for_dsl(query, authorized_accounts)
     query['query'] ||= {}
-    query['query']['bool'] ||= {}
-    query['query']['bool']['must'] ||= []
-    query['query']['bool']['must'] << { 'term' => { 'my_account' => my_account } }
+    query['query']['terms'] ||= {}
+    query['query']['terms']['my_account'] = authorized_accounts
     query = handle_dsl_query(query)
     return query
   end
@@ -45,6 +45,15 @@ module EsDataApi
     return my_account
   end
 
+  def self.get_authorized_accounts(my_account)
+    query = {}
+    query['my_account'] = my_account
+
+    result = ES_AUTHORIZED.multi_field_query(query, single_index: true)['hits']['hits']
+    return [my_account] if result.empty?
+    return result[0]['_source']['authorized_accounts'] << my_account
+  end
+
   def self.search(index, params)
     request_body = JSON.parse(params)
     query = request_body['query'] || { 'query' => {} }
@@ -52,7 +61,8 @@ module EsDataApi
 
     if REQUIRED_TOKEN_INDEX.include?(index)
       my_account = check_my_account(request_body)
-      query = credentials_for_dsl(query, my_account)
+      authorized_accounts = get_authorized_accounts(my_account)
+      query = credentials_for_dsl(query, authorized_accounts)
     end
     es = Elasticsearch::Client.new(hosts: ES_HOSTS)
     return es.search index: index + '*', body: query
@@ -75,11 +85,12 @@ module EsDataApi
     end
 
     my_account = check_my_account(request_body)
-    user_limit = "my_account='#{my_account}'"
+    authorized_accounts = get_authorized_accounts(my_account)
+    user_limit = "my_account IN (" + authorized_accounts.join(',') + ") "
     query_sql += if query_where.nil?
                    " WHERE #{user_limit}"
                  else
-                   " WHERE #{user_limit} AND (#{query_where})"
+                   " WHERE #{user_limit} AND (#{query_where}) "
                  end
     return query_sql
   end
