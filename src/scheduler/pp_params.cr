@@ -46,7 +46,7 @@ class Job
       end
     end
 
-    return values.join("-")
+    return values.join("-").strip.strip("-")
   end
 
   private def format_string(original_str)
