@@ -16,6 +16,7 @@ end
 def config_yaml(account)
   build_my_info = BuildMyInfo.new(my_email(account))
 
+  my_info = nil
   (1..20).each do |_i|
     my_info = build_my_info.search_my_info
     break if my_info['my_email']
