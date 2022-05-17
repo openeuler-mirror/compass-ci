@@ -73,19 +73,17 @@
 	部署脚本将直接从[此处](https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/docker)下载镜像tar包使用，以解决本地构建镜像耗时，且网络不稳定易造成构建失败的问题。
 
 6. 注册账号
+	- 使环境变量生效
+	```bash
+	source /etc/profile.d/compass.sh
+	```
 	非root用户注册帐号，该用户登录系统后直接使用build-my-info命令注册。
-
 	```bash
 	build-my-info -e $my_email -n $my_name -a $my_account
 	```
 
 #### 提交测试任务
 本文以/c/lkp-tests/jobs/目录下已有的通用测试用例host-info.yaml为例
-- 使环境变量生效
-	```bash
-	source /etc/profile.d/compass.sh
-	```
-
 - 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)提交测试用例
 	```bash
 	submit host-info.yaml
