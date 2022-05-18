@@ -445,7 +445,9 @@ class MirrorMain
   end
 
   def update_pr_msg(msg, git_repo)
-    msg.merge!(@git_info[git_repo])
+    @git_info[git_repo].each do |k, v|
+      msg[k] = JSON.parse(v.to_json)
+    end
     return unless msg['submit_command']
 
     msg['submit_command'].each do |k, v|
