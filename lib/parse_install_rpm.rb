@@ -13,6 +13,7 @@ def get_install_rpm_result_by_group_id(group_id)
   job_list = es.multi_field_scroll_query(group_id)
   job_list.map! do |job|
     next unless job_is_useful?(job)
+    next unless job['_source']['stats']
 
     tmp_hash = {}
     tmp_hash['rpm_name'] = job['_source']['rpm_name']
@@ -33,7 +34,7 @@ end
 
 def parse_rpm_name(tmp_hash, result)
   rpm_name = result['rpm_name']
-  rpm_name_list = rpm_name.split(' ')
+  rpm_name_list = rpm_name.gsub(',', ' ').split(' ')
   rpm_name_list.each do |rpm_name|
     tmp_hash[rpm_name] = {} unless tmp_hash.key?(rpm_name)
     tmp_hash[rpm_name].merge!(result[result['rpm_name']])

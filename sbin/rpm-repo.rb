@@ -254,17 +254,28 @@ end
 
 include Clockwork
 
-config_yaml('auto-submit')
 do_local_pack
 hr = HandleRepo.new
-hr.create_repo
-hr.submit_install_rpm
-hr.handle_new_rpm
 
-handler do |job|
-  group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
-  puts "Running #{job}"
-  hr.deal_pub_dir(group_id)
+Thread.new do
+  config_yaml('auto-submit')
+  hr.create_repo
+  hr.submit_install_rpm
+  hr.handle_new_rpm
 end
 
-every(1.day, 'update pub dir', at: '23:59')
+Thread.new do
+  handler do |job|
+    begin
+      group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
+      puts "Running #{job}"
+      hr.deal_pub_dir(group_id)
+    rescue StandardError => e
+      JSONLogger.new.warn({
+        "deal_pub_dir error message": e.message
+      }.to_json)
+    end
+  end
+
+  every(1.day, 'update pub dir', at: '23:59')
+end
