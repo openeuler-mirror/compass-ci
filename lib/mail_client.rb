@@ -10,9 +10,13 @@ require_relative 'constants.rb'
 class MailClient
   HOST = (ENV.key?('SEND_MAIL_HOST') ? ENV['SEND_MAIL_HOST'] : SEND_MAIL_HOST)
   PORT = (ENV.key?('SEND_MAIL_PORT') ? ENV['SEND_MAIL_PORT'] : SEND_MAIL_PORT).to_i
-  def initialize(host = HOST, port = PORT)
+  def initialize(host: HOST, port: PORT, is_outgoing: true)
     @host = host
     @port = port
+    unless is_outgoing
+      @host = (ENV.key?('LOCAL_SEND_MAIL_HOST') ? ENV['LOCAL_SEND_MAIL_HOST'] : LOCAL_SEND_MAIL_HOST)
+      @port = (ENV.key?('LOCAL_SEND_MAIL_PORT') ? ENV['LOCAL_SEND_MAIL_PORT'] : LOCAL_SEND_MAIL_PORT).to_i
+    end
   end
 
   def send_mail(mail_json)
