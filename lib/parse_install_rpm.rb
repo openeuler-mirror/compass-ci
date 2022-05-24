@@ -39,7 +39,8 @@ def parse_rpm_name(tmp_hash, result)
     tmp_hash[rpm_name] = {} unless tmp_hash.key?(rpm_name)
     tmp_hash[rpm_name].merge!(result[result['rpm_name']])
     if rpm_name =~ /(.*)(-[^-]+){2}/
-      tmp_hash[$1] = tmp_hash[rpm_name]
+      key = "#{rpm_name}.#{tmp_hash[rpm_name]['os']}.#{tmp_hash[rpm_name]['arch']}"
+      tmp_hash[key] = tmp_hash[rpm_name]
       tmp_hash.delete(rpm_name)
     end
   end

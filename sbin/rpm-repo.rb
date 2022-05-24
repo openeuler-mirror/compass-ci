@@ -136,8 +136,8 @@ class HandleRepo
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'upload_rpms params type error' }) if data['upload_rpms'].class != Array
 
     data['upload_rpms'].each do |rpm|
-      raise JSON.dump({ 'errcode' => '200', 'errmsg' => "#{rpm} not exist" }) unless File.exist?(rpm)
-      raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'the upload directory is incorrect' }) unless File.dirname(rpm).start_with?(@@upload_dir_prefix)
+      raise JSON.dump({ 'errcode' => '200', 'errmsg' => "#{rpm} not exist", 'job_id' => "#{data['job_id']}" }) unless File.exist?(rpm)
+      raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'the upload directory is incorrect', 'job_id' => "#{data['job_id']}" }) unless File.dirname(rpm).start_with?(@@upload_dir_prefix)
     end
   end
 

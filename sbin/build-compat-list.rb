@@ -72,7 +72,6 @@ def update_compat_software?(index, query, info)
   add = my_data.es_add(index, _id, info.to_json) if data['took'] == 0
   data['hits']['hits'].each do |source|
     my_data.es_delete(index, source['_id']) unless source['_source']['install'] == 'pass'
-    my_data.es_delete(index, source['_id']) unless source['_source'].key?('bin')
     my_data.es_delete(index, source['_id']) if source['_source']['delete']
 
     if source['_id'] == _id
@@ -196,6 +195,7 @@ def refine_json(data)
       tmp_hash.delete('location')
       tmp_hash.delete('src_location')
       version = version.split(':')[-1]
+      softwareName = $1 if pkg.split(pkg_info['os'])[0] =~ /(.*)(-[^-]+){2}/
       category = libs_or_cmds(version, pkg_info)
       location = query_location(version, 'location', pkg_info)
       src_location = query_location(version, 'src_location', pkg_info)
@@ -203,7 +203,7 @@ def refine_json(data)
       next unless src_location.start_with?('https://api.compass-ci.openeuler.org:20018')
 
       tmp_hash['type'] = pkg_info['group']
-      tmp_hash['softwareName'] = pkg
+      tmp_hash['softwareName'] = softwareName
       tmp_hash['category'] = category
       tmp_hash['version'] = version
       tmp_hash['downloadLink'] = location
