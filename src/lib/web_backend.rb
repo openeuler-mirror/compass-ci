@@ -1181,6 +1181,8 @@ def query_latest_commit_id(params)
     es = ESQuery.new
     upstream_repo = params[:group_id][0, 1] + '/' + params[:group_id] + '/' + params[:group_id]
     query_result = es.multi_field_query({ 'upstream_repo' => upstream_repo }, desc_keyword: 'start_time')['hits']['hits']
+    return params if query_result.empty?
+
     upstream_commit = query_result[0]['_source']['upstream_commit']
     params[:group_id] = params[:group_id] + '-' + upstream_commit
   end
