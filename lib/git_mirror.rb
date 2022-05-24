@@ -411,10 +411,29 @@ class MirrorMain
     git_repo = "#{project[0].downcase}/#{project}/#{fork_name}"
     return git_repo if check_git_repo(git_repo, webhook_url)
 
+    if repo_load_fail?(git_repo)
+      return git_repo if check_git_repo(git_repo, webhook_url)
+    end
+
     git_repo = "#{project[0].downcase}/#{project}/#{project}"
     return git_repo if check_git_repo(git_repo, webhook_url)
 
+    if repo_load_fail?(git_repo)
+      return git_repo if check_git_repo(git_repo, webhook_url)
+    end
+
     puts "webhook: #{webhook_url} is not found!"
+  end
+
+  def repo_load_fail?(git_repo)
+    @upstreams['upstreams'].each do |repo|
+      file_path = "#{REPO_DIR}/#{repo['location']}/#{git_repo}"
+      if File.exist?(file_path)
+        load_repo_file(file_path, repo['location'])
+        return true
+      end
+    end
+    return false
   end
 
   def handle_webhook
@@ -567,6 +586,8 @@ class MirrorMain
   def handle_feedback_new_refs(git_repo, feedback_info)
     return reload_fork_info(git_repo) if upstream_repo?(git_repo)
 
+    return handle_community_sig(git_repo) if community?(git_repo)
+
     new_refs = check_new_refs(git_repo)
     return if new_refs[:heads].empty?
 
@@ -614,6 +635,38 @@ class MirrorMain
       return true if git_repo == repo['git_repo']
     end
     return false
+  end
+
+  def community?(git_repo)
+    return true if git_repo == "c/community/community"
+    return false
+  end
+
+  def handle_community_sig(git_repo)
+    change_files = get_change_files(git_repo)
+    change_files.each_line do |line|
+      next unless line =~ %r{^sig/(\S+)/src-openeuler/(\S+)yaml$}
+
+      add_openeuler_repo(line.chomp, git_repo)
+    end
+  end
+
+  def add_openeuler_repo(yaml_file, git_repo)
+    name = %x(git -C /srv/git/openeuler/#{git_repo}.git show HEAD:#{yaml_file}).lines[0].chomp.gsub('name: ','')
+    first_letter = name.downcase.chars.first
+    repo_path = "#{REPO_DIR}/openeuler/#{first_letter}/#{name}"
+
+    FileUtils.mkdir_p(repo_path, mode: 0o775)
+    File.open("#{repo_path}/#{name}", 'w') do |f|
+      f.write({ 'url' => Array("https://gitee.com/src-openeuler/#{name}") }.to_yaml)
+    end
+
+    %x(git -C #{REPO_DIR}/openeuler add #{first_letter}/#{name}/#{name})
+    %x(git -C #{REPO_DIR}/openeuler commit -m "add repo src-openeuler/#{name}")
+    %x(git -C #{REPO_DIR}/openeuler push)
+
+    load_repo_file("#{repo_path}/#{name}", "openeuler")
+    do_push("#{first_letter}/#{name}/#{name}")
   end
 
   def reload_defaults(file_list, belong)
