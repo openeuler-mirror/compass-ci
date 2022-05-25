@@ -508,11 +508,20 @@ class Job
     return common_dir
   end
 
-  def get_package_dir
-    if @hash["sysbench-mysql"]? || @hash["benchmark-sql"]?
-      return ",/initrd/build-pkg"
+  def get_upload_dirs_from_config
+    _upload_dirs = ""
+    upload_dirs_config = "#{ENV["CCI_SRC"]}/src/lib/upload_dirs_config.yaml"
+    yaml_any_hash = YAML.parse(File.read(upload_dirs_config)).as_h
+    yaml_any_hash.each do |k, v|
+      if @hash.has_key?(k)
+        _upload_dirs += ",#{v}"
+      end
     end
 
+    return _upload_dirs
+  end
+
+  def get_package_dir
     package_dir = ""
     common_dir = get_pkg_common_dir
     return package_dir unless common_dir
@@ -541,7 +550,7 @@ class Job
   end
 
   def set_upload_dirs
-    self["upload_dirs"] = "#{result_root}#{get_package_dir}"
+    self["upload_dirs"] = "#{result_root}#{get_package_dir}#{get_upload_dirs_from_config}"
   end
 
   private def set_result_service

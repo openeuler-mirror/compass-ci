@@ -1,0 +1,8 @@
+sysbench-mysql:
+        "/initrd/build-pkg/"
+benchmark-sql:
+        "/initrd/build-pkg/"
+hpc-build:
+        "/kunpeng/"
+gather-profile:
+        "/cci/profile/"
