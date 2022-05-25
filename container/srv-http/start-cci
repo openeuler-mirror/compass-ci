@@ -13,6 +13,7 @@ cmd=(
 	-e LISTEN_PORT=20011
 	-p 20011:20011
 	-v /srv/cci/libvirt-xml:/srv/cci/libvirt-xml:ro
+	-v /srv/cci/profile:/srv/cci/profile:ro
 	-v /etc/localtime:/etc/localtime:ro
 	$(mount_ssl)
 	-d
