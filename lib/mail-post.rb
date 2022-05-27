@@ -102,8 +102,8 @@ def send_mail(mail_info)
     end
   end
 
-  mail.deliver!
   check_to_store_email(mail)
+  mail.deliver!
 end
 
 def check_to_store_email(mail)
