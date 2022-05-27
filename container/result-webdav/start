@@ -26,6 +26,7 @@ cmd=(
 	-v /srv/tmp/rpm/:/srv/tmp/rpm/
 	-v /srv/cci/build-config/:/srv/cci/build-config/
 	-v /srv/cci/profile/data:/srv/cci/profile/data
+	-v /srv/kunpeng:/srv/kunpeng
 	result-webdav
 )
 
