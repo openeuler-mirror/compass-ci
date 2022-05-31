@@ -15,7 +15,7 @@ class Sched
     end
 
     case boot_type
-    when "ipxe", "libvirt"
+    when "ipxe", "libvirt", "native"
       mac = normalize_mac(value)
       host = @redis.hash_get("sched/mac2host", mac)
       host = handle_new_hw(mac) unless host
@@ -403,6 +403,14 @@ class Sched
     return response.to_json
   end
 
+  private def get_boot_native(job : Job)
+    response = Hash(String, String).new
+    response["job_id"] = job.id.to_s
+    response["initrds"] = job.get_common_initrds().to_json
+
+    return response.to_json
+  end
+
   private def get_boot_grub(job : Job)
     initrd_lkp_cgz = "lkp-#{job.os_arch}.cgz"
 
@@ -510,6 +518,8 @@ class Sched
       return job ? get_boot_ipxe(job) : boot_msg(boot_type, "No job now")
     when "grub"
       return job ? get_boot_grub(job) : boot_msg(boot_type, "No job now")
+    when "native"
+      return job ? get_boot_native(job) : {"job_id" => "0"}.to_json
     when "container"
       return job ? get_boot_container(job) : {"job_id" => "0"}.to_json
     when "libvirt"
