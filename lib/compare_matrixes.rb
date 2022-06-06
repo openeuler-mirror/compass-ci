@@ -500,7 +500,11 @@ def fill_extra_metric(groups)
       end
     end
   end
-  extra_values['System_Benchmarks_Index_Score'].each do |dim, _values|
+  extra_values['System_Benchmarks_Index_Score'].each do |dim, values|
+    unless values['unixbench-score'] && !values['unixbench-score'].empty?
+      extra_values['System_Benchmarks_Index_Score'].delete(dim)
+      next
+    end
     (0...extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'].size).each do |i|
       score = extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'][i]**(1.0 / groups.size)
       extra_values['System_Benchmarks_Index_Score'][dim]['unixbench-score'][i] = score
