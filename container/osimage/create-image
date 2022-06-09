@@ -4,7 +4,6 @@
 
 install_packages()
 {
-	yum repolist
 	yum -y install --skip-broken $(</tmp/packages-to-install)
 	yum clean all
 }
@@ -12,8 +11,19 @@ install_packages()
 setup_rootfs()
 {
 	ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+	rm -f /etc/machine-id /var/lib/dbus/machine-id
+	systemd-machine-id-setup
+	
+	echo "Disable selinux"
+	if [ -f /etc/selinux/config ]; then
+		sed -i -r 's/^.*SELINUX=enforcing.*$/SELINUX=disabled/g' "/etc/selinux/config"
+	else
+		cat > "/etc/selinux/config" <<-EOF
+		SELINUX=disabled
+		SELINUXTYPE=targeted
+		EOF
+	fi
 }
-
 
 setup_login() {
 	[ -n "$ROOT_PASSWD" ] || return
@@ -27,8 +37,8 @@ setup_login() {
 pack_cgz()
 {
 	echo "Packing package. Please wait."
-	find / ! -path "/tmp/${IMAGE_NAME}" | grep  -vf /tmp/files-to-exclude | cpio -o -Hnewc | gzip -9 > /tmp/${IMAGE_NAME}
-	chmod 644 /tmp/${IMAGE_NAME} 
+	find ./ ! -path "./tmp/${INITRD_NAME}" | grep -vf ./tmp/files-to-exclude | cpio -o -Hnewc | gzip -9 > ./tmp/${INITRD_NAME}
+	chmod 644 /tmp/${INITRD_NAME}
 }
 
 install_packages

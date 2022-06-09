@@ -1,0 +1,145 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+_main_=$(dirname $(realpath $0))
+
+usage()
+{
+	cat <<-'EOF'
+	Usage: ./docker-build-initrd.sh --os_name openeuler --os_version 22.03-LTS
+	Generate initrd of the specified docker_image.
+
+	Mandatory arguments to long options are mandatory for short options too.
+	  -n, --name            the name of generated initramfs.
+	      --arch            the arch of docker_image.
+	      --os_version      the version of openeuler.
+	      --root_passwd     specify the root password of initrd, the default password is "test".
+	  -h, --help            display this help and exit
+	  -d, --debug           show the DEBUG level log, default is INFO level.
+
+	DEMO:
+	./docker-build-initrd.sh --os_name openeuler --os_version 22.03-LTS --root_passwd 1234
+	EOF
+
+	exit 0
+}
+
+pre_params()
+{
+	DIR="$(pwd)"
+	OS_NAME="$(echo $DIR | awk -F "/" '{print $(NF - 2)}')"
+	ARCH="$(echo $DIR | awk -F "/" '{print $(NF - 1)}')"
+	OS_VERSION="$(echo $DIR | awk -F "/" '{print $NF}')"
+	docker_url="https://repo.openeuler.org/openEuler-${OS_VERSION}/docker_img/$ARCH/openEuler-docker.$ARCH.tar.xz"
+	docker_tar_file=${docker_url##*/}
+	INITRD_NAME="${OS_NAME}-${OS_VERSION}-$(date +"%Y%m%d").cgz"
+}
+
+check_params()
+{
+	DIR="$(pwd)"
+	while true
+	do
+		[ $# -eq 0 ] && [ "$_main_" != $DIR ] && pre_params && break
+		[ $# -eq 0 ] && [ "$_main_" == $DIR ] && break
+		log_debug "handle param: $1"
+		case "$1" in
+			-h|--help)
+				usage
+				exit 0;;
+			-d|--debug)
+				export LOG_LEVEL="DEBUG";;
+			--os_version)
+				export OS_VERSION="$2"
+				shift;;
+			--os_name)
+				export OS_NAME="$2"
+				shift;;
+			--arch)
+				[ "$2" == $(arch) ] && export ARCH="$2" || die "docker run exec format error"
+				shift;;
+			-n|--name)
+				export INITRD_NAME="$2"
+				shift;;
+			--root_passwd)
+				export ROOT_PASSWD="$2"
+				shift;;
+			*)
+				log_error "Unknown param: $1"
+				usage
+				exit 1;;
+		esac
+		shift
+	done
+
+	# check required params
+	[ -n "${OS_NAME}" ] || die "Missing param: --os_name"
+	[ -n "${OS_VERSION}" ] || die "Missing param: --os_version"
+	[ -n "${ARCH}" ] || ARCH=$(arch)
+	[ -n "${ROOT_PASSWD}" ] || ROOT_PASSWD="test"
+	[ -n "${INIRD_NAME}" ] || export INITRD_NAME="${OS_NAME}-${OS_VERSION}-$(date +"%Y%m%d").cgz"
+
+}
+
+set_config()
+{
+	ROOT_PASSWD=${ROOT_PASSWD}
+	[ "$OS_NAME" == "openeuler" ] && image=$(echo "openeuler-${OS_VERSION}" | tr [A-Z] [a-z])
+	[ "$OS_NAME" == "openeuler" ] || image="${OS_NAME}:${OS_VERSION}"
+}
+
+load_oe_docker_image()
+{
+	docker_url="https://repo.openeuler.org/openEuler-${OS_VERSION}/docker_img/$ARCH/openEuler-docker.$ARCH.tar.xz"
+	docker_tar_file="${OS_VERSION}-${docker_url##*/}"
+
+	[ -f "$HOME/$docker_tar_file" ] || wget -O "$HOME/$docker_tar_file" "$docker_url"
+
+	echo "start load docker image: $(ls $HOME/${docker_tar_file})"
+	docker load -i "$HOME/$docker_tar_file"
+
+	if [ $? -eq 0 ]; then
+		echo "finish downloading image"
+	else
+		echo "[ERROR] Pull docker image failed."
+		exit 1
+	fi
+}
+
+pull_docker_image()
+{
+	image="${OS_NAME}:${OS_VERSION}"
+	docker pull $image
+	if [ $? = 0 ]; then
+		echo "finish downloading image"
+	else
+		echo "[ERROR] Pull docker image failed."
+		exit 1
+	fi
+}
+
+run_docker()
+{
+	set_config
+	DIR=$(dirname $(realpath $0))
+
+	cmd=(
+		docker run
+		--name initramfs_${OS_NAME}_${OS_VERSION}_$(date +"%Y%m%d")
+		-v $DIR/create-image:/root/bin/create-image
+		-v $DIR/${OS_NAME}/packages-to-install:/tmp/packages-to-install
+		-v $DIR/${OS_NAME}/files-to-exclude:/tmp/files-to-exclude
+		-e ROOT_PASSWD=$ROOT_PASSWD
+		-e INITRD_NAME=$INITRD_NAME
+		$image
+		/root/bin/create-image
+	)
+	"${cmd[@]}"
+}
+
+cp_image_to_host()
+{
+	docker cp -a initramfs_${OS_NAME}_${OS_VERSION}_$(date +"%Y%m%d"):/tmp/${INITRD_NAME} $HOME/
+	echo "result: $(ls $HOME/${INITRD_NAME})"
+}
