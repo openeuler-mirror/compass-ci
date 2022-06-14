@@ -68,7 +68,7 @@
 
     function getdata() {
         var ajax = new XMLHttpRequest();
-        ajax.open("get", "/git_mirror_health");
+        ajax.open("get", "/web_backend/git_mirror_health");
         ajax.send();
         ajax.onreadystatechange = function () {
             if (ajax.readyState == 4 && ajax.status == 200) {
