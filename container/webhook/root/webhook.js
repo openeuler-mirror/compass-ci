@@ -9,7 +9,17 @@ handler.on('error', function(err){
 
 handler.on('push', function(event){
 	console.log(event.payload.repository.url)
-	spawn('ruby', ['/js/push_hook.rb', event.payload.repository.url])
+	if(event.payload.repository.url.startsWith("https://gitee.com/src-oepkgs")){
+		var msg = {
+			"commit_id" : event.payload.after,
+			"url" : event.payload.repository.url,
+			"branch" : event.payload.ref.split('/')[-1]
+		}
+		console.log(msg)
+		spawn('ruby', ['/js/src_oepkgs_push_hook.rb', JSON.stringify(msg)])
+	} else {
+		spawn('ruby', ['/js/push_hook.rb', event.payload.repository.url])
+	}
 })
 
 handler.on('Merge Request Hook', function(event){

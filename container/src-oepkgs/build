@@ -1,0 +1,6 @@
+#!/bin/sh
+
+. ../defconfig.sh
+docker_skip_rebuild "alpine:src-oepkgs-management"
+
+docker build -t alpine:src-oepkgs-management .
