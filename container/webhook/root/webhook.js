@@ -13,7 +13,7 @@ handler.on('push', function(event){
 		var msg = {
 			"commit_id" : event.payload.after,
 			"url" : event.payload.repository.url,
-			"branch" : event.payload.ref.split('/')[-1]
+			"branch" : event.payload.ref.split('/')[event.payload.ref.split('/').length - 1]
 		}
 		console.log(msg)
 		spawn('ruby', ['/js/src_oepkgs_push_hook.rb', JSON.stringify(msg)])
