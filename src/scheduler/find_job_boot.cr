@@ -27,6 +27,7 @@ class Sched
     end
 
     @env.set "testbox", host
+
     response = get_job_boot(host, boot_type)
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     @env.set "job_id", job_id
@@ -114,10 +115,12 @@ class Sched
     return default_queues.uniq
   end
 
-  def get_job_from_queues(queues, testbox)
+  def get_job_from_queues(queues, testbox, pre_job=nil)
     job = nil
-    etcd_job = consume_job(queues, testbox)
-    return nil unless etcd_job
+    state = nil
+
+    etcd_job, state = consume_job(queues, testbox, pre_job)
+    return nil, state unless etcd_job
 
     job_id = etcd_job.key.split("/")[-1]
     if job_id
@@ -141,7 +144,7 @@ class Sched
       set_id2job(job)
     end
 
-    return job
+    return job, state
   end
 
   def update_kernel_params(job)
@@ -150,23 +153,23 @@ class Sched
     job.set_crashkernel(get_crashkernel(host_info))
   end
 
-  def consume_job(queues, testbox)
-    job, revision = consume_by_list(queues)
-    return job if job
+  def consume_job(queues, testbox, pre_job=nil)
+    job, revision, state = consume_by_list(queues, pre_job)
+    return job, state if job || state
 
     spawn auto_submit_idle_job(testbox)
 
     if @env.get?("ws")
-      return if ["timeout", "close"].includes?(@env.get?("ws_state"))
+      return nil, nil if ["timeout", "close"].includes?(@env.get?("ws_state"))
 
       interact_with_client("release_memory") if @env.get?("client_memory") == "request"
 
-      return if ["timeout", "close"].includes?(@env.get?("ws_state"))
+      return nil, nil if ["timeout", "close"].includes?(@env.get?("ws_state"))
 
       @env.set "client_memory", "release"
     end
 
-    consume_by_watch(queues, revision)
+    consume_by_watch(queues, revision, pre_job)
   end
 
   def interact_with_client(type)
@@ -184,28 +187,61 @@ class Sched
     return
   end
 
-  def consume_by_list(queues)
+  def consume_by_list(queues, pre_job=nil)
+    state = nil
     loop do
       jobs, revision = get_history_jobs(queues)
       email_jobs = split_jobs_by_email(jobs)
-      return nil, revision if email_jobs.empty?
+      return nil, revision, state if email_jobs.empty?
 
       # connection mode is websocket
       # the client has not been instructed to apply for memory
       if @env.get?("ws") && @env.get?("client_memory") != "request"
         res = interact_with_client("request_memory")
-        return nil, revision unless res
+        return nil, revision, state unless res
 
         @env.set "client_memory", "request"
       end
 
       loop do
         job = pop_job_by_priority(email_jobs)
-        return nil, revision unless job
+        return nil, revision, state unless job
 
-        return job, revision if ready2process(job)
+        unless match_no_reboot?(job, pre_job)
+          state = "job mismatch"
+          next
+        end
+
+        return job, revision, nil if ready2process(job)
       end
     end
+  end
+
+  # If you do not restart the system to consume the next job,
+  # check whether the system of the job to be consumed is consistent with that of the previous job
+  def match_no_reboot?(etcd_job, pre_job)
+    return true unless pre_job
+
+    job_id = etcd_job.key.split("/")[-1]
+    job = @es.get_job(job_id.to_s)
+
+    determine_parameters = [
+      "os",
+      "os_version",
+      "os_aarch",
+      "os_mount",
+      "kernel_uri",
+      "modules_uri",
+      "do_not_reboot"
+    ]
+
+    return false unless job
+
+    determine_parameters.each do |k|
+      return false unless job[k] == pre_job[k]
+    end
+
+    return true
   end
 
   def split_jobs_by_email(jobs)
@@ -253,7 +289,7 @@ class Sched
     return jobs, revisions.min
   end
 
-  def consume_by_watch(queues, revision)
+  def consume_by_watch(queues, revision, pre_job)
     ready_queues = split_ready_queues(queues)
 
     close_consume()
@@ -268,7 +304,7 @@ class Sched
     end
 
     watchers = start_watcher(ech)
-    loop_handle_event(ech)
+    loop_handle_event(ech, pre_job)
   end
 
   def close_consume()
@@ -301,22 +337,23 @@ class Sched
     end
   end
 
-  def loop_handle_event(ech)
+  def loop_handle_event(ech, pre_job)
     @env.set "watch_state", "watching"
     while true
       events = @env.watch_channel.receive
-      return if events.is_a?(String)
+      return nil, nil if events.is_a?(String)
 
       if @env.get?("ws")
-        return unless interact_with_client("request_memory")
+        return nil, nil unless interact_with_client("request_memory")
       end
 
       events.each do |event|
-        return event.kv if ready2process(event.kv)
+        return nil, "job mismatch" if pre_job && !match_no_reboot?(event.kv, pre_job)
+        return event.kv, nil if ready2process(event.kv)
       end
 
       if @env.get?("ws")
-        return unless interact_with_client("release_memory")
+        return nil, nil unless interact_with_client("release_memory")
       end
     end
   ensure
@@ -355,7 +392,7 @@ class Sched
     return res
   end
 
-  def get_job_boot(host, boot_type)
+  def get_job_boot(host, boot_type, pre_job=nil)
     queues = get_queues(host)
 
     raise "Queues are not registered for this testbox: #{host}" if queues.empty?
@@ -367,8 +404,10 @@ class Sched
     @env.set "state", "requesting"
     send_mq_msg
 
-    job = get_job_from_queues(queues, host)
+    job, state  = get_job_from_queues(queues, host, pre_job)
     update_testbox_and_job(job, host, queues) if job
+
+    return boot_msg(boot_type, state) if state
 
     if job
       job["last_success_stage"] = "boot"

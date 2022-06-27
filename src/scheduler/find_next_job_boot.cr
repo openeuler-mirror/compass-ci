@@ -9,11 +9,15 @@ class Sched
       hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
     end
 
-    response = get_job_boot(hostname, "ipxe")
+    pre_job_id = @env.params.query["pre_job_id"]?
+    pre_job = @es.get_job(pre_job_id.to_s)
+
+    @env.set "testbox", hostname
+
+    response = get_job_boot(hostname, "ipxe", pre_job)
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
 
     @env.set "job_id", job_id
-    @env.set "job_state", "boot"
 
     response
   rescue e
@@ -22,5 +26,7 @@ class Sched
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
+  ensure
+    send_mq_msg
   end
 end
