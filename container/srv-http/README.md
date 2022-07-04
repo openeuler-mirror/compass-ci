@@ -20,6 +20,10 @@
 						nginx
 						/usr/sbin/php-fpm7
 
+	由于h5ai组件会使访问时产生更多的请求（约20倍），为减轻代理服务器(api.compass-ci.openeuler.org)压力，已移除h5ai对应功能。
+	如仍要使用，可将代码回退到如下版本，再部署
+		git reset --hard 2456074d824a875fde7a5d4ea678ffcf842fa0f8
+
    2. 容器启动
       - 容器有如下启动脚本：
         start start-cci  start-git  start-initrd  start-os  start-pub  start-result  start-rpm
@@ -49,6 +53,25 @@
       ./start
       ```
 
+   3. https 启动
+      文件服务器对互联网用户提供服务，安全起见，文件服务器支持https访问。需要主机ip申请ssl证书, 并放置到如下位置
+          `/etc/ssl/certs/web-backend.key`
+          `/etc/ssl/certs/web-backend.crt`
+
+      容器启动：
+	```
+	有ssl证书文件
+		|
+		v
+	./docker_run.sh: -v /etc/ssl/certs:/opt/cert
+		|
+		v
+	./root/sbin/entrypoint.sh:
+	   设置nginx.conf:
+	       listen $port ssl
+	       https 启动设置
+	   启动nginx
+	```
 
 ## 访问示例
    ```
