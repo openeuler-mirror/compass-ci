@@ -8,6 +8,7 @@ require "./mail_worker"
 module PostExtract
   @@ec = EtcdClient.new
   @@POST_EXTRACT_QUEUE_PATH = "post-extract"
+  @@RANGE_SIZE = 100
 
   def self.consume_tasks
     channel = Channel(String).new
@@ -16,10 +17,14 @@ module PostExtract
   end
 
   def self.consume_by_list(queue, channel)
-    tasks, revision = self.get_history_tasks(queue)
-    self.handle_history_tasks(tasks, channel)
+    loop do
+      tasks, revision = self.get_history_tasks(queue)
 
-    return revision
+      return revision if tasks.empty?
+
+      self.handle_history_tasks(tasks, channel)
+      sleep(10)
+    end
   end
 
   def self.consume_by_watch(queue, revision, channel)
@@ -29,7 +34,7 @@ module PostExtract
 
   def self.get_history_tasks(queue)
     tasks = [] of Etcd::Model::Kv
-    range = @@ec.range_prefix(queue)
+    range = @@ec.range_prefix(queue, @@RANGE_SIZE)
     revision = range.header.not_nil!.revision
     tasks += range.kvs
 
