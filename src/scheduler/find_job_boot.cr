@@ -592,6 +592,9 @@ class Sched
   end
 
   private def auto_submit_idle_job(testbox)
+    ret = @etcd.range_prefix("sched/ready/#{testbox}/idle", 1)
+    return unless ret.kvs.empty?
+
     full_path_patterns = "#{CCI_REPOS}/#{LAB_REPO}/allot/idle/#{testbox}/*.yaml"
     fields = ["testbox=#{testbox}", "subqueue=idle", "--no-pack"]
 
