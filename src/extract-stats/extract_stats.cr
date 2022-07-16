@@ -9,6 +9,7 @@ require "../scheduler/elasticsearch_client"
 
 module ExtractStats
   @@ec = EtcdClient.new
+  @@RANGE_SIZE = 100
 
   def self.consume_tasks
     channel = Channel(String).new
@@ -20,10 +21,13 @@ module ExtractStats
   end
 
   def self.consume_by_list(queue, channel, commit_channel)
-    tasks, revision = self.get_history_tasks(queue)
-    self.handle_history_tasks(tasks, channel, commit_channel)
+    loop do
+      tasks, revision = self.get_history_tasks(queue)
+      return revision if tasks.empty?
 
-    return revision
+      self.handle_history_tasks(tasks, channel, commit_channel)
+      sleep(10)
+    end
   end
 
   def self.consume_by_watch(queue, revision, channel, commit_channel)
@@ -33,7 +37,7 @@ module ExtractStats
 
   def self.get_history_tasks(queue)
     tasks = [] of Etcd::Model::Kv
-    range = @@ec.range_prefix(queue)
+    range = @@ec.range_prefix(queue, @@RANGE_SIZE)
     revision = range.header.not_nil!.revision
     tasks += range.kvs
 

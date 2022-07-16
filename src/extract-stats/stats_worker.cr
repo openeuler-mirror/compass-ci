@@ -35,7 +35,7 @@ class StatsWorker
       @etcd.put(target_queue_path,job_id)
       @etcd.delete(queue_path)
     rescue e
-      channel.send(queue_path)
+      # channel.send(queue_path)
       @log.error(e.message)
       # incase of many error message when ETCD, ES does not work
       sleep(10)
