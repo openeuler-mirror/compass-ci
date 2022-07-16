@@ -29,53 +29,57 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 #
 # HandleRepo used to handle the mq queue "update_repo"
 #
-# Example items in @mq.queue "update_repo": { "upload_rpms" => ["/srv/rpm/upload/**/Packages/*.rpm", "/srv/rpm/upload/**/source/*.rpm"]}
+# Example items in @update_repo_mq.queue "update_repo": { "upload_rpms" => ["/srv/rpm/upload/**/Packages/*.rpm", "/srv/rpm/upload/**/source/*.rpm"]}
 # handle_new_rpm
 #    move /srv/rpm/upload/**/*.rpm to /srv/rpm/testing/**/*.rpm
 #    update /srv/rpm/testing/**/repodate
 # update_pub_dir
 #    copy /srv/rpm/testing/**/*.rpm to /srv/rpm/pub/**/*.rpm
 #    change /srv/rpm/pub/**/repodate
-# @mq.ack(info)
+# @update_repo_mq.ack(info)
 class HandleRepo
   @@upload_dir_prefix = '/srv/rpm/upload/'
   def initialize
     @es = ESQuery.new(ES_HOSTS)
-    @mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
+    @update_repo_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
+    @create_repodata_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
+    @createrepodata_complete_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
     @log = JSONLogger.new
   end
 
   @@upload_flag = true
   @@create_repo_path = Set.new
   def handle_new_rpm
-    queue = @mq.queue('update_repo')
-    createrepodata_queue = @mq.queue('createrepodata')
-    queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
-      loop do
-        next unless @@upload_flag
+    update_repo_queue = @update_repo_mq.queue('update_repo')
+    createrepodata_queue = @create_repodata_mq.queue('createrepodata')
+    Thread.new do
+      update_repo_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
+        loop do
+          next unless @@upload_flag
 
-        begin
-          rpm_info = JSON.parse(msg)
-          check_upload_rpms(rpm_info)
-          createrepodata_queue.publish(msg)
+          begin
+            rpm_info = JSON.parse(msg)
+            check_upload_rpms(rpm_info)
+            createrepodata_queue.publish(msg)
 
-          rpm_info['upload_rpms'].each do |rpm|
-            rpm_path = File.dirname(rpm).sub('upload', 'testing')
-            FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
-            @@create_repo_path << rpm_path
+            rpm_info['upload_rpms'].each do |rpm|
+              rpm_path = File.dirname(rpm).sub('upload', 'testing')
+              FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
+              @@create_repo_path << rpm_path
 
-            dest = File.join(rpm_path.to_s, File.basename(rpm))
-            FileUtils.mv(rpm, dest)
+              dest = File.join(rpm_path.to_s, File.basename(rpm))
+              FileUtils.mv(rpm, dest)
+            end
+
+            @update_repo_mq.ack(info)
+            break
+          rescue StandardError => e
+            @log.warn({
+              "handle_new_rpm error message": e.message
+            }.to_json)
+            @update_repo_mq.ack(info)
+            break
           end
-
-          @mq.ack(info)
-          break
-        rescue StandardError => e
-          @log.warn({
-            "handle_new_rpm error message": e.message
-          }.to_json)
-          @mq.ack(info)
-          break
         end
       end
     end
@@ -158,11 +162,11 @@ class HandleRepo
   end
 
   def create_repo
-    createrepodata_queue = @mq.queue('createrepodata')
-    createrepodata_complete_queue = @mq.queue('createrepodata_complete')
+    createrepodata_queue = @create_repodata_mq.queue('createrepodata')
+    createrepodata_complete_queue = @createrepodata_complete_mq.queue('createrepodata_complete')
     Thread.new do
       loop do
-        sleep 20
+        sleep 80
         next if @@create_repo_path.empty?
 
         @@upload_flag = false
@@ -172,20 +176,19 @@ class HandleRepo
           system("createrepo --update $(dirname #{path})")
         end
 
-        q = createrepodata_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
+        createrepodata_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
           begin
             createrepodata_complete_queue.publish(msg)
-            @mq.ack(info)
+            @create_repodata_mq.ack(info)
           rescue StandardError => e
             @log.warn({
               "create_repo error message": e.message
             }.to_json)
-            @mq.ack(info)
+            @create_repodata_mq.ack(info)
           end
         end
 
         sleep 1
-        q.cancel
         @@create_repo_path.clear
         @@upload_flag = true
       end
@@ -217,36 +220,41 @@ class HandleRepo
   end
 
   def submit_install_rpm
-    queue = @mq.queue('createrepodata_complete')
-    queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
-      begin
-        group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
-        rpm_info = JSON.parse(msg)
-        job_id = rpm_info['job_id']
+    createrepodata_complete_queue = @createrepodata_complete_mq.queue('createrepodata_complete')
+    Thread.new do
+      loop do
+        q = createrepodata_complete_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
+          begin
+            group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
+            rpm_info = JSON.parse(msg)
+            job_id = rpm_info['job_id']
 
-        rpm_names = []
-        real_argvs = []
-        rpm_info['upload_rpms'].each do |rpm|
-          submit_argv, submit_arch = parse_arg(rpm, job_id)
-          next if submit_arch == 'source'
+            rpm_names = []
+            real_argvs = []
+            rpm_info['upload_rpms'].each do |rpm|
+              submit_argv, submit_arch = parse_arg(rpm, job_id)
+              next if submit_arch == 'source'
 
-          # zziplib-0.13.62-12.aarch64.rpm => zziplib-0.13.62-12.aarch64
-          # zziplib-help.rpm
-          # zziplib-doc.rpm
-          rpm_name = File.basename(rpm).delete_suffix('.rpm')
-          rpm_names << rpm_name
-          real_argvs = Array.new(submit_argv)
+              # zziplib-0.13.62-12.aarch64.rpm => zziplib-0.13.62-12.aarch64
+              # zziplib-help.rpm
+              # zziplib-doc.rpm
+              rpm_name = File.basename(rpm).delete_suffix('.rpm')
+              rpm_names << rpm_name
+              real_argvs = Array.new(submit_argv)
+            end
+            rpm_names = rpm_names.join(',')
+            real_argvs.push("rpm_name=#{rpm_names}")
+            real_argvs.push("group_id=#{group_id}")
+            system(real_argvs.join(' '))
+            @createrepodata_complete_mq.ack(info)
+          rescue StandardError => e
+            @log.warn({
+              "submit_install_rpm error message": e.message
+            }.to_json)
+            @createrepodata_complete_mq.ack(info)
+          end
         end
-        rpm_names = rpm_names.join(',')
-        real_argvs.push("rpm_name=#{rpm_names}")
-        real_argvs.push("group_id=#{group_id}")
-        system(real_argvs.join(' '))
-        @mq.ack(info)
-      rescue StandardError => e
-        @log.warn({
-          "submit_install_rpm error message": e.message
-        }.to_json)
-        @mq.ack(info)
+        q.cancel
       end
     end
   end
@@ -255,14 +263,12 @@ end
 include Clockwork
 
 do_local_pack
+config_yaml('auto-submit')
 hr = HandleRepo.new
 
-Thread.new do
-  config_yaml('auto-submit')
-  hr.create_repo
-  hr.submit_install_rpm
-  hr.handle_new_rpm
-end
+hr.create_repo
+hr.handle_new_rpm
+hr.submit_install_rpm
 
 Thread.new do
   handler do |job|
