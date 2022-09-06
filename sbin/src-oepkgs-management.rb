@@ -38,30 +38,61 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 # @mq.ack(info)
 class SrcOepkgs
   def initialize
-    @mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
+    @pr_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
+    @push_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
     @log = JSONLogger.new
   end
 
+  def handle_src_oepkgs_pr_hook
+    pr_queue = @pr_mq.queue('src_oepkgs_pr_hook')
+    Thread.new do
+      pr_queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
+        loop do
+          begin
+            src_oepkgs_pr_hook_info = JSON.parse(msg)
+            check_pr_hook_info(src_oepkgs_pr_hook_info)
+            submit_pr_rpmbuild_job(src_oepkgs_pr_hook_info)
+
+            @pr_mq.ack(info)
+            break
+          rescue StandardError => e
+            @log.warn({
+              "handle_src_oepkgs_pr_hook error message": e.message
+            }.to_json)
+            @pr_mq.ack(info)
+            break
+          end
+        end
+      end
+    end
+  end
+
   def handle_src_oepkgs_web_hook
-    queue = @mq.queue('src_oepkgs_web_hook')
-    queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
+    push_queue = @push_mq.queue('src_oepkgs_web_hook')
+    push_queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
       loop do
         begin
           src_oepkgs_webhook_info = JSON.parse(msg)
           check_webhook_info(src_oepkgs_webhook_info)
           submit_rpmbuild_job(src_oepkgs_webhook_info)
 
-          @mq.ack(info)
+          @push_mq.ack(info)
           break
         rescue StandardError => e
           @log.warn({
             "handle_src_oepkgs_web_hook error message": e.message
           }.to_json)
-          @mq.ack(info)
+          @push_mq.ack(info)
           break
         end
       end
     end
+  end
+
+  def check_pr_hook_info(data)
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no commit_id params' }) unless data.key?('new_refs')
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no upstream repo url params' }) unless data.key?('url')
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no upstream branch params' }) unless data.key?('submit_command')
   end
 
   def check_webhook_info(data)
@@ -93,23 +124,54 @@ class SrcOepkgs
     return sig_name
   end
 
-  def parse_arg(src_oepkgs_webhook_info)
+  def parse_push_arg(src_oepkgs_webhook_info)
     upstream_commit = src_oepkgs_webhook_info['commit_id']
     upstream_repo = src_oepkgs_webhook_info['url']
     upstream_branch = src_oepkgs_webhook_info['branch']
-    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit"]
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit", "-i", "/c/lkp-tests/jobs/secrets_info.yaml"]
 
-    fixed_arg = YAML.load_file('/etc/submit_arg.yaml')
-
-    submit_argv.push((fixed_arg['yaml']).to_s)
     submit_argv.push("upstream_repo=#{upstream_repo}")
     submit_argv.push("upstream_commit=#{upstream_commit}")
 
     return submit_argv, upstream_repo, upstream_branch
   end
 
+  def parse_pr_arg(src_oepkgs_pr_hook_info)
+    pr_num = src_oepkgs_pr_hook_info['submit_command']['pr_merge_reference_name'].split('/')[2]
+    upstream_repo = src_oepkgs_pr_hook_info['url']
+    upstream_branch = src_oepkgs_pr_hook_info['branch']
+    upstream_commit = src_oepkgs_pr_hook_info['new_refs']['heads']['master']
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit", "-i", "/c/lkp-tests/jobs/secrets_info.yaml"]
+
+    src_oepkgs_pr_hook_info['submit_command'].each do |k, v|
+      submit_argv.push("#{k}=#{v}")
+    end
+    submit_argv.push("pr_num=#{pr_num}")
+    submit_argv.push("upstream_repo=#{upstream_repo}")
+    submit_argv.push("upstream_commit=#{upstream_commit}")
+
+    return submit_argv, upstream_branch
+  end
+
+  def submit_pr_rpmbuild_job(src_oepkgs_pr_hook_info)
+    submit_argv, upstream_branch = parse_pr_arg(src_oepkgs_pr_hook_info)
+    real_argvs = Array.new(submit_argv)
+
+    os_version = parse_os_version(upstream_branch)
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no os_version' }) unless os_version
+
+    if os_version == "22.03-LTS"
+      real_argvs.push("rpmbuild-vm.yaml os=openeuler os_version=#{os_version} testbox=vm-2p8g")
+    else
+      real_argvs.push("rpmbuild.yaml docker_image=openeuler:#{os_version} testbox=dc-16g")
+    end
+    Process.fork do
+      system(real_argvs.join(' '))
+    end
+  end
+
   def submit_rpmbuild_job(src_oepkgs_webhook_info)
-    submit_argv, upstream_repo, upstream_branch = parse_arg(src_oepkgs_webhook_info)
+    submit_argv, upstream_repo, upstream_branch = parse_push_arg(src_oepkgs_webhook_info)
 
     real_argvs = Array.new(submit_argv)
 
@@ -121,8 +183,15 @@ class SrcOepkgs
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no os_version' }) unless os_version
 
     real_argvs.push("custom_repo_name=contrib/#{sig_name}")
-    real_argvs.push("docker_image=openeuler:#{os_version} testbox=dc-16g")
-    system(real_argvs.join(' '))
+    if os_version == "22.03-LTS"
+      real_argvs.push("rpmbuild-vm.yaml os=openeuler os_version=#{os_version} testbox=vm-2p8g")
+    else
+      real_argvs.push("rpmbuild.yaml docker_image=openeuler:#{os_version} testbox=dc-16g")
+    end
+
+    Process.fork do
+      system(real_argvs.join(' '))
+    end
   end
 end
 
@@ -130,4 +199,5 @@ do_local_pack
 so = SrcOepkgs.new
 
 config_yaml('auto-submit')
+so.handle_src_oepkgs_pr_hook
 so.handle_src_oepkgs_web_hook

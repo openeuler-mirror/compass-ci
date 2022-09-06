@@ -9,7 +9,7 @@ handler.on('error', function(err){
 
 handler.on('push', function(event){
 	console.log(event.payload.repository.url)
-	if(event.payload.repository.url.startsWith("https://gitee.com/src-oepkgs")){
+	if(event.payload.repository.url.startsWith("https://gitee.com/src-oepkgs/")){
 		var msg = {
 			"commit_id" : event.payload.after,
 			"url" : event.payload.repository.url,
@@ -23,7 +23,10 @@ handler.on('push', function(event){
 })
 
 handler.on('Merge Request Hook', function(event){
-	if(event.payload.action != "open"){
+	if(event.payload.action != "open" && event.payload.action != "update"){
+		return
+	}
+	if(event.payload.action == "update" && event.payload.action_desc != "source_branch_changed"){
 		return
 	}
 	var msg = {
@@ -32,13 +35,19 @@ handler.on('Merge Request Hook', function(event){
 				"master" : event.payload.pull_request.head.sha
 			}
 		},
+		"branch" : event.payload.target_branch,
 		"url" : event.payload.pull_request.base.repo.url,
 		"submit_command" : {
 			"pr_merge_reference_name" : event.payload.pull_request.merge_reference_name
 		}
 	}
 	console.log(msg)
-	spawn('ruby', ['/js/pr_hook.rb', JSON.stringify(msg)])
+
+	if(event.payload.pull_request.base.repo.url.startsWith("https://gitee.com/src-oepkgs/")){
+		spawn('ruby', ['/js/src_oepkgs_pr_hook.rb', JSON.stringify(msg)])
+	} else {
+		spawn('ruby', ['/js/pr_hook.rb', JSON.stringify(msg)])
+	}
 })
 
 http.createServer(function(req, res){
