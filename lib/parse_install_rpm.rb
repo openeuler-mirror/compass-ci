@@ -16,8 +16,10 @@ def get_install_rpm_result_by_group_id(group_id)
     next unless job['_source']['stats']
 
     tmp_hash = {}
-    tmp_hash['rpm_name'] = job['_source']['rpm_name']
-    key = job['_source']['rpm_name']
+
+    repo = "#{job['_source']['mount_repo_addr'].split('/')[6]}"
+    tmp_hash['rpm_name'] = "#{job['_source']['rpm_name']},#{repo}"
+    key = "#{job['_source']['rpm_name']},#{repo}"
     tmp_hash[key] = {}
     srv_http_result_host = job['SRV_HTTP_RESULT_HOST'] || 'api.compass-ci.openeuler.org'
     srv_http_protocol = job['SRV_HTTP_PROTOCOL'] || 'https'
@@ -26,6 +28,8 @@ def get_install_rpm_result_by_group_id(group_id)
     tmp_hash[key]['arch'] = job['_source']['arch']
     tmp_hash[key]['property'] = job['_source']['property'] || 'Open Source'
     tmp_hash[key]['os'] = "#{job['_source']['os']} #{job['_source']['os_version']}"
+    tmp_hash[key]['repo'] = repo
+    tmp_hash[key]['rpm_name'] = key
     job['_source']['stats'].merge!(tmp_hash)
   end
 
@@ -34,14 +38,21 @@ end
 
 def parse_rpm_name(tmp_hash, result)
   rpm_name = result['rpm_name']
+  repo = result[rpm_name]['repo']
   rpm_name_list = rpm_name.gsub(',', ' ').split(' ')
+
   rpm_name_list.each do |rpm_name|
-    tmp_hash[rpm_name] = {} unless tmp_hash.key?(rpm_name)
-    tmp_hash[rpm_name].merge!(result[result['rpm_name']])
     if rpm_name =~ /(.*)(-[^-]+){2}/
-      key = "#{rpm_name}.#{tmp_hash[rpm_name]['os']}.#{tmp_hash[rpm_name]['arch']}"
-      tmp_hash[key] = tmp_hash[rpm_name]
-      tmp_hash.delete(rpm_name)
+      tmp_hash["#{rpm_name}.#{repo}"] = {} unless tmp_hash.key?("#{rpm_name}.#{repo}")
+      tmp_hash["#{rpm_name}.#{repo}"].merge!(result[result['rpm_name']])
+      key = "#{rpm_name}.#{tmp_hash["#{rpm_name}.#{repo}"]['os']}.#{tmp_hash["#{rpm_name}.#{repo}"]['arch']}.#{repo}"
+      if tmp_hash.key?(rpm_name)
+        tmp_hash["#{rpm_name}.#{repo}"].merge!(tmp_hash[rpm_name])
+        tmp_hash.delete(rpm_name)
+      end
+
+      tmp_hash[key] = tmp_hash["#{rpm_name}.#{repo}"]
+      tmp_hash.delete("#{rpm_name}.#{repo}")
     end
   end
   tmp_hash
@@ -96,6 +107,7 @@ def parse_install_rpm_result_to_json(result_list)
       when /^install-rpm\.(.*)_location\.element/
         tmp_hash[$1] = {} unless tmp_hash.key?($1)
         tmp_hash[$1].merge!({ 'location' => v })
+        tmp_hash[$1].merge!({ 'repo' => v[0].split('/')[6] })
       when /install-rpm\.(.*)_evr.element/
         tmp_hash[$1] = {} unless tmp_hash.key?($1)
         tmp_hash[$1].merge!({ 'evr' => v })

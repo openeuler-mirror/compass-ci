@@ -32,10 +32,10 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 # Example items in @update_repo_mq.queue "update_repo": { "upload_rpms" => ["/srv/rpm/upload/**/Packages/*.rpm", "/srv/rpm/upload/**/source/*.rpm"]}
 # handle_new_rpm
 #    move /srv/rpm/upload/**/*.rpm to /srv/rpm/testing/**/*.rpm
-#    update /srv/rpm/testing/**/repodate
+#    update /srv/rpm/testing/**/repodata
 # update_pub_dir
 #    copy /srv/rpm/testing/**/*.rpm to /srv/rpm/pub/**/*.rpm
-#    change /srv/rpm/pub/**/repodate
+#    change /srv/rpm/pub/**/repodata
 # @update_repo_mq.ack(info)
 class HandleRepo
   @@upload_dir_prefix = '/srv/rpm/upload/'
@@ -49,28 +49,44 @@ class HandleRepo
 
   @@upload_flag = true
   @@create_repo_path = Set.new
+  @@create_repodata = true
   def handle_new_rpm
     update_repo_queue = @update_repo_mq.queue('update_repo')
     createrepodata_queue = @create_repodata_mq.queue('createrepodata')
     Thread.new do
-      update_repo_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
+      update_repo_queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
         loop do
           next unless @@upload_flag
 
           begin
             rpm_info = JSON.parse(msg)
             check_upload_rpms(rpm_info)
-            createrepodata_queue.publish(msg)
 
             rpm_info['upload_rpms'].each do |rpm|
               rpm_path = File.dirname(rpm).sub('upload', 'testing')
-              FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
-              @@create_repo_path << rpm_path
-
               dest = File.join(rpm_path.to_s, File.basename(rpm))
-              FileUtils.mv(rpm, dest)
+              extras_rpm_path = create_extras_path(rpm)
+
+              unless check_if_extras(rpm)
+                FileUtils.mkdir_p(rpm_path) unless File.directory?(rpm_path)
+                @@create_repo_path << rpm_path
+                FileUtils.mv(rpm, dest)
+              end
+
+              FileUtils.mkdir_p(extras_rpm_path) unless File.directory?(extras_rpm_path)
+              @@create_repo_path << File.dirname(extras_rpm_path)
+
+              extras_dest = File.join(extras_rpm_path.to_s, File.basename(rpm))
+              unless check_if_extras(rpm)
+                next if File.exist?(extras_dest)
+                File.link(dest, extras_dest)
+              else
+                FileUtils.mv(rpm, extras_dest)
+              end
             end
 
+            @@create_repodata = false
+            createrepodata_queue.publish(msg)
             @update_repo_mq.ack(info)
             break
           rescue StandardError => e
@@ -83,6 +99,30 @@ class HandleRepo
         end
       end
     end
+  end
+
+  def check_if_extras(rpm)
+    rpm_list = rpm.split('/')
+    if rpm.split('/')[5] == "refreshing" && rpm.split('/')[6] == "extras"
+      return true
+    elsif rpm.split('/')[5] == "extras"
+      return true
+    else
+      return false
+    end
+  end
+
+  def create_extras_path(rpm)
+    rpm_path = File.dirname(rpm).sub('upload', 'testing')
+    extras_rpm_path = ""
+    if rpm.split('/')[5] == "refreshing"
+      extras_rpm_path_prefix = rpm_path.split('/')[0..4].join('/') + "/refreshing/extras/"
+    else
+      extras_rpm_path_prefix = rpm_path.split('/')[0..4].join('/') + "/extras/"
+    end
+
+    extras_rpm_path_suffix = rpm_path.split('/')[-2..-1].join('/') + "/" + "#{File.basename(rpm)[0].downcase}"
+    extras_rpm_path = extras_rpm_path_prefix + extras_rpm_path_suffix
   end
 
   def get_results_by_group_id(group_id)
@@ -118,10 +158,21 @@ class HandleRepo
       next unless pkg_info['install'] == 'pass'
       next unless pkg_info['downloadLink']
       next unless pkg_info['src_location']
+      next unless pkg_info['result_root']
 
       job_id = pkg_info['result_root'].split('/')[-1]
+      h = get_srpm_addr(job_id)
+      next if h.empty?()
       pkg_info.merge!(get_srpm_addr(job_id))
-      update_compat_software?('srpm-info', query, pkg_info)
+
+      if pkg_info['repo_name'].start_with?("refreshing")
+        pkg_info['repo_name'] = pkg_info['repo_name'].delete_prefix('refreshing/')
+        pkg_info['repo_name'] = "extras" if pkg_info['repo'] == "extras"
+        update_compat_software?('srpm-info-tmp', query, pkg_info)
+      else
+        pkg_info['repo_name'] = "extras" if pkg_info['repo'] == "extras"
+        update_compat_software?('srpm-info', query, pkg_info)
+      end
 
       rpm_path = pkg_info['downloadLink'].delete_prefix!('https://api.compass-ci.openeuler.org:20018')
       srpm_path = pkg_info['src_location'].delete_prefix!('https://api.compass-ci.openeuler.org:20018')
@@ -148,15 +199,28 @@ class HandleRepo
   def update_pub_dir(update)
     pub_path_list = Set.new
     update.each do |rpm|
-      pub_path = File.dirname(rpm).sub('testing', 'pub')
+      if rpm.split('/')[5] == "refreshing"
+        pub_path = File.dirname(rpm).sub('testing', 'tmp_pub')
+      else
+        pub_path = File.dirname(rpm).sub('testing', 'pub')
+      end
       FileUtils.mkdir_p(pub_path) unless File.directory?(pub_path)
 
       dest = File.join(pub_path, File.basename(rpm))
-      FileUtils.cp(rpm, dest)
-      pub_path_list << pub_path
+      next unless File.exist?(rpm)
+      next if File.exist?(dest)
+      File.link(rpm, dest)
+      if File.basename(pub_path) != "Packages"
+        pub_path_list << File.dirname(pub_path)
+      else
+        pub_path_list << pub_path
+      end
     end
 
     pub_path_list.each do |pub_path|
+        if File.basename(pub_path) != "Packages"
+          pub_path = File.dirname(pub_path)
+        end
       system("createrepo --update $(dirname #{pub_path})")
     end
   end
@@ -166,95 +230,149 @@ class HandleRepo
     createrepodata_complete_queue = @createrepodata_complete_mq.queue('createrepodata_complete')
     Thread.new do
       loop do
-        sleep 80
-        next if @@create_repo_path.empty?
+        begin
+          sleep 180
+          next if @@create_repo_path.empty?
 
-        @@upload_flag = false
-        # Avoid mv in handle_new_rpm() is not over.
-        sleep 1
-        @@create_repo_path.each do |path|
-          system("createrepo --update $(dirname #{path})")
-        end
+          @@upload_flag = false
+          # Avoid mv in handle_new_rpm() is not over.
+          sleep 1
+          @@create_repo_path.each do |path|
+            if File.basename(path) != "Packages"
+              path = File.dirname(path)
+            end
+            system("createrepo --update $(dirname #{path})")
+          end
+          @@create_repodata = true
 
-        createrepodata_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
-          begin
-            createrepodata_complete_queue.publish(msg)
-            @create_repodata_mq.ack(info)
-          rescue StandardError => e
-            @log.warn({
-              "create_repo error message": e.message
-            }.to_json)
-            @create_repodata_mq.ack(info)
+          createrepodata_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
+            loop do
+              begin
+                next unless @@create_repodata
+                createrepodata_complete_queue.publish(msg)
+                @create_repodata_mq.ack(info)
+                break
+              rescue StandardError => e
+                @log.warn({
+                  "create_repodata error message": e.message
+                }.to_json)
+                @create_repodata_mq.ack(info)
+                break
+              end
+            end
           end
         end
-
-        sleep 1
         @@create_repo_path.clear
         @@upload_flag = true
       end
     end
   end
 
-  def parse_arg(rpm_path, job_id)
+  def extras_parse_arg(rpm)
+    extras_submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit", "--no-pack"]
+    extras_rpm_path = create_extras_path(rpm)
+    extras_rpm_path = File.dirname(File.dirname(extras_rpm_path))
+    extras_rpm_path.sub!('/srv', '')
+    mount_repo_name = "extras"
+    extras_rpm_path = "https://api.compass-ci.openeuler.org:20018#{extras_rpm_path}"
+
+    extras_submit_argv.push("mount_repo_addr=#{extras_rpm_path}")
+    extras_submit_argv.push("mount_repo_name=#{mount_repo_name}")
+    extras_submit_argv
+  end
+
+  def rpmbuild_arg(job_id)
+    rpmbuild_argv = []
     query_result = @es.query_by_id(job_id)
-    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit"]
-    rpm_path = File.dirname(rpm_path).sub('upload', 'testing')
+
+    upstream_repo = query_result['upstream_repo']
+    upstream_commit = query_result['upstream_commit']
+    if ! upstream_repo.nil?  && upstream_repo.start_with?('https://gitee.com/src-oepkgs/') && ! upstream_commit.nil?
+      rpmbuild_argv.push("upstream_repo=#{upstream_repo}")
+      rpmbuild_argv.push("upstream_commit=#{upstream_commit}")
+      rpmbuild_argv.push("-i /c/lkp-tests/jobs/secrets_info.yaml")
+    end
+    rpmbuild_argv.push("os=#{query_result['os']}")
+    rpmbuild_argv.push("os_version=#{query_result['os_version']}")
+    rpmbuild_argv.push("testbox=#{query_result['tbox_group']}")
+    rpmbuild_argv.push("queue=#{query_result['queue']}")
+    rpmbuild_argv.push("rpmbuild_job_id=#{job_id}")
+    rpmbuild_argv.push("docker_image=#{query_result['docker_image']}") if query_result.key?('docker_image')
+    rpmbuild_argv
+  end
+
+  def parse_arg(rpm, job_id)
+    extras_submit_argv = extras_parse_arg(rpm)
+    rpmbuild_argv = rpmbuild_arg(job_id)
+    extras_submit_argv = extras_submit_argv + rpmbuild_argv
+
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit", "--no-pack"]
+    rpm_path = File.dirname(rpm).sub('upload', 'testing')
     rpm_path.sub!('/srv', '')
-    mount_repo_name = rpm_path.split('/')[4..-3].join('/')
     rpm_path = "https://api.compass-ci.openeuler.org:20018#{rpm_path}"
     rpm_path = rpm_path.delete_suffix('/Packages')
     submit_arch = rpm_path.split('/')[-1]
-    submit_argv.push("mount_repo_addr=#{rpm_path}")
-    submit_argv.push("arch=#{submit_arch}")
-    submit_argv.push("mount_repo_name=#{mount_repo_name}")
-    submit_argv.push("os=#{query_result['os']}")
-    submit_argv.push("os_version=#{query_result['os_version']}")
-    submit_argv.push("tbox_group=#{query_result['tbox_group']}")
-    submit_argv.push("rpmbuild_job_id=#{job_id}")
-    submit_argv.push("docker_image=#{query_result['docker_image']}") if query_result.key?('docker_image')
 
     fixed_arg = YAML.load_file('/etc/submit_arg.yaml')
-    submit_argv.push((fixed_arg['yaml']).to_s)
+    unless check_if_extras(rpm)
+     mount_repo_name = rpm_path.split('/')[4..-3].join('/')
+     submit_argv.push("arch=#{submit_arch}")
+     submit_argv.push("mount_repo_name=#{mount_repo_name}")
+     submit_argv.push("mount_repo_addr=#{rpm_path}")
+     submit_argv = submit_argv + rpmbuild_argv
+     submit_argv.push((fixed_arg['yaml']).to_s)
+    end
+    extras_submit_argv.push("arch=#{submit_arch}")
 
-    return submit_argv, submit_arch
+    extras_submit_argv.push((fixed_arg['yaml']).to_s)
+
+    return submit_argv, extras_submit_argv, submit_arch
   end
 
   def submit_install_rpm
     createrepodata_complete_queue = @createrepodata_complete_mq.queue('createrepodata_complete')
     Thread.new do
-      loop do
-        q = createrepodata_complete_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
-          begin
-            group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
-            rpm_info = JSON.parse(msg)
-            job_id = rpm_info['job_id']
+      q = createrepodata_complete_queue.subscribe({ manual_ack: true }) do |info, _pro, msg|
+        begin
+          group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
+          rpm_info = JSON.parse(msg)
+          job_id = rpm_info['job_id']
 
-            rpm_names = []
-            real_argvs = []
-            rpm_info['upload_rpms'].each do |rpm|
-              submit_argv, submit_arch = parse_arg(rpm, job_id)
-              next if submit_arch == 'source'
+          rpm_names = []
+          real_argvs = []
+          extras_real_argvs = []
+          rpm_info['upload_rpms'].each do |rpm|
+            submit_argv, extras_submit_argv, submit_arch = parse_arg(rpm, job_id)
+            next if submit_arch == 'source'
 
-              # zziplib-0.13.62-12.aarch64.rpm => zziplib-0.13.62-12.aarch64
-              # zziplib-help.rpm
-              # zziplib-doc.rpm
-              rpm_name = File.basename(rpm).delete_suffix('.rpm')
-              rpm_names << rpm_name
-              real_argvs = Array.new(submit_argv)
-            end
-            rpm_names = rpm_names.join(',')
+            # zziplib-0.13.62-12.aarch64.rpm => zziplib-0.13.62-12.aarch64
+            # zziplib-help.rpm
+            # zziplib-doc.rpm
+            rpm_name = File.basename(rpm).delete_suffix('.rpm')
+            rpm_names << rpm_name
+            real_argvs = Array.new(submit_argv)
+            extras_real_argvs = Array.new(extras_submit_argv)
+          end
+          rpm_names = rpm_names.join(',')
+          unless real_argvs.length == 2
             real_argvs.push("rpm_name=#{rpm_names}")
             real_argvs.push("group_id=#{group_id}")
-            system(real_argvs.join(' '))
-            @createrepodata_complete_mq.ack(info)
-          rescue StandardError => e
-            @log.warn({
-              "submit_install_rpm error message": e.message
-            }.to_json)
-            @createrepodata_complete_mq.ack(info)
+            Process.fork do
+              system(real_argvs.join(' '))
+            end
           end
+          extras_real_argvs.push("rpm_name=#{rpm_names}")
+          extras_real_argvs.push("group_id=#{group_id}")
+          Process.fork do
+            system(extras_real_argvs.join(' '))
+          end
+          @createrepodata_complete_mq.ack(info)
+        rescue StandardError => e
+          @log.warn({
+            "submit_install_rpm error message": e.backtrace
+          }.to_json)
+          @createrepodata_complete_mq.ack(info)
         end
-        q.cancel
       end
     end
   end

@@ -67,12 +67,17 @@ end
 
 def update_compat_software?(index, query, info)
   my_data = MyData.new
+  repo = info['repo'].split('/')[0]
   data = my_data.es_query(index, query)
-  _id = "#{info['softwareName']}--#{info['version']}--#{info['arch']}--#{info['os']}"
+  _id = "#{info['softwareName']}.#{info['version']}.#{info['arch']}.#{info['os']}.#{info['repo']}"
   add = my_data.es_add(index, _id, info.to_json) if data['took'] == 0
   data['hits']['hits'].each do |source|
     my_data.es_delete(index, source['_id']) unless source['_source']['install'] == 'pass'
     my_data.es_delete(index, source['_id']) if source['_source']['delete']
+    if 4 <= source['_id'].split('--').length <= 5
+      my_data.es_delete(index, source['_id'])
+      sleep 1
+    end
 
     if source['_id'] == _id
       id = source['_id']
@@ -81,7 +86,6 @@ def update_compat_software?(index, query, info)
       my_data.es_add(index, _id, info.to_json)
     end
   end
-  sleep 2
 end
 
 def read_csv_file(filename)
@@ -189,7 +193,7 @@ def refine_json(data)
 
     pkg_info['evr'].each do |version|
       tmp_hash = {}
-      tmp_hash.merge!({ 'os' => pkg_info['os'], 'arch' => pkg_info['arch'] })
+      tmp_hash.merge!({ 'os' => pkg_info['os'], 'arch' => pkg_info['arch'], 'repo' => pkg_info['repo'] })
       tmp_hash.merge!({ 'property' => pkg_info['property'], 'result_url' => pkg_info['result_url'] })
       tmp_hash.merge!(pkg_info).delete('evr')
       tmp_hash.delete('location')
