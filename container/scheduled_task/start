@@ -1,0 +1,30 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+[[ $CCI_SRC ]] || CCI_SRC=/c/cbs
+
+. $CCI_SRC/container/defconfig.sh
+
+load_cci_defaults
+
+docker_name="scheduled_task"
+docker_rm $docker_name
+
+cmd=(
+
+        docker run
+        --name $docker_name
+        --restart=always
+        -d
+        -p 20040:20040
+        -v $CCI_SRC/src:/opt/compass-ci/src
+        -v $LKP_SRC:/c/lkp-tests:ro
+        -v /etc/localtime:/etc/localtime:ro
+        -v /etc/compass-ci:/etc/compass-ci:ro
+        -v /srv/log:/srv/log:rw
+        -v /root/.config:/root/.config:ro
+        --log-driver json-file
+        $docker_name
+)
+
+"${cmd[@]}"

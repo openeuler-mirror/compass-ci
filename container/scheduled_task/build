@@ -1,0 +1,20 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. ../defconfig.sh
+load_cci_defaults
+load_service_authentication
+
+service_name=scheduled_task
+
+docker_skip_rebuild "$service_name:latest"
+
+docker build -t $service_name:latest \
+	--build-arg ES_HOST=${ES_HOST} \
+	--build-arg ES_PORT=${ES_PORT} \
+	--build-arg ES_USER=${ES_USER} \
+	--build-arg ES_PASSWORD=${ES_PASSWORD} \
+	--build-arg SCHED_HOST=${SCHED_HOST} \
+	--build-arg SCHED_PORT=${SCHED_PORT} \
+	.
