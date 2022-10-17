@@ -13,6 +13,7 @@ class MQClient
     @conn = Bunny.new(opts)
     @conn.start
     @channel = @conn.create_channel
+    @channel.prefetch(opts[:prefetch_count]) if opts[:prefetch_count]
   end
 
   def fanout_queue(exchange_name, queue_name)
