@@ -52,12 +52,15 @@ class Cluster < PluginsCommon
       # continue if role in cluster spec matches role in job
       next if (spec["roles"].as_a.map(&.to_s) & roles).empty?
 
+      job_id = @redis.get_job_id(lab)
+      single_job = Job.new(JSON.parse(job.dump_to_json), job_id)
+      single_job.delete_host_info
+      single_job.delete_kernel_params
+
       host_info = Utils.get_host_info(host.to_s)
-      job.update(host_info)
+      single_job.update(host_info)
       queue = host.to_s
       queue = queue = $1 if queue =~ /(\S+)--[0-9]+$/
-
-      job_id = @redis.get_job_id(lab)
 
       # return when job_id is '0'
       # 2 Questions:
@@ -66,10 +69,11 @@ class Cluster < PluginsCommon
       job_ids << job_id
 
       # add to job content when multi-test
-      job["testbox"] = queue
-      job["queue"] = queue
-      job.update_tbox_group(queue)
-      job["node_roles"] = spec["roles"].as_a.join(" ")
+      single_job["testbox"] = queue
+      single_job["queue"] = queue
+      single_job.update_tbox_group(queue)
+      single_job["os_arch"] = host_info["arch"]
+      single_job["node_roles"] = spec["roles"].as_a.join(" ")
       if spec["macs"]?
         direct_macs = spec["macs"].as_a
         direct_ips = [] of String
@@ -78,16 +82,17 @@ class Cluster < PluginsCommon
           direct_ips << "#{net_id}.#{ip0}"
           ip0 += 1
         end
-        job["direct_macs"] = direct_macs.join(" ")
-        job["direct_ips"] = direct_ips.join(" ")
+        single_job["direct_macs"] = direct_macs.join(" ")
+        single_job["direct_ips"] = direct_ips.join(" ")
       end
 
       # multi-machine test requires two network cards
-      job["nr_nic"] = "2"
+      single_job["nr_nic"] = "2"
 
-      job.update_id(job_id)
+      single_job.update_id(job_id)
+      single_job.set_defaults
 
-      jobs << Job.new(JSON.parse(job.dump_to_json), job_id)
+      jobs << single_job
     end
 
     cluster_id = job_ids[0]

@@ -188,7 +188,7 @@ class Job
     checkout_max_run()
   end
 
-  private def set_defaults
+  def set_defaults
     extract_user_pkg()
     set_os_mount()
     append_init_field()
@@ -962,5 +962,26 @@ class Job
       new_pkg_data.merge!({k => JSON::Any.new(tmp)})
     end
     @hash["pkg_data"] = JSON::Any.new(new_pkg_data)
+  end
+
+  def delete_kernel_params
+    @hash.delete("kernel_version")
+    @hash.delete("kernel_uri")
+    @hash.delete("modules_uri")
+  end
+
+  def delete_host_info
+    @hash.delete("memory")
+    @hash.delete("nr_hdd_partitions")
+    @hash.delete("hdd_partitions")
+    @hash.delete("ssd_partitions")
+    @hash.delete("rootfs_disk")
+    @hash.delete("mac_addr")
+    @hash.delete("arch")
+    @hash.delete("nr_node")
+    @hash.delete("nr_cpu")
+    @hash.delete("model_name")
+    @hash.delete("ipmi_ip")
+    @hash.delete("serial_number")
   end
 end
