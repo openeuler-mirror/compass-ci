@@ -14,6 +14,7 @@ require_relative '../lib/constants.rb'
 
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
+PREFETCH_COUNT = 1
 
 # ---------------------------------------------------------------------------------------------------------------------------------------
 #
@@ -38,8 +39,8 @@ MQ_PORT = ENV['MQ_PORT'] || 5672
 # @mq.ack(info)
 class SrcOepkgs
   def initialize
-    @pr_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
-    @push_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT)
+    @pr_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT, prefetch_count: PREFETCH_COUNT)
+    @push_mq = MQClient.new(hostname: MQ_HOST, port: MQ_PORT, prefetch_count: PREFETCH_COUNT)
     @log = JSONLogger.new
   end
 
@@ -160,11 +161,10 @@ class SrcOepkgs
     os_version = parse_os_version(upstream_branch)
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no os_version' }) unless os_version
 
-    if os_version == "22.03-LTS"
-      real_argvs.push("rpmbuild-vm.yaml os=openeuler os_version=#{os_version} testbox=vm-2p8g")
-    else
-      real_argvs.push("rpmbuild.yaml docker_image=openeuler:#{os_version} testbox=dc-16g")
-    end
+    real_argvs.push("rpmbuild.yaml os=openeuler os_version=#{os_version} docker_image=openeuler:#{os_version}")
+    real_argvs.push("mount_repo_name=oepkgs")
+    real_argvs.push("mount_repo_addr=https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/extras/\\\\\\$basearch")
+
     Process.fork do
       system(real_argvs.join(' '))
     end
@@ -183,11 +183,9 @@ class SrcOepkgs
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no os_version' }) unless os_version
 
     real_argvs.push("custom_repo_name=contrib/#{sig_name}")
-    if os_version == "22.03-LTS"
-      real_argvs.push("rpmbuild-vm.yaml os=openeuler os_version=#{os_version} testbox=vm-2p8g")
-    else
-      real_argvs.push("rpmbuild.yaml docker_image=openeuler:#{os_version} testbox=dc-16g")
-    end
+    real_argvs.push("rpmbuild.yaml os=openeuler os_version=#{os_version} docker_image=openeuler:#{os_version}")
+    real_argvs.push("mount_repo_name=oepkgs")
+    real_argvs.push("mount_repo_addr=https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/extras/\\\\\\$basearch")
 
     Process.fork do
       system(real_argvs.join(' '))

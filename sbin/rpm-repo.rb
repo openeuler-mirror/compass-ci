@@ -97,8 +97,7 @@ class HandleRepo
 
       extras_dest = File.join(extras_rpm_path.to_s, File.basename(rpm))
       unless check_if_extras(rpm)
-        next if File.exist?(extras_dest)
-        File.link(dest, extras_dest)
+        system("ln -f #{dest} #{extras_dest}")
       else
         FileUtils.mv(rpm, extras_dest)
       end
@@ -217,8 +216,7 @@ class HandleRepo
 
       dest = File.join(pub_path, File.basename(rpm))
       next unless File.exist?(rpm)
-      next if File.exist?(dest)
-      File.link(rpm, dest)
+      system("ln -f #{rpm} #{dest}")
       if File.basename(pub_path) != "Packages"
         pub_path_list << File.dirname(pub_path)
       else
@@ -277,6 +275,7 @@ class HandleRepo
   # can be published to createrepodata_complete_queue, and the install-rpm task can be submitted.
   # Therefore, we will set the value of @@create_repodata to control the sync execution of the entire process.
   def create_repo
+    createrepodata_queue = @create_repodata_mq.queue('createrepodata')
     Thread.new do
       loop do
         begin
@@ -304,6 +303,13 @@ class HandleRepo
 
           @@create_repodata = true
           sleep 5
+          while true
+            unless createrepodata_queue.message_count == 0
+              sleep 1
+            else
+              break
+            end
+          end
 
         rescue StandardError => e
           @log.warn({
