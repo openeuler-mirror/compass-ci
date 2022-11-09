@@ -246,9 +246,9 @@ os=openeuler os_arch=aarch64 pp.iperf.protocol=tcp pp.iperf.runtime=30 tbox_grou
 	v
      output
 ```
-     
+
 - response:
-```
+
   [
     {
       "title":"fio-read_iops",				# fio-read_iops
@@ -281,6 +281,7 @@ os=openeuler os_arch=aarch64 pp.iperf.protocol=tcp pp.iperf.runtime=30 tbox_grou
        "datas":{...}
      }
   ]
+
 ```
  
 ### x轴为测试子项(job['stats'][$metric])
@@ -321,6 +322,7 @@ os=openeuler os_arch=aarch64 pp.iperf.protocol=tcp pp.iperf.runtime=30 tbox_grou
    其他逻辑同上
 
 - output
+
 ```
 [
   {
@@ -356,7 +358,7 @@ os=openeuler os_arch=aarch64 pp.iperf.protocol=tcp pp.iperf.runtime=30 tbox_grou
 ```
 
 ### update 版本看板，自动选取series
-
+```
 - input
 {
   "filter":{
@@ -371,7 +373,7 @@ os=openeuler os_arch=aarch64 pp.iperf.protocol=tcp pp.iperf.runtime=30 tbox_grou
   "x_params":["metric"],
   "max_series_num":2				# 1st auto-group , 2nd auto-group 将选取最新的2个group_id 作为series
 }
-
+```
 - internal flow
  3rd GROUP 2nd-group  BY output['series'], 每一组数量是: output['max_series_num']
  其余逻辑同上
