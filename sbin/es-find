@@ -78,17 +78,19 @@ def assign_range(value)
   range_value
 end
 
-options = { nr_jobs: 10, desc_keyword: 'start_time' }
+options = { index: 'jobs', nr_jobs: 10, desc_keyword: 'start_time' }
 range = nil
 count = nil
-
-es = ESQuery.new(ES_HOSTS)
 
 opt_parser = OptionParser.new do |opts|
   opts.banner = 'Usage: es-find [options] search_key1=val1[,val2..] ..'
 
   opts.separator 'search_key can be id, suite, os, etc.'
   opts.separator ''
+
+  opts.on('-i', '--index INDEX', 'select ES index') do |i|
+    options[:index] = i
+  end
 
   opts.on('-n', '--nr-jobs NUM', Integer, 'max jobs, default 10.') do |n|
     if n.to_i <= 0
@@ -115,11 +117,7 @@ opt_parser = OptionParser.new do |opts|
   end
 
   opts.on_tail('--keyword', 'check all available search_keys') do
-    available_search_key = es.query_mapping
-    available_search_key.each do |key|
-      puts "    #{key}"
-    end
-    exit
+    options[:keyword] = true
   end
 
   opts.on_tail('-h', '--help', 'show this message') do
@@ -132,16 +130,28 @@ opt_parser.parse!(ARGV)
 items = parse_argv
 items[:range] = prase_range(range) if range
 
+es = ESQuery.new(ES_HOSTS, options[:index])
+
+if options[:keyword]
+    available_search_key = es.query_mapping
+    available_search_key.each do |key|
+      puts "    #{key}"
+    end
+    exit
+end
+
 if count
   count_keywords = count.split(',')
   query_result = es.query_fields(count_keywords, items)
 else
-  query_result = es.multi_field_query(
-    items,
+  params = {
     size: options[:nr_jobs],
-    desc_keyword: options[:desc_keyword],
     regexp: options[:regexp]
-  )
+  }
+  if options[:index] == 'jobs'
+    params[:desc_keyword] = options[:desc_keyword]
+  end
+  query_result = es.multi_field_query(items, params)
 end
 json_string = JSON.pretty_generate(query_result)
 puts json_string

@@ -7,7 +7,7 @@ require_relative 'constants.rb'
 
 # build multiple query request body
 class ESQuery
-  def initialize(hosts = ES_HOSTS, index: 'jobs')
+  def initialize(hosts = ES_HOSTS, index = 'jobs')
     @index = index
     @scroll_id = ''
     @client = Elasticsearch::Client.new hosts: hosts
