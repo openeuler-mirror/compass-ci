@@ -130,7 +130,7 @@ opt_parser.parse!(ARGV)
 items = parse_argv
 items[:range] = prase_range(range) if range
 
-es = ESQuery.new(ES_HOSTS, options[:index])
+es = ESQuery.new(ES_HOSTS, index: options[:index])
 
 if options[:keyword]
     available_search_key = es.query_mapping
