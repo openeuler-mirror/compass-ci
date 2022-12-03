@@ -81,6 +81,7 @@ end
 options = { index: 'jobs', nr_jobs: 10, desc_keyword: 'start_time' }
 range = nil
 count = nil
+opt_json = nil
 
 opt_parser = OptionParser.new do |opts|
   opts.banner = 'Usage: es-find [options] search_key1=val1[,val2..] ..'
@@ -90,6 +91,14 @@ opt_parser = OptionParser.new do |opts|
 
   opts.on('-i', '--index INDEX', 'select ES index') do |i|
     options[:index] = i
+  end
+
+  opts.on('-j', '--json JSON', 'raw JSON query') do |j|
+    if j.start_with? '@'
+      opt_json = JSON.load_file(j[1..-1])
+    else
+      opt_json = JSON.load(j)
+    end
   end
 
   opts.on('-n', '--nr-jobs NUM', Integer, 'max jobs, default 10.') do |n|
@@ -140,7 +149,9 @@ if options[:keyword]
     exit
 end
 
-if count
+if opt_json
+  query_result = es.query_json(opt_json)
+elsif count
   count_keywords = count.split(',')
   query_result = es.query_fields(count_keywords, items)
 else

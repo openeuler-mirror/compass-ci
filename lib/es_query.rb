@@ -14,6 +14,10 @@ class ESQuery
     raise 'Connect Elasticsearch  error!' unless @client.ping
   end
 
+  def query_json(query)
+    @client.search index: @index + '*', body: query
+  end
+
   # Example @items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # Example @unmatch_items: { key1 => value1, key2 => [value2, value3, ..], ...}
   # means to query: key1 == value1 && (key2 in [value2, value3, ..])
