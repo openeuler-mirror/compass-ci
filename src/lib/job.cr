@@ -404,6 +404,7 @@ class Job
 
   private def set_os_version
     self["os_version"] = "#{os_version}".chomp("-iso") + "-iso" if "#{self.os_mount}" == "local"
+    self["osv"] = "#{os}@#{os_version}" # for easy ES search
   end
 
   def os_dir

@@ -142,6 +142,9 @@ else
 		          "os": {
 		            "type": "keyword"
 		          },
+		          "osv": {
+		            "type": "keyword"
+		          },
 		          "os_arch": {
 		            "type": "keyword"
 		          },
