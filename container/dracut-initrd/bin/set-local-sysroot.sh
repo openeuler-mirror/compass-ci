@@ -72,7 +72,7 @@ sync_src_lv() {
     # create logical volume
     src_lv_devname="$(basename $src_lv)"
     lvm lvcreate -y -L "$os_lv_size" --name "${src_lv_devname#os-}" os
-    mke2fs -t ext4 -F "$src_lv"
+    mke2fs -t ext4 -T news -F "$src_lv"
 
     # sync nfsroot to $src_lv
     mkdir -p /mnt1 && mount -t nfs "$rootfs_src" /mnt1
@@ -98,7 +98,7 @@ snapshot_boot_lv() {
         lvm lvcreate -y -L "$os_lv_size" --name ${boot_lv_devname#os-} --snapshot "$src_lv"
     else
         lvm lvcreate -y -L "$os_lv_size" --name ${boot_lv_devname#os-} os
-        mke2fs -t ext4 -F "$boot_lv"
+        mke2fs -t ext4 -T news -F "$boot_lv"
 
         # sync src_lv to boot_lv
         mkdir -p /mnt1 && mount "$src_lv" /mnt1
