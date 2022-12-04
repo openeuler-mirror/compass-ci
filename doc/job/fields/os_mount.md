@@ -157,7 +157,7 @@ Notes:
 	[ -n "$pv_device" ] && { do some check and create pv and vg }
 
         # create logical volume
-        lvcreate --size 10G --name $(basename ${src_lv}) os || exit
+        lvcreate --size 20G --name $(basename ${src_lv}) os || exit
 
         # rsync nfsroot to ${src_lv}
         mount -t nfs ${ROOTFS_SRC} /mnt
@@ -177,7 +177,7 @@ Notes:
         [ "$src_lv" == "$boot_lv" ] && return
 
         lvremove --force ${boot_lv}
-        lvcreate --size 10G --name $(basename ${boot_lv}) --snapshot ${src_lv} || exit
+        lvcreate --size 20G --name $(basename ${boot_lv}) --snapshot ${src_lv} || exit
     }
 
     main()

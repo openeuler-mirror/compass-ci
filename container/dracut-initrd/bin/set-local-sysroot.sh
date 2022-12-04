@@ -150,7 +150,7 @@ handle_lvm()
     sed -i "s/^locking_type = .*/locking_type = 1/" /etc/lvm/lvm.conf
 
     os_lv_size="$(getarg os_lv_size)"
-    os_lv_size=${os_lv_size:="10G"}
+    os_lv_size=${os_lv_size:="20G"}
 
     os_partition="$(getarg os_partition=)"
 

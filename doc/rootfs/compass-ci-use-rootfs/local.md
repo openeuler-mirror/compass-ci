@@ -28,7 +28,7 @@ os_mount=local的rootfs会被虚拟机/物理机类型的testbox使用，虚拟�
     initrd http://172.168.131.113:3000/job_initrd_tmpfs/crystal.3584978/job.cgz
     initrd http://172.168.131.113:8800/upload-files/lkp-tests/aarch64/v2021.09.23.cgz
     initrd http://172.168.131.113:8800/upload-files/lkp-tests/9f/9f87e65401d649095bacdff019d378e6.cgz
-    kernel http://172.168.131.113:8000/os/openeuler/aarch64/20.03-iso-2021-08-24-18-01-07/boot/vmlinuz-4.19.90-2003.4.0.0036.oe1.aarch64 user=lkp job=/lkp/scheduled/job.yaml ip=dhcp local use_root_partition= save_root_partition= os_version=20.03-iso os_lv_size=10G os_partition= rw root=172.168.131.113:/os/openeuler/aarch64/20.03-iso-2021-08-24-18-01-07  initrd=initramfs.lkp-4.19.90-2003.4.0.0036.oe1.aarch64.img  initrd=modules-4.19.90-2003.4.0.0036.oe1.aarch64.cgz  initrd=job.cgz  initrd=v2021.09.23.cgz  initrd=9f87e65401d649095bacdff019d378e6.cgz rootfs_disk=/dev/vdb crashkernel=auto
+    kernel http://172.168.131.113:8000/os/openeuler/aarch64/20.03-iso-2021-08-24-18-01-07/boot/vmlinuz-4.19.90-2003.4.0.0036.oe1.aarch64 user=lkp job=/lkp/scheduled/job.yaml ip=dhcp local use_root_partition= save_root_partition= os_version=20.03-iso os_lv_size=20G os_partition= rw root=172.168.131.113:/os/openeuler/aarch64/20.03-iso-2021-08-24-18-01-07  initrd=initramfs.lkp-4.19.90-2003.4.0.0036.oe1.aarch64.img  initrd=modules-4.19.90-2003.4.0.0036.oe1.aarch64.cgz  initrd=job.cgz  initrd=v2021.09.23.cgz  initrd=9f87e65401d649095bacdff019d378e6.cgz rootfs_disk=/dev/vdb crashkernel=auto
     boot
     ```
   - 分析：
@@ -62,7 +62,7 @@ os_mount=local的rootfs会被虚拟机/物理机类型的testbox使用，虚拟�
     - use_root_partition=  # 这个参数项是我们自定义的 ，它会被90lkp捕获并解析使用
     - save_root_partition= # 这个参数项是我们自定义的 ，它会被90lkp捕获并解析使用
     - os_version=20.03-iso # 这个参数项是我们自定义的 ，它会被90lkp捕获并解析使用
-    - os_lv_size=10G       # 这个参数项是我们自定义的 ，它会被90lkp捕获并解析使用
+    - os_lv_size=20G       # 这个参数项是我们自定义的 ，它会被90lkp捕获并解析使用
     - os_partition=        # 这个参数项是我们自定义的 ，它会被90lkp捕获并解析使用
     - rw                   # root设备以读写模式挂载，这个参数只会在高级用户需要自定义ipxe命令行，且指定的root设备直接是某一块需要可读写的块设备时用到
     - root=172.168.131.113:/os/openeuler/aarch64/20.03-iso-2021-08-24-18-01-07 # 这个是固定的，一方面会执行95nfs，另一方面，在之后的90lkp也会用到它

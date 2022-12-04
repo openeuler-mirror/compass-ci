@@ -22,6 +22,6 @@ Addition:
   - use for boot and run job
   - defaultly, this logical volume will be wiped before every job run
 
-3. every logical volume default size: 10G
+3. every logical volume default size: 20G
 
 4. more info can refer os_mount.md
