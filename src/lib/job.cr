@@ -985,4 +985,149 @@ class Job
     @hash.delete("ipmi_ip")
     @hash.delete("serial_number")
   end
+  private def get_user_uploadfiles_fields_from_config
+    user_uploadfiles_fields_config = "#{ENV["CCI_SRC"]}/src/lib/user_uploadfiles_fields_config.yaml"
+    yaml_any_array = YAML.parse(File.read(user_uploadfiles_fields_config)).as_a
+    return yaml_any_array
+  end
+
+  private def check_config_integrity(md5, dest_config_file)
+      dest_config_content_md5 = Digest::MD5.hexdigest(File.read dest_config_file)
+      raise "check pkg integrity failed." if md5 != dest_config_content_md5
+  end
+
+  private def get_dest_dir(field_name)
+    #
+    # pkgbuild/build-pkg：$suite/pkg_name/field_name/filename
+    # ss(field_name=ss.*.config*): $suite/ss.*.config*/filename
+    # other:  $suite/field_name/filename
+    if (field_name =~ /ss\..*\.config.*/) ||
+      @hash["suite"].as_s != "build-pkg" && @hash["suite"].as_s != "pkgbuild"
+      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{@hash["suite"].to_s}/#{field_name}"
+    else
+      _pkgbuild_repo = @hash["pkgbuild_repo"].as_s
+      pkg_name = _pkgbuild_repo.chomp.split('/', remove_empty: true)[-1]
+      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{@hash["suite"].as_s}/#{pkg_name}/#{field_name}"
+    end
+    return dest_dir
+  end
+
+  private def generate_upload_fields(field_config)
+      uploaded_file_path_hash = Hash(String, String).new
+      upload_fields = [] of String
+      ss = Hash(String, JSON::Any).new
+      #process upload file field from ss.*.config*
+      ss = @hash["ss"]?.not_nil!.as_h if @hash.has_key?("ss")
+      ss.each do |pkg_name, pkg_params|
+        params =  pkg_params == nil ? next : pkg_params.as_h
+        params.keys().each do |key|
+          if key =~ /config.*/ && params[key] != nil
+            field_name = "ss.#{pkg_name}.#{key}"
+            filename = File.basename(params[key].to_s.chomp)
+            dest_file_path = "#{SRV_USER_FILE_UPLOAD}/#{@hash["suite"].as_s}/#{field_name}/#{filename}"
+            if File.exists?(dest_file_path)
+                uploaded_file_path_hash[field_name] = dest_file_path
+            else
+              upload_fields << field_name
+            end
+          end
+        end
+      end
+
+      #process upload file field from #{ENV["CCI_SRC"]}/src/lib/user_uploadfiles_fields_config.yaml
+      field_config.each do |field_obj|
+        field_hash = field_obj.as_h
+        if !field_hash.has_key?("suite") && !field_hash.has_key?("field_name")
+          raise "#{ENV["CCI_SRC"]}/src/lib/user_uploadfiles_fields_config.yaml content format error!! "
+        end
+        _suite = field_hash["suite"].as_s?
+        field_name = field_hash["field_name"].as_s
+        if _suite
+          next if _suite != @hash["suite"].as_s || !@hash.has_key?(field_name)
+          filename = File.basename(@hash[field_name].to_s.chomp)
+          dest_dir = get_dest_dir(field_name)
+          dest_file_path = "#{dest_dir}/#{filename}"
+          if File.exists?(dest_file_path)
+            uploaded_file_path_hash[field_name] = dest_file_path
+          else
+            upload_fields << field_name
+          end
+        end
+      end
+      return upload_fields, uploaded_file_path_hash
+  end
+
+  def process_user_files_upload
+      process_upload_fields()
+      #get field that can take upload file
+      field_config = get_user_uploadfiles_fields_from_config()
+
+      #get upload_fields that need upload ,such as ss.linux.config, ss.git.configxx
+      #get uploaded file info, we can add it in initrds
+      upload_fields, uploaded_file_path_hash = generate_upload_fields(field_config)
+
+      # if upload_fields size > 0, need upload ,return
+      return upload_fields if !upload_fields.size.zero?
+
+      #process if found file in server
+      uploaded_file_path_hash.each do |field, filepath|
+        # if field not match ss.*.config*, it is a simple job
+        if !(field =~ /ss\..*\.config.*/)
+          # construct initrd url for upload_file
+          # save initrd url in env upload_file_url, for append in PKGBUILD source=()
+
+          initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
+          upload_file_initrd = "#{initrd_http_prefix}#{JobHelper.service_path(filepath, true)}"
+          @hash["upload_file_url"] = JSON::Any.new(upload_file_initrd)
+        end
+      end
+  end
+
+  private def process_upload_fields
+      return unless @hash.has_key?("upload_fields")
+      upload_fields = @hash["upload_fields"].not_nil!.as_a
+      # upload_fields:
+      #   md5: xxx
+      #   field_name: ss.xx.config* or pkgbuild config
+      #   filename: basename of file
+      #   content: file content
+      save_dirs = [] of String
+      upload_fields.each do |upload_item|
+          save_dirs << store_upload_file(upload_item.as_h)
+      end
+      reset_upload_field(upload_fields, save_dirs)
+  end
+
+  private def store_upload_file(to_upload)
+      md5 = to_upload["md5"].to_s
+      field_name = to_upload["field_name"].to_s
+      file_name = to_upload["file_name"].to_s
+      dest_dir = get_dest_dir(field_name)
+      FileUtils.mkdir_p(dest_dir) unless File.exists?(dest_dir)
+      dest_file = "#{dest_dir}/#{file_name}"
+      #if file exist in server, check md5
+      if File.exists?(dest_file)
+          return dest_file
+      end
+      #save file
+      content_base64 = to_upload["content"].to_s
+      dest_content = Base64.decode_string(content_base64)
+      File.touch(dest_file)
+      File.write(dest_file, dest_content)
+      # verify save
+      check_config_integrity(md5, dest_file)
+      return dest_file
+  end
+
+  private def reset_upload_field(upload_fields, save_dirs)
+      new_upload_fields_data = [] of JSON::Any
+      # iter every upload_field, remove content, add save_dir
+      upload_fields.each_with_index do |item, index|
+          tmp = item.as_h
+          tmp["save_dir"] = JSON::Any.new(save_dirs[index])
+          tmp.delete("content") if tmp.has_key?("content")
+          new_upload_fields_data << JSON::Any.new(tmp)
+      end
+      @hash["upload_fields"] = JSON::Any.new(new_upload_fields_data)
+  end
 end
