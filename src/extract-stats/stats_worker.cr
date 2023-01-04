@@ -55,6 +55,13 @@ class StatsWorker
     testbox = job["testbox"]?
     file_path = "#{result_root}/boards-scan"
     return unless File.exists?(file_path)
+    is_store = job["is_store"]?
+    return if is_store != "yes"
+
+    lab_envir = job["lab"]?
+    suite = job["suite"]?
+    cmd = "$LKP_SRC/sbin/docker-gmail.sh #{file_path} #{lab_envir} #{testbox} #{suite}"
+    `#{cmd}`
 
     content = File.open(file_path) do |f|
       YAML.parse(f)
@@ -93,6 +100,11 @@ class StatsWorker
     testbox = job["testbox"]?
     file_path = "#{result_root}/host-info"
     return unless File.exists?(file_path)
+
+    lab_envir = job["lab"]?
+    suite = job["suite"]?
+    cmd = "$LKP_SRC/sbin/docker-gmail.sh #{file_path} #{lab_envir} #{testbox} #{suite}"
+    `#{cmd}`
 
     content = File.open(file_path) do |f|
       YAML.parse(f)
@@ -140,6 +152,17 @@ class StatsWorker
     return nil unless result_root && File.exists?(result_root)
 
     suite = "#{job["suite"]?}"
+    del_testbox = "#{job["del_testbox"]?}"
+    testbox = "#{job["testbox"]?}"
+    if del_testbox == "yes"
+      @es.@client.delete(
+        {
+          :index => "jobs",
+          :type => "_doc",
+          :id => testbox
+        }
+      )
+    end
     store_device(result_root, job) if suite == "boards-scan"
     store_host_info(result_root, job) if suite == "host-info"
 
