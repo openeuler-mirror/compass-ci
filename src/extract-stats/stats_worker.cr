@@ -60,7 +60,14 @@ class StatsWorker
 
     lab_envir = job["lab"]?
     suite = job["suite"]?
-    cmd = "$LKP_SRC/sbin/docker-gmail.sh #{file_path} #{lab_envir} #{testbox} #{suite}"
+    crystal_ip = job["crystal_ip"]?
+    if crystal_ip
+      cmd = "$LKP_SRC/sbin/hardware-gmail.sh #{file_path} #{lab_envir} \
+      #{testbox} #{suite} #{crystal_ip}"
+    else
+      cmd = "$LKP_SRC/sbin/hardware-gmail.sh #{file_path} #{lab_envir} \
+      #{testbox} #{suite}"
+    end
     `#{cmd}`
 
     content = File.open(file_path) do |f|
@@ -103,7 +110,14 @@ class StatsWorker
 
     lab_envir = job["lab"]?
     suite = job["suite"]?
-    cmd = "$LKP_SRC/sbin/docker-gmail.sh #{file_path} #{lab_envir} #{testbox} #{suite}"
+    crystal_ip = job["crystal_ip"]?
+    if crystal_ip
+      cmd = "$LKP_SRC/sbin/hardware-gmail.sh #{file_path} #{lab_envir} \
+      #{testbox} #{suite} #{crystal_ip}"
+    else
+      cmd = "$LKP_SRC/sbin/hardware-gmail.sh #{file_path} #{lab_envir} \
+      #{testbox} #{suite}"
+    end
     `#{cmd}`
 
     content = File.open(file_path) do |f|
