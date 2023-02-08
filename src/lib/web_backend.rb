@@ -6,6 +6,7 @@ require 'json'
 require 'yaml'
 require 'set'
 require 'time'
+require 'etcdv3'
 
 CCI_SRC ||= ENV['CCI_SRC'] || '/c/compass-ci'
 
@@ -43,6 +44,9 @@ PREFIX_SEARCH_FIELDS = ['tbox_group'].freeze
 ES_CLIENT = Elasticsearch::Client.new(hosts: ES_HOSTS)
 LOGGING_ES_CLIENT = Elasticsearch::Client.new(hosts: LOGGING_ES_HOSTS)
 ES_QUERY = ESQuery.new(ES_HOSTS)
+ETCD_HOST = ENV['ETCD_HOST']
+ETCD_PORT = ENV['ETCD_PORT']
+ETCD_CLIENT = Etcdv3.new(endpoints: "http://#{ETCD_HOST}:#{ETCD_PORT}")
 COMPARE_RECORDS_NUMBER = 100
 FIVE_DAYS_SECOND = 3600 * 24 * 5
 
@@ -846,6 +850,75 @@ def git_mirror_health
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'git mirror health error']
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+end
+
+# fill in ready jobs information for each testbox
+# input:
+# testbox_status = {
+#      "total": 1
+#      "info": [
+#         {
+#            "testbox": "taishan200-2280-2s48p-256g--a60",
+#            ...
+#         }
+#      ]
+#    }
+# output:
+# testbox_status = {
+#      "total": 1
+#      "info": [
+#         {
+#            "testbox": "taishan200-2280-2s48p-256g--a60",
+#            ...
+#            "queue_jobs": ["queues/sched/ready/xxx"]
+#         }
+#      ]
+#    }
+def fill_in_tbox_queue_jobs(testbox_status)
+  testbox_status['info'].each do |tbox|
+    queue_list = ETCD_CLIENT.get("/queues/sched/ready/#{tbox['testbox']}",
+                                 range_end: "/queues/sched/ready/#{tbox['testbox']}/zzzzzzzzzzz"
+                                ).to_h
+    tbox_queue_jobs = []
+    queue_list[:kvs].each do |v|
+      tbox_queue_jobs.append(v[:key])
+    end
+    tbox['queue_jobs'] = tbox_queue_jobs
+  end
+end
+
+def get_testbox_status(params)
+  begin
+    my_data = MyData.new
+    testbox_status = my_data.testbox_status(params, type: params['type'])
+    fill_in_tbox_queue_jobs(testbox_status)
+    result = testbox_status.to_json
+
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => 'get_testbox_status error'
+    })
+
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get testbox status error']
+  end
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result]
+end
+
+def query_testbox_list_info(params)
+  begin
+    my_data = MyData.new
+
+    data = my_data.query_testbox_list(params)
+  rescue StandardError => e
+    log_error({
+                'message' => e.message,
+                'error_message' => 'query testbox list error'
+              })
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'query testbox list info error']
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), data.to_json]
 end
 
 def get_active_testbox

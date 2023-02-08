@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#! /usr/bin/env ruby
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
@@ -62,6 +62,54 @@ end
 # return to testbox that are active within 30 minutes
 get '/web_backend/active_testbox' do
   get_active_testbox
+end
+
+# GET /web_backend/testbox_status?type=physical&testbox[]=taishan200-2280-2s48p-256g--a60
+# optional:
+# - type
+# - arch
+# - suite
+# - state
+# - tbox_group
+# - testbox
+# - my_account
+# - page_size
+#   - default: 10
+# - page_num
+#   - default: 1
+#
+# Response:
+#   {
+#     "total": 1
+#     "info": [
+#       {
+#         "testbox": "xx"
+#         "state": "xx"
+#         ...
+#       }
+#     ]
+#   }
+get '/web_backend/testbox_status' do
+  get_testbox_status(params)
+end
+
+# GET /web_backend/query_testbox_info
+# optional:
+# - type
+# - page_size
+#   - default: 10
+# - page_num
+#   - default: 1
+#
+# Response:
+#   {
+#     "Arch": ["aarch64", "x86_64"],
+#     "State": ["running"],
+#     "User": [],
+#     "TboxGroup": []
+#   }
+get '/web_backend/query_testbox_info' do
+  query_testbox_list_info(params)
 end
 
 # GET /web_backend/srpm_info?page_size=1&page_num=2&softwareName=vim-enhanced

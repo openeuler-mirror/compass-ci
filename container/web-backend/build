@@ -3,6 +3,6 @@
 
 . ../defconfig.sh
 
-docker_skip_rebuild "debian:web-backend"
+docker_skip_rebuild "centos:web-backend"
 
-docker build -t debian:web-backend .
+docker build -t centos:web-backend .

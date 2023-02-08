@@ -59,6 +59,121 @@ class MyData
     end
   end
 
+  def testbox_info(body)
+    all = {}
+    total = JSON.parse(body)['total']
+    all.store('total', total)
+    info = []
+    JSON.parse(body)['data']['hits']['hits'].each do |source|
+      tmp_hash = {}
+
+      tmp_hash['testbox'] = source['_source']['name']
+      tmp_hash['state'] = source['_source']['state']
+      tmp_hash['arch'] = source['_source']['arch']
+      tmp_hash['job_id'] = source['_source']['job_id']
+      tmp_hash['user'] = source['_source']['my_account']
+      tmp_hash['time'] = source['_source']['time']
+      tmp_hash['suite'] = source['_source']['suite']
+      tmp_hash['tbox_group'] = source['_source']['tbox_group']
+      tmp_hash['queues'] = source['_source']['queues']
+      info.append(tmp_hash)
+    end
+    all.store('info', info)
+
+    return all
+  end
+
+  def testbox_status(params, type: 'physical')
+    result = {}
+    running_physical = testbox_status_query(params, type: type, time1: '180d', state: ['running', 'requesting', 'rebooting', 'booting', 'rebooting_queue'])
+
+    result = testbox_info(running_physical)
+
+    return  result
+  end
+
+  def testbox_status_query(params, type: 'physical', time1: '30m', time2: 'now', state: 'requesting')
+    page_size = get_positive_number(params.delete(:page_size), 10)
+    page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
+
+    total_query =  query = {
+      'size' => page_size,
+      'from' => page_num,
+      'query' => {
+        'bool' => {
+          'must' => [
+            {
+              'term' => {
+                'type' => { 'value' => type }
+              }
+            },
+            {
+              'terms' => {
+                'state' => state
+              }
+            },
+            {
+              'range' => {
+                'time' => {
+                  'gte' => 'now-' + time1,
+                  'lte' => time2
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+    params.each do |k, v|
+      next if k == 'type'
+      next if v.empty?
+      items = {
+        'terms' => {
+          "#{k}.keyword" => v
+        }
+      }
+      query['query']['bool']['must'].append(items)
+    end
+    data = es_query('testbox', query)
+    total_query.delete('from')
+    total_query.delete('size')
+    total = @es.count(index: 'testbox', body: total_query)['count']
+    {
+
+      total: total,
+      data: data
+    }.to_json
+  end
+
+  def query_testbox_list(params)
+    type = params['type'] || 'physical'
+    body = {
+      'Arch' => es_query('testbox', aggs_query_(type, 'arch'))['aggregations']['all_arch']['buckets'],
+      'State' => es_query('testbox', aggs_query_(type, 'state'))['aggregations']['all_state']['buckets'],
+      'User' => es_query('testbox', aggs_query_(type, 'my_account'))['aggregations']['all_my_account']['buckets'],
+      'TboxGroup' => es_query('testbox', aggs_query_(type, 'tbox_group'))['aggregations']['all_tbox_group']['buckets']
+    }
+
+    arch_list = []
+    state_list = []
+    user_list = []
+    tbox_group_list = []
+
+    body['Arch'].each { |x| arch_list << x['key'] if x['key'].size.to_i > 0 }
+    body['State'].each { |x| state_list << x['key'] if x['key'].size.to_i > 0 }
+    body['User'].each { |x| user_list << x['key'] if x['key'].size.to_i > 0 }
+    body['TboxGroup'].each { |x| tbox_group_list << x['key'] if x['key'].size.to_i > 0 }
+
+    data = {
+      'Arch' => arch_list,
+      'State' => state_list,
+      'User' => user_list,
+      'TboxGroup' => tbox_group_list
+    }
+
+    return data
+  end
+
   def get_testbox_aggs(type: 'physical', time1: '30m', time2: 'now', size: 0, state: 'requesting', arch: 'aarch64')
     queues = get_public_queues(type, arch)
 
@@ -177,6 +292,28 @@ class MyData
         "all_#{field}" => {
           'terms' => {
             'field' => field.to_s,
+            'size' => '10000'
+          }
+        }
+      }
+    }
+  end
+
+  def aggs_query_(type, field)
+    {
+      'query' => {
+        'bool' => {
+          'must' => [
+            'term' => {
+              'type' => {'value' => type }
+            }
+          ]
+        }
+      },
+      'aggs' => {
+        "all_#{field}" => {
+          'terms' => {
+            'field' => "#{field}.keyword",
             'size' => '10000'
           }
         }

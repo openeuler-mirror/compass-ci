@@ -12,6 +12,8 @@ docker_rm web-backend
 load_cci_defaults
 [[ $SRV_HTTP_RESULT_HOST ]] || SRV_HTTP_RESULT_HOST=$(curl ip.sb)
 [[ $SRV_HTTP_RESULT_PORT ]] || SRV_HTTP_RESULT_PORT=20007
+[[ $ETCD_HOST ]] || ETCD_HOST=172.17.0.1
+[[ $ETCD_PORT ]] || ETCD_PORT=2379
 [[$lab]] || lab=z9
 LAB_PATH="/c/lab-$lab"
 
@@ -27,6 +29,8 @@ cmd=(
 	-e ES_PORT=9200
 	-e SRV_HTTP_RESULT_HOST=$SRV_HTTP_RESULT_HOST
 	-e SRV_HTTP_RESULT_PORT=$SRV_HTTP_RESULT_PORT
+	-e ETCD_PORT=$ETCD_PORT
+	-e ETCD_HOST=$ETCD_HOST
 	-e CCI_SRC=/c/compass-ci
 	-e LKP_SRC=/c/lkp-tests
 	-e UPSTREAM_REPOS_PATH=/c/upstream-repos
@@ -46,7 +50,7 @@ cmd=(
 	--log-opt mode=non-blocking
 	--log-opt max-buffer-size=4m
 
-	debian:web-backend
+	centos:web-backend
 	/c/compass-ci/container/web-backend/web-backend
 )
 
