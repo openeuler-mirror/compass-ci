@@ -18,6 +18,6 @@ VOLUME /data
 
 COPY etcd_compact.sh /
 COPY entry.sh /
-RUN echo '* 0 * * * /etcd_compact.sh > /etcd_compact.log 2>&1' >> /var/spool/cron/crontabs/root
+RUN echo '0 0 * * * /etcd_compact.sh > /etcd_compact.log 2>&1' >> /var/spool/cron/crontabs/root
 
 ENTRYPOINT ["/entry.sh"]
