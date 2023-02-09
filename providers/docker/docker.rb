@@ -7,12 +7,14 @@ require 'open-uri'
 require 'json'
 require 'set'
 require 'fileutils'
+require 'yaml'
 
 require_relative '../lib/common'
 require_relative '../../lib/mq_client'
 require_relative '../../container/defconfig'
 
 BASE_DIR = '/srv/dc'
+job_info = {}
 
 names = Set.new %w[
   SCHED_HOST
@@ -43,6 +45,7 @@ def del_host2queues(hostname)
 end
 
 def parse_response(url, hostname, uuid, index)
+  log_file = "#{LOG_DIR}/#{hostname}"
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
   restart_file = "/tmp/#{ENV['HOSTNAME']}/restart/#{uuid}"
 
@@ -50,7 +53,10 @@ def parse_response(url, hostname, uuid, index)
     return nil if File.exist?(safe_stop_file)
     return nil if uuid && File.exist?(restart_file)
 
+    record_start_log(log_file, hash: {"#{hostname}"=> "start the docker"})
+    record_log(log_file, ["ws boot start"])
     response = ws_boot(url, hostname, index)
+    record_log(log_file, [response])
     hash = response.is_a?(String) ? JSON.parse(response) : {}
     next if hash['job_id'] == '0'
 
@@ -93,11 +99,27 @@ def load_initrds(load_path, hash, log_file)
   end
 end
 
+def load_package_optimization_strategy(load_path)
+  job_yaml = load_path + "/lkp/scheduled/job.yaml"
+  job_info = YAML.load_file(job_yaml)
+  cpu_minimum = job_info['cpu_minimum'].to_s
+  memory_minimun = job_info['memory_minimun'].to_s
+  bin_shareable = job_info['bin_shareable'].to_s
+  ccache_enable = job_info['ccache_enable'].to_s
+
+  return cpu_minimum, memory_minimun, bin_shareable, ccache_enable
+end
+
 def start_container(hostname, load_path, hash)
   docker_image = hash['docker_image']
   system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
+  cpu_minimum, memory_minimun, bin_shareable, ccache_enable = load_package_optimization_strategy(load_path)
   system(
     { 'job_id' => hash['job_id'],
+      'cpu_minimum' => "#{cpu_minimum}",
+      'memory_minimun' => "#{memory_minimun}",
+      'bin_shareable' => "#{bin_shareable}",
+      'ccache_enable' => "#{ccache_enable}",
       'hostname' => hostname,
       'docker_image' => docker_image,
       'nr_cpu' => hash['nr_cpu'],
@@ -129,6 +151,18 @@ def record_start_log(log_file, hash: {})
   return start_time
 end
 
+def record_inner_log(log_file, hash: {})
+  start_time = Time.new
+  File.open(log_file, 'a') do |f|
+    # fluentd refresh time is 1s
+    # let fluentd to monitor this file first
+    sleep(2)
+    f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting DOCKER"
+    f.puts "\n#{hash['job']}"
+  end
+  return start_time
+end
+
 def record_end_log(log_file, start_time)
   duration = ((Time.new - start_time) / 60).round(2)
   File.open(log_file, 'a') do |f|
@@ -139,11 +173,11 @@ def record_end_log(log_file, start_time)
 end
 
 def main(hostname, queues, uuid = nil, index = nil)
+  log_file = "#{LOG_DIR}/#{hostname}"
   load_path = build_load_path(hostname)
   FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
 
   lock_file = load_path + "/#{hostname}.lock"
-  f = get_lock(lock_file)
 
   set_host2queues(hostname, queues)
   url = get_url hostname
@@ -151,8 +185,7 @@ def main(hostname, queues, uuid = nil, index = nil)
   hash = parse_response(url, hostname, uuid, index)
   return del_host2queues(hostname) if hash.nil?
 
-  log_file = "#{LOG_DIR}/#{hostname}"
-  start_time = record_start_log(log_file, hash: hash)
+  start_time = record_inner_log(log_file, hash: hash)
 
   load_initrds(load_path, hash, log_file)
 
@@ -160,10 +193,9 @@ def main(hostname, queues, uuid = nil, index = nil)
 
   record_end_log(log_file, start_time)
 ensure
+  record_log(log_file, ["finished the docker"])
   del_host2queues(hostname)
   release_mem(hostname) unless index.to_s.empty?
-  f&.flock(File::LOCK_UN)
-  f&.close
 end
 
 def loop_main(hostname, queues)
