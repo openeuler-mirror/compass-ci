@@ -4,7 +4,7 @@
 
 . ../defconfig.sh
 
-VERSION=v3.4.15
+VERSION=v3.5.7
 docker_skip_rebuild "etcd-${VERSION}:alpine"
 
 [ "$(arch)" == "aarch64" ] && ARCH=arm64
