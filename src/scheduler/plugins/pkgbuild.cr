@@ -219,7 +219,7 @@ class PkgBuild < PluginsCommon
   end
 
   def load_default_pkgbuild_yaml
-    content = YAML.parse(File.open("#{ENV["LKP_SRC"]}/jobs/pkgbuild.yaml"))
+    content = YAML.parse(File.open("#{ENV["LKP_SRC"]}/programs/pkgbuild/jobs/pkgbuild.yaml"))
     content = Hash(String, JSON::Any).from_json(content.to_json)
 
     return content
