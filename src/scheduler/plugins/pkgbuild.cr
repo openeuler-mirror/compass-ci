@@ -152,6 +152,22 @@ class PkgBuild < PluginsCommon
 
     # add user specify build params
     params.each do |k, v|
+      # if params key match config*, try link file to pkgbuild config dir
+      if k =~ /config.*/
+        field_name = k
+        filename = File.basename(v.as_s)
+        #get origin uploaded_file
+        ss_upload_filepath = "#{SRV_USER_FILE_UPLOAD}/#{job["suite"]}/ss.#{pkg_name}.#{field_name}/#{filename}"
+        if File.exists?(ss_upload_filepath)
+          _pkgbuild_repo = content["pkgbuild_repo"].as_s
+          _pkg_name = _pkgbuild_repo.chomp.split('/', remove_empty: true)[-1]
+          dest_dir = "#{SRV_USER_FILE_UPLOAD}/pkgbuild/#{pkg_name}/#{field_name}"
+          pkg_dest_file = "#{dest_dir}/#{filename}"
+          FileUtils.mkdir_p(dest_dir) unless File.exists?(dest_dir)
+          #link file
+          File.symlink(ss_upload_filepath, pkg_dest_file) unless File.exists?(pkg_dest_file)
+        end
+      end
       content[k] = v
     end
 
@@ -203,7 +219,7 @@ class PkgBuild < PluginsCommon
   end
 
   def load_default_pkgbuild_yaml
-    content = YAML.parse(File.open("#{ENV["LKP_SRC"]}/jobs/build-pkg.yaml"))
+    content = YAML.parse(File.open("#{ENV["LKP_SRC"]}/jobs/pkgbuild.yaml"))
     content = Hash(String, JSON::Any).from_json(content.to_json)
 
     return content

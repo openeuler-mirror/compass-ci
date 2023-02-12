@@ -39,6 +39,7 @@ LAB_REPO  = "lab-#{LAB}"
 SRV_OS     = "/srv/os"
 SRV_INITRD = "/srv/initrd"
 SRV_UPLOAD = "/srv/upload-files"
+SRV_USER_FILE_UPLOAD = "/srv/cci/user-files"
 
 INITRD_HTTP_PREFIX = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
 OS_HTTP_PREFIX = "http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}"

@@ -8,6 +8,14 @@ class Sched
 
     job_content = JSON.parse(body)
     origin_job = init_job(job_content)
+    #if has upload_field, return it and notify client resubmit
+    upload_fields = origin_job.process_user_files_upload
+    if upload_fields
+      return [{
+        "message" => "#{upload_fields}",
+        "errcode" => "RETRY_UPLOAD",
+      }]
+    end
     jobs = @env.cluster.handle_job(origin_job)
     jobs.each do |job|
       init_job_id(job)

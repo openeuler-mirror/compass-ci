@@ -1,0 +1,4 @@
+#This file indicate what field in job can be treatd as a upload field
+#For the below example, only when suite=pkgbuild and have config field, treat "config" as an upload field.
+- suite: pkgbuild
+  field_name: config
