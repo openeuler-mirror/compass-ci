@@ -74,6 +74,10 @@ job运行的结果，每个job执行之后它的job_stage最终都会是finished
 - crash: lifecycle监测到job在某个阶段crash并将其关闭
 - abnomar: 未知错误,表示某台执行机的某个任务尚未被标记为finished状态，这台执行机就开始请求新的任务
 
+### job_fail_stage
+
+记录当job_health出问题时所处的job_stage
+
 ### job_state
 
 同时表示job执行到哪个阶段和job的执行结果
