@@ -60,8 +60,8 @@ class Job
     "debian" => {
       "os" =>              "debian",
       "os_arch" =>         "aarch64",
-      "os_version" =>      "sid",
-      "config" =>          "config-5.4.0-4-arm64",
+      "os_version" =>      "11",
+      "config" =>          "config-5.10.0-9-arm64",
     },
     "ubuntu" => {
       "os" =>              "ubuntu",

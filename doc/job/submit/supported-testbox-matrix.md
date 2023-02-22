@@ -28,8 +28,8 @@
 |-----------|---------|---------------|---------------|--------------|--------------------|
 | debian    | aarch64 | 9.9.0         | ok            | ok           | ok                 |
 | debian    | aarch64 | 10.9.0        | ok            | ok           | ok                 |
-| debian    | aarch64 | sid           | ok            | ok           | ok                 |
-| debian    | x86_64  | sid           | ok            | ok           | ok                 |
+| debian    | aarch64 | 11            | ok            | ok           | ok                 |
+| debian    | x86_64  | 11            | ok            | ok           | ok                 |
 |-----------|---------|---------------|---------------|--------------|--------------------|
 | fedora    | aarch64 | 32            | ok            | ok           | ok                 |
 | fedora    | aarch64 | 33            | ok            | ok           | ok                 |

@@ -32,7 +32,7 @@ describe Scheduler::Boot do
       respon_list = respon.split("\n")
 
       respon_list[0].should eq("#!ipxe")
-      respon_list[2].should contain("debian/aarch64/sid")
+      respon_list[2].should contain("debian/aarch64/11")
     end
 
     it "job content has os, os_arch, os_version, respon the spliced value" do

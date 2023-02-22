@@ -118,7 +118,7 @@ def compare_candidates_body
       OS: [
         { os: 'archlinux', os_version: ['5.5.0-1'] },
         { os: 'centos', os_version: ['7.6', '7.8', '8.1'] },
-        { os: 'debian', os_version: %w[10 sid] },
+        { os: 'debian', os_version: %w[10 11 sid] },
         { os: 'openeuler', os_version: ['1.0', '20.03'] }
       ],
       os_arch: %w[aarch64 x86_64],

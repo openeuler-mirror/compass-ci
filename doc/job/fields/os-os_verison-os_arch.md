@@ -8,7 +8,7 @@ Meaning:
 - Here are some examples:
 	os		os_version		os_arch
 	openeuler	20.03, 1.0		aarch64, x86_64
-	debian		sid, 10			aarch64, x86_64
+	debian		11, 10			aarch64, x86_64
 	centos		7.6, 7.8		aarch64, x86_64
 	...
 

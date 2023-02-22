@@ -23,7 +23,7 @@ TEST_OS = ['openeuler aarch64 20.03',
            'centos aarch64 7.6.1810',
            'centos aarch64 7.8.2003',
            'centos aarch64 8.1.1911',
-           'debian aarch64 sid',
+           'debian aarch64 11',
            'archlinux aarch64 2020-11-12'].freeze
 
 TEST_YAML = 'iperf-walk-os.yaml'

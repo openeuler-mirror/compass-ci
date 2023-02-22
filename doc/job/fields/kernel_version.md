@@ -13,9 +13,8 @@ Meaning:
 	- 4.19.90-mysql
 	- 4.19.90-nginx
 
-	debian/aarch64/sid
-	- 5.4.0-4-arm64(default)
-	- 5.8.0-1-arm64
+	debian/aarch64/11
+	- 5.10.0-9-arm64(default)
 
 	centos/aarch64/7.6.1810
 	- 4.14.0-115.el7.0.1.aarch64(default)
