@@ -319,7 +319,7 @@ class Sched
 
   def close_consume()
     spawn {
-      900.times do
+      90.times do
         sleep 2
         break if @env.watch_channel.closed?
       end
