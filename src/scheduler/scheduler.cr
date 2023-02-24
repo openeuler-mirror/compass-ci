@@ -51,6 +51,17 @@ module Scheduler
       "from" => env.request.remote_address.to_s,
       "message" => "access_record"
     }.to_json) if env.response.status_code == 200
+
+    if env.get?("ws")
+      env.log.info({
+      "from" => env.request.remote_address.to_s,
+      "message" => env.socket.closed?
+      }.to_json)
+      env.socket.close
+      env.log.info({
+      "message" => env.socket.closed?
+      }.to_json)
+    end
   rescue e
     env.log.warn({
       "message" => e.to_s,
@@ -96,7 +107,7 @@ module Scheduler
       spawn env.watch_channel.send("close") if env.get?("watch_state") == "watching"
       env.log.info({
         "from" => env.request.remote_address.to_s,
-        "message" => "access_record"
+        "message" => "socket on closed"
       }.to_json)
     end
   end
@@ -116,6 +127,10 @@ module Scheduler
   # delete jobs from queue
   post "/cancel_jobs" do |env|
     env.sched.cancel_jobs.to_json
+  end
+
+  post "/scheduler/update_subqueues" do |env|
+    env.sched.update_subqueues.to_json
   end
 
   # for client to report event

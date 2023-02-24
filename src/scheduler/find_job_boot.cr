@@ -70,7 +70,7 @@ class Sched
 
   def send_timeout_signal
     spawn do
-      900.times do
+      90.times do
         sleep 2
         break if @env.channel.closed?
       end
