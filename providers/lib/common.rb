@@ -340,6 +340,11 @@ def ws_boot(url, hostname, index, ipxe_script_path = nil)
   EM.run do
     ws = Faye::WebSocket::Client.new(url)
 
+    threads << Thread.new do
+      sleep(300)
+      ws.close(1000, 'timeout')
+    end
+
     EM.add_timer(300) do
       ws.close(1000, 'timeout')
     end
