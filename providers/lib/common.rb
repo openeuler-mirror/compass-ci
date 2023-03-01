@@ -345,10 +345,6 @@ def ws_boot(url, hostname, index, ipxe_script_path = nil)
       ws.close(1000, 'timeout')
     end
 
-    EM.add_timer(300) do
-      ws.close(1000, 'timeout')
-    end
-
     ws.on :open do |_event|
       puts "connect to #{url}"
     end
