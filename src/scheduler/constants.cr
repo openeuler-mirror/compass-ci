@@ -17,7 +17,7 @@ JOB_MQ = "job_mq"
 # this is the compass-ci release lkp-tests base tag
 # the user's lkp-tests tag need equal the BASE_TAG
 # otherwise, we will prompt the user to upgrade the lkp-tests code
-BASE_TAG = "v2021.09.23"
+BASE_TAG = "v2023.03.03"
 
 LAB = (ENV.has_key?("lab") ? ENV["lab"] : "z9")
 
