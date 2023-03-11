@@ -65,26 +65,44 @@ def get_all_data
   my_data.es_search_all('compat-software-info', body)
 end
 
-def update_compat_software?(index, query, info)
-  my_data = MyData.new
-  repo = info['repo'].split('/')[0]
-  data = my_data.es_query(index, query)
-  _id = "#{info['softwareName']}.#{info['version']}.#{info['arch']}.#{info['os']}.#{info['repo']}"
-  add = my_data.es_add(index, _id, info.to_json) if data['took'] == 0
-  data['hits']['hits'].each do |source|
-    my_data.es_delete(index, source['_id']) unless source['_source']['install'] == 'pass'
-    my_data.es_delete(index, source['_id']) if source['_source']['delete']
-    if 4 <= source['_id'].split('--').length <= 5
-      my_data.es_delete(index, source['_id'])
-      sleep 1
-    end
+def update_es_db(index, _id, info, source, my_data)
+  if (4 <= source['_id'].split('--').length) && (source['_id'].split('--').length <= 5)
+    my_data.es_delete(index, source['_id'])
 
-    if source['_id'] == _id
-      id = source['_id']
-      my_data.es_update(index, id, info)
-    else
-      my_data.es_add(index, _id, info.to_json)
+    JSONLogger.new.info({"update software list message": "delete #{source['_id']}"}.to_json)
+
+    sleep 1
+  end
+
+  if source['_id'] == _id
+    id = source['_id']
+    my_data.es_update(index, id, info)
+
+    JSONLogger.new.info({"update software list message": "update #{id}"}.to_json)
+  else
+    my_data.es_add(index, _id, info.to_json)
+
+    JSONLogger.new.info({"update software list message": "add #{source['_id']}"}.to_json)
+  end
+end
+
+def update_compat_software?(index, query, info)
+  begin
+    my_data = MyData.new
+    repo = info['repo'].split('/')[0]
+    data = my_data.es_query(index, query)
+    _id = "#{info['softwareName']}.#{info['version']}.#{info['arch']}.#{info['os']}.#{info['repo']}"
+    add = my_data.es_add(index, _id, info.to_json) if data['took'] == 0
+    data['hits']['hits'].each do |source|
+      my_data.es_delete(index, source['_id']) unless source['_source']['install'] == 'pass'
+      my_data.es_delete(index, source['_id']) if source['_source']['delete']
+
+      update_es_db(index, _id, info, source, my_data)
     end
+  rescue StandardError => e
+    JSONLogger.new.warn({
+      "update software list error message": e.message
+    }.to_json)
   end
 end
 

@@ -21,6 +21,7 @@ defaults = relevant_defaults(names)
 defaults['MQ_HOST'] ||= defaults['LKP_SERVER'] ||= '172.17.0.1'
 defaults['LKP_SERVER'] ||= '172.17.0.1'
 defaults['MQ_PORT'] ||= 5672
+defaults['lab'] ||= 'z9'
 
 service_authentication = relevant_service_authentication(names)
 defaults.merge!(service_authentication)

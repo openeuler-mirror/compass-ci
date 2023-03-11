@@ -16,4 +16,6 @@ RUN gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 RUN umask 002 && \
     gem install bunny json activesupport:6.1.4.4 git rest-client io-console elasticsearch:7.11.1 md5sum base64
 
-COPY submit_arg.yaml /etc/
+COPY rpmbuild-x86_64.yaml /etc/
+COPY rpmbuild-aarch64.yaml /etc/
+COPY secrets_info.yaml /etc/
