@@ -120,6 +120,23 @@ class Elasticsearch::Client
     return error_results
   end
 
+  def search_by_fields(index, query, size=10, source=Array(String).new, ignore_error = true)
+      must = Array(Hash(String, Hash(String, Hash(String, String)))).new
+      query.each do |field, value|
+        must << {"term" => {field.to_s => {"value" => value.to_s}}}
+      end
+      real_query = {
+        "_source" => source,
+        "size" => size,
+        "query" => {
+          "bool" => {
+            "must" => must
+          }
+        }
+      }
+      search(index, real_query, ignore_error)
+  end
+
   def update_account(account_content : JSON::Any, my_email : String)
     return @client.update(
       {
