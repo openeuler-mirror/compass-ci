@@ -29,6 +29,7 @@ class MailBisectResult
     mail_hash = AssistantClient.new.get_mail_list('delimiter')
     @to = mail_hash['to'] if mail_hash.key?('to')
     @bcc = mail_hash['bcc'] if mail_hash.key?('bcc')
+    @is_outgoing = mail_hash['is_outgoing'] || false
     raise 'Need to add bcc email for bisect report.' unless @bcc
   end
 
@@ -73,7 +74,7 @@ class MailBisectResult
   end
 
   def send_report_mail(mail_data)
-    MailClient.new.send_mail_encode(mail_data)
+    MailClient.new(is_outgoing: @is_outgoing).send_mail_encode(mail_data)
   end
 
   def send_account_mail
