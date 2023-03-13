@@ -80,7 +80,7 @@ module DumpStat
     cols_verifation
     return nil unless useful_result?(@result)
 
-    save_json(@result, "#{RESULT_ROOT}/#{@monitor}.json", @result.size * @min_cols > 1000)
+    save_json(@result, "#{RESULT_ROOT}/#{@monitor}.json", compress: (@result.size * @min_cols > 1000))
   end
 
   # keep message | log line which key end with .message|.log
