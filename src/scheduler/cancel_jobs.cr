@@ -63,7 +63,7 @@ class Sched
 
     query = query.as_h
     _source = ["my_account", "queue", "subqueue", "job_stage"]
-    query_jobs = @es.search_by_fields("jobs", query, size=2, source=_source)
+    query_jobs = @es.search_by_fields("jobs", query, size=10000, source=_source)
     query_jobs.each do |job|
       jobs[job["_id"]] = job["_source"]
     end
