@@ -3,9 +3,11 @@
 # frozen_string_literal: true
 
 require 'set'
+require_relative 'decrypt.rb'
 require_relative '../container/defconfig.rb'
 
 config = cci_defaults
+decrypt_dict = decrypt_text_from_env
 
 names = Set.new %w[
   ES_USER
@@ -23,6 +25,9 @@ LOGGING_ES_PORT ||= config['LOGGING_ES_PORT'] || 9202
 if ENV['ES_USER']
   ES_USER = ENV['ES_USER']
   ES_PASSWORD = ENV['ES_PASSWORD']
+elsif decrypt_dict['ES_USER']
+  ES_USER = decrypt_dict['ES_USER']
+  ES_PASSWORD = decrypt_dict['ES_PASSWORD']
 else
   service_authentication = relevant_service_authentication(names)
   ES_USER = service_authentication['ES_USER']
@@ -39,6 +44,9 @@ ES_HOSTS = [{
 if ENV['LOGGING_ES_USER']
   LOGGING_ES_USER = ENV['LOGGING_ES_USER']
   LOGGING_ES_PASSWORD = ENV['LOGGING_ES_PASSWORD']
+elsif decrypt_dict['LOGGING_ES_USER']
+  LOGGING_ES_USER = decrypt_dict['LOGGING_ES_USER']
+  LOGGING_ES_PASSWORD = decrypt_dict['LOGGING_ES_PASSWORD']
 else
   service_authentication = relevant_service_authentication(names)
   LOGGING_ES_USER = service_authentication['LOGGING_ES_USER']
