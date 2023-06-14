@@ -10,6 +10,7 @@ require 'etcdv3'
 
 CCI_SRC ||= ENV['CCI_SRC'] || '/c/compass-ci'
 
+require "#{CCI_SRC}/lib/utils.rb"
 require "#{CCI_SRC}/lib/my_data.rb"
 require "#{CCI_SRC}/lib/compare.rb"
 require "#{CCI_SRC}/lib/constants.rb"
@@ -49,6 +50,7 @@ ETCD_PORT = ENV['ETCD_PORT']
 ETCD_CLIENT = Etcdv3.new(endpoints: "http://#{ETCD_HOST}:#{ETCD_PORT}")
 COMPARE_RECORDS_NUMBER = 100
 FIVE_DAYS_SECOND = 3600 * 24 * 5
+MAX_PAGE_SIZE = 30
 
 def es_query(query)
   ES_CLIENT.search index: 'jobs*', body: query
@@ -387,6 +389,8 @@ end
 def get_jobs_body(params)
   page_size = get_positive_number(params.delete(:page_size), 20)
   page_num = get_positive_number(params.delete(:page_num), 1) - 1
+  check_es_size_num(page_size, page_num)
+
   jobs, total = search_job(params, page_size, page_num)
   jobs, branches = get_optimize_jobs_branches(jobs)
   {
@@ -474,6 +478,8 @@ end
 def get_repos_body(params)
   page_size = get_positive_number(params[:page_size], 20)
   page_num = get_positive_number(params[:page_num], 1) - 1
+  check_es_size_num(page_size, page_num)
+
   git_repo = params[:git_repo]
 
   repos, total = search_repos(git_repo, page_size, page_num)
@@ -1122,7 +1128,9 @@ end
 
 def get_compat_software_body(params)
   page_size = get_positive_number(params.delete(:page_size), 10)
-  page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
+  page_num = get_positive_number(params.delete(:page_num), 1) - 1
+  check_es_size_num(page_size, page_num)
+  from = page_num * page_size
 
   total_query = {
     query: {
@@ -1139,7 +1147,7 @@ def get_compat_software_body(params)
       }
     },
     size: page_size,
-    from: page_num
+    from: from
   }
 
   total = ES_CLIENT.count(index: 'compat-software-info', body: total_query)['count']
@@ -1175,7 +1183,9 @@ end
 
 def get_srpm_software_body(params)
   page_size = get_positive_number(params.delete(:page_size), 10)
-  page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
+  page_num = get_positive_number(params.delete(:page_num), 1) - 1
+  check_es_size_num(page_size, page_num)
+  from = page_num  * page_size
 
   total_query = {
     query: {
@@ -1202,7 +1212,7 @@ def get_srpm_software_body(params)
       }
     },
     size: page_size,
-    from: page_num
+    from: from
   }
 
   total = ES_CLIENT.count(index: 'srpm-info*', body: total_query)['count']

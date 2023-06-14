@@ -3,6 +3,8 @@
 # frozen_string_literal: true
 
 require 'elasticsearch'
+
+require_relative 'utils.rb'
 require_relative 'constants.rb'
 
 # get data from es logging-es etcd redis ...
@@ -94,11 +96,13 @@ class MyData
 
   def testbox_status_query(params, type: 'physical', time1: '30m', time2: 'now', state: 'requesting')
     page_size = get_positive_number(params.delete(:page_size), 10)
-    page_num = (get_positive_number(params.delete(:page_num), 1) - 1) * page_size
+    page_num = get_positive_number(params.delete(:page_num), 1) - 1
+    check_es_size_num(page_size, page_num)
+    from = page_num * page_size
 
     total_query =  query = {
       'size' => page_size,
-      'from' => page_num,
+      'from' => from,
       'query' => {
         'bool' => {
           'must' => [
