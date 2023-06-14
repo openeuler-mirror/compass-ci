@@ -290,7 +290,7 @@ class Sched
 
     return jobs, revisions.min
   ensure
-    ec.close
+    ec.close unless ec.nil?
   end
 
   def consume_by_watch(queues, revision, pre_job)
@@ -400,7 +400,7 @@ class Sched
     res = ec.move(f_queue, t_queue, value)
     return res
   ensure
-    ec.close
+    ec.close unless ec.nil?
   end
 
   def get_job_boot(host, boot_type, pre_job=nil)

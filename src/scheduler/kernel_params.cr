@@ -32,9 +32,9 @@ class Job
   private def job_boot_params
     return nil unless @hash["boot_params"]?
 
-    cmdline = ''
-    @hash["boot_params"].each do |k, v|
-      cmdline += "#{k.sub(/^bp\d*_/, '')}=#{v} "
+    cmdline = ""
+    @hash["boot_params"].as_h.each do |k, v|
+      cmdline += "#{k.sub(/^bp\d*_/, "")}=#{v} "
     end
     cmdline.strip
   end

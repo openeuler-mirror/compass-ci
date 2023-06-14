@@ -12,14 +12,15 @@ class Redis::Client
   class_property :client
   HOST = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
   PORT = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
+  PASSWD = ENV["REDIS_PASSWD"]
   @@size = 25
 
   def self.instance
     Singleton::Of(self).instance
   end
 
-  def initialize(host = HOST, port = PORT, pool_size = @@size)
-    @client = Redis::PooledClient.new(host: host, port: port, pool_size: pool_size, pool_timeout: 0.01)
+  def initialize(host = HOST, port = PORT, pool_size = @@size, passwd = PASSWD)
+    @client = Redis::PooledClient.new(host: host, port: port, pool_size: pool_size, pool_timeout: 0.01, password: passwd)
   end
 
   def self.set_pool_size(pool_size)
