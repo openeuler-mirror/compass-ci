@@ -19,24 +19,33 @@ def syscall(*cmd)
   end
 end
 
-def safe_submit(*cmd)
-  stdout = syscall(*cmd)
-  unless stdout
-    @log.warn({
-      "submit job error message": "submit job failed, please check scheduler"
-    }.to_json)
+def safe_submit(*cmd, retries: 3)
+  retry_count = 0
 
-    sleep 1800
-    safe_submit(*cmd)
-  else
-    if stdout.include?("got job id=#{ENV['lab']}.")
-      @log.info({"submit job message": "submit job success"}.to_json)
+  loop do
+    stdout = syscall(*cmd)
+
+    if stdout
+      if stdout.include?("got job id=#{ENV['lab']}.")
+        @log.info({"submit job message": "submit job success"}.to_json)
+        return
+      else
+        @log.warn({"submit job error message": "submit job failed"}.to_json)
+        retry_count += 1
+      end
     else
-      @log.warn({"submit job error message": "submit job failed"}.to_json)
-
-      sleep 60
-      safe_submit(*cmd)
+      # In case of scheduler error, log warning and wait before retrying
+      @log.warn({
+        "submit job error message": "submit job failed, please check scheduler"
+      }.to_json)
+      sleep 1800
+      next
     end
-  end
-end
 
+    break if retry_count >= retries
+
+    sleep(retry_count * 60)
+  end
+
+  @log.error({"submit job error message": "all retries exhausted, job submission failed"}.to_json)
+end

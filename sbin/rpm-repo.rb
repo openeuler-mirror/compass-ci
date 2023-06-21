@@ -139,11 +139,12 @@ class HandleRepo
   def get_srpm_addr(job_id)
     result_hash = {}
     query_result = @es.query_by_id(job_id)
-    rpmbuild_job_id = query_result['rpmbuild_job_id']
-    rpmbuild_query_result = @es.query_by_id(rpmbuild_job_id)
+    rpmbuild_job_id = query_result['rpmbuild_job_id'] || nil
+    rpmbuild_query_result = rpmbuild_job_id ? @es.query_by_id(rpmbuild_job_id) : {}
     result_hash['srpm_addr'] = rpmbuild_query_result['repo_addr'] || rpmbuild_query_result['upstream_repo']
     result_hash['rpmbuild_result_url'] = "https://api.compass-ci.openeuler.org#{rpmbuild_query_result['result_root']}"
-    result_hash['repo_name'] = rpmbuild_query_result['custom_repo_name'] || rpmbuild_query_result['rpmbuild']['custom_repo_name']
+    result_hash['repo_name'] = rpmbuild_query_result['rpmbuild'] ? rpmbuild_query_result['rpmbuild']['custom_repo_name'] : rpmbuild_query_result['custom_repo_name']
+    result_hash['repo_name'] = result_hash['repo_name'] ? result_hash['repo_name'] : query_result['mount_repo_name']
     result_hash
   end
 
@@ -197,6 +198,7 @@ class HandleRepo
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no upload_rpms params' }) unless data.key?('upload_rpms')
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no job_id params' }) unless data.key?('job_id')
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'upload_rpms params type error' }) if data['upload_rpms'].class != Array
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'upload_rpms empty error' }) if data['upload_rpms'].empty?
 
     data['upload_rpms'].each do |rpm|
       raise JSON.dump({ 'errcode' => '200', 'errmsg' => "no custom_repo_name specified", 'job_id' => "#{data['job_id']}" }) if rpm.split('/')[5] == ""
