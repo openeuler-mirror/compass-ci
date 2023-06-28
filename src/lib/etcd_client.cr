@@ -17,6 +17,10 @@ class EtcdClient
     @etcd.close
   end
 
+  def put_not_exists(queue, content)
+    @etcd.kv.put_not_exists(queue, content)
+  end
+
   def put(queue, content)
     queue = "#{BASE}/#{queue}" unless queue.starts_with?(BASE)
     @etcd.kv.put_not_exists(queue, content)

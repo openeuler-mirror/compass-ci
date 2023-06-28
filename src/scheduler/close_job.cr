@@ -48,6 +48,11 @@ class Sched
       job["last_success_stage"] = "finish"
     end
 
+    if !job["in_watch_queue"].empty?
+      data = {"job_id" => job["id"], "job_health" => job["job_health"]}
+      @etcd.put_not_exists("watch_queue/#{job["in_watch_queue"]}/#{job["id"]}", data.to_json)
+    end
+
     response = @es.set_job_content(job)
     if response["_id"] == nil
       # es update fail, raise exception
