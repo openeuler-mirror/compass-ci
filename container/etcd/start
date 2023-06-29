@@ -20,6 +20,7 @@ cmd=(
 	etcd-v3.4.15:alpine
 	--name node-1
 	--data-dir /data
+	--auto-compaction-retention 1
 	--max-request-bytes 10485760
 	--quota-backend-bytes 8589934592
 	--initial-cluster-state new

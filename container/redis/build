@@ -1,10 +1,17 @@
-#!/bin/sh
+#!/usr/bin/env ruby
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-. ../defconfig.sh
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  REDIS_PASSWD
+]
+
+defaults = relevant_service_authentication(names)
+
 
 docker_skip_rebuild "redis507n:alpine311"
-
-docker build -t redis507n:alpine311 .
+system "docker build -t redis507n:alpine311 --build-arg PASSWD=#{defaults['REDIS_PASSWD']} ."
 

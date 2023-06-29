@@ -11,6 +11,7 @@ require_relative '../lib/json_logger.rb'
 require_relative '../lib/config_account'
 require_relative "#{ENV['LKP_SRC']}/lib/do_local_pack"
 require_relative '../lib/constants.rb'
+require_relative '../lib/safe_submit.rb'
 
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
@@ -107,6 +108,8 @@ class SrcOepkgs
       os_version = "20.03-LTS-SP1"
     elsif upstream_branch.start_with?("openEuler-")
       os_version = upstream_branch.delete_prefix!("openEuler-")
+    elsif upstream_branch.start_with?("contrib_") || upstream_branch.start_with?("compatible_")
+      os_version = upstream_branch.split("_openEuler-")[-1]
     else
       os_version = nil
     end
@@ -125,11 +128,25 @@ class SrcOepkgs
     return sig_name
   end
 
+  def check_branch(branch)
+    custom_repo_name = ""
+    if branch.start_with?("contrib")
+      repo_name = branch.split("_openEuler")[0].delete_prefix!("contrib_").split("-").join("/")
+      custom_repo_name = "contrib/" + repo_name
+    elsif branch.start_with?("compatible")
+      repo_name = branch.split("_openEuler")[0].delete_prefix!("compatible_").split("-").join("/")
+      custom_repo_name = "compatible/" + repo_name
+    else
+      custom_repo_name = "extras"
+    end
+    return custom_repo_name
+  end
+
   def parse_push_arg(src_oepkgs_webhook_info)
     upstream_commit = src_oepkgs_webhook_info['commit_id']
     upstream_repo = src_oepkgs_webhook_info['url']
     upstream_branch = src_oepkgs_webhook_info['branch']
-    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit", "-i", "/c/lkp-tests/jobs/secrets_info.yaml"]
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit", "--no-pack", "-i", "/etc/secrets_info.yaml"]
 
     submit_argv.push("upstream_repo=#{upstream_repo}")
     submit_argv.push("upstream_commit=#{upstream_commit}")
@@ -141,8 +158,9 @@ class SrcOepkgs
     pr_num = src_oepkgs_pr_hook_info['submit_command']['pr_merge_reference_name'].split('/')[2]
     upstream_repo = src_oepkgs_pr_hook_info['url']
     upstream_branch = src_oepkgs_pr_hook_info['branch']
+
     upstream_commit = src_oepkgs_pr_hook_info['new_refs']['heads']['master']
-    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit", "-i", "/c/lkp-tests/jobs/secrets_info.yaml"]
+    submit_argv = ["#{ENV['LKP_SRC']}/sbin/submit", "--no-pack", "-i", "/etc/secrets_info.yaml"]
 
     src_oepkgs_pr_hook_info['submit_command'].each do |k, v|
       submit_argv.push("#{k}=#{v}")
@@ -154,6 +172,16 @@ class SrcOepkgs
     return submit_argv, upstream_branch
   end
 
+  def submit_job(real_argvs)
+    Process.fork do
+      safe_submit(real_argvs.push("/etc/rpmbuild-aarch64.yaml").join(' '))
+    end
+
+    Process.fork do
+      safe_submit(real_argvs.push("/etc/rpmbuild-x86_64.yaml").join(' '))
+    end
+  end
+
   def submit_pr_rpmbuild_job(src_oepkgs_pr_hook_info)
     submit_argv, upstream_branch = parse_pr_arg(src_oepkgs_pr_hook_info)
     real_argvs = Array.new(submit_argv)
@@ -161,13 +189,22 @@ class SrcOepkgs
     os_version = parse_os_version(upstream_branch)
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no os_version' }) unless os_version
 
-    real_argvs.push("rpmbuild.yaml os=openeuler os_version=#{os_version} docker_image=openeuler:#{os_version}")
-    real_argvs.push("mount_repo_name=oepkgs")
-    real_argvs.push("mount_repo_addr=https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/extras/\\\\\\$basearch")
+    custom_repo_name = check_branch(upstream_branch)
 
-    Process.fork do
-      system(real_argvs.join(' '))
+    real_argvs.push("os=openeuler os_version=#{os_version} docker_image=openeuler:#{os_version}")
+
+    if custom_repo_name.start_with?("contrib")
+      mount_repo = "https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/extras/\\\\\\$basearch,"
+      mount_repo += "https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/#{custom_repo_name}/\\\\\\$basearch"
+      real_argvs.push("mount_repo_name=oepkgs,oepkgs-contrib")
+      real_argvs.push("mount_repo_addr=#{mount_repo}")
+    else
+      real_argvs.push("mount_repo_name=oepkgs")
+      real_argvs.push("mount_repo_addr=https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/#{custom_repo_name}/\\\\\\$basearch")
     end
+
+    @log.info({"submit_pr_rpmbuild_job message": real_argvs.join(' ')}.to_json)
+    submit_job(real_argvs)
   end
 
   def submit_rpmbuild_job(src_oepkgs_webhook_info)
@@ -182,14 +219,22 @@ class SrcOepkgs
     os_version = parse_os_version(upstream_branch)
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no os_version' }) unless os_version
 
-    real_argvs.push("custom_repo_name=contrib/#{sig_name}")
-    real_argvs.push("rpmbuild.yaml os=openeuler os_version=#{os_version} docker_image=openeuler:#{os_version}")
-    real_argvs.push("mount_repo_name=oepkgs")
-    real_argvs.push("mount_repo_addr=https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/extras/\\\\\\$basearch")
+    custom_repo_name = check_branch(upstream_branch)
+    real_argvs.push("custom_repo_name=#{custom_repo_name}")
+    real_argvs.push("os=openeuler os_version=#{os_version} docker_image=openeuler:#{os_version}")
 
-    Process.fork do
-      system(real_argvs.join(' '))
+    if custom_repo_name.start_with?("contrib")
+      mount_repo = "https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/extras/\\\\\\$basearch,"
+      mount_repo += "https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/#{custom_repo_name}/\\\\\\$basearch"
+      real_argvs.push("mount_repo_name=oepkgs,oepkgs-contrib")
+      real_argvs.push("mount_repo_addr=#{mount_repo}")
+    else
+      real_argvs.push("mount_repo_name=oepkgs")
+      real_argvs.push("mount_repo_addr=https://repo.oepkgs.net/openEuler/rpm/openEuler-#{os_version}/#{custom_repo_name}/\\\\\\$basearch")
     end
+
+    @log.info({"submit_push_rpmbuild_job message": real_argvs.join(' ')}.to_json)
+    submit_job(real_argvs)
   end
 end
 

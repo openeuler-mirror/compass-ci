@@ -15,6 +15,7 @@ require_relative '../lib/parse_install_rpm'
 require_relative './build-compat-list'
 require_relative '../lib/es_query.rb'
 require_relative '../lib/constants.rb'
+require_relative '../lib/safe_submit.rb'
 
 MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
 MQ_PORT = ENV['MQ_PORT'] || 5672
@@ -54,7 +55,7 @@ class HandleRepo
   def handle_new_rpm
     update_repo_queue = @update_repo_mq.queue('update_repo')
     createrepodata_queue = @create_repodata_mq.queue('createrepodata')
-    Thread.new 10 do
+    Thread.new do
       update_repo_queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
         loop do
           next unless @@upload_flag
@@ -138,11 +139,12 @@ class HandleRepo
   def get_srpm_addr(job_id)
     result_hash = {}
     query_result = @es.query_by_id(job_id)
-    rpmbuild_job_id = query_result['rpmbuild_job_id']
-    rpmbuild_query_result = @es.query_by_id(rpmbuild_job_id)
+    rpmbuild_job_id = query_result['rpmbuild_job_id'] || nil
+    rpmbuild_query_result = rpmbuild_job_id ? @es.query_by_id(rpmbuild_job_id) : {}
     result_hash['srpm_addr'] = rpmbuild_query_result['repo_addr'] || rpmbuild_query_result['upstream_repo']
     result_hash['rpmbuild_result_url'] = "https://api.compass-ci.openeuler.org#{rpmbuild_query_result['result_root']}"
-    result_hash['repo_name'] = rpmbuild_query_result['custom_repo_name'] || rpmbuild_query_result['rpmbuild']['custom_repo_name']
+    result_hash['repo_name'] = rpmbuild_query_result['rpmbuild'] ? rpmbuild_query_result['rpmbuild']['custom_repo_name'] : rpmbuild_query_result['custom_repo_name']
+    result_hash['repo_name'] = result_hash['repo_name'] ? result_hash['repo_name'] : query_result['mount_repo_name']
     result_hash
   end
 
@@ -196,6 +198,7 @@ class HandleRepo
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no upload_rpms params' }) unless data.key?('upload_rpms')
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'no job_id params' }) unless data.key?('job_id')
     raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'upload_rpms params type error' }) if data['upload_rpms'].class != Array
+    raise JSON.dump({ 'errcode' => '200', 'errmsg' => 'upload_rpms empty error' }) if data['upload_rpms'].empty?
 
     data['upload_rpms'].each do |rpm|
       raise JSON.dump({ 'errcode' => '200', 'errmsg' => "no custom_repo_name specified", 'job_id' => "#{data['job_id']}" }) if rpm.split('/')[5] == ""
@@ -229,6 +232,8 @@ class HandleRepo
           pub_path = File.dirname(pub_path)
         end
       system("createrepo --update $(dirname #{pub_path})")
+
+      @log.info({"create repodata message": pub_path}.to_json)
     end
   end
 
@@ -242,6 +247,7 @@ class HandleRepo
             next unless @@create_repodata
             @create_repodata_mq.ack(info)
             createrepodata_complete_queue.publish(msg)
+            @log.info({"create repodata message": "create repodata done"}.to_json)
             break
           rescue StandardError => e
             @log.warn({
@@ -293,6 +299,7 @@ class HandleRepo
                 path = File.dirname(path)
               end
               system("createrepo --update $(dirname #{path})")
+              @log.info({"update repodata message": path}.to_json)
             end
             threads[path] = thr
           end
@@ -332,7 +339,8 @@ class HandleRepo
 
     extras_submit_argv.push("mount_repo_addr=#{extras_rpm_path}")
     extras_submit_argv.push("mount_repo_name=#{mount_repo_name}")
-    extras_submit_argv
+
+    return extras_submit_argv, extras_rpm_path
   end
 
   def rpmbuild_arg(job_id)
@@ -344,7 +352,7 @@ class HandleRepo
     if ! upstream_repo.nil?  && upstream_repo.start_with?('https://gitee.com/src-oepkgs/') && ! upstream_commit.nil?
       rpmbuild_argv.push("upstream_repo=#{upstream_repo}")
       rpmbuild_argv.push("upstream_commit=#{upstream_commit}")
-      rpmbuild_argv.push("-i /c/lkp-tests/jobs/secrets_info.yaml")
+      rpmbuild_argv.push("-i /etc/secrets_info.yaml")
     end
     rpmbuild_argv.push("os=#{query_result['os']}")
     rpmbuild_argv.push("os_version=#{query_result['os_version']}")
@@ -363,7 +371,7 @@ class HandleRepo
   #    extras_submit_argv: ["#{ENV['LKP_SRC']}/sbin/submit", "--no-pack", "install-rpm.yaml", "arch=aarch64", "xxx"]
   #    submit_argv: ["#{ENV['LKP_SRC']}/sbin/submit", "--no-pack", "install-rpm.yaml", "arch=aarch64", "xxx"]
   def parse_arg(rpm, job_id)
-    extras_submit_argv = extras_parse_arg(rpm)
+    extras_submit_argv, extras_rpm_path = extras_parse_arg(rpm)
     rpmbuild_argv = rpmbuild_arg(job_id)
     extras_submit_argv = extras_submit_argv + rpmbuild_argv
 
@@ -378,8 +386,13 @@ class HandleRepo
     unless check_if_extras(rpm)
      mount_repo_name = rpm_path.split('/')[4..-3].join('/')
      submit_argv.push("arch=#{submit_arch}")
-     submit_argv.push("mount_repo_name=#{mount_repo_name}")
-     submit_argv.push("mount_repo_addr=#{rpm_path}")
+     if mount_repo_name.include?("contrib/")
+       submit_argv.push("mount_repo_name=oepkgs,#{mount_repo_name}")
+       submit_argv.push("mount_repo_addr=#{extras_rpm_path},#{rpm_path}")
+     else
+       submit_argv.push("mount_repo_name=#{mount_repo_name}")
+       submit_argv.push("mount_repo_addr=#{rpm_path}")
+     end
      submit_argv = submit_argv + rpmbuild_argv
      submit_argv.push((fixed_arg['yaml']).to_s)
     end
@@ -436,11 +449,14 @@ class HandleRepo
 
           unless real_argvs.length == 3
             Process.fork do
-              system(real_argvs.join(' '))
+              @log.info({"submit_install_rpm message": real_argvs.join(' ')}.to_json)
+              safe_submit(real_argvs.join(' '))
             end
-          end
-          Process.fork do
-            system(extras_real_argvs.join(' '))
+          else
+            Process.fork do
+              @log.info({"submit_install_rpm message": real_argvs.join(' ')}.to_json)
+              safe_submit(extras_real_argvs.join(' '))
+            end
           end
           @createrepodata_complete_mq.ack(info)
         rescue StandardError => e
@@ -471,6 +487,8 @@ Thread.new do
       group_id = Time.new.strftime('%Y-%m-%d') + '-auto-install-rpm'
       puts "Running #{job}"
       hr.deal_pub_dir(group_id)
+
+      @log.info({"deal_pub_dir  message": "#{Time.new.strftime('%Y-%m-%d-%H-%M-%S')} finish"}.to_json)
     rescue StandardError => e
       JSONLogger.new.warn({
         "deal_pub_dir error message": e.message

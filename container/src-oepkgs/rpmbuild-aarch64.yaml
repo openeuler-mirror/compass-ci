@@ -1,0 +1,9 @@
+# This job is a place holder, you must set necessary params before running it.
+
+suite: rpmbuild
+category: functional
+
+rpmbuild:
+
+arch | testbox | queue:
+ - aarch64 | vm-2p32g | vm-2p32g.aarch64

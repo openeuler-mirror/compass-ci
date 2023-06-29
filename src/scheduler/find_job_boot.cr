@@ -71,7 +71,11 @@ class Sched
         break if @env.channel.closed?
       end
 
-      @env.channel.send({"type" => "timeout"}) unless @env.channel.closed?
+      begin
+        @env.channel.send({"type" => "timeout"}) unless @env.channel.closed?
+      rescue
+        @log.warn("env channel is closed.")
+      end
     end
   end
 
@@ -284,9 +288,9 @@ class Sched
       jobs += job.kvs
     end
 
-    ec.close
-
     return jobs, revisions.min
+  ensure
+    ec.close unless ec.nil?
   end
 
   def consume_by_watch(queues, revision, pre_job)
@@ -305,6 +309,8 @@ class Sched
 
     watchers = start_watcher(ech)
     loop_handle_event(ech, pre_job)
+  ensure
+    close_watch(ech)
   end
 
   def close_consume()
@@ -314,7 +320,11 @@ class Sched
         break if @env.watch_channel.closed?
       end
 
-      @env.watch_channel.send("close") unless @env.watch_channel.closed?
+      begin
+        @env.watch_channel.send("close") unless @env.watch_channel.closed?
+      rescue
+        @log.warn("env watch_channel is closed.")
+      end
     }
   end
 
@@ -356,12 +366,12 @@ class Sched
         return nil, nil unless interact_with_client("release_memory")
       end
     end
-  ensure
-     close_watch(ech)
   end
 
   def close_watch(ech)
     @env.set "watch_state", "finished"
+    return unless ech
+
     ech.each do |ec, watcher|
       watcher.stop
       ec.close
@@ -388,8 +398,9 @@ class Sched
     end
     value = job.value
     res = ec.move(f_queue, t_queue, value)
-    ec.close
     return res
+  ensure
+    ec.close unless ec.nil?
   end
 
   def get_job_boot(host, boot_type, pre_job=nil)
@@ -419,7 +430,13 @@ class Sched
       create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
     else
       # for physical machines
-      spawn { auto_submit_idle_job(host) }
+      spawn {
+        begin
+          auto_submit_idle_job(host)
+        rescue
+          @log.warn("auto submit idle job error: #{host}.")
+        end
+      }
     end
 
     return boot_content(job, boot_type)

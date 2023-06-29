@@ -23,6 +23,22 @@ class Job
     return @hash["kernel_custom_params"] if @hash["kernel_custom_params"]?
   end
 
+  # job:
+  #   boot_params:
+  #   bp_trace_buf_size: 131072K
+  #   bp_trace_clock: x86-tsc
+  # output string:
+  #   trace_buf_size=131072K trace_clock=x86-tsc
+  private def job_boot_params
+    return nil unless @hash["boot_params"]?
+
+    cmdline = ""
+    @hash["boot_params"].as_h.each do |k, v|
+      cmdline += "#{k.sub(/^bp\d*_/, "")}=#{v} "
+    end
+    cmdline.strip
+  end
+
   def kernel_append_root
     os_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}")
 
@@ -43,7 +59,7 @@ class Job
   end
 
   private def set_kernel_params
-    kernel_params_values = "#{kernel_common_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
+    kernel_params_values = "#{kernel_common_params()} #{job_boot_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
     kernel_params_values = kernel_params_values.split(" ").map(&.strip()).reject!(&.empty?)
     @hash["kernel_params"] = JSON.parse(kernel_params_values.to_json)
   end
