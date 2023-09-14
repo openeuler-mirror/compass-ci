@@ -26,7 +26,7 @@ lkp-tests/lib/bootstrap.sh              # 安装cgz包函数位置
 lkp-tests/bin/lkp-setup-rootfs          # 下载测试用例cgz文件函数及安装解压安装cgz包
 compass-ci：
 compass-ci/container/srv-http           # 提供下载cgz包服务
-compass-ci/container/result-webdav      # nginx负责为上传的cgz包创建软连接
+compass-ci/container/result-webdav      # nginx负责为上传的cgz包创建软链接
 compass-ci/src/lib/job.cr               # 调度器相关代码，负责查找依赖包组装job
 ```
 
@@ -73,7 +73,7 @@ compass-ci/src/lib/job.cr               # 调度器相关代码，负责查找�
 
 - 测试机下载${packages}并制作cgz文件
 
-- 测试机向服务器容器result-webdav发送请求上传cgz文件，result-webdav在服务器上创建软连接
+- 测试机向服务器容器result-webdav发送请求上传cgz文件，result-webdav在服务器上创建软链接
 
 ## cc-makepkg执行流程
 
@@ -91,7 +91,7 @@ compass-ci/src/lib/job.cr               # 调度器相关代码，负责查找�
   - 根据lkp-tests/depends/${benchmark}及lkp-tests/distro/adaptation/${OS}生成映射后包列表
   - 根据映射关系安装${benchmark}开发包
   - 通过lkp-tests/sbin/makepkg处理${benchmark}的PKGBUILD，编译并制作cgz文件
-  - 测试机向服务器容器result-webdav发送请求上传cgz，result-webdav在服务器上创建软连接
+  - 测试机向服务器容器result-webdav发送请求上传cgz，result-webdav在服务器上创建软链接
 
 ### PKGBUILD编写
 
