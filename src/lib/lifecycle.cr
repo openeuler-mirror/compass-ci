@@ -480,9 +480,9 @@ class Lifecycle
   # However, physical machines are restarted on the IBMC service.
   # The restart queue should be set to one.
   def get_machine_reboot_queue(testbox)
-    return "reboot_physical_machine" unless testbox.includes?(".")
+    return "reboot_physical_machine" unless testbox.includes?("local")
 
-    testbox =~ /(.*)-\d+$/
+    testbox =~ /local-(.*)-\d+$/
     $1
   rescue
     testbox
