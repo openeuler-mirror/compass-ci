@@ -16,6 +16,9 @@ class Sched
 
     change_job_stage(job, job_stage, timeout)
     update_database(job)
+
+    report_workflow_job_event(job)
+
   rescue e
     @env.response.status_code = 500
     @log.warn({

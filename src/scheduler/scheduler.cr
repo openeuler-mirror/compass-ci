@@ -188,6 +188,17 @@ module Scheduler
     "Done"
   end
 
+  # client(runner) report job's step
+  # /~lkp/cgi-bin/report-job-step
+  #  ?job_step=smoke_basic_os&job_id=10
+  #  ?job_step=smoke_baseinfo&job_id=10
+  #  ?job_step=smoke_docker&job_id=10
+  get "/~lkp/cgi-bin/report-job-step" do |env|
+    env.sched.report_job_step
+
+    "Done"
+  end
+
   # client(runner) report job's stage
   # /~lkp/cgi-bin/set-job-stage
   #   ?job_stage=on_fail&job_id=10
