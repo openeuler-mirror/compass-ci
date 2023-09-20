@@ -41,6 +41,11 @@ class Sched
       "job" => job_name,
       "workflow_exec_id" => workflow_exec_id,
     }
+
+    job_nickname = job['nickname']?.to_s
+
+    fingerprint = fingerprint.merge({"nickname" => job_nickname}) if job_nickname.nil? || job_nickname.empty?
+
     if event_type == 'job/stage'
       fingerprint.merge({
         "job_stage" => job_stage,
