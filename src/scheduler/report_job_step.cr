@@ -27,8 +27,8 @@ class Sched
   end
 
   def pack_job_event(job, event_type, job_step)
-    workflow_exec_id = job['workflow_exec_id']?.to_s
-    job_stage = job['job_stage']?.to_s
+    workflow_exec_id = job["workflow_exec_id"]?.to_s
+    job_stage = job["job_stage"]?.to_s
     
     job_name_regex = /\/(\w+)\.(yaml|yml|YAML|YML)$/
     job_name_match = regex.match(job_name_regex)
@@ -42,16 +42,16 @@ class Sched
       "workflow_exec_id" => workflow_exec_id,
     }
 
-    job_nickname = job['nickname']?.to_s
+    job_nickname = job["nickname"]?.to_s
 
     fingerprint = fingerprint.merge({"nickname" => job_nickname}) if job_nickname.nil? || job_nickname.empty?
 
-    if event_type == 'job/stage'
+    if event_type == "job/stage"
       fingerprint.merge({
         "job_stage" => job_stage,
         "job_health" => job_health,
       })
-    elsif event_type == 'job/step'
+    elsif event_type == "job/step"
       fingerprint.merge({
         "job_step" => step,
       })
@@ -63,9 +63,9 @@ class Sched
   end
 
   def report_workflow_job_event(job, job_step)
-    return if job['workflow_exec_id'].nil? || job['workflow_exec_id'].empty?
+    return if job["workflow_exec_id"].nil? || job["workflow_exec_id"].empty?
 
-    event_type = step.nil? ? 'job/stage' : 'job/step'
+    event_type = step.nil? ? "job/stage" : "job/step"
     event = pack_job_event(job, event_type, job_step)
     @etcd.put_not_exist("raw_events/job/#{job_id}", event.to_json)
   end
