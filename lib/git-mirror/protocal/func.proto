@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+service Coordinator {
+    rpc SayHello(HelloRequest) returns (HelloResponse) {}
+    rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse) {}
+}
+
+message HelloRequest {
+    int32 workerID = 1;
+    string uuid = 2;
+
+}
+
+message HelloResponse {
+    int32 workerID = 1;
+    string uuid = 2;
+}
+
+message HeartBeatRequest {
+    int32 workerID = 1;
+}
+
+message HeartBeatResponse {
+    int32 status = 1;  
+    repeated string add_repos = 2;
+    repeated string del_repos = 3;
+}

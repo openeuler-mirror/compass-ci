@@ -1,0 +1,2 @@
+where_coor_ip_addr: 127.0.0.1:5555
+clone_disk_path: /your/worker/clone/disk/path 
