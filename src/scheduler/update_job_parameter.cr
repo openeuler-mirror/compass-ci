@@ -56,6 +56,8 @@ class Sched
 
     @es.set_job_content(job)
     update_testbox_info(job)
+
+    report_workflow_job_event(job_id.to_s, job)
   rescue e
     @env.response.status_code = 500
     @log.warn({
