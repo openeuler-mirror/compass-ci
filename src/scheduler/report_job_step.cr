@@ -68,6 +68,8 @@ class Sched
       "fingerprint" => fingerprint,
       "job_id" => job_id,
       "type" => event_type,
+      "job_stage" => job_stage,
+      "job_health" => job_health,
     }
   end
 
