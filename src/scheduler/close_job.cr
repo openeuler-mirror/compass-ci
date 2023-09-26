@@ -58,6 +58,8 @@ class Sched
       # es update fail, raise exception
       raise "es set job content fail!"
     end
+
+    report_workflow_job_event(job_id.to_s, job)
     "success"
   rescue e
     @env.response.status_code = 500
