@@ -183,6 +183,7 @@ class StatsWorker
     # extract stats.json
     system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
     # storage stats to job in es
+    store_result_es(result_root, job_id, queue_path)
     store_stats_es(result_root, job_id, queue_path)
   end
 
@@ -201,10 +202,30 @@ class StatsWorker
     false
   end
 
+  def store_result_es(result_root : String, job_id : String, queue_path : String)
+    result_path = "#{result_root}/result.json"
+    return unless File.exists?(result_path)
+    result = File.open(result_path) do |file|
+      JSON.parse(file)
+    end
+
+    # TODO nested flatten keys expanded? whether it is necessary?
+    update_content = Hash(String, Array(String) | Hash(String, JSON::Any)).new
+    update_content.merge!(result.as_h)
+
+    @es.@client.update(
+      {
+        :index => "jobs", :type => "_doc",
+        :refresh => "wait_for",
+        :id => job_id,
+        :body => {:doc => update_content},
+      }
+    )
+  end
+
   def store_stats_es(result_root : String, job_id : String, queue_path : String)
     stats_path = "#{result_root}/stats.json"
     return unless File.exists?(stats_path)
-
     stats = File.open(stats_path) do |file|
       JSON.parse(file)
     end
