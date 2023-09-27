@@ -210,15 +210,13 @@ class StatsWorker
     end
 
     # TODO nested flatten keys expanded? whether it is necessary?
-    update_content = Hash(String, Array(String) | Hash(String, JSON::Any)).new
-    update_content.merge!(result.as_h)
 
     @es.@client.update(
       {
         :index => "jobs", :type => "_doc",
         :refresh => "wait_for",
         :id => job_id,
-        :body => {:doc => update_content},
+        :body => {:doc => result.as_h},
       }
     )
   end

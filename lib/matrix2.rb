@@ -23,15 +23,21 @@ def set_pre_value(item, value, sample_size)
   end
 end
 
-def extract_pre_result(stats, monitor, file)
+def extract_pre_result(stats, result, monitor, file)
   monitor_stats = load_json file # yaml.load_json
   sample_size = max_cols(monitor_stats)
 
   monitor_stats.each do |k, v|
     next if k == "#{monitor}.time"
-
-    stats[k] = set_pre_value(k, v, sample_size)
-    stats[k + '.max'] = v.max if should_add_max_latency k
+    
+    if k.start_with?('.')
+      k = k[1..k.size]
+      next if k.empty?
+      result[k] = v
+    else
+      stats[k] = set_pre_value(k, v, sample_size)
+      stats[k + '.max'] = v.max if should_add_max_latency k
+    end
   end
 end
 
@@ -46,6 +52,7 @@ end
 
 def create_stats(result_root)
   stats = {}
+  result = {}
 
   monitor_files = Dir["#{result_root}/*.{json,json.gz}"]
 
@@ -53,11 +60,12 @@ def create_stats(result_root)
     next unless File.size?(file)
 
     monitor = file_check(file)
-    next if monitor == 'stats'
+    next if monitor == 'stats' || monitor == "result"
 
-    extract_pre_result(stats, monitor, file)
+    extract_pre_result(stats, result, monitor, file)
   end
 
+  save_json(result, result_root + '/result.json')
   save_json(stats, result_root + '/stats.json') # yaml.save_json
   # stats
 end

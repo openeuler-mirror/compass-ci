@@ -88,5 +88,8 @@ class Sched
     return unless !event.nil?
 
     @etcd.put_not_exists("raw_events/job/#{job_id}", event.to_json)
+    @log.info({
+      "message" => event,
+    }.to_json)
   end
 end
