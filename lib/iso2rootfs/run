@@ -1,0 +1,164 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+
+# .Org:   QUFU NORMAL UNIRELSITY
+# Author: Wang Guoquan
+# Email:  wangguoquan03@foxmail.com
+
+VIRT_CMD_LIST=(virt-builder-template)
+
+DIST=
+ISOFILE=
+REL=
+VIRT_CMD_PATH=
+
+# Declare error codes
+ERR_PARA=1
+ERR_ENV=2
+ERR_INTERNAL=3
+ERR_EXE=4
+ERR_OTHER=5
+
+function isCmdExist() {
+    if [ -n $VIRT_CMD_PATH ]; then
+        if [ -x $VIRT_CMD_PATH/$cmd ]; then
+	    echo "Using $VIRT_CMD_PATH/$cmd"
+            return 0
+        fi
+    else
+	which "$cmd" > /dev/null 2>$1
+        if [ $？ -eq 0 ]; then
+	    echo "Using $cmd"
+            return 0
+        fi
+    fi
+
+    echo "Error: No $cmd aviliable."
+    return $ERR_ENV
+}
+
+
+while [ -n "$1" ]
+do
+    case "$1" in
+	-d|--distro)
+	    DIST=$2
+	    shift 2
+            ;;
+        -f|--isofile)
+            ISOFILE=$2
+            shift 2
+            ;;
+        -h|--help)
+	    echo "Usage: iso2rootfs -d <Dist> -r <Release> [-f] <Iso> [-p] [/path/virt-x-dir/]"
+	    echo "Example: iso2rootfs -d openeuler -r 22.03-lts"
+	    exit 0
+	    ;;
+        -p|--path)
+	    if [ -d $2 ]; then
+	        VIRT_CMD_PATH=$2"/"
+	    fi
+	    shift 2
+	    ;;
+        -r|--release)
+            REL=$2
+            shift 2
+            ;;
+	*)
+	    echo "Only support -d <Dist> -r <Release> [-f] <Iso> [-p] [/path/virt-x-dir]"
+	    exit $ERR_PARA
+	    ;;
+    esac
+done
+
+
+for cmd in ${VIRT_CMD_LIST[@]}
+do
+    isCmdExist $cmd
+    if [ $? -ne 0 ]; then
+        if [ $VIRT_CMD_PATH ]; then
+            echo "Is there VIRT-BUILDER-TEMPLATE in [$VIRT_CMD_PATH]?"
+	    VIRT_CMD_PATH=""
+        else
+            echo "Please upgrade libguestfs which supports virt-builder-template."
+        fi
+        exit $ERR_ENV
+    fi
+done
+
+
+echo "Check Dist and Version ..."
+DIST_FMT=$(echo $DIST | tr A-Z a-z)
+case $DIST_FMT in
+    centos)
+        ;;
+    debian)
+        ;;
+    fedora)
+        ;;
+    ubuntu)
+        ;;
+    openeuler)
+        # Match the style of openEuler's release 20.03-LTS-SP1
+        REL=$(echo ${REL} | tr a-z A-Z)
+        ;;
+    *)
+        echo "$DIST-$REL has not been supportted yet."
+        exit $ERR_OTHER
+        ;;
+esac
+
+
+echo "Check available space for current path ..."
+current_path=$(pwd)
+filesystem=$(df -P "$current_path" | awk 'NR==2{print $1}')
+available_space=$(df -P "$current_path" | awk 'NR==2{print $4}')
+if [ $available_space -lt 6291456 ]; then
+    echo "WARN: Expectation for available space more than 6G."
+    exit 1
+fi
+
+FILE_NAME="$DIST-$REL"
+
+echo "Create VM image named $FILE_NAME ..."
+if [ -z "$ISOFILE" ]; then
+    ${VIRT_CMD_PATH}virt-builder-template "$DIST" "$REL" "$(arch)"
+else
+    ${VIRT_CMD_PATH}virt-builder-template -f "$ISOFILE" "$DIST" "$REL" "$(arch)"
+fi
+
+if [ $? -ne 0 ]; then
+    exit $ERR_INTERNAL
+fi
+
+DIR_PATH=$(dirname $(realpath $0))
+EXTRACT_CMD="$(realpath $DIR_PATH)/../../container/qcow2rootfs/bin/extract"
+
+echo "Extract kernel and rootfs from $FILE_NAME"
+if [ -f $DIR_PATH/$FILE_NAME.xz ]; then
+    # Decompress image
+    xz -d "$FILE_NAME.xz"
+
+    groups $(whoami) | grep -E "(kvm|qemu|root)"
+    if [[ $? -eq 0 && -f $EXTRACT_CMD ]]; then 
+        # By default, Using qcow2rootfs's way to get rootfs
+        echo "Converting .[raw|qcow2] to .tar.gz, please wait several minutes..."
+	su - "$(whoami)" -c "export LIBGUESTFS_BACKEND=direct | $EXTRACT_CMD $DIR_PATH/$FILE_NAME $FILE_NAME-rootfs.tar.gz"
+        echo "Converting .tar.gz to initramfs.img, please wait several minutes..."
+        mkdir initramfsDir
+        tar -xzvf $FILE_NAME-rootfs.tar.gz -C initramfsDir
+        pushd initramfsDir
+        find . | cpio -o -H newc | gzip > $(dirname $FILE_NAME)/$FILE_NAME-initramfs.img
+        popd
+        rm -rf initramfsDir
+    else
+	echo "Using virt-tar-out to get rootfs..."
+        virt-builder --get-kernel $DIR_PATH/$FILE_NAME
+        virt-tar-out -a $DIR_PATH/$FILE_NAME / "$FILE_NAME-rootfs.tar"
+    fi
+else
+    echo "Error: No $FILE_NAME.xz found. Check whether virt-builder-template run correctly."
+    exit $ERR_EXE
+fi
+
+exit 0
