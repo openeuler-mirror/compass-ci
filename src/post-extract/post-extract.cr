@@ -46,7 +46,7 @@ module PostExtract
       return if tasks.empty?
 
       task = tasks.delete_at(0)
-      spawn { MailWorker.new.handle(task.key, channel) }
+      spawn { PostWorker.new.handle(task.key, channel) }
       Fiber.yield
     end
   end
