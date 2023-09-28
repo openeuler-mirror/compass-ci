@@ -45,7 +45,7 @@ class PostWorker
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
     post_extract_queue = "/events/post_extract/#{workflow_exec_id}/#{job_id}"
-    @etcd.put(post_extract_queue, job.dump_to_json())
+    @etcd.put(post_extract_queue, job.to_json)
   end
 
   def get_pr_result(job)
