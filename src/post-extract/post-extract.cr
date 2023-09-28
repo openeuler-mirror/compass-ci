@@ -3,7 +3,7 @@
 
 
 require "../lib/etcd_client"
-require "./mail_worker"
+require "./post_worker"
 
 module PostExtract
   @@ec = EtcdClient.new
@@ -66,7 +66,7 @@ module PostExtract
   def self.handle_events(channel)
     while true
       key = channel.receive
-      spawn { MailWorker.new.handle(key, channel) }
+      spawn { PostWorker.new.handle(key, channel) }
       Fiber.yield
     end
   end
