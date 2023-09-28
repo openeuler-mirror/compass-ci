@@ -44,7 +44,7 @@ class PostWorker
     workflow_exec_id = job["workflow_exec_id"]?.to_s
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
-    post_extract_queue = "/events/post_extract/#{workflow_exec_id}/#{job_id}"
+    post_extract_queue = "/post_extract/#{workflow_exec_id}/#{job_id}"
     @etcd.put(post_extract_queue, job.to_json)
     @log.info("post-extract send workflow event, id:#{job_id}")
   end
