@@ -46,6 +46,7 @@ class PostWorker
 
     post_extract_queue = "/events/post_extract/#{workflow_exec_id}/#{job_id}"
     @etcd.put(post_extract_queue, job.to_json)
+    @log.info("post-extract send workflow event, id:#{job_id}")
   end
 
   def get_pr_result(job)
