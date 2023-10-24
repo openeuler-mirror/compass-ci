@@ -1,4 +1,5 @@
-coor_ip_addr: 127.0.0.1:5555
+coor_ip_addr: 172.19.0.1
+coor_port: 5555
 
 upstream_repos_urls: # list
 - https://gitee.com/compass-ci/upstream-repos.git

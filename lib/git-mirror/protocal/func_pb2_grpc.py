@@ -24,6 +24,11 @@ class CoordinatorStub(object):
                 request_serializer=func__pb2.HeartBeatRequest.SerializeToString,
                 response_deserializer=func__pb2.HeartBeatResponse.FromString,
                 )
+        self.DiskFull = channel.unary_unary(
+                '/Coordinator/DiskFull',
+                request_serializer=func__pb2.DiskFullRequest.SerializeToString,
+                response_deserializer=func__pb2.DiskFullResponse.FromString,
+                )
 
 
 class CoordinatorServicer(object):
@@ -41,6 +46,12 @@ class CoordinatorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def DiskFull(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CoordinatorServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -53,6 +64,11 @@ def add_CoordinatorServicer_to_server(servicer, server):
                     servicer.HeartBeat,
                     request_deserializer=func__pb2.HeartBeatRequest.FromString,
                     response_serializer=func__pb2.HeartBeatResponse.SerializeToString,
+            ),
+            'DiskFull': grpc.unary_unary_rpc_method_handler(
+                    servicer.DiskFull,
+                    request_deserializer=func__pb2.DiskFullRequest.FromString,
+                    response_serializer=func__pb2.DiskFullResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -95,5 +111,22 @@ class Coordinator(object):
         return grpc.experimental.unary_unary(request, target, '/Coordinator/HeartBeat',
             func__pb2.HeartBeatRequest.SerializeToString,
             func__pb2.HeartBeatResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DiskFull(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Coordinator/DiskFull',
+            func__pb2.DiskFullRequest.SerializeToString,
+            func__pb2.DiskFullResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

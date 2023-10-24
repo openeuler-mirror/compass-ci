@@ -37,7 +37,23 @@ class Task:
         self.STEP_SECONDS = 150000
         self.last_commit_time = 0
         
-    def clone_repo(self, task_queue):
+    def check_disk_utilization(self):
+        statvfs = os.statvfs('/')
+        total_disk_space = statvfs.f_frsize * statvfs.f_blocks
+        free_disk_space = statvfs.f_frsize * statvfs.f_bfree
+
+        disk_usage = int((total_disk_space - free_disk_space) * 100.0 / total_disk_space)
+        print(disk_tip = "[clone repo] The current disk space usage rate of the machine is" + str(disk_usage) + "%")
+        if disk_usage >= 98:
+            print("The disk space is about to run out. In order to operate normally, this machine will no longer respond to the arrival of a new repository!")
+            return True
+        return False
+
+    def clone_repo(self, task_queue, stub):
+        isFull = self.check_disk_utilization()
+        if isFull == True:
+            stub.DiskFull(func_pb2.DiskFullRequest(self.repo_url))
+            
         print('Start trying to clone...')
         command = "cd %s && git clone %s" %(self.clone_disk_path, self.repo_url)
         result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
@@ -65,9 +81,9 @@ class Task:
 
         if result.returncode != 0:
             if common.std_fetcherr(result.stderr) == 1:
-                print('[fetch] Current warehouse does not exist!')
+                print('[fetch] Current repository does not exist!')
                 return
-            # 仓库存在但fetch失败 (重试
+            # repository exists but fetch failed (retry
             self.fetch_fail_cnt += 1
         else:
             print('repo fetch successful!')
@@ -166,13 +182,29 @@ class WorkerManager:
             print("rm repo success!")
 
         self.selfdb["worker"] = self.worker
+        
+    def dump_repo(self, dump_repos):
+        for v in dump_repos:
+            if v in self.worker.urls:
+                print('[dump repo] 存在repo', v)
+                continue
+            else:
+                self.worker.urls.append(v)
+            task = Task()
+            task.repo_url = v
+            task.task_type = 'git clone'
+            task.clone_disk_path = self.worker.clone_disk_path
+            task.pri = 1
+            self.task_queue.put([task.pri, task]) # input priqueue
+
+        self.selfdb["worker"] = self.worker # Write Disk
     
-    def process_tasks(self, thread_pool):
+    def process_tasks(self, thread_pool, stub):
         while True:
             _, task = self.task_queue.get()
             if task.repo_url in self.worker.urls:
                 if task.task_type == "git clone":
-                    thread_pool.submit(task.clone_repo, self.task_queue)
+                    thread_pool.submit(task.clone_repo, self.task_queue, stub)
                 else:
                     thread_pool.submit(task.fetch_repo,self.task_queue)  
     
@@ -205,7 +237,7 @@ class WorkerManager:
 
     def connect_to_coordinator(self, config_map):
         try:
-            coor_ip_addr = config_map.get('where_coor_ip_addr')
+            coor_ip_addr = config_map.get('where_coor_ip') + config_map.get('where_coor_port')
             clone_disk_path = config_map.get('clone_disk_path')
             if not os.path.exists(clone_disk_path):
                 os.makedirs(clone_disk_path)
@@ -221,7 +253,7 @@ class WorkerManager:
             print('Connection to coordinator successful! workerID:', self.worker.worker_id, 'uuid:', self.worker.uuid)
             
             thread_pool = futures.ThreadPoolExecutor(max_workers=10)
-            taskThread = threading.Thread(target=self.process_tasks, args=(thread_pool, ))
+            taskThread = threading.Thread(target=self.process_tasks, args=(thread_pool, stub, ))
             taskThread.start()
 
             self.heart_beat(stub)

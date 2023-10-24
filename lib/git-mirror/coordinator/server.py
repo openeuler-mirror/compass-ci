@@ -33,6 +33,9 @@ class UrlsArray:
     del_urls: List[str]
     add_urls_lock: threading.Lock
     del_urls_lock: threading.Lock
+    
+    dump_add_again_url: List[str]
+    dump_add_again_url_lock: threading.Lock
 
 class CoordinatorServer:
     def __init__(self, config_map):
@@ -129,7 +132,7 @@ class CoordinatorServer:
                     with self.workers_map_lock:
                         self.workers[v.worker_id] = v
                     self.bitmap[v.worker_id] = True
-                    array = UrlsArray(add_urls=[], del_urls=[],add_urls_lock= threading.Lock(),del_urls_lock= threading.Lock())
+                    array = UrlsArray(add_urls=[], del_urls=[],add_urls_lock= threading.Lock(),del_urls_lock= threading.Lock(),dump_add_again_url=[],dump_add_again_url_lock=threading.Lock())
                     self.urls_cache[v.worker_id] = array 
             time.sleep(600)
         
@@ -161,7 +164,7 @@ class CoordinatorServer:
                         print('result.stdout: ', result.stdout)
                         pass
                     else:
-                        print('Updated with upstream warehouse changes!')
+                        print('Updated with upstream repository changes!')
                         new_tree = self.get_new_tree()
                         with self.git_tree_lock: 
                             self.git_tree = new_tree
@@ -255,7 +258,7 @@ class Coordinator(func_pb2_grpc.CoordinatorServicer):
             
             worker = Worker(worker_id = id, heartBeatStep = 0, alive = True, uuid = str(uuid.uuid1()), urls=[])
             self.server.workers[id] = worker
-        array = UrlsArray(add_urls=[], del_urls=[],add_urls_lock= threading.Lock(),del_urls_lock= threading.Lock())
+        array = UrlsArray(add_urls=[], del_urls=[],add_urls_lock= threading.Lock(),del_urls_lock= threading.Lock(),dump_add_again_url=[],dump_add_again_url_lock=threading.Lock())
         self.server.urls_cache[id] = array 
             
         print("worker[%d]connected!" %id)
@@ -272,25 +275,28 @@ class Coordinator(func_pb2_grpc.CoordinatorServicer):
         worker.heartBeatStep = 0
         worker.alive = True
         with self.server.urls_cache[request.workerID].add_urls_lock:
-            with self.server.urls_cache[request.workerID].del_urls_lock:
-                add_arr =  list(self.server.urls_cache[request.workerID].add_urls)
-                del_arr =  list(self.server.urls_cache[request.workerID].del_urls)
-                self.server.urls_cache[request.workerID].add_urls.clear()
-                self.server.urls_cache[request.workerID].del_urls.clear()
+            add_arr = list(self.server.urls_cache[request.workerID].add_urls)
+            self.server.urls_cache[request.workerID].add_urls.clear()
+        with self.server.urls_cache[request.workerID].del_urls_lock:
+            del_arr = list(self.server.urls_cache[request.workerID].del_urls)
+            self.server.urls_cache[request.workerID].del_urls.clear()
+        with self.server.urls_cache[request.workerID].dump_add_again_url_lock:
+            dump_arr = list(self.server.urls_cache[request.workerID].dump_add_again_url)
+            self.server.urls_cache[request.workerID].dump_add_again_url.clear()
         if not add_arr and not del_arr :
-            return func_pb2.HeartBeatResponse(status=0,add_repos=add_arr,del_repos=del_arr)
+            return func_pb2.HeartBeatResponse(status=0,add_repos=add_arr,del_repos=del_arr,dump_repos=dump_arr)
 
-        return func_pb2.HeartBeatResponse(status=common.ADD_DEL_REPO,add_repos=add_arr,del_repos=del_arr)
+        return func_pb2.HeartBeatResponse(status=common.ADD_DEL_REPO,add_repos=add_arr,del_repos=del_arr,dump_repos=dump_arr)
+
+    def DiskFull(self, request, context):
+        print(request.dump_repo + "The repository has been returned due to disk issues and is preparing to be reassigned to other workers for maintenance")
+        url = request.dump_repo + "+yrd" 
+        nodeID = self.server.hashring.get_urls_node(url)
+        with self.urls_cache[nodeID].add_urls_lock:
+            self.urls_cache[nodeID].dump_add_again_url.append(request.dump_repo) 
       
-def read_config_file():
-    print('start read config file...')
+def download_upstream_repo(configMap):
     curPath = os.path.dirname(os.path.realpath(__file__))
-    yamlPath = os.path.join(curPath, "config.yaml")
-    
-    with open(yamlPath, 'r', encoding='utf-8') as f:
-        config = f.read()
-        
-    configMap = yaml.load(config,Loader=yaml.FullLoader)
     repo_list = configMap.get('upstream_repos_urls')
 
     for url in repo_list:
@@ -302,7 +308,7 @@ def read_config_file():
         while True:
             i = i + 1
             if i > 50:
-                print('Currently there are warehouses with 50 failed cloning attempts! Please check if the url is correct!')
+                print('Currently there are repository with 50 failed cloning attempts! Please check if the url is correct!')
             if os.path.exists(reposPath) == False:
                 print("upsteam repo does not exist!")
                 command = "git clone %s" % url
@@ -321,7 +327,17 @@ def read_config_file():
                     if common.std_neterr(result.stdout) == 1:
                         continue
         
-            return configMap
+# 读取配置文件               
+def read_config_file():
+    print('start read config file...')
+    curPath = os.path.dirname(os.path.realpath(__file__))
+    yamlPath = os.path.join(curPath, "config.yaml")
+
+    with open(yamlPath, 'r', encoding='utf-8') as f:
+        config = f.read()
+    configMap = yaml.load(config,Loader=yaml.FullLoader)
+
+    return configMap
 
 app = Flask(__name__)
 
@@ -350,10 +366,12 @@ def get_status():
 
 if __name__ == '__main__':
     config_map = read_config_file()
+    download_upstream_repo(config_map)
     server = CoordinatorServer(config_map)
     server.checkHaveWorkerCache()
     
-    serve_startup = threading.Thread(target=server.serve,args=(config_map.get('coor_ip_addr'),))
+    addr = config_map.get('coor_ip_addr') + config_map.get('coor_port')
+    serve_startup = threading.Thread(target=server.serve,args=(addr,))
     serve_startup.start()
     
     server.mainLoop_serve()

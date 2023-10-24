@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nfunc.proto\".\n\x0cHelloRequest\x12\x10\n\x08workerID\x18\x01 \x01(\x05\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"/\n\rHelloResponse\x12\x10\n\x08workerID\x18\x01 \x01(\x05\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"$\n\x10HeartBeatRequest\x12\x10\n\x08workerID\x18\x01 \x01(\x05\"I\n\x11HeartBeatResponse\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x11\n\tadd_repos\x18\x02 \x03(\t\x12\x11\n\tdel_repos\x18\x03 \x03(\t2p\n\x0b\x43oordinator\x12+\n\x08SayHello\x12\r.HelloRequest\x1a\x0e.HelloResponse\"\x00\x12\x34\n\tHeartBeat\x12\x11.HeartBeatRequest\x1a\x12.HeartBeatResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nfunc.proto\".\n\x0cHelloRequest\x12\x10\n\x08workerID\x18\x01 \x01(\x05\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"/\n\rHelloResponse\x12\x10\n\x08workerID\x18\x01 \x01(\x05\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"$\n\x10HeartBeatRequest\x12\x10\n\x08workerID\x18\x01 \x01(\x05\"]\n\x11HeartBeatResponse\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x11\n\tadd_repos\x18\x02 \x03(\t\x12\x11\n\tdel_repos\x18\x03 \x03(\t\x12\x12\n\ndump_repos\x18\x04 \x03(\t\"$\n\x0f\x44iskFullRequest\x12\x11\n\tdump_repo\x18\x01 \x01(\t\"\x12\n\x10\x44iskFullResponse2\xa3\x01\n\x0b\x43oordinator\x12+\n\x08SayHello\x12\r.HelloRequest\x1a\x0e.HelloResponse\"\x00\x12\x34\n\tHeartBeat\x12\x11.HeartBeatRequest\x1a\x12.HeartBeatResponse\"\x00\x12\x31\n\x08\x44iskFull\x12\x10.DiskFullRequest\x1a\x11.DiskFullResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -28,7 +28,11 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['_HEARTBEATREQUEST']._serialized_start=111
   _globals['_HEARTBEATREQUEST']._serialized_end=147
   _globals['_HEARTBEATRESPONSE']._serialized_start=149
-  _globals['_HEARTBEATRESPONSE']._serialized_end=222
-  _globals['_COORDINATOR']._serialized_start=224
-  _globals['_COORDINATOR']._serialized_end=336
+  _globals['_HEARTBEATRESPONSE']._serialized_end=242
+  _globals['_DISKFULLREQUEST']._serialized_start=244
+  _globals['_DISKFULLREQUEST']._serialized_end=280
+  _globals['_DISKFULLRESPONSE']._serialized_start=282
+  _globals['_DISKFULLRESPONSE']._serialized_end=300
+  _globals['_COORDINATOR']._serialized_start=303
+  _globals['_COORDINATOR']._serialized_end=466
 # @@protoc_insertion_point(module_scope)
