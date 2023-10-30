@@ -1,0 +1,9 @@
+coor_ip_addr: 172.19.0.1
+coor_port: 5555
+
+upstream_repos_urls: # list
+- https://gitee.com/compass-ci/upstream-repos.git
+
+fetch_interval: 10
+
+bitmap_max_num: 100

@@ -1,0 +1,3 @@
+where_coor_ip: 172.19.0.1
+where_coor_port: 5555
+clone_disk_path: /your/worker/clone/disk/path 
