@@ -43,6 +43,28 @@ class Elasticsearch::Client
     @client = Elasticsearch::API::Client.new({:host => host, :port => port})
   end
 
+  def set_content_by_id(index, id, content)
+    if @client.exists({ :index => index, :type => "_doc", :id => id })
+      return @client.update(
+        {
+          :index => index, :type => "_doc",
+          :refresh => "wait_for",
+          :id => id,
+          :body => { :doc => content },
+        }
+      )
+    else
+      return @client.create(
+        {
+          :index => index, :type => "_doc",
+          :refresh => "wait_for",
+          :id => id,
+          :body => { :doc => content },
+        }
+      )
+    end
+  end
+
   # caller should judge response["_id"] != nil
   def set_job_content(job : Job, is_create = false)
     # time indicates the update time of each job event

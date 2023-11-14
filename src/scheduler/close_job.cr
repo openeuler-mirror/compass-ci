@@ -2,8 +2,31 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
+  def update_job_resource(job, mem, cpu)
+    return unless mem
+    return unless cpu
+
+    begin
+      index = "job_resource"
+      if ["rpmbuild", "hotpatch"].includes?("#{job["suite"]}")
+        id = "#{job["suite"]}_#{job["arch"]}_#{job["os_project"]}_#{job["package"]}_#{job["spec_file_name"]}"
+      else
+        raise "#{job["suite"]} does not support set job resource"
+      end
+      content = { "mem" => mem, "cpu" => cpu }
+      @es.set_content_by_id(index, id, content)
+    rescue e
+      @log.warn({
+        "message" => e.to_s,
+        "error_message" => e.inspect_with_backtrace.to_s
+      }.to_json)
+    end
+  end
+
   def close_job
     job_id = @env.params.query["job_id"]?
+    mem = @env.params.query["mem"]?
+    cpu = @env.params.query["cpu"]?
     return unless job_id
 
     @env.set "job_id", job_id
@@ -24,6 +47,8 @@ class Sched
     job = @es.get_job(job_id)
     raise "can't find job from es, job_id: #{job_id}" unless job
 
+    # update job resource
+    update_job_resource(job, mem, cpu)
     # update job content
     job_state = @env.params.query["job_state"]?
     job["job_state"] = job_state if job_state
