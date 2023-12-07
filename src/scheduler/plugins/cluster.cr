@@ -55,7 +55,6 @@ class Cluster < PluginsCommon
       job_id = @redis.get_job_id(lab)
       single_job = Job.new(JSON.parse(job.dump_to_json), job_id)
       single_job.delete_host_info
-      single_job.delete_kernel_params
 
       host_info = Utils.get_host_info(host.to_s)
       single_job.update(host_info)
@@ -90,7 +89,9 @@ class Cluster < PluginsCommon
       single_job["nr_nic"] = "2"
 
       single_job.update_id(job_id)
+      single_job.set_account_info
       single_job.set_defaults
+      single_job.delete_account_info
 
       jobs << single_job
     end

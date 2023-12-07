@@ -60,7 +60,7 @@ def create_stats(result_root)
     next unless File.size?(file)
 
     monitor = file_check(file)
-    next if monitor == 'stats' || monitor == "result"
+    next if monitor == 'stats' || monitor == 'result'
 
     extract_pre_result(stats, result, monitor, file)
   end
