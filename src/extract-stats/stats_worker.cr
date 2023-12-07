@@ -182,6 +182,14 @@ class StatsWorker
 
     # extract stats.json
     system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
+
+    # temporary strategy
+    max_attempts = 20
+    max_attempts.times do |i|
+      break if File.exists?("#{result_root}/result.json") && File.exists?("#{result_root}/stats.json")
+      sleep 1
+    end
+    
     # storage stats to job in es
     store_result_es(result_root, job_id, queue_path)
     store_stats_es(result_root, job_id, queue_path)
@@ -204,7 +212,11 @@ class StatsWorker
 
   def store_result_es(result_root : String, job_id : String, queue_path : String)
     result_path = "#{result_root}/result.json"
-    return unless File.exists?(result_path)
+    unless File.exists?(result_path)
+      msg = %({"job_id": "#{job_id}", "job_state": "extract_result_failed", "result_root": "#{result_root}"})
+      @log.error(msg)
+      return
+    end
     result = File.open(result_path) do |file|
       JSON.parse(file)
     end
@@ -219,11 +231,18 @@ class StatsWorker
         :body => {:doc => result.as_h},
       }
     )
+
+    msg = %({"job_id": "#{job_id}", "job_state": "extract_result_finished"})
+    @log.info(msg)
   end
 
   def store_stats_es(result_root : String, job_id : String, queue_path : String)
     stats_path = "#{result_root}/stats.json"
-    return unless File.exists?(stats_path)
+    unless File.exists?(stats_path)
+      msg = %({"job_id": "#{job_id}", "job_state": "extract_stats_failed"}, "result_root": "#{result_root}")
+      @log.error(msg)
+      return
+    end
     stats = File.open(stats_path) do |file|
       JSON.parse(file)
     end
@@ -259,7 +278,7 @@ class StatsWorker
       msg = %({"job_id": "#{job_id}", "new_error_id": "#{sample_error_id}"})
       @log.info(msg)
     end
-    msg = %({"job_id": "#{job_id}", "job_state": "extract_finished"})
+    msg = %({"job_id": "#{job_id}", "job_state": "extract_stats_finished"})
     @log.info(msg)
   end
 

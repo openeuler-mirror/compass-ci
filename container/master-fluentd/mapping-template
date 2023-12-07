@@ -1,5 +1,5 @@
 {
-    "template": "*",
+    "index_patterns": "*",
     "settings": {
         "number_of_shards": 1
     },

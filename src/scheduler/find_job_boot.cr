@@ -60,7 +60,7 @@ class Sched
     @redis.hash_set("sched/mac2host", normalize_mac(mac), host)
     @redis.hash_set("sched/host2queues", host, queues)
     Jobfile::Operate.auto_submit_job(
-      "#{ENV["LKP_SRC"]}/jobs/host-info.yaml", ["testbox=unknown", "queue=#{host}", "is_store=yes"])
+      "#{ENV["LKP_SRC"]}/programs/host-info/jobs/host-info.yaml", ["testbox=unknown", "queue=#{host}", "is_store=yes"])
     return host
   end
 
@@ -423,6 +423,9 @@ class Sched
     if job
       job["last_success_stage"] = "boot"
       @es.set_job_content(job)
+
+      report_workflow_job_event(job["id"].to_s, job)
+
       @env.set "job_id", job["id"]
       @env.set "deadline", job["deadline"]
       @env.set "job_stage", job["job_stage"]

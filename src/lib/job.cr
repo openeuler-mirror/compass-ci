@@ -176,14 +176,10 @@ class Job
 
     check_required_keys()
     check_fields_format()
-
-    account_info = @es.get_account(self["my_email"])
-    Utils.check_account_info(@hash, account_info)
-    @account_info = account_info.as(JSON::Any).as_h
-
+    
+    set_account_info()
     check_run_time()
     set_defaults()
-    delete_account_info()
     @hash.merge!(testbox_env)
     checkout_max_run()
   end
@@ -208,7 +204,20 @@ class Job
     set_subqueue()
     set_secrets()
     set_time("submit_time")
-    set_params_md5
+    set_params_md5()
+  end
+
+  def set_account_info
+    account_info = @es.get_account(self["my_email"])
+    Utils.check_account_info(@hash, account_info)
+    @account_info = account_info.as(JSON::Any).as_h
+  end
+
+  def delete_account_info
+    @hash.delete("my_uuid")
+    @hash.delete("my_token")
+    @hash.delete("my_email")
+    @hash.delete("my_name")
   end
 
   private def checkout_max_run
@@ -660,13 +669,6 @@ class Job
     check_rootfs_disk()
   end
 
-  private def delete_account_info
-    @hash.delete("my_uuid")
-    @hash.delete("my_token")
-    @hash.delete("my_email")
-    @hash.delete("my_name")
-  end
-
   private def check_run_time
     # only job.yaml for borrowing machine has the key: ssh_pub_key
     return unless @hash.has_key?("ssh_pub_key")
@@ -721,7 +723,7 @@ class Job
                          "kernel_params",
                          "ipxe_kernel_params"]
   end
-
+  
   def boot_dir
     return "#{SRV_OS}/#{os_dir}/boot"
   end

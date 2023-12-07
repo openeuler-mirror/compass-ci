@@ -46,8 +46,20 @@ class Sched
     job_health = job["job_health"]?.to_s
     job_result = job["result_root"]?.to_s
     job_nickname = job["nickname"]?.to_s
-    job_matrix = job["matrix"]?.to_s
+    
+    begin
+      job_matrix = job["matrix"]?.to_json
+    rescue
+      job_matrix = job["matrix"]?.to_s
+    end
+
     job_branch = job["branch"]?.to_s
+
+    # TODO the root reason could be a bug of lkp-tests
+    # avoid job_stage is running but job_health is success or failed
+    if job_health == "success" || job_health == "failed"
+      job_stage = "finish"
+    end
     
     fingerprint = {
       "type" => event_type,
@@ -67,7 +79,7 @@ class Sched
       })
     end
     
-    {
+    packed_event = {
       "fingerprint" => fingerprint,
       "job_id" => job_id,
       "job" => job_name,
@@ -75,11 +87,13 @@ class Sched
       "job_stage" => job_stage,
       "job_health" => job_health,
       "nickname" => job_nickname,
-      "matrix" => job_matrix,
       "branch" => job_branch,
       "result_root" => job_result,
       "workflow_exec_id" => workflow_exec_id,
     }
+    packed_event.merge!({"job_matrix" => job_matrix}) unless job_matrix.nil?
+
+    packed_event
   end
 
   def report_workflow_job_event(job_id, job, job_step=nil)
