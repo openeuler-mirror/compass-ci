@@ -8,7 +8,7 @@ require "../lib/etcd_client"
 require "../lib/json_logger"
 require "../scheduler/elasticsearch_client"
 
-class MailWorker
+class PostWorker
   def initialize
     @es = Elasticsearch::Client.new
     @etcd = EtcdClient.new
@@ -22,7 +22,12 @@ class MailWorker
 
       job_id = queue_path.split("/")[-1]
       job = @es.get_job_content(job_id)
+      
+      # send email while necessary
       get_pr_result(job)
+      # send post-extract event to specific queue for workflow runner
+      send_workflow_event(job_id, job)
+
       @log.info("post-extract delete key from etcd, the queue is #{job_id}")
       @etcd.delete(queue_path)
     rescue e
@@ -33,6 +38,15 @@ class MailWorker
     ensure
       @etcd.close
     end
+  end
+
+  def send_workflow_event(job_id, job)
+    workflow_exec_id = job["workflow_exec_id"]?.to_s
+    return if workflow_exec_id.nil? || workflow_exec_id.empty?
+
+    post_extract_queue = "/queues/#{workflow_exec_id}/post_extract/#{job_id}"
+    @etcd.put(post_extract_queue, job.to_json)
+    @log.info("send post-extract event to #{post_extract_queue}, id: #{job_id}")
   end
 
   def get_pr_result(job)

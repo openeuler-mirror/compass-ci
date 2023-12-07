@@ -6,3 +6,5 @@ hpc-build:
         "/kunpeng/"
 gather-profile:
         "/cci/profile/"
+rpm2vmlinuz:
+        "/kernel/"

@@ -7,7 +7,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --fix-missing --no-install-recommends -qq apt-utils \
 nfs-common netbase cifs-utils kmod rsync dracut dracut-network xz-utils \
-dracut-config-generic lvm2 xz-utils systemd-sysv
+dracut-config-generic lvm2 xz-utils systemd-sysv xfsprogs
 
 apt-get clean
 rm -rf /var/lib/apt/lists/*

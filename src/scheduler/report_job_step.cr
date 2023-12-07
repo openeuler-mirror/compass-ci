@@ -44,7 +44,10 @@ class Sched
 
     job_stage = job["job_stage"]?.to_s
     job_health = job["job_health"]?.to_s
+    job_result = job["result_root"]?.to_s
     job_nickname = job["nickname"]?.to_s
+    job_matrix = job["matrix"]?.to_s
+    job_branch = job["branch"]?.to_s
     
     fingerprint = {
       "type" => event_type,
@@ -67,7 +70,15 @@ class Sched
     {
       "fingerprint" => fingerprint,
       "job_id" => job_id,
+      "job" => job_name,
       "type" => event_type,
+      "job_stage" => job_stage,
+      "job_health" => job_health,
+      "nickname" => job_nickname,
+      "matrix" => job_matrix,
+      "branch" => job_branch,
+      "result_root" => job_result,
+      "workflow_exec_id" => workflow_exec_id,
     }
   end
 
@@ -77,5 +88,8 @@ class Sched
     return unless !event.nil?
 
     @etcd.put_not_exists("raw_events/job/#{job_id}", event.to_json)
+    @log.info({
+      "message" => event,
+    }.to_json)
   end
 end

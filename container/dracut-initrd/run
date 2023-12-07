@@ -43,7 +43,7 @@ cmd=(
 	-v $root/lib/modules:/lib/modules
 	debian:dracut
 	bash -c
-	"dracut -o iscsi --omit-drivers iscsi --force --kver $kver -k $kernel_modules $initrd_output &&
+	"dracut --install 'mkfs mkfs.xfs mkfs.ext4 vgremove' -o iscsi --omit-drivers iscsi --force --kver $kver -k $kernel_modules $initrd_output &&
 	chmod 644 $initrd_output"
 
 	# example:

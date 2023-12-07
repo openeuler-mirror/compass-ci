@@ -31,6 +31,22 @@ analyse_kernel_cmdline_params() {
     export rootfs_src timestamp os_info
 }
 
+format_create_lv(){
+   # params:
+   # - format_lv
+   # - fstab_file
+   local current_lv="$1"
+   local fstab_file="$2"
+
+   local sysroot_file_type=$(sed 's/\t/ /' ${fstab_file}|grep " / "|awk '{print $(NF-3)}')
+   [ -n "${sysroot_file_type}" ] || sysroot_file_type=ext4
+   if [ "${sysroot_file_type}" == "xfs" ];then
+       /sbin/mkfs.xfs -f "${current_lv}"
+   else
+      /sbin/mkfs.ext4 -F "${current_lv}"
+   fi
+}
+
 sync_src_lv() {
     # params:
     # - src_lv : required.
@@ -52,6 +68,10 @@ sync_src_lv() {
         # if disk not exist, then reboot
         [ -b "$disk" ] || reboot_with_msg "warn dracut: FATAL: device not found: $disk"
 
+        # clean rootfs_disk
+        vgremove -y $vg_name
+        mkfs.xfs -f $disk
+
         # if disk is not pv, then pvcreate it.
         lvm pvdisplay $disk > /dev/null || lvm pvcreate -y $disk || reboot_with_msg "create pv failed: $disk"
 
@@ -72,10 +92,9 @@ sync_src_lv() {
     # create logical volume
     src_lv_devname="$(basename $src_lv)"
     lvm lvcreate -y -L "$os_lv_size" --name "${src_lv_devname#os-}" os
-    mke2fs -t ext4 -T news -F "$src_lv"
-
     # sync nfsroot to $src_lv
     mkdir -p /mnt1 && mount -t nfs "$rootfs_src" /mnt1
+    format_create_lv "${src_lv}" "/mnt1/etc/fstab" 
     mkdir -p /mnt2 && mount "$src_lv" /mnt2
     cp -a /mnt1/. /mnt2/
     umount /mnt1 /mnt2
@@ -98,10 +117,9 @@ snapshot_boot_lv() {
         lvm lvcreate -y -L "$os_lv_size" --name ${boot_lv_devname#os-} --snapshot "$src_lv"
     else
         lvm lvcreate -y -L "$os_lv_size" --name ${boot_lv_devname#os-} os
-        mke2fs -t ext4 -T news -F "$boot_lv"
-
         # sync src_lv to boot_lv
         mkdir -p /mnt1 && mount "$src_lv" /mnt1
+        format_create_lv "${src_lv}" "/mnt1/etc/fstab" 
         mkdir -p /mnt2 && mount "$boot_lv" /mnt2
         cp -a /mnt1/. /mnt2/
         umount /mnt1 /mnt2
