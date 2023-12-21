@@ -14,7 +14,7 @@ require "#{CCI_SRC}/lib/es_client.rb"
 module EsDataApi
   ES_ACCOUNTS = ESClient.new(index: 'accounts')
   ES_AUTHORIZED = ESClient.new(index: 'authorized')
-  OPEN_INDEX = Set.new(%w[jobs hosts])
+  OPEN_INDEX = Set.new(%w[jobs hosts accounts lkp_programs lkp_workflows])
   REQUIRED_TOKEN_INDEX = Set.new(['jobs'])
   ES_QUERY_KEYWORD = Set.new(%w[term match])
 

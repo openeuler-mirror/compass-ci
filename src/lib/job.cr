@@ -398,12 +398,14 @@ class Job
   private def set_my_ssh_pubkey
     pub_key = @hash["ssh_pub_key"]?.to_s
     update_account_my_pub_key(pub_key)
-
     @hash["my_ssh_pubkey"] = @account_info["my_ssh_pubkey"]
   end
 
   private def update_account_my_pub_key(pub_key)
-    my_ssh_pubkey = @account_info["my_ssh_pubkey"].as_a
+    unless @account_info.has_key?("my_ssh_pubkey")
+      @account_info["my_ssh_pubkey"] = JSON::Any.new([] of JSON::Any)
+    end
+    my_ssh_pubkey = @account_info["my_ssh_pubkey"].as_a? || [] of JSON::Any
     return if pub_key.empty? || my_ssh_pubkey.includes?(pub_key)
 
     my_ssh_pubkey << JSON::Any.new(pub_key)
