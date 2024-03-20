@@ -468,7 +468,7 @@ write_dmesg_flag()
 custom_vm_info()
 {
 	gzip -dc job.cgz | cpio -div
-	grep "nr_" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
+	grep -E "nr_|memory" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
 	create_yaml_variables "lkp/scheduled/job_vm.yaml"
 }
 
