@@ -53,36 +53,36 @@ low_mem_wait()
 write_logfile()
 {
 	ipxe_script=ipxe_script
+    # check if need safe-stop:
+	# - stop multi-qemu systemd
+	# - stop all multi-qemu process
+	#   - curling vm: stop after curl timeout <== following code used for this step
+	#   - running vm: stop after vm run finished
+	# - kill sleep $runtime process
+	# - then lkp will reboot hw.
+    if [ -f "/tmp/$HOSTNAME/safe-stop" ]; then
+        log_info "safe stop: $hostname" | tee -a $log_file
+        exit 0
+    fi
+
+	# check if need restart:
+	# - upgrade code
+	# - stop all multi-qemu process
+	#   - curling vm: stop after curl timeout <== following code used for this step
+	#   - running vm: stop after vm run finished
+	# - start multi-qemu process by systemd
+	#
+	# what's UUID:
+	# - UUID is generate at the beginning of ${CCI_SRC}/providers/multi-qemu.
+	# - then, if multi-qemu need restart, `/tmp/$HOSTNAME/restart/$UUID` will be generated,
+	# - so curl will exit.
+    if [ -n "$UUID" ] && [ -f "/tmp/$HOSTNAME/restart/$UUID" ]; then
+        log_info "restart vm with uuid. vm: $hostname. uuid: $UUID" | tee -a $log_file
+        exit 0
+    fi
+    
 	while true
 	do
-		# check if need safe-stop:
-		# - stop multi-qemu systemd
-		# - stop all multi-qemu process
-		#   - curling vm: stop after curl timeout <== following code used for this step
-		#   - running vm: stop after vm run finished
-		# - kill sleep $runtime process
-		# - then lkp will reboot hw.
-		[ -f "/tmp/$HOSTNAME/safe-stop" ] && {
-			log_info "safe stop: $hostname" | tee -a $log_file
-			exit 0
-		}
-
-		# check if need restart:
-		# - upgrade code
-		# - stop all multi-qemu process
-		#   - curling vm: stop after curl timeout <== following code used for this step
-		#   - running vm: stop after vm run finished
-		# - start multi-qemu process by systemd
-		#
-		# what's UUID:
-		# - UUID is generate at the beginning of ${CCI_SRC}/providers/multi-qemu.
-		# - then, if multi-qemu need restart, `/tmp/$HOSTNAME/restart/$UUID` will be generated,
-		# - so curl will exit.
-		[ -n "$UUID" ] && [ -f "/tmp/$HOSTNAME/restart/$UUID" ] && {
-			log_info "restart vm with uuid. vm: $hostname. uuid: $UUID" | tee -a $log_file
-			exit 0
-		}
-
 		log_info "start request job: $hostname" | tee -a $log_file
 
 		# empty file
