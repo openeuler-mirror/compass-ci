@@ -60,12 +60,12 @@ module EsDataApi
     query = request_body['query'] || { 'query' => {} }
     raise "#{index} is not opened for user query" unless OPEN_INDEX.include?(index)
 
-    # need to debug
-    # if REQUIRED_TOKEN_INDEX.include?(index)
-    #   my_account = check_my_account(request_body)
-    #   authorized_accounts = get_authorized_accounts(my_account)
-    #   query = credentials_for_dsl(query, authorized_accounts)
-    # end
+    # TODO need to be debug. It will lead to query error currently
+    if REQUIRED_TOKEN_INDEX.include?(index)
+      my_account = check_my_account(request_body)
+      authorized_accounts = get_authorized_accounts(my_account)
+      query = credentials_for_dsl(query, authorized_accounts)
+    end
     es = Elasticsearch::Client.new(hosts: ES_HOSTS)
     return es.search index: index + '*', body: query
   end
