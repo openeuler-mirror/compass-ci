@@ -14,7 +14,8 @@ require "#{CCI_SRC}/lib/es_client.rb"
 module EsDataApi
   ES_ACCOUNTS = ESClient.new(index: 'accounts')
   ES_AUTHORIZED = ESClient.new(index: 'authorized')
-  OPEN_INDEX = Set.new(%w[jobs hosts])
+  # TODO lkp_jobs lkp_programs lkp_workflows之后在远程LAB方案确定后考虑走独立服务获取
+  OPEN_INDEX = Set.new(%w[jobs hosts lkp_jobs lkp_programs lkp_workflows])
   REQUIRED_TOKEN_INDEX = Set.new(['jobs'])
   ES_QUERY_KEYWORD = Set.new(%w[term match])
 
@@ -59,6 +60,7 @@ module EsDataApi
     query = request_body['query'] || { 'query' => {} }
     raise "#{index} is not opened for user query" unless OPEN_INDEX.include?(index)
 
+    # TODO need to be debug. It will lead to query error currently
     if REQUIRED_TOKEN_INDEX.include?(index)
       my_account = check_my_account(request_body)
       authorized_accounts = get_authorized_accounts(my_account)
