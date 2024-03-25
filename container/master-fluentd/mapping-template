@@ -1,28 +1,30 @@
 {
-    "index_patterns": "*",
-    "settings": {
+    "index_patterns": ["*"],
+    "template": {
+      "settings": {
         "number_of_shards": 1
-    },
-    "mappings": {
+      },
+      "mappings": {
         "dynamic_templates": [
-            {
-                "string_fields": {
-                    "match_mapping_type": "string",
-                    "mapping": {
-                        "type": "text",
-                        "fields": {
-                            "keyword": {
-                                "type": "keyword"
-			    }
-			}
-                    }
+          {
+            "string_fields": {
+              "match_mapping_type": "string",
+              "mapping": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword"
+                  }
                 }
+              }
             }
+          }
         ],
         "properties": {
-            "time": {
-                "type": "date"
-            }
+          "time": {
+            "type": "date"
+          }
         }
+      }
     }
-}
+  }
