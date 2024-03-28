@@ -91,7 +91,6 @@ class Cluster < PluginsCommon
       single_job.update_id(job_id)
       single_job.set_account_info
       single_job.set_defaults
-      single_job.delete_account_info
 
       jobs << single_job
     end

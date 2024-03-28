@@ -18,6 +18,7 @@ class Sched
     end
     jobs = @env.cluster.handle_job(origin_job)
     jobs.each do |job|
+      job.delete_account_info
       init_job_id(job)
       @env.pkgbuild.handle_job(job)
       @env.finally.handle_job(job)
