@@ -226,7 +226,7 @@ class StatsWorker
     @es.@client.update(
       {
         :index => "jobs", :type => "_doc",
-        :refresh => "wait_for",
+        :refresh => true,
         :id => job_id,
         :body => {:doc => result.as_h},
       }
@@ -261,7 +261,7 @@ class StatsWorker
     @es.@client.update(
       {
         :index => "jobs", :type => "_doc",
-        :refresh => "wait_for",
+        :refresh => true,
         :id => job_id,
         :body => {:doc => update_content},
       }
