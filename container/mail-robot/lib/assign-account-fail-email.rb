@@ -78,7 +78,7 @@ def email_err_message(message)
 
     Manual for how to apply account:
 
-        https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md
+        https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md
   EMAIL_MESSAGE
 
   err_message

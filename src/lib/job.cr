@@ -660,7 +660,7 @@ class Job
       if !@hash[key]?
         error_msg = "Missing required job key: '#{key}'."
         if ["my_email", "my_name", "my_token"].includes?(key)
-          error_msg += "\nPlease refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/account/apply-account.md"
+          error_msg += "\nPlease refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md"
         end
         raise error_msg
       end
