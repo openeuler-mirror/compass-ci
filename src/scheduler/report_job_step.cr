@@ -106,7 +106,7 @@ class Sched
       finish_event = pack_job_event(job_id, job, event_type, job_step, true)
       return unless !finish_event.nil?
 
-      @etcd.put_not_exists("raw_events/job/#{job_id}", finish_event.to_json)
+      @etcd.put_not_exists("raw_events/job/#{job_id}/finish", finish_event.to_json)
       @log.info({
         "report_event" => finish_event,
       }.to_json)
