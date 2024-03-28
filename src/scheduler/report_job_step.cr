@@ -28,7 +28,7 @@ class Sched
     send_mq_msg
   end
 
-  def pack_job_event(job_id, job, event_type, job_step)
+  def pack_job_event(job_id, job, event_type, job_step, only_stage = false)
     return unless event_type == "job/stage" || event_type == "job/step"
 
     workflow_exec_id = job["workflow_exec_id"]?.to_s
@@ -68,10 +68,14 @@ class Sched
     }
     fingerprint = fingerprint.merge({"nickname" => job_nickname}) if !job_nickname.nil? && !job_nickname.empty?
 
-    if event_type == "job/stage"
+    if event_type == "job/stage" && !only_stage
       fingerprint = fingerprint.merge({
         "job_stage" => job_stage,
         "job_health" => job_health,
+      })
+    elsif event_type == "job/stage"
+      fingerprint = fingerprint.merge({
+        "job_stage" => job_stage,
       })
     elsif event_type == "job/step"
       fingerprint = fingerprint.merge({
@@ -98,12 +102,21 @@ class Sched
 
   def report_workflow_job_event(job_id, job, job_step=nil)
     event_type = job_step.nil? ? "job/stage" : "job/step"
+    if job["job_stage"]?.to_s == "finish"
+      finish_event = pack_job_event(job_id, job, event_type, job_step, true)
+      return unless !finish_event.nil?
+
+      @etcd.put_not_exists("raw_events/job/#{job_id}/finish", finish_event.to_json)
+      @log.info({
+        "report_event" => finish_event,
+      }.to_json)
+    end
     event = pack_job_event(job_id, job, event_type, job_step)
     return unless !event.nil?
 
     @etcd.put_not_exists("raw_events/job/#{job_id}", event.to_json)
     @log.info({
-      "message" => event,
+      "report_event" => event,
     }.to_json)
   end
 end
