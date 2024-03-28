@@ -13,6 +13,19 @@ module Monitoring
   ws "/filter" do |socket|
     query = JSON::Any.new("")
 
+    timeout_seconds = Time::Span.new(days: 1)
+    start_time = Time.local
+    spawn do
+      loop do
+        sleep 60
+        break if socket.closed?
+        if Time.local - start_time > timeout_seconds
+          socket.close unless socket.closed?
+          break
+        end
+      end
+    end
+
     socket.on_message do |msg|
       # query like {"job_id": "1"}
       # also can be {"job_id": ["1", "2"]}

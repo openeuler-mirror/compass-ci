@@ -40,13 +40,68 @@ class PostWorker
     end
   end
 
+  def pack_post_extract_event(job_id, job)
+    workflow_exec_id = job["workflow_exec_id"]?.to_s
+    return if workflow_exec_id.nil? || workflow_exec_id.empty?
+
+    job_name_regex = /\/([^\/]+)\.(yaml|yml|YAML|YML)$/
+    job_origin = job["job_origin"]?.to_s
+    return if job_origin.nil? || job_origin.empty?
+
+    job_name_match = job_origin.match(job_name_regex)
+    job_name = job_name_match ? job_name_match[1] : nil
+    return unless !job_name.nil?
+
+    job_stage = job["job_stage"]?.to_s
+    job_health = job["job_health"]?.to_s
+    job_result = job["result_root"]?.to_s
+    job_nickname = job["nickname"]?.to_s
+
+    return unless job_stage == "finish"
+
+    begin
+      job_matrix = job["matrix"]?.to_json
+    rescue
+      job_matrix = job["matrix"]?.to_s
+    end
+
+    job_branch = job["branch"]?.to_s
+    
+    fingerprint = {
+      "type" => "job/stage",
+      "job_stage" => "post-extract",
+      "job_health" => job_health,
+      "job" => job_name,
+      "workflow_exec_id" => workflow_exec_id,
+    }
+    fingerprint = fingerprint.merge({"nickname" => job_nickname}) if !job_nickname.nil? && !job_nickname.empty?
+    
+    packed_event = {
+      "fingerprint" => fingerprint,
+      "job_id" => job_id,
+      "job" => job_name,
+      "type" => "job/stage",
+      "job_stage" => "post-extract",
+      "job_health" => job_health,
+      "nickname" => job_nickname,
+      "branch" => job_branch,
+      "result_root" => job_result,
+      "workflow_exec_id" => workflow_exec_id,
+    }
+    packed_event.merge!({"job_matrix" => job_matrix}) unless job_matrix.nil?
+
+    packed_event
+  end
+
   def send_workflow_event(job_id, job)
     workflow_exec_id = job["workflow_exec_id"]?.to_s
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
-    post_extract_queue = "/queues/#{workflow_exec_id}/post_extract/#{job_id}"
-    @etcd.put(post_extract_queue, job.to_json)
-    @log.info("send post-extract event to #{post_extract_queue}, id: #{job_id}")
+    post_extract_event = pack_post_extract_event(job_id, job)
+    if post_extract_event
+      @etcd.put_not_exists("raw_events/job/#{job_id}", post_extract_event.to_json)
+      @log.info("reported post-extract event, id: #{job_id}")
+    end
   end
 
   def get_pr_result(job)
