@@ -359,7 +359,11 @@ class Job
 
     return if File.exists? dest_cgz_file
 
-    pkg_tag = repo_pkg_data["tag"].to_s
+    unless repo_pkg_data.include? "content"
+      @hash["upload_pkg_data"] ||= []
+      @hash["upload_pkg_data"] << repo
+    end
+
     pkg_content_base64 = repo_pkg_data["content"].to_s
     dest_cgz_content = Base64.decode_string(pkg_content_base64)
 
@@ -1069,6 +1073,10 @@ class Job
       #get upload_fields that need upload ,such as ss.linux.config, ss.git.configxx
       #get uploaded file info, we can add it in initrds
       upload_fields, uploaded_file_path_hash = generate_upload_fields(field_config)
+
+      if @hash["upload_pkg_data"]
+        upload_fields.concat @hash["upload_pkg_data"]
+      end
 
       # if upload_fields size > 0, need upload ,return
       return upload_fields if !upload_fields.size.zero?
