@@ -39,7 +39,11 @@ mkfs.ext4 /dev/vg-image/lv-initrd
 pvcreate /dev/sdk
 vgcreate vg-cache /dev/sdk
 lvcreate --size 300G -n lv-cache vg-cache
+lvcreate --size 300G -n lv-upload vg-cache
+lvcreate --size 300G -n lv-srv vg-cache
 mkfs.ext4 /dev/vg-cache/lv-cache
+mkfs.ext4 /dev/vg-cache/lv-upload
+mkfs.ext4 /dev/vg-cache/lv-srv
 
 # large HDD: archive
 pvcreate /dev/sdh
@@ -75,6 +79,7 @@ mkfs.ext4 /dev/vg-result/lv-result
 
 cat >> /etc/fstab <<EOF
 /dev/vg-db/lv-c                     /c               ext4  defaults        0       0
+/dev/vg-db/lv-srv       	    /srv/srv         ext4  defaults        0       0
 /dev/vg-db/lv-redis       	    /srv/redis       ext4  defaults        0       0
 /dev/vg-db/lv-etcd       	    /srv/etcd        ext4  defaults        0       0
 /dev/vg-db/lv-es         	    /srv/es          ext4  defaults        0       0
@@ -83,6 +88,7 @@ cat >> /etc/fstab <<EOF
 /dev/vg-image/lv-initrd 	    /srv/initrd	     ext4  defaults        0       0
 /dev/vg-git/lv-git                  /srv/git         ext4  defaults        0       0
 /dev/vg-cache/lv-cache              /srv/cache       ext4  defaults        0       0
+/dev/vg-cache/lv-upload             /srv/upload-files ext4  defaults        0       0
 /dev/vg-crystal/lv-crystal          /cci             ext4  defaults        0       0
 /dev/vg-archive/lv-backup           /backup          ext4  defaults        0       0
 /dev/vg-os/lv-docker                /var/lib/docker  ext4  defaults        0       0
@@ -96,6 +102,7 @@ mkdir -p /srv/os
 mkdir -p /srv/result
 mkdir -p /srv/initrd
 mkdir -p /srv/git
+mount /srv
 mount /srv/redis
 mount /srv/etcd
 mount /srv/es
@@ -104,6 +111,7 @@ mount /srv/result
 mount /srv/initrd
 mount /srv/git
 mount /srv/cache
+mount /srv/upload-files
 mkdir -p /cci
 mount /cci
 mkdir -p /backup
