@@ -13,6 +13,8 @@ check_info = {
   'my_account' => nil
 }
 
+p_token = false
+
 options = OptionParser.new do |opts|
   opts.banner = "Usage: extract_account_info [-e email]\n"
   opts.banner += '       extract_account_info [-a account]'
@@ -26,6 +28,10 @@ options = OptionParser.new do |opts|
 
   opts.on('-a account', '--account account', 'appoint account') do |account|
     check_info['my_account'] = account
+  end
+
+  opts.on('-t', 'if print token') do
+    p_token = true
   end
 
   opts.on_tail('-h', '--help', 'show this message') do
@@ -57,7 +63,7 @@ end
 account_info = extract_account_info(check_info)
 account_info_hash = account_info[0]['_source']
 account_info_hash.delete('my_ssh_pubkey')
-account_info_hash.delete('my_token')
+account_info_hash.delete('my_token') unless p_token
 
 tb = Terminal::Table.new
 tb.title = 'account info'
