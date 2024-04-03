@@ -30,7 +30,7 @@ class Sched
   end
 
   def update_database(job)
-    update_id2job(JSON.parse(job.dump_to_json))
+    update_id2job(job)
     @es.set_job_content(job)
     update_testbox_info(job)
   end

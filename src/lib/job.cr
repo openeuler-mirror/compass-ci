@@ -131,7 +131,7 @@ class Job
   def shrink_to_etcd_json
     hh = {}
     %w(job_state job_stage job_health last_success_stage
-      start_time end_time close_time in_watch_queue).each do |k|
+      testbox boot_time start_time end_time close_time in_watch_queue).each do |k|
       hh[k] = @hash[k] if @hash.include? k
     end
     hh.to_json
