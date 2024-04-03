@@ -110,7 +110,7 @@ class PluginsCommon
   end
 
   def save_job2etcd(job)
-    @etcd.put("sched/id2job/#{job.id}", job.dump_to_json)
+    @etcd.put("sched/id2job/#{job.id}", job.shrink_to_etcd_json)
   end
 
   def close_die_job(die)

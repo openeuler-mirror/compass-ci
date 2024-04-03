@@ -8,11 +8,11 @@ class Sched
     return false unless job
 
     job.update(job_content)
-    @etcd.update("sched/id2job/#{id}", job.dump_to_json)
+    @etcd.update("sched/id2job/#{id}", job.shrink_to_etcd_json)
   end
 
   def set_id2job(job : Job)
-    @etcd.put("sched/id2job/#{job.id}", job.dump_to_json)
+    @etcd.put("sched/id2job/#{job.id}", job.shrink_to_etcd_json)
   end
 
   def get_id2job(id)

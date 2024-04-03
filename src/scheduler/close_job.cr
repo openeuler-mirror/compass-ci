@@ -21,7 +21,7 @@ class Sched
 
     # whatever we should update job_state/stage/health
     # so we query job from es when can't find job from etcd
-    job = @es.get_job(job_id) unless job
+    job = @es.get_job(job_id)
     raise "can't find job from etcd and es, job_id: #{job_id}" unless job
 
     # update job content
