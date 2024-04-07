@@ -155,9 +155,16 @@ class SerialParser
 
   def match_job_id(msg)
     matched = msg["message"].to_s.match(/.*\/job_initrd_tmpfs\/(?<job_id>.*?)\//)
-    return unless matched
+    if matched
+      return matched.named_captures["job_id"]
+    end
 
-    matched.named_captures["job_id"]
+    matched = msg["message"].to_s.match(/ipxe will boot job id=(?<job_id>[a-zA-Z0-9-]+\.[0-9]+), /)
+    if matched
+      return matched.named_captures["job_id"]
+    end
+
+    return nil
   end
 
   def find_job(job_id)
