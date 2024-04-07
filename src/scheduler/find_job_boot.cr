@@ -450,6 +450,7 @@ class Sched
         echo ...
         echo #{msg}
         echo ...
+        sleep 3
         chain http://#{ENV["SCHED_HOST"]}:#{ENV["SCHED_PORT"]}/boot.ipxe/mac/${mac:hexhyp}"
   end
 
