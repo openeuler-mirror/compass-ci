@@ -1,8 +1,11 @@
 #!ipxe
 
+:retry_boot
+
 set scheduler 172.17.0.1
 set port 3000
 
 chain http://${scheduler}:${port}/boot.ipxe/mac/${mac:hexhyp}
 
-exit
+sleep 3
+goto retry_boot
