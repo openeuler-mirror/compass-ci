@@ -49,7 +49,6 @@ class Job
     @es = Elasticsearch::Client.new
     @account_info = Hash(String, JSON::Any).new
     @log = JSONLogger.new
-    @os_info = YAML.parse(File.read("#{ENV["CCI_SRC"]}/rootfs/os.yaml")).as_h
   end
 
   METHOD_KEYS = %w(
@@ -287,8 +286,9 @@ class Job
 
     # check docker image name
     image, tag = docker_image.split(":")
-    if @os_info[self.os]? and @os_info[self.os]["docker_image"]?
-        known_image = @os_info[self.os]["docker_image"].as_s
+    known_os = YAML.parse(File.read("#{ENV["CCI_SRC"]}/rootfs/os.yaml")).as_h
+    if known_os[self.os]? and known_os[self.os]["docker_image"]?
+        known_image = known_os[self.os]["docker_image"].as_s
         raise "Invalid docker image '#{image}' for os '#{self.os}', should be '#{known_image}'" if image != known_image
     end
 
@@ -536,7 +536,6 @@ class Job
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
       package_dir += ",/cci/build-config" if @hash["config"]?
       if @hash["upstream_repo"].to_s =~ /^l\/linux\//
-        self["config"] = @os_info[self["os"]]["config"] unless @hash["config"]?
         package_dir += ",/kernel/#{os_arch}/#{self["config"]}/#{@hash["upstream_commit"]}"
       end
     end
@@ -703,6 +702,7 @@ class Job
 
   private def set_kernel_version
     self["kernel_version"] ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
+    self["config"] ||= "config-" + self["kernel_version"]
   end
 
   private def set_kernel_uri
