@@ -44,47 +44,12 @@ class Job
     lab: LAB,
   }
 
-  DEFAULT_OS = {
-    "openeuler" => {
-      "os" =>              "openeuler",
-      "os_arch" =>         "aarch64",
-      "os_version" =>      "20.03",
-      "config" =>          "config-4.19.90-2003.4.0.0036.oe1.aarch64",
-    },
-    "centos" => {
-      "os" =>              "centos",
-      "os_arch" =>         "aarch64",
-      "os_version" =>      "7.6.1810",
-      "config" =>          "config-4.14.0-115.el7.0.1.aarch64",
-    },
-    "debian" => {
-      "os" =>              "debian",
-      "os_arch" =>         "aarch64",
-      "os_version" =>      "11",
-      "config" =>          "config-5.10.0-9-arm64",
-    },
-    "ubuntu" => {
-      "os" =>              "ubuntu",
-      "os_arch" =>         "aarch64",
-      "os_version" =>      "20.04",
-      "config" =>          "config-5.4.0-65-generic",
-    },
-    "fedora" => {
-      "os" =>              "fedora",
-      "os_arch" =>         "aarch64",
-      "os_version" =>      "33",
-      "config" =>          "config-5.8.15-301.fc33.aarch64",
-    },
-    "docker" => {
-      "docker_image" => "centos:7"
-    }
-  }
-
   def initialize(job_content : JSON::Any, id)
     @hash = job_content.as_h
     @es = Elasticsearch::Client.new
     @account_info = Hash(String, JSON::Any).new
     @log = JSONLogger.new
+    @os_info = YAML.parse(File.read("#{ENV["CCI_SRC"]}/rootfs/os.yaml")).as_h
   end
 
   METHOD_KEYS = %w(
@@ -195,11 +160,11 @@ class Job
 
   def set_defaults
     extract_user_pkg()
-    set_os_mount()
     append_init_field()
+    set_os_mount()
     set_os_arch()
-    set_docker_os()
     set_os_version()
+    check_docker_image()
     set_submit_date()
     set_rootfs()
     set_result_root()
@@ -294,12 +259,17 @@ class Job
     self["os_arch"] = @hash["arch"].to_s if @hash.has_key?("arch")
   end
 
-  private def set_docker_os
+  private def check_docker_image
     return unless is_docker_job?
 
-    os_info = docker_image.split(":")
-    self["os"] = os_info[0]
-    self["os_version"] = os_info[1]
+    # check docker image name
+    image, tag = docker_image.split(":")
+    if @os_info[self.os]? and @os_info[self.os]["docker_image"]?
+        known_image = @os_info[self.os]["docker_image"].as_s
+        raise "Invalid docker image '#{image}' for os '#{self.os}', should be '#{known_image}'" if image != known_image
+    end
+
+    # docker tags may change over time, so no way to enforce check here
   end
 
   private def set_kernel
@@ -314,20 +284,6 @@ class Job
   private def append_init_field
     DEFAULT_FIELD.each do |k, v|
       k = k.to_s
-      if !@hash[k]? || @hash[k] == nil
-        self[k] = v
-      end
-    end
-
-    set_default_os
-  end
-
-  private def set_default_os
-    os = is_docker_job? ? "docker" : self["os"]
-    key = os == "" ? "openeuler" : os
-    return unless DEFAULT_OS.has_key?(key)
-
-    DEFAULT_OS[key].each do |k, v|
       if !@hash[k]? || @hash[k] == nil
         self[k] = v
       end
@@ -562,7 +518,7 @@ class Job
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
       package_dir += ",/cci/build-config" if @hash["config"]?
       if @hash["upstream_repo"].to_s =~ /^l\/linux\//
-        self["config"] = DEFAULT_OS[self["os"]]["config"] unless @hash["config"]?
+        self["config"] = @os_info[self["os"]]["config"] unless @hash["config"]?
         package_dir += ",/kernel/#{os_arch}/#{self["config"]}/#{@hash["upstream_commit"]}"
       end
     end
@@ -663,6 +619,8 @@ class Job
     id
     suite
     testbox
+    os
+    os_version
     my_email
     my_name
     my_token
