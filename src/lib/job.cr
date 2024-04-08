@@ -702,7 +702,6 @@ class Job
 
   private def set_kernel_version
     self["kernel_version"] ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
-    self["config"] ||= "config-" + self["kernel_version"]
   end
 
   private def set_kernel_uri
