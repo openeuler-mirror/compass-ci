@@ -255,8 +255,31 @@ class Job
     }.to_json)
   end
 
+  # defaults to the 1st value
+  VALID_OS_MOUNTS = ["initramfs", "nfs", "cifs", "container", "local"]
+
+  private def set_os_mount
+    if is_docker_job?
+      self["os_mount"] = "container"
+      return
+    end
+
+    if @hash["os_mount"]?
+      if !VALID_OS_MOUNTS.includes?(@hash["os_mount"].to_s)
+        raise "Invalid os_mount: #{@hash["os_mount"]}, should be in #{VALID_OS_MOUNTS}"
+      end
+    else
+      self["os_mount"] = VALID_OS_MOUNTS[0]
+    end
+  end
+
   private def set_os_arch
     self["os_arch"] = @hash["arch"].to_s if @hash.has_key?("arch")
+  end
+
+  private def set_os_version
+    self["os_version"] = "#{os_version}".chomp("-iso") + "-iso" if "#{self.os_mount}" == "local"
+    self["osv"] = "#{os}@#{os_version}" # for easy ES search
   end
 
   private def check_docker_image
@@ -380,11 +403,6 @@ class Job
     my_ssh_pubkey << JSON::Any.new(pub_key)
     @account_info["my_ssh_pubkey"] = JSON.parse(my_ssh_pubkey.to_json)
     @es.update_account(JSON.parse(@account_info.to_json), self["my_email"].to_s)
-  end
-
-  private def set_os_version
-    self["os_version"] = "#{os_version}".chomp("-iso") + "-iso" if "#{self.os_mount}" == "local"
-    self["osv"] = "#{os}@#{os_version}" # for easy ES search
   end
 
   def os_dir
@@ -594,24 +612,6 @@ class Job
       return true
     else
       return false
-    end
-  end
-
-  # defaults to the 1st value
-  VALID_OS_MOUNTS = ["initramfs", "nfs", "cifs", "container", "local"]
-
-  private def set_os_mount
-    if is_docker_job?
-      self["os_mount"] = "container"
-      return
-    end
-
-    if @hash["os_mount"]?
-      if !VALID_OS_MOUNTS.includes?(@hash["os_mount"].to_s)
-        raise "Invalid os_mount: #{@hash["os_mount"]}, should be in #{VALID_OS_MOUNTS}"
-      end
-    else
-      self["os_mount"] = VALID_OS_MOUNTS[0]
     end
   end
 
