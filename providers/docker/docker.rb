@@ -100,6 +100,8 @@ def start_container(hostname, load_path, hash)
     { 'job_id' => hash['job_id'],
       'hostname' => hostname,
       'docker_image' => docker_image,
+      'nr_cpu' => hash['nr_cpu'],
+      'memory' => hash['memory'],
       'load_path' => load_path,
       'log_dir' => "#{LOG_DIR}/#{hostname}" },
     ENV['CCI_SRC'] + '/providers/docker/run.sh'
