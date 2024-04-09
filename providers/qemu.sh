@@ -10,8 +10,8 @@
 
 load_cci_defaults
 
-: ${hostname:="vm-1p1g-1"}
-: ${queues:="vm-1p1g.$(arch)"}
+: ${hostname:="vm-1p8g-1"}
+: ${queues:="vm-1p8g.$(arch)"}
 : ${log_file:=/srv/cci/serial/logs/$hostname}
 
 set_host_info()

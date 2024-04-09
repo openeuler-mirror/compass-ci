@@ -383,6 +383,8 @@ public_option()
 		-nographic
 		-monitor null
 	)
+
+	[ -n "$cpu_model" ] && kvm+="-cpu $cpu_model"
 }
 
 individual_option()
@@ -468,7 +470,13 @@ write_dmesg_flag()
 custom_vm_info()
 {
 	gzip -dc job.cgz | cpio -div
-	grep -E "nr_|memory" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
+
+	nr_node=1
+	nr_cpu=1
+	memory=8G
+	unset cpu_model
+
+	grep -E "nr_|cpu|memory" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
 	create_yaml_variables "lkp/scheduled/job_vm.yaml"
 }
 
