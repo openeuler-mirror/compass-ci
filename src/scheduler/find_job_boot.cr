@@ -436,8 +436,9 @@ class Sched
       spawn {
         begin
           auto_submit_idle_job(host)
-        rescue
-          @log.warn("auto submit idle job error: #{host}.")
+        rescue e
+          @log.warn("auto submit idle job to #{host} failed: #{e}")
+          @log.warn(e.inspect_with_backtrace)
         end
       }
     end
