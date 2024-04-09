@@ -43,6 +43,7 @@ class Sched
     response = [{
       "job_id"    => "0",
       "message"   => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s,
       "job_state" => "submit",
     }]
   ensure
