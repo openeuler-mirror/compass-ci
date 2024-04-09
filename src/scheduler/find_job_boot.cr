@@ -460,6 +460,8 @@ class Sched
     response["job_id"] = job.id.to_s
     response["docker_image"] = "#{job.docker_image}"
     response["initrds"] = job.get_common_initrds().to_json
+    response["nr_cpu"] = job["nr_cpu"] if job["nr_cpu"]?
+    response["memory"] = job["memory"] if job["memory"]?
 
     return response.to_json
   end
