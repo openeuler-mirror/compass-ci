@@ -56,6 +56,7 @@ class Stats
       if file.end_with?('.rb')
         StatsWrapper.wrapper_func(file, *stat)
       else
+        ENV['JOB_PP_KEYS'] = @job['pp'].keys.join(' ') if stat == 'stderr' and @job['pp'] === Hash
         StatsWrapper.wrapper(file, *stat)
       end
     end
