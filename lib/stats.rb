@@ -63,14 +63,17 @@ class Stats
 
   def assign_stats_list
     stats_list = Set.new
-    stats_list << @job['suite']
     stats_list << ['time', @job['suite'] + '.time']
-    stats_list << 'stderr'
-    @job.each_key do |k|
+
+    @job['pp'] ||= {}
+    @job['monitors'] ||= {}
+    programs = @job['pp'].keys + @job['monitors'].keys
+    programs.each do |k|
       if @available_stats.include?(k)
         stats_list << k
       end
     end
+
     assign_default_stats(stats_list)
 
     stats_list
