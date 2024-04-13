@@ -20,6 +20,17 @@ def available_stats
     available_stats[name] = LKP_SRC + '/stats/' + file
   end
 
+  Dir.glob("#{LKP_SRC}/programs/*/parse*").each do |path|
+    next unless File.executable? path
+    name = File.basename path, '.rb'
+    if name == 'parse'
+      name = File.basename(File.dirname(path))
+    else
+      name.sub!(/^parse-/, '')
+    end
+    available_stats[name] = path
+  end
+
   available_stats
 end
 
