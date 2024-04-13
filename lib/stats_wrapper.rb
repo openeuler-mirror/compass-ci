@@ -8,12 +8,6 @@ require 'English'
 require_relative './dump_stat'
 require_relative './json_logger.rb'
 
-Dir[File.expand_path("#{LKP_SRC}/stats/*.rb")].uniq.each do |file|
-  require file
-end
-
-PROGRAM_DIR = "#{LKP_SRC}/stats"
-
 # exit processing the stats if the program is not in the program_list.
 # program_list is a file that records all the programs(setups, monitors, tests,
 # daemons) being executed during the test.
@@ -24,14 +18,14 @@ PROGRAM_DIR = "#{LKP_SRC}/stats"
 
 # default stats are not in the program_list
 module StatsWrapper
-  def self.wrapper(program, program_time = nil)
+  def self.wrapper(parse_script, program, program_time = nil)
     @program = program
     @stats_group = program_time || program
     @log = "#{RESULT_ROOT}/#{@stats_group}"
 
-    return unless File.exist?("#{PROGRAM_DIR}/#{@program}")
+    return unless File.exist?("#{parse_script}")
     return unless File.exist?("#{@log}.yaml") || pretreatment
-    return unless create_tmpfile
+    return unless create_tmpfile(parse_script)
 
     check_tmpfile
     warn_empty_stats
@@ -41,7 +35,7 @@ module StatsWrapper
     delete_log_package
   end
 
-  def self.wrapper_func(program, program_time = nil)
+  def self.wrapper_func(parse_script, program, program_time = nil)
     @program = program
     @stats_group = program_time || program
     @log = "#{RESULT_ROOT}/#{@stats_group}"
@@ -52,6 +46,7 @@ module StatsWrapper
       log_lines = read_log("#{@log}.yaml")
       stat_result = parse_simple_log_yaml(log_lines)
     else
+      require parse_script
       log_lines = read_log(@log)
       call_func_cmd = "#{@program.gsub('-', '_')}(log_lines)" # eg: proc_vmstats(log_lines)
       stat_result = eval(call_func_cmd)
@@ -227,27 +222,27 @@ module StatsWrapper
     end
   end
 
-  def self.create_tmpfile
+  def self.create_tmpfile(parse_script)
     tmp = Tempfile.new('lkp-stats.', '/tmp')
     @tmpfile = tmp.path
     create_status = true
     if File.exist?(@log)
-      %x(#{PROGRAM_DIR}/#{@program} #{@log} < #{@log} > #{@tmpfile})
+      %x(#{parse_script} #{@log} < #{@log} > #{@tmpfile})
       unless $CHILD_STATUS.exitstatus.zero?
         log_error({
-                    'message' => "#{PROGRAM_DIR}/#{@program} exit code #{$CHILD_STATUS.exitstatus}",
-                    'error_message' => "#{PROGRAM_DIR}/#{@program} #{@log} < #{@log} exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile} or #{RESULT_ROOT}/#{@program}"
+                    'message' => "#{parse_script} exit code #{$CHILD_STATUS.exitstatus}",
+                    'error_message' => "#{parse_script} #{@log} < #{@log} exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile} or #{RESULT_ROOT}/#{@program}"
                   })
         create_status = false
       end
     elsif File.exist?("#{@log}.yaml")
       create_yaml_tmpfile("#{@log}.yaml")
     else
-      %x(#{PROGRAM_DIR}/#{@program} < /dev/null > #{@tmpfile})
+      %x(#{parse_script} < /dev/null > #{@tmpfile})
       unless $CHILD_STATUS.exitstatus.zero?
         log_error({
-                    'message' => "#{PROGRAM_DIR}/#{@program} exit code #{$CHILD_STATUS.exitstatus}",
-                    'error_message' => "#{PROGRAM_DIR}/#{@program} < /dev/null exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile} or #{RESULT_ROOT}/#{@program}"
+                    'message' => "#{parse_script} exit code #{$CHILD_STATUS.exitstatus}",
+                    'error_message' => "#{parse_script} < /dev/null exit code #{$CHILD_STATUS.exitstatus}, check #{@tmpfile} or #{RESULT_ROOT}/#{@program}"
                   })
         create_status = false
       end
