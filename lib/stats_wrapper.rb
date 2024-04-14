@@ -23,6 +23,7 @@ module StatsWrapper
     @stats_group = program_time || program
     @log = "#{RESULT_ROOT}/#{@stats_group}"
 
+    return if File.exist?("#{@log}.json") # already created in testbox by $LKP_SRC/programs/parse
     return unless File.exist?("#{parse_script}")
     return unless File.exist?("#{@log}.yaml") || pretreatment
     return unless create_tmpfile(parse_script)
@@ -40,6 +41,7 @@ module StatsWrapper
     @stats_group = program_time || program
     @log = "#{RESULT_ROOT}/#{@stats_group}"
 
+    return if File.exist?("#{@log}.json") # already created in testbox by $LKP_SRC/programs/parse
     return unless File.exist?("#{@log}.yaml") || pretreatment
 
     if File.exist?("#{@log}.yaml")
