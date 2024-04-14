@@ -5,7 +5,7 @@
     ```
   其结果也以日志的形式保存，如下：
     ```
-    boot-time  build-pkg  dmesg  heartbeat  job.sh  job.yaml  meminfo.gz  output  program_list  stderr  stdout  time-debug
+    boot-time  build-pkg  dmesg  heartbeat  job.sh  job.yaml  meminfo.gz  output  executed_programs  stderr  stdout  time-debug
     ```
   这些日志形式的结果将难以用作后续的数据分析服务，例如build-pkg这个日志：
     ```

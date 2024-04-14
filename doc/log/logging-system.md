@@ -501,7 +501,7 @@ total 1.1M
 -rw-rw-r-- 1 lkp  lkp 1.4K 2022-01-20 00:00 time-debug
 -rw-rw-r-- 1 lkp  lkp  860 2022-01-20 00:00 stdout
 -rw-rw-r-- 1 lkp  lkp  373 2022-01-20 00:00 stderr
--rw-rw-r-- 1 lkp  lkp   33 2022-01-20 00:00 program_list
+-rw-rw-r-- 1 lkp  lkp   33 2022-01-20 00:00 executed_programs
 -rw-rw-r-- 1 lkp  lkp 1.4K 2022-01-20 00:00 output
 -rw-rw-r-- 1 lkp  lkp 3.3K 2022-01-20 00:00 meminfo.gz
 -rw-rw-r-- 1 lkp  lkp   43 2022-01-20 00:00 last_state

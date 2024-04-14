@@ -104,7 +104,7 @@ cd /srv/$(es-find id=$id | grep result_root| awk -F'"' '{print $4}')
 ├── meminfo.gz
 ├── meminfo.json
 ├── output
-├── program_list
+├── executed_programs
 ├── stats.json
 ├── stderr
 ├── stderr.json

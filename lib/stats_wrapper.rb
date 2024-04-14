@@ -8,15 +8,15 @@ require 'English'
 require_relative './dump_stat'
 require_relative './json_logger.rb'
 
-# exit processing the stats if the program is not in the program_list.
-# program_list is a file that records all the programs(setups, monitors, tests,
-# daemons) being executed during the test.
+# exit processing the stats if the program is not in the executed_programs.
+# executed_programs is a file that records all the programs(setups, monitors,
+# tests, daemons) being executed during the test.
 # this is to solve the problem for cluster test jobs running on the server node
 # where no program's log file is generated for running server daemons but the
 # stats processing for the program running on client node will also be handled
 # on server node due to the current Job2sh algorithm.
 
-# default stats are not in the program_list
+# default stats are not in the executed_programs
 module StatsWrapper
   def self.wrapper(parse_script, program, program_time = nil)
     @program = program
@@ -77,10 +77,15 @@ module StatsWrapper
     yaml_data = File.read("#{LKP_SRC}/etc/default_stats.yaml")
     return true if yaml_data =~ /^#{@program}:/
 
-    return unless File.exist?("#{RESULT_ROOT}/program_list")
-
-    pro_list = File.read("#{RESULT_ROOT}/program_list")
-    pro_list =~ /#{@program}/
+    if File.exist?("#{RESULT_ROOT}/executed_programs")
+      pro_list = File.read("#{RESULT_ROOT}/executed_programs")
+      pro_list =~ /#{@program}/
+    elsif File.exist?("#{RESULT_ROOT}/program_list")   # for compatibility
+      pro_list = File.read("#{RESULT_ROOT}/program_list")
+      pro_list =~ /#{@program}/
+    else
+      false
+    end
   end
 
   def self.check_incomplete_run(file)
