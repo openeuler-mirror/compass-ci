@@ -1046,7 +1046,9 @@ class Job
       upload_fields, uploaded_file_path_hash = generate_upload_fields(field_config)
 
       if @hash.includes? "upload_pkg_data"
-        upload_fields.concat @hash["upload_pkg_data"]
+        @hash["upload_pkg_data"].as_a.each do |v|
+          upload_fields << v.as_s
+	end
       end
 
       # if upload_fields size > 0, need upload ,return
