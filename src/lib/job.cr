@@ -351,7 +351,10 @@ class Job
       unless @hash.includes? "upload_pkg_data"
 	      @hash["upload_pkg_data"] = JSON::Any.new([] of JSON::Any)
       end
-      @hash["upload_pkg_data"] << repo
+      # @hash["upload_pkg_data"] << repo
+      temp = @hash["upload_pkg_data"].as_a
+      temp << JSON::Any.new(repo)
+      @hash["upload_pkg_data"] = JSON::Any.new(temp)
     end
 
     pkg_content_base64 = repo_pkg_data["content"].to_s
