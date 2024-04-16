@@ -287,7 +287,7 @@ class Job
     # check docker image name
     image, tag = docker_image.split(":")
     known_os = YAML.parse(File.read("#{ENV["LKP_SRC"]}/rootfs/os.yaml")).as_h
-    if known_os[self.os]? and known_os[self.os]["docker_image"]?
+    if known_os[self.os]? && known_os[self.os]["docker_image"]?
         known_image = known_os[self.os]["docker_image"].as_s
         raise "Invalid docker image '#{image}' for os '#{self.os}', should be '#{known_image}'" if image != known_image
     end
