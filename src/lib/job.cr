@@ -348,7 +348,9 @@ class Job
     return if File.exists? dest_cgz_file
 
     unless repo_pkg_data.includes? "content"
-      @hash["upload_pkg_data"] ||= Array(String).new
+      unless @hash.includes? "upload_pkg_data"
+	      @hash["upload_pkg_data"] = JSON::Any.new([] of JSON::Any)
+      end
       @hash["upload_pkg_data"] << repo
     end
 
@@ -1040,7 +1042,7 @@ class Job
       #get uploaded file info, we can add it in initrds
       upload_fields, uploaded_file_path_hash = generate_upload_fields(field_config)
 
-      if @hash["upload_pkg_data"]
+      if @hash.includes? "upload_pkg_data"
         upload_fields.concat @hash["upload_pkg_data"]
       end
 
