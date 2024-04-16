@@ -96,7 +96,7 @@ class Job
     hh = Hash(String, JSON::Any).new
     %w(job_state job_stage job_health last_success_stage
       testbox boot_time start_time end_time close_time in_watch_queue).each do |k|
-      hh[k] = @hash[k] if @hash.include? k
+      hh[k] = @hash[k] if @hash.includes? k
     end
     hh.to_json
   end
@@ -347,7 +347,7 @@ class Job
 
     return if File.exists? dest_cgz_file
 
-    unless repo_pkg_data.include? "content"
+    unless repo_pkg_data.includes? "content"
       @hash["upload_pkg_data"] ||= Array(String).new
       @hash["upload_pkg_data"] << repo
     end
