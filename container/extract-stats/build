@@ -7,7 +7,7 @@
 docker_skip_rebuild "extract-stats"
 
 CCI_SRC=$CCI_SRC
-bash $CCI_SRC/container/compile .
+bash $CCI_SRC/container/compile . || exit
 
 docker build -t extract-stats .
 

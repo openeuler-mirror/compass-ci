@@ -14,7 +14,7 @@ LIFECYCLE_PORT = defaults['LIFECYCLE_PORT'] || '11312'
 docker_skip_rebuild "lifecycle-#{LIFECYCLE_PORT}"
 
 CCI_SRC = ENV['CCI_SRC']
-system "bash #{CCI_SRC}/container/compile ."
+system("bash #{CCI_SRC}/container/compile .") || exit
 system "docker build -t lifecycle-#{LIFECYCLE_PORT} ."
 
 system 'rm lifecycle'

@@ -14,7 +14,7 @@ SCHED_PORT = (defaults['SCHED_PORT'] || '3000')
 docker_skip_rebuild "sch-ruby-a:v0.00d-#{SCHED_PORT}"
 
 CCI_SRC = ENV['CCI_SRC']
-system "bash #{CCI_SRC}/container/compile ."
+system("bash #{CCI_SRC}/container/compile .") || exit
 system "cp #{CCI_SRC}/sbin/create-job-cpio.sh ."
 
 system "docker build -t sch-ruby-a:v0.00d-#{SCHED_PORT} ."

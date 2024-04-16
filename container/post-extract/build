@@ -6,7 +6,7 @@
 
 docker_skip_rebuild "post-extract"
 
-bash $CCI_SRC/container/compile .
+bash $CCI_SRC/container/compile . || exit
 
 docker build -t post-extract .
 

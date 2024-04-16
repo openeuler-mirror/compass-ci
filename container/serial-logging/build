@@ -9,7 +9,7 @@ require_relative '../defconfig.rb'
 docker_skip_rebuild 'serial-logging'
 
 CCI_SRC = ENV['CCI_SRC']
-system "bash #{CCI_SRC}/container/compile ."
+system("bash #{CCI_SRC}/container/compile .") || exit
 system 'docker build -t serial-logging .'
 
 system 'rm serial-logging'
