@@ -93,7 +93,7 @@ class Job
   end
 
   def shrink_to_etcd_json
-    hh = {}
+    hh = Hash(String, JSON::Any).new
     %w(job_state job_stage job_health last_success_stage
       testbox boot_time start_time end_time close_time in_watch_queue).each do |k|
       hh[k] = @hash[k] if @hash.include? k
