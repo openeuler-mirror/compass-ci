@@ -348,7 +348,7 @@ class Job
     return if File.exists? dest_cgz_file
 
     unless repo_pkg_data.include? "content"
-      @hash["upload_pkg_data"] ||= []
+      @hash["upload_pkg_data"] ||= Array(String).new
       @hash["upload_pkg_data"] << repo
     end
 
