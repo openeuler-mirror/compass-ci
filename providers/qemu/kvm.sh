@@ -9,6 +9,7 @@
 : ${log_dir:=/srv/cci/serial/logs}
 
 source ${CCI_SRC}/lib/log.sh
+source ${LKP_SRC}/lib/upload.sh
 
 check_logfile()
 {
@@ -476,8 +477,16 @@ custom_vm_info()
 	memory=8G
 	unset cpu_model
 
-	grep -E "nr_|cpu|memory" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
+	grep -E "nr_|cpu|memory|RESULT_WEBDAV_HOST|RESULT_WEBDAV_PORT|result_root" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
 	create_yaml_variables "lkp/scheduled/job_vm.yaml"
+}
+
+upload_dmesg()
+{
+	local id=$job_id
+	local JOB_RESULT_ROOT=$result_root
+
+	upload_files_curl $log_file
 }
 
 check_logfile
@@ -500,3 +509,4 @@ individual_option
 
 run_qemu
 write_dmesg_flag 'end'
+upload_dmesg
