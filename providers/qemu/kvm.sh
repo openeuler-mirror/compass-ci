@@ -11,6 +11,17 @@
 source ${CCI_SRC}/lib/log.sh
 source ${LKP_SRC}/lib/upload.sh
 
+oops_patterns=(
+	-e 'Kernel panic - not syncing:'
+	-e 'NULL pointer dereference'
+
+	# /c/linux/arch/arm64/mm/fault.c
+	-e 'Unable to handle kernel '
+
+	# /c/linux/arch/x86/mm/fault.c
+	-e 'BUG: unable to handle page fault'
+)
+
 check_logfile()
 {
 	log_file=${log_dir}/${hostname}
@@ -383,6 +394,7 @@ public_option()
 		-no-reboot
 		-nographic
 		-monitor null
+		-pidfile qemu.pid
 	)
 
 	[ -n "$cpu_model" ] && kvm+="-cpu $cpu_model"
@@ -429,6 +441,15 @@ individual_option()
 			exit
 			;;
 	esac
+}
+
+watch_oops()
+{
+	tail -f $log_file | grep -q "${oops_patterns[@]}" && {
+		sleep 1
+		kill $(<qemu.pid)
+		echo "Detected kernel oops, killing qemu" >> $log_file
+	}
 }
 
 run_qemu()
@@ -507,6 +528,9 @@ public_option
 add_disk
 individual_option
 
+watch_oops &
+watch_pid=$!
 run_qemu
+kill $watch_pid 2>/dev/null
 write_dmesg_flag 'end'
 upload_dmesg
