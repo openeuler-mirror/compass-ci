@@ -513,6 +513,7 @@ class Sched
     response += " crashkernel=#{job["crashkernel"]}" unless response.includes?("crashkernel=")
     response += "\necho ipxe will boot job id=#{job.id}, ip=${ip}, mac=${mac}" # the ip/mac will be expanded by ipxe
 
+    response += "\necho result_root=#{job.result_root}\n"
     response += "\nboot\n"
 
     return response
