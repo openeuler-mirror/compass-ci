@@ -73,6 +73,12 @@ class Sched
     script_lines << "\n"
 
     job_content.each { |key, val| parse_one(script_lines, key, val) }
+    if job_content.includes? "hw"
+      job_content["hw"].as_h.each { |key, val| parse_one(script_lines, key, val) }
+    end
+    if job_content.includes? "services"
+      job_content["services"].as_h.each { |key, val| parse_one(script_lines, key, val) }
+    end
 
     script_lines << "}\n"
 
