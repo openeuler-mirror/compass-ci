@@ -383,6 +383,7 @@ print_message()
 public_option()
 {
 	kvm=(
+		$qemu_prefix
 		$qemu
 		-name guest=$hostname,process=$job_id
 		-kernel $kernel
@@ -498,7 +499,17 @@ custom_vm_info()
 	memory=8G
 	unset cpu_model
 
-	grep -E "nr_|cpu|memory|RESULT_WEBDAV_HOST|RESULT_WEBDAV_PORT|result_root" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
+	job_fields=(
+			-e nr_
+			-e cpu
+			-e memory
+			-e qemu_prefix
+			-e RESULT_WEBDAV_HOST
+			-e RESULT_WEBDAV_PORT
+			-e result_root
+	)
+
+	grep "${job_fields[@]}" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
 	create_yaml_variables "lkp/scheduled/job_vm.yaml"
 }
 
