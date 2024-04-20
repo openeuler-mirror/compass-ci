@@ -57,18 +57,24 @@ class Sched
     return false if val.as_h? || !valid_shell_variable?(key)
 
     value = shell_escape(val.as_a? || val.to_s)
-    script_lines << "\texport #{key}=" + value if value
+    script_lines << "\tcheck_set_var #{key}=" + value if value
   end
 
   private def sh_export_top_env(job_content : Hash)
-    script_lines = ["export_top_env()", "{"] of String
+    script_lines = [] of String
+    script_lines << "check_set_var()"
+    script_lines << "{"
+    script_lines << "        local name=\"${1%=*}\""
+    script_lines << "        [ -z \"$vars\" -o \"${vars#*$name}\" != \"$vars\" ] && readonly \"$1\""
+    script_lines << "}\n"
+    script_lines << "read_job_vars()"
+    script_lines << "{"
+    script_lines << "\tlocal vars=\"$*\""
+    script_lines << "\n"
 
     job_content.each { |key, val| parse_one(script_lines, key, val) }
 
-    script_lines << "\n"
-    script_lines << "\t[ -n \"$LKP_SRC\" ] ||"
-    script_lines << "\texport LKP_SRC=/lkp/${user:-lkp}/src"
-    script_lines << "}\n\n"
+    script_lines << "}\n"
 
     script_lines = script_lines.to_s
     script_lines = JSON.parse(script_lines)
