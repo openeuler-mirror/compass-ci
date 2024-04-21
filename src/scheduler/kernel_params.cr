@@ -1,26 +1,29 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-class Job
+class Job < JobHash
   private def kernel_common_params
-    common_params = "user=lkp job=/lkp/scheduled/job.yaml ip=dhcp"
-    return "#{common_params} rootovl ro" unless "#{self.os_mount}" == "local"
+    params = "user=lkp job=/lkp/scheduled/job.yaml ip=dhcp"
+    return "#{params} rootovl ro" unless "#{self.os_mount}" == "local"
 
-    os_info = "#{os}_#{os_arch}_#{os_version.gsub('-', '_')}"
+    os_info = "#{self.os}_#{self.os_arch}_#{self.os_version.gsub('-', '_')}"
 
     # two way to use local lvm:
     # - os_lv: job will always use one lv
     # - src_lv_suffix + boot_lv_suffix: job can specify the src_lv and boot_lv
-    os_partition = "/dev/mapper/os-#{os_info}_#{os_lv.gsub('-', '_')}" if @hash["os_lv"]? != nil
 
-    use_root_partition = "/dev/mapper/os-#{os_info}_#{src_lv_suffix}" if @hash["src_lv_suffix"]? != nil
-    save_root_partition = "/dev/mapper/os-#{os_info}_#{boot_lv_suffix}" if @hash["boot_lv_suffix"]? != nil
-    os_lv_size = @hash["os_lv_size"]? != nil ? @hash["os_lv_size"] : "20G"
-    return "#{common_params} local use_root_partition=#{use_root_partition} save_root_partition=#{save_root_partition} os_version=#{os_version} os_lv_size=#{os_lv_size} os_partition=#{os_partition} rw"
+    params += " local rw os_version=#{self.os_version}"
+    params += " os_partition=/dev/mapper/os-#{os_info}_#{self.os_lv.gsub('-', '_')}" if @hash_plain["os_lv"]?
+
+    params += " use_root_partition=/dev/mapper/os-#{os_info}_#{self.src_lv_suffix}" if @hash_plain["src_lv_suffix"]?
+    params += " save_root_partition=/dev/mapper/os-#{os_info}_#{self.boot_lv_suffix}" if @hash_plain["boot_lv_suffix"]?
+    @hash_plain["os_lv_size"] ||= "20G"
+    params += " os_lv_size=#{self.os_lv_size}"
+    params
   end
 
   private def kernel_custom_params
-    return @hash["kernel_custom_params"] if @hash["kernel_custom_params"]?
+    @hash_plain["kernel_custom_params"]?
   end
 
   # job:
@@ -30,11 +33,15 @@ class Job
   # output string:
   #   trace_buf_size=131072K trace_clock=x86-tsc
   private def job_boot_params
-    return nil unless @hash["boot_params"]?
+    return nil unless @hash_hh["boot_params"]?
 
     cmdline = ""
-    @hash["boot_params"].as_h.each do |k, v|
-      cmdline += "#{k.sub(/^bp\d*_/, "")}=#{v} "
+    @hash_hh["boot_params"].each do |k, v|
+      if v
+        cmdline += "#{k.sub(/^bp\d*_/, "")}=#{v} "
+      else
+        cmdline += "#{k} "
+      end
     end
     cmdline.strip
   end
@@ -61,6 +68,6 @@ class Job
   private def set_kernel_params
     kernel_params_values = "#{kernel_common_params()} #{job_boot_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
     kernel_params_values = kernel_params_values.split(" ").map(&.strip()).reject!(&.empty?)
-    @hash["kernel_params"] = JSON.parse(kernel_params_values.to_json)
+    @hash_array["kernel_params"] = kernel_params_values
   end
 end

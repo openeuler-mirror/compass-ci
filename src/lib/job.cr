@@ -3,9 +3,13 @@
 
 require "json"
 require "yaml"
+require "set"
 require "any_merge"
 require "digest"
 require "base64"
+
+class JobHash
+end
 
 require "scheduler/constants.cr"
 require "scheduler/jobfile_operate.cr"
@@ -13,7 +17,6 @@ require "scheduler/kernel_params.cr"
 require "scheduler/pp_params.cr"
 require "scheduler/testbox_env.cr"
 require "../scheduler/elasticsearch_client"
-require "./json_logger"
 require "./utils"
 
 struct JSON::Any
@@ -24,6 +27,12 @@ struct JSON::Any
     else
       raise "Expect Hash for #[](String, JSON::Any), not #{object.class}"
     end
+  end
+end
+
+struct YAML::Any
+  def to_s : String
+    self.as_s
   end
 end
 
@@ -38,75 +47,265 @@ module JobHelper
   end
 end
 
-class Job
-  getter hash : Hash(String, JSON::Any)
+def json_any2array(any, array : Array(String))
+  any.as_a.each { |v| array << v.as_s }
+end
+
+def json_any2hh(any, hh : Hash(String, String))
+  any.as_h.each { |k, v| hh[k.to_s] = v.as_s }
+end
+
+class JobHash
+
+  getter hash_plain : Hash(String, String)
+  getter hash_array : Hash(String, Array(String))
+  getter hash_hh : Hash(String, Hash(String, String))
+  getter hash_hhh : Hash(String, Hash(String, Hash(String, String)))
+  getter hash_any : Hash(String, JSON::Any)
+
+  def initialize(job_content)
+    @plain_keys = Set(String).new PLAIN_KEYS
+    @array_keys = Set(String).new ARRAY_KEYS
+    @hh_keys = Set(String).new HH_KEYS
+    @hhh_keys = Set(String).new HHH_KEYS
+
+    @hash_any = Hash(String, JSON::Any).new
+    @hash_plain = Hash(String, String).new
+    @hash_array = Hash(String, Array(String)).new
+    @hash_hh = Hash(String, Hash(String, String)).new
+    @hash_hhh = Hash(String, Hash(String, Hash(String, String))).new
+
+    import2hash(job_content)
+  end
+
+  # this mimics any_merge for the known types
+  def import2hash(job_content)
+
+    job_content.each do |k, v|
+      if @plain_keys.includes? k
+        @hash_plain[k] = v.to_s
+      elsif @array_keys.includes? k
+        @hash_array[k] ||= Array(String).new
+        json_any2array(v, @hash_array[k])
+      elsif @hh_keys.includes? k
+        @hash_hh[k] ||= Hash(String, String).new
+        json_any2hh(v, @hash_hh[k])
+      elsif @hhh_keys.includes? k
+        @hash_hhh[k] ||= Hash(String, Hash(String, String)).new
+        v.as_h.each { |kk, vv|
+          kk = kk.to_s
+          @hash_hhh[k][kk] ||= Hash(String, String).new
+          json_any2hh(vv, @hash_hhh[k][kk])
+        }
+      elsif !@hash_any.includes?(k)
+        @hash_any[k] = v
+      elsif v.as_h?
+        @hash_any.any_merge!(v.as_h)
+      elsif v.as_a?
+        @hash_any[k].as_a.concat(v.as_a)
+      else
+        @hash_any[k] = v
+      end
+    end
+  end
+
+  def merge!(other_job : JobHash)
+    @hash_plain.merge!(other_job.hash_plain)
+    @hash_any.any_merge!(other_job.hash_any)
+
+    other_job.hash_array.each do |k, v|
+        @hash_array[k] ||= Array(String).new
+        v.each { |vv| @hash_array[k] << vv }
+    end
+
+    other_job.hash_hh.each do |k, v|
+        @hash_hh[k] ||= Hash(String, String).new
+        v.each { |kk, vv| @hash_hh[k][kk] = vv }
+    end
+
+    other_job.hash_hhh.each do |k, v|
+        @hash_hhh[k] ||= Hash(String, Hash(String, String)).new
+        v.each do |kk, vv|
+          @hash_hhh[k][kk] ||= Hash(String, String).new
+          vv.each { |kkk, vvv| @hash_hhh[k][kk][kkk] = vvv }
+        end
+    end
+  end
+
+  def merge2hash_all
+    hash_all = @hash_any.dup
+    @hash_plain.each { |k, v| hash_all[k] = JSON::Any.new(v) }
+    @hash_array.each { |k, v| hash_all[k] ||= JSON::Any.new([] of JSON::Any); hash_all[k].as_a.concat(v.map {|vv| JSON::Any.new(vv)}) }
+    @hash_hh.each { |k, v| hash_all[k] ||= JSON::Any.new({} of String => JSON::Any); hash_all[k].as_h.any_merge!(v) }
+    @hash_hhh.each do |k, v|
+      hash_all[k] ||= JSON::Any.new({} of String => JSON::Any)
+      v.each do |kk, vv|
+        hash_all[k].as_h[kk] ||= JSON::Any.new({} of String => JSON::Any)
+        hash_all[k][kk].as_h.any_merge!(vv)
+      end
+    end
+    hash_all
+  end
+
   DEFAULT_FIELD = {
     lab: LAB,
   }
 
-  def initialize(job_content : JSON::Any, id)
-    @hash = job_content.as_h
-    @es = Elasticsearch::Client.new
-    @account_info = Hash(String, JSON::Any).new
-    @log = JSONLogger.new
-  end
-
-  METHOD_KEYS = %w(
+  PLAIN_KEYS = %w(
     id
+    suite
+
     os
     os_arch
     os_version
     os_mount
+    osv
+
+    lab
     arch
-    suite
     tbox_group
     testbox
-    lab
     queue
     subqueue
-    initrd_pkgs
-    initrd_deps
-    initrds_uri
+
     rootfs
+    docker_image
+
+    pp_params_md5
+    all_params_md5
+
+    nr_run
+    max_run
+
     submit_date
     result_root
+    result_service
     upload_dirs
+    lkp_initrd_user
+
     kernel_uri
     modules_uri
-    kernel_params
     ipxe_kernel_params
-    docker_image
     kernel_version
+    kernel_custom_params
+
+    os_lv
+    os_lv_size
     src_lv_suffix
     boot_lv_suffix
     pv_device
-    os_lv_size
-    os_lv
+
+    node_roles
+
+    job_state
+    job_stage
+    job_health
+    last_success_stage
+
+    time
+    submit_time
+    boot_time
+    start_time
+    end_time
+    close_time
+    boot_elapsed_time
+    running_time
+
+    in_watch_queue
+
+    my_email
+    my_name
+    my_token
+
+    ssh_pub_key
+    renew_deadline
+    custom_bootstrap
+    crashkernel
   )
 
-  macro method_missing(call)
-    if METHOD_KEYS.includes?({{ call.name.stringify }})
-      @hash[{{ call.name.stringify }}].to_s
-    else
-      raise "Unassigned key or undefined method: #{{{ call.name.stringify }}}"
+  ARRAY_KEYS = %w(
+    my_ssh_pubkey
+    initrds_uri
+    initrd_deps
+    initrd_pkgs
+    kernel_params
+    added_by
+  )
+
+  # Note: hw is not tracked here.
+  # These hw.* are string arrays, other hw.* are strings, so cannot track uniformly.
+  # However the scheduler does not need update testbox info, so leave them in @hash_any.
+  # - hw.hdd_partitions
+  # - hw.ssd_partitions
+  # - hw.rootfs_disk
+  #
+
+  HH_KEYS = %w(
+    secrets
+    services
+    define_files
+    install_os_packages
+    boot_params
+    on_fail
+    waited
+  )
+
+  # pp = program.param
+  # po = program.option
+  # ss = software stack
+  HHH_KEYS = %w(
+    pp
+    po
+    ss
+    monitors
+    pkg_data
+    upload_fields
+  )
+
+  {% for name in PLAIN_KEYS %}
+    def {{name.id}}
+      @hash_plain[{{name.stringify}}]
     end
+  {% end %}
+
+  {% for name in ARRAY_KEYS %}
+    def {{name.id}}
+      @hash_array[{{name.stringify}}]
+    end
+  {% end %}
+
+  {% for name in HH_KEYS %}
+    def {{name.id}}
+      @hash_hh[{{name.stringify}}]
+    end
+  {% end %}
+
+  {% for name in HHH_KEYS %}
+    def {{name.id}}
+      @hash_hhh[{{name.stringify}}]
+    end
+  {% end %}
+
+  def assert_key_in(key : String, vals : Set(String))
+      raise "invalid key @{key}" unless vals.includes? key
   end
 
   def shrink_to_etcd_json
-    hh = Hash(String, JSON::Any).new
+    hh = Hash(String, String).new
     %w(job_state job_stage job_health last_success_stage
       testbox boot_time start_time end_time close_time in_watch_queue).each do |k|
-      hh[k] = @hash[k] if @hash.includes? k
+      assert_key_in(k, @plain_keys)
+      hh[k] = @hash_plain[k] if @hash_plain.includes? k
     end
     hh.to_json
   end
 
   def dump_to_json
-    @hash.to_json
+    merge2hash_all.to_json
   end
 
   def dump_to_yaml
-    @hash.to_yaml
+    merge2hash_all.to_yaml
   end
 
   def dump_to_json_any
@@ -115,16 +314,18 @@ class Job
 
   def update(hash : Hash)
     hash_dup = hash.dup
+
+    # protect static keys
     ["id", "tbox_group"].each do |key|
       if hash_dup.has_key?(key)
-        unless hash_dup[key] == @hash[key]
+        unless hash_dup[key] == @hash_plain[key]
           raise "Should not direct update #{key}, use update_#{key}"
         end
         hash_dup.delete(key)
       end
     end
 
-    @hash.any_merge!(hash_dup)
+    import2hash(hash_dup)
   end
 
   def update(json : JSON::Any)
@@ -136,24 +337,65 @@ class Job
     if initialized_keys.includes?(key)
       raise "Should not delete #{key}"
     else
-      @hash.delete(key)
+      @hash_plain.delete(key) ||
+      @hash_array.delete(key) ||
+      @hash_hh.delete(key) ||
+      @hash_any.delete(key)
     end
   end
 
-  def submit(id = nil)
+  def [](key : String) : String
+    assert_key_in(key, @plain_keys)
+    "#{@hash_plain[key]?}"
+  end
+
+  def []?(key : String)
+    assert_key_in(key, @plain_keys)
+    @hash_plain.[key]?
+  end
+
+  def has_key?(key : String)
+    assert_key_in(key, @plain_keys)
+    @hash_plain.has_key?(key)
+  end
+
+  def []=(key : String, value : String)
+    if key == "id" || key == "tbox_group"
+      raise "Should not use []= update #{key}, use update_#{key}"
+    end
+    assert_key_in(key, @plain_keys)
+    @hash_plain[key] = value
+  end
+
+end
+
+class Job < JobHash
+
+  def initialize(job_content, id : String|Nil)
+    super(job_content)
+    @hash_plain["id"] = id unless id.nil?
+
+    @es = Elasticsearch::Client.new
+    @account_info = JobHash.new(Hash(String, JSON::Any).new)
+    @upload_pkg_data = Array(String).new
+  end
+
+  def submit(id = "-1")
     # init job with "-1", or use the original job_content["id"]
-    id = "-1" if "#{id}" == ""
-    @hash["id"] = JSON::Any.new("#{id}")
+    @hash_plain["id"] = id
     self["job_state"] = "submit"
     self["job_stage"] = "submit"
 
+    self.merge! get_service_env()
+    self.merge! get_testbox_env()
+
     check_required_keys()
     check_fields_format()
-    
+
     set_account_info()
     check_run_time()
     set_defaults()
-    @hash.merge!(testbox_env)
+
     checkout_max_run()
   end
 
@@ -182,25 +424,25 @@ class Job
 
   def set_account_info
     account_info = @es.get_account(self["my_email"])
-    Utils.check_account_info(@hash, account_info)
-    @account_info = account_info.as(JSON::Any).as_h
+    Utils.check_account_info(@hash_plain, account_info)
+    @account_info = JobHash.new(account_info.as_h)
   end
 
   def delete_account_info
-    @hash.delete("my_uuid")
-    @hash.delete("my_token")
-    @hash.delete("my_email")
-    @hash.delete("my_name")
+    @hash_plain.delete("my_uuid")
+    @hash_plain.delete("my_token")
+    @hash_plain.delete("my_email")
+    @hash_plain.delete("my_name")
   end
 
   private def checkout_max_run
-    return unless hash["max_run"]?
+    return unless @hash_plain["max_run"]?
 
     query = {
       "size" => 1,
       "query" => {
         "term" => {
-          "all_params_md5" => hash["all_params_md5"]
+          "all_params_md5" => @hash_plain["all_params_md5"]
         }
       },
       "sort" =>  [{
@@ -210,48 +452,38 @@ class Job
     }
     total, latest_job_id = @es.get_hit_total("jobs", query)
 
-    msg = "exceeds the max_run(#{hash["max_run"]}), #{total} jobs exist, the latest job id=#{latest_job_id}"
-    raise msg if total >= hash["max_run"].to_s.to_i32
+    msg = "exceeds the max_run(#{@hash_plain["max_run"]}), #{total} jobs exist, the latest job id=#{latest_job_id}"
+    raise msg if total >= @hash_plain["max_run"].to_s.to_i32
   end
 
-  def get_md5(data : Hash(String , JSON::Any))
-    tmp = Hash(String, String).new
-    data.each do |k, v|
-      tmp[k] = v.to_s
-    end
-    Digest::MD5.hexdigest(tmp.to_a.sort.to_s).to_s
+  def get_md5(data : Hash(String , String))
+    Digest::MD5.hexdigest(data.to_a.sort.to_s).to_s
   end
 
   private def set_params_md5
-    flat_pp_hash = Hash(String, JSON::Any).new
-    flat_hash(hash["pp"].as_h? || flat_pp_hash, flat_pp_hash)
-    hash["pp_params_md5"] = JSON::Any.new(get_md5(flat_pp_hash))
+
+    flat_pp_hash = Hash(String, String).new
+    unless @hash_hhh["pp"]?
+        flat_pp_hash = flat_hh(@hash_hhh["pp"])
+        @hash_plain["pp_params_md5"] = get_md5(flat_pp_hash)
+    end
 
     all_params = flat_pp_hash
     COMMON_PARAMS.each do |param|
-      all_params[param] = hash[param]
+      all_params[param] = @hash_plain[param]
     end
 
-    hash["all_params_md5"] = JSON::Any.new(get_md5(all_params))
-  end
-
-  def set_time(key)
-    self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
+    @hash_plain["all_params_md5"] = get_md5(all_params)
   end
 
   def set_boot_elapsed_time
-    return if @hash.has_key?("boot_elapsed_time")
-    return unless @hash["running_time"]?
+    return if @hash_plain.has_key?("boot_elapsed_time")
+    return unless @hash_plain["running_time"]?
 
     boot_time = Time.parse(self["boot_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
     running_time = Time.parse(self["running_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
 
-    self["boot_elapsed_time"] = (running_time - boot_time).total_seconds.to_i
-  rescue e
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
+    self["boot_elapsed_time"] = (running_time - boot_time).to_s
   end
 
   # defaults to the 1st value
@@ -263,9 +495,9 @@ class Job
       return
     end
 
-    if @hash["os_mount"]?
-      if !VALID_OS_MOUNTS.includes?(@hash["os_mount"].to_s)
-        raise "Invalid os_mount: #{@hash["os_mount"]}, should be in #{VALID_OS_MOUNTS}"
+    if @hash_plain["os_mount"]?
+      if !VALID_OS_MOUNTS.includes?(@hash_plain["os_mount"])
+        raise "Invalid os_mount: #{@hash_plain["os_mount"]}, should be in #{VALID_OS_MOUNTS}"
       end
     else
       self["os_mount"] = VALID_OS_MOUNTS[0]
@@ -273,7 +505,7 @@ class Job
   end
 
   private def set_os_arch
-    self["os_arch"] = @hash["arch"].to_s if @hash.has_key?("arch")
+    self["os_arch"] = @hash_plain["arch"] if @hash_plain.has_key?("arch")
   end
 
   private def set_os_version
@@ -307,27 +539,23 @@ class Job
   private def append_init_field
     DEFAULT_FIELD.each do |k, v|
       k = k.to_s
-      if !@hash[k]? || @hash[k] == nil
+      if !@hash_plain[k]? || @hash_plain[k] == nil
         self[k] = v
       end
     end
   end
 
   private def extract_user_pkg
-    return unless @hash.has_key?("pkg_data")
+    return unless @hash_hhh.has_key?("pkg_data")
 
-    pkg_datas = @hash["pkg_data"].as_h
-    repos = pkg_datas.keys
+    pkg_datas = @hash_hhh["pkg_data"]
 
     # no check for now, release the comment when need that.
     # check_base_tag(pkg_datas["lkp-tests"]["tag"].to_s)
 
-    repos.each do |repo|
-      repo_pkg_data = pkg_datas[repo].as_h
-      store_pkg(repo_pkg_data, repo)
+    pkg_datas.each do |repo, repo_pkg_data|
+      store_pkg(repo, repo_pkg_data)
     end
-
-    delete_pkg_data_content()
   end
 
   private def check_base_tag(user_tag)
@@ -337,8 +565,8 @@ class Job
     \notherwise you will can't use some new functions." unless user_tag == BASE_TAG
   end
 
-  private def store_pkg(repo_pkg_data, repo)
-    md5 = repo_pkg_data["md5"].to_s
+  private def store_pkg(repo, repo_pkg_data)
+    md5 = repo_pkg_data["md5"]
 
     dest_cgz_dir = "#{SRV_UPLOAD}/#{repo}/#{md5[0, 2]}"
     FileUtils.mkdir_p(dest_cgz_dir) unless File.exists?(dest_cgz_dir)
@@ -348,22 +576,18 @@ class Job
     return if File.exists? dest_cgz_file
 
     unless repo_pkg_data.includes? "content"
-      unless @hash.includes? "upload_pkg_data"
-	      @hash["upload_pkg_data"] = JSON::Any.new([] of JSON::Any)
-      end
-      # @hash["upload_pkg_data"] << repo
-      temp = @hash["upload_pkg_data"].as_a
-      temp << JSON::Any.new(repo)
-      @hash["upload_pkg_data"] = JSON::Any.new(temp)
+      @upload_pkg_data << repo
+      return
     end
 
-    pkg_content_base64 = repo_pkg_data["content"].to_s
+    pkg_content_base64 = repo_pkg_data["content"]
     dest_cgz_content = Base64.decode_string(pkg_content_base64)
 
     File.touch(dest_cgz_file)
     File.write(dest_cgz_file, dest_cgz_content)
 
     check_pkg_integrity(md5, dest_cgz_file)
+    repo_pkg_data.delete("content")
   end
 
   private def check_pkg_integrity(md5, dest_cgz_file)
@@ -374,40 +598,37 @@ class Job
 
   private def set_lkp_server
     # handle by me, then keep connect to me
-    self["LKP_SERVER"] = SCHED_HOST
-    self["LKP_CGI_PORT"] = SCHED_PORT.to_s
+    @hash_hh["services"]["LKP_SERVER"] = SCHED_HOST
+    @hash_hh["services"]["LKP_CGI_PORT"] = SCHED_PORT.to_s
   end
 
   private def set_sshr_info
     # ssh_pub_key will always be set (maybe empty) by submit,
     # if sshd is defined anywhere in the job
-    return unless @hash.has_key?("ssh_pub_key")
+    return unless @hash_plain.has_key?("ssh_pub_key")
 
-    self["sshr_port"] = ENV["SSHR_PORT"]
-    self["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
-    self["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
+    @hash_hh["services"]["sshr_port"] = ENV["SSHR_PORT"]
+    @hash_hh["services"]["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
+    @hash_hh["services"]["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
 
-    return if @account_info["found"]? == false
+    return if @account_info.hash_any["found"]? == false
 
     set_my_ssh_pubkey
   end
 
   private def set_my_ssh_pubkey
-    pub_key = @hash["ssh_pub_key"]?.to_s
+    pub_key = @hash_plain["ssh_pub_key"]?
     update_account_my_pub_key(pub_key)
-    @hash["my_ssh_pubkey"] = @account_info["my_ssh_pubkey"]
+    @hash_plain["ssh_pub_key"] = @account_info.hash_array["my_ssh_pubkey"].first
   end
 
   private def update_account_my_pub_key(pub_key)
-    unless @account_info.has_key?("my_ssh_pubkey")
-      @account_info["my_ssh_pubkey"] = JSON::Any.new([] of JSON::Any)
-    end
-    my_ssh_pubkey = @account_info["my_ssh_pubkey"].as_a? || [] of JSON::Any
-    return if pub_key.empty? || my_ssh_pubkey.includes?(pub_key)
+    return if pub_key.nil? || pub_key.empty?
+    @account_info.hash_array["my_ssh_pubkey"] ||= [] of String
+    return if @account_info.hash_array["my_ssh_pubkey"].includes?(pub_key)
 
-    my_ssh_pubkey << JSON::Any.new(pub_key)
-    @account_info["my_ssh_pubkey"] = JSON.parse(my_ssh_pubkey.to_json)
-    @es.update_account(JSON.parse(@account_info.to_json), self["my_email"].to_s)
+    @account_info.hash_array["my_ssh_pubkey"] << pub_key
+    @es.update_account(JSON.parse(@account_info.dump_to_json), self["my_email"])
   end
 
   def os_dir
@@ -449,7 +670,7 @@ class Job
       extra_time = 0 if self["timeout"]?
       extra_time ||= [time / 8, 300].max.to_i32 + Math.sqrt(time).to_i32
     when "renew"
-      return @hash["renew_deadline"]?
+      return @hash_plain["renew_deadline"]?
     when "post_run"
       time = 1800
     when "manual_check"
@@ -475,6 +696,7 @@ class Job
     self["deadline"] = deadline
   end
 
+  # XXX: get/update ES, tell lifecycle
   def renew_deadline(time)
     deadline = Time.parse(self["deadline"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
     deadline = (deadline + time.to_i32.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
@@ -491,7 +713,7 @@ class Job
   def get_pkg_common_dir
     tmp_style = nil
     ["cci-makepkg", "cci-depends", "build-pkg", "pkgbuild", "rpmbuild"].each do |item|
-      tmp_style = @hash[item]?
+      tmp_style = @hash_any[item]?
       break if tmp_style
     end
     return nil unless tmp_style
@@ -507,7 +729,7 @@ class Job
     mount_type = "nfs" if mount_type == "cifs"
 
     common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
-    common_dir = "#{tmp_os}-#{tmp_os_version}" if @hash.has_key?("rpmbuild")
+    common_dir = "#{tmp_os}-#{tmp_os_version}" if @hash_hhh["pp"].has_key?("rpmbuild")
 
     return common_dir
   end
@@ -517,7 +739,7 @@ class Job
     upload_dirs_config = "#{ENV["CCI_SRC"]}/src/lib/upload_dirs_config.yaml"
     yaml_any_hash = YAML.parse(File.read(upload_dirs_config)).as_h
     yaml_any_hash.each do |k, v|
-      if @hash.has_key?(k)
+      if @hash_any.has_key?(k)
         _upload_dirs += ",#{v}"
       end
     end
@@ -530,18 +752,19 @@ class Job
     common_dir = get_pkg_common_dir
     return package_dir unless common_dir
 
-    if @hash["cci-makepkg"]?
-      package_dir = ",/initrd/pkg/#{common_dir}/#{@hash["cci-makepkg"]["benchmark"]}"
-    elsif @hash["cci-depends"]?
-      package_dir = ",/initrd/deps/#{common_dir}/#{@hash["cci-depends"]["benchmark"]}"
-    elsif @hash["rpmbuild"]?
+    # XXX
+    if @hash_any["cci-makepkg"]?
+      package_dir = ",/initrd/pkg/#{common_dir}/#{@hash_any["cci-makepkg"]["benchmark"]}"
+    elsif @hash_any["cci-depends"]?
+      package_dir = ",/initrd/deps/#{common_dir}/#{@hash_any["cci-depends"]["benchmark"]}"
+    elsif @hash_any["rpmbuild"]?
       package_dir = ",/rpm/upload/#{common_dir}"
-    elsif @hash["build-pkg"]? || @hash["pkgbuild"]?
-      package_name = @hash["upstream_repo"].to_s.split("/")[-1]
+    elsif @hash_any["build-pkg"]? || @hash_any["pkgbuild"]?
+      package_name = @hash_any["upstream_repo"].to_s.split("/")[-1]
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
-      package_dir += ",/cci/build-config" if @hash["config"]?
-      if @hash["upstream_repo"].to_s =~ /^l\/linux\//
-        package_dir += ",/kernel/#{os_arch}/#{self["config"]}/#{@hash["upstream_commit"]}"
+      package_dir += ",/cci/build-config" if @hash_any["config"]?
+      if @hash_any["upstream_repo"].to_s =~ /^l\/linux\//
+        package_dir += ",/kernel/#{os_arch}/#{@hash_any["config"]}/#{@hash_any["upstream_commit"]}"
       end
     end
 
@@ -550,6 +773,10 @@ class Job
 
   def set_time
     self["time"] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
+  def set_time(key)
+    self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
   def set_upload_dirs
@@ -575,42 +802,15 @@ class Job
   end
 
   private def set_secrets
-    if self["secrets"] == ""
-      self["secrets"] = {"my_email" => self["my_email"]}
-    else
-      secrets = @hash["secrets"]?.not_nil!.as_h
-      secrets.merge!({"my_email" => JSON::Any.new(self["my_email"])})
-      self["secrets"] = secrets
-    end
+    @hash_hh["secrets"] ||= Hash(String, String).new
+    @hash_hh["secrets"]["my_email"] = self["my_email"]
   end
 
   # if not assign tbox_group, set it to a match result from testbox
   #  ?if job special testbox, should we just set tbox_group=testbox
   private def update_tbox_group_from_testbox
-    if self["tbox_group"] == ""
-      @hash["tbox_group"] = JSON::Any.new(JobHelper.match_tbox_group(testbox))
-    end
+    @hash_plain["tbox_group"] ||= JobHelper.match_tbox_group(testbox)
   end
-
-  def [](key : String) : String
-    "#{@hash[key]?}"
-  end
-
-  def []?(key : String)
-    @hash.[key]?
-  end
-
-  def has_key?(key : String)
-    @hash.has_key?(key)
-  end
-
-  def []=(key : String, value)
-    if key == "id" || key == "tbox_group"
-      raise "Should not use []= update #{key}, use update_#{key}"
-    end
-    @hash[key] = JSON.parse(value.to_json)
-  end
-
   private def is_docker_job?
     if testbox =~ /^dc/
       return true
@@ -632,10 +832,10 @@ class Job
 
   private def check_required_keys
     REQUIRED_KEYS.each do |key|
-      if !@hash[key]?
+      if !@hash_plain[key]?
         error_msg = "Missing required job key: '#{key}'."
         if ["my_email", "my_name", "my_token"].includes?(key)
-          error_msg += "\nPlease refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md"
+          error_msg += "\nPlease refer to https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md"
         end
         raise error_msg
       end
@@ -643,12 +843,12 @@ class Job
   end
 
   private def check_fields_format
-    check_rootfs_disk()
+    return
   end
 
   private def check_run_time
     # only job.yaml for borrowing machine has the key: ssh_pub_key
-    return unless @hash.has_key?("ssh_pub_key")
+    return unless @hash_plain.has_key?("ssh_pub_key")
 
     # the maxmum borrowing time is limited no more than 30 days.
     # case the runtime/sleep value count beyond the limit,
@@ -657,28 +857,28 @@ class Job
     max_run_time = 30 * 24 * 3600
     error_msg = "\nMachine borrow time(runtime/sleep) cannot exceed 30 days. Consider re-borrow.\n"
 
-    if @hash["pp"]["sleep"].as_i?
-      sleep_run_time = @hash["pp"]["sleep"]
-    elsif @hash["pp"]["sleep"].as_h?
-      sleep_run_time = @hash["pp"]["sleep"]["runtime"]
+    if @hash_hhh["pp"].includes?("sleep") && @hash_hhh["pp"]["sleep"].includes?("runtime")
+      sleep_run_time = @hash_hhh["pp"]["sleep"]["runtime"]
+    elsif @hash_any.includes? "runtime"
+      sleep_run_time = @hash_any["runtime"].as_s
+    elsif @hash_any.includes? "sleep"
+      sleep_run_time = @hash_any["sleep"].as_s
     else
       notice_msg = "\nPlease set runtime/sleep first for the job yaml and retry."
       raise notice_msg
     end
 
-    raise error_msg if sleep_run_time.as_i > max_run_time
+    # XXX: parse s/m/h/d/w suffix
+    raise error_msg if sleep_run_time.to_i > max_run_time
   end
 
   private def get_initialized_keys
     initialized_keys = [] of String
-
-    REQUIRED_KEYS.each do |key|
-      initialized_keys << key.to_s
-    end
-
-    METHOD_KEYS.each do |key|
-      initialized_keys << key.to_s
-    end
+    initialized_keys.concat REQUIRED_KEYS
+    initialized_keys.concat PLAIN_KEYS
+    initialized_keys.concat ARRAY_KEYS
+    initialized_keys.concat HH_KEYS
+    initialized_keys.concat HHH_KEYS
 
     DEFAULT_FIELD.each do |key, _value|
       initialized_keys << key.to_s
@@ -700,7 +900,7 @@ class Job
                          "kernel_params",
                          "ipxe_kernel_params"]
   end
-  
+
   def boot_dir
     return "#{SRV_OS}/#{os_dir}/boot"
   end
@@ -710,14 +910,14 @@ class Job
   end
 
   private def set_kernel_uri
-    return if @hash.has_key?("kernel_uri")
+    return if @hash_plain.has_key?("kernel_uri")
     vmlinuz_path = File.real_path("#{boot_dir}/vmlinuz-#{kernel_version}")
     self["kernel_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(vmlinuz_path)
   end
 
   private def set_modules_uri
-    return if @hash.has_key?("modules_uri")
-    return if @hash["os_mount"] == "local"
+    return if @hash_plain.has_key?("modules_uri")
+    return if @hash_plain["os_mount"] == "local"
 
     modules_path = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
     self["modules_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
@@ -737,11 +937,11 @@ class Job
     temp_initrds = [] of String
     # init custom_bootstrap cgz
     # if has custom_bootstrap field, just give bootstrap cgz to testbox, no need lkp-test/job cgz
-    if @hash.has_key?("custom_bootstrap")
-      raise "need runtime field in the job yaml." unless @hash.has_key?("runtime")
+    if @hash_plain.has_key?("custom_bootstrap")
+      raise "need runtime field in the job yaml." unless @hash_plain.has_key?("runtime")
 
       temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-        JobHelper.service_path("#{SRV_INITRD}/custom_bootstrap/#{@hash["my_email"]}/bootstrap-#{os_arch}.cgz")
+        JobHelper.service_path("#{SRV_INITRD}/custom_bootstrap/#{@hash_plain["my_email"]}/bootstrap-#{os_arch}.cgz")
 
       return temp_initrds
     end
@@ -754,10 +954,10 @@ class Job
     #     tag: v1.0
     #     md5: xxxx
     #     content: yyy (base64)
-    raise "you should update your lkp-tests repo." unless @hash.has_key?("pkg_data")
+    raise "you should update your lkp-tests repo." unless @hash_hhh.has_key?("pkg_data")
 
-    @hash["pkg_data"].as_h.each do |key, value|
-      program = value.as_h
+    @hash_hhh["pkg_data"].each do |key, value|
+      program = value
       temp_initrds << "#{INITRD_HTTP_PREFIX}" +
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{os_arch}/#{program["tag"]}.cgz")
       temp_initrds << "#{INITRD_HTTP_PREFIX}" +
@@ -776,13 +976,8 @@ class Job
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
                     JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
 
-    temp = [] of String
-    deps = @hash["initrd_deps"].as_a
-    deps.map{ |item| temp << item.to_s }
-    pkg = @hash["initrd_pkgs"].as_a
-    pkg.map{ |item| temp << item.to_s }
-
-    temp_initrds.concat(temp)
+    temp_initrds.concat(@hash_array["initrd_deps"])
+    temp_initrds.concat(@hash_array["initrd_pkgs"])
     return temp_initrds
   end
 
@@ -814,25 +1009,12 @@ class Job
   end
 
   private def set_initrds_uri
-    initrds_uri_values = [] of JSON::Any
-
-    get_initrds().each do |initrd|
-      initrds_uri_values << JSON::Any.new("#{initrd}")
-    end
-
-    @hash["initrds_uri"] = JSON::Any.new(initrds_uri_values)
+    @hash_array["initrds_uri"] = get_initrds()
   end
 
   def append_initrd_uri(initrd_uri)
-    if "#{os_mount}" == "initramfs"
-      temp = @hash["initrds_uri"].as_a
-      temp << JSON::Any.new(initrd_uri)
-      self["initrds_uri"] = JSON::Any.new(temp)
-    end
-
-    temp = @hash["initrd_deps"].as_a
-    temp << JSON::Any.new(initrd_uri)
-    self["initrd_deps"] = temp
+    @hash_array["initrds_uri"] << initrd_uri if "#{os_mount}" == "initramfs"
+    @hash_array["initrd_deps"] << initrd_uri
   end
 
   private def set_depends_initrd
@@ -841,21 +1023,15 @@ class Job
 
     get_depends_initrd(get_program_params(), initrd_deps_arr, initrd_pkgs_arr)
 
-    self["initrd_deps"] = initrd_deps_arr.uniq
-    self["initrd_pkgs"] = initrd_pkgs_arr.uniq
+    @hash_array["initrd_deps"] = initrd_deps_arr.uniq
+    @hash_array["initrd_pkgs"] = initrd_pkgs_arr.uniq
   end
 
   private def get_program_params
-    program_params = Hash(String, JSON::Any).new
-    if @hash["monitors"]? != nil
-      program_params.merge!(@hash["monitors"].as_h)
-    end
-
-    if @hash["pp"]? != nil
-      program_params.merge!(@hash["pp"].as_h)
-    end
-
-    return program_params
+    program_params = Hash(String, Hash(String, String)).new
+    program_params.merge!(@hash_hhh["monitors"]) if @hash_hhh.includes? "monitors"
+    program_params.merge!(@hash_hhh["pp"]) if @hash_hhh.includes? "pp"
+    program_params
   end
 
   private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkgs_arr)
@@ -874,8 +1050,9 @@ class Job
         program = $1
       end
 
-      if @hash["#{program}_version"]?
-        program_version = @hash["#{program}_version"]
+      # XXX
+      if @hash_any["#{program}_version"]?
+        program_version = @hash_any["#{program}_version"].as_s
       else
         program_version = "latest"
       end
@@ -893,7 +1070,7 @@ class Job
   end
 
   def update_tbox_group(tbox_group)
-    @hash["tbox_group"] = JSON::Any.new(tbox_group)
+    @hash_plain["tbox_group"] = tbox_group
 
     # "result_root" is based on "tbox_group"
     #  so when update tbox_group, we need redo set_
@@ -901,7 +1078,7 @@ class Job
   end
 
   def update_id(id)
-    @hash["id"] = JSON::Any.new(id)
+    @hash_plain["id"] = id
 
     # "result_root" => "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
     # set_initrds_uri -> get_initrds -> common_initrds => ".../#{id}/job.cgz"
@@ -912,18 +1089,13 @@ class Job
     set_initrds_uri()
   end
 
-  private def check_rootfs_disk
-    @hash["rootfs_disk"].as_a if @hash.has_key?("rootfs_disk")
-  rescue
-    raise "rootfs_disk must be in array type if you want to specify it."
-  end
-
   def set_rootfs_disk(rootfs_disk)
-    @hash["rootfs_disk"] = JSON::Any.new(rootfs_disk)
+    # XXX: use hw namespace
+    @hash_any["rootfs_disk"] = JSON::Any.new(rootfs_disk)
   end
 
   def set_crashkernel(crashkernel)
-    @hash["crashkernel"] = JSON::Any.new(crashkernel)
+    @hash_plain["crashkernel"] = crashkernel
   end
 
   def get_uuid_tag
@@ -931,39 +1103,30 @@ class Job
     uuid != "" ? "/#{uuid}" : nil
   end
 
-  def delete_pkg_data_content
-    return unless @hash.has_key?("pkg_data")
-
-    new_pkg_data = Hash(String, JSON::Any).new
-    pkg_datas = @hash["pkg_data"].as_h
-    pkg_datas.each do |k, v|
-      tmp = pkg_datas[k].as_h
-      tmp.delete("content") if tmp.has_key?("content")
-      new_pkg_data.merge!({k => JSON::Any.new(tmp)})
-    end
-    @hash["pkg_data"] = JSON::Any.new(new_pkg_data)
-  end
-
   def delete_kernel_params
-    @hash.delete("kernel_version")
-    @hash.delete("kernel_uri")
-    @hash.delete("modules_uri")
+    @hash_plain.delete("kernel_version")
+    @hash_plain.delete("kernel_uri")
+    @hash_plain.delete("modules_uri")
   end
 
   def delete_host_info
-    @hash.delete("memory")
-    @hash.delete("nr_hdd_partitions")
-    @hash.delete("hdd_partitions")
-    @hash.delete("ssd_partitions")
-    @hash.delete("rootfs_disk")
-    @hash.delete("mac_addr")
-    @hash.delete("arch")
-    @hash.delete("nr_node")
-    @hash.delete("nr_cpu")
-    @hash.delete("model_name")
-    @hash.delete("ipmi_ip")
-    @hash.delete("serial_number")
+    @hash_any.delete("hw")
+
+    # XXX
+    @hash_any.delete("memory")
+    @hash_any.delete("nr_hdd_partitions")
+    @hash_any.delete("hdd_partitions")
+    @hash_any.delete("ssd_partitions")
+    @hash_any.delete("rootfs_disk")
+    @hash_any.delete("mac_addr")
+    @hash_any.delete("arch")
+    @hash_any.delete("nr_node")
+    @hash_any.delete("nr_cpu")
+    @hash_any.delete("model_name")
+    @hash_any.delete("ipmi_ip")
+    @hash_any.delete("serial_number")
   end
+
   private def get_user_uploadfiles_fields_from_config
     user_uploadfiles_fields_config = "#{ENV["CCI_SRC"]}/src/lib/user_uploadfiles_fields_config.yaml"
     yaml_any_array = YAML.parse(File.read(user_uploadfiles_fields_config)).as_a
@@ -981,33 +1144,34 @@ class Job
     # ss(field_name=ss.*.config*): $suite/ss.*.config*/filename
     # other:  $suite/field_name/filename
     if (field_name =~ /ss\..*\.config.*/) ||
-      @hash["suite"].as_s != "build-pkg" && @hash["suite"].as_s != "pkgbuild"
-      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{@hash["suite"].to_s}/#{field_name}"
+      @hash_plain["suite"] != "build-pkg" && @hash_plain["suite"] != "pkgbuild"
+      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{@hash_plain["suite"]}/#{field_name}"
     else
-      _pkgbuild_repo = @hash["pkgbuild_repo"].as_s
+      # XXX
+      _pkgbuild_repo = @hash_any["pkgbuild_repo"].as_s
       pkg_name = _pkgbuild_repo.chomp.split('/', remove_empty: true)[-1]
-      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{@hash["suite"].as_s}/#{pkg_name}/#{field_name}"
+      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{@hash_plain["suite"]}/#{pkg_name}/#{field_name}"
     end
     return dest_dir
   end
 
   private def generate_upload_fields(field_config)
       uploaded_file_path_hash = Hash(String, String).new
-      upload_fields = [] of String
-      ss = Hash(String, JSON::Any).new
+      fields_need_upload = [] of String
+      ss = Hash(String, Hash(String, String)).new
       #process upload file field from ss.*.config*
-      ss = @hash["ss"]?.not_nil!.as_h if @hash.has_key?("ss")
+      ss = @hash_hhh["ss"] if @hash_hhh.has_key?("ss")
       ss.each do |pkg_name, pkg_params|
-        params =  pkg_params == nil ? next : pkg_params.as_h
-        params.keys().each do |key|
-          if key =~ /config.*/ && params[key] != nil
+        next unless pkg_params
+        pkg_params.each do |key, val|
+          if key =~ /config.*/ && val != nil
             field_name = "ss.#{pkg_name}.#{key}"
-            filename = File.basename(params[key].to_s.chomp)
-            dest_file_path = "#{SRV_USER_FILE_UPLOAD}/#{@hash["suite"].as_s}/#{field_name}/#{filename}"
+            filename = File.basename(val.chomp)
+            dest_file_path = "#{SRV_USER_FILE_UPLOAD}/#{self["suite"]}/#{field_name}/#{filename}"
             if File.exists?(dest_file_path)
                 uploaded_file_path_hash[field_name] = dest_file_path
             else
-              upload_fields << field_name
+              fields_need_upload << field_name
             end
           end
         end
@@ -1022,18 +1186,18 @@ class Job
         _suite = field_hash["suite"].as_s?
         field_name = field_hash["field_name"].as_s
         if _suite
-          next if _suite != @hash["suite"].as_s || !@hash.has_key?(field_name)
-          filename = File.basename(@hash[field_name].to_s.chomp)
+          next if _suite != @hash_plain["suite"] || !@hash_any.has_key?(field_name)
+          filename = File.basename(@hash_any[field_name].to_s.chomp)
           dest_dir = get_dest_dir(field_name)
           dest_file_path = "#{dest_dir}/#{filename}"
           if File.exists?(dest_file_path)
             uploaded_file_path_hash[field_name] = dest_file_path
           else
-            upload_fields << field_name
+            fields_need_upload << field_name
           end
         end
       end
-      return upload_fields, uploaded_file_path_hash
+      return fields_need_upload, uploaded_file_path_hash
   end
 
   def process_user_files_upload
@@ -1041,18 +1205,13 @@ class Job
       #get field that can take upload file
       field_config = get_user_uploadfiles_fields_from_config()
 
-      #get upload_fields that need upload ,such as ss.linux.config, ss.git.configxx
+      #get fields_need_upload that need upload ,such as ss.linux.config, ss.git.configxx
       #get uploaded file info, we can add it in initrds
-      upload_fields, uploaded_file_path_hash = generate_upload_fields(field_config)
+      fields_need_upload, uploaded_file_path_hash = generate_upload_fields(field_config)
+      fields_need_upload.concat @upload_pkg_data if @upload_pkg_data
 
-      if @hash.includes? "upload_pkg_data"
-        @hash["upload_pkg_data"].as_a.each do |v|
-          upload_fields << v.as_s
-	end
-      end
-
-      # if upload_fields size > 0, need upload ,return
-      return upload_fields if !upload_fields.size.zero?
+      # if fields_need_upload size > 0, need upload ,return
+      return fields_need_upload if !fields_need_upload.size.zero?
 
       #process if found file in server
       uploaded_file_path_hash.each do |field, filepath|
@@ -1063,39 +1222,41 @@ class Job
 
           initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
           upload_file_initrd = "#{initrd_http_prefix}#{JobHelper.service_path(filepath, true)}"
-          @hash["upload_file_url"] = JSON::Any.new(upload_file_initrd)
+          @hash_any["upload_file_url"] = JSON::Any.new(upload_file_initrd)
         end
       end
   end
 
+  # upload_fields:
+  #   ss.linux.config:
+  #     md5: xxx
+  #     field_name: ss.xx.config* or pkgbuild config
+  #     content: file content
+  #     save_dir: /path/to/saved/content
   private def process_upload_fields
-      return unless @hash.has_key?("upload_fields")
-      upload_fields = @hash["upload_fields"].not_nil!.as_a
-      # upload_fields:
-      #   md5: xxx
-      #   field_name: ss.xx.config* or pkgbuild config
-      #   filename: basename of file
-      #   content: file content
-      save_dirs = [] of String
-      upload_fields.each do |upload_item|
-          save_dirs << store_upload_file(upload_item.as_h)
+      return unless @hash_hhh.has_key?("upload_fields")
+
+      upload_fields = @hash_hhh["upload_fields"]
+      upload_fields.each do |field_name, upload_item|
+        upload_item["save_dir"] = store_upload_file(field_name, upload_item)
+        upload_item.delete("content")
       end
-      reset_upload_field(upload_fields, save_dirs)
   end
 
-  private def store_upload_file(to_upload)
-      md5 = to_upload["md5"].to_s
-      field_name = to_upload["field_name"].to_s
-      file_name = to_upload["file_name"].to_s
+  private def store_upload_file(field_name, upload_item)
+      md5 = upload_item["md5"]
+      file_name = upload_item["file_name"]
       dest_dir = get_dest_dir(field_name)
       FileUtils.mkdir_p(dest_dir) unless File.exists?(dest_dir)
       dest_file = "#{dest_dir}/#{file_name}"
+
       #if file exist in server, check md5
       if File.exists?(dest_file)
-          return dest_file
+        return dest_file
       end
+
       #save file
-      content_base64 = to_upload["content"].to_s
+      content_base64 = upload_item["content"]
       dest_content = Base64.decode_string(content_base64)
       File.touch(dest_file)
       File.write(dest_file, dest_content)
@@ -1104,15 +1265,4 @@ class Job
       return dest_file
   end
 
-  private def reset_upload_field(upload_fields, save_dirs)
-      new_upload_fields_data = [] of JSON::Any
-      # iter every upload_field, remove content, add save_dir
-      upload_fields.each_with_index do |item, index|
-          tmp = item.as_h
-          tmp["save_dir"] = JSON::Any.new(save_dirs[index])
-          tmp.delete("content") if tmp.has_key?("content")
-          new_upload_fields_data << JSON::Any.new(tmp)
-      end
-      @hash["upload_fields"] = JSON::Any.new(new_upload_fields_data)
-  end
 end

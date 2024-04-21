@@ -32,11 +32,13 @@ class Sched
     job["job_stage"] = "finish"
 
     job_health = @env.params.query["job_health"]?
-    job["job_health"] = job["job_health"]? || job_health || "success"
-    # if user returns this testbox
-    # job_health needs to be return
-    job["job_health"] = job_health if job_health == "return"
-
+    if job_health && job_health == "return"
+      # if user returns this testbox
+      # job_health needs to be return
+      job["job_health"] = job_health
+    else
+      job["job_health"] ||= (job_health || "success")
+    end
 
     job.set_time("close_time")
     @env.set "close_time", job["close_time"]

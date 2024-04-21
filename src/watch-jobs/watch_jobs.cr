@@ -113,7 +113,7 @@ class WatchJobs < PluginsCommon
     key = event.kv.key
     val = event.kv.value
     @log.info("event key: #{key}")
-    job = Job.new(JSON.parse(val.not_nil!), key.split("/")[-1])
+    job = Job.new(JSON.parse(val.not_nil!).as_h, key.split("/")[-1])
 
     #on_waited(job) if job.has_key?("wait_by")
     on_waited(job) if job.has_key?("waited")
@@ -142,7 +142,7 @@ class WatchJobs < PluginsCommon
       res = @etcd.range("sched/id2job/#{k}")
       next if res.count == 0
 
-      k_j = Job.new(JSON.parse(res.kvs[0].value.not_nil!), "#{k}")
+      k_j = Job.new(JSON.parse(res.kvs[0].value.not_nil!).as_h, "#{k}")
       key = "sched/wait/#{k_j["queue"]}/#{k_j["subqueue"]}/#{k}"
       next unless job.has_key?(v.to_s)
 

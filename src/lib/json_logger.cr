@@ -9,9 +9,9 @@ require "kemal"
 add_context_storage_type(Time::Span)
 
 class JSONLogger < Log
-  def initialize(formatter = my_formatter, @env = nil)
+  def initialize(@env = nil)
     @env_info = Hash(String, String | Int32 | Float64 | JSON::Any).new
-    super("", Log::IOBackend.new(formatter: formatter), :trace)
+    super("", Log::IOBackend.new(formatter: my_formatter), :trace)
   end
 
   def trace(msg)

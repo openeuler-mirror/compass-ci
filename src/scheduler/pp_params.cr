@@ -1,32 +1,21 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-class Job
+class Job < JobHash
   private def sort_pp_params
-    temp_hash = Hash(String, JSON::Any).new
+    return unless @hash_hhh["pp"]?
 
-    if @hash["pp"]
-      flat_hash(@hash["pp"].as_h, temp_hash)
-    end
-
-    return sort_keys_return_values(temp_hash)
+    return sort_keys_return_values(flat_hh(@hash_hhh["pp"]))
   end
 
-  private def flat_hash(old_hash, new_hash)
-    old_hash.each do |key1, value1|
-      if value1.as_h?
-        next if value1.as_h.empty?
-
-        temp_hash = Hash(String, JSON::Any).new
-        value1.as_h.each do |key2, value2|
-          temp_hash.merge!({"#{key1}-#{key2}" => value2})
+  private def flat_hh(hh)
+    temp_hash = Hash(String, String).new
+    hh.each do |k, v|
+        v.each do |kk, vv|
+          temp_hash["#{k}.#{kk}"] = vv
         end
-
-        flat_hash(temp_hash, new_hash)
-      else
-        new_hash.merge!({key1 => value1})
-      end
     end
+    temp_hash
   end
 
   private def sort_keys_return_values(hash)
@@ -34,7 +23,7 @@ class Job
     items_size = 0
 
     hash.keys.sort.each do |key|
-      value = format_string(hash[key].to_s)
+      value = format_string(hash[key])
       next if 0 == value.size
 
       if items_size < 40

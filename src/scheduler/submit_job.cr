@@ -6,7 +6,7 @@ class Sched
     body = @env.request.body.not_nil!.gets_to_end
 
     job_content = JSON.parse(body)
-    job = Job.new(job_content, job_content["id"]?)
+    job = Job.new(job_content.as_h, job_content["id"]?)
     job.submit(job_content["id"]?)
     job["commit_date"] = get_commit_date(job)
 
@@ -15,7 +15,7 @@ class Sched
       response = submit_single_job(job)
     else
       cluster_config = get_cluster_config(cluster_file,
-        job.lkp_initrd_user,
+        job.lkp_initrd_user || "latest",
         job.os_arch).not_nil!
       response = submit_cluster_job(job, cluster_config)
     end

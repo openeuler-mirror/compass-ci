@@ -71,8 +71,7 @@ class Sched
       job_hash.delete(field)
     end
 
-    job_content = JSON.parse(job_hash.to_json)
-    job = Job.new(job_content, nil)
+    job = Job.new(job_hash, nil)
     job.submit
     set_commit_date(job)
 

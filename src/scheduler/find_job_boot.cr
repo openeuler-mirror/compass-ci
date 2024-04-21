@@ -24,7 +24,11 @@ class Sched
       submit_host_info_job(value) unless host
     when "container"
       host = value
+    else
+      raise "unknown boot_type #{boot_type}"
     end
+
+    raise "unknown host" unless host
 
     @env.set "testbox", host
 
@@ -139,7 +143,7 @@ class Sched
 
     if job
       @log.info("#{testbox} got the job #{job_id}")
-      job.update({"testbox" => testbox})
+      job["testbox"] = testbox
       update_kernel_params(job)
       job.set_result_root
       job.set_time("boot_time")
@@ -403,7 +407,7 @@ class Sched
     ec.close unless ec.nil?
   end
 
-  def get_job_boot(host, boot_type, pre_job=nil)
+  def get_job_boot(host : String, boot_type : String, pre_job=nil)
     queues = get_queues(host)
 
     raise "Queues are not registered for this testbox: #{host}" if queues.empty?
@@ -486,7 +490,7 @@ class Sched
     response += "initrd (http,#{OS_HTTP_HOST}:#{OS_HTTP_PORT})"
     response += JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/initrd.lkp")
     response += " (http,#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT})"
-    response += JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user}/#{initrd_lkp_cgz}")
+    response += JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user || "latest"}/#{initrd_lkp_cgz}")
     response += " (http,#{SCHED_HOST}:#{SCHED_PORT})/job_initrd_tmpfs/"
     response += "#{job.id}/job.cgz\n"
 
@@ -502,13 +506,13 @@ class Sched
     response = "#!ipxe\n\n"
     response += "# nr_nic=" + job["nr_nic"] + "\n" if job.has_key?("nr_nic")
 
-    _initrds_uri = Array(String).from_json(job.initrds_uri).map { |uri| "initrd #{uri}" }
+    _initrds_uri = job.initrds_uri.map { |uri| "initrd #{uri}" }
     _initrds_uri.insert(1, "initrd #{job.modules_uri}") if job.has_key?("modules_uri")
     _kernel_initrds = _initrds_uri.map { |initrd| " initrd=#{File.basename(initrd.split("initrd ")[-1])}"}
     response += _initrds_uri.join("\n") + "\n"
 
-    _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + _kernel_initrds
-    _rootfs_disk = " rootfs_disk=#{JSON.parse(job["rootfs_disk"]).as_a.join(",")}"
+    _kernel_params = ["kernel #{job.kernel_uri}"] + job.hash_array["kernel_params"] + _kernel_initrds
+    _rootfs_disk = " rootfs_disk=#{job.hash_any["rootfs_disk"].as_a.join(",")}"
     response += _kernel_params.join(" ") + _rootfs_disk
     response += " crashkernel=#{job["crashkernel"]}" unless response.includes?("crashkernel=")
     response += "\necho ipxe will boot job id=#{job.id}, ip=${ip}, mac=${mac}" # the ip/mac will be expanded by ipxe
@@ -551,8 +555,8 @@ class Sched
 
 
   private def get_boot_libvirt(job : Job)
-    _kernel_params = job["kernel_params"]?
-    _kernel_params = _kernel_params.as_a.map(&.to_s).join(" ") if _kernel_params
+    _kernel_params = job.hash_array["kernel_params"]?
+    _kernel_params = _kernel_params.map(&.to_s).join(" ") if _kernel_params
 
     _vt = job["vt"]?
     _vt = Hash(String, String).new unless (_vt && _vt != nil)
@@ -609,7 +613,7 @@ class Sched
     end
 
     if job
-      job.update({"testbox" => testbox})
+      job["testbox"] = testbox
       job.set_result_root
       @log.info(%({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state": "set result root"}))
       @redis.set_job(job)

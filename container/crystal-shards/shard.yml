@@ -27,7 +27,7 @@ dependencies:
   json_on_steroids:
     github: anykeyh/json_on_steroids
   rate_limiter:
-    github: z64/rate_limiter
+    github: wout/rate_limiter
   singleton:
     github: waterlink/singleton.cr
   etcd:
@@ -36,3 +36,5 @@ dependencies:
   amqp-client:
     github: cloudamqp/amqp-client.cr
     version: 1.0.0
+  shellwords:
+    github: szTheory/shellwords-crystal

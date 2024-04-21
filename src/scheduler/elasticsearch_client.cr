@@ -79,7 +79,7 @@ class Elasticsearch::Client
 
     case response
     when JSON::Any
-      job = Job.new(response, job_id)
+      job = Job.new(response.as_h, job_id)
     else
       job = nil
     end
@@ -92,7 +92,9 @@ class Elasticsearch::Client
     response = JSON.parse({"_id" => my_email, "found" => false}.to_json)
     return response unless @client.exists(query)
 
-    @client.get_source(query)
+    result = @client.get_source(query)
+    raise result unless result.is_a?(JSON::Any)
+    result
   end
 
   def get_hit_total(index, query)

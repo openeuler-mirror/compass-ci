@@ -45,7 +45,7 @@ class Sched
   def get_params_info
     job_id = @env.params.query["job_id"]?.to_s
     job_stage = @env.params.query["job_stage"]?.to_s
-    timeout = @env.params.query["timeout"]? || 0
+    timeout = @env.params.query["timeout"]?.to_s || 0.to_s
 
     @env.set "job_id", job_id
     @env.set "job_stage", job_stage

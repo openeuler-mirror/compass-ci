@@ -4,7 +4,7 @@ require "./plugins_common"
 
 class Finally < PluginsCommon
   def handle_job(job)
-    return if job.has_key?("added")
+    return if job.hash_array.has_key?("added_by")
 
     save_job2es(job)
     save_job2etcd(job)
@@ -12,7 +12,7 @@ class Finally < PluginsCommon
   end
 
   def add_job2queue(job)
-    job["added"] = ["finally"]
+    job.hash_array["added_by"] = ["finally"]
     key = "sched/ready/#{job.queue}/#{job.subqueue}/#{job.id}"
     value = { "id" => JSON::Any.new(job.id.to_s) }
 

@@ -53,7 +53,7 @@ class Cluster < PluginsCommon
       next if (spec["roles"].as_a.map(&.to_s) & roles).empty?
 
       job_id = @redis.get_job_id(lab)
-      single_job = Job.new(JSON.parse(job.dump_to_json), job_id)
+      single_job = Job.new(JSON.parse(job.dump_to_json).as_h, job_id)
       single_job.delete_host_info
 
       host_info = Utils.get_host_info(host.to_s)
@@ -71,7 +71,7 @@ class Cluster < PluginsCommon
       single_job["testbox"] = queue
       single_job["queue"] = queue
       single_job.update_tbox_group(queue)
-      single_job["os_arch"] = host_info["arch"]
+      single_job["os_arch"] = host_info["arch"].as_s
       single_job["node_roles"] = spec["roles"].as_a.join(" ")
       if spec["macs"]?
         direct_macs = spec["macs"].as_a
@@ -111,7 +111,8 @@ class Cluster < PluginsCommon
   end
 
   def get_roles(job)
-    roles = job.hash.keys.map { |key| $1 if key =~ /^if role (.*)/ }
+    # XXX
+    roles = job.hash_any.keys.map { |key| $1 if key =~ /^if role (.*)/ }
     roles.compact.map(&.strip)
   end
 end

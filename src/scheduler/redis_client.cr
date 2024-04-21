@@ -20,7 +20,7 @@ class Redis::Client
   end
 
   def initialize(host = HOST, port = PORT, pool_size = @@size, passwd = PASSWD)
-    @client = Redis::PooledClient.new(host: host, port: port, pool_size: pool_size, pool_timeout: 0.01, password: passwd)
+    @client = Redis::PooledClient.new(host: host, port: port, pool_size: pool_size, pool_timeout: 0.01.seconds, password: passwd)
   end
 
   def self.set_pool_size(pool_size)
@@ -48,7 +48,7 @@ class Redis::Client
     if !job_hash
       raise "Get job (id = #{job_id}) from redis failed."
     end
-    Job.new(JSON.parse(job_hash), job_id)
+    Job.new(JSON.parse(job_hash).as_h, job_id)
   end
 
   def update_wtmp(testbox : String, wtmp_hash : Hash)

@@ -145,7 +145,7 @@ def get_deadline(stage, timeout=0)
       extra_time ||= [time / 8, 300].max.to_i32 + Math.sqrt(time).to_i32
     when "renew"
       # renew的实际时间
-      return @hash["renew_deadline"]?
+      return @hash_plain["renew_deadline"]?
     when "post_run"
       time = 1800
     when "manual_check"

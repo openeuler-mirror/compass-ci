@@ -73,15 +73,15 @@ submit build-linux.yaml config=/root/config.5.10-xx
 ```yaml
 # 调度器保存文件执行前---------------------
 upload_fields:
-  - md5: 8283b295ef0d03af318faa2ed2c5d5c8
-    field_name: ss.linux.config
+  ss.linux.config:
+    md5: 8283b295ef0d03af318faa2ed2c5d5c8
     file_name: kconfig-xx
     content: |-xxxxx
 
 # 调度器保存文件执行后---------------------
 upload_fields:
-  - md5: 8283b295ef0d0123218faa2ed2c5d5c8
-    field_name: ss.linux.config
+  ss.linux.config:
+    md5: 8283b295ef0d0123218faa2ed2c5d5c8
     file_name: kconfig-xx
     save_dir: /srv/cci/user-files/.....
 ```
@@ -126,12 +126,12 @@ upload_fields:
 ```yaml
 # 填充前---------------------
 upload_fields:
-	- ss.linux.config
+  ss.linux.config:
 
 # 填充后---------------------
 upload_fields:
-  - md5: 8283b295ef0d0123218faa2ed2c5d5c8
-    field_name: ss.linux.config
+  ss.linux.config:
+    md5: 8283b295ef0d0123218faa2ed2c5d5c8
     file_name: kconfig-xx
 	content: xxxxxx
 ```

@@ -7,7 +7,7 @@ class Sched
     job = get_id2job(id)
     return false unless job
 
-    job.update(job_content)
+    job.merge!(job_content)
     @etcd.update("sched/id2job/#{id}", job.shrink_to_etcd_json)
   end
 
@@ -19,7 +19,7 @@ class Sched
     response = @etcd.range("sched/id2job/#{id}")
     return nil unless response.count == 1
 
-    Job.new(JSON.parse(response.kvs[0].value.not_nil!), id)
+    Job.new(JSON.parse(response.kvs[0].value.not_nil!).as_h, id)
   end
 
   def delete_id2job(id)

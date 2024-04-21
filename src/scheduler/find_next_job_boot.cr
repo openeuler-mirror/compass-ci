@@ -8,6 +8,9 @@ class Sched
     if !hostname && mac
       hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
     end
+    if !hostname
+      raise "cannot find hostname"
+    end
 
     pre_job_id = @env.params.query["pre_job_id"]?
     pre_job = @es.get_job(pre_job_id.to_s)

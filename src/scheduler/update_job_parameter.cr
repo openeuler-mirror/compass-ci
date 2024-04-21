@@ -17,7 +17,7 @@ class Sched
     return if job["job_health"] == "return"
 
     # try to get report value and then update it
-    job_content = {} of String => String
+    job_content = Job.new(Hash(String, JSON::Any).new, nil)
 
     (%w(start_time end_time loadavg job_state)).each do |parameter|
       value = @env.params.query[parameter]?
@@ -43,16 +43,17 @@ class Sched
       end
     end
 
-    job.update(job_content)
+    job.merge!(job_content)
     job_content["id"] = job_id
 
     update_id2job(job_content)
 
     # json log
     log = job_content.dup
-    log["job_id"] = log.delete("id").not_nil!
+    log.hash_plain["job_id"] = job_id
+    log.hash_plain.delete("id")
 
-    @env.set "log", log.to_json
+    @env.set "log", log.dump_to_json
 
     @es.set_job_content(job)
     update_testbox_info(job)
