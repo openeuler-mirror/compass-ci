@@ -88,7 +88,13 @@ class JobHash
   def import2hash(job_content)
 
     job_content.each do |k, v|
-      if @plain_keys.includes? k
+      if v.is_a? String
+        if @plain_keys.includes? k
+          @hash_plain[k] = v.to_s
+        else
+          @hash_any[k] = v
+        end
+      elsif @plain_keys.includes? k
         @hash_plain[k] = v.to_s
       elsif @array_keys.includes? k
         @hash_array[k] ||= Array(String).new
@@ -296,14 +302,14 @@ class JobHash
       raise "invalid key @{key}" unless vals.includes? key
   end
 
-  def shrink_to_etcd_json
+  def shrink_to_etcd_fields
     hh = Hash(String, String).new
     %w(job_state job_stage job_health last_success_stage
-      testbox boot_time start_time end_time close_time in_watch_queue).each do |k|
+      testbox deadline time boot_time start_time end_time close_time in_watch_queue).each do |k|
       assert_key_in(k, @plain_keys)
       hh[k] = @hash_plain[k] if @hash_plain.includes? k
     end
-    hh.to_json
+    hh
   end
 
   def dump_to_json

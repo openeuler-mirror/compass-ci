@@ -35,7 +35,7 @@ class Lifecycle
     @es = Elasticsearch::Client.new
     @scheduler_api = SchedulerAPI.new
     @log = JSONLogger.new
-    @jobs = Hash(String, JSON::Any).new
+    @jobs = Hash(String, JobHash).new
     @machines = Hash(String, JSON::Any).new
     @match = Hash(String, Set(String)).new {|h, k| h[k] = Set(String).new}
   end
@@ -55,7 +55,7 @@ class Lifecycle
       job_id = result["_id"].to_s
       job = result["_source"].as_h
 
-      @jobs[job_id] = JSON.parse(job.to_json)
+      @jobs[job_id] = JobHash.new(job)
       @match[job["testbox"].to_s] << job_id
     end
 
@@ -227,15 +227,13 @@ class Lifecycle
   def update_cached_job(job_id, event)
     job = @jobs[job_id]?
     if job
-      @jobs[job_id] = JSON.parse(job.as_h.merge!(event.as_h).to_json)
+      job.import2hash(event.as_h)
     else
       job = @es.get_job(job_id)
       return unless job
       return if job["job_stage"]? == "finish"
 
-      job = job.dump_to_json_any.as_h
-      job.delete_if{|key, _| !JOB_KEYWORDS.includes?(key)}
-      @jobs[job_id] = JSON.parse(job.to_json)
+      @jobs[job_id] = JobHash.new(job.shrink_to_etcd_fields)
     end
   end
 
@@ -269,7 +267,7 @@ class Lifecycle
 
   def on_job_boot(event)
     event_job_id = event["job_id"]?.to_s
-    @jobs[event_job_id] = event unless event_job_id.empty?
+    @jobs[event_job_id] = JobHash.new(event.as_h) unless event_job_id.empty?
     machine_info = @machines[event["testbox"]]?
     deal_boot_machine(machine_info, event)
   end
@@ -433,9 +431,7 @@ class Lifecycle
 
     deadline = Time.parse(deadline.to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
     if Time.local < deadline
-      job_hash = job.dump_to_json_any.as_h
-      job_hash.delete_if{|key, _| !JOB_KEYWORDS.includes?(key)}
-      @jobs[job_id] = JSON.parse(job_hash.to_json)
+      @jobs[job_id] = JobHash.new(job.shrink_to_etcd_fields)
     else
       reboot_timeout_machine(job["testbox"])
       close_job(job_id, "timeout")

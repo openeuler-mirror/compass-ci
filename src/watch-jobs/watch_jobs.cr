@@ -116,8 +116,8 @@ class WatchJobs < PluginsCommon
     job = Job.new(JSON.parse(val.not_nil!).as_h, key.split("/")[-1])
 
     #on_waited(job) if job.has_key?("wait_by")
-    on_waited(job) if job.has_key?("waited")
-    on_wait(job) if job.has_key?("wait")
+    on_waited(job) if job.hash_hh.has_key?("waited")
+    on_wait(job) if job.hash_any.has_key?("wait")
   end
 
   def on_wait(job)
@@ -134,11 +134,9 @@ class WatchJobs < PluginsCommon
   # {"waited": [{"crystal.1" : "job_health"}, {"crystal.2" : "xxx"}]
   # which job : wait for my which field  = which value
   def on_waited(job)
-    waited = job["waited"]?.not_nil!.as_a
+    waited = job.hash_hh["waited"]
     @log.info("waited arrary: #{waited}")
-    waited.each do |item|
-      k = item.as_h.first_key
-      v = item.as_h.first_value
+    waited.each do |k, v|
       res = @etcd.range("sched/id2job/#{k}")
       next if res.count == 0
 

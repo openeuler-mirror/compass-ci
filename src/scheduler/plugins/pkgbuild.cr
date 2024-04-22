@@ -61,8 +61,8 @@ class PkgBuild < PluginsCommon
     key = "sched/wait/#{job.queue}/#{job.subqueue}/#{job.id}"
     value = {"id" => job.id}
 
-    if job.has_key?("waited")
-      value.any_merge!({"waited" => job["waited"]?})
+    if job.hash_hh.has_key?("waited")
+      value.any_merge!({"waited" => job.hash_hh["waited"]})
     end
 
     response = @etcd.put(key, value.to_json)

@@ -8,11 +8,11 @@ class Sched
     return false unless job
 
     job.merge!(job_content)
-    @etcd.update("sched/id2job/#{id}", job.shrink_to_etcd_json)
+    @etcd.update("sched/id2job/#{id}", job.shrink_to_etcd_fields.to_json)
   end
 
   def set_id2job(job : Job)
-    @etcd.put("sched/id2job/#{job.id}", job.shrink_to_etcd_json)
+    @etcd.put("sched/id2job/#{job.id}", job.shrink_to_etcd_fields.to_json)
   end
 
   def get_id2job(id)
