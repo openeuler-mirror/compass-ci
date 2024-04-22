@@ -55,13 +55,19 @@ def json_any2hh(any, hh : Hash(String, String))
   any.as_h.each { |k, v| hh[k.to_s] = v.as_s }
 end
 
+class Str2AnyHash < Hash(String, JSON::Any)
+  def []=(k : String, v : String)
+    self[k] = JSON::Any.new(v)
+  end
+end
+
 class JobHash
 
   getter hash_plain : Hash(String, String)
   getter hash_array : Hash(String, Array(String))
   getter hash_hh : Hash(String, Hash(String, String))
   getter hash_hhh : Hash(String, Hash(String, Hash(String, String)))
-  getter hash_any : Hash(String, JSON::Any)
+  getter hash_any : Str2AnyHash
 
   def initialize(job_content)
     @plain_keys = Set(String).new PLAIN_KEYS
@@ -69,7 +75,7 @@ class JobHash
     @hh_keys = Set(String).new HH_KEYS
     @hhh_keys = Set(String).new HHH_KEYS
 
-    @hash_any = Hash(String, JSON::Any).new
+    @hash_any = Str2AnyHash.new
     @hash_plain = Hash(String, String).new
     @hash_array = Hash(String, Array(String)).new
     @hash_hh = Hash(String, Hash(String, String)).new
