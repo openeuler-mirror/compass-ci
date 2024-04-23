@@ -31,7 +31,7 @@ cmd=(
   -v $DIR:${DEFAULT_CCI}/compile
   -w ${DEFAULT_CCI}/compile
   alpine:scheduler-dev
-  sh -c "crystal build ${DEFAULT_CCI}/src/${service}.cr"
+  sh -c "crystal build --error-trace ${DEFAULT_CCI}/src/${service}.cr"
 )
 
 "${cmd[@]}"
