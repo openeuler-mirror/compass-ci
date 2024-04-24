@@ -11,6 +11,7 @@ names = Set.new %w[
   SCHED_PORT
   REDIS_HOST
   REDIS_PORT
+  REDIS_PASSWD
   ES_HOST
   ES_PORT
   ES_USER
