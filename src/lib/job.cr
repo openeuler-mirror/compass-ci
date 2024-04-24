@@ -241,6 +241,7 @@ class JobHash
 
     in_watch_queue
 
+    my_account
     my_email
     my_name
     my_token
