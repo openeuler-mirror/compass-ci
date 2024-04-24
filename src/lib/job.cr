@@ -95,7 +95,6 @@ class JobHash
     return unless job_content
 
     job_content.each do |k, v|
-      pp k, v
       if v.is_a? String || v.raw.is_a? String
         if @plain_keys.includes? k
           @hash_plain[k] = v.to_s
