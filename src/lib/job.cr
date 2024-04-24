@@ -317,7 +317,7 @@ class JobHash
   {% end %}
 
   def assert_key_in(key : String, vals : Set(String))
-      raise "invalid key @{key}" unless vals.includes? key
+      raise "invalid key #{key}" unless vals.includes? key
   end
 
   def shrink_to_etcd_fields

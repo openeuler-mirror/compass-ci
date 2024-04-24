@@ -91,13 +91,13 @@ class Sched
   end
 
   def set_commit_date(job)
-    return if job["upstream_repo"] == "" || job["upstream_commit"] == ""
+    return if job.hash_any["upstream_repo"] == "" || job.hash_any["upstream_commit"] == ""
 
-    data = JSON.parse(%({"git_repo": "#{job["upstream_repo"]}.git",
+    data = JSON.parse(%({"git_repo": "#{job.hash_any["upstream_repo"]}.git",
                    "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
-                   "#{job["upstream_commit"]}", "-1"]}))
+                   "#{job.hash_any["upstream_commit"]}", "-1"]}))
     response = @rgc.git_command(data)
-    job["commit_date"] = response.body if response.status_code == 200
+    job.hash_any["commit_date"] = response.body if response.status_code == 200
   end
 
   def save_secrets(job, job_id)
