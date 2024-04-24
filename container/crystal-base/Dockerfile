@@ -5,10 +5,10 @@ FROM alpine:3.19
 
 MAINTAINER chief <taxcom@tom.com>
 
-ONBUILD RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
-ONBUILD RUN apk update
-ONBUILD RUN apk add bash zsh git rsync curl crystal shards tzdata sudo \
+RUN apk update
+RUN apk add bash zsh git rsync curl crystal shards tzdata sudo \
  yaml-dev openssl-dev ncurses-static g++ make cmake \
  zlib-dev zlib-static openssl-libs-static llvm17 llvm17-dev \
  llvm17-libs llvm17-static musl-dev xz-dev libxml2-dev \
