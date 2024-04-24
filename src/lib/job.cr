@@ -42,7 +42,7 @@ module JobHelper
   end
 
   def self.service_path(path, need_exists = true)
-    temp_path = need_exists ? File.real_path(path) : path
+    temp_path = need_exists ? File.realpath(path) : path
     return temp_path.split("/srv")[-1]
   end
 end
@@ -919,12 +919,12 @@ class Job < JobHash
   end
 
   private def set_kernel_version
-    self["kernel_version"] ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
+    self["kernel_version"] ||= File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
   end
 
   private def set_kernel_uri
     return if @hash_plain.has_key?("kernel_uri")
-    vmlinuz_path = File.real_path("#{boot_dir}/vmlinuz-#{kernel_version}")
+    vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
     self["kernel_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(vmlinuz_path)
   end
 
@@ -932,7 +932,7 @@ class Job < JobHash
     return if @hash_plain.has_key?("modules_uri")
     return if @hash_plain["os_mount"] == "local"
 
-    modules_path = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
+    modules_path = File.realpath("#{boot_dir}/modules-#{kernel_version}.cgz")
     self["modules_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
   end
 

@@ -96,7 +96,7 @@ describe Jobfile::Operate do
     # when debug this,it seems to execute "chmod +x /c/lkp-tests/sbin/create-job-cpio.sh" to get permission
     it "from jobid create job.cgz" do
       job_id = "100"
-      fs_root = "#{File.real_path(".")}/public"
+      fs_root = "#{File.realpath(".")}/public"
 
       old_dir = ::File.join [fs_root, job_id]
       FileUtils.rm_r(old_dir) if File.exists?(old_dir)
