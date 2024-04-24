@@ -280,9 +280,9 @@ class JobHash
     waited
   )
 
-  # pp = program.param
-  # po = program.option
-  # ss = software stack
+  # pp = program.param, runtime params will impact results
+  # po = program.option, runtime config options won't impact results
+  # ss = software stack, with build time options
   HHH_KEYS = %w(
     pp
     po
