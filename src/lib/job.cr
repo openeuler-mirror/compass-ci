@@ -91,7 +91,7 @@ class JobHash
   end
 
   # this mimics any_merge for the known types
-  def import2hash(job_content)
+  def import2hash(job_content : Hash(String, String) | Hash(String, JSON::Any) | Nil)
     return unless job_content
 
     job_content.each do |k, v|
