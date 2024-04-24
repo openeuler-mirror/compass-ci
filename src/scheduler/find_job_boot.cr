@@ -434,7 +434,7 @@ class Sched
       @env.set "deadline", job["deadline"]
       @env.set "job_stage", job["job_stage"]
       @env.set "state", "booting"
-      create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
+      create_job_cpio(job.to_json_any, Kemal.config.public_folder)
     else
       # for physical machines
       spawn {

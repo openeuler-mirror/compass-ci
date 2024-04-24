@@ -341,16 +341,16 @@ class JobHash
     hh
   end
 
-  def dump_to_json
+  def to_json
     merge2hash_all.to_json
   end
 
-  def dump_to_yaml
+  def to_yaml
     merge2hash_all.to_yaml
   end
 
-  def dump_to_json_any
-    JSON.parse(dump_to_json)
+  def to_json_any
+    JSON.parse(self.to_json)
   end
 
   def update(hash : Hash)
@@ -669,7 +669,7 @@ class Job < JobHash
     return if @account_info.hash_array["my_ssh_pubkey"].includes?(pub_key)
 
     @account_info.hash_array["my_ssh_pubkey"] << pub_key
-    @es.update_account(JSON.parse(@account_info.dump_to_json), self["my_email"])
+    @es.update_account(@account_info.to_json_any, self.my_email)
   end
 
   def os_dir

@@ -61,11 +61,11 @@ class Redis::Client
     job = get_job(job_id)
     job.update(job_content)
 
-    hash_set("sched/id2job", job_id, job.dump_to_json)
+    hash_set("sched/id2job", job_id, job.to_json)
   end
 
   def set_job(job : Job)
-    hash_set("sched/id2job", job.id, job.dump_to_json)
+    hash_set("sched/id2job", job.id, job.to_json)
   end
 
   def remove_finished_job(job_id : String)

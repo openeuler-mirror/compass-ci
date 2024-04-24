@@ -215,7 +215,7 @@ class PkgBuild < PluginsCommon
     job_yaml = "/tmp/yaml/#{id}_#{pkg_name}.yaml"
     dir_name = File.dirname(job_yaml)
     FileUtils.mkdir_p(dir_name) unless File.exists?(dir_name)
-    File.open(job_yaml, "w") { |f| f.puts content.dump_to_yaml }
+    File.open(job_yaml, "w") { |f| f.puts content.to_yaml }
 
     return job_yaml
   end

@@ -50,9 +50,9 @@ class Elasticsearch::Client
 
     response = get_job_content(job.id)
     if response["id"]?
-      response = update(job.dump_to_json_any, job.id)
+      response = update(job.to_json_any, job.id)
     else
-      response = create(job.dump_to_json_any, job.id)
+      response = create(job.to_json_any, job.id)
     end
 
     return response
@@ -60,7 +60,7 @@ class Elasticsearch::Client
 
   def update_job(job : Job)
     job.set_time
-    update(job.dump_to_json_any, job.id)
+    update(job.to_json_any, job.id)
   end
 
   # caller should judge response["id"]?

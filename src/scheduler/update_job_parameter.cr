@@ -53,7 +53,7 @@ class Sched
     log.hash_plain["job_id"] = job_id
     log.hash_plain.delete("id")
 
-    @env.set "log", log.dump_to_json
+    @env.set "log", log.to_json
 
     @es.set_job_content(job)
     update_testbox_info(job)
