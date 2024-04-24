@@ -86,8 +86,7 @@ class Sched
 
   def add_job2es(job)
     response = @es.set_job_content(job)
-    msg = (response["error"]? ? response["error"]["root_cause"] : "")
-    raise msg.to_s if response["error"]?
+    raise response["error"]["root_cause"] if response["error"]?
   end
 
   def set_commit_date(job)
@@ -102,9 +101,9 @@ class Sched
   end
 
   def save_secrets(job, job_id)
-    return nil unless job["secrets"]?
+    return nil unless job.hash_hh["secrets"]?
 
-    @redis.hash_set("id2secrets", job_id, job["secrets"]?.to_json)
-    job.delete("secrets")
+    @redis.hash_set("id2secrets", job_id, job.hash_hh["secrets"]?.to_json)
+    job.hash_hh.delete("secrets")
   end
 end
