@@ -10,7 +10,9 @@
 	CRYSTAL_PATH="lib:." crystal build -o ../sbin/extract-stats extract-stats.cr
 ../sbin/delimiter:
 	CRYSTAL_PATH="lib:." crystal build -o ../sbin/delimiter delimiter.cr
-../sbin/extract-stats:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/extract-stats extract-stats.cr
+../sbin/updaterepo:
+	CRYSTAL_PATH="lib:." crystal build -o ../sbin/updaterepo updaterepo.cr
+../sbin/serial-logging:
+	CRYSTAL_PATH="lib:." crystal build -o ../sbin/serial-logging serial-logging.cr
 ../sbin/post-extract:
 	CRYSTAL_PATH="lib:." crystal build -o ../sbin/post-extract post-extract.cr
