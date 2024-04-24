@@ -92,6 +92,7 @@ class JobHash
 
   # this mimics any_merge for the known types
   def import2hash(job_content)
+    return unless job_content
 
     job_content.each do |k, v|
       pp k, v
@@ -538,7 +539,7 @@ class Job < JobHash
   end
 
   private def set_os_version
-    self["os_version"] = "#{os_version}".chomp("-iso") + "-iso" if "#{self.os_mount}" == "local"
+    self["os_version"] = "#{os_version}".chomp("-iso") + "-iso" if self.os_mount == "local"
     self["osv"] = "#{os}@#{os_version}" # for easy ES search
   end
 
@@ -745,14 +746,13 @@ class Job < JobHash
       break if tmp_style
     end
     return nil unless tmp_style
-    pkg_style = Hash(String, JSON::Any).new {|h, k| h[k] = JSON::Any.new(nil)}
-    pkg_style.merge!(tmp_style.as_h? || Hash(String, JSON::Any).new)
+    pkg_style = JobHash.new(tmp_style.as_h?)
 
-    tmp_os = pkg_style["os"].as_s? || "#{os}"
-    tmp_os_arch = pkg_style["os_arch"].as_s? || "#{os_arch}"
-    tmp_os_version = pkg_style["os_version"].as_s? || "#{os_version}"
+    tmp_os = pkg_style["os"]? || self.os
+    tmp_os_arch = pkg_style["os_arch"]? || self.os_arch
+    tmp_os_version = pkg_style["os_version"]? || self.os_version
 
-    mount_type = pkg_style["os_mount"].as_s? || "#{os_mount}"
+    mount_type = pkg_style["os_mount"]? || self.os_mount
     # same usage for client
     mount_type = "nfs" if mount_type == "cifs"
 
@@ -819,9 +819,9 @@ class Job < JobHash
     return unless self["queue"].empty?
 
     # set default value
-    self["queue"] = tbox_group
-    if tbox_group.starts_with?(/(vm|dc|vt)-/)
-      self["queue"] = "#{tbox_group}.#{arch}"
+    self["queue"] = self.tbox_group
+    if self.tbox_group.starts_with?(/(vm|dc|vt)-/)
+      self["queue"] = "#{self.tbox_group}.#{self.arch}"
     end
   end
 
@@ -1027,9 +1027,9 @@ class Job < JobHash
   private def get_initrds
     temp_initrds = [] of String
 
-    if "#{os_mount}" == "initramfs"
+    if self.os_mount == "initramfs"
       temp_initrds.concat(initramfs_initrds())
-    elsif ["nfs", "cifs", "local"].includes? "#{os_mount}"
+    elsif ["nfs", "cifs", "local"].includes? self.os_mount
       temp_initrds.concat(nfs_cifs_initrds())
     end
 
@@ -1039,7 +1039,7 @@ class Job < JobHash
   end
 
   private def initrds_basename : Array(String)
-    return os_mount == "container" ? [] of String : get_initrds.map { |initrd| "initrd=#{File.basename(initrd)}" }
+    return self.os_mount == "container" ? [] of String : get_initrds.map { |initrd| "initrd=#{File.basename(initrd)}" }
   end
 
   private def set_initrds_uri
@@ -1047,7 +1047,7 @@ class Job < JobHash
   end
 
   def append_initrd_uri(initrd_uri)
-    @hash_array["initrds_uri"] << initrd_uri if "#{os_mount}" == "initramfs"
+    @hash_array["initrds_uri"] << initrd_uri if self.os_mount == "initramfs"
     @hash_array["initrd_deps"] << initrd_uri
   end
 
@@ -1070,11 +1070,10 @@ class Job < JobHash
 
   private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkgs_arr)
     initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
-    mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
+    mount_type = self.os_mount == "cifs" ? "nfs" : self.os_mount
 
     # init deps lkp.cgz
-    mount_type = os_mount == "cifs" ? "nfs" : os_mount.dup
-    deps_lkp_cgz = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/lkp/lkp.cgz"
+    deps_lkp_cgz = "#{SRV_INITRD}/deps/#{mount_type}/#{self.os_dir}/lkp/lkp.cgz"
     if File.exists?(deps_lkp_cgz)
       initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_lkp_cgz)
     end
@@ -1091,8 +1090,8 @@ class Job < JobHash
         program_version = "latest"
       end
 
-      deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{os_dir}/#{program}/#{program}.cgz"
-      pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{os_dir}/#{program}/#{program_version}.cgz"
+      deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{self.os_dir}/#{program}/#{program}.cgz"
+      pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{self.os_dir}/#{program}/#{program_version}.cgz"
 
       if File.exists?(deps_dest_file)
         initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
