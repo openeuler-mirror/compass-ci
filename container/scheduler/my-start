@@ -46,7 +46,7 @@ defaults.merge!(service_authentication)
 
 env = docker_env(defaults)
 
-CCI_REPOS = ENV['CCI_REPOS'] || '/c'
+CCI_REPOS = '/c'
 DEFAULT_LKP = "#{CCI_REPOS}/lkp-tests"
 DEFAULT_CCI = "#{CCI_REPOS}/compass-ci"
 LAB = defaults['lab'] || 'z9'

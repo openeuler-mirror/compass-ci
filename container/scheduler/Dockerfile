@@ -22,6 +22,9 @@ ENV SCHED_RUNTIME_DIR /c/cci/scheduler
 RUN mkdir -p $SCHED_RUNTIME_DIR && \
     chown -R 1090:1090 /c
 
+# fatal: detected dubious ownership in repository at '/c/lkp-tests'
+RUN git config --global --add safe.directory /c/lkp-tests
+
 WORKDIR $SCHED_RUNTIME_DIR
 
 COPY --chown=1090:1090 scheduler .
