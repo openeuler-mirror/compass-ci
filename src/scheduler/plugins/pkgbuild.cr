@@ -9,7 +9,8 @@ require "./plugins_common"
 # case 3: need submit pkg job
 class PkgBuild < PluginsCommon
   def handle_job(job)
-    return unless job.has_key?("ss")
+    ss = job.hash_hhh["ss"]?
+    return unless ss
 
     # job id has been init in init_job_id function
     wait_id = job.id
@@ -22,7 +23,6 @@ class PkgBuild < PluginsCommon
     #     commit: xxx
     #   mysql:
     #     commit: xxx
-    ss = job.hash_hhh["ss"]? || Hash(String, Hash(String, String)).new
     ss.each do |pkg_name, pkg_params|
       pbp = init_pkgbuild_params(job, pkg_name, pkg_params)
       cgz, exists = cgz_exists?(pbp)
