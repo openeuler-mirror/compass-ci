@@ -505,7 +505,7 @@ class MirrorMain
     end
 
     mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git"
-    submodule = run_get_output("git -C #{mirror_dir} show HEAD:.gitmodules")
+    submodule = %x(git -C #{mirror_dir} show HEAD:.gitmodules 2>/dev/null)
     return if submodule.empty?
 
     handle_submodule(submodule, @git_info[git_repo]['belong'])
