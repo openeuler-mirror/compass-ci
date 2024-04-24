@@ -734,7 +734,6 @@ class Job < JobHash
   end
 
   def set_result_root
-    update_tbox_group_from_testbox # id must exists, need update tbox_group
     self["result_root"] = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{sort_pp_params}", "#{id}")
     set_upload_dirs()
   end
@@ -821,7 +820,7 @@ class Job < JobHash
 
     # set default value
     self["queue"] = tbox_group
-    if tbox_group.to_s.starts_with?(/(vm|dc|vt)-/)
+    if tbox_group.starts_with?(/(vm|dc|vt)-/)
       self["queue"] = "#{tbox_group}.#{arch}"
     end
   end
@@ -835,13 +834,8 @@ class Job < JobHash
     @hash_hh["secrets"]["my_email"] = self["my_email"]
   end
 
-  # if not assign tbox_group, set it to a match result from testbox
-  #  ?if job special testbox, should we just set tbox_group=testbox
-  private def update_tbox_group_from_testbox
-    @hash_plain["tbox_group"] ||= JobHelper.match_tbox_group(testbox)
-  end
   private def is_docker_job?
-    if testbox =~ /^dc/
+    if self.tbox_group =~ /^dc/
       return true
     else
       return false
@@ -851,15 +845,19 @@ class Job < JobHash
   REQUIRED_KEYS = %w[
     id
     suite
-    testbox
+
+    tbox_group
     os
     os_version
+
+    my_account
     my_email
     my_name
     my_token
   ]
 
   private def check_required_keys
+    update_tbox_group_from_testbox # id must exists, need update tbox_group
     REQUIRED_KEYS.each do |key|
       if !@hash_plain[key]?
         error_msg = "Missing required job key: '#{key}'."
@@ -869,6 +867,12 @@ class Job < JobHash
         raise error_msg
       end
     end
+  end
+
+  # if not assign tbox_group, set it to a match result from testbox
+  #  ?if job special testbox, should we just set tbox_group=testbox
+  private def update_tbox_group_from_testbox
+    @hash_plain["tbox_group"] ||= JobHelper.match_tbox_group(testbox)
   end
 
   private def check_fields_format
