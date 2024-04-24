@@ -875,9 +875,10 @@ class Job < JobHash
       sleep_run_time = @hash_any["runtime"].as_s
     elsif @hash_any.includes? "sleep"
       sleep_run_time = @hash_any["sleep"].as_s
+    elsif @hash_any.includes? "timeout"
+      sleep_run_time = @hash_any["timeout"].as_s
     else
-      notice_msg = "\nPlease set runtime/sleep first for the job yaml and retry."
-      raise notice_msg
+      return
     end
 
     # XXX: parse s/m/h/d/w suffix
