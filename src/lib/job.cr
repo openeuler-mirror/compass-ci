@@ -293,25 +293,25 @@ class JobHash
 
   {% for name in PLAIN_KEYS %}
     def {{name.id}}
-      @hash_plain[{{name.stringify}}]
+      @hash_plain[{{name}}]
     end
   {% end %}
 
   {% for name in ARRAY_KEYS %}
     def {{name.id}}
-      @hash_array[{{name.stringify}}]
+      @hash_array[{{name}}]
     end
   {% end %}
 
   {% for name in HH_KEYS %}
     def {{name.id}}
-      @hash_hh[{{name.stringify}}]
+      @hash_hh[{{name}}]
     end
   {% end %}
 
   {% for name in HHH_KEYS %}
     def {{name.id}}
-      @hash_hhh[{{name.stringify}}]
+      @hash_hhh[{{name}}]
     end
   {% end %}
 
