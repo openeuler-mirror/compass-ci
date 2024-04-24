@@ -639,8 +639,8 @@ class Job < JobHash
 
   private def set_lkp_server
     # handle by me, then keep connect to me
-    @hash_hh["services"]["LKP_SERVER"] = SCHED_HOST
-    @hash_hh["services"]["LKP_CGI_PORT"] = SCHED_PORT.to_s
+    self.services["LKP_SERVER"] = SCHED_HOST
+    self.services["LKP_CGI_PORT"] = SCHED_PORT.to_s
   end
 
   private def set_sshr_info
@@ -648,9 +648,9 @@ class Job < JobHash
     # if sshd is defined anywhere in the job
     return unless @hash_plain.has_key?("ssh_pub_key")
 
-    @hash_hh["services"]["sshr_port"] = ENV["SSHR_PORT"]
-    @hash_hh["services"]["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
-    @hash_hh["services"]["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
+    self.services["sshr_port"] = ENV["SSHR_PORT"]
+    self.services["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
+    self.services["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
 
     return if @account_info.hash_any["found"]? == false
 
@@ -853,8 +853,10 @@ class Job < JobHash
     end
   end
 
+  # These will be present at early submit time.
+  # Client must fill either tbox_group or testbox.
+  # Server will fill services.
   REQUIRED_KEYS = %w[
-    id
     suite
 
     tbox_group
@@ -865,6 +867,8 @@ class Job < JobHash
     my_email
     my_name
     my_token
+
+    services
   ]
 
   private def check_required_keys
