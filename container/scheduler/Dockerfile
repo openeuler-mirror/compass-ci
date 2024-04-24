@@ -23,7 +23,9 @@ RUN mkdir -p $SCHED_RUNTIME_DIR && \
     chown -R 1090:1090 /c
 
 # fatal: detected dubious ownership in repository at '/c/lkp-tests'
-RUN git config --global --add safe.directory /c/lkp-tests
+RUN git config --global --add safe.directory /c/lkp-tests && \
+	cp /root/.gitconfig /home/lkp/ && \
+	chown 1090:1090 /home/lkp/.gitconfig
 
 WORKDIR $SCHED_RUNTIME_DIR
 
