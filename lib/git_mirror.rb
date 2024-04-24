@@ -14,6 +14,13 @@ require_relative 'constants.rb'
 require_relative 'json_logger.rb'
 require 'erb'
 
+def run_get_output(cmd)
+  out = %x(#{cmd})
+  code = $?.exitstatus
+  STDERR.puts "Command failed: exit_code=#{code}: #{cmd}" if code != 0
+  out
+end
+
 # worker threads
 class GitMirror
   ERR_MESSAGE = <<~MESSAGE
@@ -49,7 +56,7 @@ class GitMirror
   def git_clone(url, mirror_dir)
     url = get_url(Array(url)[0])
     10.times do
-      stderr = %x(git clone --mirror --depth 1 #{url} #{mirror_dir} 2>&1)
+      stderr = run_get_output("git clone -q --mirror --depth 1 #{url} #{mirror_dir}")
       return 2 if File.directory?(mirror_dir) && File.exist?("#{mirror_dir}/config")
 
       url = "git://#{url.split('://')[1]}" if stderr_443?(stderr)
@@ -60,17 +67,17 @@ class GitMirror
   def fetch_443(mirror_dir, fetch_info)
     return unless stderr_443?(fetch_info)
 
-    url = %x(git -C #{mirror_dir} ls-remote --get-url origin).chomp
-    %x(git -C #{mirror_dir} remote set-url origin git://#{url.split('://')[1]})
+    url = run_get_output("git -C #{mirror_dir} ls-remote --get-url origin").chomp
+    run_get_output("git -C #{mirror_dir} remote set-url origin git://#{url.split('://')[1]}")
   end
 
   def git_fetch(mirror_dir)
     if File.exist?("#{mirror_dir}/shallow")
       FileUtils.rm("#{mirror_dir}/shallow.lock") if File.exist?("#{mirror_dir}/shallow.lock")
-      %x(git -C #{mirror_dir} fetch --unshallow 2>&1)
+      run_get_output("git -C #{mirror_dir} fetch --unshallow")
     end
 
-    fetch_info = %x(git -C #{mirror_dir} fetch 2>&1)
+    fetch_info = run_get_output("git -C #{mirror_dir} fetch")
     # Check whether mirror_dir is a good git repository by 2 conditions. If not, delete it.
     if fetch_info.include?(ERR_MESSAGE) && Dir.empty?(mirror_dir)
       FileUtils.rmdir(mirror_dir)
@@ -83,7 +90,7 @@ class GitMirror
 
   def url_changed?(url, mirror_dir)
     url = get_url(Array(url)[0])
-    git_url = %x(git -C #{mirror_dir} ls-remote --get-url origin).chomp
+    git_url = run_get_output("git -C #{mirror_dir} ls-remote --get-url origin").chomp
 
     return true if git_url == url || git_url.include?(url.split('://')[1])
 
@@ -104,7 +111,7 @@ class GitMirror
     mirror_dir = "/srv/git/#{fork_info['belong']}/#{fork_info['git_repo']}"
     mirror_dir = "#{mirror_dir}.git" unless fork_info['is_submodule']
     possible_new_refs = git_repo_download(fork_info['url'], mirror_dir)
-    last_commit_time = %x(git -C #{mirror_dir} log --pretty=format:"%ct" -1 2>/dev/null).to_i
+    last_commit_time = run_get_output("git -C #{mirror_dir} log --pretty=format:'%ct' -1").to_i
     feedback(fork_info['git_repo'], possible_new_refs, last_commit_time)
   end
 
@@ -159,14 +166,14 @@ class MirrorMain
   end
 
   def traverse_repodir(repodir, belong)
-    defaults_list = %x(git -C #{repodir} ls-files | grep 'DEFAULTS')
+    defaults_list = run_get_output("git -C #{repodir} ls-files | grep 'DEFAULTS'")
     defaults_list.each_line do |defaults|
       file = defaults.chomp
       file_path = "#{repodir}/#{file}"
       load_defaults(file_path, belong)
     end
 
-    file_list = %x(git -C #{repodir} ls-files | grep -v 'DEFAULTS').lines
+    file_list = run_get_output("git -C #{repodir} ls-files | grep -v 'DEFAULTS'").lines
     t_list = []
     10.times do
       t_list << Thread.new do
@@ -293,7 +300,7 @@ class MirrorMain
     return if @git_info[git_repo]['is_submodule']
 
     mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git"
-    show_ref_out = %x(git -C #{mirror_dir} show-ref --heads 2>/dev/null)
+    show_ref_out = run_get_output("git -C #{mirror_dir} show-ref --heads")
     cur_refs = { heads: {} }
     show_ref_out.each_line do |line|
       next if line.start_with? '#'
@@ -316,7 +323,7 @@ class MirrorMain
     new_refs = check_new_refs(upstream_repos)
     new_commit = new_refs[:heads]['refs/heads/master']
     mirror_dir = "/srv/git/#{@git_info[upstream_repos]['belong']}/#{upstream_repos}.git"
-    %x(git -C #{mirror_dir} diff --name-only #{old_commit}...#{new_commit})
+    run_get_output("git -C #{mirror_dir} diff --name-only #{old_commit}...#{new_commit}")
   end
 
   def reload_fork_info(upstream_repos)
@@ -498,7 +505,7 @@ class MirrorMain
     end
 
     mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git"
-    submodule = %x(git -C #{mirror_dir} show HEAD:.gitmodules 2>/dev/null)
+    submodule = run_get_output("git -C #{mirror_dir} show HEAD:.gitmodules")
     return if submodule.empty?
 
     handle_submodule(submodule, @git_info[git_repo]['belong'])
@@ -615,7 +622,7 @@ class MirrorMain
       @upstreams = YAML.safe_load(File.open('/etc/compass-ci/defaults/upstream-config'))
       @upstreams['upstreams'].each do |repo|
         url = get_url(repo['url'])
-        %x(git clone #{url} #{REPO_DIR}/#{repo['location']} 2>&1)
+        run_get_output("git clone -q #{url} #{REPO_DIR}/#{repo['location']}")
       end
     else
       puts 'ERROR: No upstream-config file'
@@ -652,7 +659,7 @@ class MirrorMain
   end
 
   def add_openeuler_repo(yaml_file, git_repo)
-    name = %x(git -C /srv/git/openeuler/#{git_repo}.git show HEAD:#{yaml_file}).lines[0].chomp.gsub('name: ','')
+    name = run_get_output("git -C /srv/git/openeuler/#{git_repo}.git show HEAD:#{yaml_file}").lines[0].chomp.gsub('name: ','')
     first_letter = name.downcase.chars.first
     repo_path = "#{REPO_DIR}/openeuler/#{first_letter}/#{name}"
 
@@ -661,9 +668,9 @@ class MirrorMain
       f.write({ 'url' => Array("https://gitee.com/src-openeuler/#{name}") }.to_yaml)
     end
 
-    %x(git -C #{REPO_DIR}/openeuler add #{first_letter}/#{name}/#{name})
-    %x(git -C #{REPO_DIR}/openeuler commit -m "add repo src-openeuler/#{name}")
-    %x(git -C #{REPO_DIR}/openeuler push)
+    run_get_output("git -C #{REPO_DIR}/openeuler add #{first_letter}/#{name}/#{name}")
+    run_get_output("git -C #{REPO_DIR}/openeuler commit -m 'add repo src-openeuler/#{name}'")
+    run_get_output("git -C #{REPO_DIR}/openeuler push")
 
     load_repo_file("#{repo_path}/#{name}", "openeuler")
     do_push("#{first_letter}/#{name}/#{name}")
@@ -731,7 +738,7 @@ class MirrorMain
   end
 
   def last_commit_new?(git_repo)
-    inactive_time = %x(git -C /srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git log --pretty=format:"%cr" -1)
+    inactive_time = run_get_output("git -C /srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git log --pretty=format:'%cr' -1")
     return false if inactive_time =~ /(day|week|month|year)/
 
     return true
