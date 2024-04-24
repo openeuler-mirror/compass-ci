@@ -84,11 +84,6 @@ class Sched
     job.update_id(id)
   end
 
-  def add_job2es(job)
-    response = @es.set_job_content(job)
-    raise response["error"]["root_cause"] if response["error"]?
-  end
-
   def set_commit_date(job)
     return unless job.hash_any["upstream_repo"]?
     return unless job.hash_any["upstream_commit"]?

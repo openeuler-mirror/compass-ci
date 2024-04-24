@@ -105,8 +105,7 @@ class PluginsCommon
 
   def save_job2es(job)
     response = @es.set_job_content(job)
-    msg = (response["error"]? ? response["error"]["root_cause"] : "")
-    raise msg.to_s if response["error"]?
+    raise "ES: #{response["error"]["root_cause"]}" if response["error"]?
   end
 
   def save_job2etcd(job)

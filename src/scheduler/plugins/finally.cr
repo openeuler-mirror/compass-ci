@@ -14,7 +14,7 @@ class Finally < PluginsCommon
   def add_job2queue(job)
     job.hash_array["added_by"] = ["finally"]
     key = "sched/ready/#{job.queue}/#{job.subqueue}/#{job.id}"
-    value = { "id" => JSON::Any.new(job.id.to_s) }
+    value = { "id" => job.id }
 
     response = @etcd.put(key, value.to_json)
     raise "add the job to queue failed: id #{job.id}, queue #{key}" unless response
