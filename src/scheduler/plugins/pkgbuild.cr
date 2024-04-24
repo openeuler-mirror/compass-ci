@@ -59,10 +59,11 @@ class PkgBuild < PluginsCommon
   def add_job2queue(job)
     job.hash_array["added_by"] = ["pkgbuild"]
     key = "sched/wait/#{job.queue}/#{job.subqueue}/#{job.id}"
-    value = {"id" => job.id}
+    value = Hash(String, JSON::Any).new
+    value["id"] = JSON::Any.new(job.id)
 
     if job.hash_hh.has_key?("waited")
-      value.any_merge!({"waited" => job.hash_hh["waited"]})
+      value["waited"] = JSON.parse(job.hash_hh["waited"].to_json)
     end
 
     response = @etcd.put(key, value.to_json)
