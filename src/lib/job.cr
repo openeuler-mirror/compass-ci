@@ -48,11 +48,17 @@ module JobHelper
 end
 
 def json_any2array(any, array : Array(String))
-  any.as_a.each { |v| array << v.as_s }
+  return true if any.raw.is_a? Nil
+  return false unless any.raw.is_a? Array
+  any.as_a.each { |v| array << v.to_s }
+  return true
 end
 
 def json_any2hh(any, hh : Hash(String, String))
-  any.as_h.each { |k, v| hh[k.to_s] = v.as_s }
+  return true if any.raw.is_a? Nil
+  return false unless any.raw.is_a? Hash
+  any.as_h.each { |k, v| hh[k.to_s] = v.to_s }
+  return true
 end
 
 class Str2AnyHash < Hash(String, JSON::Any)
@@ -88,27 +94,37 @@ class JobHash
   def import2hash(job_content)
 
     job_content.each do |k, v|
-      if v.is_a? String
+      pp k, v
+      if v.is_a? String || v.raw.is_a? String
         if @plain_keys.includes? k
           @hash_plain[k] = v.to_s
         else
+          raise "invalid type, expect array: Job[#{k}] = #{v}" if @array_keys.includes? k
+          raise "invalid type, expect hash: Job[#{k}] = #{v}" if @hh_keys.includes? k
+          raise "invalid type, expect hash of hash: Job[#{k}] = #{v}" if @hhh_keys.includes? k
           @hash_any[k] = v
         end
       elsif @plain_keys.includes? k
         @hash_plain[k] = v.to_s
       elsif @array_keys.includes? k
         @hash_array[k] ||= Array(String).new
-        json_any2array(v, @hash_array[k])
+        json_any2array(v, @hash_array[k]) || raise "invalid type, expect array: Job[#{k}] = #{v}"
       elsif @hh_keys.includes? k
         @hash_hh[k] ||= Hash(String, String).new
-        json_any2hh(v, @hash_hh[k])
+        json_any2hh(v, @hash_hh[k]) || raise "invalid type, expect hash: Job[#{k}] = #{v}"
       elsif @hhh_keys.includes? k
         @hash_hhh[k] ||= Hash(String, Hash(String, String)).new
-        v.as_h.each { |kk, vv|
-          kk = kk.to_s
-          @hash_hhh[k][kk] ||= Hash(String, String).new
-          json_any2hh(vv, @hash_hhh[k][kk])
-        }
+        if v.raw.is_a? Nil
+          next
+        elsif v.raw.is_a? Hash
+          v.as_h.each { |kk, vv|
+            kk = kk.to_s
+            @hash_hhh[k][kk] ||= Hash(String, String).new
+            json_any2hh(vv, @hash_hhh[k][kk]) || raise "invalid type, expect hash: Job[#{k}.#{kk}] = #{vv}"
+          }
+        else
+          raise "invalid type, expect hash of hash: Job[#{k}] = #{v}"
+        end
       elsif !@hash_any.includes?(k)
         @hash_any[k] = v
       elsif v.as_h?
