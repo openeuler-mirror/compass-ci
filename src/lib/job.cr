@@ -292,6 +292,11 @@ class JobHash
     upload_fields
   )
 
+  ANY_KEYS = %w(
+    hw
+    cluster_spec
+  )
+
   {% for name in PLAIN_KEYS %}
     def {{name.id}}
       @hash_plain[{{name}}]
@@ -313,6 +318,12 @@ class JobHash
   {% for name in HHH_KEYS %}
     def {{name.id}}
       @hash_hhh[{{name}}]
+    end
+  {% end %}
+
+  {% for name in ANY_KEYS %}
+    def {{name.id}}
+      @hash_any[{{name}}]
     end
   {% end %}
 
