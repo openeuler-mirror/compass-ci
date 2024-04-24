@@ -7,14 +7,14 @@ class Cluster < PluginsCommon
     cluster_file = job["cluster"]
     return [job] if cluster_file.empty? || cluster_file == "cs-localhost"
 
-    cluster_spec = get_cluster_spec_by_job(job)
-    cluster_spec = get_cluster_spec_by_lab(cluster_file, job.lab) unless cluster_spec
+    cluster_spec = get_cluster_spec_by_job(job) ||
+                    get_cluster_spec_by_lab(cluster_file, job.lab)
     jobs = split_cluster_job(job, cluster_spec)
   end
 
   def get_cluster_spec_by_job(job)
-    return unless job.has_key?("cluster_spec")
-    return YAML.parse(job["cluster_spec"]?.not_nil!.to_yaml)
+    return unless job.hash_any.has_key?("cluster_spec")
+    return job.hash_any["cluster_spec"]
   end
 
   def get_cluster_spec_by_lab(cluster_file, lab)
@@ -23,7 +23,7 @@ class Cluster < PluginsCommon
     response = @rgc.git_command(data)
     raise "can't get cluster info: #{cluster_file}" unless response.status_code == 200
 
-    return YAML.parse(response.body)
+    return JSON.parse(YAML.parse(response.body).to_json)
   end
 
   # return:

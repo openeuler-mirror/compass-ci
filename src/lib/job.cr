@@ -194,6 +194,7 @@ class JobHash
     arch
     tbox_group
     testbox
+    cluster
     queue
     subqueue
 
