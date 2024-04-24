@@ -91,7 +91,8 @@ class Sched
   end
 
   def set_commit_date(job)
-    return if job.hash_any["upstream_repo"] == "" || job.hash_any["upstream_commit"] == ""
+    return unless job.hash_any["upstream_repo"]?
+    return unless job.hash_any["upstream_commit"]?
 
     data = JSON.parse(%({"git_repo": "#{job.hash_any["upstream_repo"]}.git",
                    "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
