@@ -30,8 +30,8 @@ def extract_pre_result(stats, result, monitor, file)
   monitor_stats.each do |k, v|
     next if k == "#{monitor}.time"
     
-    if k.start_with?('.')
-      k = k[1..k.size]
+    if k.start_with?('.result.')
+      k = k[8..k.size]
       next if k.empty?
       result[k] = v
     else

@@ -319,6 +319,8 @@ class JobHash
     initrd_pkgs
     kernel_params
     added_by
+
+    errid
   )
 
   # Note: hw is not tracked here.
@@ -336,6 +338,9 @@ class JobHash
     boot_params
     on_fail
     waited
+
+    stats
+    result
   )
 
   # pp = program.param, runtime params will impact results
