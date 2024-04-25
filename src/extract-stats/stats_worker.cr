@@ -184,11 +184,25 @@ class StatsWorker
     system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
 
     # storage stats to job in es
-    store_result_es(result_root, job_id, queue_path)
-    store_stats_es(result_root, job_id, queue_path)
+    update_job = JobHash.new
+    update_job.import2hash load_json_hash("#{result_root}/result.json")
+    update_job.import2hash load_json_hash("#{result_root}/stats.json")
+    add_errid(update_job)
+
+    error_ids = load_error_ids(result_root)
+    update_job.hash_array["error_ids"] = error_ids unless error_ids.empty?
+
+    es_save_results(update_job, job_id)
+
+    notify_error(error_ids, job_id)
   end
 
-  def is_failure(stats_field)
+  def load_json_hash(path : String)
+    return nil if File.exists?(path)
+    JSON.parse(File.read(path)).as_h
+  end
+
+  def is_failure(stats_field : String)
     if @@__is_failure_cache.has_key?(stats_field)
       @@__is_failure_cache[stats_field]
     else
@@ -196,70 +210,33 @@ class StatsWorker
     end
   end
 
-  def __is_failure(stats_field)
+  def __is_failure(stats_field : String)
     return false if stats_field.index(".time.")
     return false if stats_field.index(".timestamp.")
     return true if @@metric_failure.any? { |pattern| stats_field =~ %r{^#{pattern}} }
     false
   end
 
-  def store_result_es(result_root : String, job_id : String, queue_path : String)
-    result_path = "#{result_root}/result.json"
-    unless File.exists?(result_path)
-      msg = %({"job_id": "#{job_id}", "job_state": "extract_result_failed", "result_root": "#{result_root}"})
-      @log.error(msg)
-      return
-    end
-    result = File.open(result_path) do |file|
-      JSON.parse(file)
-    end
+  def add_errid(update_job : JobHash)
+    return unless s = update_job.hash_any["stats"]?
 
-    # TODO nested flatten keys expanded? whether it is necessary?
-
-    @es.@client.update(
-      {
-        :index => "jobs", :type => "_doc",
-        :refresh => true,
-        :id => job_id,
-        :body => {:doc => result.as_h},
-      }
-    )
-
-    # msg = %({"job_id": "#{job_id}", "job_state": "extract_result_finished"})
-    # @log.info(msg)
+    e = Array(String).new
+    s.as_h.keys.each { |k| e << k if is_failure(k) }
+    update_job.hash_array["errid"] = e
   end
 
-  def store_stats_es(result_root : String, job_id : String, queue_path : String)
-    stats_path = "#{result_root}/stats.json"
-    unless File.exists?(stats_path)
-      msg = %({"job_id": "#{job_id}", "job_state": "extract_stats_failed"}, "result_root": "#{result_root}")
-      @log.error(msg)
-      return
-    end
-    stats = File.open(stats_path) do |file|
-      JSON.parse(file)
-    end
-
-    errid = Array(String).new
-    stats.as_h.keys.each do |k|
-      errid << k.to_s if is_failure(k.to_s)
-    end
-
-    update_content = Hash(String, Array(String) | Hash(String, JSON::Any)).new
-    update_content.merge!({"stats" => stats.as_h, "errid" => errid})
-
-    error_ids = get_error_ids_by_json(result_root)
-    update_content.merge!({"error_ids" => error_ids}) unless error_ids.empty?
-
+  def es_save_results(update_job : JobHash, job_id : String)
     @es.@client.update(
       {
         :index => "jobs", :type => "_doc",
         :refresh => true,
         :id => job_id,
-        :body => {:doc => update_content},
+        :body => {:doc => update_job.to_json_any},
       }
     )
+  end
 
+  def notify_error(error_ids, job_id)
     new_error_ids = check_new_error_ids(error_ids, job_id)
     unless new_error_ids.empty?
       sample_error_id = new_error_ids.sample
@@ -271,8 +248,6 @@ class StatsWorker
       msg = %({"job_id": "#{job_id}", "new_error_id": "#{sample_error_id}"})
       @log.info(msg)
     end
-    # msg = %({"job_id": "#{job_id}", "job_state": "extract_stats_finished"})
-    # @log.info(msg)
   end
 
   def check_new_error_ids(error_ids : Array, job_id : String)
@@ -292,7 +267,7 @@ class StatsWorker
     new_error_ids
   end
 
-  def get_error_ids_by_json(result_root : String)
+  def load_error_ids(result_root : String)
     error_ids = [] of String
     ERROR_ID_FILES.each do |filename|
       filepath = File.join(result_root, filename)

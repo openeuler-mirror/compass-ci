@@ -110,7 +110,7 @@ class JobHash
   getter hash_hhh : HashHHH
   getter hash_any : Str2AnyHash
 
-  def initialize(job_content)
+  def initialize(job_content = nil)
     @plain_keys = Set(String).new PLAIN_KEYS
     @array_keys = Set(String).new ARRAY_KEYS
     @hh_keys = Set(String).new HH_KEYS
@@ -321,6 +321,7 @@ class JobHash
     added_by
 
     errid
+    error_ids
   )
 
   # Note: hw is not tracked here.
@@ -338,9 +339,6 @@ class JobHash
     boot_params
     on_fail
     waited
-
-    stats
-    result
   )
 
   # pp = program.param, runtime params will impact results
@@ -355,11 +353,15 @@ class JobHash
     upload_fields
   )
 
+  # stats/result are Hash(String, Number|String), so cannot fit in HH_KEYS
   ANY_KEYS = %w(
     hw
     cluster_spec
 
     job2sh
+
+    stats
+    result
   )
 
   {% for name in PLAIN_KEYS %}
