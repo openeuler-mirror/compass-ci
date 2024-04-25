@@ -645,14 +645,12 @@ class Job < JobHash
   end
 
   private def extract_user_pkg
-    return unless @hash_hhh["pkg_data"]?
-
-    pkg_datas = @hash_hhh["pkg_data"]
+    return unless hh = @hash_hhh["pkg_data"]?
 
     # no check for now, release the comment when need that.
-    # check_base_tag(pkg_datas["lkp-tests"]["tag"].to_s)
+    # check_base_tag(hh["lkp-tests"]["tag"].to_s)
 
-    pkg_datas.each do |repo, repo_pkg_data|
+    hh.each do |repo, repo_pkg_data|
       store_pkg(repo, repo_pkg_data)
     end
   end
@@ -669,8 +667,6 @@ class Job < JobHash
     md5 = repo_pkg_data["md5"]
 
     dest_cgz_dir = "#{SRV_UPLOAD}/#{repo}/#{md5[0, 2]}"
-    FileUtils.mkdir_p(dest_cgz_dir) unless File.exists?(dest_cgz_dir)
-
     dest_cgz_file = "#{dest_cgz_dir}/#{md5}.cgz"
 
     return if File.exists? dest_cgz_file
@@ -683,7 +679,7 @@ class Job < JobHash
     pkg_content_base64 = repo_pkg_data["content"]
     dest_cgz_content = Base64.decode_string(pkg_content_base64)
 
-    File.touch(dest_cgz_file)
+    FileUtils.mkdir_p(dest_cgz_dir) unless File.exists?(dest_cgz_dir)
     File.write(dest_cgz_file, dest_cgz_content)
 
     check_pkg_integrity(md5, dest_cgz_file)
