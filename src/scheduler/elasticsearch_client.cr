@@ -44,15 +44,14 @@ class Elasticsearch::Client
   end
 
   # caller should judge response["_id"] != nil
-  def set_job_content(job : Job)
+  def set_job_content(job : Job, is_create = false)
     # time indicates the update time of each job event
     job.set_time
 
-    response = get_job_content(job.id)
-    if response["id"]?
-      response = update(job.to_json_any, job.id)
-    else
+    if is_create
       response = create(job.to_json_any, job.id)
+    else
+      response = update(job.to_json_any, job.id)
     end
 
     return response
