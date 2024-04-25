@@ -114,8 +114,8 @@ class PkgBuild < PluginsCommon
   # pkg_name = linux
   # pkg_parms = {fork => linux-next, commit => xxxx}
   def init_pkgbuild_params(job, pkg_name, pkg_params)
-    params = pkg_params == nil ? Hash(String, String).new : pkg_params
-    repo_name =  params["fork"]? == nil ? pkg_name : params["fork"]
+    params = pkg_params || Hash(String, String).new
+    repo_name =  params["fork"]? || pkg_name
     upstream_repo = "#{pkg_name[0]}/#{pkg_name}/#{repo_name}"
     upstream_info = get_upstream_info(upstream_repo)
     pkgbuild_repo = "pkgbuild/#{upstream_info["pkgbuild_repo"][0]}"
@@ -147,9 +147,10 @@ class PkgBuild < PluginsCommon
     content.hash_any["upstream_dir"] = "upstream"
     content.hash_any["pkgbuild_source"] = upstream_info["pkgbuild_source"][0] if upstream_info["pkgbuild_source"]?
     content.hash_hh["waited"] = {job["id"] => "job_health"}
-    content.hash_hh["services"] = Hash(String, String).new
-    content.hash_hh["services"]["SCHED_PORT"] = "#{ENV["SCHED_PORT"]}"
-    content.hash_hh["services"]["SCHED_HOST"] = "#{ENV["SCHED_HOST"]}"
+    content.hash_hh["services"] = {
+      "SCHED_HOST" => ENV["SCHED_HOST"],
+      "SCHED_PORT" => ENV["SCHED_PORT"],
+    }
     content.hash_any["runtime"] = "36000"
 
     # add user specify build params

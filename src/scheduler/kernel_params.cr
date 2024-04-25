@@ -33,10 +33,10 @@ class Job < JobHash
   # output string:
   #   trace_buf_size=131072K trace_clock=x86-tsc
   private def job_boot_params
-    return nil unless @hash_hh["boot_params"]?
+    return nil unless bps = @hash_hh["boot_params"]?
 
     cmdline = ""
-    @hash_hh["boot_params"].each do |k, v|
+    bps.each do |k, v|
       if v
         cmdline += "#{k.sub(/^bp\d*_/, "")}=#{v} "
       else

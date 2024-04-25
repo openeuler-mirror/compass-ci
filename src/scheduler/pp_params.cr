@@ -3,17 +3,19 @@
 
 class Job < JobHash
   private def sort_pp_params
-    return unless @hash_hhh["pp"]?
+    return unless hh = @hash_hhh["pp"]?
 
-    return sort_keys_return_values(flat_hh(@hash_hhh["pp"]))
+    return sort_keys_return_values(flat_hh(hh))
   end
 
   private def flat_hh(hh)
     temp_hash = Hash(String, String).new
     hh.each do |k, v|
-        v.each do |kk, vv|
-          temp_hash["#{k}.#{kk}"] = vv
-        end
+      next unless v
+      v.each do |kk, vv|
+        next unless vv
+        temp_hash["#{k}.#{kk}"] = vv
+      end
     end
     temp_hash
   end

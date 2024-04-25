@@ -47,32 +47,67 @@ module JobHelper
   end
 end
 
-def json_any2array(any, array : Array(String))
-  return true if any.raw.is_a? Nil
-  return false unless any.raw.is_a? Array
-  any.as_a.each { |v| array << v.to_s }
-  return true
-end
-
-def json_any2hh(any, hh : Hash(String, String))
-  return true if any.raw.is_a? Nil
-  return false unless any.raw.is_a? Hash
-  any.as_h.each { |k, v| hh[k.to_s] = v.to_s }
-  return true
-end
-
 class Str2AnyHash < Hash(String, JSON::Any)
   def []=(k : String, v : String)
     self[k] = JSON::Any.new(v)
   end
 end
 
+class HashArray < Hash(String, Array(String))
+end
+
+class HashH < Hash(String, String)
+end
+
+class HashHH < Hash(String, Hash(String, String) | Nil)
+end
+
+class HashHHH < Hash(String, HashHH)
+end
+
+def add2array(array : HashArray, k : String,  v : JSON::Any) : Bool
+  if v.raw.is_a? Nil
+    # comment out to filter out empty field, e.g. k="initrd_deps", v=nil
+    # array[k] ||= nil
+    return true
+  elsif v.raw.is_a? Array
+    array[k] ||= Array(String).new
+    v.as_a.each { |v| array[k].as(Array) << v.to_s }
+    return true
+  else
+    return false
+  end
+end
+
+def add2hh(hh : HashHH, k : String, v : JSON::Any)
+  if v.raw.is_a? Nil
+    # this will keep
+    #   pp.redis: nil
+    #   monitors.vmstat: nil
+    hh[k] ||= nil
+    return true
+  elsif v.raw.is_a? Hash
+    h = (hh[k] ||= HashH.new)
+    v.as_h.each do |kk, vv|
+      if vv.raw.is_a? Nil
+        # will convert boot_params.quiet= to boot_params.quiet=""
+        h[kk.to_s] ||= ""
+      else
+        h[kk.to_s] = vv.to_s
+      end
+    end
+    return true
+  else
+    return false
+  end
+end
+
 class JobHash
 
   getter hash_plain : Hash(String, String)
-  getter hash_array : Hash(String, Array(String))
-  getter hash_hh : Hash(String, Hash(String, String))
-  getter hash_hhh : Hash(String, Hash(String, Hash(String, String)))
+  getter hash_array : HashArray
+  getter hash_hh : HashHH
+  getter hash_hhh : HashHHH
   getter hash_any : Str2AnyHash
 
   def initialize(job_content)
@@ -83,9 +118,9 @@ class JobHash
 
     @hash_any = Str2AnyHash.new
     @hash_plain = Hash(String, String).new
-    @hash_array = Hash(String, Array(String)).new
-    @hash_hh = Hash(String, Hash(String, String)).new
-    @hash_hhh = Hash(String, Hash(String, Hash(String, String))).new
+    @hash_array = HashArray.new
+    @hash_hh = HashHH.new
+    @hash_hhh = HashHHH.new
 
     import2hash(job_content)
   end
@@ -107,21 +142,22 @@ class JobHash
       elsif @plain_keys.includes? k
         @hash_plain[k] = v.to_s
       elsif @array_keys.includes? k
-        @hash_array[k] ||= Array(String).new
-        json_any2array(v, @hash_array[k]) || raise "invalid type, expect array: Job[#{k}] = #{v}"
+        add2array(@hash_array, k, v) || raise "invalid type, expect array: Job[#{k}] = #{v}"
       elsif @hh_keys.includes? k
-        @hash_hh[k] ||= Hash(String, String).new
-        json_any2hh(v, @hash_hh[k]) || raise "invalid type, expect hash: Job[#{k}] = #{v}"
+        # will keep: k="boot_params", v={quiet: nil} and convert nil to ""
+        add2hh(@hash_hh, k, v) || raise "invalid type, expect hash: Job[#{k}] = #{v}"
       elsif @hhh_keys.includes? k
-        @hash_hhh[k] ||= Hash(String, Hash(String, String)).new
         if v.raw.is_a? Nil
+          # empty top level field will be auto filtered out, e.g. k="pp", v=nil
           next
         elsif v.raw.is_a? Hash
-          v.as_h.each { |kk, vv|
+          hh = (@hash_hhh[k] ||= HashHH.new)
+          v.as_h.each do |kk, vv|
+            # will keep: k.kk="pp.redis", vv=nil
+            # will keep: k.kk="pp.redis", vv={nr_threads: nil}, converting nil to "", though meaningless
             kk = kk.to_s
-            @hash_hhh[k][kk] ||= Hash(String, String).new
-            json_any2hh(vv, @hash_hhh[k][kk]) || raise "invalid type, expect hash: Job[#{k}.#{kk}] = #{vv}"
-          }
+            add2hh(hh, kk, vv) || raise "invalid type, expect hash: Job[#{k}.#{kk}] = #{vv}"
+          end
         else
           raise "invalid type, expect hash of hash: Job[#{k}] = #{v}"
         end
@@ -142,34 +178,56 @@ class JobHash
     @hash_any.any_merge!(other_job.hash_any)
 
     other_job.hash_array.each do |k, v|
-        @hash_array[k] ||= Array(String).new
-        v.each { |vv| @hash_array[k] << vv }
+      @hash_array[k] ||= Array(String).new
+      v.each { |vv| @hash_array[k] << vv }
     end
 
     other_job.hash_hh.each do |k, v|
-        @hash_hh[k] ||= Hash(String, String).new
-        v.each { |kk, vv| @hash_hh[k][kk] = vv }
+      if v
+        h = (@hash_hh[k] ||= HashH.new)
+        v.each { |kk, vv| h[kk] = vv }
+      else
+        @hash_hh[k] ||= nil
+      end
     end
 
     other_job.hash_hhh.each do |k, v|
-        @hash_hhh[k] ||= Hash(String, Hash(String, String)).new
-        v.each do |kk, vv|
-          @hash_hhh[k][kk] ||= Hash(String, String).new
-          vv.each { |kkk, vvv| @hash_hhh[k][kk][kkk] = vvv }
+      @hash_hhh[k] ||= HashHH.new
+      v.each do |kk, vv|
+        if vv
+          h = (@hash_hhh[k][kk] ||= HashH.new)
+          vv.each { |kkk, vvv| h[kkk] = vvv }
+        else
+          @hash_hhh[k][kk] ||= nil
         end
+      end
     end
   end
 
   def merge2hash_all
     hash_all = @hash_any.dup
     @hash_plain.each { |k, v| hash_all[k] = JSON::Any.new(v) }
-    @hash_array.each { |k, v| hash_all[k] ||= JSON::Any.new([] of JSON::Any); hash_all[k].as_a.concat(v.map {|vv| JSON::Any.new(vv)}) }
-    @hash_hh.each { |k, v| hash_all[k] ||= JSON::Any.new({} of String => JSON::Any); hash_all[k].as_h.any_merge!(v) }
+    @hash_array.each do |k, v|
+      hash_all[k] ||= JSON::Any.new([] of JSON::Any)
+      hash_all[k].as_a.concat(v.map {|vv| JSON::Any.new(vv)})
+    end
+    @hash_hh.each do |k, v|
+      hash_all[k] ||= JSON::Any.new({} of String => JSON::Any)
+      if v
+        hash_all[k].as_h.any_merge!(v)
+      else
+        hash_all[k] = JSON::Any.new(nil)
+      end
+    end
     @hash_hhh.each do |k, v|
       hash_all[k] ||= JSON::Any.new({} of String => JSON::Any)
-      v.each do |kk, vv|
+      v.each do |kk, vv| # kk="redis", vv=nil or Hash
         hash_all[k].as_h[kk] ||= JSON::Any.new({} of String => JSON::Any)
-        hash_all[k][kk].as_h.any_merge!(vv)
+        if vv
+          hash_all[k][kk].as_h.any_merge!(vv)
+        else
+          hash_all[k].as_h[kk] = JSON::Any.new(nil)
+        end
       end
     end
     hash_all
@@ -332,13 +390,13 @@ class JobHash
   end
 
   def shrink_to_etcd_fields
-    hh = Hash(String, String).new
+    h = Hash(String, String).new
     %w(job_state job_stage job_health last_success_stage
       testbox deadline time boot_time start_time end_time close_time in_watch_queue).each do |k|
       assert_key_in(k, @plain_keys)
-      hh[k] = @hash_plain[k] if @hash_plain.includes? k
+      h[k] = @hash_plain[k] if @hash_plain.includes? k
     end
-    hh
+    h
   end
 
   def to_json
@@ -504,7 +562,7 @@ class Job < JobHash
   private def set_params_md5
 
     flat_pp_hash = Hash(String, String).new
-    unless @hash_hhh["pp"]?
+    if @hash_hhh["pp"]?
         flat_pp_hash = flat_hh(@hash_hhh["pp"])
         @hash_plain["pp_params_md5"] = get_md5(flat_pp_hash)
     end
@@ -587,7 +645,7 @@ class Job < JobHash
   end
 
   private def extract_user_pkg
-    return unless @hash_hhh.has_key?("pkg_data")
+    return unless @hash_hhh["pkg_data"]?
 
     pkg_datas = @hash_hhh["pkg_data"]
 
@@ -607,6 +665,7 @@ class Job < JobHash
   end
 
   private def store_pkg(repo, repo_pkg_data)
+    return unless repo_pkg_data
     md5 = repo_pkg_data["md5"]
 
     dest_cgz_dir = "#{SRV_UPLOAD}/#{repo}/#{md5[0, 2]}"
@@ -639,8 +698,9 @@ class Job < JobHash
 
   private def set_lkp_server
     # handle by me, then keep connect to me
-    self.services["LKP_SERVER"] = SCHED_HOST
-    self.services["LKP_CGI_PORT"] = SCHED_PORT.to_s
+    s = (@hash_hh["services"] ||= HashH.new)
+    s["LKP_SERVER"] = SCHED_HOST
+    s["LKP_CGI_PORT"] = SCHED_PORT.to_s
   end
 
   private def set_sshr_info
@@ -648,9 +708,10 @@ class Job < JobHash
     # if sshd is defined anywhere in the job
     return unless @hash_plain.has_key?("ssh_pub_key")
 
-    self.services["sshr_port"] = ENV["SSHR_PORT"]
-    self.services["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
-    self.services["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
+    s = self.services.as(Hash)
+    s["sshr_port"] = ENV["SSHR_PORT"]
+    s["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
+    s["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
 
     return if @account_info.hash_any["found"]? == false
 
@@ -768,7 +829,7 @@ class Job < JobHash
     mount_type = "nfs" if mount_type == "cifs"
 
     common_dir = "#{mount_type}/#{tmp_os}/#{tmp_os_arch}/#{tmp_os_version}"
-    common_dir = "#{tmp_os}-#{tmp_os_version}" if @hash_hhh["pp"].has_key?("rpmbuild")
+    common_dir = "#{tmp_os}-#{tmp_os_version}" if @hash_hhh["pp"]? && @hash_hhh["pp"].has_key?("rpmbuild")
 
     return common_dir
   end
@@ -841,8 +902,7 @@ class Job < JobHash
   end
 
   private def set_secrets
-    @hash_hh["secrets"] ||= Hash(String, String).new
-    @hash_hh["secrets"]["my_email"] = self["my_email"]
+    (@hash_hh["secrets"] ||= HashH.new)["my_email"] = self["my_email"]
   end
 
   private def is_docker_job?
@@ -867,8 +927,6 @@ class Job < JobHash
     my_email
     my_name
     my_token
-
-    services
   ]
 
   private def check_required_keys
@@ -905,8 +963,8 @@ class Job < JobHash
     max_run_time = 30 * 24 * 3600
     error_msg = "\nMachine borrow time(runtime/sleep) cannot exceed 30 days. Consider re-borrow.\n"
 
-    if @hash_hhh["pp"].includes?("sleep") && @hash_hhh["pp"]["sleep"].includes?("runtime")
-      sleep_run_time = @hash_hhh["pp"]["sleep"]["runtime"]
+    if @hash_hhh["pp"]? && @hash_hhh["pp"]["sleep"]? && @hash_hhh["pp"]["sleep"].as(Hash).includes?("runtime")
+      sleep_run_time = @hash_hhh["pp"]["sleep"].as(Hash)["runtime"]
     elsif @hash_any.includes? "runtime"
       sleep_run_time = @hash_any["runtime"].as_s
     elsif @hash_any.includes? "sleep"
@@ -1003,9 +1061,10 @@ class Job < JobHash
     #     tag: v1.0
     #     md5: xxxx
     #     content: yyy (base64)
-    raise "you should update your lkp-tests repo." unless @hash_hhh.has_key?("pkg_data")
+    raise "you should update your lkp-tests repo." unless @hash_hhh["pkg_data"]?
 
     @hash_hhh["pkg_data"].each do |key, value|
+      next unless value
       program = value
       temp_initrds << "#{INITRD_HTTP_PREFIX}" +
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{os_arch}/#{program["tag"]}.cgz")
@@ -1077,9 +1136,9 @@ class Job < JobHash
   end
 
   private def get_program_params
-    program_params = Hash(String, Hash(String, String)).new
-    program_params.merge!(@hash_hhh["monitors"]) if @hash_hhh.includes? "monitors"
-    program_params.merge!(@hash_hhh["pp"]) if @hash_hhh.includes? "pp"
+    program_params = HashHH.new
+    program_params.merge!(@hash_hhh["monitors"]) if @hash_hhh["monitors"]?
+    program_params.merge!(@hash_hhh["pp"]) if @hash_hhh["pp"]?
     program_params
   end
 
@@ -1282,10 +1341,10 @@ class Job < JobHash
   #     content: file content
   #     save_dir: /path/to/saved/content
   private def process_upload_fields
-      return unless @hash_hhh.has_key?("upload_fields")
+      return unless hh = @hash_hhh["upload_fields"]?
 
-      upload_fields = @hash_hhh["upload_fields"]
-      upload_fields.each do |field_name, upload_item|
+      hh.each do |field_name, upload_item|
+        next unless upload_item
         upload_item["save_dir"] = store_upload_file(field_name, upload_item)
         upload_item.delete("content")
       end
