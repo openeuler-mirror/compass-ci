@@ -29,6 +29,7 @@ class StatsWorker
 
       job_id = queue_path.split("/")[-1]
       job = @es.get_job_content(job_id)
+      return unless job
       result_post_processing(job_id, queue_path, job)
       commit_channel.send(job["upstream_commit"].to_s) if job["nr_run"]? && job["upstream_commit"]? && job["base_commit"]?
       target_queue_path = "/queues/post-extract/#{job_id}"

@@ -22,6 +22,7 @@ class PostWorker
 
       job_id = queue_path.split("/")[-1]
       job = @es.get_job_content(job_id)
+      return unless job
       
       # send email while necessary
       get_pr_result(job)

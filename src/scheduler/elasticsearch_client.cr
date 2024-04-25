@@ -62,15 +62,14 @@ class Elasticsearch::Client
     update(job.to_json_any, job.id)
   end
 
-  # caller should judge response["id"]?
   def get_job_content(job_id : String)
-    if @client.exists({:index => "jobs", :type => "_doc", :id => job_id})
-      response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
+    response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
+    case response
+    when JSON::Any
+      return response
     else
-      response = {"_id" => job_id, "found" => false}
+      return nil
     end
-
-    return response
   end
 
   def get_job(job_id : String)
