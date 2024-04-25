@@ -436,7 +436,7 @@ class Sched
 
       # UPDATE the large fields to null
       job.hash_any["job2sh"] = JSON::Any.new(nil)
-      job.hash_hh["services"] = JSON::Any.new(nil)
+      job.hash_hh["services"] = nil
 
       @es.set_job_content(job)
 

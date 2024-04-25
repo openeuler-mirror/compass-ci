@@ -185,7 +185,7 @@ class JobHash
     other_job.hash_hh.each do |k, v|
       if v
         h = (@hash_hh[k] ||= HashH.new)
-        v.each { |kk, vv| h[kk] = vv }
+        v.each { |kk, vv| h[kk] = vv unless vv.nil? || vv.empty? }
       else
         @hash_hh[k] ||= nil
       end
@@ -196,7 +196,7 @@ class JobHash
       v.each do |kk, vv|
         if vv
           h = (@hash_hhh[k][kk] ||= HashH.new)
-          vv.each { |kkk, vvv| h[kkk] = vvv }
+          vv.each { |kkk, vvv| h[kkk] = vvv unless vv.nil? || vv.empty? }
         else
           @hash_hhh[k][kk] ||= nil
         end
