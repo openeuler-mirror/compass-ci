@@ -394,7 +394,7 @@ class JobHash
     %w(job_state job_stage job_health last_success_stage
       testbox deadline time boot_time start_time end_time close_time in_watch_queue).each do |k|
       assert_key_in(k, @plain_keys)
-      h[k] = @hash_plain[k] if @hash_plain.includes? k
+      h[k] = @hash_plain[k] if @hash_plain.has_key? k
     end
     h
   end
@@ -671,7 +671,7 @@ class Job < JobHash
 
     return if File.exists? dest_cgz_file
 
-    unless repo_pkg_data.includes? "content"
+    unless repo_pkg_data.has_key? "content"
       @upload_pkg_data << repo
       return
     end
@@ -959,13 +959,13 @@ class Job < JobHash
     max_run_time = 30 * 24 * 3600
     error_msg = "\nMachine borrow time(runtime/sleep) cannot exceed 30 days. Consider re-borrow.\n"
 
-    if @hash_hhh["pp"]? && @hash_hhh["pp"]["sleep"]? && @hash_hhh["pp"]["sleep"].as(Hash).includes?("runtime")
+    if @hash_hhh["pp"]? && @hash_hhh["pp"]["sleep"]? && @hash_hhh["pp"]["sleep"].as(Hash).has_key?("runtime")
       sleep_run_time = @hash_hhh["pp"]["sleep"].as(Hash)["runtime"]
-    elsif @hash_any.includes? "runtime"
+    elsif @hash_any.has_key? "runtime"
       sleep_run_time = @hash_any["runtime"].as_s
-    elsif @hash_any.includes? "sleep"
+    elsif @hash_any.has_key? "sleep"
       sleep_run_time = @hash_any["sleep"].as_s
-    elsif @hash_any.includes? "timeout"
+    elsif @hash_any.has_key? "timeout"
       sleep_run_time = @hash_any["timeout"].as_s
     else
       return
