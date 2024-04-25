@@ -287,9 +287,9 @@ class Sched
   def get_type(testbox)
     return unless testbox
 
-    if testbox.includes?("vm")
+    if testbox.starts_with?("vm-")
       type = "vm"
-    elsif testbox.includes?("dc")
+    elsif testbox.starts_with?("dc-")
       type = "dc"
     else
       type = "physical"
