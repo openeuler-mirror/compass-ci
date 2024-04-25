@@ -652,7 +652,9 @@ class Job < JobHash
     # check_base_tag(hh["lkp-tests"]["tag"].to_s)
 
     hh.each do |repo, repo_pkg_data|
+      next unless repo_pkg_data
       store_pkg(repo, repo_pkg_data)
+      repo_pkg_data.delete("content")
     end
   end
 
@@ -664,7 +666,6 @@ class Job < JobHash
   end
 
   private def store_pkg(repo, repo_pkg_data)
-    return unless repo_pkg_data
     md5 = repo_pkg_data["md5"]
 
     dest_cgz_dir = "#{SRV_UPLOAD}/#{repo}/#{md5[0, 2]}"
@@ -684,7 +685,6 @@ class Job < JobHash
     File.write(dest_cgz_file, dest_cgz_content)
 
     check_pkg_integrity(md5, dest_cgz_file)
-    repo_pkg_data.delete("content")
   end
 
   private def check_pkg_integrity(md5, dest_cgz_file)
