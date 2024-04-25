@@ -306,6 +306,7 @@ class JobHash
     my_token
 
     ssh_pub_key
+    deadline
     renew_deadline
     custom_bootstrap
     crashkernel
