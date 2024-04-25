@@ -332,7 +332,6 @@ class JobHash
   HH_KEYS = %w(
     secrets
     services
-    define_files
     install_os_packages
     boot_params
     on_fail
@@ -354,6 +353,8 @@ class JobHash
   ANY_KEYS = %w(
     hw
     cluster_spec
+
+    job2sh
   )
 
   {% for name in PLAIN_KEYS %}

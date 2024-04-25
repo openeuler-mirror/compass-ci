@@ -426,15 +426,21 @@ class Sched
 
     if job
       job["last_success_stage"] = "boot"
-      @es.set_job_content(job)
-
-      report_workflow_job_event(job["id"].to_s, job)
 
       @env.set "job_id", job["id"]
       @env.set "deadline", job["deadline"]
       @env.set "job_stage", job["job_stage"]
       @env.set "state", "booting"
+
       create_job_cpio(job.to_json_any, Kemal.config.public_folder)
+
+      # UPDATE the large fields to null
+      job.hash_any["job2sh"] = JSON::Any.new(nil)
+      job.hash_hh["services"] = JSON::Any.new(nil)
+
+      @es.set_job_content(job)
+
+      report_workflow_job_event(job["id"].to_s, job)
     else
       # for physical machines
       spawn {
