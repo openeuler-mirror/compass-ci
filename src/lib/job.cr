@@ -303,6 +303,7 @@ class JobHash
     end_time
 
     boot_seconds
+    run_seconds
 
     in_watch_queue
 
