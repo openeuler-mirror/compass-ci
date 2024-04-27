@@ -41,11 +41,11 @@ class Sched
     end
 
     job.set_time("finish_time")
-    @env.set "finish_time", job["finish_time"]
+    @env.set "finish_time", job.finish_time
 
-    running_time = Time.parse(self["running_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    finish_time = Time.parse(self["finish_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    self["run_seconds"] = (finish_time - running_time).to_s
+    running_time = Time.parse(job.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    finish_time = Time.parse(job.finish_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    job["run_seconds"] = (finish_time - running_time).to_s
 
     if @env.params.query["source"]? != "lifecycle"
       deadline = job.get_deadline("finish")

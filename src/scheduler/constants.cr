@@ -12,6 +12,9 @@ JOB_ES_PORT       = 9200
 JOB_ES_PORT_DEBUG = 9201
 JOB_INDEX_TYPE    = "jobs/_doc"
 
+JOB_MANTI_HOST       = "172.17.0.1"
+JOB_MANTI_PORT       = 9308
+
 JOB_MQ = "job_mq"
 
 # this is the compass-ci release lkp-tests base tag

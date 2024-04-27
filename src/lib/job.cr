@@ -125,6 +125,14 @@ class JobHash
     import2hash(job_content)
   end
 
+  def dup(ajob : JobHash)
+    @hash_plain = ajob.hash_plain.dup
+    @hash_array = ajob.hash_array.dup
+    @hash_hh = ajob.hash_hh.dup
+    @hash_hhh = ajob.hash_hhh.dup
+    @hash_any = ajob.hash_any.dup
+  end
+
   # this mimics any_merge for the known types
   def import2hash(job_content : Hash(String, String) | Hash(String, JSON::Any) | Nil)
     return unless job_content
@@ -240,6 +248,8 @@ class JobHash
   PLAIN_KEYS = %w(
     id
     job_id
+    group_id
+    submit_id
 
     suite
     category
@@ -373,33 +383,33 @@ class JobHash
   )
 
   {% for name in PLAIN_KEYS %}
-    def {{name.id}}
-      @hash_plain[{{name}}]
-    end
+    def {{name.id}};              @hash_plain[{{name}}];      end
+    def {{(name + "?").id}};      @hash_plain[{{name}}]?;     end
+    def {{(name + "=").id}}(v);   @hash_plain[{{name}}] = v;  end
   {% end %}
 
   {% for name in ARRAY_KEYS %}
-    def {{name.id}}
-      @hash_array[{{name}}]
-    end
+    def {{name.id}};              @hash_array[{{name}}];      end
+    def {{(name + "?").id}};      @hash_array[{{name}}]?;     end
+    def {{(name + "=").id}}(v);   @hash_array[{{name}}] = v;  end
   {% end %}
 
   {% for name in HH_KEYS %}
-    def {{name.id}}
-      @hash_hh[{{name}}]
-    end
+    def {{name.id}};              @hash_hh[{{name}}];       end
+    def {{(name + "?").id}};      @hash_hh[{{name}}]?;      end
+    def {{(name + "=").id}}(v);   @hash_hh[{{name}}] = v;   end
   {% end %}
 
   {% for name in HHH_KEYS %}
-    def {{name.id}}
-      @hash_hhh[{{name}}]
-    end
+    def {{name.id}};              @hash_hhh[{{name}}];      end
+    def {{(name + "?").id}};      @hash_hhh[{{name}}]?;     end
+    def {{(name + "=").id}}(v);   @hash_hhh[{{name}}] = v;  end
   {% end %}
 
   {% for name in ANY_KEYS %}
-    def {{name.id}}
-      @hash_any[{{name}}]
-    end
+    def {{name.id}};              @hash_any[{{name}}];      end
+    def {{(name + "?").id}};      @hash_any[{{name}}]?;     end
+    def {{(name + "=").id}}(v);   @hash_any[{{name}}] = v;  end
   {% end %}
 
   def assert_key_in(key : String, vals : Set(String))
@@ -448,15 +458,20 @@ class JobHash
     update(json.as_h)
   end
 
+  def force_delete(key : String)
+    @hash_plain.delete(key) ||
+    @hash_array.delete(key) ||
+    @hash_hh.delete(key) ||
+    @hash_hhh.delete(key) ||
+    @hash_any.delete(key)
+  end
+
   def delete(key : String)
     initialized_keys = get_initialized_keys
     if initialized_keys.includes?(key)
       raise "Should not delete #{key}"
     else
-      @hash_plain.delete(key) ||
-      @hash_array.delete(key) ||
-      @hash_hh.delete(key) ||
-      @hash_any.delete(key)
+      force_delete key
     end
   end
 
@@ -566,6 +581,62 @@ class JobHash
   # Also collect searchable values into attribute name 'full_text_words', type text, not stored
   # - MANTI_FULL_TEXT_KEYS
   def to_manticore
+    mjob = Str2AnyHash.new
+    xjob = self.as(JobHash).dup
+
+    MANTI_STRING_ATTRS.each do |k|
+      assert_key_in(k, @plain_keys)
+      next unless xjob.hash_plain.has_key? k
+
+      mjob[k] = JSON::Any.new(xjob.hash_plain.delete k)
+    end
+
+    MANTI_INTEGER_ATTRS.each do |k|
+      assert_key_in(k, @plain_keys)
+      next unless xjob.hash_plain.has_key? k
+
+      v = xjob.hash_plain.delete k
+      case k
+      when "id"
+        mjob[k] = JSON::Any.new(v.split(".").last.to_i)
+      else
+        mjob[k] = JSON::Any.new(v.to_i)
+      end
+    end
+
+    MANTI_TIMESTAMP_ATTRS.each do |k|
+      assert_key_in(k, @plain_keys)
+      next unless xjob.hash_plain.has_key? k
+
+      v = xjob.hash_plain.delete k
+      # convert old format like "submit_time": "2024-04-27T20:14:59+0800",
+      v = Time.parse(v).utc if v[4] == "-"
+      mjob[k] = JSON::Any.new(v.to_i)
+    end
+
+    jj = mjob["jj"] = Str2AnyHash.new
+    {% for name in MANTI_JSON_KEYS %}
+      # jj["group_id"] = xjob.group_id if xjob.group_id?
+      jj[{{name}}] = xjob.force_delete({{name}}) if xjob.{{(name + "?").id}}
+    {% end %}
+
+    {% for name in %w[hw pp ss] %}
+      # mjob["ss"] = xjob.ss if xjob.ss?
+      mjob[{{name}}] = xjob.force_delete({{name}}) if xjob.{{(name + "?").id}}
+    {% end %}
+
+    mjob["errid"] = xjob.hash_array.delete("errid").join(" ") if xjob.errid?
+    mjob["stats"] = xjob.hash_any.delete("stats").to_json if xjob.stats?
+
+    od = Str2AnyHash.new
+    od.any_merge! xjob.hash_plain
+    od.any_merge! xjob.hash_array
+    od.any_merge! xjob.hash_hh
+    od.any_merge! xjob.hash_hhh
+    od.any_merge! xjob.hash_any
+    mjob["other_data"] = od.to_json   # convert to a string
+
+    mjob
   end
 
 end
@@ -970,7 +1041,7 @@ class Job < JobHash
   end
 
   def set_time
-    self["active_time"] = Time.utc.unix_ms
+    self["active_time"] = Time.utc.to_unix_ms.to_s
     self["time"] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
