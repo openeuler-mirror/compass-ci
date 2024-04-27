@@ -110,27 +110,27 @@ class JobHash
   getter hash_hhh : HashHHH
   getter hash_any : Str2AnyHash
 
-  def initialize(job_content = nil)
-    @plain_keys = Set(String).new PLAIN_KEYS
-    @array_keys = Set(String).new ARRAY_KEYS
-    @hh_keys = Set(String).new HH_KEYS
-    @hhh_keys = Set(String).new HHH_KEYS
+  PLAIN_SET = Set(String).new PLAIN_KEYS
+  ARRAY_SET = Set(String).new ARRAY_KEYS
+  HH_SET    = Set(String).new HH_KEYS
+  HHH_SET   = Set(String).new HHH_KEYS
 
-    @hash_any = Str2AnyHash.new
+  def initialize(job_content = nil)
+    @hash_any   = Str2AnyHash.new
     @hash_plain = Hash(String, String).new
     @hash_array = HashArray.new
-    @hash_hh = HashHH.new
-    @hash_hhh = HashHHH.new
+    @hash_hh    = HashHH.new
+    @hash_hhh   = HashHHH.new
 
     import2hash(job_content)
   end
 
-  def dup(ajob : JobHash)
+  def initialize(ajob : JobHash)
+    @hash_any   = ajob.hash_any.dup
     @hash_plain = ajob.hash_plain.dup
     @hash_array = ajob.hash_array.dup
-    @hash_hh = ajob.hash_hh.dup
-    @hash_hhh = ajob.hash_hhh.dup
-    @hash_any = ajob.hash_any.dup
+    @hash_hh    = ajob.hash_hh.dup
+    @hash_hhh   = ajob.hash_hhh.dup
   end
 
   # this mimics any_merge for the known types
@@ -139,22 +139,22 @@ class JobHash
 
     job_content.each do |k, v|
       if v.is_a? String || v.raw.is_a? String
-        if @plain_keys.includes? k
+        if PLAIN_SET.includes? k
           @hash_plain[k] = v.to_s
         else
-          raise "invalid type, expect array: Job[#{k}] = #{v}" if @array_keys.includes? k
-          raise "invalid type, expect hash: Job[#{k}] = #{v}" if @hh_keys.includes? k
-          raise "invalid type, expect hash of hash: Job[#{k}] = #{v}" if @hhh_keys.includes? k
+          raise "invalid type, expect array: Job[#{k}] = #{v}" if ARRAY_SET.includes? k
+          raise "invalid type, expect hash: Job[#{k}] = #{v}" if HH_SET.includes? k
+          raise "invalid type, expect hash of hash: Job[#{k}] = #{v}" if HHH_SET.includes? k
           @hash_any[k] = v
         end
-      elsif @plain_keys.includes? k
+      elsif PLAIN_SET.includes? k
         @hash_plain[k] = v.to_s
-      elsif @array_keys.includes? k
+      elsif ARRAY_SET.includes? k
         add2array(@hash_array, k, v) || raise "invalid type, expect array: Job[#{k}] = #{v}"
-      elsif @hh_keys.includes? k
+      elsif HH_SET.includes? k
         # will keep: k="boot_params", v={quiet: nil} and convert nil to ""
         add2hh(@hash_hh, k, v) || raise "invalid type, expect hash: Job[#{k}] = #{v}"
-      elsif @hhh_keys.includes? k
+      elsif HHH_SET.includes? k
         if v.raw.is_a? Nil
           # empty top level field will be auto filtered out, e.g. k="pp", v=nil
           next
@@ -420,7 +420,7 @@ class JobHash
     h = Hash(String, String).new
     %w(job_stage job_health last_success_stage
       testbox deadline time boot_time in_watch_queue).each do |k|
-      assert_key_in(k, @plain_keys)
+      assert_key_in(k, PLAIN_SET)
       h[k] = @hash_plain[k] if @hash_plain.has_key? k
     end
     h
@@ -476,17 +476,17 @@ class JobHash
   end
 
   def [](key : String) : String
-    assert_key_in(key, @plain_keys)
+    assert_key_in(key, PLAIN_SET)
     "#{@hash_plain[key]?}"
   end
 
   def []?(key : String)
-    assert_key_in(key, @plain_keys)
+    assert_key_in(key, PLAIN_SET)
     @hash_plain.[key]?
   end
 
   def has_key?(key : String)
-    assert_key_in(key, @plain_keys)
+    assert_key_in(key, PLAIN_SET)
     @hash_plain.has_key?(key)
   end
 
@@ -494,7 +494,7 @@ class JobHash
     if key == "id" || key == "tbox_group"
       raise "Should not use []= update #{key}, use update_#{key}"
     end
-    assert_key_in(key, @plain_keys)
+    assert_key_in(key, PLAIN_SET)
     @hash_plain[key] = value
   end
 
@@ -582,17 +582,17 @@ class JobHash
   # - MANTI_FULL_TEXT_KEYS
   def to_manticore
     mjob = Str2AnyHash.new
-    xjob = self.as(JobHash).dup
+    xjob = JobHash.new(self)
 
     MANTI_STRING_ATTRS.each do |k|
-      assert_key_in(k, @plain_keys)
+      assert_key_in(k, PLAIN_SET)
       next unless xjob.hash_plain.has_key? k
 
       mjob[k] = JSON::Any.new(xjob.hash_plain.delete k)
     end
 
     MANTI_INTEGER_ATTRS.each do |k|
-      assert_key_in(k, @plain_keys)
+      assert_key_in(k, PLAIN_SET)
       next unless xjob.hash_plain.has_key? k
 
       v = xjob.hash_plain.delete k
@@ -605,7 +605,7 @@ class JobHash
     end
 
     MANTI_TIMESTAMP_ATTRS.each do |k|
-      assert_key_in(k, @plain_keys)
+      assert_key_in(k, PLAIN_SET)
       next unless xjob.hash_plain.has_key? k
 
       v = xjob.hash_plain.delete k
