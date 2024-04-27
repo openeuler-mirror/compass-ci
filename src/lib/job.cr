@@ -500,6 +500,9 @@ class JobHash
     tbox_group
     testbox
 
+    pp_params_md5
+    all_params_md5
+
     submit_date
 
     queue
@@ -540,9 +543,6 @@ class JobHash
     docker_image
 
     cluster
-
-    pp_params_md5
-    all_params_md5
 
     last_success_stage
 

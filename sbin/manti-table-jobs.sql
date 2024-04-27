@@ -24,6 +24,9 @@ CREATE TABLE jobs(
 	os_mount	string,
 	rootfs		string,
 
+	pp_params_md5	string,
+	all_params_md5	string,
+
 	queue		string,
 	subqueue	string,
 
