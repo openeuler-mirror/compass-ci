@@ -1006,7 +1006,7 @@ def es_query_boot_job(from, size, must)
   job_list = []
   es_results = page_es_query(must, size, from)
   es_results.each do |es_result|
-    next unless es_result['_source']['boot_elapsed_time']
+    next unless es_result['_source']['boot_seconds']
 
     job_list << es_result['_source']
   end
@@ -1056,7 +1056,7 @@ def response_boot_time(job_list, response)
     testbox_type = job['testbox'][0, 2]
     testbox_type = 'hw' unless testbox_type.match?(/dc|vm/)
     response[testbox_type]['x_params'] << job['id']
-    response[testbox_type]['boot_time'] << job['boot_elapsed_time']
+    response[testbox_type]['boot_time'] << job['boot_seconds']
   end
   return response.to_json
 end
@@ -1079,7 +1079,7 @@ def response_top_boot_time(job_list, response)
   job_list.each do |job|
     testbox_type = job['testbox'][0, 2]
     testbox_type = 'hw' unless testbox_type.match?(/dc|vm/)
-    boot_time = job['boot_elapsed_time']
+    boot_time = job['boot_seconds']
     next if boot_time <= threshold[testbox_type]
 
     response[testbox_type] << { 'job_id' => job['id'], 'boot_time' => boot_time, 'result_root' => job['result_root'] }
