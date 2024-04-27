@@ -49,6 +49,9 @@ CREATE TABLE jobs(
 	hw		json engine='rowwise',
 	jj		json engine='rowwise',
 
+	errid		string,
+	stats		string stored,
+
 	mutable_vars	string stored engine='rowwise',
 	other_data	string stored,
 	full_text_words text indexed,

@@ -531,7 +531,6 @@ class JobHash
   )
 
   # dynamic keys to merge into the json attribute
-  # pp, ss, hw will be put to standalone json fields
   MANTI_JSON_KEYS = %w(
     group_id
 
@@ -546,7 +545,6 @@ class JobHash
 
     last_success_stage
 
-    errid
     error_ids
   )
 
@@ -560,6 +558,9 @@ class JobHash
   # - MANTI_INTEGER_ATTRS:    1:1 to fixed attributes, type integer(xxx_seconds) or big integer(submit_id)
   # - MANTI_TIMESTAMP_ATTRS:  1:1 to fixed attributes, type timestamp
   # - MANTI_JSON_KEYS:        merge into fixed attribute, name 'jj', type json
+  # - pp/ss/hw:               standalone json fields
+  # - errid/stats:            standalone indexed/stored string fields
+  # - mutable variables:      merge into in mutable_vars
   # - all other keys:         merge into fixed attribute, name 'other_data', type string, not indexed
   #
   # Also collect searchable values into attribute name 'full_text_words', type text, not stored
