@@ -239,6 +239,7 @@ class JobHash
 
   PLAIN_KEYS = %w(
     id
+    job_id
     suite
 
     os
@@ -292,11 +293,15 @@ class JobHash
     time
     submit_time
     boot_time
+    running_time
+    post_run_time
+    finish_time
+    close_time
+
     start_time
     end_time
-    close_time
+
     boot_elapsed_time
-    running_time
 
     in_watch_queue
 
