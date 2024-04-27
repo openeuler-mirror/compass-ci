@@ -528,12 +528,10 @@ class JobHash
   )
 
   # dynamic keys to merge into the json attribute
-  # hw.arch, hw.nr_cpu/nr_node/memry_gb will be inserted manually
+  # pp, ss, hw will be put to standalone json fields
   MANTI_JSON_KEYS = %w(
     group_id
 
-    pp
-    ss
     monitors
 
     kernel_version
@@ -543,10 +541,10 @@ class JobHash
 
     cluster
 
-    last_success_stage
-
     pp_params_md5
     all_params_md5
+
+    last_success_stage
 
     errid
     error_ids

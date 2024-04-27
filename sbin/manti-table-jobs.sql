@@ -1,5 +1,8 @@
 
+# https://manticoresearch.com/blog/basics-of-manticore-indexes/
 # https://manual.manticoresearch.com/Updating_table_schema_and_settings
+# /c/manticoresearch/manual/Creating_a_table/NLP_and_tokenization/Low-level_tokenization.md
+# https://www.ime.usp.br/~pf/algorithms/appendices/ascii.html
 
 CREATE TABLE jobs(
 	id		bigint,
@@ -38,10 +41,14 @@ CREATE TABLE jobs(
 	boot_seconds	int engine='rowwise',
 	run_seconds	int engine='rowwise',
 
+	pp		json engine='rowwise',
+	ss		json engine='rowwise',
+	hw		json engine='rowwise',
 	jj		json engine='rowwise',
+
 	mutable_vars	string stored engine='rowwise',
 	other_data	string stored,
 	full_text_words text indexed,
-) engine='columnar';
+) engine='columnar' charset_table='U+0021..U+007E';
 
 desc jobs;
