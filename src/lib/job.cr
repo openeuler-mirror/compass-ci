@@ -296,7 +296,6 @@ class JobHash
     running_time
     post_run_time
     finish_time
-    close_time
 
     start_time
     end_time
@@ -405,8 +404,8 @@ class JobHash
 
   def shrink_to_etcd_fields
     h = Hash(String, String).new
-    %w(job_state job_stage job_health last_success_stage
-      testbox deadline time boot_time start_time end_time close_time in_watch_queue).each do |k|
+    %w(job_stage job_health last_success_stage
+      testbox deadline time boot_time in_watch_queue).each do |k|
       assert_key_in(k, @plain_keys)
       h[k] = @hash_plain[k] if @hash_plain.has_key? k
     end

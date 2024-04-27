@@ -40,8 +40,8 @@ class Sched
       job["job_health"] ||= (job_health || "success")
     end
 
-    job.set_time("close_time")
-    @env.set "close_time", job["close_time"]
+    job.set_time("finish_time")
+    @env.set "finish_time", job["finish_time"]
 
     if @env.params.query["source"]? != "lifecycle"
       deadline = job.get_deadline("finish")
