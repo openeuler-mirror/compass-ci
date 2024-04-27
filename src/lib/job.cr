@@ -241,6 +241,7 @@ class JobHash
     id
     job_id
     suite
+    category
 
     os
     os_arch
@@ -477,6 +478,89 @@ class JobHash
     end
     assert_key_in(key, @plain_keys)
     @hash_plain[key] = value
+  end
+
+  # subset of PLAIN_KEYS
+  MANTI_STRING_ATTRS = %w(
+    job_id
+    suite
+    category
+
+    os
+    os_version
+    os_arch
+
+    lab
+    tbox_group
+    testbox
+
+    submit_date
+
+    job_stage
+    job_health
+
+    my_account
+    my_name
+  )
+
+  MANTI_INTEGER_ATTRS = %w(
+    submit_id
+    boot_seconds
+    run_seconds
+  )
+
+  # subset of PLAIN_KEYS
+  MANTI_TIMESTAMP_ATTRS = %w(
+    submit_time
+    boot_time
+    finish_time
+  )
+
+  # dynamic keys to merge into the json attribute
+  # hw.arch, hw.nr_cpu/nr_node/memry_gb will be inserted manually
+  MANTI_JSON_KEYS = %w(
+    group_id
+
+    pp
+    ss
+    monitors
+
+    kernel_version
+    kernel_params
+
+    osv
+    rootfs
+    docker_image
+    os_mount
+
+    cluster
+    queue
+    subqueue
+
+    last_success_stage
+
+    pp_params_md5
+    all_params_md5
+
+    errid
+    error_ids
+  )
+
+  # these keys will be merged into the full-text-search only attribute
+  # Avoid costly words that differ in every job!
+  MANTI_FULL_TEXT_KEYS = %w(
+  )
+
+  # All Job keys will be classified and stored in either one of:
+  # - MANTI_STRING_ATTRS:     1:1 to fixed attributes, type string
+  # - MANTI_INTEGER_ATTRS:    1:1 to fixed attributes, type integer(xxx_seconds) or big integer(submit_id)
+  # - MANTI_TIMESTAMP_ATTRS:  1:1 to fixed attributes, type timestamp
+  # - MANTI_JSON_KEYS:        merge into fixed attribute, name 'jj', type json
+  # - all other keys:         merge into fixed attribute, name 'other_data', type string, not indexed
+  #
+  # Also collect searchable values into attribute name 'full_text_words', type text, not stored
+  # - MANTI_FULL_TEXT_KEYS
+  def to_manticore
   end
 
 end
