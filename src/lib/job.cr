@@ -240,6 +240,7 @@ class JobHash
   PLAIN_KEYS = %w(
     id
     job_id
+
     suite
     category
 
@@ -484,7 +485,6 @@ class JobHash
 
   # subset of PLAIN_KEYS
   MANTI_STRING_ATTRS = %w(
-    job_id
     suite
     category
 
@@ -513,6 +513,7 @@ class JobHash
   )
 
   MANTI_INTEGER_ATTRS = %w(
+    id
     submit_id
     boot_seconds
     run_seconds
