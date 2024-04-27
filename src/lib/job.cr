@@ -301,7 +301,7 @@ class JobHash
     start_time
     end_time
 
-    boot_elapsed_time
+    boot_seconds
 
     in_watch_queue
 
@@ -673,13 +673,13 @@ class Job < JobHash
   end
 
   def set_boot_elapsed_time
-    return if @hash_plain.has_key?("boot_elapsed_time")
+    return if @hash_plain.has_key?("boot_seconds")
     return unless @hash_plain["running_time"]?
 
     boot_time = Time.parse(self["boot_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
     running_time = Time.parse(self["running_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
 
-    self["boot_elapsed_time"] = (running_time - boot_time).to_s
+    self["boot_seconds"] = (running_time - boot_time).to_s
   end
 
   # defaults to the 1st value
