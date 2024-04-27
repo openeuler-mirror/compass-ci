@@ -492,11 +492,18 @@ class JobHash
     os_version
     os_arch
 
+    osv
+    os_mount
+    rootfs
+
     lab
     tbox_group
     testbox
 
     submit_date
+
+    queue
+    subqueue
 
     job_stage
     job_health
@@ -531,14 +538,9 @@ class JobHash
     kernel_version
     kernel_params
 
-    osv
-    rootfs
     docker_image
-    os_mount
 
     cluster
-    queue
-    subqueue
 
     last_success_stage
 
