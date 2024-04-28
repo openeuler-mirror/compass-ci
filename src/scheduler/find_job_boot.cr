@@ -158,7 +158,7 @@ class Sched
   def update_kernel_params(job)
     host_info = Utils.get_host_info(job.testbox)
     job.set_rootfs_disk(get_rootfs_disk(host_info)) unless job.has_key?("rootfs_disk")
-    job.set_crashkernel(get_crashkernel(host_info))
+    job.set_crashkernel(get_crashkernel(host_info)) unless job.has_key?("crashkernel") && job["crashkernel"].nil?
   end
 
   def consume_job(queues, testbox, pre_job=nil)
