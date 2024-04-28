@@ -51,18 +51,39 @@ class Str2AnyHash < Hash(String, JSON::Any)
   def []=(k : String, v : String)
     self[k] = JSON::Any.new(v)
   end
+
+  def dup
+    hash = Str2AnyHash.new
+    hash.initialize_dup(self)
+    hash
+  end
 end
 
 class HashArray < Hash(String, Array(String))
+  def dup
+    hash = HashArray.new
+    hash.initialize_dup(self)
+    hash
+  end
 end
 
 class HashH < Hash(String, String)
 end
 
 class HashHH < Hash(String, Hash(String, String) | Nil)
+  def dup
+    hash = HashHH.new
+    hash.initialize_dup(self)
+    hash
+  end
 end
 
 class HashHHH < Hash(String, HashHH)
+  def dup
+    hash = HashHHH.new
+    hash.initialize_dup(self)
+    hash
+  end
 end
 
 def add2array(array : HashArray, k : String,  v : JSON::Any) : Bool
@@ -596,9 +617,13 @@ class JobHash
       next unless xjob.hash_plain.has_key? k
 
       v = xjob.hash_plain.delete k
+      next unless v
+
       case k
       when "id"
-        mjob[k] = JSON::Any.new(v.split(".").last.to_i)
+        mjob[k] = JSON::Any.new(v.split(".").last.to_i64)
+      when "submit_id"
+        mjob[k] = JSON::Any.new(v.to_i64)
       else
         mjob[k] = JSON::Any.new(v.to_i)
       end
@@ -609,32 +634,35 @@ class JobHash
       next unless xjob.hash_plain.has_key? k
 
       v = xjob.hash_plain.delete k
+      next unless v
+
       # convert old format like "submit_time": "2024-04-27T20:14:59+0800",
-      v = Time.parse(v).utc if v[4] == "-"
-      mjob[k] = JSON::Any.new(v.to_i)
+      v = Time.parse(v, "%Y-%m-%dT%H:%M:%S%z", Time.local.location).to_unix_ms if v.includes? "-"
+      mjob[k] = JSON::Any.new(v.to_i64)
     end
 
-    jj = mjob["jj"] = Str2AnyHash.new
+    mjob["errid"] = xjob.hash_array.delete("errid").as(Array).join(" ") if xjob.errid?
+
+    # the below all deals with JSON::Any
+    hash_all = xjob.merge2hash_all
+
+    jj = Str2AnyHash.new
     {% for name in MANTI_JSON_KEYS %}
-      # jj["group_id"] = xjob.group_id if xjob.group_id?
-      jj[{{name}}] = xjob.force_delete({{name}}) if xjob.{{(name + "?").id}}
+      if v = hash_all.delete {{name}}
+        jj[{{name}}] = v
+      end
     {% end %}
+    mjob["jj"] = JSON::Any.new jj.as(Hash)
 
     {% for name in %w[hw pp ss] %}
-      # mjob["ss"] = xjob.ss if xjob.ss?
-      mjob[{{name}}] = xjob.force_delete({{name}}) if xjob.{{(name + "?").id}}
+      if v = hash_all.delete {{name}}
+        mjob[{{name}}] = v
+      end
     {% end %}
 
-    mjob["errid"] = xjob.hash_array.delete("errid").join(" ") if xjob.errid?
-    mjob["stats"] = xjob.hash_any.delete("stats").to_json if xjob.stats?
+    mjob["stats"] = hash_all.delete("stats").to_json if xjob.stats?
 
-    od = Str2AnyHash.new
-    od.any_merge! xjob.hash_plain
-    od.any_merge! xjob.hash_array
-    od.any_merge! xjob.hash_hh
-    od.any_merge! xjob.hash_hhh
-    od.any_merge! xjob.hash_any
-    mjob["other_data"] = od.to_json   # convert to a string
+    mjob["other_data"] = hash_all.to_json   # convert to a string
 
     mjob
   end
