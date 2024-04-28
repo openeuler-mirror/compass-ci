@@ -348,7 +348,6 @@ class JobHash
     deadline
     renew_deadline
     custom_bootstrap
-    crashkernel
   )
 
   ARRAY_KEYS = %w(
@@ -398,6 +397,8 @@ class JobHash
     cluster_spec
 
     job2sh
+
+    crashkernel
 
     stats
     result
@@ -1399,8 +1400,8 @@ class Job < JobHash
     @hash_any["rootfs_disk"] = JSON::Any.new(rootfs_disk)
   end
 
-  def set_crashkernel(crashkernel)
-    @hash_plain["crashkernel"] = crashkernel
+  def set_crashkernel(p)
+    self.crashkernel = p
   end
 
   def get_uuid_tag

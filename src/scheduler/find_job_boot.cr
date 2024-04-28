@@ -158,7 +158,7 @@ class Sched
   def update_kernel_params(job)
     host_info = Utils.get_host_info(job.testbox)
     job.set_rootfs_disk(get_rootfs_disk(host_info)) unless job.has_key?("rootfs_disk")
-    job.set_crashkernel(get_crashkernel(host_info)) unless job.has_key?("crashkernel") && job["crashkernel"].nil?
+    job.set_crashkernel(get_crashkernel(host_info)) unless job.crashkernel?
   end
 
   def consume_job(queues, testbox, pre_job=nil)
@@ -520,7 +520,7 @@ class Sched
     _kernel_params = ["kernel #{job.kernel_uri}"] + job.hash_array["kernel_params"] + _kernel_initrds
     _rootfs_disk = " rootfs_disk=#{job.hash_any["rootfs_disk"].as_a.join(",")}"
     response += _kernel_params.join(" ") + _rootfs_disk
-    response += " crashkernel=#{job["crashkernel"]}" unless response.includes?("crashkernel=")
+    response += " crashkernel=#{job.crashkernel}" if job.crashkernel? && !response.includes?("crashkernel=")
     response += "\necho ipxe will boot job id=#{job.id}, ip=${ip}, mac=${mac}" # the ip/mac will be expanded by ipxe
 
     response += "\necho result_root=#{job.result_root}\n"
