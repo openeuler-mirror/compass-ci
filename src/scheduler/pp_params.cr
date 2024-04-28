@@ -14,6 +14,7 @@ class Job < JobHash
       next unless v
       v.each do |kk, vv|
         next unless vv
+        next if vv.starts_with?("_")  # skip config options that won't impact test result
         temp_hash["#{k}.#{kk}"] = vv
       end
     end
