@@ -84,6 +84,17 @@ class Sched
     job.update_id(id)
   end
 
+  def get_time_id
+    tid = Time.utc.to_unix_ms
+  end
+
+  def time_id2job_id(tid)
+    # https://tool.lu/hexconvert/
+    # 36-base numbers are expressed in chars [0-9a-z]
+    # example: 1715225167662116305.to_s(36) => "d14sks28k6hd"
+    jid = LAB + "." + tid.to_s(36) + @@sched_process_id
+  end
+
   def set_commit_date(job)
     return unless job.hash_any["upstream_repo"]?
     return unless job.hash_any["upstream_commit"]?
