@@ -31,7 +31,7 @@
     ```
   - 说明：
     - ws_boot()是位于/c/compass-ci/providers/lib/common.rb中的，compass-ci封装的一个方法;
-    - ws_boot()运行的一侧，属于客户端，它会与服务端（调度器）建立websocket长链接，请求job；
+    - ws_boot()运行的一侧，属于客户端，它会与服务端（调度器）建立websocket长连接，请求job；
     - 服务端（调度器）如果半个小时都没有调度到这个客户端的任务，就会给客户端返回包含“no job now”的返回值；
       /c/compass-ci/providers/qemu/kvm.sh中会处理返回值：
       - 如果返回值包含“no job now”，那么继续循环请求job；
