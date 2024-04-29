@@ -5,22 +5,23 @@
 # fix files permissions cause container service start failed
 umask 002
 
-download_repo()
+initialize_repo()
 {
 	local repo="$1"
-	local commit_id="$2"
 
-	[ -d "/c/$repo/.git" ] || {
-		git clone https://gitee.com/wu_fengguang/"$repo".git /c/"$repo"
-		chmod -R o+r /c/"$repo"
-		
-		[ "$repo" == "compass-ci" ] && ln -s /c/"$repo" /c/cci
+	[ -d "/c/git-repos/$repo/.git" ] || {
+		mkdir -p /c/git-repos/"$repo".git
+		cd /c/git-repos/"$repo".git
+		git init --bare .
+		git clone /c/git-repos/"$repo".git /c/git-repos/"$repo"
 	}
 
-	cd /c/"$repo" || exit
-	[ -n "$commit_id" ] && git reset --hard "$commit_id"
+	chown -R lkp:committer /c/git-repos
+
+	cd /c/git-repos/"$repo"
+	git config --global --add safe.directory /c/git-repos/my_upstreams
+	git config user.email "git-mirror@localhost"
+	git config user.name "git-mirror"
 }
 
-download_repo "compass-ci" "$compass_commit_id"
-download_repo "lkp-tests" "$lkp_commit_id"
-download_repo "upstream-repos" "$upstream_commit_id"
+initialize_repo my_upstreams

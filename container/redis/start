@@ -8,6 +8,8 @@
 
 . $CCI_SRC/container/defconfig.sh
 
+start_pod
+
 docker_rm redis507s01
 
 cmd=(

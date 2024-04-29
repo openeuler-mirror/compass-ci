@@ -6,6 +6,8 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+start_pod
+
 cert_path = '/etc/ssl/certs'
 certificate_file = "#{cert_path}/web-backend.crt"
 certificate_key_file = "#{cert_path}/web-backend.key"

@@ -9,7 +9,8 @@ ENV        DEBIAN_FRONTEND noninteractive
 
 COPY conf/sources.list* /etc/apt/
 
-RUN        apt-get update && \
+RUN        apt-get clean && \
+           apt-get update && \
            apt-get install -y git uuid-runtime ruby-listen ruby-json ruby-mail ruby-rest-client ruby-git
 
 

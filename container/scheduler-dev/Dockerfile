@@ -7,6 +7,7 @@ MAINTAINER chief <taxcom@tom.com>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
+RUN apk add linux-headers
 RUN umask 002 && \
   gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
   gem install rest-client activesupport bigdecimal open3 && \

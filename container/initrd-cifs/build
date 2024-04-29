@@ -6,4 +6,6 @@
 
 docker_skip_rebuild "initrd-cifs"
 
-docker build -t initrd-cifs .
+docker build --no-cache -t initrd-cifs .
+
+push_image_remote "initrd-cifs"

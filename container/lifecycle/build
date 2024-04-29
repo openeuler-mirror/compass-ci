@@ -17,4 +17,6 @@ CCI_SRC = ENV['CCI_SRC']
 system("bash #{CCI_SRC}/container/compile .") || exit
 system "docker build -t lifecycle-#{LIFECYCLE_PORT} ."
 
+push_image_remote "lifecycle-#{LIFECYCLE_PORT}"
+
 system 'rm lifecycle'

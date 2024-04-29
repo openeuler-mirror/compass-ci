@@ -4,6 +4,8 @@
 
 . $CCI_SRC/container/defconfig.sh
 
+start_pod
+
 docker_rm es-server01
 
 cmd=(
@@ -22,4 +24,5 @@ cmd=(
 
 # set index
 check_auth_es_ready 9200
+sh $CCI_SRC/sbin/create-es-account.sh
 find $CCI_SRC/sbin/ -name "es-*-mapping.sh" -exec sh {} \;

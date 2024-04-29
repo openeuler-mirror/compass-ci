@@ -5,14 +5,15 @@
 . $CCI_SRC/container/defconfig.sh
 
 load_service_authentication
+load_cci_defaults
 
 # Check if "repo" index already exists.
-status_code=$(curl -sSIL -u "${ES_USER}:${ES_PASSWORD}" -w "%{http_code}\n" -o /dev/null http://localhost:9200/repo)
+status_code=$(curl -sSIL -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -w "%{http_code}\n" -o /dev/null http://${ES_HOST}:9200/repo)
 [ $status_code -eq 200 ] && echo '"repo" index already exists.' && exit
 
 # Create "repo" index.
 echo 'Start to create "repo" index.'
-curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/repo' -u "${ES_USER}:${ES_PASSWORD}" -d '
+curl -sSH 'Content-Type: Application/json' -XPUT "http://${ES_HOST}:9200/repo" -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -d '
 {
     "mappings": {
         "properties": {

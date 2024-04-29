@@ -6,4 +6,6 @@
 
 docker_skip_rebuild "initrd-http"
 
-docker build -t initrd-http .
+docker build --no-cache -t initrd-http .
+
+push_image_remote "initrd-http"

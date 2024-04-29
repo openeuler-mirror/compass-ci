@@ -15,7 +15,7 @@ module ExtractStats
     channel = Channel(String).new
     commit_channel = Channel(String).new
     queue = EXTRACT_STATS_QUEUE_PATH
-    spawn { self.handle_upstream_commit(commit_channel) }
+    #spawn { self.handle_upstream_commit(commit_channel) }
     revision = self.consume_by_list(queue, channel, commit_channel)
     self.consume_by_watch(queue, revision, channel, commit_channel)
   end

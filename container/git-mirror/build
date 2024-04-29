@@ -4,7 +4,12 @@
 
 . ../defconfig.sh
 
+load_cci_defaults
+
 docker_skip_rebuild "alpine38:git-mirror"
 
-docker build -t alpine38:git-mirror .
+download_repo "cbs" "$git_branch_cbs"
 
+docker build --no-cache -t alpine38:git-mirror .
+
+push_image_remote "alpine38:git-mirror"

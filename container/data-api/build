@@ -3,6 +3,13 @@
 
 . ../defconfig.sh
 
+load_cci_defaults
+
 docker_skip_rebuild "debian:data-api"
 
-docker build -t debian:data-api .
+download_repo "cbs" "$git_branch_cbs"
+download_repo "lkp-tests" "$git_branch_lkp"
+
+docker build --no-cache -t debian:data-api .
+
+push_image_remote "debian:data-api"

@@ -25,5 +25,5 @@ EXPOSE 2049
 VOLUME /exports
 
 COPY ./entrypoint.sh /usr/local/bin
-ADD root /
+COPY root /
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

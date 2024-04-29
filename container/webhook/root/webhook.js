@@ -1,7 +1,7 @@
 const http = require('http')
 const spawn = require('child_process').spawn
 const createHandler = require('git-webhook-handler')
-const handler = createHandler({ path: '/webhook', secret: 'webhook@git' })
+const handler = createHandler({ path: '/cbs-webhook', secret: 'webhook@git' })
 
 handler.on('error', function(err){
 	console.error('Error:', err.message)

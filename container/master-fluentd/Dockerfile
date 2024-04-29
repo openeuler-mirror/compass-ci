@@ -5,3 +5,5 @@ FROM fluentd-base:alpine
 
 COPY --chown=1090:1090 docker-fluentd.conf /fluentd/etc/docker-fluentd.conf
 COPY --chown=1090:1090 mapping-template /fluentd/mapping-template
+
+RUN apk del gcc rpcgen gdb

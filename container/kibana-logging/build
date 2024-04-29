@@ -13,7 +13,7 @@ names = Set.new %w[
 
 defaults = relevant_service_authentication(names)
 
-docker_skip_rebuild 'kibana:7.11.1'
+docker_skip_rebuild 'kibana-logging:7.11.1'
 
 BASE_IMAGE_DICT = {
   'aarch64' => 'jamesgarside/kibana:7.11.1',
@@ -22,4 +22,8 @@ BASE_IMAGE_DICT = {
 
 BASE_IMAGE = BASE_IMAGE_DICT[%x(arch).chomp]
 
-system "docker build -t kibana:7.11.1 --build-arg BASE_IMAGE=#{BASE_IMAGE} --build-arg USER=#{defaults['LOGGING_ES_USER']} --build-arg PASSWORD=#{defaults['LOGGING_ES_PASSWORD']} ."
+ARCH = %x(arch).chomp
+
+system "docker build --no-cache -t kibana-logging:7.11.1 --build-arg BASE_IMAGE=#{BASE_IMAGE} --build-arg USER=#{defaults['LOGGING_ES_USER']} --build-arg PASSWORD=#{defaults['LOGGING_ES_PASSWORD']} --build-arg ARCH=#{ARCH} ."
+
+push_image_remote "kibana-logging:7.11.1"

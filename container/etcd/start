@@ -4,6 +4,8 @@
 
 . $CCI_SRC/container/defconfig.sh
 
+start_etcd_pod
+
 docker_rm etcd-server
 
 cmd=(

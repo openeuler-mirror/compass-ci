@@ -9,12 +9,18 @@ class EtcdClient
   def initialize
     host = (ENV.has_key?("ETCD_HOST") ? ENV["ETCD_HOST"] : ETCD_HOST)
     port = (ENV.has_key?("ETCD_PORT") ? ENV["ETCD_PORT"].to_i32 : ETCD_PORT)
+    user = ENV["ETCD_USER"]
+    password = ENV["ETCD_PASSWORD"]
     version = (ENV.has_key?("ETCD_VERSION") ? ENV["ETCD_VERSION"] : ETCD_VERSION)
-    @etcd = Etcd.client(host, port, version)
+    @etcd = Etcd.client(host, port, user, password, version)
   end
 
   def close
     @etcd.close
+  end
+
+  def put_not_exists(queue, content)
+    @etcd.kv.put_not_exists(queue, content)
   end
 
   def put_not_exists(queue, content)
@@ -58,6 +64,23 @@ class EtcdClient
     encoded_prefix = Base64.strict_encode(prefix)
     range_end = @etcd.kv.prefix_range_end encoded_prefix
     range(encoded_prefix, range_end, limit, false)
+  end
+  # Query keys count only with a prefix
+  def prefix_count(prefix)
+    encoded_prefix = Base64.strict_encode(prefix)
+    range_end = @etcd.kv.prefix_range_end encoded_prefix
+    range_count(encoded_prefix, range_end)
+  end
+
+  # count a range of keys
+  def range_count(key, range_end : String? = nil)
+    post_body = {
+      :key       => key,
+      :range_end => range_end,
+      :count_only => true,
+    }.compact
+    response = @etcd.api.post("/kv/range", post_body)
+    Etcd::Model::RangeResponse.from_json(response.body).count
   end
 
   def update(queue, value)

@@ -6,6 +6,8 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+start_pod
+
 names = Set.new %w[
   ES_USER
   ES_PASSWORD
@@ -34,12 +36,11 @@ cmd = %w[
   -e GIT_ASKPASS=/usr/local/bin/git-askpass.sh
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
   -v /etc/localtime:/etc/localtime:ro
-  -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
+  -v /etc/compass-ci/defaults/upstream-config:/etc/compass-ci/defaults/upstream-config
   -v #{ENV['REPO_SRC']}:#{DOCKER_REPO}
   -v /srv/git:/srv/git
   -w /c/compass-ci/sbin
   alpine38:git-mirror
 ]
-
 cmd += ['sh', '-c', 'umask 002 && ./git-mirror.rb']
 system(*cmd)

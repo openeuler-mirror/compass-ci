@@ -6,8 +6,13 @@ CCI_SRC ||= ENV['CCI_SRC'] || '/c/compass-ci'
 require "#{CCI_SRC}/lib/json_logger.rb"
 require "#{CCI_SRC}/src/lib/data_api/es_data_api.rb"
 
+def check_xss(params)
+  raise 'please input valid params' if params.match? /[^\w\"\'\+\{\}\[\]\.\_\,\ \:\/\-\;\%\=\<\>]/
+end
+
 def es_search(index, params)
   begin
+    check_xss(params)
     result = EsDataApi.search(index, params)
   rescue StandardError => e
     error_msg = { 'error_msg' => e.message }

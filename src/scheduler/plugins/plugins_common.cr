@@ -14,7 +14,7 @@ class PluginsCommon
     @etcd = EtcdClient.new
     @rgc = RemoteGitClient.new
     @es = Elasticsearch::Client.new
-    @redis = Redis::Client.instance
+    @redis = RedisClient.instance
     @log = JSONLogger.new
     @scheduler_api = SchedulerAPI.new
   end

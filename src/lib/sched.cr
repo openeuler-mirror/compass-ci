@@ -13,6 +13,7 @@ require "./etcd_client"
 require "./block_helper"
 require "./taskqueue_api"
 require "./remote_git_client"
+require "./constants"
 require "../scheduler/constants"
 require "../scheduler/jobfile_operate"
 require "../scheduler/redis_client"
@@ -24,6 +25,7 @@ require "../scheduler/find_job_boot"
 require "../scheduler/find_next_job_boot"
 require "../scheduler/close_job"
 require "../scheduler/cancel_jobs"
+require "../scheduler/update_subqueues"
 require "../scheduler/request_cluster_state"
 require "../scheduler/update_job_parameter"
 require "../scheduler/set_job_stage"
@@ -38,6 +40,8 @@ require "../scheduler/report_job_step"
 require "../scheduler/plugins/pkgbuild"
 require "../scheduler/plugins/finally"
 require "../scheduler/plugins/cluster"
+require "../scheduler/get_job_boot_content"
+require "../scheduler/heart_beat"
 
 class Sched
   property es
@@ -48,8 +52,7 @@ class Sched
 
   def initialize(env : HTTP::Server::Context)
     @es = Elasticsearch::Client.new
-    Redis::Client.set_pool_size(1000)
-    @redis = Redis::Client.instance
+    @redis = RedisClient.instance
     @mq = MQClient.instance
     @task_queue = TaskQueueAPI.new
     @etcd = EtcdClient.new
@@ -108,6 +111,33 @@ class Sched
     else
       "No yet!"
     end
+  rescue e
+    @log.warn(e.inspect_with_backtrace)
+  end
+
+  def register_host2redis
+    type = @env.params.query["type"]
+    data = Hash(String, String).new
+    data["type"] = type
+    data["arch"] = @env.params.query["arch"]
+    data["owner"] = @env.params.query["owner"]
+    data["max_mem"] = @env.params.query["max_mem"]
+    data["hostname"] = @env.params.query["hostname"]
+    data["is_remote"] = @env.params.query["is_remote"]
+
+
+    unless TBOX_TYPES.includes?(type)
+      @log.warn("type is not support, type: #{type}")
+      raise "type is not support, type: #{type}"
+    end
+
+    hostname = "local-#{data["hostname"]}"
+    hostname = data["is_remote"] == "true"? "remote-#{data["hostname"]}" : hostname
+    data["hostname"] = hostname
+
+    tbox = "/tbox/#{type}/#{data["hostname"]}"
+    @redis.set(tbox, data.to_json )
+    @redis.expire(tbox, 60)
   rescue e
     @log.warn(e.inspect_with_backtrace)
   end
@@ -221,7 +251,12 @@ class Sched
     hash["job_id"] = job["id"]
     hash["suite"] = job["suite"]
     hash["my_account"] = job["my_account"]
+    hash["result_root"] = job["result_root"]
     hash["state"] = "booting"
+    hash["timeout_period"] = job["timeout"]
+    hash["arch"] = job["os_arch"]
+    hash["hostname"] = job["host_machine"]
+    hash["type"] = job["tbox_type"]
   end
 
   def update_testbox_and_job(job, testbox, queues)
@@ -236,6 +271,8 @@ class Sched
       "type" => get_type(testbox),
       "name" => testbox,
       "tbox_group" => JobHelper.match_tbox_group(testbox.to_s),
+      "hostname" => get_host_machine(testbox.to_s),
+      "timeout_period" => "1800",
       "arch" => get_testbox_arch(testbox.to_s)
     }
     update_job_when_boot(job)

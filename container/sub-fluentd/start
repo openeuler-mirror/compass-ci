@@ -6,6 +6,8 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+start_pod
+
 names = Set.new %w[
   MASTER_FLUENTD_HOST
   MASTER_FLUENTD_PORT
@@ -22,6 +24,7 @@ cmd = %w[
   docker run
   --restart=always
   --name sub-fluentd
+  --network host
   -v /etc/localtime:/etc/localtime:ro
   -v /srv/cci/serial/logs:/srv/cci/serial/logs:ro
   -v /srv/cci/serial/fluentd-pos:/srv/cci/serial/fluentd-pos
@@ -35,6 +38,6 @@ cmd = %w[
   --log-opt max-size=1g
   sub-fluentd:alpine
 ]
-cmd += ['sh', '-c', 'umask 002 & fluentd -c /fluentd/etc/docker-fluentd.conf']
+cmd += ['bash', '-c', 'umask 027 & fluentd -c /fluentd/etc/docker-fluentd.conf']
 
 system(*cmd)

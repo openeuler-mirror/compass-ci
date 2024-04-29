@@ -8,6 +8,8 @@ require 'fileutils'
 require 'faye/websocket'
 require 'eventmachine'
 
+require_relative 'jwt'
+
 def loop_reboot_testbox(hostname, type, mq_host, mq_port)
   loop do
     begin
@@ -172,6 +174,126 @@ def release_mem(hostname)
   end
 end
 
+def init_specmeminfo(maxdc)
+  FileUtils.mkdir_p("/tmp/#{ENV['HOSTNAME']}") unless File.exist?("/tmp/#{ENV['HOSTNAME']}")
+  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
+  mem_info = {}
+  containers = maxdc.to_i
+  digits = Array(1..containers).join(",")
+  mem_info['usage'] = "0 G"
+  mem_info['containers'] = "#{digits}"
+  save_mem_yaml_file(mem_info, spec_mem_info_file)
+end
+
+def compute_vm_max_dc
+  return %x(echo $(($(cat /proc/cpuinfo| grep "processor"| sort| uniq| wc -l) / 4)))
+end
+
+def get_vm_total_memory
+  return %x(echo $(($(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
+end
+
+def get_vm_free_memory
+  return %x(echo $(($(grep MemFree /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
+end
+
+def get_vm_left_memory
+  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
+  if File.exist?(spec_mem_info_file)
+    spec_mem_info = YAML.load_file(spec_mem_info_file)
+    usage_mem = get_mem_figure(spec_mem_info['usage'])
+    return (get_vm_total_memory - usage_mem)
+  else
+    return get_vm_total_memory
+  end
+end
+
+def get_vm_arch
+  return %x(echo $(arch)).chomp
+end
+
+def pre_check_containers
+  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
+  spec_mem_info = YAML.load_file(spec_mem_info_file)
+  containers = spec_mem_info['containers']
+  rest_numbers = containers.split(",")
+  return nil if rest_numbers.empty?
+  return rest_numbers
+end
+
+def record_spec_mem(hash, pre_num)
+  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
+  memory = hash['memory_minimum'].to_i
+  begin
+    File.open("#{spec_mem_info_file}", 'a') do |f|
+      puts "record memory: try to get specmeminfo lock"
+      f.flock(File::LOCK_EX)
+      puts "record memory: get specmeminfo lock success"
+      spec_mem_info = YAML.load_file(spec_mem_info_file)
+      record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_file)
+    end
+  rescue Exception => e
+    puts 'record spec mem exception.'
+    puts e.message
+    puts e.backtrace.inspect
+  end
+end
+
+def record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_file)
+  containers = spec_mem_info['containers']
+  rest_numbers = containers.split(",")
+  rest_numbers.delete_if { |n| n == pre_num }
+  rest_numbers = rest_numbers.join(",")
+  spec_mem_info['usage'] = "#{get_mem_figure(spec_mem_info['usage']) + memory} G"
+  spec_mem_info['containers'] = "#{rest_numbers}"
+  save_mem_yaml_file(spec_mem_info, spec_mem_info_file)
+end
+
+def release_spec_mem(hostname, hash)
+  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
+  release_success = false
+
+  until release_success
+    begin
+      memory = hash['memory_minimum'].to_i
+      File.open("#{spec_mem_info_file}", 'a') do |f|
+        puts "#{hostname}-release: try to get specmeminfo lock"
+        f.flock(File::LOCK_EX)
+        puts "#{hostname}-release: get specmeminfo lock success"
+
+        spec_mem_info = YAML.load_file(spec_mem_info_file)
+
+        del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_info_file)
+        release_success = true
+      end
+    rescue Exception => e
+      puts 'release record mem exception.'
+      puts e.message
+      puts e.backtrace.inspect
+    ensure
+      # avoid all testboxes request lock at the same time
+      unless release_success
+        sleep 2
+      end
+    end
+  end
+end
+
+def del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_info_file)
+  containers = spec_mem_info['containers']
+  rest_numbers = containers.split(",")
+  if rest_numbers.include? hostname.split("-")[-1]
+    puts "this number was already added in containers: #{hostname}"
+    return nil
+  end
+  rest_numbers.push(hostname.split("-")[-1])
+  rest_numbers = rest_numbers.join(",")
+  spec_mem_info['usage'] = "#{get_mem_figure(spec_mem_info['usage']) - memory} G"
+  spec_mem_info['containers'] = "#{rest_numbers}"
+  save_mem_yaml_file(spec_mem_info, spec_mem_info_file)
+end
+
+
 def save_running_suite
   return unless INDEX
 
@@ -333,13 +455,17 @@ ensure
   f1&.close
 end
 
-def ws_boot(url, hostname, index, ipxe_script_path = nil)
+def ws_boot(url, hostname, index, ipxe_script_path = nil, is_remote)
   threads = []
   response = nil
 
   EM.run do
-    ws = Faye::WebSocket::Client.new(url)
-
+    if is_remote == 'true'
+      jwt = load_jwt?
+      ws = Faye::WebSocket::Client.new(url,[],:headers => { 'Authorization' => jwt })
+    else
+      ws = Faye::WebSocket::Client.new(url)
+    end
     threads << Thread.new do
       sleep(300)
       ws.close(1000, 'timeout')
@@ -350,10 +476,14 @@ def ws_boot(url, hostname, index, ipxe_script_path = nil)
     end
 
     ws.on :message do |event|
-      response = deal_ws_event(event, threads, ws, hostname, index)
+      response ||= deal_ws_event(event, threads, ws, hostname, index)
     end
 
-    ws.on :close do
+    ws.on :close do |event|
+      p [:close, event.code, event.reason]
+      if is_remote == 'true'
+        check_wheather_load_jwt(event)
+      end
       threads.map(&:exit)
       EM.stop
     end
@@ -373,21 +503,29 @@ def additional_ipxe_script(response, ipxe_script_path)
   end
 end
 
+def check_wheather_load_jwt(event)
+  if event.code == 1002
+    jwt = load_jwt?(force_update=true)
+  end
+end
+
+
 def deal_ws_event(event, threads, ws, hostname, index)
   response = nil
   data = JSON.parse(event.data)
   case data['type']
-  when 'request_memory', 'release_memory'
-    thr = Thread.new do
-      ack_memory(data['type'], ws, hostname, index)
-    end
-    threads << thr
+  # when 'request_memory', 'release_memory'
+  #   thr = Thread.new do
+  #     ack_memory(data['type'], ws, hostname, index)
+  #   end
+  #   threads << thr
   when 'boot'
     response = data['response']
+  when 'close'
+    ws.close(1000, 'close')
   else
     raise 'unknow message type'
   end
-
   response
 end
 

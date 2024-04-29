@@ -5,6 +5,8 @@
 
 require_relative '../defconfig.rb'
 
+start_pod
+
 docker_rm 'webhook'
 
 cmd = %W[

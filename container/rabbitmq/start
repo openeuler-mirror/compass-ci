@@ -4,6 +4,8 @@
 
 . $CCI_SRC/container/defconfig.sh
 
+start_pod
+
 docker_name=rabbitmq
 
 docker_rm $docker_name

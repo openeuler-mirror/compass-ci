@@ -7,6 +7,7 @@ dirs=(
 	/srv/cache/netdata_lib
 	/srv/cache/gitcache
 	/srv/git
+	/srv/git/customization
 	/srv/initrd
 	/srv/initrd/pkg
 	/srv/initrd/deps
@@ -29,12 +30,145 @@ dirs=(
 	/etc/compass-ci/scheduler
 	/etc/compass-ci/register
 	/etc/compass-ci/dnsmasq
+	/etc/compass-ci/dnsmasq/lease_dir
 	/srv/cci/Maildir/.compass-ci/new
 	/srv/cci/Maildir/.compass-ci/cur
 	/srv/cci/Maildir/.compass-ci/sent
 	/srv/rabbitmq
 	/srv/tmp/public
 	/srv/upload-files
+	/srv/repositories
+	/srv/log
+	/srv/dsl
+	/srv/kernel
+	/srv/tmp/rpm
+	/sr/rpm
+	/srv/cci/build-config
+	/srv/cci/profile/data
+	/srv/cci/scheduler/alpine
+	/srv/kunpeng
+	/srv/git/archlinux
+	/srv/initrd/qemu-image
+	/srv/initrd/dockerimage
+	/srv/initrd/osimage
+	/srv/initrd/rpmbuild-pkg
+	/srv/pub
+	/srv/os-repo
+	/srv/rpm/pub
+	/srv/rpm/testing
+	/srv/repositories/new-jobs
+	/srv/repositories/failed-jobs
+	/srv/repositories/finished-jobs
+	/srv/repositories/image-manager
+	/srv/es/es-0
+	/srv/es/es-1
+	/srv/es/es-2
+	/srv/etcd/etcd-0
+	/srv/etcd/etcd-1
+	/srv/etcd/etcd-2
+	/srv/redis/alpine/server01
+	/srv/mysql
+	/var/log/rabbitmq
+	/var/cache/samba
+	/var/log/samba
+	/var/lib/samba
+	/var/run/samba
+	/var/run/result-cifs/samba
+	/var/log/result-cifs/samba
+	/var/cache/result-cifs/samba
+	/var/lib/result-cifs/samba
+	/var/run/mysqld
+	/var/cache/nginx
+	/var/cache/nginx/cbs-web
+	/var/cache/nginx/api-gateway
+	/var/cache/nginx/initrd-http
+	/var/cache/nginx/scheduler-nginx
+	/var/cache/nginx/os-http
+	/var/cache/nginx/srv-http-cci
+	/var/cache/nginx/srv-http-git
+	/var/cache/nginx/srv-http-initrd
+	/var/cache/nginx/srv-http-os
+	/var/cache/nginx/srv-http-os-repo
+	/var/cache/nginx/srv-http-pub
+	/var/cache/nginx/srv-http-repositories
+	/var/cache/nginx/srv-http-result
+	/var/cache/nginx/srv-http-rpm
+	/var/cache/nginx/srv-http-rpm-testing
+	/var/run
+	/var/run/cbs-web
+	/var/run/initrd-http
+	/var/run/api-gateway
+	/var/run/os-http
+	/var/run/scheduler-nginx
+	/var/run/srv-http-cci
+	/var/run/srv-http-git
+	/var/run/srv-http-initrd
+	/var/run/srv-http-os
+	/var/run/srv-http-os-repo
+	/var/run/srv-http-pub
+	/var/run/srv-http-repositories
+	/var/run/srv-http-result
+	/var/run/srv-http-rpm
+	/var/run/srv-http-rpm-testing
+	/var/log
+	/root/.config   
+	/root/.config/submit-jobs
+	/root/.config/image-manager
+	/home/lkp
+	/etc/nginx
+	/etc/nginx/srv-http-cci
+	/etc/nginx/srv-http-git
+	/etc/nginx/srv-http-initrd
+	/etc/nginx/srv-http-os
+	/etc/nginx/srv-http-os-repo
+	/etc/nginx/srv-http-pub
+	/etc/nginx/srv-http-repositories
+	/etc/nginx/srv-http-result
+	/etc/nginx/srv-http-rpm
+	/etc/nginx/srv-http-rpm-testing
+	/run/redis
+	/srv//tmp/result-cifs
+	/srv/tmp/logging-es
+	/srv/tmp/es
+	/srv/tmp/result-webdav
+	/srv/tmp/image_config
+	/srv/tmp/dag
+	/srv/tmp/sub-fluentd
+	/srv/tmp/mysql-wg
+	/srv/tmp/submit-jobs
+	/srv/tmp/timer
+	/srv/tmp/extract-stats
+	/srv/tmp/image-manager
+	/srv/tmp/logging-es/config
+	/srv/tmp/es/config
+	/srv/tmp/kibana
+	/srv/tmp/kibana-logging
+	/usr/share/kibana/data
+	/usr/share/logging-es/logs
+	/usr/share/logging-es/tmp
+	/usr/share/es/logs
+	/usr/share/es/tmp
+	/run/redis
+	/root/.cache/submit-jobs/compass-ci
+	/root/.cache/image-manager
+	/root/.cache/dag
+	/etc/{.ccache,.gradle,.npm,.sbt,.gem,.java,.m2}
+	/srv/log/squid
+	/srv/cache/squid
+	/var/run/squid
+	/c/lab-cbs/hosts
+	/srv/tmp/image_manager
+	/srv/log/dag
+	/srv/log/image_manager
+	/srv/log/submit_jobs
+	/srv/log/source-manager
+	/srv/log/new-repo
+	/srv/log/result-webdav
+	/srv/log/timer
+	/srv/cci/image_manager/file
+	/home/lkp/submit-jobs
+	/srv/cci/cfg_openEuler
+	/srv/tmp/publisher
 )
 
 mkdir -p "${dirs[@]}"

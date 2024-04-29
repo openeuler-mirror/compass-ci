@@ -6,6 +6,12 @@ CONTAINER_PATH="$CCI_SRC/container"
 
 source ${CCI_SRC}/lib/log.sh
 
+log_dir=/var/log/upgrade-deploy
+
+timestamp=$(date "+%Y%m%d%H%M%s")
+
+[ -d "$log_dir" ] || mkdir -p $log_dir
+
 build_depends()
 {
 	local container=$1
@@ -19,17 +25,30 @@ build_depends()
 	do_one_build $container
 }
 
+check_build()
+{
+	local container=$1
+	local build_log=$2
+
+	[ -d "$container/k8s" ] || return
+	grep -q "docker build " $container/build || return
+	grep -q "^Successfully tagged" $build_log || {
+		echo "Failed to build $container" >> $log_dir/$timestamp
+	}
+}
+
 do_one_build()
 {
 	local container=$1
 	local container_name=$(basename $container)
+	local build_log=$tmpdir/$container_name.log
 	lockfile-create -q --use-pid --retry 100 --lock-name "build_${container_name}".lock
 
 	mkdir $tmpdir/$container_name 2>/dev/null &&
 	(
 		cd "$container"
-		[ -x build ] && ./build
-		[ "$?" == 0 ] && log_info "finish build $container"
+		[ -x build ] && ./build | tee -a $build_log
+		check_build $container $build_log
 		[ -x install ] && ./install
 	)
 	lockfile-remove --lock-name "build_${container_name}".lock
@@ -45,7 +64,39 @@ start_depends()
 	done
 	wait
 
-	do_one_run $container
+	if [ "$deploy_k8s" = "true" ]; then
+		do_one_pod $container
+	else
+		do_one_run $container
+	fi
+}
+
+do_one_pod()
+{
+
+	[ ! -d "$container/k8s/" ] && return
+	[ "$(ls -A $container/k8s)" = "" ] && return
+
+	local container=$1
+	local container_name=$(basename $container)
+	lockfile-create -q --use-pid --retry 100 --lock-name "start_${container_name}".lock
+
+	mkdir $tmpdir/start_$container_name 2>/dev/null &&
+	(
+		cd "$container"
+
+		local list=(es etcd logging-es rabbitmq redis)
+		for item in ${list[@]}
+		do
+			[ "$container_name"  == ${item} ] && {
+				kubectl get deploy $item -n ems1 >/dev/null 2>&1 || kubectl get sts $item -n ems1 >/dev/null 2>&1
+				[ "$?" = 0 ] && exit
+			}
+		done
+
+		[ -x start ] && ./start
+	)
+	lockfile-remove --lock-name "start_${container_name}".lock
 }
 
 do_one_run()
@@ -90,10 +141,66 @@ start_all()
 	wait
 }
 
+create_es_cert()
+{
+	gpg_dir=/etc/gpg-key/
+	[ -e "$gpg_dir/elastic-certificates.p12" ] && return
+
+	container_name="es-cert-$(< /dev/urandom tr -dc "a-zA-Z0-9" | head -c 10; echo)"
+
+	docker run --name ${container_name} -v ${gpg_dir}:${gpg_dir} \
+		-u root --rm es:7.11.1 sh -c "\
+		echo -e '\n\n' | ./bin/elasticsearch-certutil ca && \
+		echo -e '\n\n\n' | ./bin/elasticsearch-certutil cert --ca elastic-stack-ca.p12 && \
+		cp /usr/share/elasticsearch/elastic-certificates.p12 ${gpg_dir}"
+
+	[ -e "$gpg_dir/elastic-certificates.p12" ] || {
+		echo "create es cert failed!"
+		exit
+	}
+}
+
+load_all()
+{
+  arch=$(arch)
+
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  images_dir="/images"
+
+  mkdir -p "$images_dir"
+  cd "$images_dir" || exit
+
+  echo "==============导入微服务镜像================"
+  wget -O index.html "https://eulermaker.compass-ci.openeuler.openatom.cn/api/ems1/repositories/EulerMaker/images/$arch/"
+
+  grep -o '<a href="[^"]*\.tar\.gz">' index.html | sed 's/<a href="//; s/">//' | while read -r filename; do
+    wget "https://eulermaker.compass-ci.openeuler.openatom.cn/api/ems1/repositories/EulerMaker/images/$arch/$filename"
+    gunzip -d "$filename"
+    docker load -i "$(basename "$filename" .gz)"
+  done
+
+  for image in $(docker images | awk '{if ($2 == "<none>") {print $1} else {print $1":"$2}}' | awk -F '/' '{print $2}'); do
+    eval $(docker tag "registry.kubeoperator.io:8082/$image" "$image")
+    bash $CONTAINER_PATH/push "$image"
+    if [[ "$image" == "es"* ]]; then
+        cd $CCI_SRC/container/es
+        ./build $image
+    fi
+  done
+
+  rm -f "$images_dir/index.html"
+
+  cd $script_dir
+}
 
 tmpdir=$(mktemp -d)
 
-build_all
+if [ "$ENABLE_OFFLINE_DEPLOY" = "True" ]; then
+  load_all
+else
+  build_all
+fi
+create_es_cert
 start_all
 
 rm -fr $tmpdir

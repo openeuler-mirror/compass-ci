@@ -1,14 +1,17 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-FROM alpine:3.13
+FROM alpine:3.18
 
 MAINTAINER Cao Xueliang <caoxl78320@163.com>
 
 ARG VERSION
 ARG ARCH
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories && \
-    apk update && apk add ca-certificates && \
+    apk update --no-cache && \
+    apk upgrade && \
+    apk add --no-cache ca-certificates && \
+    apk update --no-cache && apk add --no-cache ca-certificates && \
     wget https://repo.huaweicloud.com/etcd/${VERSION}/etcd-${VERSION}-linux-${ARCH}.tar.gz && \
     tar zxvf etcd-${VERSION}-linux-${ARCH}.tar.gz && \
     mv etcd-${VERSION}-linux-${ARCH}/etcd* /bin/ && \

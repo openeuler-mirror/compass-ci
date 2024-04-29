@@ -47,8 +47,6 @@ class Sched
     job = @es.get_job(job_id)
     raise "can't find job from es, job_id: #{job_id}" unless job
 
-    # update job resource
-    update_job_resource(job, mem, cpu)
     # update job content
     job_state = @env.params.query["job_state"]?
     job["job_state"] = job_state if job_state
@@ -79,6 +77,8 @@ class Sched
       job["last_success_stage"] = "finish"
     end
 
+    set_job2watch(job, "close", job["job_health"])
+
     if !job["in_watch_queue"].empty?
       data = {"job_id" => job["id"], "job_health" => job["job_health"]}
       @etcd.put_not_exists("watch_queue/#{job["in_watch_queue"]}/#{job["id"]}", data.to_json)
@@ -105,7 +105,7 @@ class Sched
       # need update the end job_health to etcd
       res = update_id2job(job)
       @log.info("scheduler update job to id2job #{job.id}: #{res}")
-      res = move_process2stats(job)
+      res = move_process2extract(job)
       @log.info("scheduler move in_process to extract_stats #{job.id}: #{res}")
     end
   end

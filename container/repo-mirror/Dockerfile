@@ -9,12 +9,12 @@ MAINTAINER Wang Yong <wangyong0117@qq.com>
 
 ARG ARCH
 
-ADD setup.sh /
+COPY setup.sh /
 
 COPY etc /etc
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories \
-	&& apk update \
+	&& apk update --no-cache \
 	&& apk add --no-cache go rsync\
 	&& mkdir -p /tmp/log \
 	&& chmod +x /setup.sh \

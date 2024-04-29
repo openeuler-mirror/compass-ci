@@ -6,4 +6,6 @@
 
 docker_skip_rebuild "result-cifs"
 
-docker build -t result-cifs .
+docker build --no-cache -t result-cifs .
+
+push_image_remote "result-cifs"

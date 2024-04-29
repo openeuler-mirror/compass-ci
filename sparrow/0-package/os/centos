@@ -28,6 +28,8 @@ pkgs=(
 	iputils
 	libxml2-devel
 	libxslt-devel
+	nmap-ncat
+	expect
 )
 
 yum install -y --skip-broken "${pkgs[@]}"

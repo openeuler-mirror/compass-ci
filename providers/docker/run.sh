@@ -33,22 +33,35 @@ check_busybox()
 	done
 }
 
-check_package_optimization_strategy()
+check_docker_sock()
 {
-	[ -z "$bin_shareable" ] && return 0
+	if [ "$need_docker_sock" == "y" ]; then
+		mount_docker_sock="-v /var/run/docker.sock:/var/run/docker.sock:ro"
+	fi
+}
+
+check_package_optimization_strategy()
+{	
+	if [ ! -n "${memory_minimum}" ];then
+		memory_minimum="8"
+	fi
+	memory="${memory_minimum}g"
 	[ -z "$ccache_enable" ] && return 0
 	[ -z "$cpu_minimum" ] || nr_cpu=$cpu_minimum
 
-	[ "$memory_minimun" = "auto" ] || memory=$memory_minimun
-
-	if [ "$bin_shareable" = "True" ] || [ "$ccache_enable" = "True" ]; then
-		volumes_from="--volumes-from ccache"
+	if [ "$ccache_enable" = "True" ]; then
+		ccache_name=$(docker ps | grep k8s_ccache_ccache|grep -v pause|awk '{print $NF}')
+		[ $ccache_name ] || ccache_name=ccache
+		volumes_from="--volumes-from $ccache_name"
 		CCACHE_DIR=/etc/.ccache
 	fi
 }
 
+squid_host=$(kubectl get svc -n ems1 | grep "^squid-${HOSTNAME} "| awk '{print $3}')
+
 DIR=$(dirname $(realpath $0))
 check_busybox
+check_docker_sock
 check_package_optimization_strategy
 cmd=(
 	docker run
@@ -60,18 +73,21 @@ cmd=(
 	--tmpfs /tmp:rw,exec,nosuid,nodev
 	--privileged
 	--net=host
+	-e SQUID_HOST=$squid_host
 	-e CCI_SRC=/c/compass-ci
 	-e CCACHE_UMASK=002
 	-e CCACHE_DIR=$CCACHE_DIR
 	-e CCACHE_COMPILERCHECK=content
 	-e CCACHE_ENABLE=$ccache_enable
+	-v /sys/kernel/debug:/sys/kernel/debug:ro
+	$mount_docker_sock
+	-v /usr/bin/docker:/usr/bin/docker:ro
 	-v ${load_path}/lkp:/lkp
 	-v ${load_path}/opt:/opt
 	-v ${DIR}/bin:/root/sbin:ro
 	-v $CCI_SRC:/c/compass-ci:ro
 	-v /srv/git:/srv/git:ro
 	-v /srv/result:/srv/result:ro
-	# --volumes-from yum-cache
 	-v ${busybox_path}:/usr/local/bin/busybox
 	$volumes_from
 	--log-driver json-file

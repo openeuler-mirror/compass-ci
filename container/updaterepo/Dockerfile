@@ -7,7 +7,7 @@ MAINTAINER Li Ping <1477412247@qq.com>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
-RUN apk update && \
+RUN apk update --no-cache && \
     apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
 

@@ -47,8 +47,10 @@ SRV_USER_FILE_UPLOAD = "/srv/cci/user-files"
 INITRD_HTTP_PREFIX = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
 OS_HTTP_PREFIX = "http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}"
 SCHED_HTTP_PREFIX = "http://#{SCHED_HOST}:#{SCHED_PORT}"
+LOCAL_DAILYBUILD="http://172.16.1.236:31744"
+REMOTE_DAILYBUILD="http://121.36.84.172"
 
 JOB_STAGES = %w[submit boot running post_run manual_check renew finish]
-ETCD_RANGE_SIZE = 100
+ETCD_RANGE_SIZE = 10000
 
 DEMO_JOB = %({"suite":"pixz","testcase":"pixz","category":"benchmark","nr_threads":1,"pixz":null,"job_origin":"jobs/pixz.yaml","testbox":"wfg-e595","arch":"x86_64","tbox_group":"wfg-e595","id":"100","kmsg":null,"boot-time":null,"uptime":null,"iostat":null,"heartbeat":null,"vmstat":null,"numa-numastat":null,"numa-vmstat":null,"numa-meminfo":null,"proc-vmstat":null,"proc-stat":null,"meminfo":null,"slabinfo":null,"interrupts":null,"kconfig":"x86_64-rhel-7.6","compiler":"gcc-7"})

@@ -7,4 +7,6 @@ require_relative '../defconfig'
 
 docker_skip_rebuild 'sub-fluentd:alpine'
 
-system 'docker build -t sub-fluentd:alpine .'
+system 'docker build --no-cache -t sub-fluentd:alpine .'
+
+push_image_remote "sub-fluentd:alpine"

@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 
-[[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
+[[ $CCI_SRC ]] || CCI_SRC=/c/cbs
 [[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
 [[ $UPSTREAM_REPOS_PATH ]] || UPSTREAM_REPOS_PATH=/c/upstream-repos
 
 . $CCI_SRC/container/defconfig.sh
+
+start_pod
 docker_rm web-backend
 
 load_cci_defaults
@@ -39,8 +41,12 @@ cmd=(
 	-e LOGGING_ES_USER=$LOGGING_ES_USER
 	-e LOGGING_ES_PASSWORD=$LOGGING_ES_PASSWORD
 	-e LAB=$lab
+	-e OAUTH_CLIENT_ID=$OAUTH_CLIENT_ID
+	-e OAUTH_CLIENT_SECRET=$OAUTH_CLIENT_SECRET
+	-e OAUTH_REDIRECT_URL=$OAUTH_REDIRECT_URL
+	-e JWT_SECRET=$JWT_SECRET
 
-	-v $CCI_SRC:/c/compass-ci
+	-v $CCI_SRC:/c/cbs
 	-v $LKP_SRC:/c/lkp-tests
 	-v $LAB_PATH:$LAB_PATH
 	-v $UPSTREAM_REPOS_PATH:/c/upstream-repos

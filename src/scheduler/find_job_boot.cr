@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+require "../lib/common"
+require "../lib/queue"
+require "../lib/subqueue"
+require "./consume_job"
+
 class Sched
   def find_job_boot
     @env.set "job_stage", "boot"
@@ -30,7 +35,7 @@ class Sched
 
     raise "unknown host" unless host
 
-    @env.set "testbox", host
+    @env.set "testbox", host unless host.nil?
 
     response = get_job_boot(host, boot_type)
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
@@ -51,11 +56,39 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    if @env.get?("ws")
-      @env.socket.close
-      @env.channel.close
-    end
+    close_resources
     send_mq_msg
+  end
+
+  def close_resources
+    return unless @env.get?("ws")
+
+    begin
+      @env.socket.send({"type" => "close"}.to_json)
+    rescue e
+      @log.warn({
+        "message" => "socket send close message failed",
+        "error_message" => e.to_s
+      }.to_json)
+    end
+
+    begin
+      @env.socket.close
+    rescue e
+      @log.warn({
+        "message" => "close socket failed",
+        "error_message" => e.to_s
+      }.to_json)
+    end
+
+    begin
+      @env.channel.close
+    rescue e
+      @log.warn({
+        "message" => "close channel failed",
+        "error_message" => e.to_s
+      }.to_json)
+    end
   end
 
   def handle_new_hw(mac)
@@ -287,9 +320,17 @@ class Sched
     ec = EtcdClient.new
     jobs = [] of Etcd::Model::Kv
     queues.each do |queue|
-      job = ec.range_prefix(queue, ETCD_RANGE_SIZE)
+      job = ec.range_prefix("#{queue}vip", ETCD_RANGE_SIZE)
       revisions << job.header.not_nil!.revision
       jobs += job.kvs
+    end
+
+    if jobs.size == 0
+      queues.each do |queue|
+        job = ec.range_prefix(queue, ETCD_RANGE_SIZE)
+        revisions << job.header.not_nil!.revision
+        jobs += job.kvs
+      end
     end
 
     return jobs, revisions.min

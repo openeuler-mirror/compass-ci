@@ -5,7 +5,7 @@ FROM alpine:3.11
 
 MAINTAINER Wu Fenguang <wfg@mail.ustc.edu.cn>
 
-RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|https://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
 RUN apk add git
 COPY sbin /usr/local/sbin

@@ -9,6 +9,7 @@ require "elasticsearch-crystal/elasticsearch/api"
 require "elasticsearch-crystal/elasticsearch/api/utils"
 require "./constants"
 require "../lib/job"
+require "../lib/json_logger"
 
 # -------------------------------------------------------------------------------------------
 # set_job_content(job_content)
@@ -41,6 +42,29 @@ class Elasticsearch::Client
     @host = host.as(String)
     @port = port.to_s.as(String)
     @client = Elasticsearch::API::Client.new({:host => host, :port => port})
+    @log = JSONLogger.new
+  end
+
+  def set_content_by_id(index, id, content)
+    if @client.exists({ :index => index, :type => "_doc", :id => id })
+      return @client.update(
+        {
+          :index => index, :type => "_doc",
+          :refresh => "wait_for",
+          :id => id,
+          :body => { :doc => content },
+        }
+      )
+    else
+      return @client.create(
+        {
+          :index => index, :type => "_doc",
+          :refresh => "wait_for",
+          :id => id,
+          :body => content,
+        }
+      )
+    end
   end
 
   def set_content_by_id(index, id, content)
@@ -75,6 +99,8 @@ class Elasticsearch::Client
     else
       response = update(job.to_json_any, job.id)
     end
+
+    @log.info("set job content, account: #{job["my_account"]}")
 
     return response
   end
@@ -159,6 +185,23 @@ class Elasticsearch::Client
       search(index, real_query, ignore_error)
   end
 
+  def search_by_fields(index, query, size=10, source=Array(String).new, ignore_error = true)
+      must = Array(Hash(String, Hash(String, Hash(String, String)))).new
+      query.each do |field, value|
+        must << {"term" => {field.to_s => {"value" => value.to_s}}}
+      end
+      real_query = {
+        "_source" => source,
+        "size" => size,
+        "query" => {
+          "bool" => {
+            "must" => must
+          }
+        }
+      }
+      search(index, real_query, ignore_error)
+  end
+
   def update_account(account_content : JSON::Any, my_email : String)
     return @client.update(
       {
@@ -209,6 +252,17 @@ class Elasticsearch::Client
     )
   end
 
+  def create_subqueue(content, id)
+    return @client.create(
+      {
+        :index => "subqueue",
+        :type => "_doc",
+        :id => id,
+        :body => content
+      }
+    )
+  end
+
   private def create(job_content : JSON::Any, job_id : String)
     return @client.create(
       {
@@ -227,6 +281,16 @@ class Elasticsearch::Client
         :refresh => "wait_for",
         :id => job_id,
         :body => {:doc => job_content},
+      }
+    )
+  end
+
+  def delete(index, id)
+    return @client.delete(
+      {
+        :index => index,
+        :type => "_doc",
+        :id => id
       }
     )
   end

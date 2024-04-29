@@ -4,7 +4,19 @@
 
 . ../defconfig.sh
 
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-cci
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-git
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-initrd
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-os
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-os-repo
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-repositories
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-result
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-pub
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-rpm
+cp root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-rpm-testing
+
 docker_skip_rebuild "srv-http"
 
-docker build -t srv-http .
+docker build --no-cache -t srv-http .
 
+push_image_remote "srv-http"

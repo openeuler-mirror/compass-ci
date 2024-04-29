@@ -22,7 +22,7 @@ sed -i "s#const BASEURL = 'https://api.compass-ci.openeuler.org/web_backend';#ex
 sed -i "s#client_id: \"CLIENT_ID_HERE\"#client_id: \"$OAUTH_CLIENT_ID\"#g" ./crystal-ci/src/views/user/login.vue
 sed -i "s#redirect_uri: \"REDIRECT_URI_HERE\"#redirect_uri: \"$OAUTH_REDIRECT_URL\"#g" ./crystal-ci/src/views/user/login.vue
 
-docker build -t compass-ci-web .
+docker build --no-cache -t compass-ci-web .
 
 rm -rf ./crystal-ci
 

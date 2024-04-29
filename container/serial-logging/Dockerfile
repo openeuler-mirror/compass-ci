@@ -1,10 +1,9 @@
 FROM alpine:scheduler-dev
 
-RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+COPY repositories /etc/apk/
 
-RUN apk update
-
-RUN apk add --no-cache 'ruby-dev' \
+RUN apk add --upgrade busybox && \
+    apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
 
 RUN umask 002 && \
@@ -20,3 +19,5 @@ RUN mkdir -p $SERIAL_RUNTIME_DIR && \
 WORKDIR $SERIAL_RUNTIME_DIR
 
 COPY --chown=1090:1090 serial-logging .
+
+RUN apk del gdb rpcgen

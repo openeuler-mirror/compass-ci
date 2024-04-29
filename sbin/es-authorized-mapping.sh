@@ -5,16 +5,17 @@
 . $CCI_SRC/container/defconfig.sh
 
 load_service_authentication
+load_cci_defaults
 
 # check whether accounts index has created
-status_code=$(curl -sSIL -u "${ES_USER}:${ES_PASSWORD}" -w "%{http_code}\\n" -o /dev/null http://localhost:9200/authorized)
+status_code=$(curl -sSIL -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -w "%{http_code}\\n" -o /dev/null http://${ES_HOST}:9200/authorized)
 
 if [ "$status_code" -eq 200 ]
 then
 	echo "authorized index has been created, exit."
 else
 	echo "begin create index."
-	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/authorized' -u "${ES_USER}:${ES_PASSWORD}" -d '{
+	curl -sSH 'Content-Type: Application/json' -XPUT "http://${ES_HOST}:9200/authorized" -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -d '{
 		"mappings": {
 			"dynamic": false,
 			"properties": {

@@ -21,6 +21,10 @@ BASE_IMAGE_DICT = {
 
 BASE_IMAGE = BASE_IMAGE_DICT[%x(arch).chomp]
 
+ARCH = %x(arch).chomp
+
 available_memory = get_available_memory
 
-system "docker build -t logging-es:7.11.1 --progress=plain --build-arg BASE_IMAGE=#{BASE_IMAGE} --build-arg MEMORY=#{available_memory} --build-arg USER=#{defaults['LOGGING_ES_USER']} --build-arg PASSWORD=#{defaults['LOGGING_ES_PASSWORD']} ."
+system "docker build --no-cache -t logging-es:7.11.1 --progress=plain --build-arg BASE_IMAGE=#{BASE_IMAGE} --build-arg MEMORY=#{available_memory} --build-arg USER=#{defaults['LOGGING_ES_USER']} --build-arg PASSWORD=#{defaults['LOGGING_ES_PASSWORD']} --build-arg ARCH=#{ARCH} ."
+
+push_image_remote "logging-es:7.11.1"

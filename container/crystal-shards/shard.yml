@@ -8,7 +8,7 @@ targets:
   scheduler:
     main: src/scheduler.cr
 
-crystal: 0.35.0
+crystal: 1.8.2
 
 license: Mulan PSL v2
 
@@ -16,7 +16,7 @@ dependencies:
   kemal:
     github: kemalcr/kemal
   redis:
-    github: stefanwille/crystal-redis
+    github: jgaskins/redis
   elasticsearch-crystal:
     github: paktek123/elasticsearch-crystal
   any_merge:

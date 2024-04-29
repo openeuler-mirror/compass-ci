@@ -38,6 +38,11 @@ class JSONLogger < Logger
   end
 end
 
+def log_info(msg)
+  log = JSONLogger.new
+  log.info(msg)
+end
+
 def log_warn(msg)
   log = JSONLogger.new
   log.warn(msg)

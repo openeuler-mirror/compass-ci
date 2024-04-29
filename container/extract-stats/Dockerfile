@@ -4,7 +4,8 @@
 FROM alpine:scheduler-dev
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories && \
-    apk update && \
+    apk update --no-cache && \
+    apk upgrade && \
     apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'grep'
 
@@ -14,9 +15,14 @@ RUN umask 002 && \
 
 ENV RUNTIME_DIR /c/cci/extract
 
+RUN adduser -u 1090 -D lkp
+
 RUN mkdir -p $RUNTIME_DIR && \
     chown -R 1090:1090 /c
 
+COPY cbs /c/cbs
+COPY lkp-tests /c/lkp-tests
+RUN chown -R 1090:1090 /c/cbs /c/lkp-tests && chown -R 750 /c/cbs /c/lkp-tests
 WORKDIR $RUNTIME_DIR
 
 COPY --chown=1090:1090 extract-stats .

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+require "../lib/job_quota"
 
 class Sched
 
@@ -7,6 +8,8 @@ class Sched
   WORKER_ID = ENV["WORKER_ID"][0..1]  # 2-digit, zero padded
 
   def submit_job
+    jq = JobQuota.new
+    jq.total_jobs_quota
     response = [] of Hash(String, String)
     body = @env.request.body.not_nil!.gets_to_end
 

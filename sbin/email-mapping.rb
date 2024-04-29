@@ -5,9 +5,11 @@
 
 require 'yaml'
 require 'optparse'
+require '../container/defconfig'
 
-REDIS_HOST = 'localhost'
-REDIS_PORT = '6379'
+config = cci_defaults
+REDIS_HOST ||= ENV['REDIS_HOST'] ||= config['REDIS_HOST'] || 'localhost'
+REDIS_PORT ||= ENV['REDIS_PORT'] ||= config['REDIS_PORT'] || '6379'
 
 # require_relative "#{ENV['CCI_SRC']}/lib/redis_client"
 require '../lib/redis_client'

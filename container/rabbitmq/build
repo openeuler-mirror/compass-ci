@@ -7,3 +7,5 @@
 docker_skip_rebuild "rabbitmq:3-management"
 
 docker pull rabbitmq:3-management
+
+push_image_remote "rabbitmq:3-management"

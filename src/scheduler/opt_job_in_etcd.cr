@@ -40,4 +40,13 @@ class Sched
     f_queue = "sched/#{job.queue}/in_process/#{job.subqueue}/#{job.id}"
     @etcd.move(f_queue, t_queue, value)
   end
+
+  def move_process2extract(job : Job)
+    f_queue = "/queues/sched/in_process/#{job["host_machine"]}/#{job.id}"
+    t_queue = "extract_stats/#{job.id}"
+    value = { "id" => "#{job.id}" }
+    ret = @etcd.move(f_queue, t_queue, value.to_json)
+    @log.info("move in_process to extract in_process: #{f_queue}, extract: #{t_queue}, ret: #{ret}"
+    return ret if ret
+  end
 end

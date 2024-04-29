@@ -5,14 +5,22 @@
 
 require 'optparse'
 require 'securerandom'
+require 'set'
 
 require_relative 'lib/common'
+require_relative 'lib/jwt'
 require_relative '../lib/mq_client'
+require_relative '../container/defconfig'
 
-opt = {}
+config = cci_defaults
+
+opt = {
+  'compute' => false,
+  'is_remote' => 'false'
+}
 
 options = OptionParser.new do |opts|
-  opts.banner = 'Usage: multi-docker -n -c -q'
+  opts.banner = 'Usage: multi-docker -n -q -p -c -r'
 
   opts.separator ''
   opts.on('-n HOSTNAME_PREFIX', '--name HOSTNAME_PREFIX', 'format: $tbox_group.$HOSTNAME') do |name|
@@ -31,6 +39,14 @@ options = OptionParser.new do |opts|
     opt['index'] = index
   end
 
+  opts.on('-p', '--compute', 'set use compute max dc numbers by cpu and will ignore -c number') do
+    opt['compute'] = true
+  end
+
+  opts.on('-r', '--remote', 'if testbox is a remote ond') do
+    opt['is_remote'] = 'true'
+  end
+
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     exit
@@ -45,9 +61,10 @@ end
 options.parse!(ARGV)
 
 HOSTNAME = opt['hostname_prefix'] || "dc-1g.#{ENV['HOSTNAME']}"
-NR_DC = opt['nr_container'] || 1
 QUEUES = opt['queues'] || "dc-1g.#{ENV['HOSTNAME']}"
 INDEX = opt['index']
+COMPUTE_FLAG = opt['compute']
+IS_REMOTE = opt['is_remote']
 
 UUID = SecureRandom.uuid
 SUITE_FILE = "/tmp/#{ENV['HOSTNAME']}/suite"
@@ -55,32 +72,41 @@ SAFE_STOP_FILE = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
 RESTART_FILE = "/tmp/#{ENV['HOSTNAME']}/restart/#{UUID}"
 RESTART_LOCK_FILE = "/tmp/#{ENV['HOSTNAME']}/restart/lock"
 
-SCHED_HOST = ENV['LKP_SERVER'] || ENV['SCHED_HOST'] || '172.17.0.1'
-SCHED_PORT = ENV['LKP_CGI_PORT'] || ENV['SCHED_PORT'] || '3000'
-MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
-MQ_PORT = ENV['MQ_PORT'] || 5672
+names = Set.new %w[
+  SCHED_HOST
+  SCHED_PORT
+  MQ_HOST
+  MQ_PORT
+]
+defaults = relevant_defaults(names)
 
+SCHED_HOST = defaults['SCHED_HOST'] || ENV['LKP_SERVER'] || ENV['SCHED_HOST'] || config['SCHED_HOST'] || '172.17.0.1'
+SCHED_PORT = defaults['SCHED_PORT'] || ENV['LKP_CGI_PORT'] || ENV['SCHED_PORT'] || config['SCHED_PORT'] || '3000'
+MQ_HOST = defaults['MQ_HOST'] || ENV['MQ_HOST'] || ENV['LKP_SERVER'] || config['MQ_HOST'] || 'localhost'
+MQ_PORT = defaults['MQ_PORT'] || ENV['MQ_PORT'] || config['MQ_PORT'] || 5672
+
+if COMPUTE_FLAG
+  puts 'use compute max dc numbers'
+  NR_DC = compute_vm_max_dc
+else
+  NR_DC = opt['nr_container'] || 1
+end
+
+puts NR_DC
 def start
-  reboot_thr = Thread.new do
-    loop_reboot_testbox(HOSTNAME, 'dc', MQ_HOST, MQ_PORT)
+  unless IS_REMOTE == 'true'
+    reboot_thr = Thread.new do
+      loop_reboot_testbox(HOSTNAME, 'dc', MQ_HOST, MQ_PORT)
+    end
   end
 
   threads = {}
-  NR_DC.to_i.times do |i|
-    thr = Thread.new do
-      loop_main("#{HOSTNAME}-#{i}", thr)
-    end
-    threads[i] = thr
-  end
+  loop_main
 
   manage_thr = Thread.new do
     manage_multi_qemu_docker(threads.merge({ 'manage' => manage_thr }), MQ_HOST, MQ_PORT)
   end
-
-  threads.each do |_, thr|
-    thr.join
-  end
-
+  
   manage_thr.exit
   reboot_thr.exit
   puts 'all threads exit'
@@ -89,25 +115,15 @@ def start
   puts "#{UUID} exit"
 end
 
-def loop_main(hostname, thr)
-  loop do
-    begin
-      thr.exit if File.exist?(SAFE_STOP_FILE)
-      system(
-        { 'hostname' => hostname, 'queues' => QUEUES, 'uuid' => UUID, 'index' => INDEX },
+def loop_main
+    system(
+        { 'hostname' => HOSTNAME, 'queues' => QUEUES, 'uuid' => UUID, 'index' => INDEX, 'maxdc' => NR_DC, 'is_remote' => IS_REMOTE },
         ENV['CCI_SRC'] + '/providers/docker.rb'
       )
-    rescue StandardError => e
-      puts e.backtrace
-      # if an exception occurs, request the next time after 30 seconds
-      sleep 25
-    ensure
-      sleep 5
-    end
-  end
 end
 
 if $PROGRAM_NAME == __FILE__
   save_running_suite
+  init_specmeminfo(NR_DC)
   start
 end

@@ -6,4 +6,6 @@
 
 docker_skip_rebuild "scheduler-nginx"
 
-docker build -t scheduler-nginx .
+docker build --no-cache -t scheduler-nginx .
+
+push_image_remote "scheduler-nginx"

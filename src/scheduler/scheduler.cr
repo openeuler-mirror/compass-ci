@@ -62,6 +62,7 @@ module Scheduler
       "message" => env.socket.closed?
       }.to_json)
     end
+    GC.collect
   rescue e
     env.log.warn({
       "message" => e.to_s,
@@ -112,6 +113,46 @@ module Scheduler
     end
   end
 
+
+  # curl -X PUT "http://localhost:3000/register-host2redis?type=dc&arch=aarch64&...."
+  put "/register-host2redis" do |env|
+    env.sched.register_host2redis
+  end
+
+  get "/heart-beat" do |env|
+    status = env.sched.heart_beat
+    {"status_code" => status}.to_json
+  rescue e
+    env.log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
+  end
+
+
+  ws "/ws/boot.:boot_type" do |socket, env|
+    env.set "ws", true
+    env.set "ws_state", "normal"
+    env.create_socket(socket)
+    sched = env.sched
+
+    spawn sched.get_job_boot_content
+
+    socket.on_message do |msg|
+      msg = JSON.parse(msg.to_s).as_h?
+      (spawn env.channel.send(msg)) if msg
+    end
+
+    socket.on_close do
+      env.set "ws_state", "close"
+      sched.etcd_close
+      env.log.info({
+        "from" => env.request.remote_address.to_s,
+        "message" => "socket on closed"
+      }.to_json)
+    end
+  end
+
   # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
   get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
     env.sched.find_next_job_boot
@@ -131,6 +172,14 @@ module Scheduler
 
   post "/scheduler/update_subqueues" do |env|
     env.sched.update_subqueues.to_json
+  end
+
+  post "/scheduler/update_subqueues" do |env|
+    env.sched.update_subqueues.to_json
+  end
+
+  post "/scheduler/delete_subqueue" do |env|
+    env.sched.delete_subqueue.to_json
   end
 
   # for client to report event
@@ -320,7 +369,7 @@ module Scheduler
       spawn env.watch_channel.send("close") if env.get?("watch_state") == "watching"
       env.log.info({
         "from" => env.request.remote_address.to_s,
-        "message" => "access_record"
+        "message" => "socket on closed"
       }.to_json)
     end
   end

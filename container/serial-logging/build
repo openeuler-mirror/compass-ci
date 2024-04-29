@@ -12,4 +12,6 @@ CCI_SRC = ENV['CCI_SRC']
 system("bash #{CCI_SRC}/container/compile .") || exit
 system 'docker build -t serial-logging .'
 
+push_image_remote "serial-logging"
+
 system 'rm serial-logging'

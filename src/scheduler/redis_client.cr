@@ -3,12 +3,13 @@
 
 require "json"
 require "redis"
+require "redis/cluster"
 
 require "./constants"
 require "../lib/job"
 require "singleton"
 
-class Redis::Client
+class RedisClient
   class_property :client
   HOST = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
   PORT = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
@@ -27,8 +28,21 @@ class Redis::Client
     @@size = pool_size
   end
 
+  def all_keys
+    @client.keys
+  end
+
   def keys(pattern)
     @client.keys(pattern)
+  end
+
+  def scan_each(pattern)
+    keys = [] of String
+    @client.scan_each(match: pattern) do |key|
+       keys << key
+    end
+
+    keys
   end
 
   def hash_set(key : String, field, value)
@@ -36,11 +50,23 @@ class Redis::Client
   end
 
   def hash_get(key : String, field)
-    @client.hget(key, field.to_s)
+    "#{@client.hget(key, field.to_s)}"
   end
 
   def hash_del(key : String, field)
-    @client.hdel(key, field.to_s)
+    return nil
+  end
+
+  def set(key : String, value)
+    @client.set(key, value.to_s)
+  end
+
+  def get(key : String)
+    @client.get(key)
+  end
+
+  def expire(key : String, duration)
+    @client.expire(key, duration)
   end
 
   def get_job(job_id : String)

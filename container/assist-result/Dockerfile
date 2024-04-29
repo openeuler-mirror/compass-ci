@@ -6,7 +6,7 @@ FROM alpine:3.11
 MAINTAINER Cao Xueliang <caoxl78320@163.com>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories && \
-    apk update && \
+    apk update --no-cache && \
     apk add --no-cache 'ruby-dev' 'ruby-etc' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'bash' 'grep' 'coreutils' 'curl' 'util-linux'
 

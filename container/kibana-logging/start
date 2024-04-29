@@ -6,6 +6,8 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+start_pod
+
 names = Set.new %w[
   LOGGING_ES_HOST
   LOGGING_ES_PORT
@@ -25,7 +27,7 @@ cmd = %W[
   -d
   -e ELASTICSEARCH_HOSTS=http://#{LOGGING_ES_HOST}:#{LOGGING_ES_PORT}
   -p 20000:5601
-  kibana:7.11.1
+  kibana-logging:7.11.1
 ]
 
 system(*cmd)

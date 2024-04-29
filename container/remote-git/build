@@ -6,4 +6,6 @@
 
 docker_skip_rebuild "debian:remote-git"
 
-docker build -t debian:remote-git .
+docker build --no-cache -t debian:remote-git .
+
+push_image_remote "debian:remote-git"

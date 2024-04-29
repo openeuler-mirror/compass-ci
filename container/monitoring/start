@@ -6,6 +6,8 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+start_pod
+
 names = Set.new %w[
   MONITOR_PORT
   MQ_PORT

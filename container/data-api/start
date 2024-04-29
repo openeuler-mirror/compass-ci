@@ -7,6 +7,8 @@
 [[ $UPSTREAM_REPOS_PATH ]] || UPSTREAM_REPOS_PATH=/c/upstream-repos
 
 . $CCI_SRC/container/defconfig.sh
+
+start_pod
 docker_rm data-api
 
 load_cci_defaults

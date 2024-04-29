@@ -1,14 +1,14 @@
 #! /bin/bash
 
+[ $CCI_SRC ] || CCI_SRC=/c/cbs
+
 chmod_dir=(
 		/srv/result
 		/srv/es/logging-es
 		/srv/es
 		/srv/cache/netdata_cache
 		/srv/cache/netdata_lib
-		/srv/cci/serial/logs
 		/srv/cci/libvirt-xml
-		/srv/cci/serial/fluentd-pos
 		/srv/cci/Maildir
 		/srv/rabbitmq
 		/c/git-repos
@@ -24,11 +24,74 @@ chmod_dir=(
 		/etc/compass-ci/scheduler
 		/etc/compass-ci/register
 		/etc/compass-ci/dnsmasq
+		/etc/compass-ci/dnsmasq/lease_dir
+		/srv/repositories
+		/srv/log
+		/srv/dsl
+		/srv/kernel
+		/srv/tmp/rpm
+		/sr/rpm
+		/srv/cci/build-config
+		/srv/cci/profile/data
+		/srv/cci/scheduler/alpine
+		/srv/kunpeng
+		/srv/git/archlinux
+        /srv/git/customization
+		/srv/initrd/qemu-image
+		/srv/initrd/dockerimage
+		/srv/initrd/osimage
+		/srv/initrd/rpmbuild-pkg
+		/srv/pub
+		/srv/os-repo
+		/srv/rpm/pub
+		/srv/rpm/testing
+		/srv/repositories/new-jobs
+		/srv/repositories/failed-jobs
+		/srv/repositories/finished-jobs
+		/srv/repositories/image-manager
+		/srv/es/es-0
+		/srv/es/es-1
+		/srv/es/es-2
+		/srv/etcd/etcd-0
+		/srv/etcd/etcd-1
+		/srv/etcd/etcd-2
+		/srv/redis/alpine/server01
+		/var/cache/nginx
+		/var/run
+		/var/cache/samba
+		/var/log/samba
+		/var/lib/samba
+		/var/run/samba
+		/home/lkp
+		/etc/nginx
+		/run/redis
+		/usr/share/kibana/data
+		/srv/tmp/mysql-wg
 )
 
 chmod 775 "${chmod_dir[@]}"
 
+chmod_dir_log=(
+		/srv/log/dag
+		/srv/log/image_manager
+		/srv/log/submit_jobs
+		/srv/log/squid
+		/srv/log/source-manager
+		/srv/log/new-repo
+		/srv/log/result-webdav
+		/srv/log/timer
+)
+
+chmod 750 "${chmod_dir_log[@]}"
+
 chown_dir=(
+		/srv/tmp/es
+		/usr/share/es/logs
+		/usr/share/es/tmp
+		/srv/tmp/logging-es
+		/usr/share/logging-es/tmp
+		/srv/es/logging-es
+		/usr/share/logging-es/logs
 		/srv/result
 		/srv/initrd
 		/srv/initrd/pkg
@@ -37,21 +100,133 @@ chown_dir=(
 		/srv/cache/netdata_cache
 		/srv/cache/netdata_lib
 		/srv/cci/serial/fluentd-pos
+		/srv/cci/serial/logs
 		/srv/cci/libvirt-xml
 		/srv/rabbitmq
 		/srv/tmp/public
+		/srv/tmp/result-webdav
+		/srv/tmp/sub-fluentd
 		/srv/upload-files
+		/srv/repositories
+		/srv/repositories/new-jobs
+		/srv/repositories/failed-jobs
+		/srv/repositories/finished-jobs
+		/srv/repositories/image-manager
+		/srv/es/es-0
+		/srv/es/es-1
+		/srv/es/es-2
+		/srv/log
+		/var/log/rabbitmq
+		/var/cache/samba
+		/var/log/samba
+		/var/lib/samba
+		/var/run/samba
+		/home/lkp
+		/var/run/initrd-http
+		/var/run/api-gateway
+		/var/cache/nginx/api-gateway
+		/var/cache/nginx/initrd-http
+		/var/run/squid
+		/srv/log/squid
+		/srv/cache/squid
+		/srv/tmp/dag
+		/srv/tmp/image_manager
+		/srv/tmp/submit-jobs
+		/srv/log/dag
+		/srv/log/image_manager
+		/srv/log/submit_jobs
+		/var/cache/nginx/os-http
+		/var/run/os-http
+		/var/cache/nginx/scheduler-nginx
+		/var/run/scheduler-nginx
+		/var/log
+		/srv/tmp/image-manager
+		/srv/dsl
+		/home/lkp/submit-jobs
+		/srv/cci/image_manager/file
+		/srv/cci/cfg_openEuler
+		/etc/compass-ci/defaults
+		/var/cache/result-cifs/samba
+		/var/log/result-cifs/samba
+		/var/lib/result-cifs/samba
+		/var/run/result-cifs/samba
+		/srv/tmp/result-cifs
+		/srv/tmp/publisher
+		/srv/log/source-manager
+		/srv/log/new-repo
+		/srv/log/result-webdav
+		/srv/log/timer
+		
+
 )
 
+chown_nginx_dir=(
+		/var/cache/nginx
+		/var/cache/nginx/srv-http-cci
+		/var/cache/nginx/srv-http-git
+		/var/cache/nginx/srv-http-initrd
+		/var/cache/nginx/srv-http-os
+		/var/cache/nginx/srv-http-os-repo
+		/var/cache/nginx/srv-http-pub
+		/var/cache/nginx/srv-http-repositories
+		/var/cache/nginx/srv-http-result
+		/var/cache/nginx/srv-http-rpm
+		/var/cache/nginx/srv-http-rpm-testing
+		/var/cache/nginx/cbs-web
+		/etc/nginx
+		/etc/nginx/srv-http-cci
+		/etc/nginx/srv-http-git
+		/etc/nginx/srv-http-initrd
+		/etc/nginx/srv-http-os
+		/etc/nginx/srv-http-os-repo
+		/etc/nginx/srv-http-pub
+		/etc/nginx/srv-http-repositories
+		/etc/nginx/srv-http-result
+		/etc/nginx/srv-http-rpm
+		/etc/nginx/srv-http-rpm-testing
+		/var/run/cbs-web
+		/var/run/srv-http-cci
+		/var/run/srv-http-git
+		/var/run/srv-http-initrd
+		/var/run/srv-http-os
+		/var/run/srv-http-os-repo
+		/var/run/srv-http-pub
+		/var/run/srv-http-repositories
+		/var/run/srv-http-result
+		/var/run/srv-http-rpm
+		/var/run/srv-http-rpm-testing
+)
+
+
 chown lkp:lkp "${chown_dir[@]}"
+chown nginx:nginx "${chown_nginx_dir[@]}"
 
 chown lkp:committer /srv/git
+chown lkp:committer /srv/git/customization
 chown lkp:committer /c/git-repos
 chown mailer:team /srv/cci/Maildir
+chown -R 999:999 /srv/tmp/mysql-wg
 
 chgrp team /srv/cci/serial/logs
 chgrp team /srv/dc
 
 chmod g+ws /srv/dc
 
-find /tftpboot -type d | xargs chmod 775
+find /tftpboot -type d | xargs chmod 700
+
+chmod -R 600 /etc/kubernetes/pki
+chown root:root -R /opt/kubeoperator
+chown lkp:lkp -R /etc/compass-ci
+
+chmod -R g+s /etc/{.ccache,.gradle,.npm,.sbt,.gem,.java,.m2}
+chmod -R 777 /etc/{.ccache,.gradle,.npm,.sbt,.gem,.java,.m2}
+
+cp "$CCI_SRC"/container/result-webdav/rpmmacros /home/lkp/.rpmmacros
+cp "$CCI_SRC"/container/result-webdav/gpg-agent.conf /home/lkp/.gnupg/gpg-agent.conf
+chown -R lkp:lkp /home/lkp/.rpmmacros /home/lkp/.gnupg
+chmod -R 700 /home/lkp/.rpmmacros /home/lkp/.gnupg
+
+for dir in cci git initrd os os-repo repositories result pub rpm rpm-testing
+do
+	cp "$CCI_SRC"/container/srv-http/root/etc/nginx/conf.d/default.conf /etc/nginx/srv-http-"$dir"
+done

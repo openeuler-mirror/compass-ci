@@ -29,6 +29,21 @@ post '/data_api/es/:index/_search' do
   es_search(params['index'], request.body.read)
 end
 
+
+# POST
+# eg1:
+#   curl -X POST localhost:10005/data-api/search -H 'Content-Type: application/json' -d '{
+#     "index": jobs,
+#     "query": {"size":10, "sort": [{"start_time": {"order": "desc"}}]}
+#   }'
+# Response:
+#   - es_result : JSON
+post '/data-api/search' do
+  request.body.rewind # in case someone already read it
+  body = JSON.parse(request.body.read)
+  es_search(body['index'], body.to_json)
+end
+
 # POST
 # eg1:
 #   curl -X POST localhost:10005/data_api/_opendistro/_sql -H 'Content-Type: application/json' -d '{

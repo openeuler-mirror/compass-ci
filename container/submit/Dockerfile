@@ -11,7 +11,8 @@ ENV DEBIAN_FRONTEND noninteractive
 # you can delete the following step if you do not want to use it.
 COPY conf/sources.list /etc/apt/
 
-RUN apt-get update && \
+RUN apt-get clean && \
+    apt-get update && \
     apt-get install -y git ruby ruby-dev make libssl-dev gcc g++ sudo uuid-runtime
 
 # it may take a long time, even break up if you use default source address for the gem.

@@ -16,7 +16,7 @@ RUN npm i --legacy-peer-deps --registry=https://mirrors.huaweicloud.com/reposito
 
 FROM nginx:1.20.0-alpine
 
-ADD root /
+COPY root /
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 

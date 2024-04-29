@@ -6,4 +6,6 @@
 
 docker_skip_rebuild "apline311:git-daemon"
 
-docker build -t apline311:git-daemon .
+docker build --no-cache -t apline311:git-daemon .
+
+push_image_remote "apline311:git-daemon"

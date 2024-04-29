@@ -5,7 +5,10 @@
 
 require 'bunny'
 
-connection = Bunny.new('amqp://172.17.0.1:5672')
+host = ENV["MQ_HOST"] || '172.17.0.1'
+port = ENV["MQ_PORT"] || 5672
+
+connection = Bunny.new("amqp://#{host}:#{port}")
 connection.start
 channel = connection.create_channel
 

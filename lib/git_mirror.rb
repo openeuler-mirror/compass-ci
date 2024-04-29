@@ -13,6 +13,7 @@ require 'elasticsearch'
 require_relative 'constants.rb'
 require_relative 'json_logger.rb'
 require 'erb'
+require 'timeout'
 
 def run_get_output(cmd)
   out = %x(#{cmd})
@@ -108,8 +109,7 @@ class GitMirror
 
   def mirror_sync
     fork_info = @queue.pop
-    mirror_dir = "/srv/git/#{fork_info['belong']}/#{fork_info['git_repo']}"
-    mirror_dir = "#{mirror_dir}.git" unless fork_info['is_submodule']
+    mirror_dir = "#{fork_info['mirror_dir']}"
     possible_new_refs = git_repo_download(fork_info['url'], mirror_dir)
     last_commit_time = run_get_output("git -C #{mirror_dir} log --pretty=format:'%ct' -1").to_i
     feedback(fork_info['git_repo'], possible_new_refs, last_commit_time)
@@ -125,8 +125,11 @@ end
 # main thread
 class MirrorMain
   REPO_DIR = ENV['REPO_SRC']
+  COMMON_UPSTREAMS = "common"
+  MY_UPSTREAMS = "my_upstreams"
 
   def initialize
+    @upstream_config = '/etc/compass-ci/defaults/upstream-config'
     @feedback_queue = Queue.new
     @fork_stat = {}
     @priority_queue = PriorityQueue.new
@@ -141,15 +144,113 @@ class MirrorMain
     connection_init
     handle_webhook
     handle_pr_webhook
+    handle_cbs_release_management_webhook
+    handle_ebs_request_queue
   end
 
   def connection_init
-    connection = Bunny.new('amqp://172.17.0.1:5672')
+    host = ENV["MQ_HOST"] || '172.17.0.1'
+    port = ENV["MQ_PORT"] || 5672
+
+    connection = Bunny.new("amqp://#{host}:#{port}")
     connection.start
+
+    @ebs_request_queue_name = 'ebs_request_queue'
+    @ebs_response_queue_name = 'ebs_response_queue'
+    ebs_channel = connection.create_channel
+    @ebs_exchange = ebs_channel.direct('ebs', durable: true)
+    @ebs_request_queue = ebs_channel.queue(@ebs_request_queue_name, :durable => true)
+    @ebs_request_queue.bind(@ebs_exchange, routing_key: @ebs_request_queue_name)
+
+    ebs_rm_channel = connection.create_channel
+    @cbs_release_management_webhook_queue = ebs_rm_channel.queue('cbs-release-management-webhook')
+
     channel = connection.create_channel
     @message_queue = channel.queue('new_refs')
     @webhook_queue = channel.queue('web_hook')
-    @webhook_pr_queue = connection.create_channel.queue('openeuler-pr-webhook')
+    @webhook_pr_queue = channel.queue('openeuler-pr-webhook')
+    @cbs_release_management_message_queue = channel.queue('cbs_release_management_local_submit')
+  end
+
+  def add_url(data)
+    url = data['url']
+    snapshot_id = data['snapshot_id']
+    url_list = url.split('//')
+    domain, *git_path, git_name = url_list[-1].chomp('/').split('/')
+    repo_name = git_name.split('.')[0]
+    repo_path = "#{domain}/#{git_path.join('/')}"
+    abs_repo_path = "#{REPO_DIR}/#{MY_UPSTREAMS}/#{repo_path}"
+
+    FileUtils.mkdir_p(abs_repo_path, mode: 0o775)
+    File.open("#{abs_repo_path}/#{repo_name}", 'w') do |f|
+      f.write({'url' => [data['url']] }.to_yaml)
+    end
+
+    %x(git -C #{REPO_DIR}/#{MY_UPSTREAMS} add #{repo_path}/#{repo_name})
+    %x(git -C #{REPO_DIR}/#{MY_UPSTREAMS} commit -m "add repo #{repo_path}/#{repo_name}")
+    %x(git -C #{REPO_DIR}/#{MY_UPSTREAMS} push)
+
+    load_repo_file("#{abs_repo_path}/#{repo_name}", MY_UPSTREAMS, clone=true)
+    @ebs_exchange.publish({'url': url, 'action': 'add-url', 'snapshot_id': snapshot_id}.to_json,
+                            routing_key: @ebs_response_queue_name)
+    do_push("#{repo_path}/#{repo_name}")
+  end
+
+  def add_urls(data)
+    data['location'] = "#{COMMON_UPSTREAMS}/#{data['location']}"
+    url = data['url']
+    snapshot_id = data['snapshot_id']
+    git_repo = data['git_repo']
+
+    c_git_repos = "#{REPO_DIR}/#{data['location']}"
+    if not File.directory?(c_git_repos)
+      %x(git clone #{url} #{c_git_repos} 2>&1)
+    else
+      @git_mirror.git_fetch(c_git_repos)
+      %x(git -C #{c_git_repos} reset --hard origin/master)
+    end
+
+    clone_repodir(c_git_repos, data['location'])
+    @ebs_exchange.publish({'url': url, 'action': 'add-urls', 'snapshot_id': snapshot_id}.to_json,
+                            routing_key: @ebs_response_queue_name)
+    save_urls2config(data)
+  end
+
+  def clone_repodir(repodir, belong)
+    file_list = %x(git -C #{repodir} ls-files | grep -v 'DEFAULTS').lines
+    t_list = []
+    10.times do
+      t_list << Thread.new do
+        while file_list.length > 0
+          repo = file_list.shift.chomp
+          repo_path = "#{repodir}/#{repo}"
+          load_repo_file(repo_path, belong, clone=true)
+        end
+      end
+    end
+    t_list.each do |t|
+      t.join
+    end
+  end
+
+  def save_urls2config(data)
+    File.open(@upstream_config) do |flock|
+      loop do
+        Timeout::timeout(0.001) { flock.flock(File::LOCK_EX) }
+        break
+      rescue
+        sleep(0.1)
+      end
+      uc = YAML.safe_load(File.open(@upstream_config)).to_hash
+      for item in uc['upstreams']
+          if item['url'] == data['url'] and item['location'] == data['location']
+            return
+          end
+      end
+
+      uc['upstreams'] << {'url' => data['url'], 'location' => data['location'], 'git_repo' => data['git_repo']}
+      File.open(@upstream_config, 'w+') { |f| f.write(uc.to_yaml) }
+    end
   end
 
   def fork_stat_init(git_repo)
@@ -191,6 +292,7 @@ class MirrorMain
 
   def load_fork_info
     puts 'start load repo files !'
+    return if @upstreams['upstreams'].nil?
     @upstreams['upstreams'].each do |repo|
       traverse_repodir("#{REPO_DIR}/#{repo['location']}", repo['location'])
       puts "load #{repo['location']} repo files success !"
@@ -256,18 +358,18 @@ class MirrorMain
     loop do
       push_git_queue
       handle_feedback
-      sleep(0.1)
+      sleep(5)
     end
   end
 end
 
 # main thread
 class MirrorMain
-  def load_repo_file(repodir, belong)
+  def load_repo_file(repodir, belong, clone=false)
     return unless ascii_text?(repodir)
 
     git_repo = repodir.delete_prefix("#{REPO_DIR}/#{belong}/")
-    return wrong_repo_warn(git_repo) unless git_repo =~ %r{^([a-z0-9]([a-z0-9\-_]*[a-z0-9])*(/\S+){1,2})$}
+    return wrong_repo_warn(git_repo) unless git_repo =~ %r{^([a-z0-9]([a-z0-9\-_\.]*[a-z0-9])*(/\S+){1,10})$}
 
     git_info = YAML.safe_load(File.open(repodir))
     return if git_info.nil? || git_info['url'].nil? || Array(git_info['url'])[0].nil?
@@ -277,8 +379,18 @@ class MirrorMain
       git_info = YAML.safe_load(template.result(binding))
     end
 
+    url = git_info['url'][0]
+    mirror_dir = git_repo
+    if belong.start_with?(COMMON_UPSTREAMS) or belong == MY_UPSTREAMS
+      mirror_dir = "/srv/git/#{COMMON_UPSTREAMS}/#{url.split('://')[-1]}"
+    end
+
+    url = "https://gh-proxy.test.osinfra.cn/#{url}" if url.include?("github.com")
+    @git_mirror.git_clone(url, mirror_dir) if clone
+
     git_info['git_repo'] = git_repo
     git_info['belong'] = belong
+    git_info['mirror_dir'] = mirror_dir
     git_info = merge_defaults(git_repo, git_info, belong)
     @git_info[git_repo] = git_info
 
@@ -433,6 +545,7 @@ class MirrorMain
   end
 
   def repo_load_fail?(git_repo)
+    return false if @upstreams['upstreams'].nil?
     @upstreams['upstreams'].each do |repo|
       file_path = "#{REPO_DIR}/#{repo['location']}/#{git_repo}"
       if File.exist?(file_path)
@@ -446,6 +559,10 @@ class MirrorMain
   def handle_webhook
     Thread.new do
       @webhook_queue.subscribe(block: true) do |_delivery, _properties, webhook_url|
+        @log.info({
+            queue: 'webhook_queue',
+            msg: webhook_url,
+          })
         git_repo = get_git_repo(webhook_url)
         do_push(git_repo) if git_repo
         sleep(0.1)
@@ -456,16 +573,142 @@ class MirrorMain
   def handle_pr_webhook
     Thread.new do
       @webhook_pr_queue.subscribe(block: true) do |_delivery, _properties, msg|
+        @log.info({
+            queue: 'webhook_pr_queue',
+            msg: msg,
+        })
         msg = JSON.parse(msg)
         git_repo = get_git_repo(msg['url'])
         next unless git_repo
 
-        mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git"
+        mirror_dir = "#{@git_info[git_repo]['mirror']}"
         @git_mirror.git_fetch(mirror_dir)
 
         update_pr_msg(msg, git_repo)
         @message_queue.publish(msg.to_json)
         sleep 0.1
+      end
+    end
+  end
+
+  def handle_cbs_release_management_webhook
+    Thread.new do
+      @cbs_release_management_webhook_queue.subscribe(block: true) do |_delivery, _properties, msg|
+        @log.info({queue: 'cbs_release_management_webhook_queue', msg: msg})
+        msg = JSON.parse(msg)
+        git_url = "#{msg['url']}.git"
+        msg['url'] = git_url.gsub(/http[s]?:\/\//, '/srv/git/common/')
+        unless File.exist?(msg['url'])
+          url_list = git_url.split('//')
+          domain, *git_path, git_name = url_list[-1].chomp('/').split('/')
+          repo_name = git_name.split('.')[0]
+          repo_path = "#{domain}/#{git_path.join('/')}"
+          abs_repo_path = "#{REPO_DIR}/#{MY_UPSTREAMS}/#{repo_path}"
+
+          FileUtils.mkdir_p(abs_repo_path, mode: 0o775)
+          File.open("#{abs_repo_path}/#{repo_name}", 'w') do |f|
+            f.write({'url' => [git_url] }.to_yaml)
+          end
+
+          %x(git -C #{REPO_DIR}/#{MY_UPSTREAMS} add #{repo_path}/#{repo_name})
+          %x(git -C #{REPO_DIR}/#{MY_UPSTREAMS} commit -m "add repo #{repo_path}/#{repo_name}")
+          %x(git -C #{REPO_DIR}/#{MY_UPSTREAMS} push)
+
+          load_repo_file("#{abs_repo_path}/#{repo_name}", MY_UPSTREAMS, clone=true)
+        end
+        @git_mirror.git_fetch(msg['url'])
+        @cbs_release_management_message_queue.publish(msg.to_json)
+        sleep 0.1
+      end
+    end
+  end
+
+  def fetch_single(data)
+    url = data['url']
+    snapshot_id = data['snapshot_id']
+    mirror_dir = "/srv/git/#{COMMON_UPSTREAMS}/#{url.split('://')[-1]}"
+
+    fetch_result = -1
+    5.times do
+      fetch_result = @git_mirror.git_fetch(mirror_dir)
+      next if fetch_result == -1
+      break
+    end
+    @log.info("fetch #{mirror_dir} failed") if fetch_result == -1
+
+    @ebs_exchange.publish({'url': url, 'action': 'fetch-single', 'snapshot_id': snapshot_id}.to_json,
+                            routing_key: @ebs_response_queue_name)
+  end
+
+  def fetch_all(data)
+    url = data['url']
+    location = data['location']
+    snapshot_id = data['snapshot_id']
+    update_repos = data['update_specs']
+    repo_dir = "#{REPO_DIR}/#{COMMON_UPSTREAMS}/#{location}"
+    @git_mirror.git_fetch(repo_dir)
+
+    file_list = %x(git -C #{repo_dir} ls-files | grep -v 'DEFAULTS').lines
+    t_list = []
+    10.times do
+      t_list << Thread.new do
+        while file_list.length > 0
+          repo = file_list.shift.chomp
+          repo_name = repo.split('/')[-1]
+
+          unless update_repos.nil?
+            if update_repos.empty? or !update_repos.include?(repo_name)
+              next
+            end
+          end
+
+          repo_path = "#{repo_dir}/#{repo}"
+          next unless ascii_text?(repo_path)
+
+          git_info = YAML.safe_load(File.open(repo_path))
+          next if git_info.nil? || git_info['url'].nil? || Array(git_info['url'])[0].nil?
+
+          _url = git_info['url'][0].split('://')[-1]
+          mirror_dir = "/srv/git/#{COMMON_UPSTREAMS}/#{_url}"
+          %x(git clone #{git_info['url'][0]} #{mirror_dir} 2>&1) unless File.directory?(mirror_dir)
+          
+          fetch_result = -1
+          5.times do
+            fetch_result = @git_mirror.git_fetch(mirror_dir)
+            next if fetch_result == -1
+            break
+          end
+          @log.info("fetch #{mirror_dir} failed") if fetch_result == -1
+        end
+      end
+    end
+    t_list.each do |t|
+      t.join
+    end
+
+    @ebs_exchange.publish({'url': url, 'action': 'fetch-all', 'snapshot_id': snapshot_id}.to_json,
+                            routing_key: @ebs_response_queue_name)
+  end
+
+
+  def handle_ebs_request_queue
+    Thread.new do
+      @ebs_request_queue.subscribe(block: true) do |_delivery, _properties, cbs_data|
+        @log.info({
+            queue: @ebs_request_queue_name,
+            msg: cbs_data,
+        })
+        data = JSON.parse(cbs_data)
+
+        if data['action'] == 'add-url'
+          add_url(data)
+        elsif data['action'] == 'add-urls'
+          add_urls(data)
+        elsif data['action'] == 'fetch-single'
+          fetch_single(data)
+        elsif data['action'] == 'fetch-all'
+          fetch_all(data)
+        end
       end
     end
   end
@@ -491,8 +734,9 @@ class MirrorMain
       url = line.split(' = ')[1].chomp
       git_repo = url.split('://')[1] if url.include?('://')
       break unless git_repo
+      mirror_dir = "/srv/git/#{belong}/#{url.split('://')[-1]}"
 
-      @git_info[git_repo] = { 'url' => url, 'git_repo' => git_repo, 'is_submodule' => true, 'belong' => belong }
+      @git_info[git_repo] = { 'url' => url, 'git_repo' => git_repo, 'mirror_dir' => mirror_dir,'is_submodule' => true, 'belong' => belong }
       fork_stat_init(git_repo)
       @priority_queue.push git_repo, get_repo_priority(git_repo, 0)
     end
@@ -504,7 +748,7 @@ class MirrorMain
       return true
     end
 
-    mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}.git"
+    mirror_dir = @git_info[git_repo]['mirror_dir']
     submodule = %x(git -C #{mirror_dir} show HEAD:.gitmodules 2>/dev/null)
     return if submodule.empty?
 
@@ -618,8 +862,8 @@ class MirrorMain
   end
 
   def clone_upstream_repo
-    if File.exist?('/etc/compass-ci/defaults/upstream-config')
-      @upstreams = YAML.safe_load(File.open('/etc/compass-ci/defaults/upstream-config'))
+    if File.exist?(@upstream_config)
+      @upstreams = YAML.safe_load(File.open(@upstream_config))
       @upstreams['upstreams'].each do |repo|
         url = get_url(repo['url'])
         run_get_output("git clone -q #{url} #{REPO_DIR}/#{repo['location']}")
@@ -638,6 +882,7 @@ class MirrorMain
   end
 
   def upstream_repo?(git_repo)
+    return false if @upstreams['upstreams'].nil?
     @upstreams['upstreams'].each do |repo|
       return true if git_repo == repo['git_repo']
     end
@@ -746,8 +991,7 @@ class MirrorMain
 
   def get_repo_priority(git_repo, old_pri)
     old_pri ||= 0
-    mirror_dir = "/srv/git/#{@git_info[git_repo]['belong']}/#{git_repo}"
-    mirror_dir = "#{mirror_dir}.git" unless @git_info[git_repo]['is_submodule']
+    mirror_dir = "#{@git_info[git_repo]['mirror_dir']}"
 
     step = (@fork_stat[git_repo][:clone_fail_cnt] + 1) * Math.cbrt(STEP_SECONDS)
     return old_pri + step unless File.directory?(mirror_dir)

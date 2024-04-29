@@ -4,7 +4,13 @@
 
 . ../defconfig.sh
 
+load_cci_defaults
+
 docker_skip_rebuild "alpine:auto-submit"
 
-docker build -t alpine:auto-submit .
+download_repo "cbs" "$git_branch_cbs"
+download_repo "lkp-tests" "$git_branch_lkp"
 
+docker build --no-cache -t alpine:auto-submit .
+
+push_image_remote "alpine:auto-submit"

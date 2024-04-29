@@ -20,6 +20,19 @@ load_cci_defaults()
 	done
 }
 
+load_cci_secrets()
+{
+	shopt -s nullglob
+
+	secrets_file=/etc/compass-ci/info-file
+	secret_keys=($(echo $*))
+
+	for secret_key in ${secret_keys[@]}
+	do
+		eval $(awk '{if ($2 == "'$secret_key'") print $2"="$3}' $secrets_file)
+	done
+}
+
 load_service_authentication()
 {
 	shopt -s nullglob
@@ -52,17 +65,19 @@ docker_rm()
 	docker rm -f $container
 }
 
-check_auth_es_ready()
+check_es_ready()
 {
-	local port=$1
 	load_service_authentication
-	local i
+	load_cci_defaults
 	for i in {1..30}
 	do
 
-		curl -s localhost:$port -u $ES_USER:$ES_PASSWORD> /dev/null && return
+		status_code=$(curl -sSIL -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -w "%{http_code}\n" -o /dev/null -XGET "http://${ES_HOST}:${ES_PORT}")
+		[ "${status_code}" -eq 200 ] && return 0
 		sleep 2
 	done
+
+	return 1
 }
 
 check_service_ready()
@@ -94,4 +109,80 @@ docker_skip_rebuild()
 	[ "$skip_build_image" != "true" ] && return
 	docker image inspect $tag > /dev/null 2>&1
 	[ "$?" == "0" ] && exit 1
+}
+
+download_repo()
+{
+	local repo="$1"
+	local git_branch="$2"
+	load_service_authentication
+
+	[ -d "./$repo" ] && rm -rf ./"$repo"
+	[ "$git_branch" ] || git_branch=$(awk '/^git_branch:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml)
+	umask 022 && git clone -b "$git_branch" https://${GITEE_ID}:${GITEE_PASSWORD}@gitee.com/openeuler-customization/"$repo"
+}
+
+push_image_remote()
+{
+	load_cci_defaults
+	load_service_authentication
+
+	[ "$DOCKER_REGISTRY_HOST" = "registry.kubeoperator.io" ] && [ "$DOCKER_PUSH_REGISTRY_PORT" = "8083" ] && {
+        	local remote_docker_hub="$DOCKER_REGISTRY_HOST:$DOCKER_PUSH_REGISTRY_PORT"
+        	local src_tag=$1
+        	local dst_tag="$remote_docker_hub/$src_tag"
+		docker login "$remote_docker_hub" -u $DOCKER_REGISTRY_USER -p $DOCKER_REGISTRY_PASSWORD
+		
+        	docker tag "$src_tag" "$dst_tag"
+        	docker push "$dst_tag"
+        	rm -f /root/.docker/config.json
+	}
+}
+
+start_pod()
+{
+	[ ! -d "k8s/" ] && return
+	[ "$(ls -A k8s)" = "" ] && return
+
+	load_service_config
+	load_cci_defaults
+	if [ "$DOCKER_REGISTRY_HOST" = "registry.kubeoperator.io" ] && [ "$DOCKER_PUSH_REGISTRY_PORT" = "8083" ]; then
+		kubectl delete -f k8s/ -n $NAMESPACE >/dev/null 2>&1
+		kubectl create -f k8s/ -n $NAMESPACE
+		exit 1
+	fi
+}
+
+start_etcd_pod()
+{
+        [ ! -d "k8s/" ] && return
+        [ "$(ls -A k8s)" = "" ] && return
+        echo "start etcd pod"
+
+        load_cci_defaults
+        if [ "$DOCKER_REGISTRY_HOST" = "registry.kubeoperator.io" ] && [ "$DOCKER_PUSH_REGISTRY_PORT" = "8083" ]; then
+                kubectl delete -f k8s/ -n ems1 >/dev/null 2>&1
+                kubectl create -f k8s/ -n ems1
+        fi
+
+        sleep 60
+        load_service_authentication
+
+        etcd_container_id=$(docker ps|grep k8s_etcd_etcd-0 | awk '{print $1}')
+        docker exec -d ${etcd_container_id} sh -c "etcdctl user add ${ETCD_USER}:${ETCD_PASSWORD};etcdctl auth enable"
+        exit 1
+}
+
+config_yaml()
+{
+        file="/etc/compass-ci/remote-hosts"
+	[ -f $file ] || return
+        names=($(cat $file | awk '{print $1}' | grep -v "^#"))
+        for name in ${names[@]}
+        do
+                sed \
+                    -e "s#SQUID_NAME#squid-${name}#g" \
+                    -e "s#NODE_NAME#${name}#g" \
+                    squid.yaml > k8s/squid-${name}.yaml
+        done
 }

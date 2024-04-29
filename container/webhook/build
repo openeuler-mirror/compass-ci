@@ -4,7 +4,12 @@
 
 . ../defconfig.sh
 
+load_cci_defaults
+
 docker_skip_rebuild "node:webhook"
 
-docker build -t node:webhook .
+download_repo "cbs" "$git_branch_cbs"
 
+docker build --no-cache -t node:webhook .
+
+push_image_remote "node:webhook"

@@ -6,15 +6,24 @@
 require 'set'
 require_relative '../defconfig.rb'
 
-names = Set.new ['MONITOR_PORT']
+names = Set.new %w[
+  MONITOR_PORT
+  git_branch_lkp
+]
+
 defaults = relevant_defaults(names)
 
 MONITOR_PORT = (defaults['MONITOR_PORT'] || '20001')
+git_branch_lkp = defaults['git_branch_lkp']
 
 docker_skip_rebuild "monitoring-#{MONITOR_PORT}"
+
+download_repo("lkp-tests", git_branch_lkp)
 
 CCI_SRC = ENV['CCI_SRC']
 system("bash #{CCI_SRC}/container/compile .") || exit
 system "docker build -t monitoring-#{MONITOR_PORT} ."
+
+push_image_remote "monitoring-#{MONITOR_PORT}"
 
 system 'rm monitoring'

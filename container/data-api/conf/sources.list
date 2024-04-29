@@ -1,9 +1,8 @@
-deb [trusted=yes] http://mirrors.163.com/debian/ buster main non-free contrib
-deb [trusted=yes] http://mirrors.163.com/debian/ buster-updates main non-free contrib
-deb [trusted=yes] http://mirrors.163.com/debian/ buster-backports main non-free contrib
-deb [trusted=yes] http://mirrors.163.com/debian-security/ buster/updates main non-free contrib
-
-deb-src [trusted=yes] http://mirrors.163.com/debian/ buster main non-free contrib
-deb-src [trusted=yes] http://mirrors.163.com/debian/ buster-updates main non-free contrib
-deb-src [trusted=yes] http://mirrors.163.com/debian/ buster-backports main non-free contrib
-deb-src [trusted=yes] http://mirrors.163.com/debian-security/ buster/updates main non-free contrib
+deb http://mirrors.163.com/debian/ bookworm main non-free non-free-firmware contrib
+deb-src http://mirrors.163.com/debian/ bookworm main non-free non-free-firmware contrib
+deb http://mirrors.163.com/debian-security/ bookworm-security main
+deb-src http://mirrors.163.com/debian-security/ bookworm-security main
+deb http://mirrors.163.com/debian/ bookworm-updates main non-free non-free-firmware contrib
+deb-src http://mirrors.163.com/debian/ bookworm-updates main non-free non-free-firmware contrib
+deb http://mirrors.163.com/debian/ bookworm-backports main non-free non-free-firmware contrib
+deb-src http://mirrors.163.com/debian/ bookworm-backports main non-free non-free-firmware contrib

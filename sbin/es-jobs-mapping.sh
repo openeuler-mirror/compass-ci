@@ -5,6 +5,7 @@
 . $CCI_SRC/container/defconfig.sh
 
 load_service_authentication
+load_cci_defaults
 
 # Determine whether curl is installed. If not, install curl.
 if ! [ -x "$(command -v curl)" ]
@@ -32,11 +33,20 @@ then
 fi
 
 # Determine whether jobs index has created
-status_code=$(curl -sSIL -u "${ES_USER}:${ES_PASSWORD}" -w "%{http_code}\n" -o /dev/null http://localhost:9200/jobs)
+status_code=$(curl -sSIL -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -w "%{http_code}\n" -o /dev/null http://${ES_HOST}:9200/jobs)
 
 if [ $status_code -eq 200 ]
 then
 	echo "jobs index has create, exit."
+	curl -sSH 'Content-Type: Application/json' -XPUT "http://${ES_HOST}:9200/jobs/_mapping" -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -d '{
+	"properties": {
+		"tbox_type": {"type": "keyword"},
+		"build_type": {"type": "keyword"},
+		"max_duration": {"type": "keyword"},
+		"spec_file_name": {"type": "keyword"},
+		"memory_minimum": {"type": "keyword"},
+		"use_remote_tbox": {"type": "keyword"}
+	}}'
 else
 	echo "jobs index not exists, begin create index."
 	curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/jobs' -u "${ES_USER}:${ES_PASSWORD}" -d '{
@@ -208,6 +218,18 @@ else
 		          "tags": {
 		            "type": "text"
 		          },
+		          "os_project": {
+		            "type": "keyword"
+		          },
+		          "package": {
+		            "type": "keyword"
+		          },
+		          "build_id": {
+		            "type": "keyword"
+		          },
+		          "os_variant": {
+		            "type": "keyword"
+		          },
 		          "start_time": {
 		            "type": "date"
 		          },
@@ -222,7 +244,7 @@ else
 		  echo "create jobs index failed."
 	  else
 		  echo "set index.mapping.total_fields.limit: 10000"
-		  curl -sS -XPUT 127.0.0.1:9200/jobs/_settings -u "${ES_USER}:${ES_PASSWORD}" -H 'Content-Type: application/json' \
+		  curl -sS -XPUT "${ES_HOST}":9200/jobs/_settings -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -H 'Content-Type: application/json' \
 		       -d '{"index.mapping.total_fields.limit": 10000}'
 	  fi
 fi

@@ -4,6 +4,8 @@
 
 . $CCI_SRC/container/defconfig.sh
 
+start_pod
+
 docker_rm ntp-server
 cmd=(
 	docker run 

@@ -200,7 +200,10 @@ class Sched
 
   def get_commit_date(job)
     if (job["upstream_repo"] != "") && (job["upstream_commit"] != "")
-      data = JSON.parse(%({"git_repo": "#{job["upstream_repo"]}.git",
+      upstream_repo = job["upstream_repo"]
+      upstream_repo = "#{upstream_repo}.git" unless upstream_repo.includes?(".git")
+
+      data = JSON.parse(%({"git_repo": "#{upstream_repo}",
                    "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
                    "#{job["upstream_commit"]}", "-1"]}))
       response = @rgc.git_command(data)

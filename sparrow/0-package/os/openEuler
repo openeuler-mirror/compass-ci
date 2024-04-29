@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-[[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
+[[ $CCI_SRC ]] || CCI_SRC=/c/cbs
 
 . $CCI_SRC/lib/check_public_network.sh
 
@@ -32,6 +32,8 @@ pkgs=(
 	libxml2-devel
 	libxslt-devel
 	libvirt-devel
+	nmap
+	expect
 )
 
 wget_rpm()

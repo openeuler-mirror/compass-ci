@@ -7,8 +7,11 @@ require 'bunny'
 require 'json'
 require 'yaml'
 require 'set'
+require 'rest-client'
 require_relative '../lib/config_account'
+require_relative '../lib/log.rb'
 require_relative "#{ENV['LKP_SRC']}/lib/do_local_pack"
+require_relative "#{ENV['LKP_SRC']}/sbin/cli/ccb_common"
 
 # receive message and auto submit job
 class AutoSubmit
@@ -17,6 +20,8 @@ class AutoSubmit
     connection.start
     channel = connection.create_channel
     @queue = channel.queue('new_refs')
+    @cbs_pr_message_queue = channel.queue('cbs_pr_local_submit')
+    @log = Log.new('/srv/log/auto_submit.log')
   end
 
   def get_pkgbuild_repo(repo_array)
@@ -160,6 +165,464 @@ class AutoSubmit
     end
   end
 
+  def excute_ccb_command(cmd)
+    out = %x(#{cmd})
+    begin
+      out_hash = JSON.parse(out[/{[\s\S]*}/])
+    rescue TypeError, JSON::ParseError
+      @log.info("#{cmd} excute failed\n#{out}")
+      return nil
+    end
+    if out_hash.class != Hash
+      @log.info("#{cmd} excute failed\n#{out}")
+      return nil
+    end
+    if out_hash.has_key?('status_code') and out_hash['status_code'] != 200
+      @log.info("#{cmd} excute failed: #{out}")
+      return nil
+    end
+    return out_hash
+  end
+
+  def excute_pr_build(os_project, pr_repo, prid)
+    request_info = {
+      "build_type" => "static",
+      "packages" => pr_repo,
+      "pr_id" => prid
+    }
+    jwt = load_jwt?()
+    if not jwt
+      jwt = load_jwt?(force_update=true)
+    end
+    config = load_my_config
+    url = "http://#{config['GATEWAY_IP']}:#{config['GATEWAY_PORT']}/api/os/#{os_project}/build_dag"
+    begin
+      RestClient.post(url, request_info.to_json, { content_type: :json, accept: :json, 'Authorization' => jwt })
+    rescue RestClient::ExceptionWithResponse => e
+      return "{\"status_code\": #{e.response.code}, \"url\": \"#{url}\"}"
+    end
+  end
+
+  def gitee_comment(pr_url, comment)
+    request_info = {"pr_url" => pr_url, "token" => ENV['GITEE_ACCESS_TOKEN'], "comment" => comment}
+    url = "http://#{ENV['CODE_HOSTING_CLIENT_HOST']}:#{ENV['CODE_HOSTING_CLIENT_PORT']}/api/code_hosting_client/gitee/pr/comment"
+    begin
+      RestClient.post(url, request_info.to_json, { content_type: :json, accept: :json})
+    rescue RestClient::ExceptionWithResponse => e
+      return "{\"status_code\": #{e.response.code}, \"url\": \"#{url}\"}"
+    end
+  end
+
+  def load_cbs_meta_relm_config_update(url, prid, file_filter=/#.*$/)
+    clone_dir = "/tmp/#{url.sub('/', '').gsub('/', '-')}-#{prid}"
+    if File.directory? "#{clone_dir}"
+      out = %x(rm -rf #{clone_dir})
+    end
+    out = %x(git clone #{url} #{clone_dir})
+    out = %x(cd #{clone_dir}; git fetch origin pull/#{prid}/head; git checkout FETCH_HEAD)
+    out = %x(cd #{clone_dir}; git diff HEAD~1 --name-only;)
+    filelist = out.split(/\n/)
+    @log.info("new/update filelist: #{filelist}")
+    config_hash = {}
+    exception_filelist = []
+    filelist.each do |file|
+      begin
+	if not file_filter.match(file)
+          next
+	end
+        hash_content = YAML.safe_load(File.open("#{clone_dir}/#{file}"))
+        if hash_content.class == Hash
+          config_hash["#{clone_dir}/#{file}"] = hash_content
+        else
+          @log.info("expect file #{file}'content Hash, but #{hash_content.class}")
+          exception_filelist.append(file)
+        end
+      rescue Errno::ENOENT => e
+        @log.info("failed to open file #{file} | #{e}")
+        exception_filelist.append(file)
+      rescue Psych::SyntaxError => e
+        @log.info("failed to parse file #{file} | #{e}")
+        exception_filelist.append(file)
+      end
+    end
+    if exception_filelist.length > 0
+      @log.info("load file failed: #{exception_filelist.join(', ')}")
+      return nil
+    else
+      return config_hash
+    end
+  end
+
+  def check_cbs_meta_config(config)
+    base_template = {
+      'os_project' => {'must' => true, 'class' => [String]},
+      'description' => {'must' => false, 'class' => [String]},
+      'lock' => {'must' => false, 'class' => [TrueClass, FalseClass]},
+      'to_delete' => {'must' => false, 'class' => [TrueClass, FalseClass]},
+      'spec_branch' => {'must' => false, 'class' => [String]},
+      'users' => {'must' => false, 'class' => [Hash], 'extra_check' => method(:check_cbs_meta_config_users)},
+      'build_targets' => {'must' => false, 'class' => [Array], 'extra_check' => method(:check_cbs_meta_config_build_targets)},
+      'my_specs' => {'must' => false, 'class' => [Array], 'extra_check' => method(:check_cbs_meta_config_my_specs)},
+      'bootstrap_rpm_repo' => {'must' => false, 'class' => [Array], 'extra_check' => method(:check_cbs_meta_config_bootstrap_rpm_repo)}
+    }
+    check_result = true
+    base_template.keys.each do |key|
+    if (config.has_key?(key) and base_template[key]['class'].include?(config[key].class) \
+        and (not base_template[key].has_key?('extra_check') or base_template[key]['extra_check'].call(config))) \
+        or (not config.has_key?(key) and base_template[key]['must'] == false)
+        @log.info("check #{key} success")
+      else
+        @log.info("check #{key} failed")
+        check_result = false
+      end
+    end
+    return check_result
+  end
+
+  def check_cbs_meta_config_users(config)
+    config['users'].each do |user, role|
+      if user.class != String or role.class != String or not ['maintainer', 'reader'].include?(role)
+        return false
+      end
+    end
+    # TODO may need check user exist
+    return true
+  end
+
+  def check_cbs_meta_config_build_targets(config)
+    config['build_targets'].each do |build_target|
+      # check each field format
+      if not build_target.has_key?('os_variant') or build_target['os_variant'].class != String \
+        or not build_target.has_key?('flags') or build_target['flags'].class != Hash \
+        or not build_target['flags'].has_key?('build') or not [TrueClass, FalseClass].include?(build_target['flags']['build'].class) \
+        or not build_target['flags'].has_key?('publish') or not [TrueClass, FalseClass].include?(build_target['flags']['publish'].class) \
+        or not build_target.has_key?('ground_projects') or build_target['ground_projects'].class != Array \
+        or not build_target.has_key?('architecture') or build_target['architecture'].class != String
+        return false
+      end
+      # check each each ground_project format and effectivity
+      build_target['ground_projects'].each do |ground_project|
+        if ground_project.class != str
+          return false
+        end
+        out = self.excute_ccb_command("#{ENV['LKP_SRC']}/sbin/cli/ccb select projects os_project=#{ground_project}")
+        if not out or not out['hits']['hits']
+          return false
+        end
+      end
+      # check architecture effectivity
+      if not ['x86_64', 'aarch64'].include?(build_target['architecture'])
+        return false
+      end
+    end
+    return true
+  end
+
+  def check_url_effectivity(url)
+    begin
+      RestClient.get(url)
+    rescue RestClient::ExceptionWithResponse => e
+      @log.info("{\"status_code\": #{e.response.code}, \"url\": \"#{url}\"}")
+      return false
+    end
+    return true
+  end
+
+  def check_cbs_meta_config_my_specs(config)
+    config['my_specs'].each do |my_spec|
+      if not my_spec.has_key?('spec_url') or my_spec['spec_url'].class != String or not check_url_effectivity(my_spec['spec_url'])\
+        or not my_spec.has_key?('spec_branch') or my_spec['spec_branch'].class != String \
+        or not my_spec.has_key?('spec_name') or my_spec['spec_name'].class != String
+        return false
+      end
+    end
+    return true
+  end
+
+  def check_cbs_meta_config_bootstrap_rpm_repo(config)
+    config['bootstrap_rpm_repo'].each do |rpm_repo|
+      if not rpm_repo.has_key?('repo') or rpm_repo['repo'].class != String or not check_url_effectivity(rpm_repo['repo'])\
+        or not rpm_repo.has_key?('name') or rpm_repo['name'].class != String
+        return false
+      end
+    end
+    return true
+  end
+
+  def cbs_meta_pr_check_common(message)
+    check_result = true
+    config_hash = load_cbs_meta_relm_config_update(message['url'], message['prid'], /.*\.yaml/)
+    check_result = false if config_hash.nil?
+
+    config_hash.each do |file, config|
+      @log.info("check file: #{file} start")
+      check_single_result = true
+      check_single_result = false if not check_cbs_meta_config(config)
+      if check_single_result
+        @log.info("check file: #{file} success")
+      else
+        @log.info("check file: #{file} failed")
+        check_result = false
+      end
+    end
+    return check_result, config_hash
+  end
+
+  def relm_get_my_specs(config)
+    if config.has_key?('packages')
+      packages = config['packages']
+      if packages.class != Array
+        return nil
+      end
+    else
+      return nil
+    end
+    my_specs = []
+    packages.each do |pkg_info|
+      if pkg_info.class != Hash or not pkg_info.has_key?('name') or pkg_info['name'].class != String \
+        or not check_url_effectivity("https://gitee.com/src-openeuler/#{pkg_info['name']}.git")
+        return nil
+      end
+      my_specs.append({'spec_url' => "https://gitee.com/src-openeuler/#{pkg_info['name']}.git", 'spec_name' => pkg_info['name']})
+    end
+    return {'my_specs' => my_specs}
+  end
+
+  def relm_pr_check_common(message)
+    check_result = true
+    config_hash = load_cbs_meta_relm_config_update(message['url'], message['prid'], %r@^[^/]+(/baseos|/epol)?/pckg-mgmt\.yaml$@)
+    check_result = false if config_hash.nil?
+
+    config_hash.each do |file, config|
+      @log.info("check file: #{file} start")
+      check_single_result = true
+      my_specs = relm_get_my_specs(config)
+      config_hash[file] = my_specs
+      if my_specs.nil?
+        check_single_result = false
+      end
+
+      file_split = file.split('/')
+      if %r@^.*(/baseos|/epol)/pckg-mgmt\.yaml$@.match(file)
+        os_project = file_split[-3].gsub('-', ':') + ':' + file_split[-2].capitalize
+      else
+        os_project = file_split[-3].gsub('-', ':')
+      end
+      out = self.excute_ccb_command("#{ENV['LKP_SRC']}/sbin/cli/ccb select projects os_project=#{os_project} -f os_project")
+      if not out or not out.has_key?('hits') or not out['hits'].has_key?('hits') or out['hits']['hits'].empty?
+        @log.error("project: #{os_project} not exist")
+	check_single_result = false
+      end
+
+      if check_single_result
+        @log.info("check file: #{file} success")
+      else
+        @log.error("check file: #{file} failed")
+        check_result = false
+      end
+    end
+    return check_result, config_hash
+  end
+
+
+  def cbs_meta_relm_pr_check_generate_table(check_result)
+    if check_result
+      comment_text = ":white_check_mark:<strong>SUCCESS</strong>"
+    else
+      comment_text = ":x:<strong>FAILED</strong>"
+    end
+    comments = []
+    comments.append('<table>')
+    comments.append('<tr><th>Check Result</th></tr>')
+    comments.append("<tr><td>#{comment_text}</td></tr>")
+    comments.append('</table>')
+    return comments.join("\n")
+  end
+
+  def cbs_meta_relm_pr_merge_generate_table(merge_result)
+    if merge_result
+      comment_text = ":white_check_mark:<strong>SUCCESS</strong>"
+    else
+      comment_text = ":x:<strong>FAILED</strong>"
+    end
+    comments = []
+    comments.append('<table>')
+    comments.append('<tr><th>Merge Result</th></tr>')
+    comments.append("<tr><td>#{comment_text}</td></tr>")
+    comments.append('</table>')
+    return comments.join("\n")
+  end
+
+  def get_pr_url(message)
+    prid = message['prid']
+    mirror_url_split = message['url'].split('/')
+    pr_owner = mirror_url_split[-2]
+    pr_repo = mirror_url_split.last.sub('.git', '')
+    pr_url = "https://gitee.com/#{pr_owner}/#{pr_repo}/pulls/#{prid}"
+    return pr_url
+  end
+
+  def cbs_meta_pr_check(message)
+    @log.info('now excute cbs_meta_pr_check')
+    pr_url = get_pr_url(message)
+    check_result, config_hash = cbs_meta_pr_check_common(message)
+    comment = cbs_meta_relm_pr_check_generate_table(check_result)
+    response = gitee_comment(pr_url, comment)
+    @log.info(response)
+  end
+
+  def cbs_meta_pr_merge(message)
+    @log.info('now excute cbs_meta_pr_merge')
+    pr_url = get_pr_url(message)
+    check_result, config_hash = cbs_meta_pr_check_common(message)
+    if not check_result
+      comment = cbs_meta_relm_pr_check_generate_table(check_result)
+      response = gitee_comment(pr_url, comment)
+      @log.info(response)
+      return
+    end
+    failed_list = []
+    config_hash.each do |file, config|
+      os_project = config['os_project']
+      config.delete('os_project')
+      open("#{file}.ccb_process", 'w+') { |f| YAML.dump(config, f) }
+      out = self.excute_ccb_command("#{ENV['LKP_SRC']}/sbin/cli/ccb select projects os_project=#{os_project} -f os_project")
+      if not out or not out.has_key?('hits') or not out['hits'].has_key?('hits') or out['hits']['hits'].empty?
+        config_action = 'create'
+	@log.info("project: #{os_project} not exist, now try to create using file: #{file}")
+      else
+        config_action = 'update'
+        @log.info("project: #{os_project} already exist, now try to update config using file: #{file}")
+      end
+      out = self.excute_ccb_command("#{ENV['LKP_SRC']}/sbin/cli/ccb #{config_action} projects #{os_project} -y #{file}.ccb_process")
+      if out.has_key?('code') and out['code'] == 0
+        @log.info("#{config_action} project: #{os_project} success")
+      else
+        @log.info("#{config_action} project: #{os_project} failed, result: #{out}")
+	failed_list.append(file)
+      end
+    end
+    if failed_list.empty?
+      merge_result = true
+    else
+      merge_result = false
+    end
+    comment = cbs_meta_relm_pr_merge_generate_table(merge_result)
+    response = gitee_comment(pr_url, comment)
+    @log.info(response)
+  end
+
+  def relm_pr_check(message)
+    @log.info('now excute release-management pr check')
+    pr_url = get_pr_url(message)
+
+    check_result, config_hash = relm_pr_check_common(message)
+    comment = cbs_meta_relm_pr_check_generate_table(check_result)
+    response = gitee_comment(pr_url, comment)
+    @log.info(response)
+  end
+
+  def relm_pr_merge(message)
+    @log.info('now excute release-management pr merge')
+    pr_url = get_pr_url(message)
+
+    check_result, config_hash = relm_pr_check_common(message)
+    if not check_result
+      comment = cbs_meta_relm_pr_merge_generate_table(check_result)
+      response = gitee_comment(pr_url, comment)
+      @log.info(response)
+      return
+    end
+    
+    merge_result = true
+    config_hash.each do |file, config|
+      merge_single_result = true
+
+      file_split = file.split('/')
+      if %r@^.*(/baseos|/epol)/pckg-mgmt\.yaml$@.match(file)
+        os_project = file_split[-3].gsub('-', ':') + ':' + file_split[-2].capitalize
+      else
+        os_project = file_split[-3].gsub('-', ':')
+      end
+      open("#{file}.ccb_process", 'w+') { |f| YAML.dump(config, f) }
+      out = self.excute_ccb_command("#{ENV['LKP_SRC']}/sbin/cli/ccb update projects #{os_project} -y #{file}.ccb_process")
+      if out.has_key?('code') and out['code'] == 0
+        @log.info("update project: #{os_project} success")
+      else
+        @log.error("update project: #{os_project} failed, result: #{out}")
+        merge_single_result = false
+      end
+      merge_result = false if not merge_single_result
+    end
+
+    comment = cbs_meta_relm_pr_merge_generate_table(merge_result)
+    response = gitee_comment(pr_url, comment)
+    @log.info(response)
+  end
+
+  def cbs_pr_build(message)
+    puts 'now excute cbs_pr_build'
+    prid = message['prid']
+    mirror_url_split = message['url'].split('/')
+    pr_owner = mirror_url_split[-2]
+    pr_repo = mirror_url_split.last.sub('.git', '')
+    pr_url = "https://gitee.com/#{pr_owner}/#{pr_repo}/pulls/#{prid}"
+
+    out = self.excute_ccb_command("#{ENV['LKP_SRC']}/sbin/cli/ccb select projects spec_branch=#{message['target_branch']} owner=admin -f os_project")
+    if not out or not out.has_key?('hits') or not out['hits'].has_key?('hits') or out['hits']['hits'].empty?
+      response = gitee_comment(pr_url, "Project not found which spec_branch=#{message['target_branch']}")
+      @log.info(response)
+      return
+    end
+    project_list = []
+    out['hits']['hits'].each do |item|
+      project_list.append(item['_source']['os_project'])
+    end
+    build_pr_msg = nil
+    
+    project_list.each do |os_project|
+      response = excute_pr_build(os_project, pr_repo, prid)
+      response = JSON.parse(response)
+      if response.class == Hash and response.has_key?('code') and response['code'] == 0
+        build_pr_msg = response
+        break
+      end
+      @log.info("try build #{pr_repo} in #{os_project} failed: #{response}")
+    end
+    if build_pr_msg.nil?
+      response = gitee_comment(pr_url, "PR build task submit failed")
+      @log.info(response)
+    else
+      @log.info("pr_build_result: #{build_pr_msg}")
+    end
+  end
+
+  def deal_local_submit(message)
+    repo_name = message['url'].split('/').last.sub('.git', '')
+    if repo_name == 'cbs_meta' and message['merge'] == false
+      cbs_meta_pr_check(message)
+    elsif repo_name == 'cbs_meta' and message['merge'] == true
+      cbs_meta_pr_merge(message)
+    elsif repo_name == 'release-management' and message['merge'] == false
+      relm_pr_check(message)
+    elsif repo_name == 'release-management' and message['merge'] == true
+      relm_pr_merge(message)
+    else
+      cbs_pr_build(message)
+    end
+  end
+
+  def cbs_pr_listen
+    @cbs_pr_message_queue.subscribe(block: true) do |_delivery, _properties, message|
+      Thread.new do
+	@log.info(message)
+        message_info = JSON.parse(message)
+        deal_local_submit(message_info)
+      end
+      sleep(0.1)
+    end
+  end
+
   def listen
     @queue.subscribe(block: true) do |_delivery, _properties, message|
       Thread.new do
@@ -174,4 +637,7 @@ end
 config_yaml('auto-submit')
 do_local_pack
 auto_submitter = AutoSubmit.new
+Thread.new do
+  auto_submitter.cbs_pr_listen
+end
 auto_submitter.listen

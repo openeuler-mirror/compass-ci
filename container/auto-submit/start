@@ -6,10 +6,16 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+start_pod
+
 names = Set.new %w[
   ES_USER
   ES_PASSWORD
   lab
+  GITEE_ACCESS_TOKEN
+  CODE_HOSTING_CLIENT_HOST
+  CODE_HOSTING_CLIENT_PORT
+  GIT_SERVER
 ]
 
 defaults = relevant_defaults(names)
@@ -31,16 +37,23 @@ cmd = %w[
   -e CCI_SRC=#{DOCKER_CCI}
   -e LKP_SRC=#{DOCKER_LKP}
   -e CCI_REPOS=/c
+  -e GITEE_ACCESS_TOKEN=#{defaults['GITEE_ACCESS_TOKEN']}
+  -e CODE_HOSTING_CLIENT_HOST=#{defaults['CODE_HOSTING_CLIENT_HOST']}
+  -e CODE_HOSTING_CLIENT_PORT=#{defaults['CODE_HOSTING_CLIENT_PORT']}
+  -e GIT_SERVER=#{defaults['GIT_SERVER']}
   -v #{ENV['CCI_SRC']}:#{DOCKER_CCI}
   -v #{ENV['LKP_SRC']}:#{DOCKER_LKP}
+  -v #{ENV['HOME']}/.config/cli/:/etc/cli/
   -v /c/lab-#{defaults['lab']}:/c/lab-#{defaults['lab']}
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/defaults:/etc/compass-ci/defaults:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
+  -v /etc/compass-ci/service:/etc/compass-ci/service:ro
   -v /srv/git:/srv/git
+  -v /srv/log:/srv/log
   -w /c/compass-ci/sbin
   alpine:auto-submit
 ]
 
-cmd += ['sh', '-c', 'umask 002 && ./auto_submit']
+cmd += ['sh', '-c', 'umask 002 && ./auto_submit.rb']
 system(*cmd)

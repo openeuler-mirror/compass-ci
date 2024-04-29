@@ -6,18 +6,29 @@
 require 'set'
 require_relative '../defconfig.rb'
 
-names = Set.new ['SCHED_PORT']
+names = Set.new %w[
+  SCHED_PORT
+  git_branch_cbs
+  git_branch_lkp
+]
 defaults = relevant_defaults(names)
 
 SCHED_PORT = (defaults['SCHED_PORT'] || '3000')
+git_branch_cbs = defaults['git_branch_cbs']
+git_branch_lkp = defaults['git_branch_lkp']
 
 docker_skip_rebuild "sch-ruby-a:v0.00d-#{SCHED_PORT}"
+
+download_repo("cbs", git_branch_cbs)
+download_repo("lkp-tests", git_branch_lkp)
 
 CCI_SRC = ENV['CCI_SRC']
 system("bash #{CCI_SRC}/container/compile .") || exit
 system "cp #{CCI_SRC}/sbin/create-job-cpio.sh ."
 
-system "docker build -t sch-ruby-a:v0.00d-#{SCHED_PORT} ."
+system "docker build --no-cache -t sch-ruby-a:v0.00d-#{SCHED_PORT} ."
+
+push_image_remote "sch-ruby-a:v0.00d-#{SCHED_PORT}"
 
 system 'rm scheduler'
 system 'rm create-job-cpio.sh'

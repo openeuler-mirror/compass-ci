@@ -15,3 +15,4 @@ defaults = relevant_service_authentication(names)
 docker_skip_rebuild "redis507n:alpine311"
 system "docker build -t redis507n:alpine311 --build-arg PASSWD=#{defaults['REDIS_PASSWD']} ."
 
+push_image_remote "redis507n:alpine311"

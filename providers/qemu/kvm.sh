@@ -521,11 +521,28 @@ upload_dmesg()
 	upload_files_curl $log_file
 }
 
+set_upload_info()
+{
+  result_root=$(grep "result_root" lkp/scheduled/job.yaml | awk '{print $2}')
+  host=$(grep "RESULT_WEBDAV_HOST" lkp/scheduled/job.yaml | awk '{print $2}')
+  port=$(grep "RESULT_WEBDAV_PORT" lkp/scheduled/job.yaml | awk '{print $2}')
+  job_id=${result_root##*/}
+  upload_url="http://${host}:${port}${result_root}/dmesg"
+}
+
+upload_dmesg()
+{
+  [ -n "$job_id" ] || return
+
+  curl -sSf -F "file=@${log_file};filename=dmesg" ${upload_url} --cookie "JOBID=${job_id}"
+}
+
 check_logfile
 write_logfile
 
 parse_ipxe_script
 custom_vm_info
+set_upload_info
 
 check_kernel
 write_dmesg_flag 'start'

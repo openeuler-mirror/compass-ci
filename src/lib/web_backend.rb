@@ -18,10 +18,13 @@ require "#{CCI_SRC}/lib/es_query.rb"
 require "#{CCI_SRC}/lib/matrix2.rb"
 require "#{CCI_SRC}/lib/params_group.rb"
 require "#{CCI_SRC}/lib/compare_data_format.rb"
+require "#{CCI_SRC}/lib/assign_account_client.rb"
+require "#{CCI_SRC}/lib/build_account_info.rb"
 require_relative './job_error.rb'
 require_relative './constants.rb'
 require_relative './api_input_check.rb'
 require_relative '../../lib/json_logger.rb'
+require_relative './jwt.rb'
 
 UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
 
@@ -235,6 +238,7 @@ end
 
 def get_compare_body(params)
   dimension, conditions = get_dimension_conditions(params)
+  conditions[:my_account] = params[:my_account] if params[:my_account]
   must = get_es_must(params)
   groups_matrices, suites_hash, latest_jobs_hash =
     get_groups_matrices(conditions, dimension, must, COMPARE_RECORDS_NUMBER, 0)
@@ -245,9 +249,13 @@ def get_compare_body(params)
     body = 'No Difference.' if !body || body.empty?
   end
   return body
+  # return conditions.to_json
 end
 
 def compare(params)
+  payload = auth(params)
+  params[:my_account] = payload['my_account'] if payload and payload['my_account']
+
   begin
     body = get_compare_body(params)
   rescue StandardError => e
@@ -403,6 +411,9 @@ def get_jobs_body(params)
 end
 
 def get_jobs(params)
+  payload = auth(params)
+  params[:my_account] = payload['my_account'] if payload and payload['my_account']
+
   begin
     body = get_jobs_body(params)
   rescue StandardError => e
@@ -526,13 +537,16 @@ def get_job_field(params)
   query_result.keys.to_json
 end
 
-def performance_result(data)
+def performance_result(data, params)
+  payload = auth(params)
+
   begin
     request_body = JSON.parse(data)
     incorrect_input = check_performance_result(request_body)
     return [406, headers.merge('Access-Control-Allow-Origin' => '*'), incorrect_input] if incorrect_input
 
-    body = result_body(request_body)
+    request_body['filter']['my_account'] = payload['my_account'] if payload and payload['my_account']
+    # body = result_body(request_body)
   rescue StandardError => e
     log_error({
                 'message' => e.message,
@@ -540,7 +554,8 @@ def performance_result(data)
               })
     return [500, headers.merge('Access-Control-Allow-Origin' => '*'), 'get performance result error']
   end
-  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+  # [200, headers.merge('Access-Control-Allow-Origin' => '*'), body]
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), request_body.to_json]
 end
 
 def result_body(request_body)
@@ -563,6 +578,7 @@ def result_body(request_body)
     result += echart_data
   end
   result.to_json
+  # request_body.to_json
 end
 
 def search_testboxes
@@ -694,6 +710,7 @@ def count_stats(job_list, dimension, dim)
 end
 
 def get_jobs_stats_count(dimension, must, size, from)
+  # dimension_list是groupby参数可能有的所有情况
   dimension_list = get_dimension_list(dimension)
   stats_count = []
   dimension_list.each do |dim|
@@ -714,6 +731,7 @@ end
 
 def get_jobs_stats(params)
   dimension, conditions = get_dimension_conditions(params)
+  conditions[:my_account] = params[:my_account] if params[:my_account]
   must = get_es_must(params)
   objects = get_stats_by_dimension(conditions, dimension, must, 1000, 0)
   {
@@ -724,6 +742,9 @@ def get_jobs_stats(params)
 end
 
 def group_jobs_stats(params)
+  payload = auth(params)
+  params[:my_account] = payload['my_account'] if payload and payload['my_account']
+
   begin
     body = get_jobs_stats(params)
   rescue StandardError => e
@@ -745,6 +766,9 @@ end
 # -------------------------------------------------------------------------------------------
 
 def get_job_error(params)
+  payload = auth(params)
+  params[:my_account] = payload['my_account'] if payload and payload['my_account']
+
   begin
     body = job_error_body(params)
   rescue StandardError => e
@@ -1401,4 +1425,438 @@ def get_install_info(result)
   end
   install_info['job_health'] = 'success'
   install_info
+end
+
+def bind_old_account(data)
+  begin
+    request_body = JSON.parse(data)
+    update_openeuler_user(request_body)
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "bind old account error"
+    })
+    return [406, headers.merge('Access-Control-Allow-Origin' => '*'), e.message]
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), 'Bind existed Compass CI account successfully']
+end
+
+def update_openeuler_user(request_body)
+  my_email = request_body['email']
+  my_token = request_body['token']
+  openeuler_username = request_body['openeuler_username']
+  openeuler_email = request_body['openeuler_email']
+  raise StandardError.new("openeuler username has been binded") unless check_openeuler_user(openeuler_username).nil?
+
+  query = {
+    "query": {
+      "bool": {
+        "must": [
+          {"term": {"my_email": my_email}},
+          {"term": {"my_token": my_token}}
+        ]
+      }
+    }
+  }
+  # if user not found, throw exception
+  body = ES_CLIENT.search(index:'accounts', body:query)['hits']['hits'][0]
+  raise StandardError.new("account or token error") unless body
+  ES_CLIENT.update(index: 'accounts', id: body['_source']['my_email'], body: { doc: { 'my_third_party_accounts.openeuler_username' => openeuler_username } }, refresh: 'wait_for')
+end
+
+def oauth_authorize(params)
+  begin
+    code = params['code']
+    oauth_token_request_data = {
+      'client_id' => OAUTH_CLIENT_ID,
+      'client_secret' => OAUTH_CLIENT_SECRET,
+      'redirect_uri' => OAUTH_REDIRECT_URL,
+      'grant_type' => 'authorization_code',
+      'code' => code
+    }
+
+    response = RestClient.post OAUTH_TOKEN_URL, oauth_token_request_data
+    response_body = response.body.strip
+
+    response_body_hash = JSON.parse(response_body)
+    access_token = response_body_hash['access_token']
+
+    user_info_headers = {
+      'Authorization' => access_token
+    }
+
+    response = RestClient.get OAUTH_USER_URL, headers=user_info_headers
+
+    response_body = response.body.strip
+    response_body_hash = JSON.parse(response_body)
+    openeuler_username = response_body_hash['username']
+    openeuler_email = response_body_hash['email']
+    account = check_openeuler_user(openeuler_username)
+    my_account = account.nil? ? nil: account['my_account']
+    roles = account.nil? ? nil: account['roles']
+    token = generate_token(my_account, openeuler_username, openeuler_email, roles)
+    log_info("login succeed, name: #{openeuler_username}, account: #{my_account}")
+
+    body = {'token': token}
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "query_result_error"
+    })
+    return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 500, "msg" => e.full_message, "data" => "query result failed"}.to_json]
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 0, "msg" => body, "data" => "query result succeed"}.to_json]
+end
+
+def access_code_authorize(params)
+  begin
+    code = params["access_code"]
+    [200, headers.merge('Access-Control-Allow-Origin' => '*'), "access_code params missed".to_json] unless code
+
+    user_info_headers = {
+      'Authorization' => code
+    }
+
+    response = RestClient.get OAUTH_USER_URL, headers=user_info_headers
+    response_body = response.body.strip
+    response_body_hash = JSON.parse(response_body)
+    openeuler_username = response_body_hash['username'] 
+    openeuler_email = response_body_hash['email'] 
+
+    account = check_openeuler_user(openeuler_username)
+    my_account = account.nil? ? nil: account['my_account']
+    roles = account.nil? ? nil: account['roles']
+    token = generate_token(my_account, openeuler_username, openeuler_email, roles)
+    body = {'token': token}
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "query_result_error"
+    })
+    return [500, headers.merge('Access-Control-Allow-Origin' => '*'), e.full_message]
+  end
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 0, "msg" => "", "data" => body}.to_json]
+end
+
+def check_openeuler_user(openeuler_username)
+  query = {
+    "query": {
+      "bool": {
+        "must": [
+		{"term": {"my_third_party_accounts.openeuler_username": openeuler_username}}
+        ]
+      }
+    }
+  }
+  body = ES_CLIENT.search(index:'accounts', body:query)['hits']['hits'][0]
+  return nil if body.nil?
+  return body['_source']
+end
+
+def get_account_info1(account)
+  query = {
+    "query": {
+      "bool": {
+        "must": [
+		{"term": {"my_account": account}}
+        ]
+      }
+    }
+  }
+  body = ES_CLIENT.search(index:'accounts', body:query)['hits']['hits'][0]
+  return nil if body.nil?
+  return body['_source']
+end
+
+def bind_new_account(data)
+  begin
+    request_body = JSON.parse(data)
+    body = create_user(request_body)
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "bind new account error"
+    })
+    if e.message.include?("email has been registered")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 406, "msg" => e.message, "data" => ""}.to_json]
+    elsif e.message.include?("openeuler username has been binded")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 407, "msg" => e.message, "data" => ""}.to_json]
+    elsif e.message.include?("Offered account is already used")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 409, "msg" => e.message, "data" => ""}.to_json]
+    else
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 408, "msg" => e.message, "data" => ""}.to_json]
+    end
+  end
+  log_info("bind new account succeed, name: #{request_body['name']}, account: #{request_body['account']}")
+
+  # '新账户注册成功，请查收邮件'
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 0, "msg" => "", "data" => "bind new account succeed"}.to_json]
+end
+
+def create_user(request_body)
+  my_email = request_body['email'] || ""
+  my_name = request_body['name'] || ""
+  my_account = request_body['account'] || ""
+  if my_name.size < ACCOUNT_MIN_LEN || my_name.size > ACCOUNT_MAX_LEN
+    raise StandarError.new("the length of my_name is invalid")
+  end
+  if my_account.size < ACCOUNT_MIN_LEN || my_account.size > ACCOUNT_MAX_LEN
+    raise StandardError.new("the length of my_account is invalid")
+  end
+  unless my_account.instance_of?(String)
+    raise StandardError.new("my_account not string type")
+  end
+
+  my_email = request_body['email']
+  my_account_info = ESQuery.new(index: 'accounts').query_by_id(my_email)
+  raise StandardError.new("email has been registered") unless my_account_info.nil?
+
+  openeuler_username = request_body['openeuler_username']
+
+  raise StandardError.new("openeuler username has been binded") unless check_openeuler_user(openeuler_username).nil?
+
+  my_info = {
+    'my_email'=> my_email,
+    'my_token'=> %x(uuidgen).chomp,
+    'my_name'=> request_body['name'],
+    'my_account'=> request_body['account'],
+    'my_third_party_accounts.openeuler_username' => openeuler_username,
+    'my_ssh_pubkey'=> request_body['pubkey']=='' ? [] : [request_body['pubkey']],
+    'create_time' => Time.now.strftime("%Y-%m-%d %H:%M:%S"),
+    'roles'=> ['standard']
+  }
+
+  check_account = BuildMyInfo.new(my_info['my_email'])
+  raise StandardError.new("Offered account is already used") unless check_account_unique(my_info, check_account)
+  
+  assign_account = AutoAssignAccount.new(my_info)
+  # assign_account.update_my_info_from_account_info
+  ES_CLIENT.index(index: 'accounts', id: my_info['my_email'], type: '_doc', body: my_info, refresh: 'wait_for')
+end
+
+def get_user_info()
+  payload = authorized?
+  return [401, headers.merge('Access-Control-Allow-Origin' => '*'), ''] if payload.nil?
+  
+  openeuler_username = payload['openeuler_username']
+  openeuler_email = payload['openeuler_email']
+
+  my_account = check_openeuler_user(openeuler_username)
+
+  if my_account.nil?
+    body = {'openeuler_username': openeuler_username, 'openeuler_email': openeuler_email, 'my_account': nil, 'my_email': nil, 'my_name': nil, 'roles': nil}
+  else
+    body = {'openeuler_username': openeuler_username, 'openeuler_email': openeuler_email, 'my_account': my_account['my_account'],
+	    'my_email': my_account['my_email'], 'my_name': my_account['my_name'], 'roles': my_account['roles'] || nil}
+  end
+
+  if params['update_token']=='true'
+    token = generate_token(my_account['my_account'], openeuler_username, openeuler_email, my_account['roles'])
+    body[:token] = token
+  end
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body.to_json]
+end
+
+def user_auth(params)
+  payload = auth(params)
+  user_info = payload.delete("account_info")
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*', 'account_info' => user_info.to_json), payload.to_json]
+end
+
+def client_info()
+  body = {"client_id" => ENV['OAUTH_CLIENT_ID'], 'client_secret' => ENV['OAUTH_CLIENT_SECRET']}
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body.to_json]
+end
+
+def register_new_account(data)
+  begin
+    raise StandardError.new("register_new_account api not enable") unless ENABLE_AUTH_CODE_API and ENABLE_REGISTER_API
+    request_body = JSON.parse(data)
+    body = create_offline_user(request_body)
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "register new account error"
+    })
+    if e.message.include?("email has been registered")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 406, "msg" => e.message, "data" => ""}.to_json]
+    elsif e.message.include?("openeuler username has been binded")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 407, "msg" => e.message, "data" => ""}.to_json]
+    elsif e.message.include?("Offered account is already used")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 409, "msg" => e.message, "data" => ""}.to_json]
+    else
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 408, "msg" => e.message, "data" => ""}.to_json]
+    end
+  end
+  log_info("bind new account succeed, account: #{request_body['account']}")
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 0, "msg" => "", "data" => "bind new account succeed"}.to_json]
+end
+
+def create_offline_user(request_body)
+  my_email = request_body['email'] || ""
+  my_account = request_body['account'] || ""
+  my_auth_code = request_body['auth_code'] || ""
+  if my_account.size < ACCOUNT_MIN_LEN || my_account.size > ACCOUNT_MAX_LEN
+    raise StandarError.new("the length of my_account is invalid")
+  end
+
+  if my_auth_code.size < AUTH_CODE_MIN_LEN || my_auth_code.size > AUTH_CODE_MAX_LEN
+    raise StandardError.new("the length of my_auth_code is invalid")
+  end
+  unless my_auth_code.instance_of?(String) and my_auth_code.match?(AUTH_CODE_PATTERN)
+    raise StandardError.new("my_auth_code not string type or contains invalid character")
+  end
+
+  if my_email.size > EMAIL_MAX_LEN
+    raise StandardError.new("the length of my_email is invalid")
+  end
+  unless my_email.instance_of?(String) and my_email.match?(EMAIL_PATTERN)
+    raise StandardError.new("my_email not string type or contains invalid character")
+  end
+
+  my_account_info = ESQuery.new(index: 'accounts').query_by_id(my_email)
+  raise StandardError.new("email has been registered") unless my_account_info.nil?
+
+  openeuler_username = my_account
+  raise StandardError.new("openeuler username has been binded") unless check_openeuler_user(openeuler_username).nil?
+
+  my_info = {
+    'my_email'=> my_email,
+    'my_token'=> %x(uuidgen).chomp,
+    'my_name'=> my_account,
+    'my_account'=> request_body['account'],
+    'my_third_party_accounts.openeuler_username' => openeuler_username,
+    'my_ssh_pubkey'=> request_body['pubkey']=='' ? [] : [request_body['pubkey']],
+    'create_time' => Time.now.strftime("%Y-%m-%d %H:%M:%S"),
+    'roles'=> ['standard']
+  }
+
+  check_account = BuildMyInfo.new(my_info['my_email'])
+  raise StandardError.new("Offered account is already used") unless check_account_unique(my_info, check_account)
+  # encrypt auth_code
+  my_salt, encrypted_auth_code = encrypt_auth_code(my_auth_code)
+  my_info['my_salt'] = my_salt
+  my_info['my_auth_code'] = encrypted_auth_code
+
+  assign_account = AutoAssignAccount.new(my_info)
+  ES_CLIENT.index(index: 'accounts', id: my_info['my_email'], type: '_doc', body: my_info, refresh: 'wait_for')
+end
+
+def auth_code_authorize(data)
+  begin
+    raise StandardError.new("auth_code_authorize api not enable") unless ENABLE_AUTH_CODE_API
+    post_data = JSON.parse(data)
+    account = post_data['account']
+    auth_code = post_data['auth_code']
+    raise StandardError.new("missing necessary input data") if account.nil? or auth_code.nil?
+    if account.size < ACCOUNT_MIN_LEN || account.size > ACCOUNT_MAX_LEN
+      raise StandardError.new("the length of account is invalid")
+    end
+    if auth_code.size < AUTH_CODE_MIN_LEN || auth_code.size > AUTH_CODE_MAX_LEN
+      raise StandardError.new("the length of auth_code is invalid")
+    end
+
+    if new_auth_code.size < AUTH_CODE_MIN_LEN || new_auth_code.size > AUTH_CODE_MAX_LEN
+      raise StandardError.new("the length of new_auth_code is invalid")
+    end
+    unless new_auth_code.instance_of?(String) and new_auth_code.match?(AUTH_CODE_PATTERN)
+      raise StandardError.new("new_auth_code not string type or contains invalid character")
+    end
+
+    account_info = get_account_info1(account)
+    raise StandardError.new("account has not been registered") if account_info.nil?
+
+    my_account = account_info['my_account']
+    email = account_info['my_email']
+    openeuler_username = account_info['my_third_party_accounts.openeuler_username']
+    roles = account_info['roles']
+    salt = account_info['my_salt']
+    encrypted_auth_code = account_info['my_auth_code']
+    if salt.nil? or encrypted_auth_code.nil?
+      raise StandardError.new("account or auth_code not matched") if auth_code != email
+    else
+      salt = [salt].pack('H*')
+      salt, encrypted_input_auth_code = encrypt_auth_code(auth_code, salt)
+      raise StandardError.new("account or auth_code not matched") if encrypted_input_auth_code != encrypted_auth_code
+    end
+    token = generate_token(my_account, openeuler_username, email, roles)
+    log_info("login succeed, account: #{my_account}")
+
+    body = {'token': token}
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "query_result_error"
+    })
+    return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 500, "msg" => e.message, "data" => "query result failed"}.to_json]
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 0, "msg" => body, "data" => "query result succeed"}.to_json]
+end
+
+def modify_auth_code(data)
+  begin
+    # 当前仅在离线登录功能整体开启状态下，允许用户拥有修改auth_code的能力
+    raise StandardError.new("modify_auth_code api not enable") unless ENABLE_AUTH_CODE_API
+
+    payload = authorized?
+    return [401, headers.merge('Access-Control-Allow-Origin' => '*'), ''] if payload.nil?
+
+    request_body = JSON.parse(data)
+    account = payload['my_account']
+    old_auth_code = request_body['old_auth_code']
+    new_auth_code = request_body['new_auth_code']
+    raise StandardError.new("missing necessary input data") if old_auth_code.nil? or new_auth_code.nil?
+
+    account_info = get_account_info1(account)
+    raise StandardError.new("account has not been registered") if account_info.nil?
+
+    email = account_info['my_email']
+    salt = account_info['my_salt']
+    encrypted_auth_code = account_info['my_auth_code']
+    if salt.nil? or encrypted_auth_code.nil?
+      raise StandardError.new("old_auth_code is wrong") if old_auth_code != email
+    else
+      salt = [salt].pack('H*')
+      salt, encrypted_input_auth_code = encrypt_auth_code(old_auth_code, salt)
+      raise StandardError.new("old_auth_code is wrong") if encrypted_input_auth_code != encrypted_auth_code
+    end
+    new_salt, new_encrypt_auth_code = encrypt_auth_code(new_auth_code)
+    ES_CLIENT.update(index: 'accounts', id: email, body: { doc: { 'my_salt' => new_salt, 'my_auth_code' => new_encrypt_auth_code } }, refresh: 'wait_for')
+  rescue StandardError => e
+    log_error({
+      'message' => e.message,
+      'error_message' => "modify auth_code error"
+    })
+    if e.message.include?("missing necessary input data")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 410, "msg" => e.message, "data" => ""}.to_json]
+    elsif e.message.include?("account has not been registered")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 411, "msg" => e.message, "data" => ""}.to_json]
+    elsif e.message.include?("old_auth_code is wrong")
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 412, "msg" => e.message, "data" => ""}.to_json]
+    else
+      return [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 413, "msg" => e.message, "data" => ""}.to_json]
+    end
+  end
+  log_info("modify auth_code succeed, account: #{request_body['account']}")
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), {"code" => 0, "msg" => "", "data" => "modify auth_code succeed"}.to_json]
+end
+
+def encrypt_auth_code(auth_code, salt = nil)
+  salt = OpenSSL::Random.random_bytes(SALT_LENGTH) if salt.nil?
+  encrypted_auth_code = OpenSSL::PKCS5.pbkdf2_hmac(auth_code, salt, ITERATION, KEY_LENGTH, OpenSSL::Digest::SHA256.new)
+  salt = salt.unpack('H*')[0]
+  encrypted_auth_code = encrypted_auth_code.unpack('H*')[0]
+  return salt, encrypted_auth_code
+end
+
+def get_offline_api_status()
+  body = {"enable_auth_code_api" => ENABLE_AUTH_CODE_API, 'enable_register_api' => ENABLE_REGISTER_API}
+
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), body.to_json]
 end

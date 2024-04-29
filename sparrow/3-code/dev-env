@@ -2,7 +2,106 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+namespace=$1
+[ $CCI_SRC ] || export CCI_SRC=/c/cbs
+
 umask 002
+
+sed -i "/^NAMESPACE:/cNAMESPACE: $namespace" $CCI_SRC/sparrow/k8s/setup.yaml
+
+for i in setup.yaml info-file remote-hosts
+do
+	cp $CCI_SRC/sparrow/k8s/$i /etc/compass-ci/$i
+done
+
+cat > /etc/profile.d/compass.sh <<'EOF'
+export LKP_SRC=/c/lkp-tests
+export CCI_SRC=/c/cbs
+export REPO_SRC=/c/git-repos
+export CCI_REPOS=/c
+export deploy_k8s=true
+
+export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
+EOF
+
+mkdir -p /root/.config/compass-ci
+remote_lkp_pack_server=$(awk '/^remote_lkp_pack_server:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+[[ -f /root/.config/compass-ci/pack.yaml ]] || {
+cat > /root/.config/compass-ci/pack.yaml <<EOF
+lkp_pack_server: ${HOSTNAME}
+lkp_pack_tag_user: root
+lkp_rsync_server: ${HOSTNAME}
+remote_lkp_pack_server: $remote_lkp_pack_server
+EOF
+
+chmod 640 /root/.config/compass-ci/pack.yaml
+}
+
+[[ -f /etc/compass-ci/passwd.yaml ]] || {
+        passwd=$(< /dev/urandom tr -dc "a-zA-Z0-9" | head -c 10; echo)
+
+        sed -i \
+            -e "/key.* ETCD_PASSWORD/ckey ETCD_PASSWORD $passwd" \
+            -e "/key.* ES_PASSWORD/ckey ES_PASSWORD $passwd" \
+            -e "/key.* ES_SUPER_PASSWORD/ckey ES_SUPER_PASSWORD $passwd" \
+            -e "/key.* LOGGING_ES_PASSWORD/ckey LOGGING_ES_PASSWORD $passwd" \
+            /etc/compass-ci/info-file
+
+        GITEE_ID=$(awk '/^GITEE_ID:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+        GITEE_PASSWORD=$(awk '/^GITEE_PASSWORD:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+        DOCKER_REGISTRY_USER=$(awk '/^DOCKER_REGISTRY_USER:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+        DOCKER_REGISTRY_PASSWORD=$(awk '/^DOCKER_REGISTRY_PASSWORD:\s/ {print $2; exit}' /etc/compass-ci/setup.yaml)
+
+        cat > /etc/compass-ci/passwd.yaml <<-EOF
+ES_ROLE: biz-role
+ES_USER: biz-user
+ES_PASSWORD: $passwd
+ES_SPUER_USER: root
+ES_SPUER_PASSWORD: $passwd
+LOGGING_ES_USER: root
+LOGGING_ES_PASSWORD: $passwd
+GITEE_ID: $GITEE_ID
+GITEE_PASSWORD: $GITEE_PASSWORD
+DOCKER_REGISTRY_USER: $DOCKER_REGISTRY_USER
+DOCKER_REGISTRY_PASSWORD: $DOCKER_REGISTRY_PASSWORD
+ETCD_USER: root
+ETCD_PASSWORD: $passwd
+EOF
+
+        chmod 664 /etc/compass-ci/passwd.yaml
+}
+
+sh $CCI_SRC/sparrow/k8s/generate-config
+[ $namespace == "ems1" ] && sh $CCI_SRC/sparrow/k8s/generate-secrets
+
+configmap_path=$CCI_SRC/container/configmap.yaml
+mkdir -p /root/.config/cli/defaults
+for i in $(cat $configmap_path | grep ".yaml: |")
+do
+        file_name=$(echo $i|tr -d ": |")
+        [ "$file_name" == "cbs.yaml" ] && sed -n "/$i/,/\-\-\-/p" $configmap_path |sed '1d'|sed '$d' |sed 's/^[ \t]*//g'|tr -s '\n' > /etc/compass-ci/defaults/$file_name
+        [ "$file_name" == "service-env.yaml" ] && sed -n "/$i/,/\-\-\-/p" $configmap_path |sed '1d'|sed '$d' |sed 's/^[ \t]*//g'| tr -s '\n' > /etc/compass-ci/service/$file_name
+        [ "$file_name" == "config.yaml" ] && sed -n "/$i/,/\-\-\-/p" $configmap_path |sed '1d'|sed '$d' |sed 's/^[ \t]*//g'| tr -s '\n' > /root/.config/cli/defaults/$file_name
+done
+
+ruby $(dirname ${BASH_SOURCE[0]})/k8s-env
+
+cat /etc/compass-ci/setup.yaml| grep -E "^ACCOUNT:|^PASSWORD:|^OAUTH_TOKEN_URL:|^OAUTH_REDIRECT_URL:|^PUBLIC_KEY_URL:" >> /root/.config/cli/defaults/config.yaml
+cat /etc/compass-ci/setup.yaml| grep -E "^git_branch_|^NAMESPACE:" >> /etc/compass-ci/defaults/cbs.yaml
+
+find /etc/compass-ci/ -type f | xargs chmod 640
+chown lkp:lkp -R /etc/compass-ci
+
+[[ -f /etc/compass-ci/defaults/upstream-config ]] || {
+cat > /etc/compass-ci/defaults/upstream-config <<EOF
+upstreams:
+- url: https://gitee.com/thesamename/upstream-repos.git
+  location: upstream
+  git_repo: u/upstream-repos/upstream-repos
+EOF
+}
+
+[ "$deploy_k8s" = "true" ] && exit 0
 
 [ -z $server_ip ] && server_ip=$(ip route get 1.2.3.4 | awk '{print $7; exit}')
 server_name=$(hostname | cut -f1 -d.)
@@ -45,6 +144,7 @@ server_name=$(hostname | cut -f1 -d.)
 : ${MASTER_FLUENTD_PORT:=24224}
 : ${DOCKER_REGISTRY_HOST:=$server_ip}
 : ${DOCKER_REGISTRY_PORT:=5001}
+: ${LOCAL_SEND_MAIL_HOST:=$server_ip}
 : ${LOCAL_SEND_MAIL_PORT:=11311}
 : ${LOCAL_ROBOT_EMAIL_ADDRESS:=Crystal_TEAM}
 : ${SCHED_HTTPS_HOST:=$server_ip}
@@ -61,6 +161,7 @@ server_name=$(hostname | cut -f1 -d.)
 : ${FETCH_MAIL_BOX:=.compass-ci}
 : ${GIT_DAEMON_HOST:=$server_ip}
 : ${git_mirror_host:=$server_ip}
+: ${REDIS_HOST:=$server_ip}
 : ${REDIS_PORT:=6379}
 : ${MAILDIR:=/srv/cci/Maildir/.compass-ci}
 : ${SENT_MAILDIR:=/srv/cci/Maildir/.sent}
@@ -70,6 +171,19 @@ server_name=$(hostname | cut -f1 -d.)
 : ${COMPASS_WEB_PORT:=20030}
 : ${OAUTH_CLIENT_ID:=your_client_id_here}
 : ${OAUTH_CLIENT_SECRET:=your_client_secret_here}
+: ${DAG_HOST:=$server_ip}
+: ${DAG_PORT:=20036}
+: ${SOURCE_MANAGER_HOST:=$server_ip}
+: ${SOURCE_MANAGER_PORT:=20035}
+: ${MQ_HOST:=$server_ip}
+: ${MQ_PORT:=5672}
+: ${GIT_SERVER:=$server_ip}
+: ${ETCD_HOST:=$server_ip}
+: ${ETCD_PORT:=2379}
+: ${JOB_JSON_DIR:=/repositories/new-jobs}
+: ${JSON_CONSUME_INTERVAL:=10}
+: ${REPO_HOST:=$server_ip}
+: ${REPO_PORT:=20029}
 
 mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
@@ -79,14 +193,7 @@ lab: "$lab"
 lab_id: "$lab_id"
 EOF
 
-[[ -f /etc/compass-ci/defaults/upstream-config ]] || {
-cat > /etc/compass-ci/defaults/upstream-config <<EOF
-upstreams:
-- url: https://gitee.com/thesamename/upstream-repos.git
-  location: upstream
-  git_repo: u/upstream-repos/upstream-repos
-EOF
-}
+jwt_secret=$(uuidgen)
 
 mkdir -p /etc/compass-ci/service
 cat > /etc/compass-ci/service/service-env.yaml <<EOF
@@ -136,6 +243,7 @@ MASTER_FLUENTD_HOST: $MASTER_FLUENTD_HOST
 MASTER_FLUENTD_PORT: $MASTER_FLUENTD_PORT
 DOCKER_REGISTRY_HOST: $DOCKER_REGISTRY_HOST
 DOCKER_REGISTRY_PORT: $DOCKER_REGISTRY_PORT
+LOCAL_SEND_MAIL_HOST: $LOCAL_SEND_MAIL_HOST
 LOCAL_SEND_MAIL_PORT: $LOCAL_SEND_MAIL_PORT
 MAILDIR: /srv/cci/Maildir/.compass-ci
 LOCAL_ROBOT_EMAIL_ADDRESS: $LOCAL_ROBOT_EMAIL_ADDRESS
@@ -151,6 +259,7 @@ FETCH_MAIL_DIR: $FETCH_MAIL_DIR
 FETCH_MAIL_BOX: $FETCH_MAIL_BOX
 GIT_DAEMON_HOST: $GIT_DAEMON_HOST
 GIT_MIRROR_HOST: $git_mirror_host
+REDIS_HOST: $REDIS_HOST
 REDIS_PORT: $REDIS_PORT
 MAILDIR: $MAILDIR
 SENT_MAILDIR: $SENT_MAILDIR
@@ -159,7 +268,18 @@ BASE_WEB_BACKEND_URL: $WEB_BACKEND_PROTOCOL://$server_ip:$WEB_BACKEND_PORT/web_b
 OAUTH_CLIENT_ID: $OAUTH_CLIENT_ID
 OAUTH_CLIENT_SECRET: $OAUTH_CLIENT_SECRET
 OAUTH_REDIRECT_URL: $COMPASS_WEB_PROTOCOL://$server_ip:$COMPASS_WEB_PORT/oauth_authorize
-JWT_SECRET: change_me
+JWT_SECRET: $jwt_secret
+DAG_HOST: $DAG_HOST
+DAG_PORT: $DAG_PORT
+SOURCE_MANAGER_HOST: $SOURCE_MANAGER_HOST
+SOURCE_MANAGER_PORT: $SOURCE_MANAGER_PORT
+MQ_HOST: $MQ_HOST
+MQ_PORT: $MQ_PORT
+GIT_SERVER: $GIT_SERVER
+ETCD_HOST: $ETCD_HOST
+ETCD_PORT: $ETCD_PORT
+JOB_JSON_DIR: $JOB_JSON_DIR
+JSON_CONSUME_INTERVAL: $JSON_CONSUME_INTERVAL
 EOF
 
 mkdir -p /etc/compass-ci/scheduler
@@ -199,15 +319,6 @@ MONITOR_HOST:
 MONITOR_PORT:
 EOF
 
-cat > /etc/profile.d/compass.sh <<'EOF'
-export LKP_SRC=/c/lkp-tests
-export CCI_SRC=/c/compass-ci
-export REPO_SRC=/c/git-repos
-export CCI_REPOS=/c
-
-export PATH="$PATH:$CCI_SRC/sbin:$LKP_SRC/sbin:$LKP_SRC/bin"
-EOF
-
 mkdir -p /etc/compass-ci/register
 cat > /etc/compass-ci/register/register.yaml <<'EOF'
 delimiter:
@@ -223,30 +334,6 @@ scheduler:
   my_name: compass-ci
   my_account: compass-ci
 EOF
-
-[[ -f /etc/compass-ci/passwd.yaml ]] || {
-passwd=$(< /dev/urandom tr -dc "a-zA-Z0-9" | head -c 10; echo)
-
-cat > /etc/compass-ci/passwd.yaml <<EOF
-ES_USER: root
-ES_PASSWORD: $passwd
-LOGGING_ES_USER: root
-LOGGING_ES_PASSWORD: $passwd
-EOF
-
-chmod 664 /etc/compass-ci/passwd.yaml
-}
-
-mkdir -p /root/.config/compass-ci
-[[ -f /root/.config/compass-ci/pack.yaml ]] || {
-cat > /root/.config/compass-ci/pack.yaml <<EOF
-lkp_pack_server: ${HOSTNAME}
-lkp_pack_tag_user: root
-lkp_rsync_server: ${HOSTNAME}
-EOF
-
-chmod 664 /root/.config/compass-ci/pack.yaml
-}
 
 source /etc/os-release
 

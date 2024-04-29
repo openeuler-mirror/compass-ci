@@ -6,6 +6,8 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+start_pod
+
 names = Set.new %w[
   LOGGING_ES_HOST
   LOGGING_ES_PORT

@@ -12,4 +12,6 @@ docker_skip_rebuild "etcd-${VERSION}:alpine"
 
 docker_skip_rebuild "etcd-${VERSION}:alpine"
 
-docker build -t etcd-${VERSION}:alpine --build-arg VERSION=${VERSION} --build-arg ARCH=${ARCH} .
+docker build --no-cache -t etcd-${VERSION}:alpine --build-arg VERSION=${VERSION} --build-arg ARCH=${ARCH} .
+
+push_image_remote "etcd-${VERSION}:alpine"

@@ -6,4 +6,6 @@
 
 docker_skip_rebuild "os-http"
 
-docker build -t os-http .
+docker build --no-cache -t os-http .
+
+push_image_remote "os-http"

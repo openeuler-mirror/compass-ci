@@ -4,11 +4,17 @@
 
 . ../defconfig.sh
 
+load_cci_defaults
+
 docker_skip_rebuild "extract-stats"
+
+download_repo "cbs" "$git_branch_cbs"
+download_repo "lkp-tests" "$git_branch_lkp"
 
 CCI_SRC=$CCI_SRC
 bash $CCI_SRC/container/compile . || exit
 
-docker build -t extract-stats .
+docker build --no-cache -t extract-stats .
+push_image_remote "extract-stats"
 
 rm extract-stats

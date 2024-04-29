@@ -5,8 +5,9 @@
 . $CCI_SRC/container/defconfig.sh
 
 load_service_authentication
+load_cci_defaults
 
-curl -sSH 'Content-Type: Application/json' -XPUT 'http://localhost:9200/compat-software-info' -u "${ES_USER}:${ES_PASSWORD}" -d '{
+curl -sSH 'Content-Type: Application/json' -XPUT "http://${ES_HOST}:9200/compat-software-info" -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -d '{
 		"mappings": {
 			"dynamic": false,
 			"properties": {
@@ -63,6 +64,6 @@ then
 	echo "create index failed."
 else
 	echo "set index.mapping.total_fields.limit: 1000"
-	curl -sS -XPUT 127.0.0.1:9200/compat-software-info/_settings -u "${ES_USER}:${ES_PASSWORD}" -H 'Content-Type: application/json' \
+	curl -sS -XPUT "${ES_HOST}":9200/compat-software-info/_settings -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -H 'Content-Type: application/json' \
 		-d '{"index.mapping.total_fields.limit": 1000}'
 fi

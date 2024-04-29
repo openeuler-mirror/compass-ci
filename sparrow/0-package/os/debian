@@ -28,6 +28,8 @@ pkgs=(
 	iputils-ping
 	libvirt-daemon-system
 	libvirt-dev
+	ncat
+	expect
 )
 
 apt-get update

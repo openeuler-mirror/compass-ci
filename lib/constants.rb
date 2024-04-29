@@ -16,11 +16,11 @@ names = Set.new %w[
   LOGGING_ES_PASSWORD
 ]
 
-ES_HOST ||= config['ES_HOST'] || '172.17.0.1'
-ES_PORT ||= config['ES_PORT'] || 9200
+ES_HOST ||= ENV['ES_HOST'] || config['ES_HOST'] || '172.17.0.1'
+ES_PORT ||= ENV['ES_PORT'] || config['ES_PORT'] || 9200
 
-LOGGING_ES_HOST ||= config['LOGGING_ES_HOST'] || '172.17.0.1'
-LOGGING_ES_PORT ||= config['LOGGING_ES_PORT'] || 9202
+LOGGING_ES_HOST ||= ENV['LOGGING_ES_HOST'] || config['LOGGING_ES_HOST'] || '172.17.0.1'
+LOGGING_ES_PORT ||= ENV['LOGGING_ES_PORT'] || config['LOGGING_ES_PORT'] || 9202
 
 if ENV['ES_USER']
   ES_USER = ENV['ES_USER']
@@ -94,3 +94,20 @@ SCHED_HOST ||= config['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT ||= config['SCHED_PORT'] || 3000
 
 LAB ||= config['LAB'] || ENV['LAB'] || 'z9'
+
+OAUTH_CLIENT_ID ||= config['OAUTH_CLIENT_ID'] || ENV['OAUTH_CLIENT_ID'] || 'your_client_id_here'
+OAUTH_CLIENT_SECRET ||= config['OAUTH_CLIENT_SECRET'] || ENV['OAUTH_CLIENT_SECRET'] || 'your_client_secret_here'
+OAUTH_REDIRECT_URL ||= config['OAUTH_REDIRECT_URL'] || ENV['OAUTH_REDIRECT_URL'] || 'https://compass-ci.openeuler.org/oauth_authorize'
+OAUTH_TOKEN_URL ||= config['OAUTH_TOKEN_URL'] || ENV['OAUTH_TOKEN_URL'] || "https://omapi.test.osinfra.cn/oneid/oidc/token"
+OAUTH_USER_URL ||= config['OAUTH_USER_URL'] || ENV['OAUTH_USER_URL'] || "https://omapi.test.osinfra.cn/oneid/oidc/user"
+JWT_SECRET ||= config['JWT_SECRET'] || ENV['JWT_SECRET'] || nil
+
+PUBLISH_NO ||= 0
+PUBLISH_WAITING ||= 1
+PUBLISH_ABORTED ||= 2
+PUBLISH_PUBLISHING ||= 3
+PUBLISH_SUCCESS ||= 4
+PUBLISH_FAILED ||= 5
+
+ENABLE_AUTH_CODE_API = ENV['ENABLE_AUTH_CODE_API'] || config['ENABLE_AUTH_CODE_API'] || false
+ENABLE_REGISTER_API = ENV['ENABLE_REGISTER_API'] || config['ENABLE_REGISTER_API'] || false

@@ -5,9 +5,10 @@ FROM alpine:scheduler-dev
 
 MAINTAINER Wu Zhende <wuzhende666@163.com>
 
-RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+copy repositories /etc/apk/
 
-RUN apk update && \
+RUN apk update --no-cache && \
+    apk add --upgrade busybox && \
     apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash'
 
@@ -20,6 +21,7 @@ ENV LIFECYCLE_RUNTIME_DIR /c/cci/lifecycle
 RUN mkdir -p $LIFECYCLE_RUNTIME_DIR && \
     chown -R 1090:1090 /c
 
-WORKDIR $LIFECYCLE_RUNTIME_DIR
+RUN apk del gcc rpcgen gdb
 
+WORKDIR $LIFECYCLE_RUNTIME_DIR
 COPY --chown=1090:1090 lifecycle .

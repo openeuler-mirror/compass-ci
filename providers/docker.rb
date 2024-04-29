@@ -5,4 +5,4 @@
 
 require_relative './docker/docker'
 
-main(ENV['hostname'], ENV['queues'], ENV['uuid'], ENV['index'])
+start(ENV['hostname'], ENV['queues'], ENV['uuid'], ENV['index'], ENV['maxdc'], ENV['is_remote'])

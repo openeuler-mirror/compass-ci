@@ -3,11 +3,10 @@
 
 FROM alpine:scheduler-dev
 
-RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
+COPY repositories /etc/apk
 
-RUN apk update
-
-RUN apk add --no-cache 'ruby-dev' \
+RUN apk add --upgrade busybox && \
+    apk add --no-cache 'ruby-dev' \
     'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'util-linux' 'shadow'
 
 RUN groupadd -g 1090 lkp && useradd -m -u 1090 -g 1090 lkp
@@ -19,14 +18,16 @@ RUN umask 002 && \
 
 ENV SCHED_RUNTIME_DIR /c/cci/scheduler
 
-RUN mkdir -p $SCHED_RUNTIME_DIR && \
-    chown -R 1090:1090 /c
+RUN mkdir -p $SCHED_RUNTIME_DIR 
 
 # fatal: detected dubious ownership in repository at '/c/lkp-tests'
 RUN git config --global --add safe.directory /c/lkp-tests && \
 	cp /root/.gitconfig /home/lkp/ && \
 	chown 1090:1090 /home/lkp/.gitconfig
 
+COPY cbs /c/cbs
+COPY lkp-tests /c/lkp-tests
+RUN chown -R 1090:1090 /c/cbs /c/lkp-tests && chown -R 750 /c/cbs /c/lkp-tests
 WORKDIR $SCHED_RUNTIME_DIR
 
 COPY --chown=1090:1090 scheduler .

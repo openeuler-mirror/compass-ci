@@ -15,7 +15,6 @@ require "scheduler/constants.cr"
 require "scheduler/jobfile_operate.cr"
 require "scheduler/kernel_params.cr"
 require "scheduler/pp_params.cr"
-require "scheduler/testbox_env.cr"
 require "../scheduler/elasticsearch_client"
 require "./utils"
 
@@ -943,6 +942,16 @@ class Job < JobHash
     self["rootfs"] = "#{os}-#{os_version}-#{os_arch}"
   end
 
+  def set_tbox_type
+    if self["testbox"].starts_with?("dc")
+      self["tbox_type"] = "dc"
+    elsif self["testbox"].starts_with?("vm")
+      self["tbox_type"] = "vm"
+    else
+      self["tbox_type"] = "hw"
+    end
+  end
+
   def get_testbox_type
     return "vm" if self["testbox"].starts_with?("vm")
     return "dc" if self["testbox"].starts_with?("dc")
@@ -1078,8 +1087,27 @@ class Job < JobHash
     self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
+  def get_repositories_dir
+    if (@hash.has_key?("rpmbuild") || @hash.has_key?("hotpatch")) && @hash.has_key?("snapshot_id") && @hash.has_key?("os_project") && @hash.has_key?("os_variant")
+      os_arch = @hash["os_arch"]
+      os_project = @hash["os_project"]
+      os_variant = @hash["os_variant"]
+      snapshot_id = @hash["snapshot_id"]
+      new_jobs = ",/repositories/new-jobs/"
+      std_rpms = ",/repositories/#{os_project}/#{os_variant}/#{os_arch}/history/#{snapshot_id}/steps/upload/#{id}/"
+
+      return "#{new_jobs}#{std_rpms}"
+    end
+
+    if @hash.has_key?("upload_image_dir")
+      return ",#{@hash["upload_image_dir"]}"
+    end
+
+    return ""
+  end
+
   def set_upload_dirs
-    self["upload_dirs"] = "#{result_root}#{get_package_dir}#{get_upload_dirs_from_config}"
+    self["upload_dirs"] = "#{result_root}#{get_package_dir}#{get_repositories_dir}#{get_upload_dirs_from_config}"
   end
 
   private def set_result_service
@@ -1097,7 +1125,11 @@ class Job < JobHash
   end
 
   private def set_subqueue
-    self["subqueue"] = self["my_email"] unless self["subqueue"] == "idle"
+    if self["submit_user"] == "vip" && self["submit_role"] == "maintainer" && self["build_type"] == "single"
+      self["subqueue"] = "vip"
+    else
+      self["subqueue"] = self["my_email"] unless self["subqueue"] == "idle"
+    end
   end
 
   private def set_secrets
@@ -1241,6 +1273,10 @@ class Job < JobHash
 
   def get_common_initrds
     temp_initrds = [] of String
+    is_remote = self["is_remote"]?
+
+    initrd_http_prefix = is_remote == "true" ? ENV["DOMAIN_NAME"] : INITRD_HTTP_PREFIX
+    sched_http_prefix = is_remote == "true" ?  ENV["DOMAIN_NAME"] : SCHED_HTTP_PREFIX
     # init custom_bootstrap cgz
     # if has custom_bootstrap field, just give bootstrap cgz to testbox, no need lkp-test/job cgz
     if @hash_plain.has_key?("custom_bootstrap")
@@ -1253,7 +1289,7 @@ class Job < JobHash
     end
 
     # init job.cgz
-    temp_initrds << "#{SCHED_HTTP_PREFIX}/job_initrd_tmpfs/#{id}/job.cgz"
+    temp_initrds << "#{sched_http_prefix}/job_initrd_tmpfs/#{id}/job.cgz"
 
     # pkg_data:
     #   lkp-tests:

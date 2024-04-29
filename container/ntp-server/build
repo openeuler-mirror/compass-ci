@@ -6,4 +6,6 @@
 
 docker_skip_rebuild "ntp-server"
 
-docker build -t ntp-server .
+docker build --no-cache -t ntp-server .
+
+push_image_remote "ntp-server"

@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+require "json"
+require "yaml"
 require "./json_logger"
 
 module Utils
@@ -57,5 +59,97 @@ module Utils
 
     raise error_msg
   end
-end
 
+  def get_project_info(json_file, project_name)
+    begin
+      jf = File.read(json_file)
+      data = JSON.parse(jf)
+      return data.as_h[project_name]
+    rescue JSON::ParseException | KeyError | File::NotFoundError
+      return nil
+    end
+  end
+
+  def get_service_env
+    hash = Hash(String, JSON::Any).new
+    yaml_any = File.open("/etc/compass-ci/service/service-env.yaml") do |content|
+      YAML.parse(content).as_h?
+    end
+    return hash unless yaml_any
+
+    return Hash(String, JSON::Any).from_json(yaml_any.to_json)
+  end
+
+  def remote_testbox_env
+    hash = Hash(String, JSON::Any).new
+    begin
+      yaml_any = File.open("/etc/compass-ci/service/remote-testbox-env.yaml") do |content|
+        YAML.parse(content).as_h?
+      end
+      hash.merge!(Hash(String, JSON::Any).from_json(yaml_any.to_json)) if yaml_any
+      return hash
+    rescue File::NotFoundError
+      return hash
+    end
+  end
+
+  def testbox_env(flag = "local", emsx = "ems1")
+    master_hash = get_k8s_service_env("ems1")
+    k8s_hash = get_k8s_service_env(emsx)
+    master_hash.merge!(k8s_hash)
+
+    yaml_any = get_out_service_keys
+    hash = Hash(String, JSON::Any).new
+    hash.merge!(Hash(String, JSON::Any).from_json(yaml_any.to_json))
+
+    hash.each do |key, value|
+      if master_hash.has_key?(key)
+        hash[key] = master_hash[key]
+      end
+    end
+
+    hash
+  end
+
+  def get_out_service_keys
+    yaml_any = File.open("/etc/compass-ci/scheduler/local-testbox-env.yaml") do |content|
+      YAML.parse(content).as_h?
+    end
+
+    return yaml_any
+  end
+
+  def get_k8s_service_env(emsx)
+    hash = Hash(String, JSON::Any).new
+    yaml_any = File.open("/etc/compass-ci/service/k8s-env.yaml") do |content|
+      YAML.parse(content).as_h?
+    end
+    return hash unless yaml_any
+
+    hash.merge!(Hash(String, JSON::Any).from_json(yaml_any.to_json))
+    emsx_info = hash[emsx]?
+    if emsx_info
+      return emsx_info.as_h
+    end
+
+    return Hash(String, JSON::Any).new
+  end
+
+  def parse_emsx(os_project)
+    return "ems1" if os_project.nil?
+
+    project_info = get_project_info("#{ENV["CCI_SRC"]}/src/lib/openeuler-projects.json", os_project)
+    return "ems1" if project_info.nil?
+
+    return "#{project_info["processed_by_server"]}"
+  end
+
+  def parse_vms
+    begin
+      Hash(String, Hash(String, Hash(String, String))).from_yaml(File.read("/etc/compass-ci/scheduler/vms.yaml"))
+    rescue File::NotFoundError
+      pp "cant find /etc/compass-ci/scheduler/vms.yaml"
+      return Hash(String, Hash(String, Hash(String, String))).new
+    end
+  end
+end

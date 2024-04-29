@@ -39,8 +39,7 @@ post '/git_command' do
   end
 
   # execute git command
-  Dir.chdir(repo_path)
-  _stdin, stdout, _stderr, wait_thr = Open3.popen3(*data['git_command'])
+  _stdin, stdout, _stderr, wait_thr = Open3.popen3(*data['git_command'], :chdir=>repo_path)
   out = stdout.read
   exit_code = wait_thr.value.to_i
 

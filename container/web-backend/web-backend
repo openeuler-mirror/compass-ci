@@ -33,6 +33,10 @@ get '/web_backend/compare' do
   compare(params)
 end
 
+options '/web_backend/compare' do
+  [200, headers.merge({'Access-Control-Allow-Origin' => '*', "Access-Control-Allow-Methods" => "GET", "Access-Control-Allow-Headers" => '*'}), '']
+end
+
 # GET /web_backend/get_jobs?upstream_repo=a&page_size=12&start_date=2020-11-03&end_date=2020-11-03
 # optional:
 # - upstream_repo
@@ -54,6 +58,10 @@ end
 #
 # Response:
 #   - default: 20 jobs
+options '/web_backend/get_jobs' do
+  [200, headers.merge({'Access-Control-Allow-Origin' => '*', "Access-Control-Allow-Methods" => "GET", "Access-Control-Allow-Headers" => '*'}), '']
+end
+
 get '/web_backend/get_jobs' do
   get_jobs(params)
 end
@@ -177,7 +185,11 @@ end
 #   - performance result
 post '/web_backend/performance_result' do
   request.body.rewind # in case someone already read it
-  performance_result(request.body.read)
+  performance_result(request.body.read, params)
+end
+
+options '/web_backend/performance_result' do
+  [200, headers.merge({'Access-Control-Allow-Origin' => '*', "Access-Control-Allow-Methods" => "POST", "Access-Control-Allow-Headers" => '*'}), '']
 end
 
 # POST /web_backend/query_field
@@ -266,6 +278,11 @@ get '/web_backend/get_jobs_summary' do
   group_jobs_stats(params)
 end
 
+options '/web_backend/get_jobs_summary' do
+  [200, headers.merge({'Access-Control-Allow-Origin' => '*', "Access-Control-Allow-Methods" => "GET", "Access-Control-Allow-Headers" => '*'}), '']
+end
+
+
 # GET /web_backend/get_job_error?suite=virttest&tbox_group=vm-2p8g&group_id=wcl_ansible-openeuler-03-10
 # Response
 # {
@@ -287,6 +304,10 @@ end
 # }
 get '/web_backend/get_job_error' do
   get_job_error(params)
+end
+
+options '/web_backend/get_job_error' do
+  [200, headers.merge({'Access-Control-Allow-Origin' => '*', "Access-Control-Allow-Methods" => "GET", "Access-Control-Allow-Headers" => '*'}), '']
 end
 
 # GET /web_backend/git_mirror_health
@@ -406,4 +427,83 @@ end
 
 get '/web_backend/test_matrix' do
   query_test_matrix(params)
+end
+
+# POST /user_auth/bindoldaccount
+# - header: "Content-Type: Application/json"
+# - body: json
+#   eg:
+#     {
+#       "email": "demo@gmail.com",
+#       "token": "token",
+#       "gitee_id": "xxxx"
+#     }
+#
+# Response:
+#   - bind existed account result
+post '/user_auth/bindoldaccount' do
+  request.body.rewind # in case someone already read it
+  bind_old_account(request.body.read)
+end
+
+# POST /user_auth/bindnewaccount
+# - header: "Content-Type: Application/json"
+# - body: json
+#   eg:
+#     {
+#       "email": "demo@gmail.com"
+#       "account": "demo",
+#       "name": "name",
+#       "pubkey": "pubkey",
+#       "purpose": "purpose"
+#       "company": "company",
+#       "college": "college",
+#       "gitee_id": "xxx",
+#     }
+#
+# Response:
+#   - bind new account result
+post '/user_auth/bindnewaccount' do
+  request.body.rewind # in case someone already read it
+  bind_new_account(request.body.read)
+end
+
+# GET /user_auth/oauth_authorize?code=abc&state=xyz
+# Response:
+#   - host_info(JSON)
+get '/user_auth/oauth_authorize' do
+  oauth_authorize(params)
+end
+
+# GET /user_auth/access_code_authorize?access_code=xxx
+# Response:
+#   encode_jwt(String)
+get '/user_auth/access_code_authorize' do
+  access_code_authorize(params)
+end
+
+# GET /user_auth/userinfo
+# Response:
+#   - host_info(JSON)
+get '/user_auth/userinfo' do
+  get_user_info()
+end
+
+options '/user_auth/userinfo' do
+  [200, headers.merge({'Access-Control-Allow-Origin' => '*', "Access-Control-Allow-Methods" => "GET", "Access-Control-Allow-Headers" => '*'}), '']
+end
+
+# GET /user_auth/auth
+# header: { "Authorization": $jwt}
+# input: can be nil
+#  "isVisitor": "true" # will skip auth and return 200
+get '/user_auth/auth' do
+  user_auth(params)
+end
+
+# GET /user_auth/get_client_info
+# Response:
+#   {"client_id": xxxx, "client_secret": xxxx}
+get '/user_auth/get_client_info' do
+	client_info()
 end

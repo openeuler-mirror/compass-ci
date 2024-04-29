@@ -92,7 +92,7 @@ class Sched
       next unless result["result"] == "success"
       next unless job
 
-      delete_job_from_ready_queue(job["queue"], job["subqueue"], job_id)
+      delete_job_from_submit_queue(job_id)
       update_jobs << { "update" => { "_id" => job_id.to_s, "data" => { "job_health" => "cancel"}}}
     rescue e
       @log.warn({
@@ -110,6 +110,11 @@ class Sched
     end
     spawn @es.bulk(update_jobs, index="jobs")
     results
+  end
+
+  def delete_job_from_submit_queue(job_id)
+    res = @etcd.delete("/queues/sched/submit/dc-custom/#{job_id}")
+    @etcd.delete("queues/sched/id2job/#{job_id}") if res.deleted == 1
   end
 
   def delete_job_from_ready_queue(queue, subqueue, job_id)

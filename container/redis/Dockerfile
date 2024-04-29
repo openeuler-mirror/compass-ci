@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-FROM alpine:3.11
+FROM alpine:3.18
 
 ARG PASSWD
 
@@ -17,6 +17,9 @@ RUN sed -i 's:dir /var/lib/redis:dir /srv/redis:' /etc/redis.conf; \
 VOLUME  /srv/redis
 WORKDIR /srv/redis
 
+RUN apk del gcc cpp rpcgen gdb || exit 0
+
+RUN apk del gcc rpcgen gdb
+
 EXPOSE 6379
 CMD ["redis-server", "/etc/redis.conf"]
-

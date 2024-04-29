@@ -7,8 +7,8 @@ require 'set'
 require_relative '../defconfig'
 
 names = Set.new %w[
-  ES_USER
-  ES_PASSWORD
+  ES_SUPER_USER
+  ES_SUPER_PASSWORD
 ]
 
 defaults = relevant_service_authentication(names)
@@ -22,4 +22,8 @@ BASE_IMAGE_DICT = {
 
 BASE_IMAGE = BASE_IMAGE_DICT[%x(arch).chomp]
 
-system "docker build -t kibana:7.11.1 --build-arg BASE_IMAGE=#{BASE_IMAGE} --build-arg USER=#{defaults['ES_USER']} --build-arg PASSWORD=#{defaults['ES_PASSWORD']} ."
+ARCH = %x(arch).chomp
+
+system "docker build --no-cache -t kibana:7.11.1 --build-arg BASE_IMAGE=#{BASE_IMAGE} --build-arg USER=#{defaults['ES_SUPER_USER']} --build-arg PASSWORD=#{defaults['ES_SUPER_PASSWORD']} --build-arg ARCH=#{ARCH} ."
+
+push_image_remote "kibana:7.11.1"

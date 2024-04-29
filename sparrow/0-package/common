@@ -21,6 +21,26 @@ grep -q '^mailer:' /etc/passwd || useradd -u 1144 mailer
 grep -q '^team:' /etc/group || groupadd team
 grep -q '^committer:' /etc/group || groupadd -g 1999 committer
 
+groupadd -g 65535 tmp1 && useradd -m -u 65535 -g 65535 tmp1
+groupadd -g 101 nginx && useradd -m -u 101 -g 101 nginx
+useradd -u 1000 tmp2
+groupadd -g 427680 tmp3
+groupadd -g 42 tmp4
+useradd -u 100 tmp5
+useradd -u 2000 tmp6
+groupadd -g 1146 tmp7 && useradd -m -u 1146 -g 1146 tmp7
+groupadd -g 192 tmp8 && useradd -m -u 192 -g 192 tmp8
+groupadd -g 38 tmp9 && useradd -m -u 38 -g 38 tmp9
+groupadd -g 59 tmp10 && useradd -m -u 59 -g 59 tmp10
+groupadd -g 65532 tmp11 && useradd -m -u 65532 -g 65532 tmp11
+groupadd -g 82 tmp12
+groupadd -g 102 tmp13
+groupadd -g 43 tmp14
+
+[ "$deploy_k8s" = "true" ] && exit 0
+
+[ "$deploy_k8s" = "true" ] && exit 0
+
 sed -i '/^net.ipv4.ip_forward=/d' /etc/sysctl.conf
 sed -i '/^net.ipv6.bindv6only=/d' /etc/sysctl.conf
 sed -i '/^vm.max_map_count=/d' /etc/sysctl.conf

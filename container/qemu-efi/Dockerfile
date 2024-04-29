@@ -8,5 +8,6 @@ ARG UEFI
 ENV DEBIAN_FRONTEND noninteractive
 
 COPY conf/sources.list* /etc/apt/
-RUN apt-get update && \
+RUN apt-get clean && \
+    apt-get update && \
     apt-get install -y $UEFI 2>/dev/null

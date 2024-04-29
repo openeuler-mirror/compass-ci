@@ -29,6 +29,26 @@ class ESClient < ESQuery
     )
   end
 
+  # set new value for an existing key
+  # add new key-value pairs
+  # the hash is like:
+  # {
+  #   key1 => value1,
+  #   key2 => value2,
+  #   ...
+  # }
+  # it's enable to update/add single or multi key-values
+  def update_key_by_id(source_id, hash)
+    @client.update(
+      {
+        index: @index,
+        id: source_id,
+        body: {
+          doc: hash
+        }
+      }
+    )
+  end
   # search es db by search_sql, search_sql is sql, like:
   #   - "SELECT id, suite FROM JOBS"
   #   - "SELECT * FROM accounts WHERE my_account='test_user'"
