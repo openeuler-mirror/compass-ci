@@ -47,7 +47,7 @@ job_stage详解：
 
   调度器接口： /~lkp/cgi-bin/lkp-jobfile-append-var
 
-- manual_check：执行机上有用户登陆，暂时挂起不退出
+- manual_check：执行机上有用户登录，暂时挂起不退出
 
   client：执行机运行lkp-tests([ "$i" = 1 ] && set_job_state 'manual_check')
 
