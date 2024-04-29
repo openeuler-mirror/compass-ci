@@ -21,23 +21,20 @@ grep -q '^mailer:' /etc/passwd || useradd -u 1144 mailer
 grep -q '^team:' /etc/group || groupadd team
 grep -q '^committer:' /etc/group || groupadd -g 1999 committer
 
-groupadd -g 65535 tmp1 && useradd -m -u 65535 -g 65535 tmp1
+useradd -u 2000 node-local-dns
+useradd -u 100 _apt
+useradd -u 1000 elasticsearch
+groupadd -g 82 www-data
+groupadd -g 102 ssh
+groupadd -g 43 source-manager-utmp
+groupadd -g 42 shadow
 groupadd -g 101 nginx && useradd -m -u 101 -g 101 nginx
-useradd -u 1000 tmp2
-groupadd -g 427680 tmp3
-groupadd -g 42 tmp4
-useradd -u 100 tmp5
-useradd -u 2000 tmp6
-groupadd -g 1146 tmp7 && useradd -m -u 1146 -g 1146 tmp7
-groupadd -g 192 tmp8 && useradd -m -u 192 -g 192 tmp8
-groupadd -g 38 tmp9 && useradd -m -u 38 -g 38 tmp9
-groupadd -g 59 tmp10 && useradd -m -u 59 -g 59 tmp10
-groupadd -g 65532 tmp11 && useradd -m -u 65532 -g 65532 tmp11
-groupadd -g 82 tmp12
-groupadd -g 102 tmp13
-groupadd -g 43 tmp14
-
-[ "$deploy_k8s" = "true" ] && exit 0
+groupadd -g 192 publisher-systemd-network && useradd -m -u 192 -g 192 publisher-systemd-network
+groupadd -g 38 list && useradd -m -u 38 -g 38 list
+groupadd -g 59 calico-tss && useradd -m -u 59 -g 59 calico-tss
+groupadd -g 65535 pause && useradd -m -u 65535 -g 65535 pause
+groupadd -g 89939 etcd-g && useradd -m -u 528287 -g 89939 etcd-u
+groupadd -g 65532 nonroot && useradd -m -u 65532 -g 65532 nonroot
 
 [ "$deploy_k8s" = "true" ] && exit 0
 

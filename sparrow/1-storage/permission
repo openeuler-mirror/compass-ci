@@ -36,7 +36,7 @@ chmod_dir=(
 		/srv/cci/scheduler/alpine
 		/srv/kunpeng
 		/srv/git/archlinux
-        /srv/git/customization
+		/srv/git/customization
 		/srv/initrd/qemu-image
 		/srv/initrd/dockerimage
 		/srv/initrd/osimage
@@ -70,6 +70,7 @@ chmod_dir=(
 )
 
 chmod 775 "${chmod_dir[@]}"
+chmod 700 /srv/cci/serial/logs /srv/cci/serial/fluentd-pos /srv/git /srv/log /etc/compass-ci
 
 chmod_dir_log=(
 		/srv/log/dag

@@ -5,19 +5,6 @@
 
 . $CCI_SRC/container/defconfig.sh
 
-# for every redis restart, the redis pods's ip will change.
-# the nginx.conf need config the new IPs, otherwise, the upload executiong will fail.
-kubectl get pod -n ems1 -o wide | grep redis | awk '{print "                                        { ip = \""$6"\", port = 6379 },"}' > tmp_redis_lines || {
-	echo "Extract redis host info failed."
-
-	exit 1
-}
-sed -i '/{ ip = ".*", port = 6379}/d' nginx.conf
-sed -i "/serv_list = /r tmp_redis_lines" nginx.conf
-
-rm tmp_redis_lines
-
-exit
 start_pod
 
 : ${REDIS_HOST:=172.17.0.1}

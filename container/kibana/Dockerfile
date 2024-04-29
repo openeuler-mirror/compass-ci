@@ -13,7 +13,7 @@ RUN yum clean all && \
     yum -y update && \
     yum -y install tar gzip java-11-openjdk findutils
 
-RUN curl https://artifacts.elastic.co/downloads/kibana/kibana-7.11.1-linux-.tar.gz -o kibana-7.11.1-linux-${ARCH}.tar.gz && \
+RUN curl https://artifacts.elastic.co/downloads/kibana/kibana-7.11.1-linux-${ARCH}.tar.gz -o kibana-7.11.1-linux-${ARCH}.tar.gz && \
     tar -xzvf kibana-7.11.1-linux-${ARCH}.tar.gz -C /usr/share/ && \
     rm -f kibana-7.11.1-linux-${ARCH}.tar.gz && \
     mv /usr/share/kibana-7.11.1-linux-${ARCH} /usr/share/kibana && \

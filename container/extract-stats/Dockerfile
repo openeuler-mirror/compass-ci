@@ -22,7 +22,11 @@ RUN mkdir -p $RUNTIME_DIR && \
 
 COPY cbs /c/cbs
 COPY lkp-tests /c/lkp-tests
-RUN chown -R 1090:1090 /c/cbs /c/lkp-tests && chown -R 750 /c/cbs /c/lkp-tests
+
+RUN chown -R 1090:1090 /c/cbs /c/lkp-tests&& chown -R 750 /c/cbs /c/lkp-tests
+
+RUN apk del gcc rpcgen gdb
+
 WORKDIR $RUNTIME_DIR
 
 COPY --chown=1090:1090 extract-stats .

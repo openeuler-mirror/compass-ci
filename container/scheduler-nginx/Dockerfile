@@ -12,3 +12,5 @@ RUN apk update --no-cache && \
 RUN adduser lkp -u 1090 -g 1090 -D
 
 RUN chown lkp:lkp /var/cache/nginx /var/run
+
+RUN apk del gdb gcc rpcgen

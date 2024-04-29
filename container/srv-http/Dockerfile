@@ -21,4 +21,7 @@ RUN sed -i '/server {/a \ \ \ \ access_log off;' /etc/nginx/conf.d/default.conf
 RUN chown -R nginx:nginx /etc/nginx
 
 RUN chown nginx:nginx /var/cache/nginx /var/run
+
+RUN apk del gcc gdb rpcgen
+
 ENTRYPOINT ["/sbin/entrypoint.sh"]

@@ -27,8 +27,6 @@ COPY lkp-tests /c/lkp-tests
 
 RUN chown -R lkp:lkp /c/cbs /c/lkp-tests && chown -R 750 /c/cbs /c/lkp-tests
 
-RUN chown -R lkp:lkp /c/cbs /c/lkp-tests && chown -R 750 /c/cbs /c/lkp-tests
-
 RUN apt-get remove gdb gcc cpp -y
 
 CMD ["/usr/local/bin/data-api"]

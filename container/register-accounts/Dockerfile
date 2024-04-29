@@ -16,4 +16,7 @@ RUN umask 002 && \
     gem install rest-client activesupport json yaml elasticsearch:7.11.1 io-console
 
 COPY cbs /c/cbs
+
+RUN apk del gcc rpcgen gdb
+
 WORKDIR /c/cbs/container/register-accounts

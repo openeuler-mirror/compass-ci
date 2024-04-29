@@ -16,11 +16,11 @@ names = Set.new %w[
   LOGGING_ES_PASSWORD
 ]
 
-ES_HOST ||= ENV['ES_HOST'] || config['ES_HOST'] || '172.17.0.1'
-ES_PORT ||= ENV['ES_PORT'] || config['ES_PORT'] || 9200
+ES_HOST = ENV['ES_HOST'] || config['ES_HOST'] || '172.17.0.1'
+ES_PORT = ENV['ES_PORT'] || config['ES_PORT'] || 9200
 
-LOGGING_ES_HOST ||= ENV['LOGGING_ES_HOST'] || config['LOGGING_ES_HOST'] || '172.17.0.1'
-LOGGING_ES_PORT ||= ENV['LOGGING_ES_PORT'] || config['LOGGING_ES_PORT'] || 9202
+LOGGING_ES_HOST = ENV['LOGGING_ES_HOST'] || config['LOGGING_ES_HOST'] || '172.17.0.1'
+LOGGING_ES_PORT = ENV['LOGGING_ES_PORT'] || config['LOGGING_ES_PORT'] || 9202
 
 if ENV['ES_USER']
   ES_USER = ENV['ES_USER']

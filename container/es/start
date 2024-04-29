@@ -23,6 +23,7 @@ cmd=(
 "${cmd[@]}"
 
 # set index
-check_auth_es_ready 9200
-sh $CCI_SRC/sbin/create-es-account.sh
-find $CCI_SRC/sbin/ -name "es-*-mapping.sh" -exec sh {} \;
+check_es_ready && {
+	sh $CCI_SRC/sbin/create-es-account.sh
+	find $CCI_SRC/sbin/ -name "es-*-mapping.sh" -exec sh {} \;
+}

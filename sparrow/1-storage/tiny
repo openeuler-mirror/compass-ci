@@ -151,8 +151,18 @@ dirs=(
 	/run/redis
 	/root/.cache/submit-jobs/compass-ci
 	/root/.cache/image-manager
+	/etc/node-local-dns
+	/srv/calico-kube-controllers/status
 	/root/.cache/dag
 	/etc/{.ccache,.gradle,.npm,.sbt,.gem,.java,.m2}
+	/srv/redis/redis-0
+	/srv/redis/redis-1
+	/srv/redis/redis-2
+	/srv/redis/redis-3
+	/srv/redis/redis-4
+	/srv/redis/redis-5
+	/home/lkp/.gnupg
+	/var/log/dag
 	/srv/log/squid
 	/srv/cache/squid
 	/var/run/squid
