@@ -71,12 +71,4 @@ class Redis::Client
   def remove_finished_job(job_id : String)
     @client.hdel("sched/id2job", job_id)
   end
-
-  def get_new_seqno
-    return @client.incr("#{QUEUE_NAME_BASE}/seqno")
-  end
-
-  def get_job_id(lab)
-    "#{lab}.#{self.get_new_seqno()}"
-  end
 end

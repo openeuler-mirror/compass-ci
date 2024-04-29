@@ -13,6 +13,7 @@ my_email:
 # eg:
 #   lab: z9
 lab:
+lab_id: "999"  # change to a unique 3-digit number in string form, if you'll join some distributed labs network
 
 # choose the interface about the 'dhcp-range' subnet.
 # such as the dhcp-range is 172.168.x.x(internal ip address),

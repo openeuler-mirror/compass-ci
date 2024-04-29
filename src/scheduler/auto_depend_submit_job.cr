@@ -2,6 +2,10 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
+
+  LAB_ID = ENV["LAB_ID"][0..2]        # 3-digit, zero padded
+  WORKER_ID = ENV["WORKER_ID"][0..1]  # 2-digit, zero padded
+
   def submit_job
     response = [] of Hash(String, String)
     body = @env.request.body.not_nil!.gets_to_end
@@ -79,20 +83,19 @@ class Sched
   end
 
   def init_job_id(job)
-    id = job.id == "-1" ? @redis.get_job_id(job.lab) : job.id
+    id = job.id == "-1" ? Sched.get_job_id : job.id
     save_secrets(job, id)
     job.update_id(id)
   end
 
-  def get_time_id
-    tid = Time.utc.to_unix_ms
-  end
-
-  def time_id2job_id(tid)
-    # https://tool.lu/hexconvert/
-    # 36-base numbers are expressed in chars [0-9a-z]
-    # example: 1715225167662116305.to_s(36) => "d14sks28k6hd"
-    jid = LAB + "." + tid.to_s(36) + @@sched_process_id
+  # datetime + 2digit WORKER_ID + 3digit LAB_ID
+  # This can barely fit into Int64, up to year 2092
+  # Time.now.strftime("%y%m%d%H%M%S%2N22333")
+  # => "2404290933548122333"
+  # 1<<63
+  # =>  9223372036854775808
+  def Sched.get_job_id
+    Time.local.to_s("%y%m%d%H%M%S%2N#{WORKER_ID}#{LAB_ID}")
   end
 
   def set_commit_date(job)

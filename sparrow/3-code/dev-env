@@ -71,7 +71,8 @@ mkdir -p /etc/compass-ci/defaults
 cat > /etc/compass-ci/defaults/$server_name.yaml <<EOF
 SCHED_HOST: $sched_host
 SCHED_PORT: $sched_port
-lab: $lab
+lab: "$lab"
+lab_id: "$lab_id"
 EOF
 
 [[ -f /etc/compass-ci/defaults/upstream-config ]] || {

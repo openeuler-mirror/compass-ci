@@ -52,7 +52,7 @@ class Cluster < PluginsCommon
       # continue if role in cluster spec matches role in job
       next if (spec["roles"].as_a.map(&.to_s) & roles).empty?
 
-      job_id = @redis.get_job_id(lab)
+      job_id = Sched.get_job_id
       single_job = Job.new(JSON.parse(job.to_json).as_h, job_id)
       single_job.delete_host_info
 

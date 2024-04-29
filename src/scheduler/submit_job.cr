@@ -80,7 +80,7 @@ class Sched
       queue = host.to_s
       queue = $1 if queue =~ /(\S+)--[0-9]+$/
 
-      job_id = @redis.get_job_id(lab)
+      job_id = Sched.get_job_id
 
       # return when job_id is '0'
       # 2 Questions:
@@ -137,7 +137,7 @@ class Sched
   #   success: [{"job_id" => job_id, "message" => "", job_state => "submit"}]
   #   failure: [{"job_id" => "0", "message" => err_msg, job_state => "submit"}]
   def submit_single_job(job)
-    job_id = @redis.get_job_id(job.lab)
+    job_id = Sched.get_job_id
 
     status, msg = add_job(job, job_id)
     job_id = "0" unless status
