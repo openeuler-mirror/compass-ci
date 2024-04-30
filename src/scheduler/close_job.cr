@@ -32,16 +32,6 @@ class Sched
     @env.set "job_id", job_id
     @env.set "job_stage", "finish"
 
-    job = nil
-    begin
-      job = get_id2job(job_id)
-    rescue e
-      @log.warn({
-        "message" => e.to_s,
-        "error_message" => e.inspect_with_backtrace.to_s
-      }.to_json)
-    end
-
     # etcd id2job only stores partial job content
     # so query full job from es
     job = @es.get_job(job_id)
@@ -63,6 +53,16 @@ class Sched
       job["job_health"] ||= (job_health || "success")
     end
 
+    if job["job_health"] == "success" || job["job_health"] == "oom"
+      # update job resource
+      update_job_resource(job, mem, cpu)
+    end
+
+    if job["job_health"] != "success" && !job["snapshot_id"].empty?
+      data = {"build_id" => job["build_id"], "job_id" => job["id"], "build_type" => job["build_type"], "emsx" => job["emsx"]}
+      @etcd.put_not_exists("update_jobs/#{job["id"]}", data.to_json)
+    end
+
     job.set_time("finish_time")
     @env.set "finish_time", job.finish_time
 
@@ -78,11 +78,6 @@ class Sched
     end
 
     set_job2watch(job, "close", job["job_health"])
-
-    if !job["in_watch_queue"].empty?
-      data = {"job_id" => job["id"], "job_health" => job["job_health"]}
-      @etcd.put_not_exists("watch_queue/#{job["in_watch_queue"]}/#{job["id"]}", data.to_json)
-    end
 
     response = @es.set_job_content(job)
     if response["_id"] == nil
