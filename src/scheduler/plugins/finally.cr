@@ -21,7 +21,7 @@ class Finally < PluginsCommon
   end
 
   def add_job2custom(job)
-    job["added"] = ["finally"]
+    job.hash_array["added_by"] = ["finally"]
     if job["docker_image"]?
       key = "sched/submit/dc-custom/#{job.id}"
     elsif job["testbox"].starts_with?("vm")

@@ -194,6 +194,16 @@ class Sched
     job.set_crashkernel(get_crashkernel(host_info)) unless job.crashkernel?
   end
 
+  def set_job2watch(job, stage, health)
+    return unless job
+
+    if !job["in_watch_queue"].empty?
+      current_time = Time.local.to_s("%Y-%m-%d %H:%M:%S")
+      data = {"job_id" => job["id"], "job_stage" => stage, "job_health" => health, "current_time" => current_time}
+      @etcd.put_not_exists("watch_queue/#{job["in_watch_queue"]}/#{job["id"]}", data.to_json)
+    end
+  end
+
   def consume_job(queues, testbox, pre_job=nil)
     job, revision, state = consume_by_list(queues, pre_job)
     return job, state if job || state

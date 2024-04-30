@@ -40,7 +40,7 @@ require "../scheduler/report_job_step"
 require "../scheduler/plugins/pkgbuild"
 require "../scheduler/plugins/finally"
 require "../scheduler/plugins/cluster"
-require "../scheduler/get_job_boot_content"
+#require "../scheduler/get_job_boot_content"
 require "../scheduler/heart_beat"
 
 class Sched

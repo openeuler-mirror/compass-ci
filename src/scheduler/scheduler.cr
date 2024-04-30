@@ -136,7 +136,9 @@ module Scheduler
     env.create_socket(socket)
     sched = env.sched
 
-    spawn sched.get_job_boot_content
+    # XXX: port cbs
+    # spawn sched.get_job_boot_content
+    spawn sched.find_job_boot
 
     socket.on_message do |msg|
       msg = JSON.parse(msg.to_s).as_h?

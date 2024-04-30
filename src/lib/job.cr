@@ -277,6 +277,7 @@ class JobHash
     os
     os_arch
     os_version
+    os_variant
     os_mount
     osv
 
@@ -678,6 +679,8 @@ class Job < JobHash
     @es = Elasticsearch::Client.new
     @account_info = JobHash.new(Hash(String, JSON::Any).new)
     @upload_pkg_data = Array(String).new
+
+    @is_remote = nil
   end
 
   def submit(id = "-1")
@@ -686,8 +689,13 @@ class Job < JobHash
     self["job_state"] = "submit"
     self["job_stage"] = "submit"
 
-    self.merge! get_service_env()
-    self.merge! get_testbox_env()
+    self.merge! Utils.get_service_env()
+    self.merge! Utils.get_testbox_env(@is_remote)
+
+    @hash_any["emsx"] ||= JSON::Any.new("ems1")
+    @hash_any["emsx"] = JSON::Any.new(@hash_any["emsx"].to_s.downcase)
+    # XXX move into ["services"] subkey?
+    @hash_any.merge!(Utils.testbox_env("local", @hash_any["emsx"]))
 
     check_required_keys()
     check_fields_format()
@@ -696,9 +704,6 @@ class Job < JobHash
     check_run_time()
     set_defaults()
     delete_account_info()
-    self["emsx"] ||= "ems1"
-    self["emsx"] = JSON::Any.new(self["emsx"].downcase)
-    @hash.merge!(Utils.testbox_env(flag="local", emsx=self["emsx"]))
     checkout_max_run()
   end
 
@@ -707,8 +712,7 @@ class Job < JobHash
   end
 
   def set_remote_testbox_env
-    self["is_remote"] = "true"
-    @hash.merge!(Utils.remote_testbox_env())
+    @is_remote = true
   end
 
   def set_remote_mount_repo
@@ -718,16 +722,16 @@ class Job < JobHash
     lmraa = [] of String
     bmraa = [] of String
 
-    if @hash.has_key?("local_mount_repo_addr")
-      lmrn = @hash["local_mount_repo_name"].as_s
-      lmra = @hash["local_mount_repo_addr"].as_s
-      lmrp = @hash["local_mount_repo_priority"].as_s
+    if @hash_any.has_key?("local_mount_repo_addr")
+      lmrn = @hash_any["local_mount_repo_name"].as_s
+      lmra = @hash_any["local_mount_repo_addr"].as_s
+      lmrp = @hash_any["local_mount_repo_priority"].as_s
 
       lmra.split().each do |url|
-        lmraa << url.gsub(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{@hash["emsx"]}")
+        lmraa << url.gsub(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{@hash_any["emsx"]}")
       end
 
-      if @hash.has_key?("is_remote") && @hash["is_remote"] == "true"
+      if @is_remote
         lmra = lmraa.join(" ")
       end
     end
@@ -736,18 +740,18 @@ class Job < JobHash
     bmra = ""
     bmrp = ""
 
-    if @hash.has_key?("bootstrap_mount_repo_addr")
-      bmrn = @hash["bootstrap_mount_repo_name"].as_s
-      bmra = @hash["bootstrap_mount_repo_addr"].as_s
-      bmrp = @hash["bootstrap_mount_repo_priority"].as_s
+    if @hash_any.has_key?("bootstrap_mount_repo_addr")
+      bmrn = @hash_any["bootstrap_mount_repo_name"].as_s
+      bmra = @hash_any["bootstrap_mount_repo_addr"].as_s
+      bmrp = @hash_any["bootstrap_mount_repo_priority"].as_s
 
       bmra.split().each do |url|
         tmp = url.gsub(LOCAL_DAILYBUILD, REMOTE_DAILYBUILD)
-        tmp = tmp.gsub(/http:\/\/192\.168\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{@hash["emsx"]}")
+        tmp = tmp.gsub(/http:\/\/192\.168\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{@hash_any["emsx"]}")
         bmraa << tmp
       end
 
-      if @hash.has_key?("is_remote") && @hash["is_remote"] == "true"
+      if @is_remote
         bmra = bmraa.join(" ")
       end
     end
@@ -1159,19 +1163,17 @@ class Job < JobHash
   end
 
   def get_repositories_dir
-    if (@hash.has_key?("rpmbuild") || @hash.has_key?("hotpatch")) && @hash.has_key?("snapshot_id") && @hash.has_key?("os_project") && @hash.has_key?("os_variant")
-      os_arch = @hash["os_arch"]
-      os_project = @hash["os_project"]
-      os_variant = @hash["os_variant"]
-      snapshot_id = @hash["snapshot_id"]
+    if (@hash_any.has_key?("rpmbuild") || @hash_any.has_key?("hotpatch")) && @hash_any.has_key?("snapshot_id") && @hash_any.has_key?("os_project") && @hash_plain.has_key?("os_variant")
+      _os_project = @hash_any["os_project"]
+      _snapshot_id = @hash_any["snapshot_id"]
       new_jobs = ",/repositories/new-jobs/"
-      std_rpms = ",/repositories/#{os_project}/#{os_variant}/#{os_arch}/history/#{snapshot_id}/steps/upload/#{id}/"
+      std_rpms = ",/repositories/#{_os_project}/#{self.os_variant}/#{self.os_arch}/history/#{_snapshot_id}/steps/upload/#{self.id}/"
 
       return "#{new_jobs}#{std_rpms}"
     end
 
-    if @hash.has_key?("upload_image_dir")
-      return ",#{@hash["upload_image_dir"]}"
+    if @hash_any.has_key?("upload_image_dir")
+      return ",#{@hash_any["upload_image_dir"]}"
     end
 
     return ""
@@ -1344,10 +1346,9 @@ class Job < JobHash
 
   def get_common_initrds
     temp_initrds = [] of String
-    is_remote = self["is_remote"]?
 
-    initrd_http_prefix = is_remote == "true" ? ENV["DOMAIN_NAME"] : INITRD_HTTP_PREFIX
-    sched_http_prefix = is_remote == "true" ?  ENV["DOMAIN_NAME"] : SCHED_HTTP_PREFIX
+    initrd_http_prefix = @is_remote ? ENV["DOMAIN_NAME"] : INITRD_HTTP_PREFIX
+    sched_http_prefix = @is_remote ?  ENV["DOMAIN_NAME"] : SCHED_HTTP_PREFIX
     # init custom_bootstrap cgz
     # if has custom_bootstrap field, just give bootstrap cgz to testbox, no need lkp-test/job cgz
     if @hash_plain.has_key?("custom_bootstrap")

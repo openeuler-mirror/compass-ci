@@ -105,8 +105,8 @@ class Sched
     return unless job.hash_any["upstream_repo"]?
     return unless job.hash_any["upstream_commit"]?
 
-    repo = job.upstream_repo
-    repo = "#{repo}.git" unless repo.includes?(".git")
+    repo = job.hash_any["upstream_repo"]
+    repo = "#{repo}.git" unless repo.as_s.includes?(".git")
 
     data = JSON.parse(%({"git_repo": "#{repo}",
                    "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",

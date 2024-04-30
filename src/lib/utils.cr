@@ -71,28 +71,24 @@ module Utils
   end
 
   def get_service_env
-    hash = Hash(String, JSON::Any).new
-    yaml_any = File.open("/etc/compass-ci/service/service-env.yaml") do |content|
-      YAML.parse(content).as_h?
-    end
-    return hash unless yaml_any
+    yaml_any = YAML.parse File.read("/etc/compass-ci/service/service-env.yaml")
+    yaml_any.as_h.delete("SCHED_NODES")
 
-    return Hash(String, JSON::Any).from_json(yaml_any.to_json)
+    hash = Hash(String, YAML::Any).new
+    hash["services"] = yaml_any
+    JobHash.new((JSON.parse(hash.to_json).as_h))
   end
 
-  def remote_testbox_env
-    hash = Hash(String, JSON::Any).new
-    begin
-      yaml_any = File.open("/etc/compass-ci/service/remote-testbox-env.yaml") do |content|
-        YAML.parse(content).as_h?
-      end
-      hash.merge!(Hash(String, JSON::Any).from_json(yaml_any.to_json)) if yaml_any
-      return hash
-    rescue File::NotFoundError
-      return hash
-    end
+  def get_testbox_env(is_remote)
+    type = is_remote ? "remote" : "local"
+    yaml_any = YAML.parse File.open("/etc/compass-ci/scheduler/#{type}-testbox-env.yaml")
+
+    hash = Hash(String, YAML::Any).new
+    hash["services"] = yaml_any
+    JobHash.new((JSON.parse(hash.to_json).as_h))
   end
 
+  # XXX: flag not used
   def testbox_env(flag = "local", emsx = "ems1")
     master_hash = get_k8s_service_env("ems1")
     k8s_hash = get_k8s_service_env(emsx)
