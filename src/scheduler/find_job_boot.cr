@@ -230,112 +230,22 @@ class Sched
 
   def consume_by_list(queues, pre_job=nil)
     state = nil
-    loop do
-      jobs, revision = get_history_jobs(queues)
-      email_jobs = split_jobs_by_email(jobs)
-      return nil, revision, state if email_jobs.empty?
+    queue_instance = Queue.instance
+    queue_instance.init_queues(queues)
+    revision = queue_instance.get_min_revision(queues)
+    return nil, revision, state if queue_instance.queues_empty?(queues)
 
-      # connection mode is websocket
-      # the client has not been instructed to apply for memory
-      if @env.get?("ws") && @env.get?("client_memory") != "request"
-        res = interact_with_client("request_memory")
-        return nil, revision, state unless res
+    if @env.get?("ws") && @env.get?("client_memory") != "request"
+      res = interact_with_client("request_memory")
+      return nil, revision, state unless res
 
-        @env.set "client_memory", "request"
-      end
-
-      loop do
-        job = pop_job_by_priority(email_jobs)
-        return nil, revision, state unless job
-
-        unless match_no_reboot?(job, pre_job)
-          state = "job mismatch"
-          next
-        end
-
-        return job, revision, nil if ready2process(job)
-      end
-    end
-  end
-
-  # If you do not restart the system to consume the next job,
-  # check whether the system of the job to be consumed is consistent with that of the previous job
-  def match_no_reboot?(etcd_job, pre_job)
-    return true unless pre_job
-
-    job_id = etcd_job.key.split("/")[-1]
-    job = @es.get_job(job_id.to_s)
-
-    determine_parameters = [
-      "os",
-      "os_version",
-      "os_aarch",
-      "os_mount",
-      "kernel_uri",
-      "modules_uri",
-      "do_not_reboot"
-    ]
-
-    return false unless job
-
-    determine_parameters.each do |k|
-      return false unless job[k] == pre_job[k]
+      @env.set "client_memory", "request"
     end
 
-    return true
-  end
-
-  def split_jobs_by_email(jobs)
-    hash = Hash(String, Array(Etcd::Model::Kv)).new
-    jobs.each do |job|
-      key = job.key.split("/")[5]
-      if hash.has_key?(key)
-        hash[key] << job
-      else
-        hash[key] = [job]
-      end
-    end
-
-    return hash
-  end
-
-  def pop_job_by_priority(email_jobs)
-    delimiter = "delimiter@localhost"
-    if email_jobs.has_key?(delimiter)
-      return email_jobs[delimiter].delete_at(0) unless email_jobs[delimiter].empty?
-
-      email_jobs.delete(delimiter)
-    end
-
-    keys = rand_queues(email_jobs.keys)
-    keys.each do |key|
-      return email_jobs[key].delete_at(0) unless email_jobs[key].empty?
-
-      email_jobs.delete(key)
-    end
-  end
-
-  def get_history_jobs(queues)
-    revisions = [] of Int64
-    ec = EtcdClient.new
-    jobs = [] of Etcd::Model::Kv
-    queues.each do |queue|
-      job = ec.range_prefix("#{queue}vip", ETCD_RANGE_SIZE)
-      revisions << job.header.not_nil!.revision
-      jobs += job.kvs
-    end
-
-    if jobs.size == 0
-      queues.each do |queue|
-        job = ec.range_prefix(queue, ETCD_RANGE_SIZE)
-        revisions << job.header.not_nil!.revision
-        jobs += job.kvs
-      end
-    end
-
-    return jobs, revisions.min
-  ensure
-    ec.close unless ec.nil?
+    consume_job = ConsumeJob.new
+    consume_job.set_no_reboot(pre_job) if pre_job
+    job, state = consume_job.consume_history_job(queues)
+    return job, queue_instance.get_min_revision(queues), state
   end
 
   def consume_by_watch(queues, revision, pre_job)
@@ -403,7 +313,7 @@ class Sched
       end
 
       events.each do |event|
-        return nil, "job mismatch" if pre_job && !match_no_reboot?(event.kv, pre_job)
+        return nil, "job mismatch" if pre_job && !Common.match_no_reboot?(event.kv, pre_job, @es)
         return event.kv, nil if ready2process(event.kv)
       end
 
@@ -411,6 +321,8 @@ class Sched
         return nil, nil unless interact_with_client("release_memory")
       end
     end
+  ensure
+     close_watch(ech)
   end
 
   def close_watch(ech)
