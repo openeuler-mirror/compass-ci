@@ -21,7 +21,7 @@ class RedisClient
   end
 
   def initialize(host = HOST, port = PORT, pool_size = @@size, passwd = PASSWD)
-    @client = Redis::PooledClient.new(host: host, port: port, pool_size: pool_size, pool_timeout: 0.01, password: passwd)
+    @client = Redis::Cluster.new(URI.parse("redis://redis.ems1"))
   end
 
   def self.set_pool_size(pool_size)
