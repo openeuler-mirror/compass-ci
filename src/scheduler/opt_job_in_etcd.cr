@@ -46,7 +46,7 @@ class Sched
     t_queue = "extract_stats/#{job.id}"
     value = { "id" => "#{job.id}" }
     ret = @etcd.move(f_queue, t_queue, value.to_json)
-    @log.info("move in_process to extract in_process: #{f_queue}, extract: #{t_queue}, ret: #{ret}"
+    @log.info("move in_process to extract in_process: #{f_queue}, extract: #{t_queue}, ret: #{ret}")
     return ret if ret
   end
 end
