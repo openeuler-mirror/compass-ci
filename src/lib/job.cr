@@ -695,8 +695,78 @@ class Job < JobHash
     set_account_info()
     check_run_time()
     set_defaults()
-
+    delete_account_info()
+    self["emsx"] ||= "ems1"
+    self["emsx"] = JSON::Any.new(self["emsx"].downcase)
+    @hash.merge!(Utils.testbox_env(flag="local", emsx=self["emsx"]))
     checkout_max_run()
+  end
+
+  def set_http_prefix
+    self["HTTP_PREFIX"] = ENV["LKP_HTTP_PREFIX"]
+  end
+
+  def set_remote_testbox_env
+    self["is_remote"] = "true"
+    @hash.merge!(Utils.remote_testbox_env())
+  end
+
+  def set_remote_mount_repo
+    lmra = ""
+    lmrn = ""
+    lmrp = ""
+    lmraa = [] of String
+    bmraa = [] of String
+
+    if @hash.has_key?("local_mount_repo_addr")
+      lmrn = @hash["local_mount_repo_name"].as_s
+      lmra = @hash["local_mount_repo_addr"].as_s
+      lmrp = @hash["local_mount_repo_priority"].as_s
+
+      lmra.split().each do |url|
+        lmraa << url.gsub(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{@hash["emsx"]}")
+      end
+
+      if @hash.has_key?("is_remote") && @hash["is_remote"] == "true"
+        lmra = lmraa.join(" ")
+      end
+    end
+
+    bmrn = ""
+    bmra = ""
+    bmrp = ""
+
+    if @hash.has_key?("bootstrap_mount_repo_addr")
+      bmrn = @hash["bootstrap_mount_repo_name"].as_s
+      bmra = @hash["bootstrap_mount_repo_addr"].as_s
+      bmrp = @hash["bootstrap_mount_repo_priority"].as_s
+
+      bmra.split().each do |url|
+        tmp = url.gsub(LOCAL_DAILYBUILD, REMOTE_DAILYBUILD)
+        tmp = tmp.gsub(/http:\/\/192\.168\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{@hash["emsx"]}")
+        bmraa << tmp
+      end
+
+      if @hash.has_key?("is_remote") && @hash["is_remote"] == "true"
+        bmra = bmraa.join(" ")
+      end
+    end
+
+    mrn = lmrn + " " + bmrn
+    mra = lmra + " " + bmra
+    mrp = lmrp + " " + bmrp
+
+    self["mount_repo_name"] = mrn.strip
+    self["mount_repo_addr"] = mra.strip
+    self["mount_repo_priority"] = mrp.strip
+
+    lmra = lmraa.join(" ")
+    bmra = bmraa.join(" ")
+    mra = lmra + " " + bmra
+
+    self["external_mount_repo_name"] = mrn.strip
+    self["external_mount_repo_addr"] = mra.strip
+    self["external_mount_repo_priority"] = mrp.strip
   end
 
   def set_defaults
@@ -706,6 +776,7 @@ class Job < JobHash
     set_os_arch()
     set_os_version()
     check_docker_image()
+    set_tbox_type()
     set_submit_date()
     set_rootfs()
     set_result_root()
