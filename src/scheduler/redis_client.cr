@@ -81,15 +81,6 @@ class RedisClient
     @client.hset("sched/tbox_wtmp", testbox, wtmp_hash.to_json)
   end
 
-  def update_job(job_content : JSON::Any | Hash)
-    job_id = job_content.id
-
-    job = get_job(job_id)
-    job.update(job_content)
-
-    hash_set("sched/id2job", job_id, job.to_json)
-  end
-
   def set_job(job : Job)
     hash_set("sched/id2job", job.id, job.to_json)
   end

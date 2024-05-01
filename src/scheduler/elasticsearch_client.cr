@@ -105,11 +105,6 @@ class Elasticsearch::Client
     return response
   end
 
-  def update_job(job : Job)
-    job.set_time
-    update(job.to_json_any, job.id)
-  end
-
   def get_job_content(job_id : String)
     response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
     case response
