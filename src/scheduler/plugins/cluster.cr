@@ -13,8 +13,7 @@ class Cluster < PluginsCommon
   end
 
   def get_cluster_spec_by_job(job)
-    return unless job.hash_any.has_key?("cluster_spec")
-    return job.hash_any["cluster_spec"]
+    return job.cluster_spec?
   end
 
   def get_cluster_spec_by_lab(cluster_file, lab)

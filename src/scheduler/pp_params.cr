@@ -3,7 +3,7 @@
 
 class Job < JobHash
   private def sort_pp_params
-    return unless hh = @hash_hhh["pp"]?
+    return unless hh = self.pp?
 
     return sort_keys_return_values(flat_hh(hh))
   end

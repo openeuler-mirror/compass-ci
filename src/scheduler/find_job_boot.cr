@@ -392,8 +392,8 @@ class Sched
       create_job_cpio(job, Kemal.config.public_folder)
 
       # UPDATE the large fields to null
-      job.hash_any["job2sh"] = JSON::Any.new(nil)
-      job.hash_hh["services"] = nil
+      job.job2sh = JSON::Any.new(nil)
+      job.services = nil
 
       @es.set_job_content(job)
 
@@ -478,7 +478,7 @@ class Sched
     _kernel_initrds = _initrds_uri.map { |initrd| " initrd=#{File.basename(initrd.split("initrd ")[-1])}"}
     response += _initrds_uri.join("\n") + "\n"
 
-    _kernel_params = ["kernel #{job.kernel_uri}"] + job.hash_array["kernel_params"] + _kernel_initrds
+    _kernel_params = ["kernel #{job.kernel_uri}"] + job.kernel_params + _kernel_initrds
     response += _kernel_params.join(" ")
     response += " rootfs_disk=#{job.hw.not_nil!["rootfs_disk"].gsub("\n", ".")}" if job.hw.not_nil!.has_key? "rootfs_disk"
     response += " crashkernel=#{job.crashkernel}" if job.crashkernel? && !response.includes?("crashkernel=")
@@ -492,7 +492,7 @@ class Sched
 
 
   private def get_boot_libvirt(job : Job)
-    _kernel_params = job.hash_array["kernel_params"]?
+    _kernel_params = job.kernel_params?
     _kernel_params = _kernel_params.map(&.to_s).join(" ") if _kernel_params
 
     _vt = job.vt? || Hash(String, String).new

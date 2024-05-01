@@ -191,7 +191,7 @@ class StatsWorker
     add_errid(update_job)
 
     error_ids = load_error_ids(result_root)
-    update_job.hash_array["error_ids"] = error_ids unless error_ids.empty?
+    update_job.error_ids = error_ids unless error_ids.empty?
 
     es_save_results(update_job, job_id)
 
@@ -219,11 +219,11 @@ class StatsWorker
   end
 
   def add_errid(update_job : JobHash)
-    return unless s = update_job.hash_any["stats"]?
+    return unless s = update_job.stats?
 
     e = Array(String).new
     s.as_h.keys.each { |k| e << k if is_failure(k) }
-    update_job.hash_array["errid"] = e
+    update_job.errid = e
   end
 
   def es_save_results(update_job : JobHash, job_id : String)

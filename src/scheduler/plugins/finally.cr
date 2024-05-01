@@ -4,7 +4,7 @@ require "./plugins_common"
 
 class Finally < PluginsCommon
   def handle_job(job)
-    return if job.hash_array.has_key?("added_by")
+    return if job.added_by?
 
     save_job2es(job)
     save_job2etcd(job)
@@ -12,7 +12,7 @@ class Finally < PluginsCommon
   end
 
   def add_job2queue(job)
-    job.hash_array["added_by"] = ["finally"]
+    job.added_by = ["finally"]
     key = "sched/ready/#{job.queue}/#{job.subqueue}/#{job.id}"
     value = { "id" => job.id }
 
@@ -21,7 +21,7 @@ class Finally < PluginsCommon
   end
 
   def add_job2custom(job)
-    job.hash_array["added_by"] = ["finally"]
+    job.added_by = ["finally"]
     if job.docker_image?
       key = "sched/submit/dc-custom/#{job.id}"
     elsif job.testbox.starts_with?("vm")

@@ -121,9 +121,9 @@ class Sched
     create_secrets_yaml(job.id, base_dir)
 
     # put job2sh in an array
-    if job.hash_any.has_key?("job2sh")
-      tmp_job_sh_content = job.hash_any["job2sh"]
-      job.hash_any.delete("job2sh")
+    if job.job2sh?
+      tmp_job_sh_content = job.job2sh
+      job.delete("job2sh")
 
       job_sh_array = [] of JSON::Any
       tmp_job_sh_content.as_h.each do |_key, val|

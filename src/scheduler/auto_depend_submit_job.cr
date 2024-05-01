@@ -116,9 +116,9 @@ class Sched
   end
 
   def save_secrets(job, job_id)
-    return nil unless job.hash_hh["secrets"]?
+    return nil unless job.secrets?
 
-    @redis.hash_set("id2secrets", job_id, job.hash_hh["secrets"]?.to_json)
-    job.hash_hh.delete("secrets")
+    @redis.hash_set("id2secrets", job_id, job.secrets.to_json)
+    job.delete("secrets")
   end
 end

@@ -33,7 +33,7 @@ class Job < JobHash
   # output string:
   #   trace_buf_size=131072K trace_clock=x86-tsc
   private def job_boot_params
-    return nil unless bps = @hash_hh["boot_params"]?
+    return nil unless bps = self.boot_params?
 
     cmdline = ""
     bps.each do |k, v|
@@ -68,6 +68,6 @@ class Job < JobHash
   private def set_kernel_params
     kernel_params_values = "#{kernel_common_params()} #{job_boot_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
     kernel_params_values = kernel_params_values.split(" ").map(&.strip()).reject!(&.empty?)
-    @hash_array["kernel_params"] = kernel_params_values
+    self.kernel_params = kernel_params_values
   end
 end

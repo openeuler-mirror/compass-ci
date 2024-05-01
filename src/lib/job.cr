@@ -451,6 +451,8 @@ class JobHash
 
     crashkernel
 
+    wait
+
     stats
     result
   )
@@ -1442,8 +1444,8 @@ class Job < JobHash
     temp_initrds << "#{INITRD_HTTP_PREFIX}" +
                     JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
 
-    temp_initrds.concat(@hash_array["initrd_deps"])
-    temp_initrds.concat(@hash_array["initrd_pkgs"])
+    temp_initrds.concat(self.initrd_deps)
+    temp_initrds.concat(self.initrd_pkgs)
     return temp_initrds
   end
 
@@ -1475,12 +1477,12 @@ class Job < JobHash
   end
 
   private def set_initrds_uri
-    @hash_array["initrds_uri"] = get_initrds()
+    self.initrds_uri = get_initrds()
   end
 
   def append_initrd_uri(initrd_uri)
-    @hash_array["initrds_uri"] << initrd_uri if self.os_mount == "initramfs"
-    @hash_array["initrd_deps"] << initrd_uri
+    self.initrds_uri << initrd_uri if self.os_mount == "initramfs"
+    self.initrd_deps << initrd_uri
   end
 
   private def set_depends_initrd
@@ -1489,8 +1491,8 @@ class Job < JobHash
 
     get_depends_initrd(get_program_params(), initrd_deps_arr, initrd_pkgs_arr)
 
-    @hash_array["initrd_deps"] = initrd_deps_arr.uniq
-    @hash_array["initrd_pkgs"] = initrd_pkgs_arr.uniq
+    self.initrd_deps = initrd_deps_arr.uniq
+    self.initrd_pkgs = initrd_pkgs_arr.uniq
   end
 
   private def get_program_params

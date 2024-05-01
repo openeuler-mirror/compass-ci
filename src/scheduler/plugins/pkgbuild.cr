@@ -9,7 +9,7 @@ require "./plugins_common"
 # case 3: need submit pkg job
 class PkgBuild < PluginsCommon
   def handle_job(job)
-    ss = job.hash_hhh["ss"]?
+    ss = job.ss?
     return unless ss
 
     # job id has been init in init_job_id function
@@ -47,9 +47,12 @@ class PkgBuild < PluginsCommon
 
     save_job2es(job)
     save_job2etcd(job)
-    @log.info("#{job.id}, #{job.hash_any["wait"]}") if job.hash_any.has_key?("wait")
-    # if no wait field, move wait to ready queue
-    wait2ready(wait_queue) unless job.hash_any.has_key?("wait")
+    if job.wait?
+      @log.info("#{job.id}, #{job.wait}")
+    else
+      # if no wait field, move wait to ready queue
+      wait2ready(wait_queue)
+    end
   rescue ex
     @log.error("pkgbuild handle job #{ex}")
     wait2die(wait_queue) if wait_queue
@@ -57,13 +60,13 @@ class PkgBuild < PluginsCommon
   end
 
   def add_job2queue(job)
-    job.hash_array["added_by"] = ["pkgbuild"]
+    job.added_by = ["pkgbuild"]
     key = "sched/wait/#{job.queue}/#{job.subqueue}/#{job.id}"
     value = Hash(String, JSON::Any).new
     value["id"] = JSON::Any.new(job.id)
 
-    if job.hash_hh.has_key?("waited")
-      value["waited"] = JSON.parse(job.hash_hh["waited"].to_json)
+    if job.waited?
+      value["waited"] = JSON.parse(job.waited.to_json)
     end
 
     response = @etcd.put(key, value.to_json)
@@ -244,7 +247,7 @@ class PkgBuild < PluginsCommon
     end
 
     @etcd.update(key, k_v.to_json)
-    job.hash_any["wait"] = k_v["desired"]
+    job.wait = k_v["desired"]
   end
 
   # update waited field of id2job
