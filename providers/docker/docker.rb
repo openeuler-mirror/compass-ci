@@ -47,7 +47,7 @@ def get_url(hostname, left_mem, is_remote)
 end
 
 def register_host2redis(hostname, mem_total, is_remote)
-  arch = get_vm_arch
+  arch = get_arch
   if is_remote == 'true'
     config = load_my_config
     owner = config['ACCOUNT']
@@ -111,7 +111,7 @@ def heart_beat(hostname, is_remote)
   response = JSON.parse(response)
   puts "heart_beat runing status: #{response}"
   if response.has_key?('status_code') and response['status_code'] == 1001
-    mem_total = get_vm_total_memory
+    mem_total = get_total_memory
     register_host2redis(hostname, mem_total, is_remote)
   end
 end
@@ -178,17 +178,6 @@ def load_package_optimization_strategy(load_path)
   return cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock
 end
 
-def load_package_optimization_strategy(load_path)
-  job_yaml = load_path + "/lkp/scheduled/job.yaml"
-  job_info = YAML.load_file(job_yaml)
-  cpu_minimum = job_info['cpu_minimum'].to_s
-  memory_minimun = job_info['memory_minimun'].to_s
-  bin_shareable = job_info['bin_shareable'].to_s
-  ccache_enable = job_info['ccache_enable'].to_s
-
-  return cpu_minimum, memory_minimun, bin_shareable, ccache_enable
-end
-
 def start_container(hostname, load_path, hash)
   docker_image = hash['docker_image']
   system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
@@ -243,18 +232,6 @@ def record_inner_log(log_file, hash: {})
   return start_time
 end
 
-def record_inner_log(log_file, hash: {})
-  start_time = Time.new
-  File.open(log_file, 'a') do |f|
-    # fluentd refresh time is 1s
-    # let fluentd to monitor this file first
-    sleep(2)
-    f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting DOCKER"
-    f.puts "\n#{hash['job']}"
-  end
-  return start_time
-end
-
 def record_end_log(log_file, start_time)
   duration = ((Time.new - start_time) / 60).round(2)
   File.open(log_file, 'a') do |f|
@@ -277,16 +254,16 @@ def upload_dmesg(job_info, log_file, is_remote)
   else
     upload_url = "http://#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
   end
-  %x(curl -sSf -F "file=@#{log_file};filename=dmesg" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
+  %x(curl -sSf -T "#{log_file}" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
 end
 
 def main(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
   puts "multi_docker status is running"
   vm_containers = check_vm_status
   return nil if vm_containers.nil?
-  pre_num = vm_containers[-1]
+  pre_num = vm_containers[-1].to_s
   pre_hostname = "#{hostname}-#{pre_num}"
-  left_mem = get_vm_left_memory
+  left_mem = get_left_memory
   url = get_url(pre_hostname, left_mem, is_remote)
   puts url
   hash = parse_response(url, pre_hostname, uuid, index, is_remote)
@@ -295,7 +272,7 @@ def main(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
   if hash['memory_minimum'].nil? || hash['memory_minimum'].empty?
     hash['memory_minimum'] = '8'
   end
-  record_spec_mem(hash, pre_num)
+  record_spec_mem(hash, pre_num, 'dc')
   thr = Thread.new do
     run_container(pre_hostname, hash, thr, is_remote)
   end
@@ -318,13 +295,13 @@ def run_container(hostname, hash, thr, is_remote)
   upload_dmesg(job_info, log_file, is_remote)
 ensure
   record_log(log_file, ["finished the docker"])
-  release_spec_mem(hostname, hash)
+  release_spec_mem(hostname, hash, 'dc')
   thr.exit
 end
 
 def check_vm_status
-  free_mem = get_vm_free_memory
-  rest_containers = pre_check_containers
+  free_mem = get_free_memory
+  rest_containers = pre_check_tbox('dc')
   if rest_containers and free_mem > 4
     return rest_containers
   else
@@ -351,7 +328,7 @@ end
 
 def start(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
-  mem_total = get_vm_total_memory
+  mem_total = get_total_memory
   register_host2redis(hostname, mem_total, is_remote)
   heart_thr = Thread.new do
     loop_heart_beat(hostname, heart_thr, is_remote)
