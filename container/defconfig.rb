@@ -76,19 +76,18 @@ def docker_skip_rebuild(tag)
   exit 1 if system "docker image inspect #{tag} > /dev/null 2>&1"
 end
 
-def download_repo(repo, git_branch=nil)
-  names = Set.new %w[
-    GITEE_ID
-    GITEE_PASSWORD
-  ]
-
-  config = relevant_service_authentication(names)
-  gitee_id = config['GITEE_ID']
-  gitee_password = config['GITEE_PASSWORD']
+# Private repo url with secrets can be stored in /c/compass-ci/secrets.yaml
+# which will be loaded by cci_defaults(). It can be overrided if also defined
+# in personal config. For example,
+# /c/compass-ci/secrets.yaml
+#   git.lkp-tests: https://NAME:PASSWD@gitee.com/NAME/lkp-tests
+# $HOME/.config/compass-ci/defaults/xxx.yaml
+#   git.lkp-tests: file:///home/user/lkp-tests
+def download_repo(repo, git_clone_options_and_url)
+  return true unless git_clone_options_and_url
 
   FileUtils.rm_rf(repo) if Dir.exist?(repo)
-  git_branch = `awk '/^git_branch:\s/ {print $2; exit}' /etc/compass-ci/defaults/*.yaml`.chomp if git_branch.nil?
-  system "umask 022 && git clone -b #{git_branch} https://#{gitee_id}:#{gitee_password}@gitee.com/openeuler-customization/#{repo}"
+  system "umask 022 && git clone --depth=1 #{git_clone_options_and_url}"
 end
 
 def push_image_remote(src_tag)

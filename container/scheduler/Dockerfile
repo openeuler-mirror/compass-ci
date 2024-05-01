@@ -15,19 +15,12 @@ RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
     gem install yaml io-console elasticsearch:7.11.1
 
+COPY --chown=1090:1090 --chmod=750 --exclude=.git/ cbs		/c/cbs
+COPY --chown=1090:1090 --chmod=750 --exclude=.git/ compass-ci	/c/compass-ci
+COPY --chown=1090:1090 --chmod=750 --exclude=.git/ lkp-tests	/c/lkp-tests
 
 ENV SCHED_RUNTIME_DIR /c/cci/scheduler
-
 RUN mkdir -p $SCHED_RUNTIME_DIR 
-
-# fatal: detected dubious ownership in repository at '/c/lkp-tests'
-RUN git config --global --add safe.directory /c/lkp-tests && \
-	cp /root/.gitconfig /home/lkp/ && \
-	chown 1090:1090 /home/lkp/.gitconfig
-
-COPY cbs /c/cbs
-COPY lkp-tests /c/lkp-tests
-RUN chown -R 1090:1090 /c/cbs /c/lkp-tests && chown -R 750 /c/cbs /c/lkp-tests
 WORKDIR $SCHED_RUNTIME_DIR
 
 COPY --chown=1090:1090 scheduler .

@@ -8,19 +8,20 @@ require_relative '../defconfig.rb'
 
 names = Set.new %w[
   SCHED_PORT
-  git_branch_cbs
-  git_branch_lkp
+  git.cbs
+  git.compass-ci
+  git.lkp-tests
 ]
 defaults = relevant_defaults(names)
 
 SCHED_PORT = (defaults['SCHED_PORT'] || '3000')
-git_branch_cbs = defaults['git_branch_cbs']
-git_branch_lkp = defaults['git_branch_lkp']
 
 docker_skip_rebuild "sch-ruby-a:v0.00d-#{SCHED_PORT}"
 
-download_repo("cbs", git_branch_cbs)
-download_repo("lkp-tests", git_branch_lkp)
+%w(lkp-tests compass-ci cbs).each do |repo|
+  download_repo(repo, defaults["git." + repo]) ||
+    FileUtils.mkdir_p(repo)
+end
 
 CCI_SRC = ENV['CCI_SRC']
 system("bash #{CCI_SRC}/container/compile .") || exit
