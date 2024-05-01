@@ -383,6 +383,13 @@ class JobHash
     custom_ipxe
     pr_merge_reference_name
 
+    local_mount_repo_name
+    local_mount_repo_addr
+    local_mount_repo_priority
+    bootstrap_mount_repo_name
+    bootstrap_mount_repo_addr
+    bootstrap_mount_repo_priority
+
     is_store
     crystal_ip
 
@@ -772,10 +779,10 @@ class Job < JobHash
     lmraa = [] of String
     bmraa = [] of String
 
-    if @hash_any.has_key?("local_mount_repo_addr")
-      lmrn = @hash_any["local_mount_repo_name"].as_s
-      lmra = @hash_any["local_mount_repo_addr"].as_s
-      lmrp = @hash_any["local_mount_repo_priority"].as_s
+    if self.local_mount_repo_addr?
+      lmrn = self.local_mount_repo_name
+      lmra = self.local_mount_repo_addr
+      lmrp = self.local_mount_repo_priority
 
       lmra.split().each do |url|
         lmraa << url.gsub(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{self.emsx}")
@@ -790,10 +797,10 @@ class Job < JobHash
     bmra = ""
     bmrp = ""
 
-    if @hash_any.has_key?("bootstrap_mount_repo_addr")
-      bmrn = @hash_any["bootstrap_mount_repo_name"].as_s
-      bmra = @hash_any["bootstrap_mount_repo_addr"].as_s
-      bmrp = @hash_any["bootstrap_mount_repo_priority"].as_s
+    if self.bootstrap_mount_repo_addr?
+      bmrn = self.bootstrap_mount_repo_name
+      bmra = self.bootstrap_mount_repo_addr
+      bmrp = self.bootstrap_mount_repo_priority
 
       bmra.split().each do |url|
         tmp = url.gsub(LOCAL_DAILYBUILD, REMOTE_DAILYBUILD)
