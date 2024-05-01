@@ -47,9 +47,9 @@ class PkgBuild < PluginsCommon
 
     save_job2es(job)
     save_job2etcd(job)
-    @log.info("#{job.id}, #{job["wait"]}") if job.has_key?("wait")
+    @log.info("#{job.id}, #{job.hash_any["wait"]}") if job.hash_any.has_key?("wait")
     # if no wait field, move wait to ready queue
-    wait2ready(wait_queue) unless job.has_key?("wait")
+    wait2ready(wait_queue) unless job.hash_any.has_key?("wait")
   rescue ex
     @log.error("pkgbuild handle job #{ex}")
     wait2die(wait_queue) if wait_queue
