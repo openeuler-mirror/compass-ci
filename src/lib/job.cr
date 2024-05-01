@@ -692,7 +692,7 @@ class Job < JobHash
 
   def initialize(job_content, id : String|Nil)
     super(job_content)
-    @hash_plain["id"] = id unless id.nil?
+    self.id = id unless id.nil?
 
     @es = Elasticsearch::Client.new
     @account_info = JobHash.new(Hash(String, JSON::Any).new)
@@ -703,9 +703,9 @@ class Job < JobHash
 
   def submit(id = "-1")
     # init job with "-1", or use the original job_content["id"]
-    @hash_plain["id"] = id
-    self["job_state"] = "submit"
-    self["job_stage"] = "submit"
+    self.id = id
+    self.job_state = "submit"
+    self.job_stage = "submit"
 
     self.merge! Utils.get_service_env()
     self.merge! Utils.get_testbox_env(@is_remote)
@@ -816,7 +816,7 @@ class Job < JobHash
   end
 
   def set_account_info
-    account_info = @es.get_account(self["my_email"])
+    account_info = @es.get_account(self.my_email)
     Utils.check_account_info(@hash_plain, account_info)
     @account_info = JobHash.new(account_info.as_h)
   end
@@ -829,13 +829,13 @@ class Job < JobHash
   end
 
   private def checkout_max_run
-    return unless @hash_plain["max_run"]?
+    return unless self.max_run?
 
     query = {
       "size" => 1,
       "query" => {
         "term" => {
-          "all_params_md5" => @hash_plain["all_params_md5"]
+          "all_params_md5" => self.all_params_md5
         }
       },
       "sort" =>  [{
@@ -845,8 +845,8 @@ class Job < JobHash
     }
     total, latest_job_id = @es.get_hit_total("jobs", query)
 
-    msg = "exceeds the max_run(#{@hash_plain["max_run"]}), #{total} jobs exist, the latest job id=#{latest_job_id}"
-    raise msg if total >= @hash_plain["max_run"].to_s.to_i32
+    msg = "exceeds the max_run(#{self.max_run}), #{total} jobs exist, the latest job id=#{latest_job_id}"
+    raise msg if total >= self.max_run.to_s.to_i32
   end
 
   def get_md5(data : Hash(String , String))
@@ -858,7 +858,7 @@ class Job < JobHash
     flat_pp_hash = Hash(String, String).new
     if @hash_hhh["pp"]?
         flat_pp_hash = flat_hh(@hash_hhh["pp"])
-        @hash_plain["pp_params_md5"] = get_md5(flat_pp_hash)
+        self.pp_params_md5 = get_md5(flat_pp_hash)
     end
 
     all_params = flat_pp_hash
@@ -866,17 +866,17 @@ class Job < JobHash
       all_params[param] = @hash_plain[param]
     end
 
-    @hash_plain["all_params_md5"] = get_md5(all_params)
+    self.all_params_md5 = get_md5(all_params)
   end
 
   def set_boot_elapsed_time
     return if @hash_plain.has_key?("boot_seconds")
-    return unless @hash_plain["running_time"]?
+    return unless self.running_time?
 
-    boot_time = Time.parse(self["boot_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    running_time = Time.parse(self["running_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    boot_time = Time.parse(self.boot_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    running_time = Time.parse(self.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
 
-    self["boot_seconds"] = (running_time - boot_time).to_s
+    self.boot_seconds = (running_time - boot_time).to_s
   end
 
   # defaults to the 1st value
@@ -884,26 +884,26 @@ class Job < JobHash
 
   private def set_os_mount
     if is_docker_job?
-      self["os_mount"] = "container"
+      self.os_mount = "container"
       return
     end
 
-    if @hash_plain["os_mount"]?
-      if !VALID_OS_MOUNTS.includes?(@hash_plain["os_mount"])
-        raise "Invalid os_mount: #{@hash_plain["os_mount"]}, should be in #{VALID_OS_MOUNTS}"
+    if self.os_mount?
+      if !VALID_OS_MOUNTS.includes?(self.os_mount)
+        raise "Invalid os_mount: #{self.os_mount}, should be in #{VALID_OS_MOUNTS}"
       end
     else
-      self["os_mount"] = VALID_OS_MOUNTS[0]
+      self.os_mount = VALID_OS_MOUNTS[0]
     end
   end
 
   private def set_os_arch
-    self["os_arch"] = @hash_plain["arch"] if @hash_plain.has_key?("arch")
+    self.os_arch = self.arch if @hash_plain.has_key?("arch")
   end
 
   private def set_os_version
-    self["os_version"] = "#{os_version}".chomp("-iso") + "-iso" if self.os_mount == "local"
-    self["osv"] = "#{os}@#{os_version}" # for easy ES search
+    self.os_version = "#{os_version}".chomp("-iso") + "-iso" if self.os_mount == "local"
+    self.osv = "#{os}@#{os_version}" # for easy ES search
   end
 
   private def check_docker_image
@@ -1009,9 +1009,9 @@ class Job < JobHash
   end
 
   private def set_my_ssh_pubkey
-    pub_key = @hash_plain["ssh_pub_key"]?
+    pub_key = self.ssh_pub_key?
     update_account_my_pub_key(pub_key)
-    @hash_plain["ssh_pub_key"] = @account_info.hash_array["my_ssh_pubkey"].first
+    self.ssh_pub_key = @account_info.hash_array["my_ssh_pubkey"].first
   end
 
   private def update_account_my_pub_key(pub_key)
@@ -1028,17 +1028,17 @@ class Job < JobHash
   end
 
   private def set_submit_date
-    self["submit_date"] = Time.local.to_s("%F")
+    self.submit_date = Time.local.to_s("%F")
   end
 
   private def set_rootfs
-    self["rootfs"] = "#{os}-#{os_version}-#{os_arch}"
+    self.rootfs = "#{os}-#{os_version}-#{os_arch}"
   end
 
   def set_tbox_type
-    if self["testbox"].starts_with?("dc")
+    if self.testbox.starts_with?("dc")
       self["tbox_type"] = "dc"
-    elsif self["testbox"].starts_with?("vm")
+    elsif self.testbox.starts_with?("vm")
       self["tbox_type"] = "vm"
     else
       self["tbox_type"] = "hw"
@@ -1046,8 +1046,8 @@ class Job < JobHash
   end
 
   def get_testbox_type
-    return "vm" if self["testbox"].starts_with?("vm")
-    return "dc" if self["testbox"].starts_with?("dc")
+    return "vm" if self.testbox.starts_with?("vm")
+    return "dc" if self.testbox.starts_with?("dc")
     return "physical"
   end
 
@@ -1068,11 +1068,11 @@ class Job < JobHash
     when "boot"
       time = get_boot_time
     when "running"
-      time = (self["timeout"]? || self["runtime"]? || 3600).to_s.to_i32
-      extra_time = 0 if self["timeout"]?
+      time = (self.timeout? || self.runtime? || 3600).to_s.to_i32
+      extra_time = 0 if self.timeout?
       extra_time ||= [time / 8, 300].max.to_i32 + Math.sqrt(time).to_i32
     when "renew"
-      return @hash_plain["renew_deadline"]?
+      return self.renew_deadline?
     when "post_run"
       time = 1800
     when "manual_check"
@@ -1095,19 +1095,19 @@ class Job < JobHash
     deadline = get_deadline(stage, timeout)
     return nil unless deadline
 
-    self["deadline"] = deadline
+    self.deadline = deadline
   end
 
   # XXX: get/update ES, tell lifecycle
   def renew_deadline(time)
-    deadline = Time.parse(self["deadline"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    deadline = Time.parse(self.deadline, "%Y-%m-%dT%H:%M:%S", Time.local.location)
     deadline = (deadline + time.to_i32.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
-    self["renew_deadline"] = deadline
-    self["deadline"] = deadline
+    self.renew_deadline = deadline
+    self.deadline = deadline
   end
 
   def set_result_root
-    self["result_root"] = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{sort_pp_params}", "#{id}")
+    self.result_root = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{sort_pp_params}", "#{id}")
     set_upload_dirs()
   end
 
@@ -1172,8 +1172,8 @@ class Job < JobHash
   end
 
   def set_time
-    self["active_time"] = Time.utc.to_unix_ms.to_s
-    self["time"] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
+    self.active_time = Time.utc.to_unix_ms.to_s
+    self.time = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
   def set_time(key)
@@ -1198,33 +1198,33 @@ class Job < JobHash
   end
 
   def set_upload_dirs
-    self["upload_dirs"] = "#{result_root}#{get_package_dir}#{get_repositories_dir}#{get_upload_dirs_from_config}"
+    self.upload_dirs = "#{result_root}#{get_package_dir}#{get_repositories_dir}#{get_upload_dirs_from_config}"
   end
 
   private def set_result_service
-    self["result_service"] = "raw_upload"
+    self.result_service = "raw_upload"
   end
 
   private def set_queue
-    return unless self["queue"].empty?
+    return unless self.queue.empty?
 
     # set default value
-    self["queue"] = self.tbox_group
+    self.queue = self.tbox_group
     if self.tbox_group.starts_with?(/(vm|dc|vt)-/)
-      self["queue"] = "#{self.tbox_group}.#{self.arch}"
+      self.queue = "#{self.tbox_group}.#{self.arch}"
     end
   end
 
   private def set_subqueue
     if self["submit_user"] == "vip" && self["submit_role"] == "maintainer" && self["build_type"] == "single"
-      self["subqueue"] = "vip"
+      self.subqueue = "vip"
     else
-      self["subqueue"] = self["my_email"] unless self["subqueue"] == "idle"
+      self.subqueue = self.my_email unless self.subqueue == "idle"
     end
   end
 
   private def set_secrets
-    (@hash_hh["secrets"] ||= HashH.new)["my_email"] = self["my_email"]
+    (@hash_hh["secrets"] ||= HashH.new)["my_email"] = self.my_email
   end
 
   private def is_docker_job?
@@ -1267,7 +1267,7 @@ class Job < JobHash
   # if not assign tbox_group, set it to a match result from testbox
   #  ?if job special testbox, should we just set tbox_group=testbox
   private def update_tbox_group_from_testbox
-    @hash_plain["tbox_group"] ||= JobHelper.match_tbox_group(testbox)
+    self.tbox_group ||= JobHelper.match_tbox_group(testbox)
   end
 
   private def check_fields_format
@@ -1330,31 +1330,31 @@ class Job < JobHash
   end
 
   private def set_kernel_version
-    self["kernel_version"] ||= File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
+    self.kernel_version ||= File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
   end
 
   private def set_kernel_uri
     return if @hash_plain.has_key?("kernel_uri")
     vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
-    self["kernel_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(vmlinuz_path)
+    self.kernel_uri = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(vmlinuz_path)
   end
 
   private def set_modules_uri
     return if @hash_plain.has_key?("modules_uri")
-    return if @hash_plain["os_mount"] == "local"
+    return if self.os_mount == "local"
 
     modules_path = File.realpath("#{boot_dir}/modules-#{kernel_version}.cgz")
-    self["modules_uri"] = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
+    self.modules_uri = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
   end
 
   # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/vmlinuz
   def update_kernel_uri(full_kernel_uri)
-    self["kernel_uri"] = full_kernel_uri
+    self.kernel_uri = full_kernel_uri
   end
 
   # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/modules.cgz
   def update_modules_uri(full_modules_uri)
-    self["modules_uri"] = full_modules_uri
+    self.modules_uri = full_modules_uri
   end
 
   def get_common_initrds
@@ -1368,7 +1368,7 @@ class Job < JobHash
       raise "need runtime field in the job yaml." unless @hash_plain.has_key?("runtime")
 
       temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-        JobHelper.service_path("#{SRV_INITRD}/custom_bootstrap/#{@hash_plain["my_email"]}/bootstrap-#{os_arch}.cgz")
+        JobHelper.service_path("#{SRV_INITRD}/custom_bootstrap/#{self.my_email}/bootstrap-#{os_arch}.cgz")
 
       return temp_initrds
     end
@@ -1497,7 +1497,7 @@ class Job < JobHash
   end
 
   def update_tbox_group(tbox_group)
-    @hash_plain["tbox_group"] = tbox_group
+    self.tbox_group = tbox_group
 
     # "result_root" is based on "tbox_group"
     #  so when update tbox_group, we need redo set_
@@ -1505,7 +1505,7 @@ class Job < JobHash
   end
 
   def update_id(id)
-    @hash_plain["id"] = id
+    self.id = id
 
     # "result_root" => "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
     # set_initrds_uri -> get_initrds -> common_initrds => ".../#{id}/job.cgz"
