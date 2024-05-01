@@ -9,6 +9,19 @@
 : ${log_dir:=/srv/cci/serial/logs}
 
 source ${CCI_SRC}/lib/log.sh
+source ${LKP_SRC}/lib/yaml.sh
+source ${LKP_SRC}/lib/upload.sh
+
+oops_patterns=(
+	-e 'Kernel panic - not syncing:'
+	-e 'NULL pointer dereference'
+
+	# /c/linux/arch/arm64/mm/fault.c
+	-e 'Unable to handle kernel '
+
+	# /c/linux/arch/x86/mm/fault.c
+	-e 'BUG: unable to handle page fault'
+)
 
 check_logfile()
 {
@@ -371,6 +384,7 @@ print_message()
 public_option()
 {
 	kvm=(
+		$qemu_prefix
 		$qemu
 		-name guest=$hostname,process=$job_id
 		-kernel $kernel
@@ -382,7 +396,10 @@ public_option()
 		-no-reboot
 		-nographic
 		-monitor null
+		-pidfile qemu.pid
 	)
+
+	[ -n "$cpu_model" ] && kvm+="-cpu $cpu_model"
 }
 
 individual_option()
@@ -428,6 +445,15 @@ individual_option()
 	esac
 }
 
+watch_oops()
+{
+	tail -f $log_file | grep -q "${oops_patterns[@]}" && {
+		sleep 1
+		kill $(<qemu.pid)
+		echo "Detected kernel oops, killing qemu" >> $log_file
+	}
+}
+
 run_qemu()
 {
 	if [ "$DEBUG" == "true" ];then
@@ -468,32 +494,41 @@ write_dmesg_flag()
 custom_vm_info()
 {
 	gzip -dc job.cgz | cpio -div
-	grep "nr_" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
-	create_yaml_variables "lkp/scheduled/job_vm.yaml"
-}
 
-set_upload_info()
-{
-  result_root=$(grep "result_root" lkp/scheduled/job.yaml | awk '{print $2}')
-  host=$(grep "RESULT_WEBDAV_HOST" lkp/scheduled/job.yaml | awk '{print $2}')
-  port=$(grep "RESULT_WEBDAV_PORT" lkp/scheduled/job.yaml | awk '{print $2}')
-  job_id=${result_root##*/}
-  upload_url="http://${host}:${port}${result_root}/dmesg"
+	nr_node=1
+	nr_cpu=1
+	memory=8G
+	unset cpu_model
+
+	job_fields=(
+			-e nr_
+			-e cpu
+			-e memory
+			-e qemu_prefix
+			-e RESULT_WEBDAV_HOST
+			-e RESULT_WEBDAV_PORT
+			-e result_root
+	)
+
+	grep "${job_fields[@]}" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
+	create_yaml_variables "lkp/scheduled/job_vm.yaml"
 }
 
 upload_dmesg()
 {
-  [ -n "$job_id" ] || return
+	local id=$job_id
+	local JOB_RESULT_ROOT=$result_root
 
-  curl -sSf -F "file=@${log_file};filename=dmesg" ${upload_url} --cookie "JOBID=${job_id}"
+	upload_files_curl $log_file
 }
 
 check_logfile
-write_logfile
+ipxe_script=ipxe_script
+# write_logfile
 
-parse_ipxe_script
-custom_vm_info
-set_upload_info
+# moved to qemu.rb
+# parse_ipxe_script
+# custom_vm_info
 
 check_kernel
 write_dmesg_flag 'start'
@@ -507,6 +542,9 @@ public_option
 add_disk
 individual_option
 
+watch_oops &
+watch_pid=$!
 run_qemu
+kill $watch_pid 2>/dev/null
 write_dmesg_flag 'end'
 upload_dmesg
