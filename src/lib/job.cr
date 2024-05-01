@@ -356,6 +356,7 @@ class JobHash
     config
     commit
     commit_date
+    base_commit
     upstream_repo
     upstream_commit
     upstream_url
@@ -364,15 +365,34 @@ class JobHash
     pkgbuild_source
 
     os_project
+    build_type
+    build_id
     snapshot_id
     upload_image_dir
     emsx
     nickname
+    host_machine
+    tbox_type
     branch
     job_origin
     workflow_exec_id
     matrix
     custom_ipxe
+    pr_merge_reference_name
+
+    is_store
+    crystal_ip
+
+    memory_minimum
+    max_duration
+
+    spec_file_name
+    use_remote_tbox
+    weight
+
+    direct_macs
+    direct_ips
+    nr_nic
   )
 
   ARRAY_KEYS = %w(

@@ -36,7 +36,7 @@ class MailWorker
   end
 
   def get_pr_result(job)
-    return if !(job.[]?("pr_merge_reference_name") && job.[]?("upstream_dir") && job["upstream_dir"] == "openeuler")
+    return if !(job.[]?("pr_merge_reference_name") && job.[]?("upstream_dir") && job.upstream_dir == "openeuler")
 
     send_email(job)
   end
@@ -48,19 +48,19 @@ class MailWorker
     client = HTTP::Client.new(send_mail_host, send_mail_port)
     response = client.post("/send_mail_text", body: msg)
     client.close
-    @log.info("post-extract send PR build email, id:#{job["id"]}")
+    @log.info("post-extract send PR build email, id:#{job.id}")
   end
 
   def build_email_msg(job)
     email_receiver = ENV["PR_BUILD_EMAIL_RECEIVER"]
     email_msg = "
 To: #{email_receiver}
-Subject: [PR build] #{job["id"]}: #{job["upstream_repo"]} PR rpmbuild #{job["job_health"]}
+Subject: [PR build] #{job.id}: #{job.upstream_repo} PR rpmbuild #{job.job_health}
 
-     PR build result: #{job["job_health"]}
-     upstream_repo: #{job["upstream_repo"]}
+     PR build result: #{job.job_health}
+     upstream_repo: #{job.upstream_repo}
      pr_merge_reference_name: #{job["pr_merge_reference_name"]}
-     upstream_url: #{job["upstream_url"]} "
+     upstream_url: #{job.upstream_url} "
 
     return email_msg
   end

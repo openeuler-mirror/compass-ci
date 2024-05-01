@@ -42,20 +42,20 @@ class PostWorker
   end
 
   def pack_post_extract_event(job_id, job)
-    workflow_exec_id = job["workflow_exec_id"]?
+    workflow_exec_id = job.workflow_exec_id?
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
     job_name_regex = /\/([^\/]+)\.(yaml|yml|YAML|YML)$/
-    job_origin = job["job_origin"]?
+    job_origin = job.job_origin?
     return if job_origin.nil? || job_origin.empty?
 
     job_name_match = job_origin.match(job_name_regex)
     job_name = job_name_match ? job_name_match[1] : nil
     return unless !job_name.nil?
 
-    job_stage = job["job_stage"]?
-    job_health = job["job_health"]?
-    job_result = job["result_root"]?
+    job_stage = job.job_stage?
+    job_health = job.job_health?
+    job_result = job.result_root?
     job_nickname = job.nickname?
 
     return unless job_stage == "finish"
@@ -66,7 +66,7 @@ class PostWorker
     rescue
     end
 
-    job_branch = job["branch"]?
+    job_branch = job.branch?
     
     fingerprint = {
       "type" => "job/stage",
@@ -95,7 +95,7 @@ class PostWorker
   end
 
   def send_workflow_event(job_id, job)
-    workflow_exec_id = job["workflow_exec_id"]?
+    workflow_exec_id = job.workflow_exec_id?
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
     post_extract_event = pack_post_extract_event(job_id, job)
@@ -106,7 +106,8 @@ class PostWorker
   end
 
   def get_pr_result(job)
-    return if !(job.[]?("pr_merge_reference_name") && job.[]?("upstream_dir") && job["upstream_dir"] == "openeuler")
+    return unless job.pr_merge_reference_name?
+    return unless job.upstream_dir? == "openeuler"
 
     send_email(job)
   end
@@ -118,19 +119,19 @@ class PostWorker
     client = HTTP::Client.new(send_mail_host, send_mail_port)
     response = client.post("/send_mail_text", body: msg)
     client.close
-    @log.info("post-extract send PR build email, id:#{job["id"]}")
+    @log.info("post-extract send PR build email, id:#{job.id}")
   end
 
   def build_email_msg(job)
     email_receiver = ENV["PR_BUILD_EMAIL_RECEIVER"]
     email_msg = "
 To: #{email_receiver}
-Subject: [PR build] #{job["id"]}: #{job["upstream_repo"]} PR rpmbuild #{job["job_health"]}
+Subject: [PR build] #{job.id}: #{job.upstream_repo} PR rpmbuild #{job.job_health}
 
-     PR build result: #{job["job_health"]}
-     upstream_repo: #{job["upstream_repo"]}
-     pr_merge_reference_name: #{job["pr_merge_reference_name"]}
-     upstream_url: #{job["upstream_url"]} "
+     PR build result: #{job.job_health}
+     upstream_repo: #{job.upstream_repo}
+     pr_merge_reference_name: #{job.pr_merge_reference_name}
+     upstream_url: #{job.upstream_url} "
 
     return email_msg
   end

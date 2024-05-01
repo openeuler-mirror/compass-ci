@@ -31,7 +31,7 @@ class StatsWorker
       job = @es.get_job_content(job_id)
       return unless job
       result_post_processing(job_id, queue_path, job)
-      commit_channel.send(job["upstream_commit"].to_s) if job["nr_run"]? && job["upstream_commit"]? && job["base_commit"]?
+      commit_channel.send(job.upstream_commit) if job.nr_run? && job.upstream_commit? && job.base_commit?
       target_queue_path = "/queues/post-extract/#{job_id}"
       @etcd.put(target_queue_path,job_id)
       @etcd.delete(queue_path)
@@ -52,15 +52,15 @@ class StatsWorker
   end
 
   def store_device(result_root, job)
-    job_id = job["id"]?
-    testbox = job["testbox"]?
+    job_id = job.id?
+    testbox = job.testbox?
     file_path = "#{result_root}/boards-scan"
     return unless File.exists?(file_path)
     is_store = job["is_store"]?
     return if is_store != "yes"
 
-    lab_envir = job["lab"]?
-    suite = job["suite"]?
+    lab_envir = job.lab?
+    suite = job.suite?
     crystal_ip = job["crystal_ip"]?
     if crystal_ip
       cmd = "$LKP_SRC/sbin/hardware-gmail.sh #{file_path} #{lab_envir} \
@@ -101,16 +101,16 @@ class StatsWorker
   end
 
   def store_host_info(result_root : String, job)
-    job_id = job["id"]?
+    job_id = job.id?
     is_store = job["is_store"]?
     return if is_store != "yes"
 
-    testbox = job["testbox"]?
+    testbox = job.testbox?
     file_path = "#{result_root}/host-info"
     return unless File.exists?(file_path)
 
-    lab_envir = job["lab"]?
-    suite = job["suite"]?
+    lab_envir = job.lab?
+    suite = job.suite?
     crystal_ip = job["crystal_ip"]?
     if crystal_ip
       cmd = "$LKP_SRC/sbin/hardware-gmail.sh #{file_path} #{lab_envir} \
@@ -153,7 +153,7 @@ class StatsWorker
   end
 
   def get_host_content(testbox)
-    query = {:index => "hosts", :type => "_doc", :id => testbox.to_s}
+    query = {:index => "hosts", :type => "_doc", :id => testbox}
     if @es.@client.exists(query)
       result = @es.@client.get_source(query)
       return nil unless result.is_a?(JSON::Any)
@@ -163,12 +163,12 @@ class StatsWorker
   end
 
   def result_post_processing(job_id : String, queue_path : String, job)
-    result_root = "#{job["result_root"]?}"
+    result_root = "#{job.result_root?}"
     return nil unless result_root && File.exists?(result_root)
 
-    suite = "#{job["suite"]?}"
+    suite = "#{job.suite?}"
     del_testbox = "#{job["del_testbox"]?}"
-    testbox = "#{job["testbox"]?}"
+    testbox = "#{job.testbox?}"
     if del_testbox == "yes"
       @es.@client.delete(
         {

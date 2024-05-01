@@ -123,7 +123,7 @@ class WatchJobs < PluginsCommon
   def on_wait(job)
     # {"desired": {"crystal.1" : {"job_health": "success"}, "crystal.2": {"job_health": "success"}}}
     # means job is waiting for: crystal.1 and crystal.2 to become desired k:v
-    key = "sched/wait/#{job["queue"]}/#{job["subqueue"]}/#{job.id}"
+    key = "sched/wait/#{job.queue}/#{job.subqueue}/#{job.id}"
     @log.info("wait key #{key}")
     res = @etcd.range(key)
     return if res.count == 0
