@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
+[ "$LKP_SRC" ] || LKP_SRC=/c/lkp-tests
+
+. $LKP_SRC/lib/yaml.sh
+
 : ${job_id:=$$}
 : ${docker_image:="centos:7"}
 : ${load_path:="${HOME}/jobs"}
@@ -17,6 +21,7 @@ host=${tbox_group%.*}
 
 [ -n "$nr_cpu" ] || nr_cpu=$(grep '^nr_cpu: ' $LKP_SRC/hosts/${host} | cut -f2 -d' ')
 [ -n "$memory" ] || memory=$(grep '^memory: ' $LKP_SRC/hosts/${host} | cut -f2 -d' ')
+create_yaml_variables "$LKP_SRC/hosts/${host}"
 
 check_busybox()
 {
