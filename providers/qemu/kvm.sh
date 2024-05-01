@@ -9,18 +9,6 @@
 : ${log_dir:=/srv/cci/serial/logs}
 
 source ${CCI_SRC}/lib/log.sh
-source ${LKP_SRC}/lib/upload.sh
-
-oops_patterns=(
-	-e 'Kernel panic - not syncing:'
-	-e 'NULL pointer dereference'
-
-	# /c/linux/arch/arm64/mm/fault.c
-	-e 'Unable to handle kernel '
-
-	# /c/linux/arch/x86/mm/fault.c
-	-e 'BUG: unable to handle page fault'
-)
 
 check_logfile()
 {
@@ -65,36 +53,36 @@ low_mem_wait()
 write_logfile()
 {
 	ipxe_script=ipxe_script
-    # check if need safe-stop:
-	# - stop multi-qemu systemd
-	# - stop all multi-qemu process
-	#   - curling vm: stop after curl timeout <== following code used for this step
-	#   - running vm: stop after vm run finished
-	# - kill sleep $runtime process
-	# - then lkp will reboot hw.
-    if [ -f "/tmp/$HOSTNAME/safe-stop" ]; then
-        log_info "safe stop: $hostname" | tee -a $log_file
-        exit 0
-    fi
-
-	# check if need restart:
-	# - upgrade code
-	# - stop all multi-qemu process
-	#   - curling vm: stop after curl timeout <== following code used for this step
-	#   - running vm: stop after vm run finished
-	# - start multi-qemu process by systemd
-	#
-	# what's UUID:
-	# - UUID is generate at the beginning of ${CCI_SRC}/providers/multi-qemu.
-	# - then, if multi-qemu need restart, `/tmp/$HOSTNAME/restart/$UUID` will be generated,
-	# - so curl will exit.
-    if [ -n "$UUID" ] && [ -f "/tmp/$HOSTNAME/restart/$UUID" ]; then
-        log_info "restart vm with uuid. vm: $hostname. uuid: $UUID" | tee -a $log_file
-        exit 0
-    fi
-    
 	while true
 	do
+		# check if need safe-stop:
+		# - stop multi-qemu systemd
+		# - stop all multi-qemu process
+		#   - curling vm: stop after curl timeout <== following code used for this step
+		#   - running vm: stop after vm run finished
+		# - kill sleep $runtime process
+		# - then lkp will reboot hw.
+		[ -f "/tmp/$HOSTNAME/safe-stop" ] && {
+			log_info "safe stop: $hostname" | tee -a $log_file
+			exit 0
+		}
+
+		# check if need restart:
+		# - upgrade code
+		# - stop all multi-qemu process
+		#   - curling vm: stop after curl timeout <== following code used for this step
+		#   - running vm: stop after vm run finished
+		# - start multi-qemu process by systemd
+		#
+		# what's UUID:
+		# - UUID is generate at the beginning of ${CCI_SRC}/providers/multi-qemu.
+		# - then, if multi-qemu need restart, `/tmp/$HOSTNAME/restart/$UUID` will be generated,
+		# - so curl will exit.
+		[ -n "$UUID" ] && [ -f "/tmp/$HOSTNAME/restart/$UUID" ] && {
+			log_info "restart vm with uuid. vm: $hostname. uuid: $UUID" | tee -a $log_file
+			exit 0
+		}
+
 		log_info "start request job: $hostname" | tee -a $log_file
 
 		# empty file
@@ -383,7 +371,6 @@ print_message()
 public_option()
 {
 	kvm=(
-		$qemu_prefix
 		$qemu
 		-name guest=$hostname,process=$job_id
 		-kernel $kernel
@@ -395,10 +382,7 @@ public_option()
 		-no-reboot
 		-nographic
 		-monitor null
-		-pidfile qemu.pid
 	)
-
-	[ -n "$cpu_model" ] && kvm+="-cpu $cpu_model"
 }
 
 individual_option()
@@ -444,15 +428,6 @@ individual_option()
 	esac
 }
 
-watch_oops()
-{
-	tail -f $log_file | grep -q "${oops_patterns[@]}" && {
-		sleep 1
-		kill $(<qemu.pid)
-		echo "Detected kernel oops, killing qemu" >> $log_file
-	}
-}
-
 run_qemu()
 {
 	if [ "$DEBUG" == "true" ];then
@@ -493,32 +468,8 @@ write_dmesg_flag()
 custom_vm_info()
 {
 	gzip -dc job.cgz | cpio -div
-
-	nr_node=1
-	nr_cpu=1
-	memory=8G
-	unset cpu_model
-
-	job_fields=(
-			-e nr_
-			-e cpu
-			-e memory
-			-e qemu_prefix
-			-e RESULT_WEBDAV_HOST
-			-e RESULT_WEBDAV_PORT
-			-e result_root
-	)
-
-	grep "${job_fields[@]}" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
+	grep "nr_" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
 	create_yaml_variables "lkp/scheduled/job_vm.yaml"
-}
-
-upload_dmesg()
-{
-	local id=$job_id
-	local JOB_RESULT_ROOT=$result_root
-
-	upload_files_curl $log_file
 }
 
 set_upload_info()
@@ -556,9 +507,6 @@ public_option
 add_disk
 individual_option
 
-watch_oops &
-watch_pid=$!
 run_qemu
-kill $watch_pid 2>/dev/null
 write_dmesg_flag 'end'
 upload_dmesg
