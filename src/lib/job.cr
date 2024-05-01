@@ -361,6 +361,11 @@ class JobHash
     upstream_dir
     pkgbuild_repo
     pkgbuild_source
+
+    os_project
+    snapshot_id
+    upload_image_dir
+    emsx
   )
 
   ARRAY_KEYS = %w(
@@ -710,10 +715,10 @@ class Job < JobHash
     self.merge! Utils.get_service_env()
     self.merge! Utils.get_testbox_env(@is_remote)
 
-    @hash_any["emsx"] ||= JSON::Any.new("ems1")
-    @hash_any["emsx"] = JSON::Any.new(@hash_any["emsx"].to_s.downcase)
+    self.emsx ||= "ems1"
+    self.emsx = self.emsx.downcase
     # XXX move into ["services"] subkey?
-    @hash_any.merge!(Utils.testbox_env("local", @hash_any["emsx"]))
+    @hash_any.merge!(Utils.testbox_env("local", self.emsx))
 
     check_required_keys()
     check_fields_format()
@@ -746,7 +751,7 @@ class Job < JobHash
       lmrp = @hash_any["local_mount_repo_priority"].as_s
 
       lmra.split().each do |url|
-        lmraa << url.gsub(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{@hash_any["emsx"]}")
+        lmraa << url.gsub(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{self.emsx}")
       end
 
       if @is_remote
@@ -765,7 +770,7 @@ class Job < JobHash
 
       bmra.split().each do |url|
         tmp = url.gsub(LOCAL_DAILYBUILD, REMOTE_DAILYBUILD)
-        tmp = tmp.gsub(/http:\/\/192\.168\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{@hash_any["emsx"]}")
+        tmp = tmp.gsub(/http:\/\/192\.168\.\d+\.\d+:\d+/, "#{ENV["REMOTE_REPO_PREFIX"]}/#{self.emsx}")
         bmraa << tmp
       end
 
@@ -1181,17 +1186,16 @@ class Job < JobHash
   end
 
   def get_repositories_dir
-    if (@hash_any.has_key?("rpmbuild") || @hash_any.has_key?("hotpatch")) && @hash_any.has_key?("snapshot_id") && @hash_any.has_key?("os_project") && @hash_plain.has_key?("os_variant")
-      _os_project = @hash_any["os_project"]
-      _snapshot_id = @hash_any["snapshot_id"]
+    if (@hash_any.has_key?("rpmbuild") || @hash_any.has_key?("hotpatch")) &&
+        self.snapshot_id? && self.os_project? && self.os_variant?
       new_jobs = ",/repositories/new-jobs/"
-      std_rpms = ",/repositories/#{_os_project}/#{self.os_variant}/#{self.os_arch}/history/#{_snapshot_id}/steps/upload/#{self.id}/"
+      std_rpms = ",/repositories/#{self.os_project}/#{self.os_variant}/#{self.os_arch}/history/#{self.snapshot_id}/steps/upload/#{self.id}/"
 
       return "#{new_jobs}#{std_rpms}"
     end
 
-    if @hash_any.has_key?("upload_image_dir")
-      return ",#{@hash_any["upload_image_dir"]}"
+    if self.upload_image_dir?
+      return ",#{self.upload_image_dir}"
     end
 
     return ""
