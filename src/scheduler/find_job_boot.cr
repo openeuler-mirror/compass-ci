@@ -433,8 +433,12 @@ class Sched
     response["job_id"] = job.id.to_s
     response["docker_image"] = "#{job.docker_image}"
     response["initrds"] = job.get_common_initrds().to_json
-    response["nr_cpu"] = job["nr_cpu"] if job["nr_cpu"]?
-    response["memory"] = job["memory"] if job["memory"]?
+    if cpu = job.hw.not_nil!.["nr_cpu"]?
+      response["nr_cpu"] = cpu
+    end
+    if mem = job.hw.not_nil!.["memory"]?
+      response["memory"] = mem
+    end
 
     return response.to_json
   end
@@ -527,18 +531,17 @@ class Sched
     _kernel_params = job.hash_array["kernel_params"]?
     _kernel_params = _kernel_params.map(&.to_s).join(" ") if _kernel_params
 
-    _vt = job["vt"]?
-    _vt = Hash(String, String).new unless (_vt && _vt != nil)
+    _vt = job.vt? || Hash(String, String).new
 
     return {
       "job_id"             => job.id,
       "kernel_uri"         => job.kernel_uri,
-      "initrds_uri"        => job["initrds_uri"]?,
+      "initrds_uri"        => job.initrds_uri?,
       "kernel_params"      => _kernel_params,
       "result_root"        => job.result_root,
-      "LKP_SERVER"         => job["LKP_SERVER"]?,
+      "LKP_SERVER"         => job.services.not_nil!["LKP_SERVER"],
       "vt"                 => _vt,
-      "RESULT_WEBDAV_PORT" => job["RESULT_WEBDAV_PORT"]? || "3080",
+      "RESULT_WEBDAV_PORT" => job.services.not_nil!["RESULT_WEBDAV_PORT"]? || "3080",
       "SRV_HTTP_CCI_HOST"  => SRV_HTTP_CCI_HOST,
       "SRV_HTTP_CCI_PORT"  => SRV_HTTP_CCI_PORT,
     }.to_json

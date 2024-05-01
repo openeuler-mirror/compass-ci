@@ -288,8 +288,7 @@ class Sched
     _kernel_params = job["kernel_params"]?
     _kernel_params = _kernel_params.as_a.map(&.to_s).join(" ") if _kernel_params
 
-    _vt = job["vt"]?
-    _vt = Hash(String, String).new unless (_vt && _vt != nil)
+    _vt = job.vt? || Hash(String, String).new
 
     return {
       "job_id"             => job.id,

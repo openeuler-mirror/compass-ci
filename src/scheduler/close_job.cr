@@ -9,7 +9,7 @@ class Sched
     begin
       index = "job_resource"
       if ["rpmbuild", "hotpatch"].includes?("#{job.suite}")
-        id = "#{job.suite}_#{job.arch}_#{job.os_project}_#{job["package"]}_#{job.spec_file_name}"
+        id = "#{job.suite}_#{job.arch}_#{job.os_project}_#{job.package}_#{job.spec_file_name}"
       else
         raise "#{job.suite} does not support set job resource"
       end

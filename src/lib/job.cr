@@ -408,14 +408,11 @@ class JobHash
     error_ids
   )
 
-  # Note: hw is not tracked here.
   # These hw.* are string arrays, other hw.* are strings, so cannot track uniformly.
-  # However the scheduler does not need update testbox info, so leave them in @hash_any.
   # - hw.hdd_partitions
   # - hw.ssd_partitions
   # - hw.rootfs_disk
-  #
-
+  # So the above fields will be deleted by submit client, ther others will be tracked here.
   HH_KEYS = %w(
     secrets
     services
@@ -423,6 +420,8 @@ class JobHash
     boot_params
     on_fail
     waited
+    hw
+    vt
   )
 
   # ss = software stack, with build time options
@@ -438,7 +437,6 @@ class JobHash
 
   # stats/result are Hash(String, Number|String), so cannot fit in HH_KEYS
   ANY_KEYS = %w(
-    hw
     cluster_spec
 
     job2sh

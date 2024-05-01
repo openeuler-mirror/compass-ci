@@ -82,11 +82,11 @@ class Sched
 
     job.hash_plain.each { |key, val| parse_one(script_lines, key, val) }
     job.hash_any.each { |key, val| parse_one(script_lines, key, val) }
-    if job.hw?
-      job.hw.as_h.each { |key, val| parse_one(script_lines, key, val) }
+    if hw = job.hw?
+      hw.each { |key, val| parse_one(script_lines, key, val) }
     end
-    if job.services?
-      job.services.as(Hash).each { |key, val| parse_one(script_lines, key, val) }
+    if sv = job.services?
+      sv.each { |key, val| parse_one(script_lines, key, val) }
     end
 
     script_lines << "}\n"
