@@ -101,12 +101,12 @@ class Sched
         	direct_ips << "#{net_id}.#{ip0}"
         	ip0 += 1
       	end
-      	job["direct_macs"] = direct_macs.join(" ")
-      	job["direct_ips"] = direct_ips.join(" ")
+        job.direct_macs = direct_macs.join(" ")
+        job.direct_ips = direct_ips.join(" ")
       end
 
       # multi-machine test requires two network cards
-      job["nr_nic"] = "2"
+      job.nr_nic = "2"
       status, msg = add_job(job, job_id, job_ids[0])
       job_id = "0" unless status
       job_messages << {

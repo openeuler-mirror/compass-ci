@@ -41,13 +41,13 @@ class Sched
       return response
     end
 
-    if my_account != job["my_account"]
+    if my_account != job.my_account
       response["result"] = "forbidden"
       response["message"] = "can only cancel the job submitted by yourself"
       return response
     end
 
-    if job["job_stage"] != "submit"
+    if job.job_stage != "submit"
       response["result"] = "unsupported"
       response["message"] = "only jobs whose job_stage is submit can be cancelled"
       return response
@@ -57,15 +57,15 @@ class Sched
   end
 
   def get_jobs(query, jobs_ids)
-    jobs = Hash(JSON::Any, JSON::Any).new
+    jobs = Hash(String, JobHash).new
     return jobs if jobs_ids
     return jobs unless query
 
     query = query.as_h
     _source = ["my_account", "queue", "subqueue", "job_stage"]
     query_jobs = @es.search_by_fields("jobs", query, size=10000, source=_source)
-    query_jobs.each do |job|
-      jobs[job["_id"]] = job["_source"]
+    query_jobs.each do |query|
+      jobs[query["_id"].as_s] = JobHash.new query["_source"].as_h
     end
 
     jobs

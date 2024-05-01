@@ -30,13 +30,13 @@ class Finally < PluginsCommon
       key = "sched/submit/hw-#{job.tbox_group}/#{job.id}"
     end
 
-    job["max_duration"] ||= "5"
-    job["memory_minimum"] ||= "16"
+    job.max_duration ||= "5"
+    job.memory_minimum ||= "16"
 
     value = {
       "id" => JSON::Any.new(job.id.to_s),
-      "max_duration" => JSON::Any.new(job["max_duration"]),
-      "memory_minimum" => JSON::Any.new(job["memory_minimum"])
+      "max_duration" => JSON::Any.new(job.max_duration),
+      "memory_minimum" => JSON::Any.new(job.memory_minimum)
     }
 
     response = @etcd.put(key, value.to_json)

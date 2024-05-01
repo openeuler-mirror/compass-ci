@@ -470,10 +470,10 @@ class Sched
 
 
   private def get_boot_ipxe(job : Job)
-    return job["custom_ipxe"] if job.suite.starts_with?("install-iso") && job.has_key?("custom_ipxe")
+    return job.custom_ipxe if job.suite.starts_with?("install-iso") && job.has_key?("custom_ipxe")
 
     response = "#!ipxe\n\n"
-    response += "# nr_nic=" + job["nr_nic"] + "\n" if job.has_key?("nr_nic")
+    response += "# nr_nic=" + job.nr_nic + "\n" if job.has_key?("nr_nic")
 
     _initrds_uri = job.initrds_uri.map { |uri| "initrd #{uri}" }
     _initrds_uri.insert(1, "initrd #{job.modules_uri}") if job.has_key?("modules_uri")

@@ -59,7 +59,7 @@ Subject: [PR build] #{job.id}: #{job.upstream_repo} PR rpmbuild #{job.job_health
 
      PR build result: #{job.job_health}
      upstream_repo: #{job.upstream_repo}
-     pr_merge_reference_name: #{job["pr_merge_reference_name"]}
+     pr_merge_reference_name: #{job.pr_merge_reference_name}
      upstream_url: #{job.upstream_url} "
 
     return email_msg

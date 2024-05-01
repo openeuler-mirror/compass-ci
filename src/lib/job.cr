@@ -368,6 +368,7 @@ class JobHash
     build_type
     build_id
     snapshot_id
+    package
     upload_image_dir
     emsx
     nickname

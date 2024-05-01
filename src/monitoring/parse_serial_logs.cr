@@ -176,7 +176,7 @@ class SerialParser
   def dump_cache(job, msg, host)
     return unless job
 
-    result_root = File.join("/srv", job["result_root"].to_s)
+    result_root = File.join("/srv", job.result_root)
     @host2rt[host] = result_root
 
     f = File.new("#{result_root}/dmesg", "a")

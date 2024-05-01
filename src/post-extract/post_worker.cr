@@ -61,8 +61,8 @@ class PostWorker
     return unless job_stage == "finish"
 
     begin
-      job_matrix = job["matrix"]?
-      job_matrix = job["matrix"]?.to_json
+      job_matrix = job.matrix?
+      job_matrix = job.matrix?.to_json
     rescue
     end
 

@@ -81,12 +81,12 @@ class Cluster < PluginsCommon
           direct_ips << "#{net_id}.#{ip0}"
           ip0 += 1
         end
-        single_job["direct_macs"] = direct_macs.join(" ")
-        single_job["direct_ips"] = direct_ips.join(" ")
+        single_job.direct_macs = direct_macs.join(" ")
+        single_job.direct_ips = direct_ips.join(" ")
       end
 
       # multi-machine test requires two network cards
-      single_job["nr_nic"] = "2"
+      single_job.nr_nic = "2"
 
       single_job.update_id(job_id)
       single_job.set_account_info

@@ -197,7 +197,7 @@ class Sched
     response["job_id"] = job.id.to_s
     response["docker_image"] = "#{job.docker_image}"
     response["initrds"] = job.get_common_initrds().to_json
-    response["memory_minimum"] = "#{job["memory_minimum"]}"
+    response["memory_minimum"] = "#{job.memory_minimum}"
 
     return response.to_json
   end
@@ -236,7 +236,7 @@ class Sched
     return job.custom_ipxe if job.suite.starts_with?("install-iso") && job.has_key?("custom_ipxe")
 
     response = "#!ipxe\n\n"
-    response += "# nr_nic=" + job["nr_nic"] + "\n" if job.has_key?("nr_nic")
+    response += "# nr_nic=" + job.nr_nic + "\n" if job.has_key?("nr_nic")
 
     _initrds_uri = Array(String).from_json(job.initrds_uri).map { |uri| "initrd #{uri}" }
     _initrds_uri.insert(1, "initrd #{job.modules_uri}") if job.has_key?("modules_uri")

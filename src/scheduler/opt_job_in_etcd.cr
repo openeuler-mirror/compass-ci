@@ -42,7 +42,7 @@ class Sched
   end
 
   def move_process2extract(job : Job)
-    f_queue = "/queues/sched/in_process/#{job["host_machine"]}/#{job.id}"
+    f_queue = "/queues/sched/in_process/#{job.host_machine}/#{job.id}"
     t_queue = "extract_stats/#{job.id}"
     value = { "id" => "#{job.id}" }
     ret = @etcd.move(f_queue, t_queue, value.to_json)

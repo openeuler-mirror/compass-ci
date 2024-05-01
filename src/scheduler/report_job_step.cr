@@ -31,11 +31,11 @@ class Sched
   def pack_job_event(job_id, job, event_type, job_step, only_stage = false)
     return unless event_type == "job/stage" || event_type == "job/step"
 
-    workflow_exec_id = job["workflow_exec_id"]?
+    workflow_exec_id = job.workflow_exec_id?
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
     job_name_regex = /\/([^\/]+)\.(yaml|yml|YAML|YML)$/
-    job_origin = job["job_origin"]?
+    job_origin = job.job_origin?
     return if job_origin.nil? || job_origin.empty?
 
     job_name_match = job_origin.match(job_name_regex)
@@ -48,12 +48,12 @@ class Sched
     job_nickname = job.nickname?
     
     begin
-      job_matrix = job["matrix"]?
-      job_matrix = job["matrix"]?.to_json
+      job_matrix = job.matrix?
+      job_matrix = job.matrix?.to_json
     rescue
     end
 
-    job_branch = job["branch"]?
+    job_branch = job.branch?
 
     # TODO the root reason could be a bug of lkp-tests
     # avoid job_stage is running but job_health is success or failed

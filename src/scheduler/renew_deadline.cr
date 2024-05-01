@@ -33,7 +33,7 @@ class Sched
 
   def check_renew_job(job)
     non_running = ["submit", "finish"]
-    raise "Only running job can renew, your job stage is: #{job.job_stage}" if non_running.includes?(job["job_stage"])
+    raise "Only running job can renew, your job stage is: #{job.job_stage}" if non_running.includes?(job.job_stage)
 
     testbox = @es.get_tbox(job.testbox)
     raise "testbox that do not exist" if testbox.nil?

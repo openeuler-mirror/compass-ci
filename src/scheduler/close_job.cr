@@ -9,7 +9,7 @@ class Sched
     begin
       index = "job_resource"
       if ["rpmbuild", "hotpatch"].includes?("#{job.suite}")
-        id = "#{job.suite}_#{job.arch}_#{job.os_project}_#{job["package"]}_#{job["spec_file_name"]}"
+        id = "#{job.suite}_#{job.arch}_#{job.os_project}_#{job["package"]}_#{job.spec_file_name}"
       else
         raise "#{job.suite} does not support set job resource"
       end
@@ -40,7 +40,7 @@ class Sched
     # update job content
     job_state = @env.params.query["job_state"]?
     job.job_state = job_state if job_state
-    job.job_state = "complete" if job["job_state"] == "boot"
+    job.job_state = "complete" if job.job_state == "boot"
 
     job.job_stage = "finish"
 
@@ -53,13 +53,13 @@ class Sched
       job.job_health ||= (job_health || "success")
     end
 
-    if job.job_health == "success" || job["job_health"] == "oom"
+    if job.job_health == "success" || job.job_health == "oom"
       # update job resource
       update_job_resource(job, mem, cpu)
     end
 
     if job.job_health != "success" && !job.snapshot_id.empty?
-      data = {"build_id" => job["build_id"], "job_id" => job.id, "build_type" => job["build_type"], "emsx" => job.emsx}
+      data = {"build_id" => job.build_id, "job_id" => job.id, "build_type" => job.build_type, "emsx" => job.emsx}
       @etcd.put_not_exists("update_jobs/#{job.id}", data.to_json)
     end
 

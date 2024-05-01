@@ -56,12 +56,12 @@ class StatsWorker
     testbox = job.testbox?
     file_path = "#{result_root}/boards-scan"
     return unless File.exists?(file_path)
-    is_store = job["is_store"]?
+    is_store = job.is_store?
     return if is_store != "yes"
 
     lab_envir = job.lab?
     suite = job.suite?
-    crystal_ip = job["crystal_ip"]?
+    crystal_ip = job.crystal_ip?
     if crystal_ip
       cmd = "$LKP_SRC/sbin/hardware-gmail.sh #{file_path} #{lab_envir} \
       #{testbox} #{suite} #{crystal_ip}"
@@ -102,7 +102,7 @@ class StatsWorker
 
   def store_host_info(result_root : String, job)
     job_id = job.id?
-    is_store = job["is_store"]?
+    is_store = job.is_store?
     return if is_store != "yes"
 
     testbox = job.testbox?
@@ -111,7 +111,7 @@ class StatsWorker
 
     lab_envir = job.lab?
     suite = job.suite?
-    crystal_ip = job["crystal_ip"]?
+    crystal_ip = job.crystal_ip?
     if crystal_ip
       cmd = "$LKP_SRC/sbin/hardware-gmail.sh #{file_path} #{lab_envir} \
       #{testbox} #{suite} #{crystal_ip}"

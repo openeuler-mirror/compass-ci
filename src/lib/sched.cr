@@ -255,8 +255,8 @@ class Sched
     hash["state"] = "booting"
     hash["timeout_period"] = job.timeout
     hash["arch"] = job.os_arch
-    hash["hostname"] = job["host_machine"]
-    hash["type"] = job["tbox_type"]
+    hash["hostname"] = job.host_machine
+    hash["type"] = job.tbox_type
   end
 
   def update_testbox_and_job(job, testbox, queues)
