@@ -17,6 +17,7 @@ require "scheduler/kernel_params.cr"
 require "scheduler/pp_params.cr"
 require "../scheduler/elasticsearch_client"
 require "./utils"
+require "./unit"
 
 struct JSON::Any
   def []=(key : String, value : String)
@@ -1283,7 +1284,7 @@ class Job < JobHash
     return unless sleep_run_time
 
     # XXX: parse s/m/h/d/w suffix
-    raise error_msg if sleep_run_time.to_i > max_run_time
+    raise error_msg if to_seconds(sleep_run_time) > max_run_time
   end
 
   private def get_initialized_keys
