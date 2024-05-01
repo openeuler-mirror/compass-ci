@@ -28,7 +28,7 @@ class StatsWorker
       return nil if res.count == 0
 
       job_id = queue_path.split("/")[-1]
-      job = @es.get_job_content(job_id)
+      job = @es.get_job(job_id)
       return unless job
       result_post_processing(job_id, queue_path, job)
       commit_channel.send(job.upstream_commit) if job.nr_run? && job.upstream_commit? && job.base_commit?
@@ -166,18 +166,18 @@ class StatsWorker
     result_root = "#{job.result_root?}"
     return nil unless result_root && File.exists?(result_root)
 
-    suite = "#{job.suite?}"
-    del_testbox = "#{job["del_testbox"]?}"
-    testbox = "#{job.testbox?}"
+    del_testbox = job.del_testbox?
     if del_testbox == "yes"
       @es.@client.delete(
         {
           :index => "jobs",
           :type => "_doc",
-          :id => testbox
+          :id => job.testbox? # XXX
         }
       )
     end
+
+    suite = job.suite?
     store_device(result_root, job) if suite == "boards-scan"
     store_host_info(result_root, job) if suite == "host-info"
 

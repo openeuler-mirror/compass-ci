@@ -170,7 +170,7 @@ class SerialParser
   def find_job(job_id)
     return unless job_id
 
-    Elasticsearch::Client.new.get_job_content(job_id)
+    Elasticsearch::Client.new.get_job(job_id)
   end
 
   def dump_cache(job, msg, host)

@@ -170,7 +170,7 @@ describe Scheduler::Utils do
 
         # respon = resources.@es_client.not_nil!.get(JOB_INDEX_TYPE, job_id)
         # (respon["_source"]["testbox"]).should eq(remote_host_name)
-        respon = resources.@redis_client.not_nil!.get_job_content(job_id)
+        respon = resources.@redis_client.not_nil!.get_job(job_id)
         (respon["testbox"]).should eq(remote_host_name)
       end
 
@@ -235,7 +235,7 @@ describe Scheduler::Utils do
 
         # respon = resources.@es_client.not_nil!.get(JOB_INDEX_TYPE, job_id)
         # (respon["_source"]["testbox"]).should eq(remote_host_name)
-        respon = resources.@redis_client.not_nil!.get_job_content(job_id)
+        respon = resources.@redis_client.not_nil!.get_job(job_id)
         (respon["testbox"]).should eq(remote_host_name)
       end
     end

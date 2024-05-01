@@ -21,7 +21,7 @@ class MailWorker
       return nil if res.count == 0
 
       job_id = queue_path.split("/")[-1]
-      job = @es.get_job_content(job_id)
+      job = @es.get_job(job_id)
       get_pr_result(job)
       @log.info("post-extract delete key from etcd, the queue is #{job_id}")
       @etcd.delete(queue_path)
@@ -36,7 +36,8 @@ class MailWorker
   end
 
   def get_pr_result(job)
-    return if !(job.[]?("pr_merge_reference_name") && job.[]?("upstream_dir") && job.upstream_dir == "openeuler")
+    return unless job.pr_merge_reference_name?
+    return unless job.upstream_dir? == "openeuler"
 
     send_email(job)
   end

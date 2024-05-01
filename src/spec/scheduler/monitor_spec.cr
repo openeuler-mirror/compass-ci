@@ -37,7 +37,7 @@ describe Scheduler::Monitor do
       job_content = {"id" => job_id, parameter_key => parameter_value}
       Scheduler::Monitor.update_job_parameter(job_content, context, resources)
 
-      response = resources.@redis_client.not_nil!.get_job_content(job_id)
+      response = resources.@redis_client.not_nil!.get_job(job_id)
       (response[parameter_key]).should eq("1587725398")
     end
 
@@ -67,7 +67,7 @@ describe Scheduler::Monitor do
 
       Scheduler::Monitor.update_job_when_finished(job_id, resources)
 
-      respon = resources.@es_client.not_nil!.get_job_content(job_id)
+      respon = resources.@es_client.not_nil!.get_job(job_id)
       (respon["testbox"]).should eq("test")
       (respon["id"]).should eq(job_id.to_i)
 
