@@ -177,7 +177,7 @@ class Sched
     if job
       @log.info("#{testbox} got the job #{job_id}")
       job.testbox = testbox
-      update_kernel_params(job)
+      job.update_kernel_params
       job.set_result_root
       job.set_time("boot_time")
       @log.info(%({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state"
@@ -186,12 +186,6 @@ class Sched
     end
 
     return job, state
-  end
-
-  def update_kernel_params(job)
-    host_info = Utils.get_host_info(job.testbox)
-    job.set_rootfs_disk(get_rootfs_disk(host_info)) unless job.has_key?("rootfs_disk")
-    job.set_crashkernel(get_crashkernel(host_info)) unless job.crashkernel?
   end
 
   def set_job2watch(job, stage, health)
@@ -485,8 +479,8 @@ class Sched
     response += _initrds_uri.join("\n") + "\n"
 
     _kernel_params = ["kernel #{job.kernel_uri}"] + job.hash_array["kernel_params"] + _kernel_initrds
-    _rootfs_disk = " rootfs_disk=#{job.hash_any["rootfs_disk"].as_a.join(",")}"
-    response += _kernel_params.join(" ") + _rootfs_disk
+    response += _kernel_params.join(" ")
+    response += " rootfs_disk=#{job.hw.not_nil!["rootfs_disk"].gsub("\n", ".")}" if job.hw.not_nil!.has_key? "rootfs_disk"
     response += " crashkernel=#{job.crashkernel}" if job.crashkernel? && !response.includes?("crashkernel=")
     response += "\necho ipxe will boot job id=#{job.id}, ip=${ip}, mac=${mac}" # the ip/mac will be expanded by ipxe
 
@@ -494,36 +488,6 @@ class Sched
     response += "\nboot\n"
 
     return response
-  end
-
-  private def get_rootfs_disk(host_info)
-    rootfs_disk = [] of JSON::Any
-    temp = host_info.has_key?("rootfs_disk") ? host_info["rootfs_disk"].as_a : [] of JSON::Any
-    temp.each do |item|
-      rootfs_disk << JSON::Any.new("#{item}")
-    end
-
-    return rootfs_disk
-  end
-
-  private def get_memory(host_info)
-    if host_info.has_key?("memory")
-      return $1 if "#{host_info["memory"]}" =~ /(\d+)g/i
-    end
-  end
-
-  private def get_crashkernel(host_info)
-    memory = get_memory(host_info)
-    return "auto" unless memory
-
-    memory = memory.to_i
-    if memory <= 8
-      return "auto"
-    elsif 8 < memory <= 16
-      return "256M"
-    else
-      return "512M"
-    end
   end
 
 

@@ -112,9 +112,11 @@ def add2hh(hh : HashHH, k : String, v : JSON::Any)
     v.as_h.each do |kk, vv|
       if vv.raw.is_a? Nil
         # will convert boot_params.quiet= to boot_params.quiet=""
-        h[kk.to_s] ||= ""
+        h[kk] ||= ""
+      elsif vv.raw.is_a? Array
+        h[kk] = vv.as_a.map { |vvv| vvv.to_s }.join("\n")
       else
-        h[kk.to_s] = vv.to_s
+        h[kk] = vv.to_s
       end
     end
     return true
@@ -408,11 +410,10 @@ class JobHash
     error_ids
   )
 
-  # These hw.* are string arrays, other hw.* are strings, so cannot track uniformly.
+  # These hw.* are string arrays, so will be joined by "\n"
   # - hw.hdd_partitions
   # - hw.ssd_partitions
   # - hw.rootfs_disk
-  # So the above fields will be deleted by submit client, ther others will be tracked here.
   HH_KEYS = %w(
     secrets
     services
@@ -1546,9 +1547,13 @@ class Job < JobHash
     set_initrds_uri()
   end
 
-  def set_rootfs_disk(rootfs_disk)
-    # XXX: use hw namespace
-    @hash_any["rootfs_disk"] = JSON::Any.new(rootfs_disk)
+  def update_kernel_params
+    host_info = Utils.get_host_info(self.testbox)
+    return unless host_info
+
+    hw_job = JobHash.new({"hw" => host_info})
+    set_crashkernel(Utils.get_crashkernel(host_info.as_h)) unless self.crashkernel?
+    self.merge!(hw_job)
   end
 
   def set_crashkernel(p)

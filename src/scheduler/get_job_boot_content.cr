@@ -135,7 +135,7 @@ class Sched
 
       job.set_remote_mount_repo()
       job.update({"testbox" => testbox, "host_machine" => host_machine})
-      update_kernel_params(job)
+      job.update_kernel_params
       job.set_result_root
       job.set_time("boot_time")
       @log.info(%({"job_id": "#{job_id}",
@@ -146,13 +146,6 @@ class Sched
 
     return job
   end
-
-  def update_kernel_params(job)
-    host_info = Utils.get_host_info(job.testbox)
-    job.set_rootfs_disk(get_rootfs_disk(host_info)) unless job.has_key?("rootfs_disk")
-    job.set_crashkernel(get_crashkernel(host_info))
-  end
-
 
   def set_job2watch(job, stage, health)
     return unless job
@@ -244,45 +237,14 @@ class Sched
     response += _initrds_uri.join("\n") + "\n"
 
     _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + _kernel_initrds
-    _rootfs_disk = " rootfs_disk=#{JSON.parse(job["rootfs_disk"]).as_a.join(",")}"
-    response += _kernel_params.join(" ") + _rootfs_disk
+    response += _kernel_params.join(" ")
+    response += " rootfs_disk=#{job.hw.not_nil!["rootfs_disk"].gsub("\n", ".")}" if job.hw.not_nil!.has_key? "rootfs_disk"
     response += " crashkernel=#{job.hash_any["crashkernel"]}" unless response.includes?("crashkernel=")
 
     response += "\nboot\n"
 
     return response
   end
-
-  private def get_rootfs_disk(host_info)
-    rootfs_disk = [] of JSON::Any
-    temp = host_info.has_key?("rootfs_disk") ? host_info["rootfs_disk"].as_a : [] of JSON::Any
-    temp.each do |item|
-      rootfs_disk << JSON::Any.new("#{item}")
-    end
-
-    return rootfs_disk
-  end
-
-  private def get_memory(host_info)
-    if host_info.has_key?("memory")
-      return $1 if "#{host_info["memory"]}" =~ /(\d+)g/i
-    end
-  end
-
-  private def get_crashkernel(host_info)
-    memory = get_memory(host_info)
-    return "auto" unless memory
-
-    memory = memory.to_i
-    if memory <= 8
-      return "auto"
-    elsif 8 < memory <= 16
-      return "256M"
-    else
-      return "512M"
-    end
-  end
-
 
   private def get_boot_libvirt(job : Job)
     _kernel_params = job["kernel_params"]?

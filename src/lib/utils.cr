@@ -11,15 +11,32 @@ module Utils
   def get_host_info(testbox)
     file_name = testbox =~ /^(vm-|dc-)/ ? testbox.split(".")[0] : testbox
     host_info_file = "#{CCI_REPOS}/#{LAB_REPO}/hosts/#{file_name}"
+    return unless File.exists?(host_info_file)
 
-    host_info = Hash(String, JSON::Any).new
-    return host_info unless File.exists?(host_info_file)
-
-    host_info["#! #{host_info_file}"] = JSON::Any.new(nil)
     yaml_any = YAML.parse(File.read(host_info_file)).as_h
-    host_info.merge!(Hash(String, JSON::Any).from_json(yaml_any.to_json))
+    yaml_any.delete "ipmi_ip"
 
-    return host_info
+    host_info = JSON.parse(yaml_any.to_json)
+  end
+
+  def get_memory(host_info)
+    if host_info.has_key?("memory")
+      return $1 if "#{host_info["memory"]}" =~ /(\d+)g/i
+    end
+  end
+
+  def get_crashkernel(host_info)
+    memory = get_memory(host_info)
+    return "auto" unless memory
+
+    memory = memory.to_i
+    if memory <= 8
+      return "auto"
+    elsif 8 < memory <= 16
+      return "256M"
+    else
+      return "512M"
+    end
   end
 
   def is_valid_account?(my_info, account_info)

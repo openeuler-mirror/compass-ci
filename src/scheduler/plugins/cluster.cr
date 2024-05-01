@@ -55,9 +55,7 @@ class Cluster < PluginsCommon
       job_id = Sched.get_job_id
       single_job = Job.new(JSON.parse(job.to_json).as_h, job_id)
       single_job.delete_host_info
-
-      host_info = Utils.get_host_info(host.to_s)
-      single_job.update(host_info)
+      single_job.update_kernel_params
       queue = host.to_s
       queue = queue = $1 if queue =~ /(\S+)--[0-9]+$/
 
