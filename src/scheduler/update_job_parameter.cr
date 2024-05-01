@@ -17,7 +17,7 @@ class Sched
     return if job.job_health == "return"
 
     # try to get report value and then update it
-    job_content = Job.new(Hash(String, JSON::Any).new, nil)
+    delta_job = Job.new(Hash(String, JSON::Any).new, nil)
 
     (%w(start_time end_time loadavg job_state)).each do |parameter|
       value = @env.params.query[parameter]?
@@ -27,11 +27,11 @@ class Sched
         value = Time.unix(value.to_i).to_local.to_s("%Y-%m-%dT%H:%M:%S+0800")
       end
 
-      job_content[parameter] = value
+      delta_job[parameter] = value
       next unless parameter == "job_state"
 
       if JOB_STAGES.includes?(value)
-        job_content.job_stage = value
+        delta_job.job_stage = value
         job.last_success_stage = value
         job.set_time("#{value}_time")
         job.set_boot_elapsed_time
@@ -39,23 +39,23 @@ class Sched
         @env.set "deadline", job.set_deadline(value).to_s
       else
         value = "success" if value == "finished"
-        job_content.job_health = value
+        delta_job.job_health = value
       end
     end
 
-    job.merge!(job_content)
-    job_content.id = job_id
+    job.merge!(delta_job)
+    delta_job.id = job_id
 
-    update_id2job(job_content)
+    update_id2job(delta_job)
 
     # json log
-    log = job_content.dup
+    log = delta_job.dup
     log.hash_plain["job_id"] = job_id
     log.hash_plain.delete("id")
 
     @env.set "log", log.to_json
 
-    @es.set_job_content(job)
+    @es.set_job(job)
     update_testbox_info(job)
 
     report_workflow_job_event(job_id.to_s, job)

@@ -166,7 +166,7 @@ class Sched
 
     if job
       job.last_success_stage = "boot"
-      @es.set_job_content(job)
+      @es.set_job(job)
       @env.set "job_id", job.id
       @env.set "deadline", job.deadline
       @env.set "job_stage", job.job_stage

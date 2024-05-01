@@ -172,7 +172,7 @@ class Sched
     job.update_id(job_id)
 
     # save the job to es
-    response = @es.set_job_content(job, true)
+    response = @es.set_job(job, true)
     msg = (response["error"]? ? response["error"]["root_cause"] : "")
     return false, msg.to_s if response["error"]?
 

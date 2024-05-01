@@ -79,7 +79,7 @@ class Sched
 
     set_job2watch(job, "close", job.job_health)
 
-    response = @es.set_job_content(job)
+    response = @es.set_job(job)
     if response["_id"] == nil
       # es update fail, raise exception
       raise "es set job content fail!"

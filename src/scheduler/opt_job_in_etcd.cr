@@ -2,12 +2,12 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def update_id2job(job_content)
-    id = job_content.id
+  def update_id2job(delta_job)
+    id = delta_job.id
     job = get_id2job(id)
     return false unless job
 
-    job.merge!(job_content)
+    job.merge!(delta_job)
     @etcd.update("sched/id2job/#{id}", job.shrink_to_etcd_fields.to_json)
   end
 

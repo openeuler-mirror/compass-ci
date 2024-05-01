@@ -31,7 +31,7 @@ class Sched
 
   def update_database(job)
     update_id2job(job)
-    @es.set_job_content(job)
+    @es.set_job(job)
     update_testbox_info(job)
   end
 

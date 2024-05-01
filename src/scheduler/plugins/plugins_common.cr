@@ -104,7 +104,7 @@ class PluginsCommon
   end
 
   def save_job2es(job)
-    response = @es.set_job_content(job, true)
+    response = @es.set_job(job, true)
     raise "ES: #{response["error"]["root_cause"]}" if response["error"]?
   end
 

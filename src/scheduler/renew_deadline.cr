@@ -13,7 +13,7 @@ class Sched
 
     job.renew_deadline(time)
     @es.update_tbox(job.testbox, {"deadline" => job.deadline})
-    @es.set_job_content(job)
+    @es.set_job(job)
 
     @env.set "testbox", job.testbox
     @env.set "job_id", job.id

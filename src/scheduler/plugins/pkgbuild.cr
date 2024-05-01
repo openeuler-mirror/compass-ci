@@ -136,25 +136,25 @@ class PkgBuild < PluginsCommon
       testbox = "dc-16g"
     end
 
-    content = JobHash.new(Hash(String, JSON::Any).new)
-    content.os = job.os
-    content.os_version = "#{os_version}-fat"
-    content.os_arch = job.os_arch
-    content.testbox = testbox
-    content.os_mount = "container"
-    content.docker_image = docker_image
-    content.commit = "HEAD"
-    content.upstream_repo = upstream_repo
-    content.pkgbuild_repo = pkgbuild_repo
-    content.upstream_url = upstream_info["url"][0].as_s
-    content.upstream_dir = "upstream"
-    content.pkgbuild_source = upstream_info["pkgbuild_source"][0].as_s if upstream_info["pkgbuild_source"]?
-    content.waited = {job.id => "job_health"}
-    content.services = {
+    build_job = JobHash.new(Hash(String, JSON::Any).new)
+    build_job.os = job.os
+    build_job.os_version = "#{os_version}-fat"
+    build_job.os_arch = job.os_arch
+    build_job.testbox = testbox
+    build_job.os_mount = "container"
+    build_job.docker_image = docker_image
+    build_job.commit = "HEAD"
+    build_job.upstream_repo = upstream_repo
+    build_job.pkgbuild_repo = pkgbuild_repo
+    build_job.upstream_url = upstream_info["url"][0].as_s
+    build_job.upstream_dir = "upstream"
+    build_job.pkgbuild_source = upstream_info["pkgbuild_source"][0].as_s if upstream_info["pkgbuild_source"]?
+    build_job.waited = {job.id => "job_health"}
+    build_job.services = {
       "SCHED_HOST" => ENV["SCHED_HOST"],
       "SCHED_PORT" => ENV["SCHED_PORT"],
     }
-    content.runtime = "36000"
+    build_job.runtime = "36000"
 
     # add user specify build params
     params.each do |k, v|
@@ -165,7 +165,7 @@ class PkgBuild < PluginsCommon
         #get origin uploaded_file
         ss_upload_filepath = "#{SRV_USER_FILE_UPLOAD}/#{job.suite}/ss.#{pkg_name}.#{field_name}/#{filename}"
         if File.exists?(ss_upload_filepath)
-          _pkgbuild_repo = content.pkgbuild_repo
+          _pkgbuild_repo = build_job.pkgbuild_repo
           _pkg_name = _pkgbuild_repo.chomp.split('/', remove_empty: true)[-1]
           dest_dir = "#{SRV_USER_FILE_UPLOAD}/pkgbuild/#{pkg_name}/#{field_name}"
           pkg_dest_file = "#{dest_dir}/#{filename}"
@@ -174,21 +174,21 @@ class PkgBuild < PluginsCommon
           File.symlink(ss_upload_filepath, pkg_dest_file) unless File.exists?(pkg_dest_file)
         end
       end
-      content.hash_any[k] = v
+      build_job.hash_any[k] = v
     end
 
     default = load_default_pkgbuild_yaml
 
-    if content.commit == "HEAD"
+    if build_job.commit == "HEAD"
       upstream_commit = get_head_commit(upstream_repo)
     else
-      upstream_commit = content.commit
+      upstream_commit = build_job.commit
     end
-    content.upstream_commit = upstream_commit
+    build_job.upstream_commit = upstream_commit
 
-    content.import2hash(default)
-    @log.info(content)
-    return content
+    build_job.import2hash(default)
+    @log.info(build_job)
+    return build_job
   end
 
   # input:
@@ -215,11 +215,11 @@ class PkgBuild < PluginsCommon
     return response.body
   end
 
-  def create_pkgbuild_yaml(id, pkg_name, content)
+  def create_pkgbuild_yaml(id, pkg_name, build_job)
     job_yaml = "/tmp/yaml/#{id}_#{pkg_name}.yaml"
     dir_name = File.dirname(job_yaml)
     FileUtils.mkdir_p(dir_name) unless File.exists?(dir_name)
-    File.open(job_yaml, "w") { |f| f.puts content.to_yaml }
+    File.open(job_yaml, "w") { |f| f.puts build_job.to_yaml }
 
     return job_yaml
   end

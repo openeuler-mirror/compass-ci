@@ -12,7 +12,7 @@ require "../lib/job"
 require "../lib/json_logger"
 
 # -------------------------------------------------------------------------------------------
-# set_job_content(job_content)
+# set_job(job_content)
 #  - set job_content to es jobs/_doc/id["_source"]
 #  - return response as JSON::Any
 #
@@ -90,7 +90,7 @@ class Elasticsearch::Client
   end
 
   # caller should judge response["_id"] != nil
-  def set_job_content(job : Job, is_create = false)
+  def set_job(job : Job, is_create = false)
     # time indicates the update time of each job event
     job.set_time
 

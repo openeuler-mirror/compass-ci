@@ -395,7 +395,7 @@ class Sched
       job.job2sh = JSON::Any.new(nil)
       job.services = nil
 
-      @es.set_job_content(job)
+      @es.set_job(job)
 
       report_workflow_job_event(job.id, job)
     else
