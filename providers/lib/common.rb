@@ -174,63 +174,84 @@ def release_mem(hostname)
   end
 end
 
-def init_specmeminfo(maxdc)
+def init_specmeminfo(t_max, t_type)
   FileUtils.mkdir_p("/tmp/#{ENV['HOSTNAME']}") unless File.exist?("/tmp/#{ENV['HOSTNAME']}")
   spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
   mem_info = {}
-  containers = maxdc.to_i
-  digits = Array(1..containers).join(",")
+  digits = Array(1..t_max.to_i).sort.reverse.join(",")
   mem_info['usage'] = "0 G"
-  mem_info['containers'] = "#{digits}"
+  if t_type == 'dc'
+    mem_info['containers'] = "#{digits}"
+  elsif t_type == 'vm'
+    mem_info['vms'] = "#{digits}"
+  end
   save_mem_yaml_file(mem_info, spec_mem_info_file)
 end
 
-def compute_vm_max_dc
-  return %x(echo $(($(cat /proc/cpuinfo| grep "processor"| sort| uniq| wc -l) / 4)))
+def compute_max_vm
+  host_cpu = %x(grep "^processor" /proc/cpuinfo | wc -l).to_i
+  host_mem = %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024 / 1024
+
+  nr_vm_on_cpu = host_cpu / 2
+  nr_vm_on_mem = host_mem / 4
+
+  puts "nr_vm_on_cpu: #{nr_vm_on_cpu}"
+  puts "nr_vm_on_mem: #{nr_vm_on_mem}"
+
+  max_vm = [nr_vm_on_cpu, nr_vm_on_mem].min
+
+  return max_vm
 end
 
-def get_vm_total_memory
-  return %x(echo $(($(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
+def compute_max_dc
+  return %x(grep "^processor" /proc/cpuinfo | wc -l).to_i / 4
 end
 
-def get_vm_free_memory
-  return %x(echo $(($(grep MemFree /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
+def get_total_memory
+  return %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024 / 1024
 end
 
-def get_vm_left_memory
+def get_free_memory
+  return %x(grep MemFree /proc/meminfo | awk '{print $2}').to_i / 1024 / 1024
+end
+
+def get_left_memory
   spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
   if File.exist?(spec_mem_info_file)
     spec_mem_info = YAML.load_file(spec_mem_info_file)
     usage_mem = get_mem_figure(spec_mem_info['usage'])
-    return (get_vm_total_memory - usage_mem)
+    return (get_total_memory - usage_mem)
   else
-    return get_vm_total_memory
+    return get_total_memory
   end
 end
 
-def get_vm_arch
-  return %x(echo $(arch)).chomp
+def get_arch
+  return %x(arch).chomp
 end
 
-def pre_check_containers
+def pre_check_tbox(t_type)
   spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
   spec_mem_info = YAML.load_file(spec_mem_info_file)
-  containers = spec_mem_info['containers']
-  rest_numbers = containers.split(",")
+  t_boxes = spec_mem_info['containers'] if t_type == 'dc'
+  t_boxes = spec_mem_info['vms'] if t_type == 'vm'
+  rest_numbers = t_boxes.split(",").map { |ele| ele = ele.to_i }
   return nil if rest_numbers.empty?
   return rest_numbers
 end
 
-def record_spec_mem(hash, pre_num)
+def record_spec_mem(hash, pre_num, t_type)
   spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
+
   memory = hash['memory_minimum'].to_i
+
   begin
     File.open("#{spec_mem_info_file}", 'a') do |f|
       puts "record memory: try to get specmeminfo lock"
       f.flock(File::LOCK_EX)
       puts "record memory: get specmeminfo lock success"
       spec_mem_info = YAML.load_file(spec_mem_info_file)
-      record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_file)
+      record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_file, t_type)
     end
   rescue Exception => e
     puts 'record spec mem exception.'
@@ -239,23 +260,35 @@ def record_spec_mem(hash, pre_num)
   end
 end
 
-def record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_file)
-  containers = spec_mem_info['containers']
-  rest_numbers = containers.split(",")
+def record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_file, t_type)
+  if t_type == 'dc'
+    tboxes = spec_mem_info['containers']
+  elsif t_type == 'vm'
+    tboxes = spec_mem_info['vms']
+  end
+
+  rest_numbers = tboxes.split(",")
   rest_numbers.delete_if { |n| n == pre_num }
   rest_numbers = rest_numbers.join(",")
   spec_mem_info['usage'] = "#{get_mem_figure(spec_mem_info['usage']) + memory} G"
-  spec_mem_info['containers'] = "#{rest_numbers}"
+
+  if t_type == 'dc'
+    spec_mem_info['containers'] = "#{rest_numbers}"
+  elsif t_type == 'vm'
+    spec_mem_info['vms'] = "#{rest_numbers}"
+  end
+
   save_mem_yaml_file(spec_mem_info, spec_mem_info_file)
 end
 
-def release_spec_mem(hostname, hash)
+def release_spec_mem(hostname, hash, t_type)
   spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
   release_success = false
 
+  memory = hash['memory_minimum'].to_i
+
   until release_success
     begin
-      memory = hash['memory_minimum'].to_i
       File.open("#{spec_mem_info_file}", 'a') do |f|
         puts "#{hostname}-release: try to get specmeminfo lock"
         f.flock(File::LOCK_EX)
@@ -263,7 +296,7 @@ def release_spec_mem(hostname, hash)
 
         spec_mem_info = YAML.load_file(spec_mem_info_file)
 
-        del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_info_file)
+        del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_info_file, t_type)
         release_success = true
       end
     rescue Exception => e
@@ -279,17 +312,23 @@ def release_spec_mem(hostname, hash)
   end
 end
 
-def del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_info_file)
-  containers = spec_mem_info['containers']
-  rest_numbers = containers.split(",")
+def del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_info_file, t_type)
+  if t_type == 'dc'
+    tboxes = spec_mem_info['containers']
+  elsif t_type == 'vm'
+    tboxes = spec_mem_info['vms']
+  end
+
+  rest_numbers = tboxes.split(",")
   if rest_numbers.include? hostname.split("-")[-1]
     puts "this number was already added in containers: #{hostname}"
     return nil
   end
   rest_numbers.push(hostname.split("-")[-1])
-  rest_numbers = rest_numbers.join(",")
+  rest_numbers = rest_numbers.sort.reverse.join(",")
   spec_mem_info['usage'] = "#{get_mem_figure(spec_mem_info['usage']) - memory} G"
-  spec_mem_info['containers'] = "#{rest_numbers}"
+  spec_mem_info['containers'] = "#{rest_numbers}" if t_type == 'dc'
+  spec_mem_info['vms'] = "#{rest_numbers}" if t_type == 'vm'
   save_mem_yaml_file(spec_mem_info, spec_mem_info_file)
 end
 
@@ -455,17 +494,18 @@ ensure
   f1&.close
 end
 
-def ws_boot(url, hostname, index, ipxe_script_path = nil, is_remote)
+def ws_boot(url, hostname, index, ipxe_script_path = nil, is_remote = false)
   threads = []
   response = nil
 
   EM.run do
-    if is_remote == 'true'
+    if is_remote.to_s == 'true'
       jwt = load_jwt?
       ws = Faye::WebSocket::Client.new(url,[],:headers => { 'Authorization' => jwt })
     else
       ws = Faye::WebSocket::Client.new(url)
     end
+
     threads << Thread.new do
       sleep(300)
       ws.close(1000, 'timeout')
@@ -476,14 +516,14 @@ def ws_boot(url, hostname, index, ipxe_script_path = nil, is_remote)
     end
 
     ws.on :message do |event|
-      response ||= deal_ws_event(event, threads, ws, hostname, index)
+      response = deal_ws_event(event, threads, ws, hostname, index)
     end
 
-    ws.on :close do |event|
-      p [:close, event.code, event.reason]
-      if is_remote == 'true'
+    ws.on :close do
+      if is_remote.to_s == 'true'
         check_wheather_load_jwt(event)
       end
+
       threads.map(&:exit)
       EM.stop
     end
@@ -497,6 +537,7 @@ end
 def additional_ipxe_script(response, ipxe_script_path)
   return unless response
   return unless ipxe_script_path
+
 
   File.open(ipxe_script_path, 'w') do |f|
     f.puts response
@@ -513,12 +554,15 @@ end
 def deal_ws_event(event, threads, ws, hostname, index)
   response = nil
   data = JSON.parse(event.data)
+  puts "=== ws data ==="
+  puts data.to_json
+  puts data['type']
   case data['type']
-  # when 'request_memory', 'release_memory'
-  #   thr = Thread.new do
-  #     ack_memory(data['type'], ws, hostname, index)
-  #   end
-  #   threads << thr
+  when 'request_memory', 'release_memory'
+    thr = Thread.new do
+      ack_memory(data['type'], ws, hostname, index)
+    end
+    threads << thr
   when 'boot'
     response = data['response']
   when 'close'
@@ -526,6 +570,7 @@ def deal_ws_event(event, threads, ws, hostname, index)
   else
     raise 'unknow message type'
   end
+
   response
 end
 
@@ -542,4 +587,8 @@ def ack_memory(type, ws, hostname, index)
   end
 
   ws.send({ 'type' => type }.to_json)
+end
+
+def clean_test_source(hostname)
+  FileUtils.rm_rf("#{WORKSPACE}/#{hostname}") if Dir.exist?("#{WORKSPACE}/#{hostname}")
 end
