@@ -113,8 +113,8 @@ class InitReadyQueues
     ready_mem = 0
     @clone_ready_queues[vmx] ||= [] of Hash(String, String)
     _jobs = @clone_ready_queues[vmx]
-    _jobs.each do |_job|
-      ready_mem += _job["memory_minimum"].to_i
+    _jobs.each do |_job_content|
+      ready_mem += _job_content["memory_minimum"].to_i
     end
 
     return ready_mem
@@ -162,17 +162,17 @@ class InitReadyQueues
   private def init_ready_queues(arch, jobs)
     return unless @all_tbox.has_key?(@tbox_type)
 
-    jobs.each do |_job|
+    jobs.each do |_job_content|
       _select_flag = false
-      _sfn = _job["spec_file_name"]?
-      _ndm = _job["memory_minimum"]? || "16"
-      _use_remote_tbox = _job["use_remote_tbox"]? || "y"
+      _sfn = _job_content["spec_file_name"]?
+      _ndm = _job_content["memory_minimum"]? || "16"
+      _use_remote_tbox = _job_content["use_remote_tbox"]? || "y"
       vmccs = @ccache_vms[_sfn]? || [] of String
       vmx = get_best_vm(vmccs, _ndm, arch, _use_remote_tbox)
       if vmx
         @log.info ("get_best_vm from ccache_wms")
         @clone_ready_queues[vmx] ||= [] of Hash(String, String)
-        @clone_ready_queues[vmx] << _job
+        @clone_ready_queues[vmx] << _job_content
         next
       end
 
@@ -184,7 +184,7 @@ class InitReadyQueues
       if vmx
         @log.info ("get_best_vm from common_vms")
         @clone_ready_queues[vmx] ||= [] of Hash(String, String)
-        @clone_ready_queues[vmx] << _job
+        @clone_ready_queues[vmx] << _job_content
       end
     end
   end
@@ -333,15 +333,15 @@ class InitReadyQueues
     ret_jobs = Array(Hash(String, String)).new
     loop do
       weights = [] of Int32
-      _jobs.each do |job|
-        weights << job["weight"].to_i unless weights.includes?(job["weight"].to_i)
+      _jobs.each do |job_content|
+        weights << job_content["weight"].to_i unless weights.includes?(job_content["weight"].to_i)
       end
 
       index = random_index(weights)
       if index && _jobs
         _index = 0
-        _jobs.each do |_job|
-          if _job["weight"] == "#{weights[index]}"
+        _jobs.each do |_job_content|
+          if _job_content["weight"] == "#{weights[index]}"
             ret_jobs << _jobs.delete_at(_index)
             break
           end
