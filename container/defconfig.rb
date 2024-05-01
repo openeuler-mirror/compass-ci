@@ -20,6 +20,16 @@ def cci_defaults
   hash
 end
 
+def create_yaml_variables(yaml_file)
+  file_hash = YAML.load_file yaml_file
+
+  file_hash.each do |key, value|
+    ENV[key] = value.to_s if value.is_a? Integer
+    ENV[key] = value.join(' ') if value.is_a? Array
+    ENV[key] = value if value.is_a? String
+  end
+end
+
 def relevant_defaults(names)
   cci_defaults.select { |k, _| names.include? k }
 end
