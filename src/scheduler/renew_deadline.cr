@@ -12,16 +12,16 @@ class Sched
     check_renew_job(job)
 
     job.renew_deadline(time)
-    @es.update_tbox(job["testbox"].to_s, {"deadline" => job["deadline"]})
+    @es.update_tbox(job.testbox, {"deadline" => job.deadline})
     @es.set_job_content(job)
 
-    @env.set "testbox", job["testbox"]
-    @env.set "job_id", job["id"]
-    @env.set "deadline", job["deadline"]
+    @env.set "testbox", job.testbox
+    @env.set "job_id", job.id
+    @env.set "deadline", job.deadline
     @env.set "job_stage", "renew"
     send_mq_msg
 
-    return job["deadline"]
+    return job.deadline
   rescue e
     @env.response.status_code = 500
     @log.warn({
@@ -33,11 +33,11 @@ class Sched
 
   def check_renew_job(job)
     non_running = ["submit", "finish"]
-    raise "Only running job can renew, your job stage is: #{job["job_stage"]}" if non_running.includes?(job["job_stage"])
+    raise "Only running job can renew, your job stage is: #{job.job_stage}" if non_running.includes?(job["job_stage"])
 
-    testbox = @es.get_tbox(job["testbox"])
+    testbox = @es.get_tbox(job.testbox)
     raise "testbox that do not exist" if testbox.nil?
-    raise "The testbox does not match the job" if job["id"] != testbox["job_id"]
+    raise "The testbox does not match the job" if job.id != testbox["job_id"]
   end
 
   def get_deadline

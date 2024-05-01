@@ -21,7 +21,7 @@ class PostWorker
       return nil if res.count == 0
 
       job_id = queue_path.split("/")[-1]
-      job = @es.get_job_content(job_id)
+      job = @es.get_job(job_id)
       return unless job
       
       # send email while necessary
@@ -42,31 +42,31 @@ class PostWorker
   end
 
   def pack_post_extract_event(job_id, job)
-    workflow_exec_id = job["workflow_exec_id"]?.to_s
+    workflow_exec_id = job["workflow_exec_id"]?
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
     job_name_regex = /\/([^\/]+)\.(yaml|yml|YAML|YML)$/
-    job_origin = job["job_origin"]?.to_s
+    job_origin = job["job_origin"]?
     return if job_origin.nil? || job_origin.empty?
 
     job_name_match = job_origin.match(job_name_regex)
     job_name = job_name_match ? job_name_match[1] : nil
     return unless !job_name.nil?
 
-    job_stage = job["job_stage"]?.to_s
-    job_health = job["job_health"]?.to_s
-    job_result = job["result_root"]?.to_s
-    job_nickname = job["nickname"]?.to_s
+    job_stage = job["job_stage"]?
+    job_health = job["job_health"]?
+    job_result = job["result_root"]?
+    job_nickname = job.nickname?
 
     return unless job_stage == "finish"
 
     begin
+      job_matrix = job["matrix"]?
       job_matrix = job["matrix"]?.to_json
     rescue
-      job_matrix = job["matrix"]?.to_s
     end
 
-    job_branch = job["branch"]?.to_s
+    job_branch = job["branch"]?
     
     fingerprint = {
       "type" => "job/stage",
@@ -95,7 +95,7 @@ class PostWorker
   end
 
   def send_workflow_event(job_id, job)
-    workflow_exec_id = job["workflow_exec_id"]?.to_s
+    workflow_exec_id = job["workflow_exec_id"]?
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
     post_extract_event = pack_post_extract_event(job_id, job)

@@ -353,8 +353,9 @@ class JobHash
     runtime
     timeout
 
-    commit
     config
+    commit
+    commit_date
     upstream_repo
     upstream_commit
     upstream_url
@@ -366,6 +367,12 @@ class JobHash
     snapshot_id
     upload_image_dir
     emsx
+    nickname
+    branch
+    job_origin
+    workflow_exec_id
+    matrix
+    custom_ipxe
   )
 
   ARRAY_KEYS = %w(
@@ -697,7 +704,7 @@ class Job < JobHash
 
   def initialize(job_content, id : String|Nil)
     super(job_content)
-    self.id = id unless id.nil?
+    @hash_plain["id"] = id unless id.nil?
 
     @es = Elasticsearch::Client.new
     @account_info = JobHash.new(Hash(String, JSON::Any).new)
@@ -707,7 +714,7 @@ class Job < JobHash
   end
 
   def submit(id = "-1")
-    # init job with "-1", or use the original job_content["id"]
+    # init job with "-1", or use the original job.id
     self.id = id
     self.job_state = "submit"
     self.job_stage = "submit"

@@ -22,12 +22,12 @@ class Finally < PluginsCommon
 
   def add_job2custom(job)
     job.hash_array["added_by"] = ["finally"]
-    if job["docker_image"]?
+    if job.docker_image?
       key = "sched/submit/dc-custom/#{job.id}"
-    elsif job["testbox"].starts_with?("vm")
+    elsif job.testbox.starts_with?("vm")
       key = "sched/submit/vm-custom/#{job.id}"
     else
-      key = "sched/submit/hw-#{job["tbox_group"]}/#{job.id}"
+      key = "sched/submit/hw-#{job.tbox_group}/#{job.id}"
     end
 
     job["max_duration"] ||= "5"

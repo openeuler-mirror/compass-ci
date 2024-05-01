@@ -115,7 +115,7 @@ class Sched
 
     @log.info("get job from ready queues, etcd_job: #{etcd_job}, host_machine: #{host_machine}")
 
-    job_id = etcd_job["id"]
+    job_id = etcd_job.id
     if job_id
       begin
         job = @es.get_job(job_id.to_s)
@@ -157,10 +157,10 @@ class Sched
   def set_job2watch(job, stage, health)
     return unless job
 
-    if !job["in_watch_queue"].empty?
+    if !job.in_watch_queue.empty?
       current_time = Time.local.to_s("%Y-%m-%d %H:%M:%S")
-      data = {"job_id" => job["id"], "job_stage" => stage, "job_health" => health, "current_time" => current_time}
-      @etcd.put_not_exists("watch_queue/#{job["in_watch_queue"]}/#{job["id"]}", data.to_json)
+      data = {"job_id" => job.id, "job_stage" => stage, "job_health" => health, "current_time" => current_time}
+      @etcd.put_not_exists("watch_queue/#{job.in_watch_queue}/#{job.id}", data.to_json)
     end
   end
 
@@ -172,13 +172,13 @@ class Sched
     update_testbox_and_job(job, host, ["//#{host}"]) if job
 
     if job
-      job["last_success_stage"] = "boot"
+      job.last_success_stage = "boot"
       @es.set_job_content(job)
-      @env.set "job_id", job["id"]
-      @env.set "deadline", job["deadline"]
-      @env.set "job_stage", job["job_stage"]
+      @env.set "job_id", job.id
+      @env.set "deadline", job.deadline
+      @env.set "job_stage", job.job_stage
       @env.set "state", "booting"
-      create_job_cpio(job.dump_to_json_any, Kemal.config.public_folder)
+      create_job_cpio(job, Kemal.config.public_folder)
     end
 
     return boot_content(job, boot_type), job
@@ -233,7 +233,7 @@ class Sched
 
 
   private def get_boot_ipxe(job : Job)
-    return job["custom_ipxe"] if job["suite"].starts_with?("install-iso") && job.has_key?("custom_ipxe")
+    return job.custom_ipxe if job.suite.starts_with?("install-iso") && job.has_key?("custom_ipxe")
 
     response = "#!ipxe\n\n"
     response += "# nr_nic=" + job["nr_nic"] + "\n" if job.has_key?("nr_nic")
@@ -246,7 +246,7 @@ class Sched
     _kernel_params = ["kernel #{job.kernel_uri}"] + Array(String).from_json(job.kernel_params) + _kernel_initrds
     _rootfs_disk = " rootfs_disk=#{JSON.parse(job["rootfs_disk"]).as_a.join(",")}"
     response += _kernel_params.join(" ") + _rootfs_disk
-    response += " crashkernel=#{job["crashkernel"]}" unless response.includes?("crashkernel=")
+    response += " crashkernel=#{job.hash_any["crashkernel"]}" unless response.includes?("crashkernel=")
 
     response += "\nboot\n"
 

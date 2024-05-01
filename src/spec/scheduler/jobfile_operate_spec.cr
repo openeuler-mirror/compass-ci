@@ -101,11 +101,11 @@ describe Jobfile::Operate do
       old_dir = ::File.join [fs_root, job_id]
       FileUtils.rm_r(old_dir) if File.exists?(old_dir)
 
-      job_hash = JSON.parse(DEMO_JOB).as_h
-      job_hash = job_hash.merge({"result_root" => fs_root, "id" => job_id})
-      job_content = JSON.parse(job_hash.to_json)
+      job_hash = JobHash.new JSON.parse(DEMO_JOB).as_h
+      job_hash.result_root = fs_root
+      job_hash.id = job_id
 
-      Jobfile::Operate.create_job_cpio(job_content, fs_root)
+      Jobfile::Operate.create_job_cpio(job_hash, fs_root)
       (File.exists?(::File.join [old_dir, "job.cgz"])).should be_true
       FileUtils.rm_r(old_dir) if File.exists?(old_dir)
     end

@@ -240,21 +240,21 @@ class Sched
     return unless job
 
     job.set_deadline("boot")
-    job["job_state"] = "boot"
-    job["job_stage"] = "boot"
+    job.job_state = "boot"
+    job.job_stage = "boot"
   end
 
   def update_testbox_boot_info(job, hash)
     return hash unless job
 
-    hash["deadline"] = job["deadline"]
-    hash["job_id"] = job["id"]
-    hash["suite"] = job["suite"]
-    hash["my_account"] = job["my_account"]
-    hash["result_root"] = job["result_root"]
+    hash["deadline"] = job.deadline
+    hash["job_id"] = job.id
+    hash["suite"] = job.suite
+    hash["my_account"] = job.my_account
+    hash["result_root"] = job.result_root
     hash["state"] = "booting"
-    hash["timeout_period"] = job["timeout"]
-    hash["arch"] = job["os_arch"]
+    hash["timeout_period"] = job.timeout
+    hash["arch"] = job.os_arch
     hash["hostname"] = job["host_machine"]
     hash["type"] = job["tbox_type"]
   end

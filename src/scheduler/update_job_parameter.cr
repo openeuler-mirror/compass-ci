@@ -14,7 +14,7 @@ class Sched
 
     # the user actively returned this testbox
     # no need to update job
-    return if job["job_health"] == "return"
+    return if job.job_health == "return"
 
     # try to get report value and then update it
     job_content = Job.new(Hash(String, JSON::Any).new, nil)
@@ -31,20 +31,20 @@ class Sched
       next unless parameter == "job_state"
 
       if JOB_STAGES.includes?(value)
-        job_content["job_stage"] = value
-        job["last_success_stage"] = value
+        job_content.job_stage = value
+        job.last_success_stage = value
         job.set_time("#{value}_time")
         job.set_boot_elapsed_time
         @env.set "job_stage", value
         @env.set "deadline", job.set_deadline(value).to_s
       else
         value = "success" if value == "finished"
-        job_content["job_health"] = value
+        job_content.job_health = value
       end
     end
 
     job.merge!(job_content)
-    job_content["id"] = job_id
+    job_content.id = job_id
 
     update_id2job(job_content)
 
@@ -70,7 +70,7 @@ class Sched
   end
 
   def update_testbox_info(job)
-    testbox = job["testbox"]
+    testbox = job.testbox
     deadline = @env.get?("deadline")
 
     hash = {"time" => @env.get?("time").to_s}

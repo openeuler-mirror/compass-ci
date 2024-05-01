@@ -100,7 +100,7 @@ class Elasticsearch::Client
       response = update(job.to_json_any, job.id)
     end
 
-    @log.info("set job content, account: #{job["my_account"]}")
+    @log.info("set job content, account: #{job.my_account}")
 
     return response
   end

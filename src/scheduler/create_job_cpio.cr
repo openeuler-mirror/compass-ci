@@ -53,14 +53,22 @@ class Sched
     end
   end
 
-  private def parse_one(script_lines, key, val)
-    return false if val.as_h? || !valid_shell_variable?(key)
+  private def parse_one(script_lines, key, val : String)
+    return false if !valid_shell_variable?(key)
+
+    value = shell_escape(val)
+    script_lines << "\tcheck_set_var #{key}=" + value if value
+  end
+
+  private def parse_one(script_lines, key, val : JSON::Any)
+    return false if !valid_shell_variable?(key)
+    return false if val.as_h?
 
     value = shell_escape(val.as_a? || val.to_s)
     script_lines << "\tcheck_set_var #{key}=" + value if value
   end
 
-  private def sh_export_top_env(job_content : Hash)
+  private def sh_export_top_env(job : JobHash)
     script_lines = [] of String
     script_lines << "check_set_var()"
     script_lines << "{"
@@ -72,12 +80,13 @@ class Sched
     script_lines << "\tlocal vars=\"$*\""
     script_lines << "\n"
 
-    job_content.each { |key, val| parse_one(script_lines, key, val) }
-    if job_content.has_key? "hw"
-      job_content["hw"].as_h.each { |key, val| parse_one(script_lines, key, val) }
+    job.hash_plain.each { |key, val| parse_one(script_lines, key, val) }
+    job.hash_any.each { |key, val| parse_one(script_lines, key, val) }
+    if job.hw?
+      job.hw.as_h.each { |key, val| parse_one(script_lines, key, val) }
     end
-    if job_content.has_key? "services"
-      job_content["services"].as_h.each { |key, val| parse_one(script_lines, key, val) }
+    if job.services?
+      job.services.as(Hash).each { |key, val| parse_one(script_lines, key, val) }
     end
 
     script_lines << "}\n"
@@ -108,14 +117,13 @@ class Sched
   # Normal end users don't need change those logics, so it's enough to
   # use static *mainline* lkp-tests source here instead of per-user
   # uploaded lkp-tests code.
-  def create_job_cpio(job_content : JSON::Any, base_dir : String)
-    job_content = job_content.as_h
-    create_secrets_yaml(job_content["id"], base_dir)
+  def create_job_cpio(job : JobHash, base_dir : String)
+    create_secrets_yaml(job.id, base_dir)
 
     # put job2sh in an array
-    if job_content.has_key?("job2sh")
-      tmp_job_sh_content = job_content["job2sh"]
-      job_content.delete("job2sh")
+    if job.hash_any.has_key?("job2sh")
+      tmp_job_sh_content = job.hash_any["job2sh"]
+      job.hash_any.delete("job2sh")
 
       job_sh_array = [] of JSON::Any
       tmp_job_sh_content.as_h.each do |_key, val|
@@ -127,7 +135,7 @@ class Sched
     end
 
     # generate job.yaml
-    temp_yaml = base_dir + "/#{job_content["id"]}/job.yaml"
+    temp_yaml = base_dir + "/#{job.id}/job.yaml"
     prepare_dir(temp_yaml)
 
     # no change to <object> content { "#! jobs/pixz.yaml": null }
@@ -135,18 +143,18 @@ class Sched
     #  - but the orange is <#! jobs/pixz.yaml> in the user job.yaml
     # tested : no effect to job.sh
     File.open(temp_yaml, "w") do |file|
-      YAML.dump(job_content, file)
+      file.puts(job.to_yaml)
     end
 
     # generate unbroken job shell content
-    sh_export_top_env = sh_export_top_env(job_content)
+    sh_export_top_env = sh_export_top_env(job)
     job_sh_content = sh_export_top_env.as_a + job_sh_array
 
     # generate job.sh
-    job_sh = base_dir + "/#{job_content["id"]}/job.sh"
+    job_sh = base_dir + "/#{job.id}/job.sh"
     create_job_sh(job_sh_content.to_a, job_sh)
 
-    job_dir = base_dir + "/#{job_content["id"]}"
+    job_dir = base_dir + "/#{job.id}"
 
     cmd = "./create-job-cpio.sh #{job_dir}"
     idd = `#{cmd}`
@@ -156,7 +164,7 @@ class Sched
 
     # create result dir and copy job.sh, job.yaml and job.cgz to result dir
     src_dir = File.dirname(temp_yaml)
-    dst_dir = File.join("/srv", job_content["result_root"].to_s)
+    dst_dir = File.join("/srv", job.result_root)
     10.times do
       begin
         FileUtils.mkdir_p(dst_dir)

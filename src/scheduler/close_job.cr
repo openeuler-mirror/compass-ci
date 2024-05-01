@@ -8,10 +8,10 @@ class Sched
 
     begin
       index = "job_resource"
-      if ["rpmbuild", "hotpatch"].includes?("#{job["suite"]}")
-        id = "#{job["suite"]}_#{job["arch"]}_#{job["os_project"]}_#{job["package"]}_#{job["spec_file_name"]}"
+      if ["rpmbuild", "hotpatch"].includes?("#{job.suite}")
+        id = "#{job.suite}_#{job.arch}_#{job.os_project}_#{job["package"]}_#{job["spec_file_name"]}"
       else
-        raise "#{job["suite"]} does not support set job resource"
+        raise "#{job.suite} does not support set job resource"
       end
       content = { "mem" => mem, "cpu" => cpu }
       @es.set_content_by_id(index, id, content)
@@ -39,28 +39,28 @@ class Sched
 
     # update job content
     job_state = @env.params.query["job_state"]?
-    job["job_state"] = job_state if job_state
-    job["job_state"] = "complete" if job["job_state"] == "boot"
+    job.job_state = job_state if job_state
+    job.job_state = "complete" if job["job_state"] == "boot"
 
-    job["job_stage"] = "finish"
+    job.job_stage = "finish"
 
     job_health = @env.params.query["job_health"]?
     if job_health && job_health == "return"
       # if user returns this testbox
       # job_health needs to be return
-      job["job_health"] = job_health
+      job.job_health = job_health
     else
-      job["job_health"] ||= (job_health || "success")
+      job.job_health ||= (job_health || "success")
     end
 
-    if job["job_health"] == "success" || job["job_health"] == "oom"
+    if job.job_health == "success" || job["job_health"] == "oom"
       # update job resource
       update_job_resource(job, mem, cpu)
     end
 
-    if job["job_health"] != "success" && !job["snapshot_id"].empty?
-      data = {"build_id" => job["build_id"], "job_id" => job["id"], "build_type" => job["build_type"], "emsx" => job["emsx"]}
-      @etcd.put_not_exists("update_jobs/#{job["id"]}", data.to_json)
+    if job.job_health != "success" && !job.snapshot_id.empty?
+      data = {"build_id" => job["build_id"], "job_id" => job.id, "build_type" => job["build_type"], "emsx" => job.emsx}
+      @etcd.put_not_exists("update_jobs/#{job.id}", data.to_json)
     end
 
     job.set_time("finish_time")
@@ -68,16 +68,16 @@ class Sched
 
     running_time = Time.parse(job.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
     finish_time = Time.parse(job.finish_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    job["run_seconds"] = (finish_time - running_time).to_s
+    job.run_seconds = (finish_time - running_time).to_s
 
     if @env.params.query["source"]? != "lifecycle"
       deadline = job.get_deadline("finish")
       @env.set "deadline", deadline.to_s
-      @es.update_tbox(job["testbox"].to_s, {"deadline" => deadline})
-      job["last_success_stage"] = "finish"
+      @es.update_tbox(job.testbox, {"deadline" => deadline})
+      job.last_success_stage = "finish"
     end
 
-    set_job2watch(job, "close", job["job_health"])
+    set_job2watch(job, "close", job.job_health)
 
     response = @es.set_job_content(job)
     if response["_id"] == nil

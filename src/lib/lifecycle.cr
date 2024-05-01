@@ -53,10 +53,11 @@ class Lifecycle
     jobs = get_active_jobs
     jobs.each do |result|
       job_id = result["_id"].to_s
-      job = result["_source"].as_h
+      job = JobHash.new(result["_source"].as_h)
+      job.id = job_id
 
-      @jobs[job_id] = JobHash.new(job)
-      @match[job["testbox"].to_s] << job_id
+      @jobs[job_id] = job
+      @match[job.testbox] << job_id
     end
 
     machines = get_active_machines
@@ -205,7 +206,7 @@ class Lifecycle
     job = @jobs[event_job_id]?
     return unless job
 
-    testbox = job["testbox"].to_s
+    testbox = job.testbox
     update_cached_machine(testbox, event)
   end
 
@@ -231,7 +232,7 @@ class Lifecycle
     else
       job = @es.get_job(job_id)
       return unless job
-      return if job["job_stage"]? == "finish"
+      return if job.job_stage? == "finish"
 
       @jobs[job_id] = JobHash.new(job.shrink_to_etcd_fields)
     end
@@ -241,7 +242,7 @@ class Lifecycle
     event_job_id = event["job_id"].to_s
     job = @jobs[event_job_id]?
     return unless job
-    return if ["submit", "finish"].includes?(job["job_stage"])
+    return if ["submit", "finish"].includes?(job.job_stage)
 
     close_job(event_job_id, "abnormal")
   end
@@ -252,7 +253,7 @@ class Lifecycle
     return unless job
 
     @jobs.delete(event_job_id)
-    update_cached_machine(job["testbox"].to_s, event)
+    update_cached_machine(job.testbox, event)
   end
 
   def on_job_crash(event)
@@ -351,10 +352,10 @@ class Lifecycle
 
   def get_timeout_job
     @jobs.each do |id, job|
-      next unless job["deadline"]?
-      next if job["job_stage"]? == "finish"
+      next unless job.deadline?
+      next if job.job_stage? == "finish"
 
-      job_deadline = Time.parse(job["deadline"].to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+      job_deadline = Time.parse(job.deadline, "%Y-%m-%dT%H:%M:%S", Time.local.location)
       return id if Time.local >= job_deadline
     end
   end
@@ -363,8 +364,8 @@ class Lifecycle
     deadline = (Time.local + 60.second)
     dead_job_id = nil
     @jobs.each do |id, job|
-      next unless job["deadline"]?
-      job_deadline = Time.parse(job["deadline"].to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+      next unless job.deadline?
+      job_deadline = Time.parse(job.deadline, "%Y-%m-%dT%H:%M:%S", Time.local.location)
       return job_deadline, id if Time.local >= job_deadline
       next unless deadline > job_deadline
 
@@ -424,16 +425,16 @@ class Lifecycle
     @jobs.delete(job_id)
     job = @es.get_job(job_id)
     return unless job
-    return if ["submit", "finish"].includes?(job["job_stage"]?)
+    return if ["submit", "finish"].includes?(job.job_stage?)
 
-    deadline = job["deadline"]?.to_s
-    return if deadline.empty?
+    deadline = job.deadline?
+    return if deadline.nil? || deadline.empty?
 
     deadline = Time.parse(deadline.to_s, "%Y-%m-%dT%H:%M:%S", Time.local.location)
     if Time.local < deadline
       @jobs[job_id] = JobHash.new(job.shrink_to_etcd_fields)
     else
-      reboot_timeout_machine(job["testbox"])
+      reboot_timeout_machine(job.testbox)
       close_job(job_id, "timeout")
     end
   end

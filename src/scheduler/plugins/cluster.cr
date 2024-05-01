@@ -4,7 +4,7 @@ require "./plugins_common"
 
 class Cluster < PluginsCommon
   def handle_job(job)
-    cluster_file = job["cluster"]
+    cluster_file = job.cluster
     return [job] if cluster_file.empty? || cluster_file == "cs-localhost"
 
     cluster_spec = get_cluster_spec_by_job(job) ||
@@ -68,11 +68,11 @@ class Cluster < PluginsCommon
       job_ids << job_id
 
       # add to job content when multi-test
-      single_job["testbox"] = queue
-      single_job["queue"] = queue
+      single_job.testbox = queue
+      single_job.queue = queue
       single_job.update_tbox_group(queue)
-      single_job["os_arch"] = host_info["arch"].as_s
-      single_job["node_roles"] = spec["roles"].as_a.join(" ")
+      single_job.os_arch = single_job.arch
+      single_job.node_roles = spec["roles"].as_a.join(" ")
       if spec["macs"]?
         direct_macs = spec["macs"].as_a
         direct_ips = [] of String

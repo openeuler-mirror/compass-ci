@@ -74,7 +74,7 @@ class PkgBuild < PluginsCommon
   end
 
   def update_kernel(job, pbp)
-    server_prefix = "#{INITRD_HTTP_PREFIX}/kernel/#{pbp["os_arch"]}/#{pbp.hash_any["config"]}/#{pbp.hash_any["upstream_commit"]}"
+    server_prefix = "#{INITRD_HTTP_PREFIX}/kernel/#{pbp["os_arch"]}/#{pbp.config}/#{pbp.upstream_commit}"
     job.update_kernel_uri("#{server_prefix}/vmlinuz")
     job.update_modules_uri("#{server_prefix}/modules.cgz")
   end
@@ -85,9 +85,9 @@ class PkgBuild < PluginsCommon
   end
 
   def cgz_exists?(pbp)
-    pkg_name = pbp.hash_any["upstream_repo"].as_s.split("/")[-1]
+    pkg_name = pbp.upstream_repo.split("/")[-1]
     cgz_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
-    cgz = "#{SRV_INITRD}/build-pkg/#{pbp["os_mount"]}/#{pbp["os"]}/#{pbp["os_arch"]}/#{pbp["os_version"]}/#{pkg_name}/#{pbp.hash_any["upstream_commit"]}.cgz"
+    cgz = "#{SRV_INITRD}/build-pkg/#{pbp["os_mount"]}/#{pbp["os"]}/#{pbp["os_arch"]}/#{pbp["os_version"]}/#{pkg_name}/#{pbp.upstream_commit}.cgz"
     ret_cgz = "#{cgz_http_prefix}#{JobHelper.service_path(cgz, false)}"
     return ret_cgz, true if File.exists?(cgz)
     return ret_cgz, false
@@ -143,15 +143,15 @@ class PkgBuild < PluginsCommon
     content.commit = "HEAD"
     content.upstream_repo = upstream_repo
     content.pkgbuild_repo = pkgbuild_repo
-    content.upstream_url = upstream_info["url"][0]
+    content.upstream_url = upstream_info["url"][0].as_s
     content.upstream_dir = "upstream"
-    content.pkgbuild_source = upstream_info["pkgbuild_source"][0] if upstream_info["pkgbuild_source"]?
-    content.waited = {job["id"] => "job_health"}
+    content.pkgbuild_source = upstream_info["pkgbuild_source"][0].as_s if upstream_info["pkgbuild_source"]?
+    content.waited = {job.id => "job_health"}
     content.services = {
       "SCHED_HOST" => ENV["SCHED_HOST"],
       "SCHED_PORT" => ENV["SCHED_PORT"],
     }
-    content.hash_any["runtime"] = "36000"
+    content.runtime = "36000"
 
     # add user specify build params
     params.each do |k, v|
@@ -160,9 +160,9 @@ class PkgBuild < PluginsCommon
         field_name = k
         filename = File.basename(v)
         #get origin uploaded_file
-        ss_upload_filepath = "#{SRV_USER_FILE_UPLOAD}/#{job["suite"]}/ss.#{pkg_name}.#{field_name}/#{filename}"
+        ss_upload_filepath = "#{SRV_USER_FILE_UPLOAD}/#{job.suite}/ss.#{pkg_name}.#{field_name}/#{filename}"
         if File.exists?(ss_upload_filepath)
-          _pkgbuild_repo = content.hash_any["pkgbuild_repo"].as_s
+          _pkgbuild_repo = content.pkgbuild_repo
           _pkg_name = _pkgbuild_repo.chomp.split('/', remove_empty: true)[-1]
           dest_dir = "#{SRV_USER_FILE_UPLOAD}/pkgbuild/#{pkg_name}/#{field_name}"
           pkg_dest_file = "#{dest_dir}/#{filename}"
@@ -176,12 +176,12 @@ class PkgBuild < PluginsCommon
 
     default = load_default_pkgbuild_yaml
 
-    if content.hash_any["commit"] == "HEAD"
-      upstream_commit = JSON::Any.new get_head_commit(upstream_repo)
+    if content.commit == "HEAD"
+      upstream_commit = get_head_commit(upstream_repo)
     else
-      upstream_commit = content.hash_any["commit"]
+      upstream_commit = content.commit
     end
-    content.hash_any["upstream_commit"] = upstream_commit
+    content.upstream_commit = upstream_commit
 
     content.import2hash(default)
     @log.info(content)

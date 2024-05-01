@@ -6,11 +6,11 @@ class Sched
     body = @env.request.body.not_nil!.gets_to_end
 
     job_content = JSON.parse(body)
-    job = Job.new(job_content.as_h, job_content["id"]?)
-    job.submit(job_content["id"]?)
-    job["commit_date"] = get_commit_date(job)
+    job = Job.new(job_content.as_h)
+    job.submit(job.id?)
+    job.commit_date = get_commit_date(job)
 
-    cluster_file = job["cluster"]
+    cluster_file = job.cluster
     if cluster_file.empty? || cluster_file == "cs-localhost"
       response = submit_single_job(job)
     else
@@ -89,10 +89,10 @@ class Sched
       job_ids << job_id
 
       # add to job content when multi-test
-      job["testbox"] = queue
-      job["queue"] = queue
+      job.testbox = queue
+      job.queue = queue
       job.update_tbox_group(queue)
-      job["node_roles"] = config["roles"].as_a.join(" ")
+      job.node_roles = config["roles"].as_a.join(" ")
       if config["macs"]?
       	direct_macs = config["macs"].as_a
       	direct_ips = [] of String
@@ -199,13 +199,13 @@ class Sched
   end
 
   def get_commit_date(job)
-    if (job["upstream_repo"] != "") && (job["upstream_commit"] != "")
-      upstream_repo = job["upstream_repo"]
+    if (job.upstream_repo != "") && (job.upstream_commit != "")
+      upstream_repo = job.upstream_repo
       upstream_repo = "#{upstream_repo}.git" unless upstream_repo.includes?(".git")
 
       data = JSON.parse(%({"git_repo": "#{upstream_repo}",
                    "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
-                   "#{job["upstream_commit"]}", "-1"]}))
+                   "#{job.upstream_commit}", "-1"]}))
       response = @rgc.git_command(data)
       return response.body if response.status_code == 200
     end

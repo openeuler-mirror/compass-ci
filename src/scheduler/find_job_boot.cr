@@ -176,7 +176,7 @@ class Sched
 
     if job
       @log.info("#{testbox} got the job #{job_id}")
-      job["testbox"] = testbox
+      job.testbox = testbox
       update_kernel_params(job)
       job.set_result_root
       job.set_time("boot_time")
@@ -197,10 +197,10 @@ class Sched
   def set_job2watch(job, stage, health)
     return unless job
 
-    if !job["in_watch_queue"].empty?
+    if !job.in_watch_queue.empty?
       current_time = Time.local.to_s("%Y-%m-%d %H:%M:%S")
-      data = {"job_id" => job["id"], "job_stage" => stage, "job_health" => health, "current_time" => current_time}
-      @etcd.put_not_exists("watch_queue/#{job["in_watch_queue"]}/#{job["id"]}", data.to_json)
+      data = {"job_id" => job.id, "job_stage" => stage, "job_health" => health, "current_time" => current_time}
+      @etcd.put_not_exists("watch_queue/#{job.in_watch_queue}/#{job.id}", data.to_json)
     end
   end
 
@@ -388,14 +388,14 @@ class Sched
     return boot_msg(boot_type, state) if state
 
     if job
-      job["last_success_stage"] = "boot"
+      job.last_success_stage = "boot"
 
-      @env.set "job_id", job["id"]
-      @env.set "deadline", job["deadline"]
-      @env.set "job_stage", job["job_stage"]
+      @env.set "job_id", job.id
+      @env.set "deadline", job.deadline
+      @env.set "job_stage", job.job_stage
       @env.set "state", "booting"
 
-      create_job_cpio(job.to_json_any, Kemal.config.public_folder)
+      create_job_cpio(job, Kemal.config.public_folder)
 
       # UPDATE the large fields to null
       job.hash_any["job2sh"] = JSON::Any.new(nil)
@@ -403,7 +403,7 @@ class Sched
 
       @es.set_job_content(job)
 
-      report_workflow_job_event(job["id"].to_s, job)
+      report_workflow_job_event(job.id, job)
     else
       # for physical machines
       spawn {
@@ -470,7 +470,7 @@ class Sched
 
 
   private def get_boot_ipxe(job : Job)
-    return job["custom_ipxe"] if job["suite"].starts_with?("install-iso") && job.has_key?("custom_ipxe")
+    return job["custom_ipxe"] if job.suite.starts_with?("install-iso") && job.has_key?("custom_ipxe")
 
     response = "#!ipxe\n\n"
     response += "# nr_nic=" + job["nr_nic"] + "\n" if job.has_key?("nr_nic")
@@ -582,7 +582,7 @@ class Sched
     end
 
     if job
-      job["testbox"] = testbox
+      job.testbox = testbox
       job.set_result_root
       @log.info(%({"job_id": "#{job_id}", "result_root": "/srv#{job.result_root}", "job_state": "set result root"}))
       @redis.set_job(job)

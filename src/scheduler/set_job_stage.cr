@@ -10,7 +10,7 @@ class Sched
 
     # the user actively returned this testbox
     # no need to update job
-    return if job["job_health"] == "return"
+    return if job.job_health == "return"
 
     @env.set "time", get_time
 
@@ -36,8 +36,8 @@ class Sched
   end
 
   def change_job_stage(job, job_stage, timeout)
-    job["job_stage"] = job_stage
-    job["last_success_stage"] = job_stage
+    job.job_stage = job_stage
+    job.last_success_stage = job_stage
     job.set_time("#{job_stage}_time")
     @env.set "deadline", job.set_deadline(job_stage, timeout.to_i32).to_s
   end

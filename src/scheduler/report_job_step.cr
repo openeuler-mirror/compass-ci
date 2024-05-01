@@ -13,7 +13,7 @@ class Sched
 
     check_params({"job_id" => job_id, "job_step" => job_step})
 
-    job = @es.get_job(job_id.to_s)
+    job = @es.get_job(job_id)
     raise "can't find this job in es: #{job_id}" unless job
 
     report_workflow_job_event(job_id, job, job_step)
@@ -31,29 +31,29 @@ class Sched
   def pack_job_event(job_id, job, event_type, job_step, only_stage = false)
     return unless event_type == "job/stage" || event_type == "job/step"
 
-    workflow_exec_id = job["workflow_exec_id"]?.to_s
+    workflow_exec_id = job["workflow_exec_id"]?
     return if workflow_exec_id.nil? || workflow_exec_id.empty?
 
     job_name_regex = /\/([^\/]+)\.(yaml|yml|YAML|YML)$/
-    job_origin = job["job_origin"]?.to_s
+    job_origin = job["job_origin"]?
     return if job_origin.nil? || job_origin.empty?
 
     job_name_match = job_origin.match(job_name_regex)
     job_name = job_name_match ? job_name_match[1] : nil
     return unless !job_name.nil?
 
-    job_stage = job["job_stage"]?.to_s
-    job_health = job["job_health"]?.to_s
-    job_result = job["result_root"]?.to_s
-    job_nickname = job["nickname"]?.to_s
+    job_stage = job.job_stage?
+    job_health = job.job_health?
+    job_result = job.result_root?
+    job_nickname = job.nickname?
     
     begin
+      job_matrix = job["matrix"]?
       job_matrix = job["matrix"]?.to_json
     rescue
-      job_matrix = job["matrix"]?.to_s
     end
 
-    job_branch = job["branch"]?.to_s
+    job_branch = job["branch"]?
 
     # TODO the root reason could be a bug of lkp-tests
     # avoid job_stage is running but job_health is success or failed
@@ -102,7 +102,7 @@ class Sched
 
   def report_workflow_job_event(job_id, job, job_step=nil)
     event_type = job_step.nil? ? "job/stage" : "job/step"
-    if job["job_stage"]?.to_s == "finish"
+    if job.job_stage? == "finish"
       finish_event = pack_job_event(job_id, job, event_type, job_step, true)
       return unless !finish_event.nil?
 

@@ -28,7 +28,7 @@ class Sched
     need_keys.each do |k|
       job_info[k] = job[k]
     end
-    job_info["testbox"] = job["tbox_group"]
+    job_info["testbox"] = job.tbox_group
     job_info
   end
 

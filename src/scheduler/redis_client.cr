@@ -82,7 +82,7 @@ class RedisClient
   end
 
   def update_job(job_content : JSON::Any | Hash)
-    job_id = job_content["id"].to_s
+    job_id = job_content.id
 
     job = get_job(job_id)
     job.update(job_content)

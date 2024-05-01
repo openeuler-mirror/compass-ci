@@ -3,7 +3,7 @@
 
 class Sched
   def update_id2job(job_content)
-    id = job_content["id"].to_s
+    id = job_content.id
     job = get_id2job(id)
     return false unless job
 
