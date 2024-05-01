@@ -352,6 +352,15 @@ class JobHash
 
     runtime
     timeout
+
+    commit
+    config
+    upstream_repo
+    upstream_commit
+    upstream_url
+    upstream_dir
+    pkgbuild_repo
+    pkgbuild_source
   )
 
   ARRAY_KEYS = %w(
@@ -1151,11 +1160,11 @@ class Job < JobHash
     elsif @hash_any["rpmbuild"]?
       package_dir = ",/rpm/upload/#{common_dir}"
     elsif @hash_any["build-pkg"]? || @hash_any["pkgbuild"]?
-      package_name = @hash_any["upstream_repo"].to_s.split("/")[-1]
+      package_name = self.upstream_repo.split("/")[-1]
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
-      package_dir += ",/cci/build-config" if @hash_any["config"]?
-      if @hash_any["upstream_repo"].to_s =~ /^l\/linux\//
-        package_dir += ",/kernel/#{os_arch}/#{@hash_any["config"]}/#{@hash_any["upstream_commit"]}"
+      package_dir += ",/cci/build-config" if self.config?
+        if self.upstream_repo =~ /^l\/linux\//
+          package_dir += ",/kernel/#{os_arch}/#{self.config}/#{self.upstream_commit}"
       end
     end
 
@@ -1562,13 +1571,12 @@ class Job < JobHash
     # ss(field_name=ss.*.config*): $suite/ss.*.config*/filename
     # other:  $suite/field_name/filename
     if (field_name =~ /ss\..*\.config.*/) ||
-      @hash_plain["suite"] != "build-pkg" && @hash_plain["suite"] != "pkgbuild"
-      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{@hash_plain["suite"]}/#{field_name}"
+        self.suite != "build-pkg" && self.suite != "pkgbuild"
+      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{self.suite}/#{field_name}"
     else
       # XXX
-      _pkgbuild_repo = @hash_any["pkgbuild_repo"].as_s
-      pkg_name = _pkgbuild_repo.chomp.split('/', remove_empty: true)[-1]
-      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{@hash_plain["suite"]}/#{pkg_name}/#{field_name}"
+      pkg_name = self.pkgbuild_repo.chomp.split('/', remove_empty: true)[-1]
+      dest_dir = "#{SRV_USER_FILE_UPLOAD}/#{self.suite}/#{pkg_name}/#{field_name}"
     end
     return dest_dir
   end
@@ -1585,7 +1593,7 @@ class Job < JobHash
           if key =~ /config.*/ && val != nil
             field_name = "ss.#{pkg_name}.#{key}"
             filename = File.basename(val.chomp)
-            dest_file_path = "#{SRV_USER_FILE_UPLOAD}/#{self["suite"]}/#{field_name}/#{filename}"
+            dest_file_path = "#{SRV_USER_FILE_UPLOAD}/#{self.suite}/#{field_name}/#{filename}"
             if File.exists?(dest_file_path)
                 uploaded_file_path_hash[field_name] = dest_file_path
             else
@@ -1604,7 +1612,7 @@ class Job < JobHash
         _suite = field_hash["suite"].as_s?
         field_name = field_hash["field_name"].as_s
         if _suite
-          next if _suite != @hash_plain["suite"] || !@hash_any.has_key?(field_name)
+          next if _suite != self.suite || !@hash_any.has_key?(field_name)
           filename = File.basename(@hash_any[field_name].to_s.chomp)
           dest_dir = get_dest_dir(field_name)
           dest_file_path = "#{dest_dir}/#{filename}"

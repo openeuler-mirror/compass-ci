@@ -134,20 +134,20 @@ class PkgBuild < PluginsCommon
     end
 
     content = JobHash.new(Hash(String, JSON::Any).new)
-    content["os"] = job.os
-    content["os_version"] = "#{os_version}-fat"
-    content["os_arch"] = job.os_arch
-    content["testbox"] = testbox
-    content["os_mount"] = "container"
-    content["docker_image"] = docker_image
-    content.hash_any["commit"] = "HEAD"
-    content.hash_any["upstream_repo"] = upstream_repo
-    content.hash_any["pkgbuild_repo"] = pkgbuild_repo
-    content.hash_any["upstream_url"] = upstream_info["url"][0]
-    content.hash_any["upstream_dir"] = "upstream"
-    content.hash_any["pkgbuild_source"] = upstream_info["pkgbuild_source"][0] if upstream_info["pkgbuild_source"]?
-    content.hash_hh["waited"] = {job["id"] => "job_health"}
-    content.hash_hh["services"] = {
+    content.os = job.os
+    content.os_version = "#{os_version}-fat"
+    content.os_arch = job.os_arch
+    content.testbox = testbox
+    content.os_mount = "container"
+    content.docker_image = docker_image
+    content.commit = "HEAD"
+    content.upstream_repo = upstream_repo
+    content.pkgbuild_repo = pkgbuild_repo
+    content.upstream_url = upstream_info["url"][0]
+    content.upstream_dir = "upstream"
+    content.pkgbuild_source = upstream_info["pkgbuild_source"][0] if upstream_info["pkgbuild_source"]?
+    content.waited = {job["id"] => "job_health"}
+    content.services = {
       "SCHED_HOST" => ENV["SCHED_HOST"],
       "SCHED_PORT" => ENV["SCHED_PORT"],
     }
