@@ -11,10 +11,10 @@ class GetJob
   def get_job_by_tbox_type(vmx, tbox_type)
     rqsc = @irqi.get_ready_queues(tbox_type)
     jobs = rqsc[vmx]? || [] of Hash(String, String)
-    jobs.each do |job|
-      rg_ret = @etcd.range("/queues/sched/submit/#{tbox_type}-custom/#{job.id}")
+    jobs.each do |job_content|
+      rg_ret = @etcd.range("/queues/sched/submit/#{tbox_type}-custom/#{job_content["id"]}")
       next unless rg_ret.count == 1
-      _job = job.clone
+      _job = job_content.clone
       _job["mvt"] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
 
       dc_custom = "/queues/sched/submit/#{tbox_type}-custom/#{_job.id}"
