@@ -12,9 +12,12 @@
 # Eg: query (testbox is xxx or yyy) and (suite is aaa) and (user is bbb).
 #       es-find testbox=xxx,yyy suite=aaa user=bbb
 
+LKP_SRC ||= ENV['LKP_SRC'] || File.dirname(__dir__)
+
 require 'yaml'
 require 'optparse'
 require 'json'
+require "#{LKP_SRC}/lib/hash"
 require_relative '../lib/es_query.rb'
 require_relative '../container/defconfig.rb'
 require_relative '../lib/constants.rb'
@@ -143,9 +146,7 @@ es = ESQuery.new(ES_HOSTS, index: options[:index])
 
 if options[:keyword]
     available_search_key = es.query_mapping
-    available_search_key.each do |key|
-      puts "    #{key}"
-    end
+    format_print(available_search_key, %w(type key))
     exit
 end
 

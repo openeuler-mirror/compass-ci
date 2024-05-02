@@ -329,7 +329,7 @@ end
 
 def parse_mapping_properties(key, value, mapping_key)
   if value['type']
-    mapping_key << key
+    mapping_key << {'type' => value['type'], 'key' => key}
   else
     value['properties'].each do |k, v|
       parse_mapping_properties("#{key}.#{k}", v, mapping_key)
