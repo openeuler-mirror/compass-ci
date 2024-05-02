@@ -71,14 +71,22 @@ def check_range_args(key, value)
   end
 end
 
+def parse_time(time_spec)
+  if time_spec.include? 'now' # handled by ES
+    time_spec
+  else # handle time_spec like '2021-1-1'
+    Time.parse(time_spec).strftime("%FT%H:%M:%S%z")
+  end
+end
+
 def assign_range(value)
   range_value = {}
   from, to = value.split(',')
   if to
-    range_value[:gte] = Time.parse(from).strftime("%FT%H:%M:%S%z") unless from.empty?
-    range_value[:lte] = Time.parse(to).strftime("%FT%H:%M:%S%z")
+    range_value[:gte] = parse_time(from) unless from.empty?
+    range_value[:lte] = parse_time(to)
   else
-    range_value[:gte] = Time.parse(from).strftime("%FT%H:%M:%S%z")
+    range_value[:gte] = parse_time(from)
   end
 
   range_value
