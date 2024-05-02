@@ -43,11 +43,19 @@ end
 #     },
 #     ...
 #   }
-def parse_range(range)
+def parse_range(ranges)
   range_hash = {}
-  keyword_list = range.split(';')
-  keyword_list.each do |keyword|
+  ranges.each do |keyword|
     key, value = keyword.split('=')
+    if key =~ /^(\+)?([0-9]+d)$/
+      value = "now-#{$2}"
+      value = "," + value if $1 == "+"
+      key = "time"
+    elsif value =~ /^\+[0-9]+d$/
+      value = ",now-#{value[1..-1]}"
+    elsif value =~ /^[0-9]+d$/
+      value = "now-#{value}"
+    end
     check_range_args(key, value)
     range_hash[key] = assign_range(value)
   end
@@ -57,12 +65,7 @@ end
 
 def check_range_args(key, value)
   unless key && value
-    warn "error: range value of \"#{key}\" missing", "tips: should give the input of -r like:
-    \"#{key}=2021-01-01T00:00:00+0800,2021-01-01T23:59:59+0800\" "
-    exit
-  end
-  unless value =~ /^\d+-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d+/
-    warn "error: incorrect format \"#{key}=#{value}\"", "tips: should give the input of -r like:
+    warn "error: range value of \"#{key}\" missing", "tips: should give the input of -t like:
     \"#{key}=2021-01-01T00:00:00+0800,2021-01-01T23:59:59+0800\" "
     exit
   end
@@ -70,19 +73,19 @@ end
 
 def assign_range(value)
   range_value = {}
-  value_list = value.split(',')
-  if value_list.length > 1
-    range_value[:gte] = value_list[0]
-    range_value[:lte] = value_list[1]
+  from, to = value.split(',')
+  if to
+    range_value[:gte] = Time.parse(from).strftime("%FT%H:%M:%S%z") unless from.empty?
+    range_value[:lte] = Time.parse(to).strftime("%FT%H:%M:%S%z")
   else
-    range_value[:gte] = value
+    range_value[:gte] = Time.parse(from).strftime("%FT%H:%M:%S%z")
   end
 
   range_value
 end
 
 options = { index: 'jobs', nr_jobs: 10, desc_keyword: 'start_time' }
-opt_range = nil
+opt_range = []
 opt_count = nil
 opt_json = nil
 
@@ -116,8 +119,8 @@ opt_parser = OptionParser.new do |opts|
     options[:desc_keyword] = d
   end
 
-  opts.on('-r', '--range KEYWORD', 'range by keyword: start_time|end_time|...') do |r|
-    opt_range = r
+  opts.on('-t', '--time KEYWORD', 'filter range for time/number fields, format: key=start,end') do |r|
+    opt_range << r
   end
 
   opts.on('-c', '--count KEYWORD', 'count keyword: suite|job_state|testbox|id|...') do |c|
@@ -128,19 +131,26 @@ opt_parser = OptionParser.new do |opts|
     options[:regexp] = true
   end
 
-  opts.on_tail('--keyword', 'check all available search_keys') do
+  opts.on('--keyword', 'check all available search_keys') do
     options[:keyword] = true
   end
 
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
+    puts <<EOF
+
+Examples:
+    es-find -t 9d -t +3d                        # will expand to -t time=now-9d -t time=,now-3d
+    es-find -t submit_time=3d                   # will expand to submit_time=now-3d
+    es-find -t submit_time=2024-4-1,2024-5-1    # submit_time in range [2024-4-1,2024-5-1]
+EOF
     exit
   end
 end
 
 opt_parser.parse!(ARGV)
 items = parse_argv
-items[:range] = parse_range(opt_range) if opt_range
+items[:range] = parse_range(opt_range) unless opt_range.empty?
 
 es = ESQuery.new(ES_HOSTS, index: options[:index])
 
