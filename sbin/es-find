@@ -136,8 +136,8 @@ opt_parser = OptionParser.new do |opts|
     options[:regexp] = true
   end
 
-  opts.on('--keyword', 'check all available search_keys') do
-    options[:keyword] = true
+  opts.on('--mapping', 'show all available searchable keys') do
+    options[:mapping] = true
   end
 
   opts.on('--curl CMD', 'curl API') do |cmd|
@@ -193,7 +193,7 @@ if options[:curl_args]
   exit
 end
 
-if options[:keyword]
+if options[:mapping]
     available_search_key = es.query_mapping
     format_print(available_search_key, %w(type key))
     exit
