@@ -6,3 +6,5 @@
 docker_skip_rebuild "centos:web-backend"
 
 docker build -t centos:web-backend .
+
+push_image_remote "debian:web-backend"
