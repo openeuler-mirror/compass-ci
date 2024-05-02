@@ -135,8 +135,28 @@ opt_parser = OptionParser.new do |opts|
     options[:keyword] = true
   end
 
+  opts.on('--curl CMD', 'curl API') do |cmd|
+    options[:curl_args] = cmd.split
+  end
+
+  opts.on('--curl-data JSON', 'curl data') do |json|
+    options[:curl_args] << json
+  end
+
+  opts.on('--cat WHAT', 'cat API') do |what|
+    options[:curl_args] = %W(GET /_cat/#{what}?v)
+  end
+
   opts.on('--stats', 'show index stats') do
-    options[:curl_cmd] = %w(GET /_stats)
+    options[:curl_args] = %w(GET /_stats)
+  end
+
+  opts.on('--field-stats', 'show field stats, only available in recent ES version') do
+    options[:curl_args] = %w(GET /<index>/_field_usage_stats)
+  end
+
+  opts.on('--disk-usage', 'analyze disk usage, only available in recent ES version') do
+    options[:curl_args] = %w(POST /<index>/_disk_usage?run_expensive_tasks=true)
   end
 
   opts.on_tail('-h', '--help', 'show this message') do
@@ -147,6 +167,11 @@ Examples:
     es-find -t 9d -t +3d                        # will expand to -t time=now-9d -t time=,now-3d
     es-find -t submit_time=3d                   # will expand to submit_time=now-3d
     es-find -t submit_time=2024-4-1,2024-5-1    # submit_time in range [2024-4-1,2024-5-1]
+    es-find --curl 'GET /_xpack?pretty'
+    es-find --curl 'GET /_mapping?pretty'
+    es-find --curl 'GET /_cat/indices?v'
+    es-find --cat nodes
+    es-find --cat health
 EOF
     exit
   end
@@ -158,8 +183,8 @@ items[:range] = parse_range(opt_range) unless opt_range.empty?
 
 es = ESQuery.new(ES_HOSTS, index: options[:index])
 
-if options[:curl_cmd]
-  es.run_curl(options[:curl_cmd])
+if options[:curl_args]
+  es.run_curl(options[:curl_args])
   exit
 end
 

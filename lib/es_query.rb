@@ -16,8 +16,13 @@ class ESQuery
   end
 
   def run_curl(args)
+    a1 = args[1].sub("<index>", @index)
     @hosts.each do |host|
-      cmd = ["curl", '-u', host[:user] + ':' + host[:password], '-X', args[0], "#{host[:host]}:#{host[:port]}#{args[1]}"]
+      cmd = ["curl", '-s', '-u', host[:user] + ':' + host[:password],
+             '-X', args[0], "#{host[:host]}:#{host[:port]}#{a1}",
+             '-H', "Content-Type: application/json",
+      ]
+      cmd.concat ['-d', args[2]] if args[2]
       system(*cmd)
     end
   end
