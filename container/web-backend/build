@@ -5,6 +5,12 @@
 
 docker_skip_rebuild "centos:web-backend"
 
+repos=("cbs" "lkp-tests")
+for repo in "${repos[@]}"
+do
+	download_repo ${repo}
+done
+
 docker build -t centos:web-backend .
 
 push_image_remote "debian:web-backend"
