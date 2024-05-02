@@ -43,7 +43,7 @@ end
 #     },
 #     ...
 #   }
-def prase_range(range)
+def parse_range(range)
   range_hash = {}
   keyword_list = range.split(';')
   keyword_list.each do |keyword|
@@ -82,8 +82,8 @@ def assign_range(value)
 end
 
 options = { index: 'jobs', nr_jobs: 10, desc_keyword: 'start_time' }
-range = nil
-count = nil
+opt_range = nil
+opt_count = nil
 opt_json = nil
 
 opt_parser = OptionParser.new do |opts|
@@ -117,11 +117,11 @@ opt_parser = OptionParser.new do |opts|
   end
 
   opts.on('-r', '--range KEYWORD', 'range by keyword: start_time|end_time|...') do |r|
-    range = r
+    opt_range = r
   end
 
   opts.on('-c', '--count KEYWORD', 'count keyword: suite|job_state|testbox|id|...') do |c|
-    count = c
+    opt_count = c
   end
 
   opts.on('--reg', 'fuzzy matching') do
@@ -140,7 +140,7 @@ end
 
 opt_parser.parse!(ARGV)
 items = parse_argv
-items[:range] = prase_range(range) if range
+items[:range] = parse_range(opt_range) if opt_range
 
 es = ESQuery.new(ES_HOSTS, index: options[:index])
 
@@ -152,8 +152,8 @@ end
 
 if opt_json
   query_result = es.query_json(opt_json)
-elsif count
-  count_keywords = count.split(',')
+elsif opt_count
+  count_keywords = opt_count.split(',')
   query_result = es.query_fields(count_keywords, items)
 else
   params = {
