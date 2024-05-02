@@ -135,6 +135,10 @@ opt_parser = OptionParser.new do |opts|
     options[:keyword] = true
   end
 
+  opts.on('--stats', 'show index stats') do
+    options[:curl_cmd] = %w(GET /_stats)
+  end
+
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     puts <<EOF
@@ -153,6 +157,11 @@ items = parse_argv
 items[:range] = parse_range(opt_range) unless opt_range.empty?
 
 es = ESQuery.new(ES_HOSTS, index: options[:index])
+
+if options[:curl_cmd]
+  es.run_curl(options[:curl_cmd])
+  exit
+end
 
 if options[:keyword]
     available_search_key = es.query_mapping

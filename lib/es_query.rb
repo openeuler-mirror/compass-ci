@@ -8,10 +8,18 @@ require_relative 'constants.rb'
 # build multiple query request body
 class ESQuery
   def initialize(hosts=ES_HOSTS, index: 'jobs')
+    @hosts = hosts
     @index = index
     @scroll_id = ''
     @client = Elasticsearch::Client.new hosts: hosts
     raise 'Connect Elasticsearch  error!' unless @client.ping
+  end
+
+  def run_curl(args)
+    @hosts.each do |host|
+      cmd = ["curl", '-u', host[:user] + ':' + host[:password], '-X', args[0], "#{host[:host]}:#{host[:port]}#{args[1]}"]
+      system(*cmd)
+    end
   end
 
   def query_json(query)
