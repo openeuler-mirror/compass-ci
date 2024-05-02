@@ -92,7 +92,7 @@ def assign_range(value)
   range_value
 end
 
-options = { index: 'jobs', nr_jobs: 10, desc_keyword: 'start_time' }
+options = { index: 'jobs', size: 10, desc_keyword: 'start_time' }
 opt_hosts = ES_HOSTS
 opt_range = []
 opt_count = nil
@@ -104,8 +104,11 @@ opt_parser = OptionParser.new do |opts|
   opts.separator 'search_key can be id, suite, os, etc.'
   opts.separator ''
 
-  opts.on('-l', 'select logging ES DB') do
+  opts.on('-l', 'log query') do
     opt_hosts = LOGGING_ES_HOSTS
+    options[:size] = 100
+    options[:index] = '*'
+    options[:desc_keyword] = 'time'
   end
 
   opts.on('-i', '--index INDEX', 'select ES index') do |i|
@@ -120,12 +123,12 @@ opt_parser = OptionParser.new do |opts|
     end
   end
 
-  opts.on('-n', '--nr-jobs NUM', Integer, 'max jobs, default 10.') do |n|
+  opts.on('-n', '--nr-docs NUM', Integer, 'max docs, default 10.') do |n|
     if n.to_i <= 0
       puts 'The value of the -n option must be a positive number.'
       exit(-1)
     end
-    options[:nr_jobs] = n.to_i
+    options[:size] = n.to_i
   end
 
   opts.on('-d', '--desc-keyword KEYWORD', 'order by keyword: start_time|end_time|...') do |d|
@@ -191,7 +194,13 @@ EOF
 end
 
 opt_parser.parse!(ARGV)
-items = parse_argv
+
+if opt_hosts == LOGGING_ES_HOSTS
+  items = {log: ARGV.join(" ")}
+else
+  items = parse_argv
+end
+
 items[:range] = parse_range(opt_range) unless opt_range.empty?
 
 es = ESQuery.new(opt_hosts, index: options[:index])
@@ -214,7 +223,7 @@ elsif opt_count
   query_result = es.query_fields(count_keywords, items)
 else
   params = {
-    size: options[:nr_jobs],
+    size: options[:size],
     regexp: options[:regexp]
   }
   if options[:index] == 'jobs'

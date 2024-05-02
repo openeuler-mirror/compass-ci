@@ -216,6 +216,8 @@ def build_multi_field_subquery_body(items, regexp = nil)
     else
       if regexp
         query_fields.push({ regexp: { key => ".*#{value}.*" } })
+      elsif key == :log
+        query_fields.push({ match: { key.to_s => value } })
       else
         query_fields.push({ term: { key => value } })
       end
