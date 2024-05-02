@@ -85,6 +85,7 @@ def assign_range(value)
 end
 
 options = { index: 'jobs', nr_jobs: 10, desc_keyword: 'start_time' }
+opt_hosts = ES_HOSTS
 opt_range = []
 opt_count = nil
 opt_json = nil
@@ -94,6 +95,10 @@ opt_parser = OptionParser.new do |opts|
 
   opts.separator 'search_key can be id, suite, os, etc.'
   opts.separator ''
+
+  opts.on('-l', 'select logging ES DB') do
+    opt_hosts = LOGGING_ES_HOSTS
+  end
 
   opts.on('-i', '--index INDEX', 'select ES index') do |i|
     options[:index] = i
@@ -169,7 +174,7 @@ Examples:
     es-find -t submit_time=2024-4-1,2024-5-1    # submit_time in range [2024-4-1,2024-5-1]
     es-find --curl 'GET /_xpack?pretty'
     es-find --curl 'GET /_mapping?pretty'
-    es-find --curl 'GET /_cat/indices?v'
+    es-find --cat indices'
     es-find --cat nodes
     es-find --cat health
 EOF
@@ -181,7 +186,7 @@ opt_parser.parse!(ARGV)
 items = parse_argv
 items[:range] = parse_range(opt_range) unless opt_range.empty?
 
-es = ESQuery.new(ES_HOSTS, index: options[:index])
+es = ESQuery.new(opt_hosts, index: options[:index])
 
 if options[:curl_args]
   es.run_curl(options[:curl_args])
