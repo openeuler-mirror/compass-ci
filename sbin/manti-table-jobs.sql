@@ -46,8 +46,9 @@ CREATE TABLE jobs(
 	hw		json,
 
 	boot_time	bigint engine='rowwise',
+	running_time	bigint engine='rowwise',
 	finish_time	bigint engine='rowwise',
-	active_time	bigint engine='rowwise',
+	time		bigint engine='rowwise',
 
 	boot_seconds	int engine='rowwise',
 	run_seconds	int engine='rowwise',

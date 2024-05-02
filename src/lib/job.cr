@@ -327,7 +327,6 @@ class JobHash
     last_success_stage
 
     time
-    active_time
     submit_time
     boot_time
     running_time
@@ -623,7 +622,7 @@ class JobHash
     submit_time
     boot_time
     finish_time
-    active_time
+    time
   )
 
   # dynamic keys to merge into the json attribute
@@ -1213,7 +1212,6 @@ class Job < JobHash
   end
 
   def set_time
-    self.active_time = Time.utc.to_unix_ms.to_s
     self.time = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
