@@ -1,17 +1,18 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
-# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-FROM centos:7
+FROM debian:bookworm
 
-RUN yum -y install gcc make tar gzip openssl-devel gcc-c++ zlib createrepo iproute wget
+ENV DEBIAN_FRONTEND noninteractive
 
-# download the source file may take a long time, can prepare download it and use
-# the following line instead of command wget
-#   COPY ruby-2.7.6.tar.gz /
-RUN wget https://ftp.ruby-lang.org/pub/ruby/2.7/ruby-2.7.6.tar.gz -P /
+COPY conf/sources.list /etc/apt/
+RUN rm /etc/apt/sources.list.d/*
 
-RUN cd / && tar xzvf ruby-2.7.6.tar.gz && cd ruby-2.7.6 && ./configure && make && make install
+RUN apt-get update && \
+	apt-get install -y git uuid-runtime ruby-json ruby-rails ruby-sinatra ruby-jwt ruby-rest-client curl && \
+	gem install public_suffix -v 4.0.7 && \
+	gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
+	gem install elasticsearch:7.11.1 redis git terminal-table
 
-RUN gem install zlib activesupport:6.1.4.4 rest-client grpc:1.17 && \
-    gem install etcdv3 xml-simple elasticsearch:7.11.1 logger json-schema redis git terminal-table && \
-    gem install sinatra
+RUN groupadd -g 1090 lkp && useradd -m -u 1090 -g 1090 lkp
+
+RUN apt-get remove gcc gdb cpp -y
