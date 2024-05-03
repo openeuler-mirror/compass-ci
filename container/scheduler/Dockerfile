@@ -15,9 +15,9 @@ RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
     gem install yaml io-console elasticsearch:7.11.1
 
-COPY --chown=1090:1090 --chmod=750 --exclude=.git/ cbs		/c/cbs
-COPY --chown=1090:1090 --chmod=750 --exclude=.git/ compass-ci	/c/compass-ci
-COPY --chown=1090:1090 --chmod=750 --exclude=.git/ lkp-tests	/c/lkp-tests
+COPY --chown=1090:1090 --chmod=750  cbs		/c/cbs
+COPY --chown=1090:1090 --chmod=750  compass-ci	/c/compass-ci
+COPY --chown=1090:1090 --chmod=750  lkp-tests	/c/lkp-tests
 
 ENV SCHED_RUNTIME_DIR /c/cci/scheduler
 RUN mkdir -p $SCHED_RUNTIME_DIR 
