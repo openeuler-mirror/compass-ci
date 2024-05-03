@@ -34,6 +34,7 @@ names = Set.new %w[
   SRV_HTTP_CCI_HOST
   SRV_HTTP_CCI_PORT
   lab
+  lab_id
 ]
 
 defaults = relevant_defaults(names)
@@ -43,12 +44,6 @@ defaults['SSHR_PORT_LEN'] ||= 2000
 defaults['SCHED_PORT'] ||= '3000'
 defaults['MASTER_FLUENTD_PORT'] ||= '24224'
 defaults['SRV_HTTP_CCI_PORT'] ||= '11307'
-sched_nodes = defaults.delete('SCHED_NODES')
-SCHED_PORT = defaults['SCHED_PORT']
-
-sched_nodes.each do |node|
-  docker_rm "s001-alpine-#{node['port']}"
-end
 
 service_authentication = relevant_service_authentication(names)
 defaults.merge!(service_authentication)
@@ -59,6 +54,12 @@ CCI_REPOS = '/c'
 DEFAULT_LKP = "#{CCI_REPOS}/lkp-tests"
 DEFAULT_CCI = "#{CCI_REPOS}/compass-ci"
 LAB = defaults['lab'] || 'z9'
+sched_nodes = defaults.delete('SCHED_NODES')
+SCHED_PORT = defaults['SCHED_PORT']
+
+sched_nodes.each do |node|
+  docker_rm "s001-alpine-#{node['port']}"
+end
 
 unless defaults['lab_id'] =~ /^[0-9][0-9][0-9]$/
   puts "expect 3-digit lab_id, got #{defaults['lab_id']}"
@@ -68,7 +69,7 @@ end
 sched_nodes.each do |node|
   node_host = node['host']
   node_port = node['port']
-  worker_id = sprintf("%03d", node_port.to_i - SCHED_PORT.to_i)
+  worker_id = sprintf("%02d", node_port.to_i - SCHED_PORT.to_i)
 
   bind_list = []
   [node_host, '172.17.0.1'].uniq.each do |ip|
@@ -87,12 +88,12 @@ sched_nodes.each do |node|
     -e CCI_SRC=#{DEFAULT_CCI}
     -e NODE_PORT=#{node_port}
     -e WORKER_ID=#{worker_id}
-    -e LAB_ID=#{lab_id}
-    -v /srv/tmp/public:/c/cci/scheduler/public
+    -e LAB_ID=#{defaults['lab_id']}
     -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
     -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
     -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
     -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
+    -v /srv/tmp/public:/c/cci/scheduler/public
     -v /etc/compass-ci:/etc/compass-ci:ro
     -v /etc/localtime:/etc/localtime:ro
     -v /srv/result:/srv/result

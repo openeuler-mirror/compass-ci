@@ -31,6 +31,7 @@ names = Set.new %w[
   SRV_HTTP_CCI_HOST
   SRV_HTTP_CCI_PORT
   lab
+  lab_id
 ]
 
 defaults = relevant_defaults(names)
@@ -51,46 +52,56 @@ CCI_REPOS = '/c'
 DEFAULT_LKP = "#{CCI_REPOS}/lkp-tests"
 DEFAULT_CCI = "#{CCI_REPOS}/compass-ci"
 LAB = defaults['lab'] || 'z9'
-SCHED_PORT = defaults['SCHED_PORT']
 SCHED_HOST = defaults['SCHED_HOST']
+SCHED_PORT = defaults['SCHED_PORT']
 
 docker_rm "s001-alpine-#{SCHED_PORT}"
 
-bind_list = []
-[SCHED_HOST, '172.17.0.1'].uniq.each do |ip|
-  bind_list << '-p'
-  bind_list << "#{ip}:#{SCHED_PORT}:#{SCHED_PORT}"
+unless defaults['lab_id'] =~ /^[0-9][0-9][0-9]$/
+  puts "expect 3-digit lab_id, got #{defaults['lab_id']}"
+  exit 1
 end
 
-cmd = %W[
-  docker run
-  --restart=always
-  --name s001-alpine-#{SCHED_PORT}
-  -it
-  -u 1090:1090
-] + bind_list + env + %W[
-  -e CCI_REPOS=#{CCI_REPOS}
-  -e LKP_SRC=#{DEFAULT_LKP}
-  -e CCI_SRC=#{DEFAULT_CCI}
-  -e NODE_PORT=#{SCHED_PORT}
-  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
-  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
-  -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
-  -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
-  -v /srv/tmp/public:/c/cci/scheduler/public
-  -v /etc/compass-ci:/etc/compass-ci:ro
-  -v /etc/localtime:/etc/localtime:ro
-  -v /srv/result:/srv/result
-  -v /srv/initrd:/srv/initrd:ro
-  -v /srv/upload-files:/srv/upload-files:rw
-  -v /srv/cci/user-files:/srv/cci/user-files:rw
-  -v /srv/os:/srv/os:ro
-  --log-opt mode=non-blocking
-  --log-opt max-buffer-size=4m
-  --log-opt tag=scheduler-#{SCHED_PORT}
-  sch-ruby-a:v0.00d-#{SCHED_PORT}
-]
+begin
+  worker_id = sprintf("%02d", SCHED_PORT.to_i - 3000)
+  bind_list = []
+  [SCHED_HOST, '172.17.0.1'].uniq.each do |ip|
+    bind_list << '-p'
+    bind_list << "#{ip}:#{SCHED_PORT}:#{SCHED_PORT}"
+  end
 
-cmd += ['sh', '-c', 'umask 002 && ./scheduler']
+  cmd = %W[
+    docker run
+    --name s001-alpine-#{SCHED_PORT}
+    --restart=always
+    -it
+    -u 1090:1090
+  ] + bind_list + env + %W[
+    -e CCI_REPOS=#{CCI_REPOS}
+    -e LKP_SRC=#{DEFAULT_LKP}
+    -e CCI_SRC=#{DEFAULT_CCI}
+    -e NODE_PORT=#{SCHED_PORT}
+    -e WORKER_ID=#{worker_id}
+    -e LAB_ID=#{defaults['lab_id']}
+    -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
+    -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
+    -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
+    -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
+    -v /srv/tmp/public:/c/cci/scheduler/public
+    -v /etc/compass-ci:/etc/compass-ci:ro
+    -v /etc/localtime:/etc/localtime:ro
+    -v /srv/result:/srv/result
+    -v /srv/initrd:/srv/initrd:ro
+    -v /srv/os:/srv/os:ro
+    -v /srv/upload-files:/srv/upload-files:rw
+    -v /srv/cci/user-files:/srv/cci/user-files:rw
+    --log-opt mode=non-blocking
+    --log-opt max-buffer-size=4m
+    --log-opt tag=scheduler-#{SCHED_PORT}
+    sch-ruby-a:v0.00d-#{SCHED_PORT}
+  ]
 
-system(*cmd)
+  cmd += ['sh', '-c', 'umask 002 && ./scheduler']
+
+  system(*cmd)
+end
