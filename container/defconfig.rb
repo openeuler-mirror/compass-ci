@@ -84,10 +84,13 @@ end
 # $HOME/.config/compass-ci/defaults/xxx.yaml
 #   git.lkp-tests: file:///home/user/lkp-tests
 def download_repo(repo, git_clone_options_and_url)
-  return true unless git_clone_options_and_url
+  unless git_clone_options_and_url
+    FileUtils.mkdir_p(repo)
+    return
+  end
 
   FileUtils.rm_rf(repo) if Dir.exist?(repo)
-  system "umask 022 && git clone --depth=1 #{git_clone_options_and_url}"
+  system "umask 022 && git clone -q --depth=1 #{git_clone_options_and_url}"
 end
 
 def push_image_remote(src_tag)

@@ -19,8 +19,7 @@ SCHED_PORT = (defaults['SCHED_PORT'] || '3000')
 docker_skip_rebuild "sch-ruby-a:v0.00d-#{SCHED_PORT}"
 
 %w(lkp-tests compass-ci cbs).each do |repo|
-  download_repo(repo, defaults["git." + repo]) ||
-    FileUtils.mkdir_p(repo)
+  download_repo(repo, defaults["git." + repo])
 end
 
 CCI_SRC = ENV['CCI_SRC']
