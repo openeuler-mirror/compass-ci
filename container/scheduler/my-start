@@ -12,6 +12,8 @@ names = Set.new %w[
   REDIS_HOST
   REDIS_PORT
   REDIS_PASSWD
+  ETCD_USER
+  ETCD_PASSWORD
   ES_HOST
   ES_PORT
   ES_USER
@@ -83,6 +85,8 @@ begin
     -e NODE_PORT=#{SCHED_PORT}
     -e WORKER_ID=#{worker_id}
     -e LAB_ID=#{defaults['lab_id']}
+    -e ETCD_USER=#{defaults['ETCD_USER']}
+    -e ETCD_PASSWORD=#{defaults['ETCD_PASSWORD']}
     -v #{CCI_REPOS}/lab-#{LAB}:#{CCI_REPOS}/lab-#{LAB}
     -v /srv/cci/scheduler/alpine:/srv/cci/scheduler
     -v /srv/tmp/public:/c/cci/scheduler/public
