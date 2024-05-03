@@ -90,7 +90,12 @@ def download_repo(repo, git_clone_options_and_url)
   end
 
   FileUtils.rm_rf(repo) if Dir.exist?(repo)
-  system "umask 022 && git clone -q --depth=1 #{git_clone_options_and_url}"
+  if git_clone_options_and_url.include? "lkp-tests"
+    depth = "--shallow-since 2023-03-1"
+  else
+    depth = "--depth=1"
+  end
+  system "umask 022 && git clone -q #{depth} #{git_clone_options_and_url}"
 end
 
 def push_image_remote(src_tag)
