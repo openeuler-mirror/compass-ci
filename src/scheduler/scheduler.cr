@@ -176,10 +176,6 @@ module Scheduler
     env.sched.update_subqueues.to_json
   end
 
-  post "/scheduler/update_subqueues" do |env|
-    env.sched.update_subqueues.to_json
-  end
-
   post "/scheduler/delete_subqueue" do |env|
     env.sched.delete_subqueue.to_json
   end
