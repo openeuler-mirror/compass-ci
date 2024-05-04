@@ -92,7 +92,7 @@ module StatsWrapper
     return if File.size?(file)
     return unless File.exist?("#{LKP_SRC}/tests/#{@program}")
 
-    data = "# missing #{@program} #{file}\nis_incomplete_run: 1"
+    data = "# missing #{@program} #{file}\neid.is_incomplete_run: 001"
     File.write("#{RESULT_ROOT}/last_state", data, mode: 'a')
   end
 
@@ -101,7 +101,7 @@ module StatsWrapper
 
     last_state = File.readlines("#{RESULT_ROOT}/last_state")
     last_state.map!(&:chomp!)
-    data = 'soft_timeout: 1'
+    data = 'eid.soft_timeout: 001'
     return if last_state.indlude?(data)
 
     File.write("#{RESULT_ROOT}/last_state", data, mode: 'a')
@@ -161,7 +161,7 @@ module StatsWrapper
                'message' => "no generate json file for #{@stats_group}",
                'error_message' => "no generate json file for #{@stats_group}, check #{RESULT_ROOT}"
              })
-    data = "# no json file for #{@stats_group}\nis_incomplete_run: 1"
+    data = "# no json file for #{@stats_group}\neid.is_incomplete_run: 001"
     File.write("#{RESULT_ROOT}/last_state", data, mode: 'a')
   end
 
