@@ -35,10 +35,6 @@ options = OptionParser.new do |opts|
     opt['queues'] = queues
   end
 
-  opts.on('-i index', '--index index', 'index of multi-qemu, used for safe-stop') do |index|
-    opt['index'] = index
-  end
-
   opts.on('-p', '--compute', 'set use compute max dc numbers by cpu and will ignore -c number') do
     opt['compute'] = true
   end
@@ -62,7 +58,6 @@ options.parse!(ARGV)
 
 HOSTNAME = opt['hostname_prefix'] || "dc-1g.#{ENV['HOSTNAME']}"
 QUEUES = opt['queues'] || "dc-1g.#{ENV['HOSTNAME']}"
-INDEX = opt['index']
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']
 
@@ -118,7 +113,7 @@ end
 
 def loop_main
     system(
-        { 'hostname' => HOSTNAME, 'queues' => QUEUES, 'uuid' => UUID, 'index' => INDEX, 'maxdc' => NR_DC, 'is_remote' => IS_REMOTE },
+        { 'hostname' => HOSTNAME, 'queues' => QUEUES, 'uuid' => UUID, 'maxdc' => NR_DC, 'is_remote' => IS_REMOTE },
         ENV['CCI_SRC'] + '/providers/docker.rb'
       )
 end
