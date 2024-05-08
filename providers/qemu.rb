@@ -241,7 +241,7 @@ def main
 end
 
 def parse_ipxe_script(hostname, ipxe_script_path)
-  log_file = "/srv/cci/serial/logs#{hostname}"
+  log_file = "/srv/cci/serial/logs/#{hostname}"
   append = ''
   initrds = ''
   kernel = ''
