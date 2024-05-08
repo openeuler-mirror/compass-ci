@@ -46,10 +46,6 @@ options = OptionParser.new do |opts|
     opt['is_remote'] = true
   end
 
-  opts.on('-i index', '--index index', 'index of multi-qemu, used for safe-stop') do |index|
-    opt['index'] = index
-  end
-
   opts.on_tail('-h', '--help', 'show this message') do
     puts opts
     exit
@@ -68,7 +64,6 @@ PWD      = Dir.pwd
 HOSTNAME = opt['hostname_prefix'] || "vm-2p8g.#{ENV['HOSTNAME']}"
 QUEUES   = opt['queues'] || "#{ENV['HOSTNAME']}.#{RUBY_PLATFORM.split('-')[0]}"
 LOG_DIR  = opt['log_dir'] || '/srv/cci/serial/logs'
-INDEX    = opt['index']
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']
 
@@ -110,7 +105,6 @@ def loop_main
       'max_vm' => NR_VM.to_s,
       'log_dir' => LOG_DIR,
       'UUID' => UUID,
-      'index' => INDEX,
       'is_remote' => IS_REMOTE.to_s,
       'WORKSPACE' => pwd_hostname,
     },
