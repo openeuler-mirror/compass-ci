@@ -267,9 +267,9 @@ def record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_fil
     tboxes = spec_mem_info['vms']
   end
 
-  rest_numbers = tboxes.split(",")
-  rest_numbers.delete_if { |n| n == pre_num }
-  rest_numbers = rest_numbers.join(",")
+  rest_numbers = tboxes.split(",").map { |ele| ele = ele.to_i }
+  rest_numbers.delete_if { |n| n == pre_num.to_i }
+  rest_numbers = rest_numbers.sort.reverse.join(",")
   spec_mem_info['usage'] = "#{get_mem_figure(spec_mem_info['usage']) + memory} G"
 
   if t_type == 'dc'
@@ -320,11 +320,12 @@ def del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_i
   end
 
   rest_numbers = tboxes.split(",")
-  if rest_numbers.include? hostname.split("-")[-1]
+  rest_numbers = tboxes.split(",").map { |ele| ele = ele.to_i }
+  if rest_numbers.include? hostname.split("-")[-1].to_i
     puts "this number was already added in containers: #{hostname}"
     return nil
   end
-  rest_numbers.push(hostname.split("-")[-1])
+  rest_numbers.push(hostname.split("-")[-1].to_i)
   rest_numbers = rest_numbers.sort.reverse.join(",")
   spec_mem_info['usage'] = "#{get_mem_figure(spec_mem_info['usage']) - memory} G"
   spec_mem_info['containers'] = "#{rest_numbers}" if t_type == 'dc'
@@ -334,12 +335,10 @@ end
 
 
 def save_running_suite
-  return unless INDEX
-
   FileUtils.mkdir_p("/tmp/#{ENV['HOSTNAME']}") unless File.exist?("/tmp/#{ENV['HOSTNAME']}")
   f = File.new(SUITE_FILE, 'a')
   f.flock(File::LOCK_EX)
-  f.puts("#{ENV['suite']}-#{INDEX}")
+  f.puts("#{ENV['suite']}")
 ensure
   f&.flock(File::LOCK_UN)
   f&.close
@@ -446,7 +445,6 @@ def update_restart_lock(commit_id)
 end
 
 def safe_stop
-  return unless INDEX
   return unless File.exist?(SAFE_STOP_FILE)
 
   running_suites = delete_running_suite
@@ -460,7 +458,7 @@ def safe_stop
     system(cmd)
   end
 
-  system("systemctl stop #{ENV['suite']}-#{INDEX}.service")
+  system("systemctl stop #{ENV['suite']}.service")
 end
 
 def get_lock(file)
@@ -472,8 +470,6 @@ def get_lock(file)
 end
 
 def delete_running_suite
-  return [] unless INDEX
-
   f1 = File.new(SUITE_FILE)
   f1.flock(File::LOCK_EX)
   arr = []
@@ -481,7 +477,7 @@ def delete_running_suite
     arr << line.chomp
   end
   arr.uniq!
-  arr.delete("#{ENV['suite']}-#{INDEX}")
+  arr.delete("#{ENV['suite']}")
 
   f2 = File.new(SUITE_FILE, 'w')
   arr.each do |line|
@@ -516,7 +512,7 @@ def ws_boot(url, hostname, index, ipxe_script_path = nil, is_remote = false)
     end
 
     ws.on :message do |event|
-      response = deal_ws_event(event, threads, ws, hostname, index)
+      response ||= deal_ws_event(event, threads, ws, hostname, index)
     end
 
     ws.on :close do
