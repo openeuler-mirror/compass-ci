@@ -45,20 +45,71 @@ run_service()
 {
 	(
 		cd $CCI_SRC/container/dnsmasq || return
-		./build
+
+		local dnsmasq_image_name=dnsmasq:alpine
+		local build_dnsmasq_retry=0
+
+		while [[ $build_dnsmasq_retry -lt 3 ]]
+		do
+			./build
+			
+			if test "$(docker images -q $dnsmasq_image_name 2> /dev/null)" == ''
+			then
+				build_dnsmasq_retry=$(($build_dnsmasq_retry + 1))
+
+				continue
+			else
+				break
+			fi
+		done
+
 		./start
 		boot_ipxe
 	)&
+
 	(
 		cd $CCI_SRC/container/qemu-efi || return
-		./build
+
+		local qemu_efi_image_name=debian:qemu-efi
+		local build_qemu_efi_retry=0
+
+		while [[ $build_qemu_efi_retry -lt 3 ]]
+		do
+			./build
+			
+			if test "$(docker images -q $qemu_efi_image_name 2> /dev/null)" == ''
+			then
+				build_qemu_efi_retry=$(($build_qemu_efi_retry + 1))
+				continue
+			else
+				break
+			fi
+		done
+
 		./install
 	)&
+
 	(
 		cd $CCI_SRC/container/fluentd-base || return
-		./build
+
+		local fluentd_base_image_name=fluentd-base:alpine
+		local build_fluentd_base_retry=0
+
+		while [[ $build_fluentd_base_retry -lt 3 ]]
+		do
+			./build 
+
+			if test "$(docker images -q $fluentd_base_image_name 2> /dev/null)" == ''
+			then
+				build_fluentd_base_retry=$(($build_fluentd_base_retry + 1))
+				continue
+			else
+				break
+			fi
+		done
 
 		cd $CCI_SRC/container/sub-fluentd || return
+
 		./build
 		./start
 	)&
