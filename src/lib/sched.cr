@@ -11,7 +11,6 @@ require "./utils"
 require "./web_env"
 require "./etcd_client"
 require "./block_helper"
-require "./taskqueue_api"
 require "./remote_git_client"
 require "./constants"
 require "../scheduler/constants"
@@ -22,6 +21,7 @@ require "../scheduler/elasticsearch_client"
 require "../scheduler/renew_deadline"
 require "../scheduler/auto_depend_submit_job"
 require "../scheduler/find_job_boot"
+require "../scheduler/hw_find_job_boot"
 require "../scheduler/find_next_job_boot"
 require "../scheduler/close_job"
 require "../scheduler/cancel_jobs"
@@ -40,7 +40,6 @@ require "../scheduler/report_job_step"
 require "../scheduler/plugins/pkgbuild"
 require "../scheduler/plugins/finally"
 require "../scheduler/plugins/cluster"
-#require "../scheduler/get_job_boot_content"
 require "../scheduler/heart_beat"
 
 class Sched
@@ -54,7 +53,6 @@ class Sched
     @es = Elasticsearch::Client.new
     @redis = RedisClient.instance
     @mq = MQClient.instance
-    @task_queue = TaskQueueAPI.new
     @etcd = EtcdClient.new
     @rgc = RemoteGitClient.new
     @env = env
@@ -332,41 +330,6 @@ class Sched
       type = "physical"
     end
     type
-  end
-
-  private def query_consumable_keys(shortest_queue_name)
-    keys = [] of String
-    search = "sched/" + shortest_queue_name + "*"
-    response = @task_queue.query_keys(search)
-
-    return keys unless response[0] == 200
-
-    key_list = JSON.parse(response[1].to_json).as_a
-
-    # add consumable keys
-    key_list.each do |key|
-      queue_name = consumable_key?("#{key}")
-      keys << queue_name if queue_name
-    end
-
-    return keys
-  end
-
-  private def consumable_key?(key_name)
-    if key_name =~ /(.*)\/(.*)$/
-      case $2
-      when "in_process"
-        return nil
-      when "ready"
-        return $1
-      when "idle"
-        return key_name
-      else
-        return key_name
-      end
-    end
-
-    return nil
   end
 
   def mq_publish_confirm(queue, msg)

@@ -11,12 +11,13 @@ class EtcdClient
     port = (ENV.has_key?("ETCD_PORT") ? ENV["ETCD_PORT"].to_i32 : ETCD_PORT)
     version = (ENV.has_key?("ETCD_VERSION") ? ENV["ETCD_VERSION"] : ETCD_VERSION)
     user = ENV["ETCD_USER"]?
-    unless user.nil? || user.empty?
-      password = ENV["ETCD_PASSWORD"]
-      @etcd = Etcd.client(host, port, user, password, version)
-    else
-      @etcd = Etcd.client(host, port, version)
-    end
+    @etcd = Etcd.client(host, port, version)
+    #unless user.nil? || user.empty?
+    #  password = ENV["ETCD_PASSWORD"]
+    #  @etcd = Etcd.client(host, port, user, password, version)
+    #else
+    #  @etcd = Etcd.client(host, port, version)
+    #end
   end
 
   def close

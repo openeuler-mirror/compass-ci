@@ -18,7 +18,7 @@ class InitReadyQueues
     @tbox_type = "dc"
     @ccache_vms = Hash(String, Array(String)).new
 
-    # ready_queues = {vm1:[{..job..}, {..job..}], vm2:[{..job..}, {..job..}]}
+    # ready_queues {vm1:[{..job..}, {..job..}], vm2:[{..job..}, {..job..}]}
     @ready_queues = Hash(String, Hash(String, Array(Hash(String, String)))).new
     @all_tbox = Hash(String, Hash(String, Hash(String, String))).new
     @common_vms = Hash(String, Hash(String, Hash(String, String))).new
@@ -99,6 +99,7 @@ class InitReadyQueues
     @log.info("init_common_tbox_from_redis #{all_keys}")
     TBOX_TYPES.each do |type|
       all_keys.each do |key|
+        next unless key.is_a?(String)
         next unless key.starts_with?("/tbox/#{type}")
         val = @redis.get(key)
         next unless val
@@ -129,7 +130,7 @@ class InitReadyQueues
       _arch = @all_tbox[@tbox_type][vmx]["arch"]
       next if "#{_arch}" != "#{arch}"
 
-      is_remote = @all_tbox[@tbox_type][vmx]["is_remote"]
+      is_remote = @all_tbox[@tbox_type][vmx]["is_remote"]? || "false"
       next if is_remote == "true" && use_remote_tbox == "n"
 
       cost_mem = 0
@@ -270,6 +271,7 @@ class InitReadyQueues
       }
     }
     result = @es.search("jobs", query)
+
     raise result unless result.is_a?(JSON::Any)
 
     # [{arch:x86_64, jobs:{my_account: [{..id..},{..id..}]}, my_account: [{..id..},{..id..}]},

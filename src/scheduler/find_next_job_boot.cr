@@ -17,7 +17,7 @@ class Sched
 
     @env.set "testbox", hostname
 
-    response = get_job_boot(hostname, "ipxe", pre_job)
+    response = hw_get_job_boot(hostname, "ipxe", pre_job)
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
 
     @env.set "job_id", job_id

@@ -86,33 +86,8 @@ module Scheduler
   # /boot.xxx/host/${hostname}
   # /boot.yyy/mac/${mac}
   get "/boot.:boot_type/:parameter/:value" do |env|
-    env.sched.find_job_boot
+    env.sched.hw_find_job_boot
   end
-
-  ws "/ws/boot.:boot_type/:parameter/:value" do |socket, env|
-    env.set "ws", true
-    env.set "ws_state", "normal"
-    env.create_socket(socket)
-    sched = env.sched
-
-    spawn sched.find_job_boot
-
-    socket.on_message do |msg|
-      msg = JSON.parse(msg.to_s).as_h?
-      (spawn env.channel.send(msg)) if msg
-    end
-
-    socket.on_close do
-      env.set "ws_state", "close"
-      sched.etcd_close
-      spawn env.watch_channel.send("close") if env.get?("watch_state") == "watching"
-      env.log.info({
-        "from" => env.request.remote_address.to_s,
-        "message" => "socket on closed"
-      }.to_json)
-    end
-  end
-
 
   # curl -X PUT "http://localhost:3000/register-host2redis?type=dc&arch=aarch64&...."
   put "/register-host2redis" do |env|

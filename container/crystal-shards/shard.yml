@@ -8,7 +8,7 @@ targets:
   scheduler:
     main: src/scheduler.cr
 
-crystal: 1.8.2
+crystal: 0.35.1
 
 license: Mulan PSL v2
 

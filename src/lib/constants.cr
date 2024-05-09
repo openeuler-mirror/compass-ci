@@ -8,6 +8,7 @@ ETCD_PORT = (ENV.has_key?("ETCD_PORT") ? ENV["ETCD_PORT"] : 2379).to_i32
 ETCD_VERSION = "v3beta"
 
 TOTAL_JOBS_QUOTA = (ENV.has_key?("TOTAL_JOBS_QUOTA") ? ENV["TOTAL_JOBS_QUOTA"] : 150000).to_i32
+IS_CLUSTER = (ENV.has_key?("IS_CLUSTER") ? ENV["IS_CLUSTER"] : false)
 
 COMMON_PARAMS = %w[tbox_group os os_arch os_version]
 

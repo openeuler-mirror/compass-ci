@@ -87,26 +87,41 @@ module Utils
     end
   end
 
-  def get_service_env
-    yaml_any = YAML.parse File.read("/etc/compass-ci/service/service-env.yaml")
-    yaml_any.as_h.delete("SCHED_NODES")
-
-    hash = Hash(String, YAML::Any).new
-    hash["services"] = yaml_any
-    JobHash.new((JSON.parse(hash.to_json).as_h))
+  def get_service_envs
+    hash = Hash(String, JSON::Any).new
+    yaml_any = File.open("/etc/compass-ci/service/service-env.yaml") do |content|
+      YAML.parse(content).as_h?
+    end
+    return hash unless yaml_any
+    return  Hash(String, JSON::Any).from_json(yaml_any.to_json)
   end
 
-  def get_testbox_env(is_remote)
-    type = is_remote ? "remote" : "local"
-    yaml_any = YAML.parse File.open("/etc/compass-ci/scheduler/#{type}-testbox-env.yaml")
+  def get_testbox_keys(flag = "local")
+    hash = Hash(String, JSON::Any).new
+    yaml_any = File.open("/etc/compass-ci/scheduler/#{flag}-testbox-env.yaml") do |content|
+      YAML.parse(content).as_h?
+    end
+    return hash unless yaml_any
+    return Hash(String, JSON::Any).from_json(yaml_any.to_json)
+  end
 
-    hash = Hash(String, YAML::Any).new
-    hash["services"] = yaml_any
+
+  def set_testbox_env(flag = "local")
+    testbox_keys = get_testbox_keys
+    service_envs = get_service_envs
+    hash = Hash(String, JSON::Any).new
+
+    service_envs.each do |k, v|
+      hash[k] = service_envs[k] if testbox_keys.has_key?(k)
+    end
+
+    #_hash = Hash(String, YAML::Any).new
+    #_hash["services"] = hash
     JobHash.new((JSON.parse(hash.to_json).as_h))
   end
 
   # XXX: flag not used
-  def testbox_env(flag = "local", emsx = "ems1")
+  def testbox_env_k8s(flag = "local", emsx = "ems1")
     master_hash = get_k8s_service_env("ems1")
     k8s_hash = get_k8s_service_env(emsx)
     master_hash.merge!(k8s_hash)

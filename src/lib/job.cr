@@ -42,7 +42,7 @@ module JobHelper
   end
 
   def self.service_path(path, need_exists = true)
-    temp_path = need_exists ? File.realpath(path) : path
+    temp_path = need_exists ? File.real_path(path) : path
     return temp_path.split("/srv")[-1]
   end
 end
@@ -747,13 +747,18 @@ class Job < JobHash
     self.job_state = "submit"
     self.job_stage = "submit"
 
-    self.merge! Utils.get_service_env()
-    self.merge! Utils.get_testbox_env(@is_remote)
+    #self.merge! Utils.get_service_env()
+    #self.merge! Utils.get_testbox_env(@is_remote)
 
-    self.emsx ||= "ems1"
+    #self.emsx ||= "ems1"
+    self.emsx = "ems1" unless @hash_plain.has_key?("emsx")
     self.emsx = self.emsx.downcase
     # XXX move into ["services"] subkey?
-    @hash_any.merge!(Utils.testbox_env("local", self.emsx))
+    if IS_CLUSTER
+      @hash_any.merge!(Utils.testbox_env_k8s(flag="local", emsx=self["emsx"]))
+    else
+      self.merge! Utils.set_testbox_env(flag="local")
+    end
 
     check_required_keys()
     check_fields_format()
@@ -853,6 +858,7 @@ class Job < JobHash
     set_secrets()
     set_time("submit_time")
     set_params_md5()
+    set_memory_minimum()
   end
 
   def set_account_info
@@ -939,6 +945,12 @@ class Job < JobHash
 
   private def set_os_arch
     self.os_arch = self.arch if @hash_plain.has_key?("arch")
+  end
+
+  private def set_memory_minimum
+    return if @hash_plain.has_key?("memory_minimum")
+
+    self.memory_minimum = @hash_plain["memory"] if @hash_plain.has_key?("memory")
   end
 
   private def set_os_version
@@ -1368,12 +1380,12 @@ class Job < JobHash
   end
 
   private def set_kernel_version
-    self.kernel_version ||= File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
+    self.kernel_version ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
   end
 
   private def set_kernel_uri
     return if @hash_plain.has_key?("kernel_uri")
-    vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
+    vmlinuz_path = File.real_path("#{boot_dir}/vmlinuz-#{kernel_version}")
     self.kernel_uri = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(vmlinuz_path)
   end
 
@@ -1381,7 +1393,7 @@ class Job < JobHash
     return if @hash_plain.has_key?("modules_uri")
     return if self.os_mount == "local"
 
-    modules_path = File.realpath("#{boot_dir}/modules-#{kernel_version}.cgz")
+    modules_path = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
     self.modules_uri = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
   end
 

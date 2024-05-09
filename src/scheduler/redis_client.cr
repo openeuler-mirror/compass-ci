@@ -13,6 +13,7 @@ class RedisClient
   class_property :client
   HOST = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
   PORT = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
+  IS_CLUSTER = (ENV.has_key?("IS_CLUSTER") ? ENV["IS_CLUSTER"] : false)
   PASSWD = ENV["REDIS_PASSWD"]
   @@size = 25
 
@@ -20,16 +21,20 @@ class RedisClient
     Singleton::Of(self).instance
   end
 
-  def initialize(host = HOST, port = PORT, pool_size = @@size, passwd = PASSWD)
-    @client = Redis::Cluster.new(URI.parse("redis://redis.ems1"))
+  def initialize(host = HOST, port = PORT, passwd = PASSWD)
+    if IS_CLUSTER
+      @client = Redis::Cluster.new(URI.parse("redis://:#{passwd}@#{host}:#{port}"))
+    else
+      pp "redis://:#{passwd}@#{host}:#{port}"
+      pp "redis://:#{URI.encode_www_form(passwd)}@#{host}:#{port}"
+      @client = Redis::Client.new(URI.parse("redis://:#{URI.encode_www_form(passwd)}@#{host}:#{port}"))
+      pp "#{@client}"
+      @client
+    end
   end
 
   def self.set_pool_size(pool_size)
     @@size = pool_size
-  end
-
-  def all_keys
-    @client.keys
   end
 
   def keys(pattern)
@@ -38,8 +43,12 @@ class RedisClient
 
   def scan_each(pattern)
     keys = [] of String
-    @client.scan_each(match: pattern) do |key|
-       keys << key
+    if IS_CLUSTER
+      @client.scan_each(match: pattern) do |key|
+        keys << key
+      end
+    else
+      return @client.keys(pattern)
     end
 
     keys
@@ -65,6 +74,10 @@ class RedisClient
     @client.get(key)
   end
 
+  def del(key : String)
+    @client.del(key)
+  end
+
   def expire(key : String, duration)
     @client.expire(key, duration)
   end
@@ -79,6 +92,15 @@ class RedisClient
 
   def update_wtmp(testbox : String, wtmp_hash : Hash)
     @client.hset("sched/tbox_wtmp", testbox, wtmp_hash.to_json)
+  end
+
+  def update_job(job_content : JSON::Any | Hash)
+    job_id = job_content["id"].to_s
+
+    job = get_job(job_id)
+    job.update(job_content)
+
+    hash_set("sched/id2job", job_id, job.dump_to_json)
   end
 
   def set_job(job : Job)
