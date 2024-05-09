@@ -319,7 +319,6 @@ def del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_i
     tboxes = spec_mem_info['vms']
   end
 
-  rest_numbers = tboxes.split(",")
   rest_numbers = tboxes.split(",").map { |ele| ele = ele.to_i }
   if rest_numbers.include? hostname.split("-")[-1].to_i
     puts "this number was already added in containers: #{hostname}"
