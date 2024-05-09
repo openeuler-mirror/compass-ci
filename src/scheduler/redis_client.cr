@@ -25,11 +25,7 @@ class RedisClient
     if IS_CLUSTER
       @client = Redis::Cluster.new(URI.parse("redis://:#{passwd}@#{host}:#{port}"))
     else
-      pp "redis://:#{passwd}@#{host}:#{port}"
-      pp "redis://:#{URI.encode_www_form(passwd)}@#{host}:#{port}"
       @client = Redis::Client.new(URI.parse("redis://:#{URI.encode_www_form(passwd)}@#{host}:#{port}"))
-      pp "#{@client}"
-      @client
     end
   end
 

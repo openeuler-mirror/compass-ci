@@ -8,8 +8,8 @@ class Sched
   WORKER_ID = ENV["WORKER_ID"][0..1]  # 2-digit, zero padded
 
   def submit_job
-    jq = JobQuota.new
-    jq.total_jobs_quota
+    #jq = JobQuota.new
+    #jq.total_jobs_quota
     response = [] of Hash(String, String)
     body = @env.request.body.not_nil!.gets_to_end
 
@@ -24,7 +24,7 @@ class Sched
       }]
     end
 
-    jq.subqueue_jobs_quota(origin_job)
+    #jq.subqueue_jobs_quota(origin_job)
     jobs = @env.cluster.handle_job(origin_job)
     jobs.each do |job|
       job.delete_account_info
@@ -95,12 +95,12 @@ class Sched
 
   # datetime + 2digit WORKER_ID + 3digit LAB_ID
   # This can barely fit into Int64, up to year 2092
-  # Time.now.strftime("%y%m%d%H%M%S%2N22333")
+  # Time.now.strftime("%y%m%d%H%M%S%3N22333")
   # => "2404290933548122333"
   # 1<<63
   # =>  9223372036854775808
   def Sched.get_job_id
-    Time.local.to_s("%y%m%d%H%M%S%2N#{WORKER_ID}#{LAB_ID}")
+    Time.local.to_s("%y%m%d%H%M%S%3N#{WORKER_ID}#{LAB_ID}")
   end
 
   def set_commit_date(job)
@@ -121,6 +121,6 @@ class Sched
     return nil unless job.secrets?
 
     @redis.hash_set("id2secrets", job_id, job.secrets.to_json)
-    job.delete("secrets")
+    job.force_delete("secrets")
   end
 end

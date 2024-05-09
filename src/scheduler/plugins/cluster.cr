@@ -4,8 +4,8 @@ require "./plugins_common"
 
 class Cluster < PluginsCommon
   def handle_job(job)
-    cluster_file = job.cluster
-    return [job] if cluster_file.empty? || cluster_file == "cs-localhost"
+    cluster_file = job.cluster?
+    return [job] unless cluster_file || cluster_file == "cs-localhost"
 
     cluster_spec = get_cluster_spec_by_job(job) ||
                     get_cluster_spec_by_lab(cluster_file, job.lab)

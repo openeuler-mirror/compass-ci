@@ -388,6 +388,12 @@ class JobHash
     bootstrap_mount_repo_name
     bootstrap_mount_repo_addr
     bootstrap_mount_repo_priority
+    mount_repo_name
+    mount_repo_addr
+    mount_repo_priority
+    external_mount_repo_name
+    external_mount_repo_addr
+    external_mount_repo_priority
 
     is_store
     crystal_ip
@@ -532,6 +538,10 @@ class JobHash
     end
 
     import2hash(hash_dup)
+  end
+
+  def put_if_not_absent(k : String, v : String)
+    @hash_plain[k] = v unless @hash_plain[k]?
   end
 
   def update(json : JSON::Any)
@@ -823,17 +833,17 @@ class Job < JobHash
     mra = lmra + " " + bmra
     mrp = lmrp + " " + bmrp
 
-    self["mount_repo_name"] = mrn.strip
-    self["mount_repo_addr"] = mra.strip
-    self["mount_repo_priority"] = mrp.strip
+    self.mount_repo_name = mrn.strip
+    self.mount_repo_addr = mra.strip
+    self.mount_repo_priority = mrp.strip
 
     lmra = lmraa.join(" ")
     bmra = bmraa.join(" ")
     mra = lmra + " " + bmra
 
-    self["external_mount_repo_name"] = mrn.strip
-    self["external_mount_repo_addr"] = mra.strip
-    self["external_mount_repo_priority"] = mrp.strip
+    self.external_mount_repo_name = mrn.strip
+    self.external_mount_repo_addr = mra.strip
+    self.external_mount_repo_priority = mrp.strip
   end
 
   def set_defaults
@@ -1256,20 +1266,21 @@ class Job < JobHash
   end
 
   private def set_queue
-    return unless self.queue.empty?
+    return unless @hash_plain["queue"]?
 
     # set default value
     self.queue = self.tbox_group
     if self.tbox_group.starts_with?(/(vm|dc|vt)-/)
       self.queue = "#{self.tbox_group}.#{self.arch}"
     end
+    #self.put_if_not_absent("queue", queue)
   end
 
   private def set_subqueue
-    if self["submit_user"] == "vip" && self["submit_role"] == "maintainer" && self["build_type"] == "single"
+    if @hash_plain["submit_user"]? == "vip" && @hash_plain["submit_role"]? == "maintainer" && @hash_plain["build_type"]? == "single"
       self.subqueue = "vip"
     else
-      self.subqueue = self.my_email unless self.subqueue == "idle"
+      self.subqueue = self.my_email unless @hash_plain["subqueue"]? == "idle"
     end
   end
 
@@ -1317,7 +1328,8 @@ class Job < JobHash
   # if not assign tbox_group, set it to a match result from testbox
   #  ?if job special testbox, should we just set tbox_group=testbox
   private def update_tbox_group_from_testbox
-    self.tbox_group ||= JobHelper.match_tbox_group(testbox)
+    #self.tbox_group ||= JobHelper.match_tbox_group(testbox)
+    self.put_if_not_absent("tbox_group", JobHelper.match_tbox_group(testbox))
   end
 
   private def check_fields_format
@@ -1380,7 +1392,8 @@ class Job < JobHash
   end
 
   private def set_kernel_version
-    self.kernel_version ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
+    #self.kernel_version ||= File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
+    self.put_if_not_absent("kernel_version",  File.basename(File.real_path "#{boot_dir}/vmlinuz").gsub("vmlinuz-", ""))
   end
 
   private def set_kernel_uri

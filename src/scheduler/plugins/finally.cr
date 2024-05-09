@@ -30,8 +30,8 @@ class Finally < PluginsCommon
       key = "sched/submit/hw-#{job.tbox_group}/#{job.id}"
     end
 
-    job.max_duration ||= "5"
-    job.memory_minimum ||= "16"
+    job.put_if_not_absent("max_duration", "5")
+    job.put_if_not_absent("memory_minimum", "16")
 
     value = {
       "id" => JSON::Any.new(job.id.to_s),

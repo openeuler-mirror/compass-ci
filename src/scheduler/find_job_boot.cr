@@ -17,8 +17,8 @@ class Sched
 
       send_timeout_signal
 
-      hostname = @env.ws_route_lookup.params["hostname"]
-      is_remote = @env.ws_route_lookup.params["is_remote"]
+      hostname = @env.params.query["hostname"]
+      is_remote = @env.params.query["is_remote"]
       boot_type = @env.ws_route_lookup.params["boot_type"]
     else
       hostname = @env.params.url["hostname"]
