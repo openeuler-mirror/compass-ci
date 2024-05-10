@@ -31,7 +31,7 @@ def extract_pre_result(stats, result, monitor, file)
     next if k == "#{monitor}.time"
     
     if k.start_with?('.result.')
-      k = k[8..k.size]
+      k = k[1..k.size]
       next if k.empty?
       result[k] = v
     else
