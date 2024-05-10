@@ -1053,6 +1053,9 @@ class Job < JobHash
     s = (@hash_hh["services"] ||= HashH.new)
     s["LKP_SERVER"] = SCHED_HOST
     s["LKP_CGI_PORT"] = SCHED_PORT.to_s
+    # remove the duplicate/conflict ones
+    @hash_any.delete "LKP_SERVER"
+    @hash_any.delete "LKP_CGI_PORT"
   end
 
   private def set_sshr_info
