@@ -321,6 +321,7 @@ class JobHash
 
     node_roles
 
+    loadavg
     job_state
     job_stage
     job_health
@@ -1051,11 +1052,6 @@ class Job < JobHash
   private def set_lkp_server
     # handle by me, then keep connect to me
     s = (@hash_hh["services"] ||= HashH.new)
-    s["LKP_SERVER"] = SCHED_HOST
-    s["LKP_CGI_PORT"] = SCHED_PORT.to_s
-    # remove the duplicate/conflict ones
-    @hash_any.delete "LKP_SERVER"
-    @hash_any.delete "LKP_CGI_PORT"
   end
 
   private def set_sshr_info

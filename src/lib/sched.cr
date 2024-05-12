@@ -251,7 +251,7 @@ class Sched
     hash["my_account"] = job.my_account
     hash["result_root"] = job.result_root
     hash["state"] = "booting"
-    hash["timeout_period"] = job.timeout
+    hash["timeout_period"] = job.timeout?
     hash["arch"] = job.os_arch
     hash["hostname"] = job.host_machine
     hash["type"] = job.tbox_type

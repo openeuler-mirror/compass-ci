@@ -14,7 +14,7 @@ class Sched
 
     # the user actively returned this testbox
     # no need to update job
-    return if job.job_health == "return"
+    return if job.job_health? == "return"
 
     # try to get report value and then update it
     delta_job = Job.new(Hash(String, JSON::Any).new, nil)
@@ -27,7 +27,16 @@ class Sched
         value = Time.unix(value.to_i).to_local.to_s("%Y-%m-%dT%H:%M:%S+0800")
       end
 
-      delta_job[parameter] = value
+      case parameter
+      when "start_time"
+        delta_job.start_time = value
+      when "end_time"
+        delta_job.end_time = value
+      when "loadavg"
+        delta_job.loadavg = value
+      when "job_state"
+        delta_job.job_state = value
+      end
       next unless parameter == "job_state"
 
       if JOB_STAGES.includes?(value)
