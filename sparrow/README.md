@@ -16,8 +16,8 @@
 	硬盘：>= 500G (建议划分独立分区)    
 	
 	>**说明：**    
-	>[划分较小独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/1-storage/small)    
-	>[划分较大独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/1-storage/large)    
+	>[划分较小独立分区](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/1-storage/small)    
+	>[划分较大独立分区](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/1-storage/large)    
 
 - 软件    
 	OS：openEuler-aarch64-20.03 LTS    
@@ -46,8 +46,8 @@
 3. 创建工作目录并克隆 compass-ci和lkp-tests项目代码，并使用指定的commit id
 	```bash
 	mkdir -p /c/
-	git clone https://gitee.com/wu_fengguang/compass-ci.git /c/compass-ci
-	git clone https://gitee.com/wu_fengguang/lkp-tests.git /c/lkp-tests
+	git clone https://gitee.com/openeuler/compass-ci.git /c/compass-ci
+	git clone https://gitee.com/compass-ci/lkp-tests.git /c/lkp-tests
 	cd /c/compass-ci
 	git reset --hard 82fa77d62cc40a72db5dfa3617c9a50f963b8fa4
 	cd /c/lkp-tests
@@ -84,7 +84,7 @@
 
 #### 提交测试任务
 本文以/c/lkp-tests/jobs/目录下已有的通用测试用例host-info.yaml为例
-- 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)提交测试用例
+- 使用[submit命令](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)提交测试用例
 	```bash
 	submit host-info.yaml
 	```
@@ -113,8 +113,8 @@
 	stats.json 是所有的 json 文件的汇总，所有测试命令的关键结果都会统计到这个文件中，便于后续的比较和分析。
 
 体验更多功能
-- [自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/test-oss-project.md)
-- [调测环境登录](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/log-in-machine-debug.md)
-- [测试结果分析](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/compare-results.md)
-- [borrow测试机](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/borrow-machine.md)
-- [web页面](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/web.md)
+- [自动化测试](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/local/test-oss-project.md)
+- [调测环境登录](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/local/log-in-machine-debug.md)
+- [测试结果分析](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/local/compare-results.md)
+- [borrow测试机](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/local/borrow-machine.md)
+- [web页面](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/local/web.md)

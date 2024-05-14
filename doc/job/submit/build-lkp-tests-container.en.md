@@ -20,8 +20,8 @@ Also you can avoid installation failures from undesired dependency package(s).
 
     Command(s):
 
-        git clone https://gitee.com/wu_fengguang/compass-ci.git
-        git clone https://gitee.com/wu_fengguang/lkp-tests.git
+        git clone https://gitee.com/openeuler/compass-ci.git
+        git clone https://gitee.com/compass-ci/lkp-tests.git
 
 ## 2. add environment variable(s)
 
@@ -60,4 +60,4 @@ Also you can avoid installation failures from undesired dependency package(s).
 
     About submit:
 
-        For detailed usage for command submit, please reference to: [submit user manual](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
+        For detailed usage for command submit, please reference to: [submit user manual](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.en.md)

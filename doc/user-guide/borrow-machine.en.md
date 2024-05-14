@@ -3,7 +3,7 @@
 - Apply account
 - Config default yaml files
 
-If you have not completed above works, reference to [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md) to finish it.
+If you have not completed above works, reference to [apply-account.md](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md) to finish it.
 
 # Apply testbox
 
@@ -86,11 +86,11 @@ If you have not completed above works, reference to [apply-account.md](https://g
 
     Reference the following line to learn the advanced usage for command 'submit':
     
-    [submit detailed usage](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
+    [submit detailed usage](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
 
 * Available testbox
 
-    For a full list of testbox, reference to https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts
+    For a full list of testbox, reference to https://gitee.com/compass-ci/lab-z9/tree/master/hosts
 
     >![](../icons/icon-note.gif) **instruction:**
     >
@@ -105,4 +105,4 @@ If you have not completed above works, reference to [apply-account.md](https://g
 
 * Specify the OS
 
-    About supportted `os`, `os_arch`, `os_version`, reference to [os-os_verison-os_arch.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/fields/os-os_verison-os_arch.md)
+    About supportted `os`, `os_arch`, `os_version`, reference to [os-os_verison-os_arch.md](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/fields/os-os_verison-os_arch.md)

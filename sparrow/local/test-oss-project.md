@@ -1,10 +1,10 @@
 # 自动化测试
 本文以待测试仓库[sysbench](https://github.com/akopytov/sysbench)为例，测试用例sysbench-cpu.yaml，测试脚本sysbench-cpu和PKGBUILD文件均为/c/lkp-tests目录下已有的，为了方便git push该仓库触发自动化测试，实际使用的是fork该仓库后的[gitee](https://gitee.com/liu-yinsi/sysbench)地址。fork的git仓库请设置成开源（所有人可见）。
 
-1. [编写测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
+1. [编写测试用例](https://gitee.com/compass-ci/lkp-tests/blob/master/doc/add-testcase.md)
 	本文中测试用例使用/c/lkp-tests/jobs/sysbench-cpu.yaml，测试脚本使用/c/lkp-tests/tests/sysbench-cpu，测试用例和测试脚本既可以使用c/lkp-tests目录下已存在的，也可自己编写并分别添加到上述两个目录下。
 
-2. [编写PKGBUILD](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/write-PKGBUILD.zh.md)（无法通过命令安装的软件如yum install/apt-get add，才需要编写PKGBUILD，可以直接安装的情况下请跳过该步骤）
+2. [编写PKGBUILD](https://gitee.com/openeuler/compass-ci/blob/master/doc/test-guide/write-PKGBUILD.zh.md)（无法通过命令安装的软件如yum install/apt-get add，才需要编写PKGBUILD，可以直接安装的情况下请跳过该步骤）
 	在/c/lkp-tests/pkg目录下创建与测试用例同名文件夹，并编辑PKGBUILD文件。此文直接使用已存在的PKGBUILD文件
    	```
    	ls /c/lkp-tests/pkg/sysbench-cpu/PKGBUILD
@@ -51,8 +51,8 @@
    	```
 
 	> **说明：**      
-	> [os /os_version /os_arch](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/fields/os-os_verison-os_arch.md) [os_mount](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/fields/os_mount.md)
-	> [job](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job)
+	> [os /os_version /os_arch](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/fields/os-os_verison-os_arch.md) [os_mount](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/fields/os_mount.md)
+	> [job](https://gitee.com/openeuler/compass-ci/tree/master/doc/job)
 	
 5. 重启git-mirror服务
 	```

@@ -4,7 +4,7 @@ This document describes how to use the Compass-CI platform to test open source p
 
 ### Adding the URL of the Repository to Be Tested to the upstream-repos Repository
 
-Perform the following steps to add the information of the code repository to be tested to the **upstream-repos** repository (https://gitee.com/wu_fengguang/upstream-repos) in YAML format:
+Perform the following steps to add the information of the code repository to be tested to the **upstream-repos** repository (https://gitee.com/compass-ci/upstream-repos) in YAML format:
 
 1. Fork the upstream-repos repository and clone it to the local host. This document uses the **backlight** repository (https://github.com/baskerville/backlight) as an example.
 
@@ -47,7 +47,7 @@ Perform the following steps to add the information of the code repository to be 
 
 1. Prepare a test case.
 
-   You can compile and add a test case to the **lkp-tests** repository, or directly use the existing test cases in the **jobs** directory of the **lkp-tests** repository (https://gitee.com/wu_fengguang/lkp-tests).
+   You can compile and add a test case to the **lkp-tests** repository, or directly use the existing test cases in the **jobs** directory of the **lkp-tests** repository (https://gitee.com/compass-ci/lkp-tests).
 
    * Use the test cases that have been adapted in the repository.
 
@@ -55,7 +55,7 @@ Perform the following steps to add the information of the code repository to be 
 
    * Compile a test case and add it to the repository.
 
-     For details, see [How To Add Test Cases](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md).
+     For details, see [How To Add Test Cases](https://gitee.com/compass-ci/lkp-tests/blob/master/doc/add-testcase.md).
 
 2. Configure **DEFAULTS** files in **upstream-repos** repository and submit the test task.
 
@@ -76,6 +76,6 @@ Perform the following steps to add the information of the code repository to be 
 
    Submit the modified **DEFAULTS** file to the **upstream-repos** repository using Pull Request. Then you can use the Compass-CI platform to test your project.
 
-   For details about how to configure DEFAULTS files, see https://gitee.com/wu_fengguang/upstream-repos/blob/master/README.md.
+   For details about how to configure DEFAULTS files, see https://gitee.com/compass-ci/upstream-repos/blob/master/README.md.
 
-   For meaning and effect of parameters in the command, see https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job.
+   For meaning and effect of parameters in the command, see https://gitee.com/openeuler/compass-ci/tree/master/doc/job.

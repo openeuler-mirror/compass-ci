@@ -1,9 +1,9 @@
 # 本地搭建 Compass-CI（简称CCI）集群
 
-目前Compass-CI支持两种本地搭建模式，第一种是最小环境安装[本地Compass-CI节点](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/README.md)（只需一台虚拟机），第二种是本地搭建Compass-CI集群（需要一台物理机作为服务端，一台或多台物理机作为物理测试机）。
+目前Compass-CI支持两种本地搭建模式，第一种是最小环境安装[本地Compass-CI节点](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/README.md)（只需一台虚拟机），第二种是本地搭建Compass-CI集群（需要一台物理机作为服务端，一台或多台物理机作为物理测试机）。
 
 在 openEuler 系统搭建Compass-CI集群，该集群需要使用一台物理机作为服务端，另外一台或多台物理机作为测试机用于执行任务,
-本文以两台物理机搭建compass-ci集群为例。后续想要扩大集群规模，只需重复执行[添加测试机步骤](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/add_testbox_to_cci_cluster.zh.md)。
+本文以两台物理机搭建compass-ci集群为例。后续想要扩大集群规模，只需重复执行[添加测试机步骤](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/local/add_testbox_to_cci_cluster.zh.md)。
 
 注意：
 compass-ci集群搭建过程中，需要在本地运行dnsmasq服务，同一个局域网内运行两个dnsmasq服务将影响compass-ci集群正常运行,
@@ -33,7 +33,7 @@ compass-ci集群搭建过程中，需要在本地运行dnsmasq服务，同一个
         >**说明：**
         >[openEuler 系统安装](https://openeuler.org/zh/docs/20.03_LTS/docs/Installation/%E5%AE%89%E8%A3%85%E5%87%86%E5%A4%87.html)
 
-#### [划分独立分区](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/create_partition.md)
+#### [划分独立分区](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/local/create_partition.md)
 ##### /srv
 承载了CCI的数据存储，是CCI数据服务的根目录。
 ```
@@ -100,8 +100,8 @@ umask 002 只是暂时设置umask值，需要修改/etc/bashrc中的umask值为0
 ```bash
 mkdir -p /c/
 yum install -y git
-git clone https://gitee.com/wu_fengguang/compass-ci.git /c/compass-ci
-git clone https://gitee.com/wu_fengguang/lkp-tests.git /c/lkp-tests
+git clone https://gitee.com/openeuler/compass-ci.git /c/compass-ci
+git clone https://gitee.com/compass-ci/lkp-tests.git /c/lkp-tests
 cd /c/compass-ci
 git reset --hard 82fa77d62cc40a72db5dfa3617c9a50f963b8fa4
 cd /c/lkp-tests
@@ -123,7 +123,7 @@ vi /c/compass-ci/sparrow/setup.yaml
 >~/.config/compass-ci/defaults/account.yaml      
 >~/.config/compass-ci/include/lab/$lab.yaml（此处的$lab就是上文中提到的自定义的lab名称）        
 >```      
->lab（必填）： 需要自定义一个本地git仓库的名称，我们官方Compass-CI集群自定义的本地仓库名称为[z9](https://gitee.com/wu_fengguang/lab-z9.git)，当执行部署脚本install-cluster时，将自动在本地/c目录下初始化一个新的名为lab-$lab的git仓库并克隆下来，用于后续步骤添加测试机，无需手动创建。         
+>lab（必填）： 需要自定义一个本地git仓库的名称，我们官方Compass-CI集群自定义的本地仓库名称为[z9](https://gitee.com/compass-ci/lab-z9.git)，当执行部署脚本install-cluster时，将自动在本地/c目录下初始化一个新的名为lab-$lab的git仓库并克隆下来，用于后续步骤添加测试机，无需手动创建。         
 >```
 >/c/lab-$lab.git            
 >/c/lab-$lab          
@@ -167,7 +167,7 @@ cd /c/compass-ci/container/dnsmasq
 本文以/c/lkp-tests/jobs/目录下已有的测试用例host-info.yaml为例，用来检测当前部署的集群环境是否正常，该host-info.yaml是用来测试测试机的cpu，内存，硬盘等信息的，
 详情见测试脚本/c/lkp-tests/tests/host-info。
 
-- 使用[submit命令](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)提交测试用例
+- 使用[submit命令](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)提交测试用例
 ```bash
 submit host-info.yaml queue=dc-8g~$USER
 ```
@@ -211,7 +211,7 @@ Compass-CI服务端搭建完毕。
 - 增加rootfs
 启动测试机需要使用我们自制的rootfs文件，集群部署脚本install-cluster会自动准备好一个openeuler（系统版本为openeuler/aarch64/20.03）的rootfs文件，
 如果需要使用其他os版本，请使用该脚本/c/compass-ci/sbin/download-rootfs下载，用法见脚本内注释。
-如果需要测试自制的发行版，可使用工具将发行版iso文件制作成compass-ci需要的[rootfs](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/rootfs/compass-ci-use-rootfs)，详细制作方法请[参考文档](https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/rootfs/how-to-get-rootfs)。
+如果需要测试自制的发行版，可使用工具将发行版iso文件制作成compass-ci需要的[rootfs](https://gitee.com/openeuler/compass-ci/tree/master/doc/rootfs/compass-ci-use-rootfs)，详细制作方法请[参考文档](https://gitee.com/openeuler/compass-ci/tree/master/doc/rootfs/how-to-get-rootfs)。
 
 - 非root用户注册账号
 执行部署集群脚本 install-cluster时已经为root用户注册帐号，非root用户也需要注册帐号才能提交任务。
@@ -227,5 +227,5 @@ build-my-info -e zhangsan@example.com -n zhangsan -a zs
 ```
 更多build-my-info命令的用法，可使用"build-my-info --help" 进行查看
 
-- [自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/local/test-oss-project.md)
+- [自动化测试](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/local/test-oss-project.md)
 将待测试仓库地址、测试用例、测试脚本放在指定目录下，当待测试仓库有新的patch合入时，会自动触发测试。

@@ -52,16 +52,16 @@ Compass-CI 是一个可持续集成的软件平台。为开发者提供针对上
 
 -  注册自己的仓库
 
-	如果您想在 `git push` 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库 [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。
+	如果您想在 `git push` 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库 [upstream-repos](https://gitee.com/compass-ci/upstream-repos)。
 	```bash
-	git clone https://gitee.com/wu_fengguang/upstream-repos.git
+	git clone https://gitee.com/compass-ci/upstream-repos.git
 	less upstream-repos/README.md
 	```
 
 ### 编写 job yaml 文件
 
 #### job yaml 简介
-job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAML_for_ruby.html)的格式编写，所有 job 文件位于```$LKP_SRC/jobs```路径下。[$LKP_SRC](https://gitee.com/wu_fengguang/lkp-tests)
+job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAML_for_ruby.html)的格式编写，所有 job 文件位于```$LKP_SRC/jobs```路径下。[$LKP_SRC](https://gitee.com/compass-ci/lkp-tests)
 
 #### job yaml 的结构
 
@@ -125,7 +125,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 	nterval: 5
 	```
 
-**了解更多 job yaml 相关知识**  [Job definition to execution](https://gitee.com/wu_fengguang/lkp-tests/blob/master/jobs/README.md)
+**了解更多 job yaml 相关知识**  [Job definition to execution](https://gitee.com/compass-ci/lkp-tests/blob/master/jobs/README.md)
 
 
 ###  提交测试任务
@@ -227,7 +227,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 
 
 ### 添加测试用例
- 参考文档详见：[添加测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)
+ 参考文档详见：[添加测试用例](https://gitee.com/compass-ci/lkp-tests/blob/master/doc/add-testcase.md)
 
 
 ### PKGBUILD 构建
@@ -240,9 +240,9 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 2. 步骤：
 
     1) 注册仓库
-        如果您想在 git push 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库 [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos)。
+        如果您想在 git push 的时候, 自动触发测试, 那么需要把您的公开 git url 添加到如下仓库 [upstream-repos](https://gitee.com/compass-ci/upstream-repos)。
 		```bash
-		git clone https://gitee.com/wu_fengguang/upstream-repos.git
+		git clone https://gitee.com/compass-ci/upstream-repos.git
 	  	less upstream-repos/README.md
 		```
 
@@ -276,7 +276,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 
 
 
-### [本地搭建 compass-ci 服务器节点](https://gitee.com/wu_fengguang/compass-ci/blob/master/sparrow/README.md)
+### [本地搭建 compass-ci 服务器节点](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/README.md)
 
 ## 呼吁合作
   - 增强 git bisect 能力

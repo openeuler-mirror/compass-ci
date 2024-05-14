@@ -3,7 +3,7 @@
 - 申请account
 - 配置默认yaml文件
 
-如果未完成以上步骤，请参考 [apply-account.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md) 完成操作。
+如果未完成以上步骤，请参考 [apply-account.md](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md) 完成操作。
 
 # 申请测试机
 
@@ -85,11 +85,11 @@
 
     也可以参考submit命令手册学习submit命令高级用法：
 
-    [submit命令详解](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
+    [submit命令详解](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
 
 * 可选的testbox
 
-    查看可选的testbox列表，请参考：https://gitee.com/wu_fengguang/lab-z9/tree/master/hosts
+    查看可选的testbox列表，请参考：https://gitee.com/compass-ci/lab-z9/tree/master/hosts
 
     >![](../icons/icon-note.gif) **说明：**
     >
@@ -105,4 +105,4 @@
 
 * 如何 borrow 指定的操作系统
 
-    关于支持的`os`, `os_arch`, `os_version`，参见：[os-os_verison-os_arch.md](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/fields/os-os_verison-os_arch.md)
+    关于支持的`os`, `os_arch`, `os_version`，参见：[os-os_verison-os_arch.md](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/fields/os-os_verison-os_arch.md)

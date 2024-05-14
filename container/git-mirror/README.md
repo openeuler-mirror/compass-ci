@@ -10,11 +10,11 @@ git-mirror是compass-ci平台的一个微服务，主要功能是监控上游仓
 ```
 ---
 upstreams:
-- url: https://gitee.com/wu_fengguang/upstream-repos.git
+- url: https://gitee.com/compass-ci/upstream-repos.git
   location: upstream
   git_repo: u/upstream-repos/upstream-repos
 ```
-其中，url所指向的git仓是需要监控的上游仓库的一个集合，配置方式可参考[README](https://gitee.com/wu_fengguang/upstream-repos/blob/master/README.md)
+其中，url所指向的git仓是需要监控的上游仓库的一个集合，配置方式可参考[README](https://gitee.com/compass-ci/upstream-repos/blob/master/README.md)
 
 location则是存放仓库的目录名，一般定义成工程名相同就好了。
 

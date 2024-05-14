@@ -9,7 +9,7 @@ my_account:
 my_name:
 my_email:
 
-# a local git repository name about local Compass-CI cluster, like [z9](https://gitee.com/wu_fengguang/lab-z9.git)
+# a local git repository name about local Compass-CI cluster, like [z9](https://gitee.com/compass-ci/lab-z9.git)
 # eg:
 #   lab: z9
 lab:

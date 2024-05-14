@@ -60,13 +60,13 @@ def build_apply_account_email(my_info, account_info, assign_account_vm)
     2) download lkp-tests and dependencies
        run the following command to install and setup lkp-test
 
-         git clone https://gitee.com/wu_fengguang/lkp-tests.git
+         git clone https://gitee.com/compass-ci/lkp-tests.git
          cd lkp-tests
          make install
          source ~/.\${SHELL##*/}rc
 
     3) submit job
-       reference: https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/help/tutorial.md
+       reference: https://gitee.com/openeuler/compass-ci/blob/master/doc/help/tutorial.md
 
        reference to 'how to write job yaml' section to write the job yaml
        you can also reference to files in lkp-tests/jobs as example.

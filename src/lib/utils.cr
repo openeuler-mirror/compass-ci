@@ -52,7 +52,7 @@ module Utils
 
   def check_account_info(my_info, account_info)
     error_msg = "Failed to verify the account.\n"
-    error_msg += "Please refer to https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md"
+    error_msg += "Please refer to https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md"
 
     unless my_info["my_account"]?
       error_msg = "Missing required job key: my_account.\n"

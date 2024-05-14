@@ -38,9 +38,9 @@
 
 
   您的仓库需要在平台测试覆盖的范围内，并且注册到：
-  [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos).
+  [upstream-repos](https://gitee.com/compass-ci/upstream-repos).
   如果贡献的OSS工程仓库不在upstream-repos中，请参考：
-  [test-oss-project](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.zh.md)
+  [test-oss-project](https://gitee.com/openeuler/compass-ci/blob/master/doc/test-guide/test-oss-project.zh.md)
   将仓库注册到compass-ci测试池中。
 
 ## 2. 接收邮件
@@ -56,12 +56,12 @@
 
 根据步骤2收到邮件的提示，配置您的本地环境：
 
-        git clone https://gitee.com/wu_fengguang/lkp-tests.git
+        git clone https://gitee.com/compass-ci/lkp-tests.git
         setup ~/.config/compass-ci/defaults/account.yaml
               ~/.config/compass-ci/include/lab/{{ lab }}.yaml
 
 ## 4. 现在开始
 
 [安装cci客户端](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/install-cci-client.md)
-[提交job到compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
+[提交job到compass-ci](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
 

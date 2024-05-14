@@ -14,7 +14,7 @@ test
 
 ## git repo
 
-	# git clone https://gitee.com/wu_fengguang/compass-ci.git
+	# git clone https://gitee.com/openeuler/compass-ci.git
 
 	cd compass-ci
 	echo "export CCI_SRC=$PWD" >> $HOME/.${SHELL##*/}rc

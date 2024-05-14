@@ -17,7 +17,7 @@ class Cluster < PluginsCommon
   end
 
   def get_cluster_spec_by_lab(cluster_file, lab)
-    data = JSON.parse(%({"git_repo": "/gitee.com/wu_fengguang/lab-#{lab}.git",
+    data = JSON.parse(%({"git_repo": "/gitee.com/compass-ci/lab-#{lab}.git",
                       "git_command": ["git-show", "HEAD:cluster/#{cluster_file}"]}))
     response = @rgc.git_command(data)
     raise "can't get cluster info: #{cluster_file}" unless response.status_code == 200

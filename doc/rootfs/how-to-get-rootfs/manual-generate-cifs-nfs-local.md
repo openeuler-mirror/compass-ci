@@ -31,7 +31,7 @@
   - 解压内核并生成${rootfs}/boot/vmlinuz
     - 解压内核(ipxe需要)：如果你的内核格式中有gzip字样，请参考下面的文档
       参考：
-      - file: https://gitee.com/wu_fengguang/compass-ci/blob/master/container/qcow2rootfs/bin/common
+      - file: https://gitee.com/openeuler/compass-ci/blob/master/container/qcow2rootfs/bin/common
       - function: unzip_vmlinuz
     - 生成vlinuz软链接（compass-ci代码逻辑需要）：
       ```
@@ -43,22 +43,22 @@
 
   - 生成${rootfs}/boot/modules.cgz（compass-ci代码逻辑需要）
     参考：
-    - file: https://gitee.com/wu_fengguang/compass-ci/blob/master/container/qcow2rootfs/bin/common
+    - file: https://gitee.com/openeuler/compass-ci/blob/master/container/qcow2rootfs/bin/common
     - function: create_get_modules
 
   - 生成${rootfs}/initrd.lkp（compass-ci代码逻辑需要）
     参考：
-    - file: https://gitee.com/wu_fengguang/compass-ci/blob/master/container/qcow2rootfs/bin/common
+    - file: https://gitee.com/openeuler/compass-ci/blob/master/container/qcow2rootfs/bin/common
     - function: create_get_initrd
 
   - 注释掉${rootfs}/etc/fstab的启动项（compass-ci代码逻辑需要）
     参考：
-    - file: https://gitee.com/wu_fengguang/lkp-tests/blob/master/tests/iso2rootfs
+    - file: https://gitee.com/compass-ci/lkp-tests/blob/master/tests/iso2rootfs
     - function: disable_fstab
 
   - 关闭${rootfs}的selinux（compass-ci代码逻辑需要）
     参考：
-    - file: https://gitee.com/wu_fengguang/lkp-tests/blob/master/tests/iso2rootfs
+    - file: https://gitee.com/compass-ci/lkp-tests/blob/master/tests/iso2rootfs
     - function: disable_selinux
 
   - 创建真实版本的软链接（compass-ci代码逻辑需要）

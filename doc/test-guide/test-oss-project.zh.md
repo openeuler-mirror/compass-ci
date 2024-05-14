@@ -4,7 +4,7 @@
 
 ### 添加待测试仓库 URL 到 upstream-repos 仓库
 
-执行以下步骤，将想要测试的代码仓信息以 yaml 文件的方式添加到 upstream-repos 仓库（https://gitee.com/wu_fengguang/upstream-repos ）。
+执行以下步骤，将想要测试的代码仓信息以 yaml 文件的方式添加到 upstream-repos 仓库（https://gitee.com/compass-ci/upstream-repos ）。
 
 1. Fork upstream-repos 仓库并 git clone 到本地，本文以 backlight 仓库（https://github.com/baskerville/backlight ）为例说明。
 
@@ -46,7 +46,7 @@
 
 1. 准备测试用例
 
-    测试用例可以自己编写并添加到 lkp-tests 仓库，也可以直接使用 lkp-tests 仓库（https://gitee.com/wu_fengguang/lkp-tests ）的 jobs 目录下已有的测试用例。
+    测试用例可以自己编写并添加到 lkp-tests 仓库，也可以直接使用 lkp-tests 仓库（https://gitee.com/compass-ci/lkp-tests ）的 jobs 目录下已有的测试用例。
 
     * 使用仓库中已经适配好的测试用例
 	如果 lkp-tests 仓库中正好有你想要的测试用例，你可以直接使用。以 iperf.yaml 文件为例说明如下：
@@ -54,7 +54,7 @@
 
     * 编写测试用例并添加到仓库
 
-        请参考：[如何添加测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md )
+        请参考：[如何添加测试用例](https://gitee.com/compass-ci/lkp-tests/blob/master/doc/add-testcase.md )
 
 2. 配置 upstream-repos仓库中的DEFAULTS文件，提交测试任务
 
@@ -73,6 +73,6 @@
     ```
     通过 Pull Request 的方式将修改好的 DEFAULTS 文件提交到 upstream-repos 仓库，就可以使用 compass-ci 测试你的项目了。
 
-    详细配置方式请参考 https://gitee.com/wu_fengguang/upstream-repos/blob/master/README.md 。
+    详细配置方式请参考 https://gitee.com/compass-ci/upstream-repos/blob/master/README.md 。
 
-    命令参数意义及作用请参考 https://gitee.com/wu_fengguang/compass-ci/tree/master/doc/job 。
+    命令参数意义及作用请参考 https://gitee.com/openeuler/compass-ci/tree/master/doc/job 。

@@ -10,11 +10,11 @@ Compass-CI 是一个可持续集成的开源软件平台。为开发者提供针
 
 **测试服务**
 
-Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，会自动触发[自动化测试](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.zh.md)，开发者也可以[手动提交测试 job](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)。
+Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，会自动触发[自动化测试](https://gitee.com/openeuler/compass-ci/blob/master/doc/test-guide/test-oss-project.zh.md)，开发者也可以[手动提交测试 job](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)。
 
 **调测环境登录**
 
-使用 SSH [登录测试环境进行调测](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/log-in-machine-debug.md)。
+使用 SSH [登录测试环境进行调测](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/log-in-machine-debug.md)。
 
 **测试结果分析**
 
@@ -33,16 +33,16 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 
 **自动化测试**
 
-1. 添加待测试仓库 URL 到 [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos.git) 仓库，[编写测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md)并添加到 [lkp-tests](https://gitee.com/wu_fengguang/lkp-tests) 仓库, 详细流程请查看[这篇文档](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.zh.md)。
+1. 添加待测试仓库 URL 到 [upstream-repos](https://gitee.com/compass-ci/upstream-repos.git) 仓库，[编写测试用例](https://gitee.com/compass-ci/lkp-tests/blob/master/doc/add-testcase.md)并添加到 [lkp-tests](https://gitee.com/compass-ci/lkp-tests) 仓库, 详细流程请查看[这篇文档](https://gitee.com/openeuler/compass-ci/blob/master/doc/test-guide/test-oss-project.zh.md)。
 
 2. 执行 git push 命令更新仓库，自动触发测试。
 
-3. 在网页中[查看](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/browse-results.zh.md)和[比较](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/compare-results.zh.md)测试结果 web: https://compass-ci.openeuler.org/jobs
+3. 在网页中[查看](https://gitee.com/openeuler/compass-ci/blob/master/doc/result/browse-results.zh.md)和[比较](https://gitee.com/openeuler/compass-ci/blob/master/doc/result/compare-results.zh.md)测试结果 web: https://compass-ci.openeuler.org/jobs
 
 **自动化测试示例**
 
 如何在 compass-ci 上自动化测试我的仓库 https://github.com/baskerville/backlight ?
-1. Fork [upstream-repos 仓库](https://gitee.com/wu_fengguang/upstream-repos) 并 git clone 到本地
+1. Fork [upstream-repos 仓库](https://gitee.com/compass-ci/upstream-repos) 并 git clone 到本地
 2. 新建文件 b/backlight/backlight，内容为：
 
     ```
@@ -55,7 +55,7 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 
    测试用例可以自己编写并添加到 lkp-tests 仓库,
 
-   也可以直接使用 lkp-tests 仓库（https://gitee.com/wu_fengguang/lkp-tests ）的 jobs 目录下已有的测试用例。
+   也可以直接使用 lkp-tests 仓库（https://gitee.com/compass-ci/lkp-tests ）的 jobs 目录下已有的测试用例。
 
    在 backlight 文件所在目录增加 DEFAULTS 文件并添加配置信息
 
@@ -75,18 +75,18 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 
 **手动提交测试任务**
 
-1. [安装 Compass-CI 客户端](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/install-cci-client.md)。
-2. [编写测试用例](https://gitee.com/wu_fengguang/lkp-tests/blob/master/doc/add-testcase.md), [手动提交测试任务](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)。
-3. 在网页中[查看](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/browse-results.zh.md)和[比较](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/compare-results.zh.md)测试结果 web: https://compass-ci.openeuler.org/jobs
+1. [安装 Compass-CI 客户端](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/install-cci-client.md)。
+2. [编写测试用例](https://gitee.com/compass-ci/lkp-tests/blob/master/doc/add-testcase.md), [手动提交测试任务](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)。
+3. 在网页中[查看](https://gitee.com/openeuler/compass-ci/blob/master/doc/result/browse-results.zh.md)和[比较](https://gitee.com/openeuler/compass-ci/blob/master/doc/result/compare-results.zh.md)测试结果 web: https://compass-ci.openeuler.org/jobs
 
 **手动提交测试任务示例**
 
 如何向 compass-ci 提交一个测试任务？
-1. 已经按照[本地安装compass-ci客户端](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/install-cci-client.md )
+1. 已经按照[本地安装compass-ci客户端](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/install-cci-client.md )
 完成安装
 2. 测试任务以 yaml 文件的方式提交，因此，您需要事先准备好测试任务的 yaml 文件
 
-   可以直接使用 lkp-tests 仓库（https://gitee.com/wu_fengguang/lkp-tests ）的 jobs 目录下已有的测试用例
+   可以直接使用 lkp-tests 仓库（https://gitee.com/compass-ci/lkp-tests ）的 jobs 目录下已有的测试用例
 
    以 iperf.yaml 为例：
 
@@ -118,9 +118,9 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 
 **登录测试环境**
 
-1. 向 compass-ci-robot@qq.com 发送邮件[申请账号](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/apply-account.md)。
+1. 向 compass-ci-robot@qq.com 发送邮件[申请账号](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md)。
 2. 根据邮件反馈内容完成环境配置。
-3. 在测试任务中添加 sshd 字段，提交相应的任务，[登录测试环境](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/user-guide/log-in-machine-debug.md)。
+3. 在测试任务中添加 sshd 字段，提交相应的任务，[登录测试环境](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/log-in-machine-debug.md)。
 
 **登录测试环境示例**
 
@@ -198,7 +198,7 @@ Compass-CI 监控很多开源软件 git repos，一旦检测到代码更新，�
 
 ## Contributing to Compass-CI
 
-我们非常欢迎有新的贡献者，我们也很乐意为我们的贡献者提供一些指导，Compass-CI 主要是使用 Ruby 开发的一个项目，我们遵循 [Ruby 社区代码风格](https://ruby-china.org/wiki/coding-style)。如果您想参与社区并为 Compass-CI 项目做出贡献，[这个页面](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/development/learning-resources.md)将会提供给您更多信息，包括 Compass-CI 所使用的所有语言和工具等。
+我们非常欢迎有新的贡献者，我们也很乐意为我们的贡献者提供一些指导，Compass-CI 主要是使用 Ruby 开发的一个项目，我们遵循 [Ruby 社区代码风格](https://ruby-china.org/wiki/coding-style)。如果您想参与社区并为 Compass-CI 项目做出贡献，[这个页面](https://gitee.com/openeuler/compass-ci/blob/master/doc/development/learning-resources.md)将会提供给您更多信息，包括 Compass-CI 所使用的所有语言和工具等。
 
 ## Website
 

@@ -18,4 +18,4 @@ The sched will set job status
 Container service lifecycle push the process from start to finish by job_stage.
 
 ## refer to
-[lifecycle](https://gitee.com/wu_fengguang/compass-ci/doc/development/lifecycle.md)
+[lifecycle](https://gitee.com/openeuler/compass-ci/doc/development/lifecycle.md)

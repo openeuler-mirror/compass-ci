@@ -41,9 +41,9 @@ Email template:
 
 - my_oss_commit: a git commit URL that has your name and email.
   The git repo should be in our test coverage and registered in
-  [upstream-repos](https://gitee.com/wu_fengguang/upstream-repos).
+  [upstream-repos](https://gitee.com/compass-ci/upstream-repos).
   If your contributed OSS project is not in upstream-repos, you may refer to
-  [test-oss-project](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/test-guide/test-oss-project.en.md)
+  [test-oss-project](https://gitee.com/openeuler/compass-ci/blob/master/doc/test-guide/test-oss-project.en.md)
   to add it to compass-ci testing.
 
 ## step 2: receive an email
@@ -59,12 +59,12 @@ Which contains account information for you:
 
 **Follow instructions in the email** to setup your local environment:
 
-	git clone https://gitee.com/wu_fengguang/lkp-tests.git
+	git clone https://gitee.com/compass-ci/lkp-tests.git
 	setup ~/.config/compass-ci/defaults/account.yaml
 	      ~/.config/compass-ci/include/lab/{{ lab }}.yaml
 
 ## step 4: Now try
 
 [install-cci-client](https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/install-cci-client.md)
-[submitting a job to compass-ci](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
+[submitting a job to compass-ci](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.en.md)
 

@@ -54,4 +54,4 @@
 	> 参数 “-d”表示基于某个维度进行比较，这里表示基于os维度进行比较，也可以根据其他维度（os_version, os_arch, suite, tbox_group）来比较。
 	> 参数"suite=iperf"表示指定suite=iperf的job才会进行比较，作为过滤器来限制比较范围。
 	> bps指的是bytes per second，可以看出不同os上的iperf性能测试无论是平均值还是方差都有明显差异。
-	> [比较功能介绍](https://gitee.com/wu_fengguang/compass-ci/blob/master/doc/result/compare-results.zh.md)
+	> [比较功能介绍](https://gitee.com/openeuler/compass-ci/blob/master/doc/result/compare-results.zh.md)
