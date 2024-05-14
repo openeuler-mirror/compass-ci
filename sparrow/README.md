@@ -13,9 +13,9 @@
 	架构：aarch64    
 	内存：>= 64GB
 	CPU：64 nuclear (建议)    
-	硬盘：>= 500G (建议划分独立分区)    
+	硬盘：>= 500G (建议为/srv/目录划分独立分区; 对大型部署，为/srv/下的子目录划分单独分区)    
 	
-	>**说明：**    
+	>**以下方案仅供参考，请酌情修改后使用：**    
 	>[划分较小独立分区](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/1-storage/small)    
 	>[划分较大独立分区](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/1-storage/large)    
 
