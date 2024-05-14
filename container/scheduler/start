@@ -63,15 +63,25 @@ sched_nodes.each do |node|
   docker_rm "s001-alpine-#{node['port']}"
 end
 
-unless defaults['lab_id'] =~ /^[0-9][0-9][0-9]$/
-  puts "expect 3-digit lab_id, got #{defaults['lab_id']}"
+lab_id = defaults['lab_id']
+unless defaults['lab_id'].nil? or defaults['lab_id'].is_a? Integer
+  puts "expect Null or Integer lab_id, got #{defaults['lab_id']}"
+  exit 1
+end
+if lab_id and lab_id >= 1000
+  puts "too large lab_id, at most 3-digit number"
   exit 1
 end
 
 sched_nodes.each do |node|
   node_host = node['host']
   node_port = node['port']
-  worker_id = sprintf("%02d", node_port.to_i - SCHED_PORT.to_i)
+  worker_id = SCHED_PORT.to_i - 3000
+  if worker_id >= 10
+    puts "too large worker_id, at most 1-digit number"
+    exit 1
+  end
+  worker_id = nil if worker_id == 0 and lab_id.nil?
 
   bind_list = []
   [node_host, '172.17.0.1'].uniq.each do |ip|

@@ -4,8 +4,8 @@ require "../lib/job_quota"
 
 class Sched
 
-  LAB_ID = ENV["LAB_ID"][0..2]        # 3-digit, zero padded
-  WORKER_ID = ENV["WORKER_ID"][0..1]  # 2-digit, zero padded
+  LAB_ID = ENV["LAB_ID"]        # at most 3-digit int, or null
+  WORKER_ID = ENV["WORKER_ID"]  # at most 1-digit int, or null
 
   def submit_job
     #jq = JobQuota.new
@@ -93,14 +93,14 @@ class Sched
     job.update_id(id)
   end
 
-  # datetime + 2digit WORKER_ID + 3digit LAB_ID
-  # This can barely fit into Int64, up to year 2092
-  # Time.now.strftime("%y%m%d%H%M%S%3N22333")
-  # => "2404290933548122333"
+  # 3digit LAB_ID + 1digit WORKER_ID + datetime
+  # This can barely fit into Int64
+  # Time.now.strftime("3331%y%m%d%H%M%S%3N")
+  # => "333124042909335481"
   # 1<<63
   # =>  9223372036854775808
   def Sched.get_job_id
-    Time.local.to_s("%y%m%d%H%M%S%3N#{WORKER_ID}#{LAB_ID}")
+    Time.local.to_s("#{LAB_ID}#{WORKER_ID}%y%m%d%H%M%S%3N")
   end
 
   def set_commit_date(job)
