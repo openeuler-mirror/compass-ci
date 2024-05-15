@@ -19,6 +19,8 @@ BR0_IFACE=br0
 
 systemctl stop firewalld >/dev/null 2>&1
 
+firewalld_status=$(systemctl is-active firewalld)
+
 while [ $firewalld_status == active ]
 do
 	sleep 5
