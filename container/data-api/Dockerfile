@@ -22,10 +22,10 @@ COPY data-api /usr/local/bin/
 
 RUN groupadd -g 1090 lkp && useradd -m -u 1090 -g 1090 lkp
 
-COPY cbs /c/cbs
+COPY cbs /c/compass-ci
 COPY lkp-tests /c/lkp-tests
 
-RUN chown -R lkp:lkp /c/cbs /c/lkp-tests && chown -R 750 /c/cbs /c/lkp-tests
+RUN chown -R lkp:lkp /c/compass-ci /c/lkp-tests && chown -R 750 /c/compass-ci /c/lkp-tests
 
 RUN apt-get remove gdb gcc cpp -y
 

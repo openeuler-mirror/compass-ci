@@ -1,6 +1,6 @@
 require 'jwt'
 
-CCI_SRC ||= ENV['CCI_SRC'] || '/c/cbs'
+CCI_SRC ||= ENV['CCI_SRC'] || '/c/compass-ci'
 
 require "#{CCI_SRC}/lib/constants.rb"
 require "#{CCI_SRC}/lib/es_client"

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 
-[[ $CCI_SRC ]] || CCI_SRC=/c/cbs
+[[ $CCI_SRC ]] || CCI_SRC=/c/compass-ci
 [[ $LKP_SRC ]] || LKP_SRC=/c/lkp-tests
 [[ $UPSTREAM_REPOS_PATH ]] || UPSTREAM_REPOS_PATH=/c/upstream-repos
 
@@ -46,7 +46,7 @@ cmd=(
 	-e OAUTH_REDIRECT_URL=$OAUTH_REDIRECT_URL
 	-e JWT_SECRET=$JWT_SECRET
 
-	-v $CCI_SRC:/c/cbs
+	-v $CCI_SRC:/c/compass-ci
 	-v $LKP_SRC:/c/lkp-tests
 	-v $LAB_PATH:$LAB_PATH
 	-v $UPSTREAM_REPOS_PATH:/c/upstream-repos

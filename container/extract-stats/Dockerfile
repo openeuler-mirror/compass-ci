@@ -20,10 +20,10 @@ RUN adduser -u 1090 -D lkp
 RUN mkdir -p $RUNTIME_DIR && \
     chown -R 1090:1090 /c
 
-COPY cbs /c/cbs
+COPY cbs /c/compass-ci
 COPY lkp-tests /c/lkp-tests
 
-RUN chown -R 1090:1090 /c/cbs /c/lkp-tests&& chown -R 750 /c/cbs /c/lkp-tests
+RUN chown -R 1090:1090 /c/compass-ci /c/lkp-tests&& chown -R 750 /c/compass-ci /c/lkp-tests
 
 RUN apk del gcc rpcgen gdb
 

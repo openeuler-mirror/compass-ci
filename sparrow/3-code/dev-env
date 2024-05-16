@@ -3,7 +3,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 namespace=$1
-[ $CCI_SRC ] || export CCI_SRC=/c/cbs
+[ $CCI_SRC ] || export CCI_SRC=/c/compass-ci
 
 umask 002
 
@@ -16,7 +16,7 @@ done
 
 cat > /etc/profile.d/compass.sh <<'EOF'
 export LKP_SRC=/c/lkp-tests
-export CCI_SRC=/c/cbs
+export CCI_SRC=/c/compass-ci
 export REPO_SRC=/c/git-repos
 export CCI_REPOS=/c
 export deploy_k8s=true

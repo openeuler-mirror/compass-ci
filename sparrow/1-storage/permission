@@ -1,6 +1,6 @@
 #! /bin/bash
 
-[ $CCI_SRC ] || CCI_SRC=/c/cbs
+[ $CCI_SRC ] || CCI_SRC=/c/compass-ci
 
 chmod_dir=(
 		/srv/result

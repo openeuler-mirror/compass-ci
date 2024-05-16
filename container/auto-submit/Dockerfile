@@ -24,7 +24,7 @@ RUN pip install --upgrade pip && \
 
 RUN apk del gcc g++
 
-COPY --chown=1090 cbs /c/cbs
+COPY --chown=1090 cbs /c/compass-ci
 COPY --chown=1090 lkp-tests /c/lkp-tests
 
 RUN echo 'umask 027' >> /home/lkp/.bashrc
@@ -42,4 +42,4 @@ RUN rm -f /bin/sh
 
 COPY sh /bin/sh
 
-WORKDIR /c/cbs/sbin
+WORKDIR /c/compass-ci/sbin

@@ -18,12 +18,12 @@ RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://mirrors.aliyun.com/rubygems/ &&\
     gem install bunny:2.19.0 json PriorityQueue elasticsearch:7.11.1 --no-document
 
-COPY cbs /c/cbs
+COPY cbs /c/compass-ci
 
-RUN chown -R 1090:lkp /c/cbs && chown -R 750 /c/cbs
+RUN chown -R 1090:lkp /c/compass-ci && chown -R 750 /c/compass-ci
 
 RUN apk del gcc rpcgen gdb
 
-WORKDIR /c/cbs/sbin
+WORKDIR /c/compass-ci/sbin
 
 ENTRYPOINT ["/sbin/tini", "--"]
