@@ -9,19 +9,14 @@ initialize_repo()
 {
 	local repo="$1"
 
-	[ -d "/c/git-repos/$repo/.git" ] || {
-		mkdir -p /c/git-repos/"$repo".git
-		cd /c/git-repos/"$repo".git
-		git init --bare .
-		git clone /c/git-repos/"$repo".git /c/git-repos/"$repo"
+	[ -d "/c/$repo/.git" ] || {
+		git clone https://gitee.com/wu_fengguang/"$repo".git /c/"$repo" || \
+			 git clone http://gitee.com/wu_fengguang/"$repo".git /c/"$repo"
+		chmod -R +r /c/"$repo"
 	}
 
-	chown -R lkp:committer /c/git-repos
-
-	cd /c/git-repos/"$repo"
-	git config --global --add safe.directory /c/git-repos/my_upstreams
-	git config user.email "git-mirror@localhost"
-	git config user.name "git-mirror"
+	cd /c/"$repo"
+	git config --global --add safe.directory /c/"$repo"
 }
 
-initialize_repo my_upstreams
+initialize_repo lkp-tests
