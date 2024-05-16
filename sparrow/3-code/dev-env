@@ -56,8 +56,8 @@ chmod 640 /root/.config/compass-ci/pack.yaml
 ES_ROLE: biz-role
 ES_USER: biz-user
 ES_PASSWORD: $passwd
-ES_SPUER_USER: root
-ES_SPUER_PASSWORD: $passwd
+ES_SUPER_USER: root
+ES_SUPER_PASSWORD: $passwd
 LOGGING_ES_USER: root
 LOGGING_ES_PASSWORD: $passwd
 GITEE_ID: $GITEE_ID
