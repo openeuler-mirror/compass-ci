@@ -215,7 +215,7 @@ chgrp team /srv/vm
 chmod g+ws /srv/dc
 chmod g+ws /srv/vm
 
-find /tftpboot -type d | xargs chmod 700
+find /tftpboot -type d | xargs chmod 775
 
 chmod -R 600 /etc/kubernetes/pki
 chown root:root -R /opt/kubeoperator
