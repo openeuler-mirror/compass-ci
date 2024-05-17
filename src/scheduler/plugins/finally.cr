@@ -27,7 +27,7 @@ class Finally < PluginsCommon
     elsif job.testbox.starts_with?("vm")
       key = "sched/submit/vm-custom/#{job.id}"
     else
-      key = "sched/submit/hw-#{job.tbox_group}/#{job.id}"
+      key = "sched/submit/hw-custom/#{job.id}"
     end
 
     job.put_if_not_absent("max_duration", "5")

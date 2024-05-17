@@ -57,7 +57,19 @@ class Sched
     return false if !valid_shell_variable?(key)
 
     value = shell_escape(val)
-    script_lines << "\tcheck_set_var #{key}=" + value if value
+    if value
+      is_done = false
+      script_lines.each_with_index do |line, index|
+        if line.starts_with?("\tcheck_set_var #{key}=")
+          script_lines[index] = "\tcheck_set_var #{key}=" + value
+          is_done = true
+          break
+        end
+      end
+      unless is_done
+        script_lines << "\tcheck_set_var #{key}=" + value
+      end
+    end
   end
 
   private def parse_one(script_lines, key, val : JSON::Any)
@@ -65,7 +77,19 @@ class Sched
     return false if val.as_h?
 
     value = shell_escape(val.as_a? || val.to_s)
-    script_lines << "\tcheck_set_var #{key}=" + value if value
+    if value
+      is_done = false
+      script_lines.each_with_index do |line, index|
+        if line.starts_with?("\tcheck_set_var #{key}=")
+          script_lines[index] = "\tcheck_set_var #{key}=" + value
+          is_done = true
+          break
+        end
+      end
+      unless is_done
+        script_lines << "\tcheck_set_var #{key}=" + value
+      end
+    end
   end
 
   private def sh_export_top_env(job : JobHash)
