@@ -29,11 +29,11 @@ names = Set.new %w[
 ]
 
 defaults = relevant_defaults(names)
-SCHED_HOST = defaults['SCHED_HOST'] || '172.17.0.1'
-SCHED_PORT = defaults['SCHED_PORT'] || 3000
+SCHED_HOST = ENV['SCHED_HOST'] || defaults['SCHED_HOST'] || '172.17.0.1'
+SCHED_PORT = ENV['SCHED_PORT'] || defaults['SCHED_PORT'] || 3000
 
-MQ_HOST = defaults['MQ_HOST'] || ENV['MQ_HOST'] || ENV['LKP_SERVER'] || 'localhost'
-MQ_PORT = defaults['MQ_PORT'] || ENV['MQ_PORT'] || 5672
+MQ_HOST = ENV['MQ_HOST'] || defaults['MQ_HOST'] || 'localhost'
+MQ_PORT = ENV['MQ_PORT'] || defaults['MQ_PORT'] || 5672
 DOMAIN_NAME = defaults['DOMAIN_NAME']
 
 WORKSPACE = '/srv/vm'
