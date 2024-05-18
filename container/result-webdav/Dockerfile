@@ -30,18 +30,4 @@ RUN cd /usr/local/openresty/lualib && gcc redis_slot.c -fPIC -shared -o libredis
 
 RUN rm -rf /lua-resty-redis-cluster
 
-RUN if [ "$ARCH" = "aarch64" ]; \
-then wget https://gitee.com/openeuler/signatrust/releases/download/v1.0.0-rc.2/client_linux_aarch64_musl.tar.gz -P / &>/dev/null && \
-     cd / && \
-     tar xvf client_linux_aarch64_musl.tar.gz && \
-     mv client /usr/bin && \
-     rm -f client_linux_aarch64_musl.tar.gz; \
-elif [ "$ARCH" = "x86_64" ]; \
-then wget https://gitee.com/openeuler/signatrust/releases/download/v1.0.0-rc.2/client_linux_x86_64.tar.gz -P / &>/dev/null && \
-     cd / && \
-     tar xvf client_linux_x86_64.tar.gz && \
-     mv client /usr/bin && \
-     rm -f client_linux_x86_64.tar.gz; \
-fi
-
 RUN apk del rpcgen gdb

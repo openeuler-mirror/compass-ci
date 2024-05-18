@@ -5,10 +5,12 @@
 
 . $CCI_SRC/container/defconfig.sh
 
-start_pod
-
 : ${REDIS_HOST:=172.17.0.1}
 : ${REDIS_PORT:=6379}
+: ${REDIS_PASSWD:=default}
+
+load_cci_defaults
+load_service_authentication
 
 docker_rm result-webdav
 
@@ -19,6 +21,7 @@ cmd=(
 	-p 3080:3080
 	-e REDIS_HOST=$REDIS_HOST
 	-e REDIS_PORT=$REDIS_PORT
+	-e REDIS_PASSWD=$REDIS_PASSWD
 	-v $PWD/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result/:/srv/result/
@@ -30,6 +33,7 @@ cmd=(
 	-v /srv/cci/profile/data:/srv/cci/profile/data
 	-v /srv/kunpeng:/srv/kunpeng
 	-v /srv/repositories:/srv/repositories
+	-v /srv/log/result-webdav:/srv/log/result-webdav
 	result-webdav
 )
 

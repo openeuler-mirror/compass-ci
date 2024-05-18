@@ -6,27 +6,6 @@
 
 . ../defconfig.sh
 
-# the redis pods defaults deployed in namespace: ems1
-redis_ns=ems1
-
-# for every redis restart, the redis pods's IP will change.
-# the nginx.conf need config the new IPs, otherwise, the upload executiong will fail.
-# extract redis host IPs and save them with fixed format to a tmp files
-kubectl get pod -n $redis_ns -o wide | grep redis | awk '{print "                                        { ip = \""$6"\", port = 6379 },"}' > tmp_redis_lines || {
-	echo "Extract redis host info failed."
-
-	exit 1
-}
-
-# before config new redis hosts, delete old lines
-sed -i '/{ *ip = ".*", port = 6379 *}/d' nginx.conf
-
-# add the saved redis hosts info lines to nginx config file
-sed -i "/serv_list = /r tmp_redis_lines" nginx.conf
-
-# rm the tmp file after config the nginx config file
-rm tmp_redis_lines
-
 docker_skip_rebuild "result-webdav"
 
 docker build --no-cache -t result-webdav --build-arg ARCH=$(arch) .
