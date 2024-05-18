@@ -376,7 +376,7 @@ def upload_dmesg(hash, is_remote)
     upload_url = "http://#{hash["RESULT_WEBDAV_HOST"]}:#{hash["RESULT_WEBDAV_PORT"]}#{hash["result_root"]}/dmesg"
   end
 
-  %x(curl -sSf -T "#{log_file}" #{upload_url} --cookie "JOBID=#{hash["id"]}")
+  %x(curl -sSf -F "file=@#{log_file}" #{upload_url} --cookie "JOBID=#{hash["id"]}")
 end
 
 def loop_heart_beat(heart_thr, safe_stop_file)

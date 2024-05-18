@@ -255,7 +255,7 @@ def upload_dmesg(job_info, log_file, is_remote)
   else
     upload_url = "http://#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
   end
-  %x(curl -sSf -T "#{log_file}" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
+  %x(curl -sSf -F "file=@#{log_file}" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
 end
 
 def main(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
