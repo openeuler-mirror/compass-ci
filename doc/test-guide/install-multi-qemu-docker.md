@@ -81,11 +81,11 @@ multi-qemu/multi-docker自动计算测试机数量方式稍有差异，
 
 	mult-qemu：
 
-		基准：vm-2p4g
+		基准：2p4g
 
 	multi-docker:
 
-		基准: dc-4g
+		基准: 4p
 
 ## 验证
 
