@@ -8,28 +8,33 @@ targets:
   scheduler:
     main: src/scheduler.cr
 
-crystal: 0.35.1
+crystal: 1.2.2
 
 license: Mulan PSL v2
 
 dependencies:
   kemal:
     github: kemalcr/kemal
+    version: 0.27.0
   redis:
     github: jgaskins/redis
+    version: 0.4.0
   elasticsearch-crystal:
     github: paktek123/elasticsearch-crystal
+    version: 0.14
   any_merge:
     github: icyleaf/any_merge
-    branch: master
   deep-merge:
     github: peterhoeg/deep-merge.cr
+    version: 0.1.1
   json_on_steroids:
     github: anykeyh/json_on_steroids
+    version: 0.1
   rate_limiter:
     github: wout/rate_limiter
   singleton:
     github: waterlink/singleton.cr
+    version: 1.0.0
   etcd:
     github: PythonEngineer007/crystal-etcd
     branch: master
