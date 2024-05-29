@@ -959,9 +959,24 @@ class Job < JobHash
   end
 
   private def set_memory_minimum
-    return if @hash_plain.has_key?("memory_minimum")
+    ["memory_minimum", "memory"].each do |_k|
+      if @hash_plain.has_key?(_k)
+        _memory = @hash_plain[_k].to_s.match(/\d+/)
+        if _memory
+          self.memory_minimum = _memory[0]
+          return
+        end
+      end
+    end
 
-    self.memory_minimum = @hash_plain["memory"] if @hash_plain.has_key?("memory")
+    if @hash_hh.has_key?("hw")
+      _hw = @hash_hh["hw"].as(Hash)
+      _memory = _hw["memory"].to_s.match(/\d+/)
+      if _memory
+        self.memory_minimum = _memory[0]
+        return
+      end
+    end
   end
 
   private def set_os_version
