@@ -50,7 +50,9 @@ class Sched
       # job_health needs to be return
       job.job_health = job_health
     else
-      job.job_health ||= (job_health || "success")
+      unless job.has_key?("job_health")
+        job.job_health = (job_health || "success")
+      end
     end
 
     if job.job_health == "success" || job.job_health == "oom"
@@ -58,17 +60,21 @@ class Sched
       update_job_resource(job, mem, cpu)
     end
 
-    if job.job_health != "success" && !job.snapshot_id.empty?
-      data = {"build_id" => job.build_id, "job_id" => job.id, "build_type" => job.build_type, "emsx" => job.emsx}
-      @etcd.put_not_exists("update_jobs/#{job.id}", data.to_json)
+    if job.job_health != "success"
+      if job.has_key?("snapshot_id") && !job.snapshot_id.empty?
+        data = {"build_id" => job.build_id, "job_id" => job.id, "build_type" => job.build_type, "emsx" => job.emsx}
+        @etcd.put_not_exists("update_jobs/#{job.id}", data.to_json)
+      end
     end
 
     job.set_time("finish_time")
     @env.set "finish_time", job.finish_time
 
-    running_time = Time.parse(job.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    finish_time = Time.parse(job.finish_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    job.run_seconds = (finish_time - running_time).to_s
+    if job.has_key?("running_time") && job.has_key?("finish_time")
+      running_time = Time.parse(job.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+      finish_time = Time.parse(job.finish_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+      job.run_seconds = (finish_time - running_time).to_s
+    end
 
     if @env.params.query["source"]? != "lifecycle"
       deadline = job.get_deadline("finish")
