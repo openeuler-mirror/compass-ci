@@ -42,6 +42,7 @@ module StatsWrapper
     @log = "#{RESULT_ROOT}/#{@stats_group}"
 
     return if File.exist?("#{@log}.json") # already created in testbox by $LKP_SRC/programs/parse
+    return if File.exist?("#{@log}.json.gz")
     return unless File.exist?("#{@log}.yaml") || pretreatment
 
     if File.exist?("#{@log}.yaml")
