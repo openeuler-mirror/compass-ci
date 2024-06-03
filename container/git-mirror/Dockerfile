@@ -18,7 +18,7 @@ RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://mirrors.aliyun.com/rubygems/ &&\
     gem install bunny:2.19.0 json PriorityQueue elasticsearch:7.11.1 --no-document
 
-COPY cbs /c/compass-ci
+COPY compass-ci /c/compass-ci
 
 RUN chown -R 1090:lkp /c/compass-ci && chown -R 750 /c/compass-ci
 

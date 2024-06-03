@@ -15,7 +15,7 @@ RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
     gem install rest-client activesupport json yaml elasticsearch:7.11.1 io-console
 
-COPY cbs /c/compass-ci
+COPY compass-ci /c/compass-ci
 
 RUN apk del gcc rpcgen gdb
 

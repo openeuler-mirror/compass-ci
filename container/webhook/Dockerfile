@@ -11,7 +11,7 @@ RUN apk update --no-cache && \
     apk add --no-cache git && \
     apk add --no-cache npm ruby-dev make gcc g++
 
-COPY cbs/container/webhook/root /js
+COPY compass-ci/container/webhook/root /js
 
 WORKDIR /js
 

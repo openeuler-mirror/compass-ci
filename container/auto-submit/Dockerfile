@@ -24,7 +24,7 @@ RUN pip install --upgrade pip && \
 
 RUN apk del gcc g++
 
-COPY --chown=1090 cbs /c/compass-ci
+COPY --chown=1090 compass-ci /c/compass-ci
 COPY --chown=1090 lkp-tests /c/lkp-tests
 
 RUN echo 'umask 027' >> /home/lkp/.bashrc
