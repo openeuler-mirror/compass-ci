@@ -79,7 +79,7 @@ class PkgBuild < PluginsCommon
   def update_kernel(job, pbp)
     server_prefix = "#{INITRD_HTTP_PREFIX}/kernel/#{pbp["os_arch"]}/#{pbp.config}/#{pbp.upstream_commit}"
     job.update_kernel_uri("#{server_prefix}/vmlinuz")
-    job.update_modules_uri("#{server_prefix}/modules.cgz")
+    job.update_modules_uri(["#{server_prefix}/modules.cgz"])
   end
 
   def delete_job4queue(job)

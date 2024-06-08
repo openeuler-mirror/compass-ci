@@ -308,7 +308,6 @@ class JobHash
     lkp_initrd_user
 
     kernel_uri
-    modules_uri
     ipxe_kernel_params
     kernel_version
     kernel_custom_params
@@ -414,6 +413,7 @@ class JobHash
   ARRAY_KEYS = %w(
     my_ssh_pubkey
     initrds_uri
+    modules_uri
     initrd_deps
     initrd_pkgs
     kernel_params
@@ -1417,11 +1417,11 @@ class Job < JobHash
   end
 
   private def set_modules_uri
-    return if @hash_plain.has_key?("modules_uri")
+    return if @hash_array.has_key?("modules_uri")
     return if self.os_mount == "local"
 
     modules_path = File.real_path("#{boot_dir}/modules-#{kernel_version}.cgz")
-    self.modules_uri = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)
+    self.modules_uri = ["#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)]
   end
 
   # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/vmlinuz
