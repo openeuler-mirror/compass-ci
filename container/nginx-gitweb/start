@@ -1,0 +1,26 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+start_pod
+
+docker_rm gitweb
+
+cmd=(
+	docker run
+	-d 
+	-e "CONTAINER_TIMEZONE=Europe/Paris"
+	-e "GITPROJECT=test"
+	-e "GITUSER=gituser"
+	-e "GITPASSWORD=gitpassword"
+	-v /var/lib/git:/var/lib/git
+	--name gitweb
+	-p 80:80
+	fraoustin/gitweb 
+)
+
+"${cmd[@]}"
+
+
