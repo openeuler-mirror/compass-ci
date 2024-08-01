@@ -1,0 +1,31 @@
+#!/bin/bash
+
+. $CCI_SRC/container/defconfig.sh
+
+start_pod
+
+docker_rm
+
+cmd=(
+	/usr/bin/docker run 
+	--restart=always 
+	-d 
+	--name pypi-devpi 
+	-p 5032:5032
+	--env DEVPISERVER_HOST=0.0.0.0 
+	--env DEVPISERVER_PORT=5032
+	--env DEVPISERVER_USER=lowinli 
+	--env DEVPISERVER_PASSWORD_LEN=8
+	--env DEVPISERVER_MIRROR_INDEX=pypi 
+	--env DEVPISERVER_LIB_INDEX=devpi 
+	--env SOURCE_MIRRORURL=https://mirrors.aliyun.com/pypi/simple 
+	--volume /srv/rpm/pypi-devpi-cache:/var/lib/devpi  
+	aplinepy39:pypi-devpi
+)
+
+"${cmd[@]}"
+
+# rest
+
+echo you can use pip install command: pip install package_name -i http://127.0.0.1:5032/lowinli/devpi/+simple/ --trusted-host 127.0.0.1:5032
+

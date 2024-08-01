@@ -1,0 +1,9 @@
+#!/bin/sh
+
+. ../defconfig.sh
+
+docker_skip_rebuild "aplinepy39:pypi-devpi"
+ 
+/usr/bin/docker build --no-cache -t aplinepy39:pypi-devpi ./
+
+push_image_remote "aplinepy39:pypi-devpi"
