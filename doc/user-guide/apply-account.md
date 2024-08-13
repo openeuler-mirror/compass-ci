@@ -1,5 +1,11 @@
 # apply account
 
+WARNING:
+	Due to security requirements for the data center, applying account for compass-ci by sending emails is no longer supported.
+	To apply for a compass-ci account, please contact:
+
+		shdluan@163.com
+
 You'll need an account to submit jobs. The account is mainly for tracking your resource consumptions.
 We have limited pool of testboxes, so there have to be some usage control.
 
