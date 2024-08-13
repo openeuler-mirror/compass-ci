@@ -7,6 +7,12 @@
 
 		shdluan@163.com
 
+	另：
+
+		使用compass-ci需登录到compass-ci客户端环境：account-vm
+		登录到account-vm，需要有一台加到compass-ci白名单的且拥有固定IP的服务器；
+		account-vm需使用秘钥登录，在申请account-vm时，需带上用于登录的ssh 公钥。
+
 首先您需要一个账号，可以用来提交job，同时跟踪您的资源消费情况。
 因为目前我们的测试机资源池有限，因此需要做一些使用限制。
 

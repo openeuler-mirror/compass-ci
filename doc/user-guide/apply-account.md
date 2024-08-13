@@ -6,6 +6,12 @@ WARNING:
 
 		shdluan@163.com
 
+	In additional:
+
+		To use compass-ci, you need to log in to the client environment for compass-ci: account-vm
+		To log in to account-vm, you need a server, which has static IP and was added to the whitelist of compass-ci environment;
+		You need use secret key to log in to the account-vm, support ssh pub key when applying the compass-ci account.
+
 You'll need an account to submit jobs. The account is mainly for tracking your resource consumptions.
 We have limited pool of testboxes, so there have to be some usage control.
 
