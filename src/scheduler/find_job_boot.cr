@@ -250,7 +250,7 @@ class Sched
 
     _initrds_uri = job.initrds_uri.map { |uri| "initrd #{uri}" }
     if job.has_key?("modules_uri")
-      job["modules_uri"].each { |module_uri| _initrds_uri.insert(1, "initrd #{module_uri}") }
+      job.modules_uri.each { |module_uri| _initrds_uri.insert(1, "initrd #{module_uri}") }
     end
     _kernel_initrds = _initrds_uri.map { |initrd| " initrd=#{File.basename(initrd.split("initrd ")[-1])}"}
     response += _initrds_uri.join("\n") + "\n"
