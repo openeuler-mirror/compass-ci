@@ -5,7 +5,11 @@
 set scheduler 172.17.0.1
 set port 3000
 
-chain http://${scheduler}:${port}/boot.ipxe/mac/${mac:hexhyp}
+chain http://${scheduler}:${port}/boot.ipxe/mac/${mac:hexhyp} || goto failed
+
+:failed
+echo get job failed...
+echo sleep 3s retry
 
 sleep 3
 goto retry_boot
