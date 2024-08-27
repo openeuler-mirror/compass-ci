@@ -7,5 +7,6 @@
 docker_skip_rebuild "fraoustin/gitweb"
 
 git clone https://github.com/fraoustin/gitweb  ./
+sed -i "/auth_basic/d" src/default.conf
 
 docker build --no-cache -t fraoustin/gitweb .

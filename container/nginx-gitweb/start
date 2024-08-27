@@ -13,8 +13,6 @@ cmd=(
 	-d 
 	-e "CONTAINER_TIMEZONE=Europe/Paris"
 	-e "GITPROJECT=test"
-	-e "GITUSER=gituser"
-	-e "GITPASSWORD=gitpassword"
 	-v /var/lib/git:/var/lib/git
 	--name gitweb
 	-p 80:80
