@@ -279,7 +279,7 @@ def custom_vm_info(hostname, ipxe_script_path)
   append, initrds, kernel = parse_ipxe_script(hostname, ipxe_script_path)
 
   `gzip -dc job.cgz | cpio -div`
-  `grep -E "nr_|memory|minimum|group|RESULT_WEBDAV" lkp/scheduled/job.yaml | sed 's/^ *//' > lkp/scheduled/job_vm.yaml`
+  `grep -E "nr_|memory|minimum|group|RESULT_WEBDAV|result_root" lkp/scheduled/job.yaml | sed 's/^ *//' > lkp/scheduled/job_vm.yaml`
 
   create_yaml_variables("lkp/scheduled/job_vm.yaml")
 
