@@ -110,6 +110,7 @@ sched_nodes.each do |node|
     -v /etc/localtime:/etc/localtime:ro
     -v /srv/result:/srv/result
     -v /srv/initrd:/srv/initrd:ro
+    -v /srv/initrd/osimage/custom:/srv/initrd/osimage/custom
     -v /srv/os:/srv/os:ro
     -v /srv/upload-files:/srv/upload-files:rw
     --log-opt mode=non-blocking

@@ -41,4 +41,22 @@ class Common
 
     return hash
   end
+
+  def self.download_file(url, output, rpms_dir)
+    lockfile = "#{output}.lock"
+
+    while true
+      result = Process.run("mkdir", args: ["#{lockfile}"])
+      if result.exit_code != 0
+        sleep 3
+      else
+        break
+      end
+    end
+
+    result = Process.run("sh", args: ["-c","cd #{rpms_dir} && wget --timestamping --tries=3 #{url}"])
+    FileUtils.rm_rf(lockfile)
+
+    return result.exit_code
+  end
 end

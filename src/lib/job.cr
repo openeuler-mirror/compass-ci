@@ -417,6 +417,7 @@ class JobHash
     initrd_deps
     initrd_pkgs
     kernel_params
+    kernel_rpms_url
     added_by
 
     errid

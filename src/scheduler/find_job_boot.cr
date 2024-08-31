@@ -241,6 +241,72 @@ class Sched
     return response
   end
 
+  private def get_vmlinuz_uri(cpio_dir, initrd_dir)
+    vmlinuz_uri = ""
+    boot_dir = File.join(cpio_dir, "boot")
+    if Dir.exists?(boot_dir)
+      Dir.each_child(File.join(cpio_dir, "boot")) do |entry|
+        if entry.starts_with?("vmlinuz-")
+          File.copy("#{cpio_dir}/boot/#{entry}", "#{initrd_dir}/#{entry}")
+          vmlinuz_uri = "#{INITRD_HTTP_PREFIX}/#{initrd_dir.sub("/srv/", "")}/#{entry}"
+          break
+        end
+      end
+    end
+
+    return vmlinuz_uri
+  end
+
+  private def get_modules_uri(cpio_dir, initrd_dir)
+    modules_uri = ""
+    modules_dir = File.join(cpio_dir, "lib", "modules")
+    output_file = "modules.cgz"
+    if Dir.exists?(modules_dir)
+      result = Process.run("sh", args: ["-c", "cd #{cpio_dir} && for tt in $(find ./ -type f -name *.xz); do unxz -q $tt ;done"])
+      raise "unzx #{cpio_dir} error" if result.exit_code != 0
+
+      result = Process.run("sh", args: ["-c", "cd #{cpio_dir} && find lib/modules |cpio --quiet -o -H newc | gzip -q > #{output_file}"])
+      raise "cpio #{cpio_dir} error" if result.exit_code != 0
+
+      FileUtils.mkdir_p(initrd_dir)
+      File.copy("#{cpio_dir}/#{output_file}", "#{initrd_dir}/#{output_file}")
+      modules_uri = "#{INITRD_HTTP_PREFIX}/#{initrd_dir.sub("/srv/", "")}/#{output_file}"
+    end
+
+    return modules_uri
+  end
+
+  private def init_3rd_party_kernel(job : Job)
+    return "", ""  unless job.kernel_rpms_url?
+    job_id = job.id
+
+    kernel_cache_dir = "/srv/initrd/osimage/custom/kernel_cache_dir"
+    rpms_dir = "#{kernel_cache_dir}/rpms"
+    cpio_dir = "#{kernel_cache_dir}/cpio/#{job_id}"
+    initrd_dir = "#{kernel_cache_dir}/initrds/#{job_id}"
+
+    FileUtils.mkdir_p(rpms_dir)
+    FileUtils.mkdir_p(cpio_dir)
+    FileUtils.mkdir_p(initrd_dir)
+
+    rpms = [] of String
+    job.kernel_rpms_url.each do |rpm_url|
+      rpm = rpm_url.split("/").last
+      rpms << rpm
+      exit_code = Common.download_file(rpm_url, "#{rpms_dir}/#{rpm}", rpms_dir)
+      raise "downlaod #{rpm_url} to #{rpms_dir} error, exit_code: #{exit_code}" if exit_code != 0
+    end
+
+    rpms.each do |rpm|
+      result = Process.run("sh", args: ["-c", "rpm2cpio #{rpms_dir}/#{rpm} | cpio -idmv -D  #{cpio_dir}"])
+      raise "rpm2cpio #{rpms_dir}/#{rpm} to #{cpio_dir} error." if result.exit_code != 0
+    end
+
+    vmlinuz_uri = get_vmlinuz_uri(cpio_dir, initrd_dir)
+    modules_uri = get_modules_uri(cpio_dir, initrd_dir)
+
+    return vmlinuz_uri, modules_uri
+  end
 
   private def get_boot_ipxe(job : Job)
     return job.custom_ipxe if job.suite.starts_with?("install-iso") && job.has_key?("custom_ipxe")
@@ -248,19 +314,29 @@ class Sched
     response = "#!ipxe\n\n"
     response += "# nr_nic=" + job.nr_nic + "\n" if job.has_key?("nr_nic")
 
+    _3rd_vmlinuz_uri, _3rd_modules_uri = init_3rd_party_kernel(job)
     _initrds_uri = job.initrds_uri.map { |uri| "initrd #{uri}" }
-    if job.has_key?("modules_uri")
-      job.modules_uri.each { |module_uri| _initrds_uri.insert(1, "initrd #{module_uri}") }
+
+    if !_3rd_modules_uri.empty?
+      _initrds_uri.insert(1, "initrd #{_3rd_modules_uri}")
+    elsif job.modules_uri?
+      job.modules_uri.reverse_each do |ele|
+        _initrds_uri.insert(1, "initrd #{ele}")
+      end
     end
+
     _kernel_initrds = _initrds_uri.map { |initrd| " initrd=#{File.basename(initrd.split("initrd ")[-1])}"}
     response += _initrds_uri.join("\n") + "\n"
 
-    _kernel_params = ["kernel #{job.kernel_uri}"] + job.kernel_params + _kernel_initrds
+    _vmlinuz_uri = job.kernel_uri
+    if !_3rd_vmlinuz_uri.empty?
+      _vmlinuz_uri =  _3rd_vmlinuz_uri
+    end
+    _kernel_params = ["kernel #{_vmlinuz_uri}"] + job.kernel_params + _kernel_initrds
     response += _kernel_params.join(" ")
     response += " rootfs_disk=#{job.hw.not_nil!["rootfs_disk"].gsub("\n", ".")}" if job.hw.not_nil!.has_key? "rootfs_disk"
     response += " crashkernel=#{job.crashkernel}" if job.crashkernel? && !response.includes?("crashkernel=")
     response += "\necho ipxe will boot job id=#{job.id}, ip=${ip}, mac=${mac}" # the ip/mac will be expanded by ipxe
-
 
     response += "\necho result_root=#{job.result_root}\n"
     response += "\nboot\n"

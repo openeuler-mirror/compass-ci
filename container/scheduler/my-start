@@ -72,7 +72,7 @@ end
 begin
   worker_id = SCHED_PORT.to_i - 3000
   worker_id = nil if worker_id == 0 and lab_id.nil?
-  if worker_id >= 10
+  if worker_id >= 100
     puts "too large worker_id, at most 1-digit number"
     exit 1
   end
@@ -104,6 +104,7 @@ begin
     -v /etc/localtime:/etc/localtime:ro
     -v /srv/result:/srv/result
     -v /srv/initrd:/srv/initrd:ro
+    -v /srv/initrd/osimage/custom:/srv/initrd/osimage/custom
     -v /srv/os:/srv/os:ro
     -v /srv/upload-files:/srv/upload-files:rw
     -v /srv/cci/user-files:/srv/cci/user-files:rw
