@@ -247,6 +247,8 @@ class Sched
 
     response = "#!ipxe\n\n"
     response += "# nr_nic=" + job.nr_nic + "\n" if job.has_key?("nr_nic")
+    response += "# nr_disk=" + job.nr_disk + "\n" if job.has_key?("nr_disk")
+    response += "# disk_size=" + job.disk_size + "\n" if job.has_key?("disk_size")
 
     _initrds_uri = job.initrds_uri.map { |uri| "initrd #{uri}" }
     if job.has_key?("modules_uri")

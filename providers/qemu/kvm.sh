@@ -273,7 +273,7 @@ add_disk()
 	# create rootfs disk
 	create_disk 0 "/dev/vda"
 
-	nr_disk=$(es-find id=$job_id | awk '/nr_disk/{print $2}' | tr -d , | sed 's/[^0-9]*//g')
+	nr_disk=$(awk -F'=' '/^# nr_disk=/{print $2}' $ipxe_script)
 
 	if([ -n "$nr_disk" ]); then
 		for((i=0;i<$nr_disk;i++)); do
@@ -314,7 +314,7 @@ create_disk()
 	local index=$1
 	local disk=$2
 
-	disk_size=$(es-find id=$job_id | awk '/disk_size/{print $2}' | tr -d , | sed 's/"//g')
+	disk_size=$(awk -F'=' '/^# disk_size=/{print $2}' $ipxe_script)
 
 	if [ -n "$disk_size" ]; then
 		if [[ "$disk_size" =~ ^[0-9]+$ ]]; then
@@ -349,13 +349,7 @@ create_disk()
 set_mac()
 {
 	job_id=$(awk -F'/' '/job_initrd_tmpfs/{print $(NF-1)}' $ipxe_script)
-
-	if [ $(command -v es-find) ]; then
-		nr_nic=$(es-find id=$job_id | awk '/nr_nic/{print $2}' | tr -d , | sed 's/[^0-9]*//g')
-	else
-		echo "command not found: es-find. set nr_nic=1"
-		sleep 1
-	fi
+	nr_nic=$(awk -F'=' '/^# nr_nic=/{print $2}' $ipxe_script)
 
 	mac_arr[1]=$mac
 	nr_nic=${nr_nic:-1}
