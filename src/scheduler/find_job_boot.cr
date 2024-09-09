@@ -313,6 +313,8 @@ class Sched
 
     response = "#!ipxe\n\n"
     response += "# nr_nic=" + job.nr_nic + "\n" if job.has_key?("nr_nic")
+    response += "# nr_disk=" + job.nr_disk + "\n" if job.has_key?("nr_disk")
+    response += "# disk_size=" + job.disk_size + "\n" if job.has_key?("disk_size")
 
     _3rd_vmlinuz_uri, _3rd_modules_uri = init_3rd_party_kernel(job)
     _initrds_uri = job.initrds_uri.map { |uri| "initrd #{uri}" }

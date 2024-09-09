@@ -184,15 +184,15 @@ check_initrds()
 
 set_bios()
 {
-       bios=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
-       # when arch='x86_64', use the following file: 
-       [ -f "$bios" ] || bios=/usr/share/ovmf/OVMF.fd
+    bios=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
+    # when arch='x86_64', use the following file: 
+    [ -f "$bios" ] || bios=/usr/share/ovmf/OVMF.fd
 }
 
 set_helper()
 {
-       helper=/usr/libexec/qemu-bridge-helper
-       [ -f "$helper" ] || helper=/usr/lib/qemu/qemu-bridge-helper
+    helper=/usr/libexec/qemu-bridge-helper
+    [ -f "$helper" ] || helper=/usr/lib/qemu/qemu-bridge-helper
 }
 
 is_full()
@@ -249,9 +249,9 @@ prepare_disk()
 	fi
 
 	if [ "$need_clean" == "true" ]; then
-		qemu-img create -q -f qcow2 "${qcow2_file}" $disk_size
+		qemu-img create -q -f qcow2 "${qcow2_file}" "${disk_size}"
 	else
-		[ -f "$qcow2_file" ] || qemu-img create -q -f qcow2 "${qcow2_file}" $disk_size
+		[ -f "$qcow2_file" ] || qemu-img create -q -f qcow2 "${qcow2_file}" "${disk_size}"
 	fi
 }
 
@@ -268,31 +268,44 @@ add_disk()
 
 	local disk
 	disk_encode=('/vdb' '/vdc' '/vdd' '/vde' '/vdf' '/vdg' '/vdh' '/vdi' '/vdj' '/vdk' '/vdl' '/vdm' '/vdn' '/vdo' '/vdp' '/vdq' '/vdr' '/vds' '/vdt' '/vdu' '/vdv' '/vdw' '/vdx' '/vdy')
+	disk_encode_length=${#disk_encode[@]}
 
 	# create rootfs disk
 	create_disk 0 "/dev/vda"
 
-	local index=1
-	if([ -n "$nr_hdd_partitions" ]); then
-		for((i=0;i<$nr_hdd_partitions;i++)); do
-			disk=${disk_encode[$index-1]}
-			create_disk $index $disk
-			((index++))
+	nr_disk=$(awk -F'=' '/^# nr_disk=/{print $2}' $ipxe_script)
+
+	if([ -n "$nr_disk" ]); then
+		for((i=0;i<$nr_disk;i++)); do
+			if [ "$i" -ge "$disk_encode_length" ]; then
+				break
+			fi
+
+			disk=${disk_encode[$i]}
+			create_disk $((i+1)) $disk
 		done
 	else
-		for disk in ${hdd_partitions[@]}
-		do
-			create_disk $index $disk
-			((index++))
-		done
-	fi
+		local index=1
+		if([ -n "$nr_hdd_partitions" ]); then
+			for((i=0;i<$nr_hdd_partitions;i++)); do
+				disk=${disk_encode[$index-1]}
+				create_disk $index $disk
+				((index++))
+			done
+		else
+			for disk in ${hdd_partitions[@]}; do
+				create_disk $index $disk
+				((index++))
+			done
+		fi
 
-	if [ -n "$nr_ssd_partitions" ]; then
-		for((i=0;i<$nr_ssd_partitions;i++)); do
-			disk=${disk_encode[$index-1]}
-			create_disk $index $disk
-			((index++))
-		done
+		if [ -n "$nr_ssd_partitions" ]; then
+			for((i=0;i<$nr_ssd_partitions;i++)); do
+				disk=${disk_encode[$index-1]}
+				create_disk $index $disk
+				((index++))
+			done
+		fi
 	fi
 }
 
@@ -300,7 +313,31 @@ create_disk()
 {
 	local index=$1
 	local disk=$2
-	prepare_disk "128G" "true"
+
+	disk_size=$(awk -F'=' '/^# disk_size=/{print $2}' $ipxe_script)
+
+	if [ -n "$disk_size" ]; then
+		if [[ "$disk_size" =~ ^[0-9]+$ ]]; then
+			disk_size="${disk_size}G"
+		fi
+
+		if [ ${disk_size: -1} != "G" ] && [ ${disk_size: -1} != "g" ]; then
+			disk_size="128G"
+		fi
+
+		disk_size_num=$(echo "$disk_size" | tr '[:upper:]' '[:lower:]' | sed 's/[g]//')
+		if [ $disk_size_num -gt 128 ]; then
+        	disk_size="128G"
+    	fi
+	else
+		disk_size="128G"
+	fi
+
+	if [ "$index" -eq 0 ]; then
+		prepare_disk "128G" "true"
+	else
+		prepare_disk $disk_size "true"
+	fi
 
 	# about if=virtio:
 	# - let the qemu recognize disk as virtio_blk, then the device name will be /dev/vd[a-z].
@@ -308,38 +345,36 @@ create_disk()
 	local drive="file=${qcow2_file},media=disk,format=qcow2,index=${index},if=virtio"
 	kvm+=(-drive ${drive})
 }
+
 set_mac()
 {
 	job_id=$(awk -F'/' '/job_initrd_tmpfs/{print $(NF-1)}' $ipxe_script)
-	nr_nic=$(awk -F'=' '/# nr_nic=/{print NF}' $ipxe_script)
-
-	if [ $(command -v es-find) ]; then
-		nr_nic=$(es-find id=$job_id | awk '/nr_nic/{print $2}' | tr -d ,)
-	else
-		echo "command not found: es-find. set nr_nic=1"
-		sleep 1
-	fi
+	nr_nic=$(awk -F'=' '/^# nr_nic=/{print $2}' $ipxe_script)
 
 	mac_arr[1]=$mac
 	nr_nic=${nr_nic:-1}
 
+	if [ "$nr_nic" -gt 5 ]; then
+		echo "nr_nic is greater than 5. set nr_nic=5."
+		nr_nic=5
+	fi
+
 	[ "$nr_nic" -ge "2" ] || return
 	for i in $(seq 2 $nr_nic)
 	do
-	        mac=$(echo $hostname$i | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/0a-\1-\2-\3-\4-\5/')
-	        mac_arr[$i]=$mac
+		mac=$(echo $hostname$i | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/0a-\1-\2-\3-\4-\5/')
+		mac_arr[$i]=$mac
 	done
 }
 
 set_nic()
 {
-        for i in $(seq 1 $nr_nic)
-        do
-		br="br$((i-1))"
+    for i in $(seq 1 $nr_nic)
+    do
+		br="br0"
 		[ -f "/sys/class/net/${br}/address" ] || continue
 		nic[$i]="-nic tap,model=virtio-net-pci,helper=${helper},br=${br},mac=${mac_arr[$i]}"
-
-        done
+    done
 }
 
 set_device()

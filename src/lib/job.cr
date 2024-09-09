@@ -408,6 +408,8 @@ class JobHash
     direct_macs
     direct_ips
     nr_nic
+    nr_disk
+    disk_size
   )
 
   ARRAY_KEYS = %w(
