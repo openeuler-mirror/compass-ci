@@ -99,7 +99,7 @@ Scheduler->User: <job_id>
 
 #### who generate this output
   - initrd.lkp: container dracut-initrd generate this for special os. basic lkp-tests system.
-  - vmlinuz: container dracut-initrd generate this for special os. os kernal.
+  - vmlinuz: container dracut-initrd generate this for special os. os kernel.
   - lkp-#{job.os_arch}.cgz: container init-lkp generate this for current user. customized installation of external programs and/or system packages.
   - job.cgz: service scheduler generate this. the content is job.yaml, job.sh about the job.
 
