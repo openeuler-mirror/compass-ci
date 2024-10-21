@@ -8,7 +8,7 @@
 # How to use:
 #   cmd: build-compat-list group_id=compat-centos7 -u
 #   - params: $1 Keyword and value
-#   - params: $2 update the results whose group_id is compat-centos7 to es databse
+#   - params: $2 update the results whose group_id is compat-centos7 to es database
 #   cmd: build-compat-list -a -j or build-compat-list group_id=compat-centos7 -j
 #   - params: $1 '-a' means all data in software compatibility list table
 #   - params: $2 puts data in JSON format on the terminal
