@@ -113,6 +113,7 @@ sched_nodes.each do |node|
     -v /srv/initrd/osimage/custom:/srv/initrd/osimage/custom
     -v /srv/os:/srv/os:ro
     -v /srv/upload-files:/srv/upload-files:rw
+    -v /srv/cci/user-files:/srv/cci/user-files:rw
     --log-opt mode=non-blocking
     --log-opt max-buffer-size=4m
     --log-opt tag=scheduler-#{SCHED_PORT}
