@@ -1697,7 +1697,7 @@ class Job < JobHash
         field_name = field_hash["field_name"].as_s
         if _suite
           next if _suite != self.suite || !@hash_any.has_key?(field_name)
-          filename = File.basename(@hash_any[field_name].to_s.chomp)
+          filename = File.basename(field_hash[field_name].to_s.chomp)
           dest_dir = get_dest_dir(field_name)
           dest_file_path = "#{dest_dir}/#{filename}"
           if File.exists?(dest_file_path)
