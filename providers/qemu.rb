@@ -120,7 +120,7 @@ def heart_beat
   api_client = RemoteClient.new()
   response = api_client.heart_beat(url, jwt)
   response = JSON.parse(response)
-  puts "heart_beat runing status: #{response}"
+  puts "heart_beat running status: #{response}"
   if response.has_key?('status_code') and response['status_code'] == 1001
     mem_total = get_total_memory
     register_host2redis(mem_total)
@@ -180,7 +180,7 @@ def get_lock(retry_time, retry_remain_times, lockfile)
 
   system("lockfile-create -q --lock-name -p --retry 0 #{lockfile}")
 
-  puts "vm got lock successed: #{lockfile}, uuid: #{ENV['UUID']}"
+  puts "vm got lock succeeded: #{lockfile}, uuid: #{ENV['UUID']}"
   return true
 rescue
   puts 'rescue get lock'

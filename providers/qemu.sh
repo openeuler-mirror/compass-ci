@@ -49,7 +49,7 @@ get_lock()
 	}
 
 	lockfile-create -q --lock-name -p --retry 0 $lockfile || return 1
-	log_info "vm got lock successed: $lockfile, uuid: $UUID" | tee -a $log_file
+	log_info "vm got lock succeeded: $lockfile, uuid: $UUID" | tee -a $log_file
 }
 
 main()
