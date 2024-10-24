@@ -11,7 +11,7 @@ SCHED_HOST: 172.17.0.1       # hostname or ip of the scheduler
 SCHED_PORT: 3000             # port of the scheduler
 ```    
 * '${variable}' is used at shell command, means the value of variable
-* '#{variable}' is used at crystal languange, means the value of variable
+* '#{variable}' is used at crystal language, means the value of variable
 * '\<variable>' is just let this variable can be show stronger
 * '[variable]' means this variable is optional
 
@@ -381,7 +381,7 @@ at compass-ci host, scheduler will be run as a docker container.
    use the script at $CCI_SRC/container/scheduler/build to build the container image
    use the script at $CCI_SRC/container/scheduler/run to start the container.
 
-if you want manually build scheduler in crystal languange environment, you need:
+if you want manually build scheduler in crystal language environment, you need:
   1) run shards: to install essential require package (see $CCI_SRC/src/shards.yml)
   2) fix current elasticSearch err:
 	lib/elasticsearch-crystal/src/elasticsearch/api/namespace/common.cr

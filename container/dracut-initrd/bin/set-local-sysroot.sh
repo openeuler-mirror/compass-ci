@@ -23,7 +23,7 @@ analyse_kernel_cmdline_params() {
     os_arch="$(echo $rootfs_src | awk -F '/|-' '{print $3}')"
 
     # replace '-' to '_' in $os_version
-    # bacause when we create logical volume, '-' in the logical volume name will be '--'.
+    # because when we create logical volume, '-' in the logical volume name will be '--'.
     os_version="$(echo $(getarg os_version=) | tr '-' '_')"
     os_info="${os}_${os_arch}_${os_version}"
     [ -n "$os"] || [ -n "$os_arch" ] || [ -n "$os_version" ] || reboot_with_msg "cannot find right os_info: $os_info"
