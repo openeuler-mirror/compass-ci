@@ -7,7 +7,7 @@ COPY repositories /etc/apk
 
 RUN apk add --upgrade busybox && \
     apk add --no-cache 'ruby-dev' \
-    'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'util-linux' 'shadow' 'openssl' 'rpm2cpio' 'wget'
+    'g++' 'gcc' 'pcre' 'libevent' 'make' 'git' 'cpio' 'bash' 'util-linux' 'shadow' 'openssl' 'rpm2cpio' 'wget' 'coreutils'
 
 RUN groupadd -g 1090 lkp && useradd -m -u 1090 -g 1090 lkp
 
