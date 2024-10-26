@@ -110,7 +110,7 @@ def heart_beat(hostname, is_remote)
   api_client = RemoteClient.new()
   response = api_client.heart_beat(url, jwt)
   response = JSON.parse(response)
-  puts "heart_beat runing status: #{response}"
+  puts "heart_beat running status: #{response}"
   if response.has_key?('status_code') and response['status_code'] == 1001
     mem_total = get_total_memory
     register_host2redis(hostname, mem_total, is_remote)
