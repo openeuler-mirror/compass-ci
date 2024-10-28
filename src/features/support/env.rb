@@ -55,7 +55,7 @@ def test_initrd(initrd)
   return unless File.size(saved_filename) < 1000
 
   lines = File.readlines(saved_filename)
-  raise "Faile to get initrd #{initrd}" if lines[0].chomp == '<html>'
+  raise "Fail to get initrd #{initrd}" if lines[0].chomp == '<html>'
 end
 
 def test_kernel(kernel_params_list)
