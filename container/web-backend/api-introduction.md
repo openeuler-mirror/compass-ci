@@ -135,7 +135,7 @@ job1['stats']['softirqs.CPU58.NET_TX']   job2['stats']['softirqs.CPU58.NET_TX']
 		|	  }
 		|	}
 		v
-	part result like bellow:
+	part result like below:
 
 os=openeuler os_arch=aarch64 pp.iperf.protocol=tcp pp.iperf.runtime=30 tbox_group=vm-2p16g
 

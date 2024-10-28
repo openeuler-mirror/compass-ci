@@ -28,7 +28,7 @@ class MailJobResult
     context = keep_100_lines(get_compare_result(@job))
     return nil unless context
 
-    subject = "[Compass-CI] #{@job['commit_title'] || @job['id']} comparsion"
+    subject = "[Compass-CI] #{@job['commit_title'] || @job['id']} comparison"
     signature = "Regards\nCompass-CI\nhttps://gitee.com/openeuler/compass-ci"
 
     <<~BODY
@@ -39,7 +39,7 @@ class MailJobResult
     Hi,
 
     Thanks for your participation in Kunpeng and software ecosystem!
-    Bellow are comparsion result of the base commit and your commit:
+    Below are comparison result of the base commit and your commit:
     \tbase commit: #{@job['base_commit']}
     \tcommit_link: #{@job['upstream_url']}/commit/#{@job['base_commit']}
 

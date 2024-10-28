@@ -54,7 +54,7 @@ iso2rootfs:
   rootfs_install_pkgs:
 
   #################
-  # iso srouce related fields
+  # iso source related fields
   #################
 
   # iso url which you want generate rootfs from
