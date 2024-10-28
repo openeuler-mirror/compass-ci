@@ -23,6 +23,21 @@ class Sched
     end
   end
 
+  def update_wait_job_by_ss(job)
+    job_waited = job.waited?
+    return unless job_waited
+
+    job_waited.not_nil!.each do |k, v|
+      k_job = @es.get_job(k)
+      next unless k_job
+      next unless k_job.ss_wait_jobs?
+
+      k_job.ss_wait_jobs.not_nil!.merge!({job.id => job.job_health})
+      k_job.job_health = job.job_health if job.job_health != "success"
+      @es.set_job(k_job)
+    end
+  end
+
   def close_job
     job_id = @env.params.query["job_id"]?
     mem = @env.params.query["mem"]?
@@ -84,6 +99,8 @@ class Sched
     end
 
     set_job2watch(job, "close", job.job_health)
+    update_wait_job_by_ss(job)
+
 
     response = @es.set_job(job)
     if response["_id"] == nil

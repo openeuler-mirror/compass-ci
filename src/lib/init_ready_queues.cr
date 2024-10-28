@@ -95,6 +95,7 @@ class InitReadyQueues
     #   {"local-test-2" => {"host_name" => "test-2", "is_remote" => "false"},
     #    "remote-test-1" => {"host_name" => "test-1", "is_remote" => "true"}}}
     all_keys = @redis.scan_each("/tbox/*")
+    #all_keys = ["/tbox/vm/local-caoxl"]
     @all_tbox = Hash(String, Hash(String, Hash(String, String))).new
     @log.info("init_common_tbox_from_redis #{all_keys}")
     TBOX_TYPES.each do |type|
@@ -257,7 +258,7 @@ class InitReadyQueues
               "aggs": {
                 "sorted_by_submit_time": {
                   "top_hits": {
-                    "_source": ["id", "os_arch", "my_account","os_project", "spec_file_name", "memory_minimum", "build_type", "max_duration", "use_remote_tbox"],
+                    "_source": ["id", "os_arch", "my_account","os_project", "spec_file_name", "memory_minimum", "build_type", "max_duration", "use_remote_tbox", "ss_wait_jobs"],
                     "sort": [
                       { "submit_time": { "order": "desc" } }
                     ],
@@ -288,7 +289,16 @@ class InitReadyQueues
         vals = my_account["sorted_by_submit_time"]["hits"]["hits"]
         vals.as_a.each do |val|
           _aggs[key] = [] of JSON::Any unless _aggs[key]?
-          _aggs[key] << val["_source"]
+          tmp_source = val["_source"].as_h
+          if tmp_source.has_key?("ss_wait_jobs")
+            filter_state = filter_by_ss(tmp_source)
+            if filter_state == 1
+               _aggs[key] << val["_source"]
+            end
+            next
+          else
+            _aggs[key] << val["_source"]
+          end
         end
       end
       _item_arch["jobs"] = _aggs
@@ -296,6 +306,19 @@ class InitReadyQueues
     end
 
     return ret_aggs
+  end
+
+  private def filter_by_ss(source)
+    ss_wait_jobs = source["ss_wait_jobs"].as_h
+    ss_wait_jobs_values = ss_wait_jobs.values
+    all_finished = ss_wait_jobs_values.all?{|value| value == "finished"}
+    return 1 if all_finished
+
+    arr_failed = ["oom", "abnormal", "failed", "incomplete"]
+    include_failed = arr_failed.any?{|value| ss_wait_jobs_values.includes?(value)}
+    return -1 if include_failed
+
+    return 0
   end
 
   private def set_priority_weight(aggs)
