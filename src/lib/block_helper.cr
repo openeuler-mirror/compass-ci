@@ -15,7 +15,7 @@ class BlockHelper
   #  block_helper = BlockHelp.new  # global instance
   #
   #  # fiber-A call below code (checkfile: function / variable)
-  #  #   when "checkfile == fase", then fiber-A blocked
+  #  #   when "checkfile == false", then fiber-A blocked
   #  # fiber-B call below code too
   #  #   when "checkfile == true", then fiber-A and B continues
   #  block_helper.block_until_finished("1") { checkfile }
