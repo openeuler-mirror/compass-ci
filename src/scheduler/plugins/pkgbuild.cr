@@ -15,7 +15,7 @@ class PkgBuild < PluginsCommon
     # job id has been init in init_job_id function
     wait_id = job.id
     # add job to wait queue for waited job update current
-    wait_queue = add_job2queue(job)
+    job.added_by = ["pkgbuild"]
 
     # ss struct:
     # ss:
@@ -23,6 +23,7 @@ class PkgBuild < PluginsCommon
     #     commit: xxx
     #   mysql:
     #     commit: xxx
+    ss_wait_jobs = {} of String => String
     ss.each do |pkg_name, pkg_params|
       pbp = init_pkgbuild_params(job, pkg_name, pkg_params)
       cgz, exists = cgz_exists?(pbp)
@@ -35,27 +36,17 @@ class PkgBuild < PluginsCommon
 
       submit_result = submit_pkgbuild_job(wait_id, pkg_name, pbp)
       waited_id = submit_result.first_value.not_nil!
-      # the same pkg job has been submitted
-      ret = add_waited2job(waited_id, {wait_id => "job_health"}) if submit_result.has_key?("latest")
-      raise "add waited to id2job failed, waited_job_id=#{waited_id}" if ret == -1
-
-      # cant find id2job in etcd if ret == 0, need update wait current from es
-      update_wait_current_from_es(job, waited_id, "job_health") if ret == 0
-
-      add_desired2queue(job, {waited_id => JSON.parse({"job_health" => "success"}.to_json)})
+      # {"1" => "unknown", "2" => "unknown"}
+      ss_wait_jobs.merge!({"#{waited_id}" => "unknown"})
     end
 
+    if ss_wait_jobs
+      job.ss_wait_jobs = ss_wait_jobs
+    end
     save_job2es(job)
     save_job2etcd(job)
-    if job.wait?
-      @log.info("#{job.id}, #{job.wait}")
-    else
-      # if no wait field, move wait to ready queue
-      wait2ready(wait_queue)
-    end
   rescue ex
     @log.error("pkgbuild handle job #{ex}")
-    wait2die(wait_queue) if wait_queue
     raise ex.to_s
   end
 
@@ -102,7 +93,7 @@ class PkgBuild < PluginsCommon
     response = %x($LKP_SRC/sbin/submit #{job_yaml})
     @log.info("submit pkgbuild job response: #{job_yaml}, #{response}")
 
-    response = response.split("\n")[-2]
+    response = response.split("\n")[-3]
     return {"latest" => $1} if response =~ /latest job id=(.*)/
 
     id = $1 if response =~ /job id=(.*)/
@@ -120,6 +111,7 @@ class PkgBuild < PluginsCommon
     params = pkg_params || Hash(String, String).new
     repo_name =  params["fork"]? || pkg_name
     upstream_repo = "#{pkg_name[0]}/#{pkg_name}/#{repo_name}"
+    upstream_commit = params["commit"]? || "HEAD"
     upstream_info = get_upstream_info(upstream_repo)
     pkgbuild_repo = "pkgbuild/#{upstream_info["pkgbuild_repo"][0]}"
     pkgbuild_repos = upstream_info["pkgbuild_repo"].as_a
@@ -127,28 +119,24 @@ class PkgBuild < PluginsCommon
       next unless "#{repo}" =~ /(-git|linux)$/
       pkgbuild_repo = "pkgbuild/#{repo}"
     end
-    # now support openeuler:20.03-fat and archlinux:02-23-fat
-    os_version = "#{job.os_version}".split("-pre")[0].split("-fat")[0]
-    docker_image = "#{job.os}:#{os_version}-fat"
-    if pkg_name == "linux"
-      testbox = "dc-32g"
-    else
-      testbox = "dc-16g"
-    end
+
+    os = params["os"]? || job.os
+    os_version = params["os_version"]? || job.os_version
+    testbox = params["testbox"]? || job.testbox
 
     build_job = JobHash.new(Hash(String, JSON::Any).new)
-    build_job.os = job.os
-    build_job.os_version = "#{os_version}-fat"
+    build_job.os = os
+    build_job.os_version = os_version
     build_job.os_arch = job.os_arch
     build_job.testbox = testbox
     build_job.os_mount = "container"
-    build_job.docker_image = docker_image
-    build_job.commit = "HEAD"
+    build_job.upstream_commit = upstream_commit
     build_job.upstream_repo = upstream_repo
     build_job.pkgbuild_repo = pkgbuild_repo
     build_job.upstream_url = upstream_info["url"][0].as_s
     build_job.upstream_dir = "upstream"
     build_job.pkgbuild_source = upstream_info["pkgbuild_source"][0].as_s if upstream_info["pkgbuild_source"]?
+    # update job.id when finished build_job
     build_job.waited = {job.id => "job_health"}
     build_job.services = {
       "SCHED_HOST" => ENV["SCHED_HOST"],
@@ -173,18 +161,17 @@ class PkgBuild < PluginsCommon
           #link file
           File.symlink(ss_upload_filepath, pkg_dest_file) unless File.exists?(pkg_dest_file)
         end
+        build_job.config = filename
+        next
       end
       build_job.hash_any[k] = v
     end
 
     default = load_default_pkgbuild_yaml
 
-    if build_job.commit == "HEAD"
-      upstream_commit = get_head_commit(upstream_repo)
-    else
-      upstream_commit = build_job.commit
+    if build_job.upstream_commit == "HEAD"
+      build_job.upstream_commit = get_head_commit(upstream_repo)
     end
-    build_job.upstream_commit = upstream_commit
 
     build_job.import2hash(default)
     @log.info(build_job)

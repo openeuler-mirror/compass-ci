@@ -436,6 +436,7 @@ class JobHash
     install_os_packages
     boot_params
     on_fail
+    ss_wait_jobs
     waited
     hw
     vt
