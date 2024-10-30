@@ -82,7 +82,7 @@ os_mount=container的rootfs会被docker类型的testbox使用，docker类型的t
     docker pull $DOCKER_REGISTRY_HOST:$DOCKER_REGISTRY_PORT/$image_name 2> /dev/null
     ```
   - 说明：
-    - 到此步，Compass-CI集群的docker registry里面的os_mount=container的rootfs（docker iamge），就被pull到执行机本地了。
+    - 到此步，Compass-CI集群的docker registry里面的os_mount=container的rootfs（docker image），就被pull到执行机本地了。
 
 - /c/compass-ci/providers/docker/run.sh
   - key code:
@@ -92,7 +92,7 @@ os_mount=container的rootfs会被docker类型的testbox使用，docker类型的t
         ${docker_image}
     ```
   - 说明：
-    - 到此步，Compass-CI集群的docker registry里面的os_mount=container的rootfs（docker iamge），就被使用起来了。
+    - 到此步，Compass-CI集群的docker registry里面的os_mount=container的rootfs（docker image），就被使用起来了。
 
     - 在这个系统中，已经有我们执行lkp所定义的任务所需要的一系列文件。其中就包括一个关键的系统服务：lkp-bootstrap.service。
     - 所以，在/sysroot中的文件系统执行它自己的开机启动流程时，就能通过lkp-bootstrap.service，来执行我们定义好的job。

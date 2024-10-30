@@ -7,7 +7,7 @@
 docker_skip_rebuild "ssh-r:0.001"
 
 if [ ! -f "known_auth_keys" ]; then
-  echo "-----> ERROR: no testbox rsa public key file 'known_auth_keys' at currrent DIR"
+  echo "-----> ERROR: no testbox rsa public key file 'known_auth_keys' at current DIR"
   exit 1
 fi
 docker build -t ssh-r:0.001 .
