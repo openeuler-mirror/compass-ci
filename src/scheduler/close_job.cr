@@ -11,7 +11,7 @@ class Sched
       if ["rpmbuild", "hotpatch"].includes?("#{job.suite}")
         id = "#{job.suite}_#{job.arch}_#{job.os_project}_#{job.package}_#{job.spec_file_name}"
       else
-        raise "#{job.suite} does not support set job resource"
+        return
       end
       content = { "mem" => mem, "cpu" => cpu }
       @es.set_content_by_id(index, id, content)

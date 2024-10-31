@@ -19,6 +19,28 @@ class PluginsCommon
     @scheduler_api = SchedulerAPI.new
   end
 
+  def add_job2custom(job)
+    if job.docker_image?
+      key = "sched/submit/dc-custom/#{job.id}"
+    elsif job.testbox.starts_with?("vm")
+      key = "sched/submit/vm-custom/#{job.id}"
+    else
+      key = "sched/submit/hw-custom/#{job.id}"
+    end
+
+    job.put_if_not_absent("max_duration", "5")
+    job.put_if_not_absent("memory_minimum", "16")
+
+    value = {
+      "id" => JSON::Any.new(job.id.to_s),
+      "max_duration" => JSON::Any.new(job.max_duration),
+      "memory_minimum" => JSON::Any.new(job.memory_minimum)
+    }
+
+    response = @etcd.put(key, value.to_json)
+    raise "add the job to queue failed: id #{job.id}, queue #{key}" unless response
+  end
+
   def update_current(key, current)
     puts "key: #{key}, current: #{current}"
     res = @etcd.range(key)

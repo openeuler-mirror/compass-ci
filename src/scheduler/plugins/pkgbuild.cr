@@ -45,6 +45,7 @@ class PkgBuild < PluginsCommon
     end
     save_job2es(job)
     save_job2etcd(job)
+    add_job2custom(job)
   rescue ex
     @log.error("pkgbuild handle job #{ex}")
     raise ex.to_s

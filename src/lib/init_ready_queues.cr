@@ -311,8 +311,8 @@ class InitReadyQueues
   private def filter_by_ss(source)
     ss_wait_jobs = source["ss_wait_jobs"].as_h
     ss_wait_jobs_values = ss_wait_jobs.values
-    all_finished = ss_wait_jobs_values.all?{|value| value == "finished"}
-    return 1 if all_finished
+    all_success = ss_wait_jobs_values.all?{|value| value == "success"}
+    return 1 if all_success
 
     arr_failed = ["oom", "abnormal", "failed", "incomplete"]
     include_failed = arr_failed.any?{|value| ss_wait_jobs_values.includes?(value)}
@@ -333,6 +333,7 @@ class InitReadyQueues
         val = val.as_h
         t_val = Hash(String, String).new
         val.each do |k, v|
+          next if k == "ss_wait_jobs"
           t_val[k] = v.as_s
         end
         t_val["priority"] = p.to_s
