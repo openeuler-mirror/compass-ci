@@ -82,6 +82,7 @@ module Matrix
   def self.create_matrix(job_list)
     matrix = {}
     suites = []
+    @kpi = with_kpi?()
     job_list.each do |job|
       stats = job['stats']
       suites << job['suite']
@@ -101,12 +102,20 @@ module Matrix
 
   def self.useless_stat?(stat)
     return unless @fields
-
+    return false if @kpi && stat =~ /\.(LAT|JIT|POW|GUAGE|RATE)\./
     @fields.each do |field|
       return false if stat.include?(field)
     end
 
     true
+  end
+
+  def self.with_kpi?()
+    return unless @fields
+    @fields.each do |field|
+      return true if field.include?("KPI")
+    end
+    false
   end
 
   # input: query results from es_query
