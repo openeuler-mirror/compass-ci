@@ -6,6 +6,7 @@ class Finally < PluginsCommon
   def handle_job(job)
     return if job.added_by?
 
+    job.added_by = ["finally"]
     save_job2es(job)
     save_job2etcd(job)
     add_job2custom(job)
@@ -20,26 +21,4 @@ class Finally < PluginsCommon
     raise "add the job to queue failed: id #{job.id}, queue #{key}" unless response
   end
 
-  def add_job2custom(job)
-    job.added_by = ["finally"]
-    if job.docker_image?
-      key = "sched/submit/dc-custom/#{job.id}"
-    elsif job.testbox.starts_with?("vm")
-      key = "sched/submit/vm-custom/#{job.id}"
-    else
-      key = "sched/submit/hw-custom/#{job.id}"
-    end
-
-    job.put_if_not_absent("max_duration", "5")
-    job.put_if_not_absent("memory_minimum", "16")
-
-    value = {
-      "id" => JSON::Any.new(job.id.to_s),
-      "max_duration" => JSON::Any.new(job.max_duration),
-      "memory_minimum" => JSON::Any.new(job.memory_minimum)
-    }
-
-    response = @etcd.put(key, value.to_json)
-    raise "add the job to queue failed: id #{job.id}, queue #{key}" unless response
-  end
 end
