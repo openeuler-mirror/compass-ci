@@ -43,8 +43,8 @@ opt_parser = OptionParser.new do |opts|
     is_group = true
   end
 
-  opts.on('-f', '--field field', 'field to filter stats_metrics of result',
-          'use like: -f "iperf.tcp.sender.bps iperf.tcp.receiver.bps ..."') do |f|
+  opts.on('-s', '--stats name', 'stats to filter stats_metrics of result',
+          'use like: -s "iperf.tcp.sender.bps iperf.tcp.receiver.bps ..."') do |f|
     options[:fields] = f.split(',')
   end
 
@@ -59,6 +59,10 @@ opt_parser = OptionParser.new do |opts|
 
   opts.on('--transposed', 'transposed dimensions and metric in result') do
     options[:transposed] = true
+  end
+
+  opts.on('--changed', 'filter stats_metrics of result  no changed') do
+    options[:changed] = true
   end
 
   opts.on('-t', '--template template', 'compare with user-defined template') do |t|

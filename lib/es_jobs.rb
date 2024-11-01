@@ -31,6 +31,7 @@ class ESJobs
     @jobs = query_jobs_from_es
     @refine = my_refine
     @fields = fields
+    @kpi = false
     @stats_filter = stats_filter
     @refine_jobs = []
     set_jobs_summary

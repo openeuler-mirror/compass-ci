@@ -178,10 +178,12 @@ def get_matrixes_values(matrixes_list, latest_jobs, options)
     success = successful?(field)
     next unless success || latest_failure?(field, latest_jobs)
 
-    matrixes_values[success][field] = get_values_by_field(
+    values = get_values_by_field(
       matrixes_list, field,
       matrixes_size, success, options
     )
+    next if options[:changed] && !values[:changed]
+    matrixes_values[success][field] = values
   end
   matrixes_values
 end
