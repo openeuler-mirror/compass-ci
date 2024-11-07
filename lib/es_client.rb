@@ -5,14 +5,14 @@ require_relative 'es_query.rb'
 
 # -------------------------------------------------------------------------------------------
 # put_source_by_id(source_id, source_content)
-#  - put a source to ES /<target>/_doc/<_id>, ingore the existence of source
+#  - put a source to ES /<target>/_doc/<_id>, ignore the existence of source
 #
 # opendistro_sql(search_sql)
 #  - search es db by search_sql, search_sql is sql, like "SELECT * FROM JOBS WHERE ..."
 #
 # -------------------------------------------------------------------------------------------
 class ESClient < ESQuery
-  # put a source to ES ingore the existence of source
+  # put a source to ES ignore the existence of source
   # @source_content : Hash
   #   eg:{
   #        "id" => "xxxxxx",

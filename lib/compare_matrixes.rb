@@ -478,8 +478,8 @@ def compare_metrics_values(groups_matrices, cmp_series)
   return metrics_compare_values
 end
 
-# now, we need caculate all score for a group unixbench result
-# in feature, may caculate more test specally
+# now, we need calculate all score for a group unixbench result
+# in feature, may calculate more test specally
 def fill_extra_metric(groups)
   extra_values = { 'System_Benchmarks_Index_Score' => {} }
 
