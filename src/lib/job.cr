@@ -410,6 +410,8 @@ class JobHash
     nr_nic
     nr_disk
     disk_size
+
+    del_testbox
   )
 
   ARRAY_KEYS = %w(
