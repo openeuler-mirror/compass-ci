@@ -218,7 +218,7 @@ def main
   host_seq = host_vms[-1].to_s
   hostname_with_seq = "#{hostname}-#{host_seq}"
 
-  Dir.mkdir("#{WORKSPACE}/#{hostname_with_seq}") unless Dir.exists? "#{WORKSPACE}/#{hostname_with_seq}"
+  Dir.mkdir("#{WORKSPACE}/#{hostname_with_seq}") unless Dir.exist? "#{WORKSPACE}/#{hostname_with_seq}"
   Dir.chdir("#{WORKSPACE}/#{hostname_with_seq}")
   ipxe_script_path="#{WORKSPACE}/#{hostname_with_seq}/ipxe_script"
 
