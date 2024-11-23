@@ -19,7 +19,7 @@ cmd=(
 	-v /etc/localtime:/etc/localtime:ro
 	-e ETCD_UNSUPPORTED_ARCH=arm64
 	--name etcd-server
-	etcd-v3.4.15:alpine
+	etcd:alpine
 	--name node-1
 	--data-dir /data
 	--auto-compaction-retention 1
