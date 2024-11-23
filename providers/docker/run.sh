@@ -102,4 +102,5 @@ cmd=(
 	/root/sbin/entrypoint.sh
 )
 
+echo "less $log_dir"
 "${cmd[@]}" 2>&1 | awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_dir"
