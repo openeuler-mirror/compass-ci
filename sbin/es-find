@@ -229,7 +229,7 @@ else
   if options[:index] == 'jobs'
     params[:desc_keyword] = options[:desc_keyword]
   end
-  query_result = es.multi_field_query(items, params)
+  query_result = es.multi_field_query(items, size: options[:size], regexp: options[:regexp], desc_keyword: options[:desc_keyword])
 end
 json_string = JSON.pretty_generate(query_result)
 puts json_string
