@@ -186,8 +186,11 @@ class StatsWorker
 
     # storage stats to job in es
     update_job = JobHash.new
-    update_job.import2hash load_json_hash("#{result_root}/result.json")
-    update_job.import2hash load_json_hash("#{result_root}/stats.json")
+    result_json = load_json_hash("#{result_root}/result.json")
+    update_job.import2hash result_json.as_h if result_json
+
+    stats_json = load_json_hash("#{result_root}/stats.json")
+    update_job.import2hash ({"stats" => stats_json}) if stats_json
     add_errid(update_job)
 
     error_ids = load_error_ids(result_root)
@@ -199,8 +202,9 @@ class StatsWorker
   end
 
   def load_json_hash(path : String)
-    return nil if File.exists?(path)
-    JSON.parse(File.read(path)).as_h
+    return nil unless File.exists?(path)
+
+    JSON.parse(File.read(path))
   end
 
   def is_failure(stats_field : String)
