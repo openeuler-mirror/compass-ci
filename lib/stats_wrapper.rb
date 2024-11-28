@@ -267,6 +267,11 @@ module StatsWrapper
   end
 
   def self.dump_stat(stats_group, file)
+    if File.zero?(file)
+      File.delete(file)
+      return nil
+    end
+
     %x(#{LKP_SRC}/sbin/dump-stat #{stats_group} < #{file})
     unless $CHILD_STATUS.exitstatus.zero?
       log_error({
