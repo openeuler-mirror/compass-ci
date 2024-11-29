@@ -13,7 +13,7 @@ qcow2_grp=$(ls -nl "$EXTRACT_ROOT" |grep -w qcow2-dir |awk '{print $4}')
 trap_excepts() {
 	# trap Ctrl-C to avoid authority problem happening
 	trap '
-		echo "[WARNNING] Detected interrupt, restoring the owner of qcow2 file"
+		echo "[WARNING] Detected interrupt, restoring the owner of qcow2 file"
 		chown $qcow2_usr:$qcow2_grp $QCOW2_FILE
 		echo "[INFO] User cancelled."
 	' SIGINT ERR
@@ -32,7 +32,7 @@ unzip_qcow2_xz() {
 }
 
 extract_rootfs() {
-	echo "[WARNNING] Temporarily change owner of qcow2 file"
+	echo "[WARNING] Temporarily change owner of qcow2 file"
 	chown "$EXTRACT_USER":"$EXTRACT_USER" "$QCOW2_FILE"
 	chmod 777 "$ROOTFS_DIR"
 
@@ -87,7 +87,7 @@ clean_environment() {
 	echo "Delete .tar.gz file"
 	[ -f $tar_out_file ] && rm -f $tar_out_file
 
-	echo "[WARNNING] Restoring the owner of qcow2 file"
+	echo "[WARNING] Restoring the owner of qcow2 file"
 	chown "$qcow2_usr":"$qcow2_grp" "$QCOW2_FILE"
 }
 

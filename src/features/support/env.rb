@@ -26,7 +26,7 @@ def curl_get_result(port, url, with_head = nil)
   Open3.popen3(cmd)
 end
 
-# raw exmples:
+# raw examples:
 # [
 #  "HTTP/1.1 200 OK\r\n",
 #  "Connection: keep-alive\r\n", "X-Powered-By: Kemal\r\n",
