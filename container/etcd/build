@@ -5,13 +5,11 @@
 . ../defconfig.sh
 
 VERSION=v3.5.7
-docker_skip_rebuild "etcd-${VERSION}:alpine"
+docker_skip_rebuild "etcd:alpine"
 
 [ "$(arch)" == "aarch64" ] && ARCH=arm64
 [ "$(arch)" == "x86_64" ] && ARCH=amd64
 
-docker_skip_rebuild "etcd-${VERSION}:alpine"
+docker build --no-cache -t etcd:alpine --build-arg VERSION=${VERSION} --build-arg ARCH=${ARCH} .
 
-docker build --no-cache -t etcd-${VERSION}:alpine --build-arg VERSION=${VERSION} --build-arg ARCH=${ARCH} .
-
-push_image_remote "etcd-${VERSION}:alpine"
+push_image_remote "etcd:alpine"
