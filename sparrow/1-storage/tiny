@@ -52,6 +52,7 @@ dirs=(
 	/srv/initrd/qemu-image
 	/srv/initrd/dockerimage
 	/srv/initrd/osimage
+	/srv/initrd/osimage/custom/kernel_cache_dir
 	/srv/initrd/rpmbuild-pkg
 	/srv/pub
 	/srv/os-repo

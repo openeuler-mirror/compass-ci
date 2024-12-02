@@ -157,6 +157,7 @@ chown_dir=(
 		/srv/log/new-repo
 		/srv/log/result-webdav
 		/srv/log/timer
+		/srv/initrd/osimage/custom/kernel_cache_dir
 		
 
 )
