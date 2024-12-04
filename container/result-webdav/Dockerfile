@@ -16,7 +16,7 @@ RUN adduser lkp -u 1090 -g 1090 -D
 
 COPY upload.lua /usr/local/openresty/nginx/conf/lua/upload.lua
 COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-COPY ./openresty.sh /usr/local/bin/
+COPY openresty.sh /usr/local/bin/
 
 RUN chown lkp:lkp  /usr/local/openresty/nginx /run /var/run
 
@@ -31,3 +31,5 @@ RUN cd /usr/local/openresty/lualib && gcc redis_slot.c -fPIC -shared -o libredis
 RUN rm -rf /lua-resty-redis-cluster
 
 RUN apk del rpcgen gdb
+
+CMD ["sh", "-c", "umask 002 && /usr/local/bin/openresty.sh"]
