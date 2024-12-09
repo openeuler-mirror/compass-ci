@@ -104,7 +104,7 @@ def add2hh(hh : HashHH, k : String, v : JSON::Any)
   if v.raw.is_a? Nil
     # this will keep
     #   pp.redis: nil
-    #   monitors.vmstat: nil
+    #   monitor.vmstat: nil
     hh[k] ||= nil
     return true
   elsif v.raw.is_a? Hash
@@ -450,6 +450,7 @@ class JobHash
   HHH_KEYS = %w(
     pp
     ss
+    monitor
     monitors
     pkg_data
     upload_fields
@@ -646,6 +647,7 @@ class JobHash
   MANTI_JSON_KEYS = %w(
     group_id
 
+    monitor
     monitors
 
     kernel_version
@@ -1545,7 +1547,8 @@ class Job < JobHash
 
   private def get_program_params
     program_params = HashHH.new
-    program_params.merge!(@hash_hhh["monitors"]) if @hash_hhh["monitors"]?
+    program_params.merge!(@hash_hhh["monitor"]) if @hash_hhh["monitor"]?
+    program_params.merge!(@hash_hhh["monitors"]) if @hash_hhh["monitors"]? # to be removed in future
     program_params.merge!(@hash_hhh["pp"]) if @hash_hhh["pp"]?
     program_params
   end

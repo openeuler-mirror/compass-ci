@@ -67,8 +67,9 @@ class Stats
     stats_list << ['time', @job['suite'] + '.time']
 
     @job['pp'] ||= {}
+    @job['monitor'] ||= {}
     @job['monitors'] ||= {}
-    programs = @job['pp'].keys + @job['monitors'].keys
+    programs = @job['pp'].keys + @job['monitor'].keys + @job['monitors'].keys
     programs.each do |k|
       if @available_stats.include?(k)
         stats_list << k
