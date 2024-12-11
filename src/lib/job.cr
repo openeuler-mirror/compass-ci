@@ -658,6 +658,11 @@ class JobHash
     last_success_stage
 
     error_ids
+
+    running_time
+    post_run_time
+    manual_check_time
+    renew_time
   )
 
   # these keys will be merged into the full-text-search only attribute
