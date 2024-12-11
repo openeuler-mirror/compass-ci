@@ -172,14 +172,19 @@ class SerialParser
   end
 
   def match_result_root(msg)
+    # remove "^M" in serial log:
+    #     result_root=/result/mugen/2024-12-11/taishan200-2280-2s48p-256g--a17/openeuler-2^M
+    #     2.03-LTS-SP4-aarch64/libguestfs/10241211102818490^M
+    line = msg["message"].to_s.delete("\r")
+
     # [  421.102575][ T5645] RESULT_ROOT=/result/lmbench3/2022-04-01/taishan200-2280-2s48p-256g--a1010/openeuler-22.03-LTS-iso-aarch64/development-1-SELECT-4294967297/crystal.5240046^M
-    matched = msg["message"].to_s.match(/RESULT_ROOT=(?<rr>.*)$/)
+    matched = line.match(/RESULT_ROOT=(?<rr>.*)$/)
     if matched
       return matched.named_captures["rr"]
     end
 
     # [  422.515716][ T5645] result_service: raw_upload, RESULT_MNT: /172.168.131.113/result, RESULT_ROOT: /172.168.131.113/result/lmbench3/2022-04-01/taishan200-2280-2s48p-256g--a1010/openeuler-22.03-LTS-iso-aarch64/development-1-SELECT-4294967297/crystal.5240046, TMP_RESULT_ROOT: /tmp/lkp/result^M
-    matched = msg["message"].to_s.match(/RESULT_ROOT: \/.*(?<rr>\/result\/.*), /)
+    matched = line.match(/RESULT_ROOT: \/.*(?<rr>\/result\/.*), /)
     if matched
       return matched.named_captures["rr"]
     end
