@@ -286,6 +286,7 @@ class JobHash
 
     lab
     arch
+    host_tbox
     tbox_group
     testbox
     cluster
@@ -610,6 +611,7 @@ class JobHash
     rootfs
 
     lab
+    host_tbox
     tbox_group
     testbox
 
