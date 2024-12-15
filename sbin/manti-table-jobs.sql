@@ -36,7 +36,6 @@ CREATE TABLE jobs(
 	all_params_md5	string,
 
 	queue		string,
-	subqueue	string,
 
 	lab		string,
 	tbox_group	string,

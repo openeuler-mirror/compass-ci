@@ -122,6 +122,15 @@ else
 		          "tbox_group": {
 		            "type": "keyword"
 		          },
+		          "hostname": {
+			    "type": "keyword"
+			  },
+		          "host_machine": {
+			    "type": "keyword"
+			  },
+		          "target_machines": {
+			    "type": "keyword"
+			  },
 		          "interval_type": {
 			    "type": "keyword"
 			  },

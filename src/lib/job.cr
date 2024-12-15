@@ -374,6 +374,7 @@ class JobHash
     upload_image_dir
     emsx
     nickname
+    hostname
     host_machine
     tbox_type
     branch
@@ -424,6 +425,9 @@ class JobHash
     kernel_params
     kernel_rpms_url
     added_by
+
+    target_machines
+    cache_dirs
 
     errid
     error_ids
@@ -621,7 +625,6 @@ class JobHash
     submit_date
 
     queue
-    subqueue
 
     job_stage
     job_health
@@ -658,6 +661,9 @@ class JobHash
     docker_image
 
     cluster
+    hostname
+    host_machine
+    target_machines
 
     last_success_stage
 
