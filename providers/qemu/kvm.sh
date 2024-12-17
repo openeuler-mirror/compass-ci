@@ -580,6 +580,6 @@ individual_option
 watch_oops &
 watch_pid=$!
 run_qemu
-kill $watch_pid 2>/dev/null
+kill -- -$(ps -o pgid= $watch_pid | grep -o '[0-9]*')
 write_dmesg_flag 'end'
 upload_dmesg
