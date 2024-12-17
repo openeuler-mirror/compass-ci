@@ -235,8 +235,10 @@ def main
 
   return nil unless parse_response(url, hostname_with_seq, ipxe_script_path, is_remote)
 
+  job_hash, host_file_path = prepare_qemu(hostname_with_seq, host_seq, mac, ipxe_script_path, is_remote)
+
   thr = Thread.new do
-    run_qemu(hostname_with_seq, host_seq, thr, mac, ipxe_script_path, is_remote)
+    run_qemu(thr, job_hash, host_file_path, hostname_with_seq, mac)
   end
 end
 
@@ -298,8 +300,8 @@ def custom_vm_info(hostname, ipxe_script_path)
   job_hash
 end
 
-def run_qemu(hostname, host_seq, thr, mac, ipxe_script_path, is_remote)
-  puts "run_qemu"
+def prepare_qemu(hostname, host_seq, mac, ipxe_script_path, is_remote)
+  LOGGER.info "prepare_qemu"
   load_path = "#{WORKSPACE}/#{hostname}"
   FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
 
@@ -326,6 +328,13 @@ def run_qemu(hostname, host_seq, thr, mac, ipxe_script_path, is_remote)
   record_spec_mem(job_hash, host_seq, 'vm')
 
   host_file_path = "#{ENV['LKP_SRC']}/hosts/vm-#{job_hash['cpu_minimum'].to_i.to_s}p#{job_hash['memory_minimum'].to_i.to_s}g"
+
+  return job_hash, host_file_path
+end
+
+def run_qemu(thr, job_hash, host_file_path, hostname, mac)
+  LOGGER.info "run_qemu"
+
   return unless File.exist? host_file_path
   #if hostname.match(/^(.*)-[0-9]+$/)
   #  tbox_group = Regexp.last_match(1)
@@ -367,8 +376,8 @@ rescue StandardError => e
   puts e.message
 ensure
   LOGGER.info "finished the qemu"
-  release_spec_mem(hostname, job_hash, 'vm')
   clean_test_source(hostname)
+  release_spec_mem(hostname, job_hash, 'vm')
   thr.exit
 end
 
