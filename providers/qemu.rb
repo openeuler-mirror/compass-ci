@@ -357,15 +357,10 @@ def run_qemu(thr, job_hash, host_file_path, hostname, mac)
   job_hash['mac'] = mac
   job_hash['hostname'] = hostname
 
-  pid = Process.spawn(job_hash, "#{ENV['CCI_SRC']}/providers/#{ENV['provider']}/#{ENV['template']}.sh", pgroup: true)
-  Process.wait(pid)
-  at_exit do
-    begin
-      Process.kill('TERM', -Process.getpgid(pid))
-    rescue e
-      LOGGER.info e
-    end
-  end
+  system(
+    job_hash,
+    "#{ENV['CCI_SRC']}/providers/#{ENV['provider']}/#{ENV['template']}.sh"
+  )
 
   puts "pwd: #{Dir.pwd}, hostname: #{hostname}, mac: #{mac}"
   puts "vm finish run, release lock: #{lockfile}, uuid: #{ENV['UUID']}"

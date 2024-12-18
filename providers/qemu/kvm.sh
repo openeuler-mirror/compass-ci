@@ -577,9 +577,9 @@ public_option
 add_disk
 individual_option
 
+set -m
 watch_oops &
-watch_pid=$!
 run_qemu
-kill -- -$(ps -o pgid= $watch_pid | grep -o '[0-9]*')
 write_dmesg_flag 'end'
 upload_dmesg
+kill %1
