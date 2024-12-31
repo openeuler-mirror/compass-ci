@@ -7,7 +7,7 @@ MAINTAINER Lu Weitao <luweitaobe@163.com>
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
-COPY ./crystal-ci /compass-ci-web
+COPY ./compass-ci-web /compass-ci-web
 WORKDIR /compass-ci-web
 
 RUN npm i --legacy-peer-deps --registry=https://mirrors.huaweicloud.com/repository/npm/&&\
