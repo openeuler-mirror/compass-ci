@@ -12,17 +12,17 @@ load_cci_defaults
 [[ $BASE_WEB_BACKEND_URL ]] || BASE_WEB_BACKEND_URL='https://api.compass-ci.openeuler.org/web_backend'
 [[ $OAUTH_REDIRECT_URL ]] || OAUTH_REDIRECT_URL='https://compass-ci.openeuler.org/oauth_authorize'
 
-if [ -d "./crystal-ci" ]; then
-	rm -rf ./crystal-ci
+if [ -d "./compass-ci-web" ]; then
+	rm -rf ./compass-ci-web
 fi
 
-git clone https://gitee.com/theprocess/crystal-ci
-sed -i "s#export const BASEURLRESULT = 'https://api.compass-ci.openeuler.org';#export const BASEURLRESULT = '$BASE_RESULT_URL';#g" ./crystal-ci/src/utils/baseUrl.js
-sed -i "s#const BASEURL = 'https://api.compass-ci.openeuler.org/web_backend';#export const BASEURL = '$BASE_WEB_BACKEND_URL';#g" ./crystal-ci/src/utils/axios.utils.js
-sed -i "s#client_id: \"CLIENT_ID_HERE\"#client_id: \"$OAUTH_CLIENT_ID\"#g" ./crystal-ci/src/views/user/login.vue
-sed -i "s#redirect_uri: \"REDIRECT_URI_HERE\"#redirect_uri: \"$OAUTH_REDIRECT_URL\"#g" ./crystal-ci/src/views/user/login.vue
+git clone https://gitee.com/openeuler/compass-ci-web
+sed -i "s#export const BASEURLRESULT = 'https://api.compass-ci.openeuler.org';#export const BASEURLRESULT = '$BASE_RESULT_URL';#g" ./compass-ci-web/src/utils/baseUrl.js
+sed -i "s#const BASEURL = 'https://api.compass-ci.openeuler.org/web_backend';#export const BASEURL = '$BASE_WEB_BACKEND_URL';#g" ./compass-ci-web/src/utils/axios.utils.js
+sed -i "s#client_id: \"CLIENT_ID_HERE\"#client_id: \"$OAUTH_CLIENT_ID\"#g" ./compass-ci-web/src/views/user/login.vue
+sed -i "s#redirect_uri: \"REDIRECT_URI_HERE\"#redirect_uri: \"$OAUTH_REDIRECT_URL\"#g" ./compass-ci-web/src/views/user/login.vue
 
 docker build --no-cache -t compass-ci-web .
 
-rm -rf ./crystal-ci
+rm -rf ./compass-ci-web
 
