@@ -75,7 +75,9 @@ class Sched
 
   def init_job(job_content)
     job_hash = job_content.as_h
-    fields = ["id", "plugins"]
+    fields = ["id", "plugins", "added_by", "errid", "stats",
+              "start_time", "end_time", "finish_time",
+              "job_health", "job_stage", "job_state"]
     fields.each do |field|
       job_hash.delete(field)
     end
