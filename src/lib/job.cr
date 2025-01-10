@@ -380,7 +380,6 @@ class JobHash
     branch
     job_origin
     workflow_exec_id
-    matrix
     custom_ipxe
     pr_merge_reference_name
 
@@ -447,6 +446,7 @@ class JobHash
     waited
     hw
     vt
+    matrix
   )
 
   # ss = software stack, with build time options
