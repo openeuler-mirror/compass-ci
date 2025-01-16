@@ -7,12 +7,9 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 RUN apk update --no-cache && \
     apk upgrade && \
-    apk add --no-cache git && \
-    apk add --no-cache coreutils util-linux ruby bash python3 python3-dev py3-pip
+    apk add --no-cache git coreutils util-linux ruby bash python3 python3-dev py3-pip py3-elasticsearch py3-requests py3-yaml
 
-RUN pip install --break-system-packages --upgrade pip -i https://mirrors.aliyun.com/pypi/simple && \
-    pip3 install --break-system-packages PyYAML requests elasticsearch -i https://mirrors.aliyun.com/pypi/simple && \
-    gem install rest-client
+RUN gem install rest-client
 
 RUN addgroup -S bisect && adduser -S bisect -G bisect
 
