@@ -18,19 +18,23 @@ fi
 
 # Define a string for bisect_task properties
 PROPERTIES="{
-        		\"id\": {\"type\": \"keyword\"},
-        		\"bad_job_id\": {\"type\": \"keyword\"},
-        		\"error_id\": {\"type\": \"keyword\"},
-			\"bisect_status\": {\"type\": \"keyword\"},
-        		\"repo\": {\"type\": \"keyword\"},
-        		\"bad_commit\": {\"type\": \"keyword\"},
-        		\"work_dir\": {\"type\": \"keyword\"},
-        		\"bisect_error\": {\"type\": \"keyword\"},
-        		\"all_errors\": {\"type\": \"keyword\"},
-        		\"upstream_url\": {\"type\": \"keyword\"},
-        		\"pkgbuild_repo\": {\"type\": \"keyword\"},
-        		\"first_bad_commit_result_root\": {\"type\": \"keyword\"}
-        }"
+			 \"id\": {\"type\": \"keyword\"},
+			 \"bad_job_id\": {\"type\": \"keyword\"},
+			 \"error_id\": {\"type\": \"keyword\"},
+			 \"bisect_status\": {\"type\": \"keyword\"},
+			 \"repo\": {\"type\": \"keyword\"},
+			 \"bad_commit\": {\"type\": \"keyword\"},
+			 \"work_dir\": {\"type\": \"keyword\"},
+			 \"bisect_error\": {\"type\": \"keyword\"},
+			 \"all_errors\": {\"type\": \"keyword\"},
+			 \"upstream_url\": {\"type\": \"keyword\"},
+			 \"pkgbuild_repo\": {\"type\": \"keyword\"},
+			 \"first_bad_commit_result_root\": {\"type\": \"keyword\"},
+			 \"start_time\": {\"type\": \"date\"},
+			 \"end_time\": {\"type\": \"date\"},
+			 \"all_job_id\": {\"type\": \"text\"},
+			 \"bisect_range\": {\"type\": \"text\"}
+}"
 
 INDEX_NAME="bisect_task"
 
@@ -64,7 +68,8 @@ else
 		  echo "create bisect_task index failed."
 	  else
 		  echo "set index.mapping.total_fields.limit: 10000"
-		  curl -sS -XPUT "${ES_HOST}":9200/${INDEX_NAME}/_settings -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -H 'Content-Type: application/json' \
-		       -d '{"index.mapping.total_fields.limit": 10000}'
+		  curl -sS -XPUT "${ES_HOST}":9200/${INDEX_NAME}/_settings \
+			   -u "${ES_SUPER_USER}:${ES_SUPER_PASSWORD}" -H 'Content-Type: application/json' \
+		           -d '{"index.mapping.total_fields.limit": 10000}'
 	fi
 fi
