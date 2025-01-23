@@ -19,6 +19,9 @@ import sys
 import uuid
 import time
 import threading
+import logging
+from flask import Flask, jsonify, request
+from flask.views import MethodView
 
 sys.path.append((os.environ['CCI_SRC'])+'/src/libpy/')
 from es_client import EsClient  
@@ -29,9 +32,46 @@ from py_bisect import GitBisect
 # Initialize client
 es_client = EsClient()
 
+app = Flask(__name__)
+
+logging.basicConfig(level=logging.INFO)
+
+
 class BisectTask:
     def __init__(self):
         self.bisect_task = None
+
+    def add_bisect_task(self, task):
+        """
+        Add a new bisect task to the Elasticsearch 'bisect_task' index.
+
+	Args:
+	task (dict): A dictionary containing task information. It must include the following fields:
+	    - bad_job_id: The associated bad job ID.
+	    - error_id: The associated error ID.
+
+        Returns:
+        bool: Whether the task was successfully added.
+        """
+	# Parameter validation
+        required_fields = ["bad_job_id", "error_id"]
+        for field in required_fields:
+            if field not in task:
+                raise ValueError(f"Missing required field: {field}")
+
+        # Check if the task already exists
+        if not self.check_existing_bisect_task(task["bad_job_id"], task["error_id"]):
+            try:
+                # If the task does not exist, add it to the 'bisect_task' index
+                es_client.update_by_id("bisect_task", task["id"], task)
+                logging.info(f"Added new task to bisect_index: {task}")
+                return True
+            except Exception as e:
+                logging.error(f"Failed to add task: {e}")
+                return False
+        else:
+            logging.info(f"Task already exists: bad_job_id={task['bad_job_id']}, error_id={task['error_id']}")
+            return False
 
     def bisect_producer(self):
         """
@@ -48,7 +88,7 @@ class BisectTask:
                     # Check if the task already exists in the bisect index
                     if not self.check_existing_bisect_task(task["bad_job_id"], task["error_id"]):
                         # If the task does not exist, add it to the bisect index
-                        es_client.update_by_id("bisect_index", task["id"], task)
+                        es_client.update_by_id("bisect_task", task["id"], task)
                         print(f"Added new task to bisect_index: {task}")
 
             except Exception as e:
@@ -366,9 +406,22 @@ class BisectTask:
  
         # Return the response (search results or None)
         return response
+ 
+class BisectAPI(MethodView):
+    def __init__(self):
+        self.bisect_api = BisectTask()
+    def post(self):
+        task = request.json
+        print(task)
+        if not task:
+            return jsonify({"error": "No data provided"}), 400
+        self.bisect_api.add_bisect_task(task)
+        return jsonify({"message": "Task added successfully"}), 200
 
 def main():
     try:
+        app.add_url_rule('/new_bisect_task', view_func=BisectAPI.as_view('bisect_api'))
+        app.run(host='0.0.0.0', port=9999)
         run = BisectTask()
         bisect_producer_thread = threading.Thread(target=run.bisect_producer)
         bisect_producer_thread.start()
