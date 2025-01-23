@@ -13,11 +13,15 @@ RUN gem install rest-client
 
 RUN addgroup -S bisect && adduser -S bisect -G bisect
 
-ENV RUNTIME_DIR /home/bisect
+ENV WORK_DIR /home/bisect
+ENV RUNTIME_DIR /c/cci/
 
-RUN mkdir /c && \
-    chown -R bisect:bisect /c
+RUN mkdir $RUNTIME_DIR && \
+    chown -R bisect:bisect $RUNTIME_DIR
 
-WORKDIR $RUNTIME_DIR
+WORKDIR $WORK_DIR
 
-COPY --chown=bisect:bisect bisect-task.py $RUNTIME_DIR
+COPY --chown=bisect:bisect bisect-task.py $WORK_DIR
+COPY --chown=bisect:bisect compass-ci $RUNTIME_DIR/compass-ci
+COPY --chown=bisect:bisect lkp_tests $RUNTIME_DIR/lkp_tests
+

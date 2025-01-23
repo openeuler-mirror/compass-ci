@@ -35,8 +35,6 @@ cmd = %w[
 ] + env + %W[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
-  -v #{ENV['LKP_SRC']}:#{DEFAULT_LKP}
-  -v #{ENV['CCI_SRC']}:#{DEFAULT_CCI}
   -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
   -v #{DEFAULT_USER_CONFIG_DIR}:#{DEFAULT_BISECT_CONFIG_DIR}:ro
   -v /etc/localtime:/etc/localtime:ro
