@@ -1,18 +1,18 @@
 ../sbin/scheduler:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/scheduler scheduler.cr
+	crystal build -o ../sbin/scheduler scheduler.cr
 ../sbin/lifecycle:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/lifecycle lifecycle.cr
+	crystal build -o ../sbin/lifecycle lifecycle.cr
 ../sbin/watch-jobs:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/watch-jobs watch-jobs.cr
+	crystal build -o ../sbin/watch-jobs watch-jobs.cr
 ../sbin/monitoring:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/monitoring monitoring.cr
+	crystal build -o ../sbin/monitoring monitoring.cr
 ../sbin/extract-stats:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/extract-stats extract-stats.cr
+	crystal build -o ../sbin/extract-stats extract-stats.cr
 ../sbin/delimiter:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/delimiter delimiter.cr
+	crystal build -o ../sbin/delimiter delimiter.cr
 ../sbin/updaterepo:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/updaterepo updaterepo.cr
+	crystal build -o ../sbin/updaterepo updaterepo.cr
 ../sbin/serial-logging:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/serial-logging serial-logging.cr
+	crystal build -o ../sbin/serial-logging serial-logging.cr
 ../sbin/post-extract:
-	CRYSTAL_PATH="lib:." crystal build -o ../sbin/post-extract post-extract.cr
+	crystal build -o ../sbin/post-extract post-extract.cr

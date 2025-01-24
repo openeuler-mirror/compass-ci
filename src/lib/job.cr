@@ -11,10 +11,10 @@ require "base64"
 class JobHash
 end
 
-require "scheduler/constants.cr"
-require "scheduler/jobfile_operate.cr"
-require "scheduler/kernel_params.cr"
-require "scheduler/pp_params.cr"
+require "../scheduler/constants.cr"
+require "../scheduler/jobfile_operate.cr"
+require "../scheduler/kernel_params.cr"
+require "../scheduler/pp_params.cr"
 require "../scheduler/elasticsearch_client"
 require "./utils"
 require "./unit"
