@@ -35,6 +35,5 @@ dependencies:
     branch: master
   amqp-client:
     github: cloudamqp/amqp-client.cr
-    version: 1.0.0
   shellwords:
     github: szTheory/shellwords-crystal
