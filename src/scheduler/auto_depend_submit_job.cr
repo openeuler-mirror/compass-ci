@@ -4,9 +4,6 @@ require "../lib/job_quota"
 
 class Sched
 
-  LAB_ID = ENV["LAB_ID"]        # at most 3-digit int, or null
-  WORKER_ID = ENV["WORKER_ID"]  # at most 1-digit int, or null
-
   def submit_job
     #jq = JobQuota.new
     #jq.total_jobs_quota
@@ -102,7 +99,7 @@ class Sched
   # 1<<63
   # =>  9223372036854775808
   def Sched.get_job_id
-    Time.local.to_s("#{LAB_ID}#{WORKER_ID}%y%m%d%H%M%S%3N")
+    Time.local.to_s("#{@@options.lab_id}%y%m%d%H%M%S%3N")
   end
 
   def set_commit_date(job)

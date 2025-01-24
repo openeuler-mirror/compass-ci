@@ -14,14 +14,14 @@ class RedisClient
   HOST = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
   PORT = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
   IS_CLUSTER = (ENV.has_key?("IS_CLUSTER") ? ENV["IS_CLUSTER"] : false)
-  PASSWD = ENV["REDIS_PASSWD"]
   @@size = 25
 
   def self.instance
     Singleton::Of(self).instance
   end
 
-  def initialize(host = HOST, port = PORT, passwd = PASSWD)
+  def initialize(host = HOST, port = PORT)
+    passwd = ENV["REDIS_PASSWD"]
     if IS_CLUSTER
       @client = Redis::Cluster.new(URI.parse("redis://:#{passwd}@#{host}:#{port}"))
     else

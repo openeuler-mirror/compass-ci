@@ -52,6 +52,7 @@ struct SchedOptions
   property has_es : Bool = true
   property has_manticore : Bool = false
 
+  property lab_id : String = "" # at most 3-digit int, or null
   property sched_port : Int32 = 3000
 
   def initialize
@@ -60,6 +61,7 @@ struct SchedOptions
   # call in the end, after SchedOptions.from_yaml()
   def load_env
     sched_port = ENV["sched_port"].to_i32 if ENV["sched_port"]?
+    lab_id = ENV["lab_id"] if ENV["lab_id"]?
   end
 
 end
