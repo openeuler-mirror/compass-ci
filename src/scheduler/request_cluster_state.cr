@@ -105,7 +105,7 @@ class Sched
     while check_cluster_state_nums < 3600*8/10
       cluster_state = sync_cluster_state(cluster_id, job_id, state)
       break if (cluster_state == state || cluster_state == "abort")
-      sleep(10)
+      sleep(10.seconds)
       check_cluster_state_nums += 1
     end
 

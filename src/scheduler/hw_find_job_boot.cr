@@ -66,7 +66,7 @@ class Sched
       etcd_job = GetJob.new.get_job_by_tbox_type(host_machine, "hw")
       @log.info("GetJob.new.get_job_by_tbox_type #{host_machine}, hw, return: #{etcd_job}")
       break if etcd_job
-      sleep 10
+      sleep 10.seconds
     end
 
     return etcd_job["id"]? if etcd_job
