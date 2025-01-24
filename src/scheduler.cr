@@ -12,7 +12,6 @@ require "./lib/init_ready_queues"
 
 require "kemal"
 require "option_parser"
-require "yaml" # For parsing the config file
 
 module Scheduler
 
