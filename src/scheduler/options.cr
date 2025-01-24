@@ -23,14 +23,21 @@ struct SchedOptions
   property redis_passwd : String = ""
   property redis_is_cluster : Bool = false
 
+  property etcd_host : String = ETCD_HOST
+  property etcd_port : Int32 = ETCD_PORT
+  property etcd_version : String = ETCD_VERSION
+
   STRING_OPTIONS = %w(
       lab_id
       redis_host
       redis_passwd
+      etcd_host
+      etcd_passwd
   )
   NUMBER_OPTIONS = %w(
       sched_port
       redis_port
+      etcd_port
   )
   BOOL_OPTIONS = %w(
       redis_is_cluster

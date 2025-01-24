@@ -7,10 +7,9 @@ require "./constants"
 
 class EtcdClient
   def initialize
-    host = (ENV.has_key?("ETCD_HOST") ? ENV["ETCD_HOST"] : ETCD_HOST)
-    port = (ENV.has_key?("ETCD_PORT") ? ENV["ETCD_PORT"].to_i32 : ETCD_PORT)
-    version = (ENV.has_key?("ETCD_VERSION") ? ENV["ETCD_VERSION"] : ETCD_VERSION)
-    user = ENV["ETCD_USER"]?
+    host = Sched.options.etcd_host
+    port = Sched.options.etcd_port
+    version = Sched.options.etcd_version
     @etcd = Etcd.client(host, port, version)
     #unless user.nil? || user.empty?
     #  password = ENV["ETCD_PASSWORD"]
