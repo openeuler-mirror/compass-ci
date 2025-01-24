@@ -101,7 +101,7 @@ class Queue
 
   def timing_refresh_from_etcd
     while true
-      sleep(60)
+      sleep(60.seconds)
       @queues.each_key do |k|
         update_one_queue(k)
       rescue e

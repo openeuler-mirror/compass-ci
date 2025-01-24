@@ -17,7 +17,7 @@ module Monitoring
     start_time = Time.local
     spawn do
       loop do
-        sleep 60
+        sleep 60.seconds
         break if socket.closed?
         if Time.local - start_time > timeout_seconds
           socket.close unless socket.closed?

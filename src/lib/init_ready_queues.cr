@@ -455,7 +455,7 @@ class InitReadyQueues
   def loop_init
     loop do
       init
-      sleep 10
+      sleep 10.seconds
       GC.collect
     end
   end

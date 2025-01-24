@@ -48,7 +48,7 @@ class Common
     while true
       result = Process.run("mkdir", args: ["#{lockfile}"])
       if result.exit_code != 0
-        sleep 3
+        sleep 3.seconds
       else
         break
       end

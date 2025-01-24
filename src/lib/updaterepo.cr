@@ -53,7 +53,7 @@ class Repo
       break
     rescue e
       res = @mq.reconnect
-      sleep 5
+      sleep 5.seconds
     end
   end
 

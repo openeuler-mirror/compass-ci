@@ -69,7 +69,7 @@ class MessageQueueClient
         "message" => e.inspect_with_backtrace,
         "data" => "#{exchange_name}, #{queue_name}"
       }.to_json)
-      sleep 5
+      sleep 5.seconds
     end
   end
 end

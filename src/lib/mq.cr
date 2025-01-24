@@ -60,7 +60,7 @@ class MQClient
         return
       else
         @log.info("publish confirm failed: #{e}")
-        sleep 10 * i * i
+        sleep (10 * i * i).seconds
         reconnect
       end
     end

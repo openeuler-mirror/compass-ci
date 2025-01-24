@@ -23,7 +23,7 @@ module PostExtract
       return revision if tasks.empty?
 
       self.handle_history_tasks(tasks, channel)
-      sleep(10)
+      sleep(10.seconds)
     end
   end
 

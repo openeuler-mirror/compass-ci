@@ -73,7 +73,7 @@ class Subqueue
 
   def timing_refresh_from_es
     while true
-      sleep(1800)
+      sleep(1800.seconds)
       init_from_es
     end
   end

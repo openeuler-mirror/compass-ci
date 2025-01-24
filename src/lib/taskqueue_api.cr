@@ -10,7 +10,7 @@ def loop_till_connectable
       return yield
     rescue ex
       puts "#{ex}, retrying in 5s..."
-      sleep(5)
+      sleep(5.seconds)
     end
   end
 end

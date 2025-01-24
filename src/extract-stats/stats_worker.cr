@@ -39,7 +39,7 @@ class StatsWorker
       # channel.send(queue_path)
       @log.error(e.message)
       # incase of many error message when ETCD, ES does not work
-      sleep(10)
+      sleep(10.seconds)
     ensure
       delete_id2job(job_id) if job_id
       @etcd.close

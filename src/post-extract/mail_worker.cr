@@ -29,7 +29,7 @@ class MailWorker
       channel.send(queue_path)
       @log.error(e.message)
       # incase of many error message when ETCD, ES does not work
-      sleep(10)
+      sleep(10.seconds)
     ensure
       @etcd.close
     end

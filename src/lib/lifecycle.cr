@@ -81,7 +81,7 @@ class Lifecycle
     loop do
       init_from_es
       @log.info("init from es loop")
-      sleep 300
+      sleep 300.seconds
     end
   end
 
@@ -316,7 +316,7 @@ class Lifecycle
         next
       end
 
-      sleep 30
+      sleep 30.seconds
     rescue e
       @log.warn({
         "resource" => "timeout_job_loop",
@@ -335,7 +335,7 @@ class Lifecycle
         next
       end
 
-      sleep 30
+      sleep 30.seconds
     rescue e
       @log.warn({
         "resource" => "timeout_machine_loop",

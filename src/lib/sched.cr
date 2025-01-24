@@ -338,7 +338,7 @@ class Sched
       break
     rescue e
       @mq.reconnect
-      sleep 5
+      sleep 5.seconds
     end
   end
 end
