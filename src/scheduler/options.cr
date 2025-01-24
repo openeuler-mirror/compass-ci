@@ -18,14 +18,54 @@ struct SchedOptions
   property lab_id : String = "" # at most 3-digit int, or null
   property sched_port : Int32 = 3000
 
+  property redis_host : String = JOB_REDIS_HOST
+  property redis_port : Int32 = JOB_REDIS_PORT
+  property redis_passwd : String = ""
+  property redis_is_cluster : Bool = false
+
+  STRING_OPTIONS = %w(
+      lab_id
+      redis_host
+      redis_passwd
+  )
+  NUMBER_OPTIONS = %w(
+      sched_port
+      redis_port
+  )
+  BOOL_OPTIONS = %w(
+      redis_is_cluster
+  )
+
   def initialize
   end
 
   # call in the end, after SchedOptions.from_yaml()
   def load_env
-    sched_port = ENV["sched_port"].to_i32 if ENV["sched_port"]?
-    lab_id = ENV["lab_id"] if ENV["lab_id"]?
+
+  {% for name in STRING_OPTIONS %}
+    {{name.id}} = ENV[{{name.stringify}}] if ENV.has_key?({{name.stringify}})
+  {% end %}
+
+  {% for name in NUMBER_OPTIONS %}
+    {{name.id}} = ENV[{{name.stringify}}].to_i32 if ENV.has_key?({{name.stringify}})
+  {% end %}
+
+  {% for name in BOOL_OPTIONS %}
+    {{name.id}} = to_bool({{name.stringify}}) if ENV.has_key?({{name.stringify}})
+  {% end %}
+
   end
 
+end
+
+def to_bool(str : String) : Bool
+  case str.downcase
+  when "true", "yes", "1"
+    true
+  when "false", "no", "0"
+    false
+  else
+    raise ArgumentError.new("Cannot convert '#{str}' to a boolean")
+  end
 end
 
