@@ -2,13 +2,15 @@ name: scheduler
 version: 0.1.0
 
 authors:
+  - Wu Fengguang <wfg@mail.ustc.edu.cn>
+  - Cao Xueliang <caoxl78320@163.com>
   - tongqunfeng <taxcom@tom.com>
 
 targets:
   scheduler:
-    main: scheduler.cr
+    main: src/scheduler.cr
 
-crystal: 1.8.2
+crystal: '>= 1.14.0'
 
 license: Mulan PSL v2
 
