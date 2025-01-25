@@ -29,19 +29,31 @@ require "../lib/json_logger"
 #
 # -------------------------------------------------------------------------------------------
 class Elasticsearch::Client
-  class_property :client
-  HOST = (ENV.has_key?("ES_HOST") ? ENV["ES_HOST"] : JOB_ES_HOST)
-  PORT = (ENV.has_key?("ES_PORT") ? ENV["ES_PORT"] : JOB_ES_PORT).to_i32
 
-  def initialize(host = HOST, port = PORT, auth = true)
-    if auth
-      user = ENV["ES_USER"]?
-      password = ENV["ES_PASSWORD"]?
-      host = "#{user}:#{URI.encode_www_form(password)}@#{host}" if user && password
+  @host : String
+  @port : Int32
+
+  def initialize
+    initialize(Sched.options.es_host, Sched.options.es_port)
+  end
+
+  def initialize(host : String, port : Int32)
+    user = Sched.options.es_user
+    password = Sched.options.es_password
+    host = "#{user}:#{URI.encode_www_form(password)}@#{host}" unless user.empty?() && password.empty?()
+
+    @host = host
+    @port = port
+    settings = {
+      :host => host,
+      :port => port
+    }
+    if Sched.options.has_manticore
+      settings[:manticore_host] = Sched.options.manticore_host
+      settings[:manticore_port] = Sched.options.manticore_port
     end
-    @host = host.as(String)
-    @port = port.to_s.as(String)
-    @client = Elasticsearch::API::Client.new({:host => host, :port => port})
+
+    @client = Elasticsearch::API::Client.new(settings)
     @log = JSONLogger.new
   end
 

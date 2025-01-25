@@ -27,17 +27,31 @@ struct SchedOptions
   property etcd_port : Int32 = ETCD_PORT
   property etcd_version : String = ETCD_VERSION
 
+  property es_host : String = JOB_ES_HOST
+  property es_port : Int32 = JOB_ES_PORT
+  property es_user : String = ""
+  property es_password : String = ""
+
+  property manticore_host : String = JOB_MANTICORE_HOST
+  property manticore_port : Int32 = JOB_MANTICORE_PORT
+
   STRING_OPTIONS = %w(
       lab_id
       redis_host
       redis_passwd
       etcd_host
       etcd_passwd
+      es_host
+      es_user
+      es_password
+      manticore_host
   )
   NUMBER_OPTIONS = %w(
       sched_port
       redis_port
       etcd_port
+      es_port
+      manticore_port
   )
   BOOL_OPTIONS = %w(
       redis_is_cluster

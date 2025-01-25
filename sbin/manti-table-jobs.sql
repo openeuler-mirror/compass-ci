@@ -1,4 +1,6 @@
 
+# curl -sX POST http://localhost:9308/cli -d "$(<manti-table-jobs.sql)"
+
 # https://manticoresearch.com/blog/basics-of-manticore-indexes/
 # https://manual.manticoresearch.com/Updating_table_schema_and_settings
 # /c/manticoresearch/manual/Creating_a_table/NLP_and_tokenization/Low-level_tokenization.md
