@@ -269,8 +269,7 @@ class Elasticsearch::Client
     return add(documents_path, yaml, id)
   end
 
-  def perform_bulk_request(path, body)
-    endpoint = "http://#{@host}:#{@port}/#{path}"
+  def perform_bulk_request(endpoint, path, body)
     headers = HTTP::Headers{ "Content-Type" => "application/x-ndjson"}
     response = HTTP::Client.post(endpoint, body: body, headers: headers)
     result = response.as(HTTP::Client::Response)
@@ -281,7 +280,16 @@ class Elasticsearch::Client
     method = "POST"
     body = bulkify(body)
     path = Elasticsearch::API::Utils.__pathify Elasticsearch::API::Utils.__escape(index), Elasticsearch::API::Utils.__escape(type), "_bulk"
-    perform_bulk_request(path, body)
+
+    if Sched.options.has_manticore
+      endpoint = "http://#{Sched.options.manticore_host}:#{Sched.options.manticore_port}/#{path}"
+      perform_bulk_request(endpoint, path, body)
+    end
+
+    if Sched.options.has_es
+      endpoint = "http://#{@host}:#{@port}/#{path}"
+      perform_bulk_request(endpoint, path, body)
+    end
   end
 
   # Convert an array of body into Elasticsearch format
@@ -318,4 +326,68 @@ class Elasticsearch::Client
     tmp << ""
     tmp.join("\n")
   end
+end
+
+class Elasticsearch::API::Common::Client
+  # copy and modify /c/compass-ci/lib/elasticsearch-crystal/src/elasticsearch/api/namespace/common.cr
+  def perform_request(method, path, params={} of String => String, body={} of String => String | Nil)
+
+    # normalize params to string
+    new_params = {} of String => String
+    params.each do |k,v|
+      if !!v == v
+        new_params[k.to_s] = ""
+      else
+        new_params[k.to_s] = v.to_s
+      end
+    end
+
+    final_params = HTTP::Params.encode(new_params)
+
+    if !body.nil?
+      post_data = body.to_json
+    else
+      post_data = nil
+    end
+
+    if @settings.has_key? :manticore_host
+      host_port = "#{@settings[:manticore_host]}:#{@settings[:manticore_port]}"
+      response = perform_one(host_port, path, final_params, method, post_data)
+    end
+
+    host_port = "#{@settings[:host]}:#{@settings[:port]}"
+    response = perform_one(host_port, path, final_params, method, post_data)
+
+    result = response.as(HTTP::Client::Response)
+
+    if result.headers["Content-Type"].includes?("application/json") && method != "HEAD"
+      final_response = JsonResponse.new result.status_code, JSON.parse(result.body), result.headers
+    else
+      final_response = Response.new result.status_code, result.body.as(String), result.headers
+    end
+
+    final_response
+
+  end
+
+  def perform_one(host_port, path, final_params, method, post_data)
+    if method == "GET"
+      endpoint = "http://#{host_port}/#{path}?#{final_params}"
+      response = HTTP::Client.get(endpoint, body: post_data, headers: HTTP::Headers{"Content-Type" => "application/json"})
+    elsif method == "POST"
+      endpoint = "http://#{host_port}/#{path}"
+      response = HTTP::Client.post(url: endpoint, body: post_data)
+    elsif method == "PUT"
+      endpoint = "http://#{host_port}/#{path}"
+      response = HTTP::Client.put(url: endpoint, body: post_data)
+    elsif method == "DELETE"
+      endpoint = "http://#{host_port}/#{path}?#{final_params}"
+      response = HTTP::Client.delete(url: endpoint)
+    elsif method == "HEAD"
+      endpoint = "http://#{host_port}/#{path}"
+      response = HTTP::Client.head(url: endpoint)
+    end
+    return response
+  end
+
 end
