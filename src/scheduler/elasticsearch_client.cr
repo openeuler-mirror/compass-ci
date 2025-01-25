@@ -85,9 +85,9 @@ class Elasticsearch::Client
     job.set_time
 
     if is_create
-      response = create(job.to_json_any, job.id)
+      response = create_job(job.to_json_any, job.id)
     else
-      response = update(job.to_json_any, job.id)
+      response = update_job(job.to_json_any, job.id)
     end
 
     @log.info("set job content, account: #{job.my_account}")
@@ -231,7 +231,7 @@ class Elasticsearch::Client
     )
   end
 
-  private def create(job_content : JSON::Any, job_id : String)
+  private def create_job(job_content : JSON::Any, job_id : String)
     return @client.create(
       {
         :index => "jobs", :type => "_doc",
@@ -242,7 +242,7 @@ class Elasticsearch::Client
     )
   end
 
-  private def update(job_content : JSON::Any, job_id : String)
+  private def update_job(job_content : JSON::Any, job_id : String)
     return @client.update(
       {
         :index => "jobs", :type => "_doc",
