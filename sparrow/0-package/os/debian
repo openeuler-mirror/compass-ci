@@ -6,30 +6,34 @@ export DEBIAN_FRONTEND=noninteractive
 
 pkgs=(
 	vim
-	lvm2
+	git
 	gcc
 	g++
 	make
-	docker.io
 	ruby-full
+	ruby-rubygems
+	rubygems-integration
 	ruby-dev
-	dmidecode
-	lockfile-progs
 	bridge-utils
+	qemu-system
+	lvm2
+	docker.io
+	dmidecode
+	redis-server
+	wget
 	busybox
 	iproute2
 	hostname
-	wget
+	libvirt-daemon-system
 	curl
-	qemu-system-aarch64
-	qemu-system-x86
-	qemu-system-riscv64
 	sudo
 	iputils-ping
-	libvirt-daemon-system
+	libxml2-dev
+	libxslt1-dev
 	libvirt-dev
-	ncat
+	nmap
 	expect
+	lockfile-progs
 )
 
 apt-get update
