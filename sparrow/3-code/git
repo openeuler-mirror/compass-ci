@@ -10,8 +10,8 @@ initialize_repo()
 	local repo="$1"
 
 	[ -d "/c/$repo/.git" ] || {
-		git clone https://gitee.com/wu_fengguang/"$repo".git /c/"$repo" || \
-			 git clone http://gitee.com/wu_fengguang/"$repo".git /c/"$repo"
+		git clone https://gitee.com/compass-ci/"$repo".git /c/"$repo" ||
+		git clone http://gitee.com/compass-ci/"$repo".git /c/"$repo"
 		chmod -R +r /c/"$repo"
 	}
 
