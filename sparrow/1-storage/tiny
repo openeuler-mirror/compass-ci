@@ -43,7 +43,7 @@ dirs=(
 	/srv/dsl
 	/srv/kernel
 	/srv/tmp/rpm
-	/sr/rpm
+	/srv/rpm
 	/srv/cci/build-config
 	/srv/cci/profile/data
 	/srv/cci/scheduler/alpine
