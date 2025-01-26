@@ -32,6 +32,7 @@ class Elasticsearch::Client
 
   @host : String
   @port : Int32
+  @settings : Hash(Symbol, String | Int32)
 
   def initialize
     initialize(Sched.options.es_host, Sched.options.es_port)
@@ -52,6 +53,7 @@ class Elasticsearch::Client
       settings[:manticore_host] = Sched.options.manticore_host
       settings[:manticore_port] = Sched.options.manticore_port
     end
+    @settings = settings
 
     @client = Elasticsearch::API::Client.new(settings)
     @log = JSONLogger.new
@@ -269,6 +271,18 @@ class Elasticsearch::Client
     return add(documents_path, yaml, id)
   end
 
+  def sql(sql_cmd : String)
+    if Sched.options.has_manticore
+      host_port = "#{@settings[:manticore_host]}:#{@settings[:manticore_port]}"
+      response = perform_one_request(host_port, "_sql", nil, "POST", sql_cmd)
+    end
+
+    # `path` refers to lib/es_client.rb opendistro_sql()
+    # can verify with "cci select" command
+    host_port = "#{@settings[:host]}:#{@settings[:port]}"
+    response = perform_one_request(host_port, "_nlpcn/sql", nil, "POST", sql_cmd)
+  end
+
   def perform_bulk_request(endpoint, path, body)
     headers = HTTP::Headers{ "Content-Type" => "application/x-ndjson"}
     response = HTTP::Client.post(endpoint, body: body, headers: headers)
@@ -352,11 +366,11 @@ class Elasticsearch::API::Common::Client
 
     if @settings.has_key? :manticore_host
       host_port = "#{@settings[:manticore_host]}:#{@settings[:manticore_port]}"
-      response = perform_one(host_port, path, final_params, method, post_data)
+      response = perform_one_request(host_port, path, final_params, method, post_data)
     end
 
     host_port = "#{@settings[:host]}:#{@settings[:port]}"
-    response = perform_one(host_port, path, final_params, method, post_data)
+    response = perform_one_request(host_port, path, final_params, method, post_data)
 
     result = response.as(HTTP::Client::Response)
 
@@ -370,7 +384,7 @@ class Elasticsearch::API::Common::Client
 
   end
 
-  def perform_one(host_port, path, final_params, method, post_data)
+  def perform_one_request(host_port, path, final_params, method, post_data)
     if method == "GET"
       endpoint = "http://#{host_port}/#{path}?#{final_params}"
       response = HTTP::Client.get(endpoint, body: post_data, headers: HTTP::Headers{"Content-Type" => "application/json"})
