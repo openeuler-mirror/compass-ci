@@ -1,0 +1,29 @@
+#!/usr/bin/ruby
+# frozen_string_literal: true
+
+# This script queries Manticore Search to verify the migrated data.
+# It fetches one record from the `jobs` table and prints it.
+
+require 'json'
+require 'net/http'
+
+MANTICORE_HOST = 'localhost'
+MANTICORE_PORT = 9308
+
+# Query Manticore for one record
+uri = URI.parse("http://#{MANTICORE_HOST}:#{MANTICORE_PORT}/search")
+http = Net::HTTP.new(uri.host, uri.port)
+request = Net::HTTP::Post.new(uri.path)
+request['Content-Type'] = 'application/json'
+
+payload = {
+  index: 'jobs',
+  query: { match_all: {} },
+  limit: 1
+}
+
+request.body = payload.to_json
+response = http.request(request)
+
+puts "Verification record:"
+puts JSON.pretty_generate(JSON.parse(response.body))

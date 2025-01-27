@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 CURL="curl -sX POST http://localhost:9308/sql -d"
 
 for sql in manti-table-*.sql
 do
 	$CURL "mode=raw&query=$(tr -d '\n' <$sql)"
+	# docker exec  manticore mysql < $sql
 done
 
 echo
