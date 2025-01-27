@@ -164,7 +164,8 @@ begin
   if options[:sql]
     filtered_sql = filter_sql_fields(options[:sql])
     response = execute_sql(filtered_sql)
-    puts JSON.pretty_generate(JSON.parse(response.body))
+    hash = JSON.parse(response.body.gsub(/"j.([^" ]+)":/, '"\1":'))
+    puts JSON.pretty_generate(hash)
     exit
   end
 
