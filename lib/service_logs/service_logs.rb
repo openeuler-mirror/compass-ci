@@ -36,7 +36,7 @@ class Serviceslogs
   end
 
   def load_task2person
-    @task2people = YAML.load_file("#{CCI_SRC}/src/lib/service_logs/task2person.yaml")
+    @task2people = YAML.load_file("#{CCI_SRC}/lib/service_logs/task2person.yaml")
   rescue StandardError => e
     e.message
   end

@@ -20,11 +20,11 @@ require "#{CCI_SRC}/lib/params_group.rb"
 require "#{CCI_SRC}/lib/compare_data_format.rb"
 require "#{CCI_SRC}/lib/assign_account_client.rb"
 require "#{CCI_SRC}/lib/build_account_info.rb"
-require_relative './job_error.rb'
-require_relative './constants.rb'
-require_relative './api_input_check.rb'
-require_relative '../../lib/json_logger.rb'
-require_relative './jwt.rb'
+require_relative './json_logger.rb'
+require_relative './web_backend/job_error.rb'
+require_relative './web_backend/constants.rb'
+require_relative './web_backend/api_input_check.rb'
+require_relative './web_backend/jwt.rb'
 
 UPSTREAM_REPOS_PATH = ENV['UPSTREAM_REPOS_PATH'] || '/c/upstream-repos'
 

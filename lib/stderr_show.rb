@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 # frozen_string_literal: true
 
-require_relative '../src/lib/web_backend.rb'
+require_relative './web_backend.rb'
 require 'terminal-table'
 require 'json'
 

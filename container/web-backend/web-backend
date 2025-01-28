@@ -5,8 +5,8 @@
 
 require 'sinatra'
 
-require_relative '../../src/lib/web_backend.rb'
-require_relative '../../src/lib/service_logs/service_logs.rb'
+require_relative '../../lib/web_backend.rb'
+require_relative '../../lib/service_logs/service_logs.rb'
 
 set :bind, '0.0.0.0'
 set :port, 10002
