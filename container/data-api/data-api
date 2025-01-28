@@ -6,7 +6,8 @@
 require 'sinatra'
 
 CCI_SRC = ENV['CCI_SRC'] || '/c/compass-ci'
-require "#{CCI_SRC}/src/lib/data_api.rb"
+require "#{CCI_SRC}/lib/data_api.rb"
+require "#{CCI_SRC}/lib/json_logger.rb"
 
 set :bind, '0.0.0.0'
 set :port, 10005
@@ -58,4 +59,31 @@ end
 post '/data_api/_opendistro/_sql' do
   request.body.rewind # in case someone already read it
   es_opendistro_sql(request.body.read)
+end
+
+def check_xss(params)
+  raise 'please input valid params' if params.match? /[^\w\"\'\+\{\}\[\]\.\_\,\ \:\/\-\;\%\=\<\>]/
+end
+
+def es_search(index, params)
+  begin
+    check_xss(params)
+    result = EsDataApi.search(index, params)
+  rescue StandardError => e
+    error_msg = { 'error_msg' => e.message }
+    log_error(error_msg)
+    return [200, headers.merge('Access-Control-Allow-Origin' => '*'), error_msg.to_json]
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
+end
+
+def es_opendistro_sql(params)
+  begin
+    result = EsDataApi.opendistro_sql(params)
+  rescue StandardError => e
+    error_msg = { 'error_msg' => e.message }
+    log_error(error_msg)
+    return [200, headers.merge('Access-Control-Allow-Origin' => '*'), error_msg.to_json]
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
 end
