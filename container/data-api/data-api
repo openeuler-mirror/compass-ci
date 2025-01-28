@@ -61,6 +61,11 @@ post '/data_api/_opendistro/_sql' do
   es_opendistro_sql(request.body.read)
 end
 
+post '/data_api/manticore/select' do
+  request.body.rewind # in case someone already read it
+  manticore_select(request.body.read)
+end
+
 def check_xss(params)
   raise 'please input valid params' if params.match? /[^\w\"\'\+\{\}\[\]\.\_\,\ \:\/\-\;\%\=\<\>]/
 end
@@ -80,6 +85,17 @@ end
 def es_opendistro_sql(params)
   begin
     result = EsDataApi.opendistro_sql(params)
+  rescue StandardError => e
+    error_msg = { 'error_msg' => e.message }
+    log_error(error_msg)
+    return [200, headers.merge('Access-Control-Allow-Origin' => '*'), error_msg.to_json]
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
+end
+
+def manticore_select(params)
+  begin
+    result = EsDataApi.manticore_select(params)
   rescue StandardError => e
     error_msg = { 'error_msg' => e.message }
     log_error(error_msg)

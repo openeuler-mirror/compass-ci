@@ -7,6 +7,7 @@ require 'json'
 require 'set'
 require "#{CCI_SRC}/lib/constants.rb"
 require "#{CCI_SRC}/lib/es_client.rb"
+require "#{CCI_SRC}/lib/manticore.rb"
 
 # this module is for es api
 # - search
@@ -97,7 +98,7 @@ module EsDataApi
     return query_sql
   end
 
-  def self.opendistro_sql(params)
+  def self.params_to_sql(params)
     request_body = JSON.parse(params)
     query_field = request_body['query_field']
     query_index = request_body['query_index']
@@ -105,8 +106,20 @@ module EsDataApi
     query_sql = join_query_sql(query_index, query_field)
     query_sql = credentials_for_sql(query_sql, request_body)
     query_sql += " #{query_condition}" unless query_condition.nil?
+    query_index, query_sql
+  end
+
+  def self.opendistro_sql(params)
+    query_index, query_sql = params_to_sql(params)
     es = ESClient.new(index: query_index)
     return es.opendistro_sql(query_sql).body
+  end
+
+  def self.manticore_select(params)
+    query_index, query_sql = params_to_sql(params)
+    filtered_sql = Manticore.filter_sql_fields(query_sql)
+    response = Manticore::Client.execute_select(filtered_sql)
+    return response.body
   end
 
   def self.verify_user(my_account, my_token)
