@@ -1,135 +1,10 @@
 #!/usr/bin/ruby
 # frozen_string_literal: true
 
-require 'json'
-require 'net/http'
 require 'optparse'
-require 'time'
+require_relative '../lib/manticore.rb'
 
-MANTICORE_HOST = ENV['MANTICORE_HOST'] || 'localhost'
-MANTICORE_PORT = ENV['MANTICORE_PORT'] || 9308
-DEFAULT_INDEX = 'jobs'
-
-# Field lists
-ES_PROPERTIES = %w[
-  tbox_type build_type max_duration spec_file_name memory_minimum use_remote_tbox
-  suite category queue all_params_md5 pp_params_md5 testbox tbox_group hostname
-  host_machine target_machines group_id os osv os_arch os_version depend_job_id
-  pr_merge_reference_name nr_run my_email my_account user job_stage job_health
-  last_success_stage tags os_project package build_id os_variant start_time end_time
-].freeze
-
-class ManticoreQuery
-  def initialize(index: DEFAULT_INDEX, size: 10)
-    @index = index
-    @size = size
-    @full_text_terms = {}
-    @equals_clauses = []
-    @ranges = {}
-    @sort = {}
-  end
-
-  # Add filter to the query
-  def add_filter(field, values)
-    if ES_PROPERTIES.include?(field)
-      @full_text_terms[:full_text_kv] ||= []
-      @full_text_terms[:full_text_kv] += values.map { |v| "#{field}=#{v}" }
-    elsif field == 'errid'
-      @full_text_terms[:errid] ||= []
-      @full_text_terms[:errid] += values.map { |v| "#{v}" }
-    else
-      @equals_clauses += values.map do |v|
-        # Convert v to a number if it is a numeric string
-        v = v.match?(/^\d+$/) ? v.to_i : v
-        { equals: { field => v } }
-      end
-    end
-  end
-
-  def add_range(field, gte: nil, lte: nil)
-    @ranges[field] = { gte: gte, lte: lte }.compact
-  end
-
-  def sort(field, order: 'desc')
-    @sort[field] = order
-  end
-
-  def build
-    query = { index: @index, limit: @size }
-    bool = { must: [] }
-
-    # Add full text search
-    if !@full_text_terms.empty?
-      bool[:must] << { match: @full_text_terms }
-    end
-
-    # Add equals clauses
-    bool[:must] += @equals_clauses unless @equals_clauses.empty?
-
-    # Add ranges
-    @ranges.each do |field, range|
-      bool[:must] << { range: { field => range } }
-    end
-
-    query[:query] = { bool: bool } unless bool[:must].empty?
-
-    # Add sorting
-    query[:sort] = [@sort] unless @sort.empty?
-
-    query
-  end
-end
-
-# Time range handling functions
-def parse_range(ranges)
-  range_hash = {}
-  ranges.each do |keyword|
-    key, value = keyword.split('=')
-    if key =~ /^(\+)?([0-9]+d)$/
-      value = "now-#{$2}"
-      value = ",#{value}" if $1 == "+"
-      key = "time"
-    elsif value =~ /^\+([0-9]+d)$/
-      value = ",now-#{$1}"
-    elsif value =~ /^([0-9]+d)$/
-      value = "now-#{$1}"
-    end
-
-    check_range_args(key, value)
-    range_hash[key] = assign_range(value)
-  end
-  range_hash
-end
-
-def check_range_args(key, value)
-  return if key && value
-  warn "ERROR: Invalid range format. Use: field=start,end or field=3d"
-  exit 1
-end
-
-def parse_time(time_spec)
-  return Time.now.to_i - (time_spec.to_i * 86400) if time_spec.match?(/^\d+d$/)
-  Time.parse(time_spec).to_i
-rescue ArgumentError
-  nil
-end
-
-def assign_range(value)
-  from, to = value.split(',')
-  range = {}
-  range[:gte] = parse_time(from) if from && !from.empty?
-  range[:lte] = parse_time(to) if to && !to.empty?
-  range
-end
-
-
-# Filter SQL fields: prefix ES_PROPERTIES fields with "j."
-def filter_sql_fields(sql)
-  sql.gsub(/\b(#{ES_PROPERTIES.join('|')})\b/, 'j.\1').gsub(/j\.j\./, 'j.')
-end
-
-# CLI setup
-options = { index: DEFAULT_INDEX, size: 10 }
+options = { index: Manticore::DEFAULT_INDEX, size: 10 }
 opt_parser = OptionParser.new do |opts|
   opts.banner = <<~HELP
     Usage: manti-find [options] key1=val1,val2...
@@ -141,63 +16,61 @@ opt_parser = OptionParser.new do |opts|
       manti-find -t 9d -t +3d  # will expand to -t time=now-9d -t time=,now-3d
   HELP
 
-  opts.on('-i', '--index INDEX', "Index name (default: #{DEFAULT_INDEX})") { |i| options[:index] = i }
+  opts.on('-i', '--index INDEX', "Index name (default: #{Manticore::DEFAULT_INDEX})") { |i| options[:index] = i }
   opts.on('-n', '--size NUM', Integer, "Results limit (default: 10)") { |n| options[:size] = n }
   opts.on('-t', '--time RANGE', "Time range filter") { |t| (options[:ranges] ||= []) << t }
   opts.on('-d', '--desc KEY', "Sort key (default: submit_time)") { |d| options[:sort] = d }
-  opts.on('-s', '--sql CMD', "Raw SQL command") { |s| options[:sql] = s }
+  opts.on('-S', '--sql CMD', "Raw SQL command") { |s| options[:sql] = s }
+  opts.on('-s', '--select CMD', "SQL SELECT command") { |s| options[:select] = s }
   opts.on('--mapping', "Show index mapping") { options[:mapping] = true }
   opts.on('-h', '--help', "Show help") { puts opts; exit }
 end
 
-def execute_sql(sql)
-  uri = URI("http://#{MANTICORE_HOST}:#{MANTICORE_PORT}/sql")
-  request = Net::HTTP::Post.new(uri)
-  request.body = "mode=raw&query=#{URI.encode_www_form_component(sql)}"
-  Net::HTTP.start(uri.hostname, uri.port) { |http| http.request(request) }
-end
-
-# Main execution
 begin
   remaining_args = opt_parser.parse!
 
   if options[:sql]
-    filtered_sql = filter_sql_fields(options[:sql])
-    response = execute_sql(filtered_sql)
-    hash = JSON.parse(response.body.gsub(/"j.([^" ]+)":/, '"\1":'))
-    puts JSON.pretty_generate(hash)
+    filtered_sql = Manticore.filter_sql_fields(options[:sql])
+    body = Manticore.filter_sql_result(Manticore::Client.execute_sql(filtered_sql).body)
+    puts JSON.pretty_generate(JSON.parse(body))
+    exit
+  end
+
+  if options[:select]
+    filtered_sql = Manticore.filter_sql_fields(options[:select])
+    body = Manticore::Client.execute_select(filtered_sql).body
+    puts JSON.pretty_generate(JSON.parse(body))
     exit
   end
 
   if options[:mapping]
-    response = execute_sql("DESC #{options[:index]}")
-    puts JSON.pretty_generate(JSON.parse(response.body))
+    body = Manticore::Client.execute_sql("DESC #{options[:index]}").body
+    puts JSON.pretty_generate(JSON.parse(body))
     exit
   end
 
-  query = ManticoreQuery.new(index: options[:index], size: options[:size])
-  kv_args = remaining_args.each_with_object({}) do |arg, acc|
+  query_builder = Manticore::QueryBuilder.new(index: options[:index], size: options[:size])
+
+  # Parse key-value arguments
+  remaining_args.each do |arg|
     next unless arg.include?('=')
-    key, values = arg.split('=', 2)
-    acc[key] = values.split(',')
+    field, values = arg.split('=', 2)
+    query_builder.add_filter(field, values.split(','))
   end
 
-  # Add filters
-  kv_args.each { |field, values| query.add_filter(field, values) }
-
-  # Add ranges
+  # Add time ranges
   if options[:ranges]
-    parse_range(options[:ranges]).each do |field, range|
-      query.add_range(field, **range.transform_values { |v| v.is_a?(Time) ? v.to_i : v })
+    Manticore::TimeParser.parse_range(options[:ranges]).each do |field, range|
+      query_builder.add_range(field, **range)
     end
   end
 
   # Add sorting
-  query.sort(options[:sort] || 'submit_time', order: 'desc')
+  sort_field = options[:sort] || 'submit_time'
+  query_builder.sort(sort_field, order: 'desc')
 
-  # Execute query
-  uri = URI("http://#{MANTICORE_HOST}:#{MANTICORE_PORT}/search")
-  response = Net::HTTP.post(uri, query.build.to_json, 'Content-Type' => 'application/json')
+  # Execute search
+  response = Manticore::Client.search(query_builder.build)
   puts JSON.pretty_generate(JSON.parse(response.body))
 
 rescue => e
