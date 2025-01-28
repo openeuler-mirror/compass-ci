@@ -910,6 +910,7 @@ class Job < JobHash
     return unless self.max_run?
 
     query = {
+      "index" => "jobs",
       "size" => 1,
       "query" => {
         "term" => {

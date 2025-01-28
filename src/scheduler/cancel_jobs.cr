@@ -15,6 +15,7 @@ class Sched
     query = content["query"]?
     raise "Missing required key: 'job_ids' or 'query''" unless (job_ids || query)
 
+    job_ids = job_ids.as_a.map(&.as_i64) if job_ids
     results = cancel(query, job_ids, account_info["my_account"].to_s)
 
     { "results" => results }
@@ -57,29 +58,28 @@ class Sched
   end
 
   def get_jobs(query, jobs_ids)
-    jobs = Hash(String, JobHash).new
+    jobs = Hash(Int64, JobHash).new
     return jobs if jobs_ids
     return jobs unless query
 
     query = query.as_h
-    _source = ["my_account", "queue", "subqueue", "job_stage"]
-    query_jobs = @es.search_by_fields("jobs", query, size=10000, source=_source)
+    query_jobs = @es.search("jobs", query, size=10000)
     query_jobs.each do |query|
-      jobs[query["_id"].as_s] = JobHash.new query["_source"].as_h
+      jobs[query["_id"].as_i64] = JobHash.new query["_source"].as_h
     end
 
     jobs
   end
 
   def get_job_ids(jobs, job_ids)
-    return job_ids.as_a if job_ids
+    return job_ids if job_ids
 
     jobs.keys
   end
 
   def cancel(query, job_ids, my_account)
     results = Array(Hash(String, String)).new
-    update_jobs = Array(Hash(String, Hash(String, Hash(String, String) | String))).new
+    update_jobs = Array(Hash(String, Hash(String, Int64 | JSON::Any | String))).new
 
     jobs = get_jobs(query, job_ids)
     job_ids = get_job_ids(jobs, job_ids)
@@ -92,8 +92,9 @@ class Sched
       next unless result["result"] == "success"
       next unless job
 
+      job["job_health"] = "cancel"
       delete_job_from_submit_queue(job_id)
-      update_jobs << { "update" => { "_id" => job_id.to_s, "data" => { "job_health" => "cancel"}}}
+      update_jobs << { "update" => { "index" => "jobs", "id" => job_id, "doc" => job.to_json_any}}
     rescue e
       @log.warn({
         "job_id" => job_id,
@@ -108,7 +109,7 @@ class Sched
         "message" => e.to_s
       }
     end
-    spawn @es.bulk(update_jobs, index="jobs")
+    spawn @es.bulk(update_jobs.to_json)
     results
   end
 

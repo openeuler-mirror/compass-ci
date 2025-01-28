@@ -28,8 +28,9 @@ class Sched
       next unless srpm_info["srpm"]?
 
       id = "#{srpm_info["os"]}--#{srpm_info["srpm"]}"
-      payload << { type => {"_id" => id, "data" => srpm_info }}
+      payload << { type => {"_index" => "srpm-info", "_id" => id, "doc" => srpm_info }}
     end
-    @es.bulk(payload, "srpm-info")
+    # XXX: string id not supported by manticore, may use "update by query", or Manticore.hash_string_to_i64()
+    @es.bulk(payload.to_json, false)
   end
 end

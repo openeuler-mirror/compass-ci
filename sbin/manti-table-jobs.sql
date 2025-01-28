@@ -11,6 +11,6 @@ CREATE TABLE jobs(
 
 	j		json,
 	errid		text,
-	full_text_kv	text indexed
+	full_text_kv	text
 
 ) engine='columnar' charset_table='U+0021..U+007E'
