@@ -51,11 +51,12 @@ MANTICORE_PORT = 9308
 DIRECT_FIELDS = %w[id submit_time boot_time running_time finish_time].freeze
 DURATION_FIELDS = %w[boot_seconds run_seconds].freeze
 ES_PROPERTIES = %w[
-  tbox_type build_type max_duration spec_file_name memory_minimum use_remote_tbox
+  tbox_type build_type spec_file_name
   suite category queue all_params_md5 pp_params_md5 testbox tbox_group hostname
-  host_machine target_machines group_id os osv os_arch os_version depend_job_id
-  pr_merge_reference_name nr_run my_email my_account user job_stage job_health
-  last_success_stage tags os_project package build_id os_variant start_time end_time
+  host_machine group_id os osv os_arch os_version
+  pr_merge_reference_name my_account job_stage job_health
+  last_success_stage os_project package build_id os_variant
+  target_machines
 ].freeze
 
 # Connect to Elasticsearch
@@ -90,6 +91,7 @@ def duration_to_seconds(duration)
   return nil unless duration
 
   parts = duration.split(':').map(&:to_i)
+  return parts[0] if parts.size == 1
   parts[0] * 3600 + parts[1] * 60 + parts[2]
 rescue StandardError
   nil

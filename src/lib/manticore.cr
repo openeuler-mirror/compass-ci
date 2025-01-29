@@ -6,11 +6,12 @@ module Manticore
   PORT = (ENV["MANTICORE_PORT"]? || 9308).to_i
 
   ES_PROPERTIES = %w[
-    tbox_type build_type max_duration spec_file_name memory_minimum use_remote_tbox
+    tbox_type build_type spec_file_name
     suite category queue all_params_md5 pp_params_md5 testbox tbox_group hostname
-    host_machine target_machines group_id os osv os_arch os_version depend_job_id
-    pr_merge_reference_name nr_run my_email my_account user job_stage job_health
-    last_success_stage tags os_project package build_id os_variant start_time end_time
+    host_machine group_id os osv os_arch os_version
+    pr_merge_reference_name my_account job_stage job_health
+    last_success_stage os_project package build_id os_variant
+    target_machines
   ]
 
   def self.filter_sql_fields(sql : String) : String
@@ -20,6 +21,19 @@ module Manticore
 
   def self.filter_sql_result(body : String) : String
     body.gsub(/"j\.([^" ]+)":/) { "\"#{$1}\":" }
+  end
+
+  def self.job_from_manticore(job_content : Hash(String, JSON::Any))
+    job_content.merge! job_content.delete("j").not_nil!.as_h if job_content.has_key? "j"
+    job_content
+  end
+
+  def self.jobs_from_manticore(hits : Array(JSON::Any))
+    hits.each do |hit|
+      job_content = hit.as_h["_source"].as_h
+      job_from_manticore(job_content)
+    end
+    hits
   end
 
   # for converting elasticsearch string id to manticore id
@@ -126,7 +140,7 @@ module Manticore
       result
     end
 
-    def self.create(index : String, id : Int64, doc : JSON::Any | Hash(String, String)) : JSON::Any
+    def self.create(index : String, id : Int64, doc : JSON::Any | Hash) : JSON::Any
       client = HTTP::Client.new(HOST, PORT)
       headers = HTTP::Headers{"Content-Type" => "application/json"}
       body = {

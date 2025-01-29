@@ -107,7 +107,7 @@ class Elasticsearch::Client
     @log = JSONLogger.new
   end
 
-  private def write_to_manticore(index : String, id : String, content : JSON::Any | Hash(String, String), is_create : Bool)
+  private def write_to_manticore(index : String, id : String, content : Hash(String, JSON::Any) | Hash(String, String), is_create : Bool)
     return unless Sched.options.has_manticore
 
     begin
@@ -146,9 +146,9 @@ class Elasticsearch::Client
   # caller should judge response["_id"] != nil
   def set_job(job : Job, is_create = false)
     job.set_time
-    content = job.to_json_any
 
     es_response = if Sched.options.has_es
+                    content = job.to_json_any
                     if is_create
                       create_job(content, job.id)
                     else
@@ -158,6 +158,7 @@ class Elasticsearch::Client
                     JSON::Any.new({} of String => JSON::Any)
                   end
 
+    content = job.to_manticore
     write_to_manticore("jobs", job.id, content, is_create)
     @log.info("set job content, account: #{job.my_account}")
     es_response
@@ -168,12 +169,14 @@ class Elasticsearch::Client
 
     if Sched.options.has_es
       response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
-      return response if response.is_a?(JSON::Any)
+      return response.as_h if response.is_a?(JSON::Any)
     end
 
     if Sched.options.has_manticore && !Sched.options.has_es
       begin
-        return Manticore::Client.get_source("jobs", job_id.to_i64)
+        response = Manticore::Client.get_source("jobs", job_id.to_i64)
+        return nil if !response.is_a?(JSON::Any)
+        response = Manticore.job_from_manticore(response.as_h)
       rescue
         return nil
       end
@@ -265,7 +268,7 @@ class Elasticsearch::Client
         end
         response = Manticore::Client.search(query)
         results = JSON.parse(response.body)
-        return results["hits"]["hits"].as_a
+        return Manticore.jobs_from_manticore(results["hits"]["hits"].as_a)
       rescue e
         @log.error("Manticore search failed: #{e.message}")
         return Array(JSON::Any).new
@@ -308,7 +311,7 @@ class Elasticsearch::Client
         }
         response = Manticore::Client.search(real_query)
         results = JSON.parse(response.body)
-        return results["hits"]["hits"].as_a
+        return Manticore.jobs_from_manticore(results["hits"]["hits"].as_a)
       rescue e
         @log.error("Manticore search_by_fields failed: #{e.message}")
         return Array(JSON::Any).new

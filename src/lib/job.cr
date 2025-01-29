@@ -601,161 +601,96 @@ class JobHash
     @hash_plain[key] = value
   end
 
-  # subset of PLAIN_KEYS
-  MANTI_STRING_ATTRS = %w(
-    suite
-    category
-
-    os
-    os_version
-    os_arch
-
-    osv
-    os_mount
-    rootfs
-
-    lab
-    host_tbox
-    tbox_group
-    testbox
-
-    pp_params_md5
-    all_params_md5
-
-    submit_date
-
-    queue
-
-    job_stage
-    job_health
-
-    my_account
-    my_name
-  )
-
-  MANTI_INTEGER_ATTRS = %w(
-    id
-    submit_id
-    boot_seconds
-    run_seconds
-  )
-
-  # subset of PLAIN_KEYS
-  MANTI_TIMESTAMP_ATTRS = %w(
-    submit_time
-    boot_time
-    finish_time
-    time
-  )
-
-  # dynamic keys to merge into the json attribute
-  MANTI_JSON_KEYS = %w(
-    group_id
-
-    monitor
-    monitors
-
-    kernel_version
-    kernel_params
-
-    docker_image
-
-    cluster
-    hostname
-    host_machine
+  # Field lists
+  MANTI_DIRECT_FIELDS = %w[id submit_time boot_time running_time finish_time]
+  MANTI_DURATION_FIELDS = %w[boot_seconds run_seconds]
+  MANTI_FULLTEXT_FIELDS = %w[
+    tbox_type build_type spec_file_name
+    suite category queue all_params_md5 pp_params_md5 testbox tbox_group hostname
+    host_machine group_id os osv os_arch os_version
+    pr_merge_reference_name my_account job_stage job_health
+    last_success_stage os_project package build_id os_variant
+  ]
+  MANTI_FULLTEXT_ARRAY_FIELDS = %w[
     target_machines
+  ]
 
-    last_success_stage
-
-    error_ids
-
-    running_time
-    post_run_time
-    manual_check_time
-    renew_time
-  )
-
-  # these keys will be merged into the full-text-search only attribute
-  # Avoid costly words that differ in every job!
-  MANTI_FULL_TEXT_KEYS = %w(
-  )
-
-  # All Job keys will be classified and stored in either one of:
-  # - MANTI_STRING_ATTRS:     1:1 to fixed attributes, type string
-  # - MANTI_INTEGER_ATTRS:    1:1 to fixed attributes, type integer(xxx_seconds) or big integer(submit_id)
-  # - MANTI_TIMESTAMP_ATTRS:  1:1 to fixed attributes, type timestamp
-  # - MANTI_JSON_KEYS:        merge into fixed attribute, name 'jj', type json
-  # - pp/ss/hw:               standalone json fields
-  # - errid/stats:            standalone indexed/stored string fields
-  # - mutable variables:      merge into in mutable_vars
-  # - all other keys:         merge into fixed attribute, name 'other_data', type string, not indexed
-  #
-  # Also collect searchable values into attribute name 'full_text_words', type text, not stored
-  # - MANTI_FULL_TEXT_KEYS
+  # Transform Elasticsearch job to Manticore format
   def to_manticore
-    mjob = Str2AnyHash.new
-    xjob = JobHash.new(self)
+    mjob = {} of String => JSON::Any
 
-    MANTI_STRING_ATTRS.each do |k|
-      assert_key_in(k, PLAIN_SET)
-      next unless xjob.hash_plain.has_key? k
+    MANTI_DIRECT_FIELDS.each do |field|
+      next unless self.has_key?(field)
 
-      mjob[k] = JSON::Any.new(xjob.hash_plain.delete k)
-    end
-
-    MANTI_INTEGER_ATTRS.each do |k|
-      assert_key_in(k, PLAIN_SET)
-      next unless xjob.hash_plain.has_key? k
-
-      v = xjob.hash_plain.delete k
-      next unless v
-
-      case k
-      when "id"
-        mjob[k] = JSON::Any.new(v.split(".").last.to_i64)
-      when "submit_id"
-        mjob[k] = JSON::Any.new(v.to_i64)
+      if field.ends_with?("_time")
+        mjob[field] = JSON::Any.new time_to_unix(self[field])
       else
-        mjob[k] = JSON::Any.new(v.to_i)
+        mjob[field] = JSON::Any.new self[field].to_i64
       end
     end
 
-    MANTI_TIMESTAMP_ATTRS.each do |k|
-      assert_key_in(k, PLAIN_SET)
-      next unless xjob.hash_plain.has_key? k
+    MANTI_DURATION_FIELDS.each do |field|
+      next unless self.has_key?(field)
 
-      v = xjob.hash_plain.delete k
-      next unless v
-
-      # convert old format like "submit_time": "2024-04-27T20:14:59+0800",
-      v = Time.parse(v, "%Y-%m-%dT%H:%M:%S%z", Time.local.location).to_unix_ms if v.includes? "-"
-      mjob[k] = JSON::Any.new(v.to_i64)
+      mjob[field] = JSON::Any.new duration_to_seconds(self[field])
     end
 
-    mjob["errid"] = xjob.hash_array.delete("errid").as(Array).join(" ") if xjob.errid?
+    # errid as space-separated string
+    if self.has_key? "errid"
+      mjob["errid"] = JSON::Any.new @hash_array["errid"].join(" ")
+    end
 
-    # the below all deals with JSON::Any
-    hash_all = xjob.merge2hash_all
+    # Process nested fields (pp, ss)
+    full_text_kv = [] of String
+    full_text_kv += hh_to_kv_array("pp") if @hash_hhh.has_key? "pp"
+    full_text_kv += hh_to_kv_array("ss") if @hash_hhh.has_key? "ss"
 
-    jj = Str2AnyHash.new
-    {% for name in MANTI_JSON_KEYS %}
-      if v = hash_all.delete {{name}}
-        jj[{{name}}] = v
-      end
-    {% end %}
-    mjob["jj"] = JSON::Any.new jj.as(Hash)
+    # Remaining fields
+    MANTI_FULLTEXT_FIELDS.each do |field|
+      next if MANTI_DIRECT_FIELDS.includes?(field) || MANTI_DURATION_FIELDS.includes?(field)
+      next unless self.has_key?(field)
 
-    {% for name in %w[hw pp ss] %}
-      if v = hash_all.delete {{name}}
-        mjob[{{name}}] = v
-      end
-    {% end %}
+      value = self[field]
+      full_text_kv << "#{field}=#{value}"
+    end
 
-    mjob["stats"] = hash_all.delete("stats").to_json if xjob.stats?
+    MANTI_FULLTEXT_ARRAY_FIELDS.each do |field|
+      next unless @hash_array.has_key?(field)
 
-    mjob["other_data"] = hash_all.to_json   # convert to a string
+      value = @hash_array[field]
+      full_text_kv += value.map {|v| "#{field}=#{v}"}
+    end
+
+    mjob["full_text_kv"] = JSON::Any.new full_text_kv.join(" ")
+    mjob["j"] = self.to_json_any
 
     mjob
+  end
+
+  def time_to_unix(time : String) : Int64
+    Time.parse(time, "%Y-%m-%dT%H:%M:%S", Time.local.location).to_unix
+  end
+
+  def duration_to_seconds(duration : String) : Int64
+    parts = duration.split(':').map { |part| part.to_i64 }
+    if parts.size == 1
+      parts[0]
+    else
+      parts[0] * 3600 + parts[1] * 60 + parts[2]
+    end
+  end
+
+  def hh_to_kv_array(field)
+    hash = @hash_hhh[field]
+    return [] of String unless hash.is_a?(Hash)
+
+    hash.flat_map do |k1, inner|
+      next [] of String unless inner.is_a?(Hash)
+
+      inner.map do |k2, v|
+        "#{field}.#{k1}.#{k2}=#{v}"
+      end
+    end
   end
 
 end

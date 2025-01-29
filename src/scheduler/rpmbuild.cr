@@ -10,7 +10,7 @@ class Sched
     job = @es.get_job(body["rpmbuild_job_id"].to_s)
     return unless job
 
-    job_info = get_job_info(job)
+    job_info : Hash(String, String | JSON::Any) = get_job_info(job)
     job_info.any_merge!(body)
 
     spawn Jobfile::Operate.auto_submit_job("install-rpm.yaml", job_info)
