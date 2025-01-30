@@ -1,11 +1,24 @@
 #!ipxe
 
-:retry_boot
+echo Booting with the following settings:
+echo MAC Address: ${mac}
+echo IP Address: ${net0/ip}
+echo Gateway: ${net0/gateway}
+# You should either configure DHCP server to give out hostname to ipxe client, 
+# or better, register full host info to the lab's hosts/ dir, like https://gitee.com/compass-ci/lab-z9
+echo Hostname: ${hostname}
+echo Platform: ${platform}
+echo Product: ${product}
+echo Chip: ${chip}
+echo Manufacturer: ${manufacturer}
+echo Architecture: ${buildarch}
 
 set scheduler 172.17.0.1
 set port 3000
 
-chain http://${scheduler}:${port}/boot.ipxe/mac/${mac:hexhyp} || goto failed
+:retry_boot
+
+chain http://${scheduler}:${port}/boot.ipxe/mac/${mac:hexhyp}?arch=${buildarch}&hostname=${hostname}&ip=${net0/ip} || goto failed
 
 :failed
 echo get job failed...
