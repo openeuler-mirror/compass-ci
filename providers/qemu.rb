@@ -16,9 +16,12 @@ require_relative 'lib/common'
 require_relative '../lib/mq_client'
 require_relative '../container/defconfig'
 
-os_arch = %x(arch).chomp
+HOST_MACHINE = ENV["HOSTNAME"]
+ARCH = get_arch
+
 hostname = ENV.fetch('hostname', 'vm-1p1g-1')
-queues = ENV.fetch('queues', "vm-1p1g.#{os_arch}")
+queues = ENV.fetch('queues', "vm-1p1g.#{ARCH}")
+is_remote = ENV["is_remote"] == 'true' ? true : false
 
 names = Set.new %w[
   SCHED_HOST
@@ -41,19 +44,18 @@ LOG_FILE = '/srv/cci/serial/logs/' + hostname
 LOGGER = Logger.new(LOG_FILE)
 
 def get_url(hostname, left_mem, mac)
-  if ENV['is_remote'] == 'true'
-    "ws://#{DOMAIN_NAME}/ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=true"
+  common = "ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=#{is_remote}&host_machine=${HOST_MACHINE}&arch=#{ARCH}"
+  if is_remote
+    "ws://#{DOMAIN_NAME}/#{common}"
   else
-    "ws://#{SCHED_HOST}:#{SCHED_PORT}/ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=false"
+    "ws://#{SCHED_HOST}:#{SCHED_PORT}/#{common}"
   end
 end
 
 def register_host2redis(mem_total)
   hostname = ENV.fetch('hostname')
-  is_remote = ENV.fetch('is_remote').to_s
-  arch = get_arch
 
-  if is_remote == 'true'
+  if is_remote
     config = load_my_config
     owner = config['ACCOUNT']
     jwt = load_jwt?
@@ -78,11 +80,10 @@ def register_host2redis(mem_total)
   end
 end
 
-def del_host2queues(hostname, is_remote)
+def del_host2queues(hostname)
   hostname = ENV.fetch('hostname')
-  is_remote = ENV.fetch('is_remote').to_s
 
-  if is_remote == 'true'
+  if is_remote
     jwt = load_jwt?
     config = load_my_config
     api_client = RemoteClient.new()
@@ -107,10 +108,9 @@ end
 
 def heart_beat
   hostname = ENV.fetch('hostname')
-  is_remote = ENV.fetch('is_remote').to_s
 
   jwt = nil
-  if is_remote == 'true'
+  if is_remote
     jwt = load_jwt?
     url = "https://#{DOMAIN_NAME}/api/heart-beat?hostname=#{hostname}&type=vm&is_remote=#{is_remote}"
   else
@@ -127,7 +127,7 @@ def heart_beat
   end
 end
 
-def parse_response(url, hostname, ipxe_script_path, is_remote)
+def parse_response(url, hostname, ipxe_script_path)
   puts "multi-qemu in running..."
 
   index = ENV.fetch('index', nil)
@@ -136,7 +136,7 @@ def parse_response(url, hostname, ipxe_script_path, is_remote)
   LOGGER.info "Ws boot start"
 
   begin
-    response = ws_boot(url, hostname, index, ipxe_script_path, is_remote)
+    response = ws_boot(url, hostname, index, ipxe_script_path)
 
     ipxe_script_content = File.read(ipxe_script_path)
 
@@ -207,7 +207,6 @@ end
 
 def main
   hostname = ENV['hostname']
-  is_remote = ENV['is_remote']
 
   free_mem = get_free_memory
   return nil if free_mem < 4
@@ -233,9 +232,9 @@ def main
 
   url = get_url(hostname_with_seq, left_mem, mac)
 
-  return nil unless parse_response(url, hostname_with_seq, ipxe_script_path, is_remote)
+  return nil unless parse_response(url, hostname_with_seq, ipxe_script_path)
 
-  job_hash, host_file_path = prepare_qemu(hostname_with_seq, host_seq, mac, ipxe_script_path, is_remote)
+  job_hash, host_file_path = prepare_qemu(hostname_with_seq, host_seq, mac, ipxe_script_path)
 
   thr = Thread.new do
     run_qemu(thr, job_hash, host_file_path, hostname_with_seq, mac)
@@ -300,7 +299,7 @@ def custom_vm_info(hostname, ipxe_script_path)
   job_hash
 end
 
-def prepare_qemu(hostname, host_seq, mac, ipxe_script_path, is_remote)
+def prepare_qemu(hostname, host_seq, mac, ipxe_script_path)
   LOGGER.info "prepare_qemu"
   load_path = "#{WORKSPACE}/#{hostname}"
   FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
@@ -365,7 +364,7 @@ def run_qemu(thr, job_hash, host_file_path, hostname, mac)
   puts "pwd: #{Dir.pwd}, hostname: #{hostname}, mac: #{mac}"
   puts "vm finish run, release lock: #{lockfile}, uuid: #{ENV['UUID']}"
 
-  upload_dmesg(job_hash, is_remote) if job_hash['id']
+  upload_dmesg(job_hash) if job_hash['id']
 rescue StandardError => e
   puts e
   puts e.message
@@ -376,10 +375,10 @@ ensure
   thr.exit
 end
 
-def upload_dmesg(hash, is_remote)
+def upload_dmesg(hash)
   log_file = "/srv/cci/serial/logs/#{hash['hostname']}"
 
-  if is_remote == 'true'
+  if is_remote
     upload_url = "#{hash["RESULT_WEBDAV_HOST"]}:#{hash["RESULT_WEBDAV_PORT"]}#{hash["result_root"]}/dmesg"
   else
     upload_url = "http://#{hash["RESULT_WEBDAV_HOST"]}:#{hash["RESULT_WEBDAV_PORT"]}#{hash["result_root"]}/dmesg"
@@ -390,7 +389,6 @@ end
 
 def loop_heart_beat(heart_thr, safe_stop_file)
   hostname = ENV.fetch('hostname')
-  is_remote = ENV.fetch('is_remote').to_s
 
   loop do
     begin

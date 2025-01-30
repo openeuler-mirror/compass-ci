@@ -38,23 +38,25 @@ MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || defaults['MQ_HOST'] || 'localho
 MQ_PORT = ENV['MQ_PORT'] || defaults['MQ_PORT'] || 5672
 DOMAIN_NAME = defaults['DOMAIN_NAME']
 
+HOST_MACHINE = ENV["HOSTNAME"]
+ARCH = get_arch
 
 def get_url(hostname, left_mem, is_remote)
+  common = "ws/boot.container?hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=dc&is_remote=#{is_remote}&host_machine=${HOST_MACHINE}&arch=#{ARCH}"
   if is_remote == 'true'
-    "wss://#{DOMAIN_NAME}/ws/boot.container?hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=dc&is_remote=#{is_remote}"
+    "wss://#{DOMAIN_NAME}/#{common}"
   else
-    "ws://#{SCHED_HOST}:#{SCHED_PORT}/ws/boot.container?hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=dc&is_remote=#{is_remote}"
+    "ws://#{SCHED_HOST}:#{SCHED_PORT}/#{common}"
   end
 end
 
 def register_host2redis(hostname, mem_total, is_remote)
-  arch = get_arch
   if is_remote == 'true'
     config = load_my_config
     owner = config['ACCOUNT']
     jwt = load_jwt?
     api_client = RemoteClient.new()
-    url = "https://#{DOMAIN_NAME}/api/register-host2redis?hostname=#{hostname}&type=dc&owner=#{owner}&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{arch}"
+    url = "https://#{DOMAIN_NAME}/api/register-host2redis?hostname=#{hostname}&type=dc&owner=#{owner}&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{ARCH}"
     response = api_client.register_host2redis(url, jwt)
     return if response.nil? || response.empty?
     response = JSON.parse(response)
@@ -69,7 +71,7 @@ def register_host2redis(hostname, mem_total, is_remote)
     check_return_code(response)
     puts JSON.pretty_generate(response)
   else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/register-host2redis?hostname=#{hostname}&type=dc&owner=local&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{arch}'"
+    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/register-host2redis?hostname=#{hostname}&type=dc&owner=local&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{ARCH}'"
     system cmd
   end
 end
