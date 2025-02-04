@@ -4,12 +4,18 @@
 class Sched
   def find_next_job_boot
     hostname = @env.params.query["hostname"]?
+    arch = @env.params.query["arch"]?
     mac = @env.params.query["mac"]?
     if !hostname && mac
-      hostname = @redis.hash_get("sched/mac2host", normalize_mac(mac))
+      hostname = @hosts_cache.mac2hostname(mac)
+      hostname ||= @redis.hash_get("sched/mac2host", Utils.normalize_mac(mac))
     end
     if !hostname
       raise "cannot find hostname"
+    end
+    arch ||= @hosts_cache[hostname].arch
+    if !arch
+      raise "cannot find arch"
     end
 
     pre_job_id = @env.params.query["pre_job_id"]?
@@ -17,7 +23,7 @@ class Sched
 
     @env.set "testbox", hostname
 
-    response = hw_get_job_boot(hostname, "ipxe", pre_job)
+    response = hw_get_job_boot(hostname, arch, "ipxe", "", pre_job)
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
 
     @env.set "job_id", job_id

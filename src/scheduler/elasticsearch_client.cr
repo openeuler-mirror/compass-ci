@@ -107,15 +107,14 @@ class Elasticsearch::Client
     @log = JSONLogger.new
   end
 
-  private def write_to_manticore(index : String, id : String, content : Hash(String, JSON::Any) | Hash(String, String), is_create : Bool)
+  private def write_to_manticore(index : String, id : Int64, content : Hash(String, JSON::Any) | Hash(String, String), is_create : Bool)
     return unless Sched.options.has_manticore
 
     begin
-      manticore_id = id.to_i64
       if is_create
-        Manticore::Client.create(index, manticore_id, content)
+        Manticore::Client.create(index, id, content)
       else
-        Manticore::Client.update(index, manticore_id, content)
+        Manticore::Client.update(index, id, content)
       end
     rescue e
       @log.error("Manticore write failed: #{e.message}")
@@ -139,28 +138,53 @@ class Elasticsearch::Client
                     })
                   end
 
-    write_to_manticore(index, id, content, !Sched.options.has_es)
+    write_to_manticore(index, id.to_i64, content, !Sched.options.has_es)
     es_response
   end
 
   # caller should judge response["_id"] != nil
   def set_job(job : Job, is_create = false)
     job.set_time
+    @log.info("set job content, account: #{job.my_account}")
 
-    es_response = if Sched.options.has_es
-                    content = job.to_json_any
-                    if is_create
+    es_response = nil
+
+    if Sched.options.has_es
+      content = job.to_json_any
+      es_response = if is_create
                       create_job(content, job.id)
                     else
                       update_job(content, job.id)
                     end
-                  else
-                    JSON::Any.new({} of String => JSON::Any)
-                  end
+    end
 
-    content = job.to_manticore
-    write_to_manticore("jobs", job.id, content, is_create)
-    @log.info("set job content, account: #{job.my_account}")
+    if Sched.options.has_manticore
+      content = job.to_manticore
+      es_response = write_to_manticore("jobs", job.id.to_i64, content, is_create)
+    end
+
+    raise "no db configured" unless es_response
+    es_response
+  end
+
+  def set_host(host : HostInfo)
+    es_response = nil
+
+    if Sched.options.has_es
+      content = host.to_json_any
+      es_response = @client.create({
+                      :index => "hosts", :type => "_doc",
+                      :id => host.id,
+                      :body => {:doc => content},
+                    })
+    end
+
+    if Sched.options.has_manticore
+      content = host.to_manticore
+      es_response = write_to_manticore("hosts", host.id, content, true)
+    end
+
+    raise "no db configured" unless es_response
     es_response
   end
 
@@ -267,8 +291,11 @@ class Elasticsearch::Client
           query["index"] = index
         end
         response = Manticore::Client.search(query)
-        results = JSON.parse(response.body)
-        return Manticore.jobs_from_manticore(results["hits"]["hits"].as_a)
+        results = JSON.parse(response.body)["hits"]["hits"].as_a
+        if index == "jobs"
+          results = Manticore.jobs_from_manticore(results)
+        end
+        return results
       rescue e
         @log.error("Manticore search failed: #{e.message}")
         return Array(JSON::Any).new
@@ -357,11 +384,10 @@ class Elasticsearch::Client
       end
     elsif Sched.options.has_manticore
       begin
-        response = Manticore::Client.select("SELECT * FROM testbox WHERE testbox = #{testbox}")
-        return nil unless response.status.success?
+        results = self.select("testbox", {"testbox" => testbox})
+        return nil unless results
 
-        result = JSON.parse(response.body)
-        result["hits"]["hits"][0]["_source"]
+        results[0]["_source"]
       rescue
         return nil
       end
@@ -466,16 +492,59 @@ class Elasticsearch::Client
     es_response
   end
 
-  def select(sql_cmd : String)
-    if Sched.options.has_manticore
-      host_port = "#{@settings[:manticore_host]}:#{@settings[:manticore_port]}"
-      response = perform_one_request(host_port, "sql", nil, "POST", sql_cmd)
+  def build_query_string(query_hash : Hash(String, String), seporator : String, quote : Bool) : String
+    # Filter out nil values and map each key-value pair to "key=value"
+    conditions = query_hash.compact_map do |key, value|
+      next if value.nil?
+      if quote
+        "#{key}=#{value}"
+      else
+        "#{key}='#{value}'"
+      end
     end
 
-    # `path` refers to lib/es_client.rb opendistro_sql()
-    # can verify with "cci select" command
-    host_port = "#{@settings[:host]}:#{@settings[:port]}"
-    response = perform_one_request(host_port, "_nlpcn/sql", nil, "POST", sql_cmd)
+    conditions.join(seporator)
+  end
+
+  def select(index : String, matches : Hash(String, String), fields : String = "*", others : String = "")
+    results = nil
+    if Sched.options.has_manticore
+      match = build_query_string(matches, " ", false)
+      fields = Manticore.filter_sql_fields(fields)
+      match = Manticore.filter_sql_fields(match)
+      others = Manticore.filter_sql_fields(others)
+      sql_cmd  = "SELECT #{fields} FROM #{index} WHERE MATCH('#{match}') #{others}"
+      host_port = "#{@settings[:manticore_host]}:#{@settings[:manticore_port]}"
+      response = perform_one_request(host_port, "sql", nil, "POST", sql_cmd)
+      body = response.body
+      body = Manticore.filter_sql_result(body) if fields != '*'
+      results = JSON.parse(body)["hits"]["hits"].as_a
+      results = Manticore.jobs_from_manticore(results)
+      results
+    end
+
+    if Sched.options.has_es
+      # `path=_nlpcn/sql` refers to lib/es_client.rb opendistro_sql()
+      # can verify with "cci select" command
+      match = build_query_string(matches, " AND ", true)
+      sql_cmd  = "SELECT #{fields} FROM #{index} WHERE #{match} #{others}"
+      host_port = "#{@settings[:host]}:#{@settings[:port]}"
+      response = perform_one_request(host_port, "_nlpcn/sql", nil, "POST", sql_cmd)
+      body = response.body
+      results = JSON.parse(body)["hits"]["hits"].as_a
+    end
+
+    raise "no db configured" unless results
+    results
+  end
+
+  def count_groups(index : String, dimension : String, matches : Hash(String, String)) : Hash(String, Int32)
+    results = self.select(index, matches, "#{dimension}, count(*)", "GROUP BY #{dimension}")
+    results.each_with_object({} of String => Int32) do |hit, hash|
+      key = hit["_source"][dimension].to_s
+      count = hit["_source"]["count(*)"].as_i
+      hash[key] = count
+    end
   end
 
   def perform_one_request(host_port, path, params, method, post_data)
@@ -494,6 +563,8 @@ class Elasticsearch::Client
       response = HTTP::Client.delete(url: endpoint)
     elsif method == "HEAD"
       response = HTTP::Client.head(url: endpoint)
+    else
+      raise "unknown HTTP method #{method}"
     end
     return response
   end

@@ -41,6 +41,7 @@ require "../scheduler/plugins/pkgbuild"
 require "../scheduler/plugins/finally"
 require "../scheduler/plugins/cluster"
 require "../scheduler/heart_beat"
+require "../scheduler/dispatch"
 require "../scheduler/options"
 
 class Sched
@@ -60,6 +61,10 @@ class Sched
     @rgc = RemoteGitClient.new
     @env = env
     @log = env.log.as(JSONLogger)
+
+    # Load initial hosts data from ES
+    @hosts_cache = Hosts.new(@es)
+    refresh_cache_from_es
   end
 
   def debug_message(response)
@@ -76,13 +81,9 @@ class Sched
     @log.warn(e.inspect_with_backtrace)
   end
 
-  def normalize_mac(mac : String)
-    mac.gsub(":", "-").downcase()
-  end
-
   def set_host_mac
     if (hostname = @env.params.query["hostname"]?) && (mac = @env.params.query["mac"]?)
-      @redis.hash_set("sched/mac2host", normalize_mac(mac), hostname)
+      @redis.hash_set("sched/mac2host", Utils.normalize_mac(mac), hostname)
 
       "Done"
     else
@@ -94,7 +95,7 @@ class Sched
 
   def del_host_mac
     if mac = @env.params.query["mac"]?
-      @redis.hash_del("sched/mac2host", normalize_mac(mac))
+      @redis.hash_del("sched/mac2host", Utils.normalize_mac(mac))
 
       "Done"
     else
@@ -173,7 +174,7 @@ class Sched
         when "tbox_state"
           hash["state"] = value
         when "mac"
-          hash["mac"] = normalize_mac(value)
+          hash["mac"] = Utils.normalize_mac(value)
         else
           hash[parameter] = value
         end

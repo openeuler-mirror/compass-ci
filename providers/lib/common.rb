@@ -73,7 +73,7 @@ def get_memory_from_hostname(hostname)
 end
 
 def get_mem_available
-  return %x(echo $(($(grep MemAvailable /proc/meminfo | awk '{print $2}') / 1024 / 1024))).to_i
+  return %x(echo $(($(grep MemAvailable /proc/meminfo | awk '{print $2}') / 1024))).to_i
 end
 
 def check_mem_available(_hostname, memory)
@@ -190,7 +190,7 @@ end
 
 def compute_max_vm
   host_cpu = %x(grep "^processor" /proc/cpuinfo | wc -l).to_i
-  host_mem = %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024 / 1024
+  host_mem = %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024
 
   nr_vm_on_cpu = host_cpu / 2
   nr_vm_on_mem = host_mem / 4
@@ -208,11 +208,11 @@ def compute_max_dc
 end
 
 def get_total_memory
-  return %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024 / 1024
+  return %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024
 end
 
 def get_free_memory
-  return %x(grep MemFree /proc/meminfo | awk '{print $2}').to_i / 1024 / 1024
+  return %x(grep MemFree /proc/meminfo | awk '{print $2}').to_i / 1024
 end
 
 def get_left_memory

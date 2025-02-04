@@ -133,6 +133,12 @@ class JobHash
   getter hash_hhh : HashHHH
   getter hash_any : Str2AnyHash
 
+  # only in-memory, for matching to host tags
+  property host_keys = Array(String).new
+  property schedule_tags = Set(String).new
+  property schedule_memmb : UInt32 = 0u32
+  property schedule_priority : Int8 = 0
+
   PLAIN_SET = Set(String).new PLAIN_KEYS
   ARRAY_SET = Set(String).new ARRAY_KEYS
   HH_SET    = Set(String).new HH_KEYS
@@ -292,6 +298,7 @@ class JobHash
     cluster
     queue
     subqueue
+    priority
 
     rootfs
     docker_image
@@ -399,6 +406,7 @@ class JobHash
     is_store
     crystal_ip
 
+    need_memory
     memory_minimum
     max_duration
 
@@ -693,6 +701,61 @@ class JobHash
     end
   end
 
+  def set_tbox_type
+    if self.testbox.starts_with?("dc")
+      self["tbox_type"] = "dc"
+    elsif self.testbox.starts_with?("vm")
+      self["tbox_type"] = "vm"
+    else
+      self["tbox_type"] = "hw"
+    end
+  end
+
+  # if not assign tbox_group, set it to a match result from testbox
+  #  ?if job special testbox, should we just set tbox_group=testbox
+  def update_tbox_group_from_testbox
+    #self.tbox_group ||= JobHelper.match_tbox_group(testbox)
+    self.put_if_not_absent("tbox_group", JobHelper.match_tbox_group(testbox))
+  end
+
+  def set_memmb
+    mb = 0u32
+    mb = [mb, Utils.parse_memory_mb(self.need_memory)].max if self.has_key? "need_memory"
+    mb = [mb, Utils.parse_memory_mb(self.memory_minimum + "GB")].max if self.has_key? "memory_minimum"
+    if self.tbox_group =~ /^(vm|dc)-(\d+)p(\d+)g$/
+      mb = [mb, $3.to_u32].max
+    end
+    @schedule_memmb = mb
+  end
+
+  def set_priority
+    if self.priority
+      @schedule_priority = self.priority.to_i8
+    end
+  end
+
+  # End user can control condidate hots that can consume the job via "submit job.yaml testbox=xxx"
+  # testbox=taishan200-2280-2s64p-256g--a61: want the exact machine, register to hostkey $testbox
+  # testbox=taishan200-2280-2s64p-256g: want anyone in the tbox_group, register to hostkey $tbox_group
+  # testbox=hw|vm|dc: register to hostkey tbox_type.arch
+  def set_hostkeys
+    host_keys = [] of String
+
+    case self.tbox_type
+    when "hw"
+      host_keys << self.testbox if self.testbox != self.tbox_group
+      host_keys << self.tbox_group
+    else
+      host_keys << "#{self.tbox_type}.#{self.arch}"
+    end
+
+    if self.has_key? "target_machines"
+      host_keys += self.target_machines
+    end
+
+    self.host_keys = host_keys
+  end
+
 end
 
 class Job < JobHash
@@ -810,7 +873,6 @@ class Job < JobHash
     set_os_arch()
     set_os_version()
     check_docker_image()
-    set_tbox_type()
     set_submit_date()
     set_rootfs()
     set_result_root()
@@ -1068,16 +1130,6 @@ class Job < JobHash
     self.rootfs = "#{os}-#{os_version}-#{os_arch}"
   end
 
-  def set_tbox_type
-    if self.testbox.starts_with?("dc")
-      self["tbox_type"] = "dc"
-    elsif self.testbox.starts_with?("vm")
-      self["tbox_type"] = "vm"
-    else
-      self["tbox_type"] = "hw"
-    end
-  end
-
   def get_testbox_type
     return "vm" if self.testbox.starts_with?("vm")
     return "dc" if self.testbox.starts_with?("dc")
@@ -1284,7 +1336,6 @@ class Job < JobHash
   ]
 
   private def check_required_keys
-    update_tbox_group_from_testbox # id must exists, need update tbox_group
     REQUIRED_KEYS.each do |key|
       if !@hash_plain[key]?
         error_msg = "Missing required job key: '#{key}'."
@@ -1294,13 +1345,6 @@ class Job < JobHash
         raise error_msg
       end
     end
-  end
-
-  # if not assign tbox_group, set it to a match result from testbox
-  #  ?if job special testbox, should we just set tbox_group=testbox
-  private def update_tbox_group_from_testbox
-    #self.tbox_group ||= JobHelper.match_tbox_group(testbox)
-    self.put_if_not_absent("tbox_group", JobHelper.match_tbox_group(testbox))
   end
 
   private def check_fields_format

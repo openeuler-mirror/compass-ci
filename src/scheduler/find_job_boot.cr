@@ -10,28 +10,42 @@ require "../lib/string_utils"
 class Sched
   def find_job_boot
     job = nil
-    @env.set "job_stage", "boot"
 
     if @env.get?("ws")
       @log.info("get job boot content")
 
       send_timeout_signal
 
+      arch = @env.params.query["arch"]
+      host_machine = @env.params.query["host_machine"]
       hostname = @env.params.query["hostname"]
+      tags = @env.params.query["tags"]  # format: tag1,tag2,...
+      freemem = @env.params.query["left_mem"]
       is_remote = @env.params.query["is_remote"]
       boot_type = @env.ws_route_lookup.params["boot_type"]
     else
+      arch = @env.params.url["arch"]
+      host_machine = @env.params.url["host_machine"]
       hostname = @env.params.url["hostname"]
+      tags = @env.params.url["tags"]
+      freemem = @env.params.url["left_mem"]
       is_remote = @env.params.url["is_remote"]
       boot_type = @env.params.url["boot_type"]
     end
 
-    host = is_remote == "true" ? "remote-#{hostname}" : "local-#{hostname}"
-
-    @env.set "testbox", host
+    @env.set "testbox", hostname
+    @env.set "state", "requesting"
+    @env.set "job_stage", "boot"
+    send_mq_msg
 
     # get job
-    response, job = create_job_boot(host, boot_type)
+    freemem = Utils.parse_memory_mb(freemem)
+    job = get_job_from_ready_queues(arch, host_machine, hostname, boot_type, tags, freemem, is_remote == "true")
+    return boot_content(nil, boot_type) unless job
+
+    update_testbox_and_job(job, hostname, ["//#{hostname}"])
+    create_job_boot(job, boot_type)
+    response = boot_content(job, boot_type)
 
     # set job_id to @env
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
@@ -102,52 +116,59 @@ class Sched
     end
   end
 
-  def get_job_from_ready_queues(boot_type, testbox)
+  def get_job_from_ready_queues(arch, host_machine, testbox, boot_type, tags, freemem, is_remote)
     job = nil
-    host_machine = testbox.split_keep_left('-')
-    return job if testbox.nil?
+    tbox_type = nil
 
+    @log.info("get_job_from_ready_queues: host_machine=#{host_machine} boot_type=#{boot_type} freemem=#{freemem}")
     case boot_type
     when "container"
-      @log.info("container get job from ready queues by host_machine: #{host_machine}")
-      etcd_job = GetJob.new.get_job_by_tbox_type(host_machine, "dc")
+                      tbox_type = "dc"
     when "ipxe"
-      @log.info("qemu get job from ready queues by host_machine: #{host_machine}")
-      etcd_job = GetJob.new.get_job_by_tbox_type(host_machine, "vm")
+                      tbox_type = "vm"
+    else
+      return nil
     end
 
-    return nil unless etcd_job
+    host_req = HostRequest.new(arch, host_machine, testbox, tbox_type, tags, freemem, is_remote)
 
-    @log.info("get job from ready queues, etcd_job: #{etcd_job}, host_machine: #{host_machine}")
+    # get partial job from dispatch queues
+    partial_job = tbox_request_job(host_req)
+    return nil unless partial_job
 
-    job_id = etcd_job["id"]
-    if job_id
-      begin
-        job = @es.get_job(job_id.to_s)
-        @log.warn("job_is_nil, job id=#{job_id.to_s}") unless job
-      rescue ex
-        @log.warn("Invalid job (id=#{job_id}) in es. Info: #{ex}")
-        @log.warn(ex.inspect_with_backtrace)
+    job_id = partial_job["id"]
+    return nil unless job_id
+
+    @log.info("get_job_from_ready_queues: job=#{partial_job}, host_machine=#{host_machine}")
+
+    # get full job from ES
+    begin
+      job = @es.get_job(job_id.to_s)
+      unless job
+        @log.warn("job_is_nil, job id=#{job_id.to_s}")
+        return nil
       end
+    rescue ex
+      @log.warn("Invalid job (id=#{job_id}) in es. Info: #{ex}")
+      @log.warn(ex.inspect_with_backtrace)
+      return nil
     end
 
-    if job
-      @log.info("#{testbox} got the job #{job_id}")
-      if testbox.starts_with?("remote-")
-        job.set_remote_testbox_env()
-        job.set_http_prefix()
-      end
-
-      job.set_remote_mount_repo()
-      job.update({"testbox" => testbox, "host_machine" => host_machine})
-      job.update_kernel_params
-      job.set_result_root
-      job.set_time("boot_time")
-      @log.info(%({"job_id": "#{job_id}",
-                "result_root": "/srv#{job.result_root}",
-                "job_state": "set result root"}))
-      update_id2job(job)
+    # update job content
+    if is_remote
+      job.set_remote_testbox_env
+      job.set_http_prefix()
     end
+
+    job.set_remote_mount_repo()
+    job.update({"testbox" => tbox_type, "host_machine" => host_machine})
+    job.update_kernel_params
+    job.set_result_root
+    job.set_time("boot_time")
+    @log.info(%({"job_id": "#{job_id}",
+              "result_root": "/srv#{job.result_root}",
+              "job_state": "set result root"}))
+    update_id2job(job)
 
     return job
   end
@@ -162,29 +183,19 @@ class Sched
     end
   end
 
-  def create_job_boot(host, boot_type)
-    @env.set "state", "requesting"
-    send_mq_msg
+  def create_job_boot(job, boot_type)
+    job.last_success_stage = "boot"
+    @env.set "job_id", job.id
+    @env.set "deadline", job.deadline
+    @env.set "job_stage", job.job_stage
+    @env.set "state", "booting"
+    create_job_cpio(job, Kemal.config.public_folder)
 
-    job = get_job_from_ready_queues(boot_type, host)
-    update_testbox_and_job(job, host, ["//#{host}"]) if job
-
-    if job
-      job.last_success_stage = "boot"
-      @env.set "job_id", job.id
-      @env.set "deadline", job.deadline
-      @env.set "job_stage", job.job_stage
-      @env.set "state", "booting"
-      create_job_cpio(job, Kemal.config.public_folder)
-
-       # UPDATE the large fields to null
-       job.job2sh = JSON::Any.new(nil)
-       job.services = nil
-       @es.set_job(job)
-       report_workflow_job_event(job.id, job)
-    end
-
-    return boot_content(job, boot_type), job
+    # UPDATE the large fields to null
+    job.job2sh = JSON::Any.new(nil)
+    job.services = nil
+    @es.set_job(job)
+    report_workflow_job_event(job.id, job)
   end
 
   private def boot_msg(boot_type, msg)
@@ -192,7 +203,7 @@ class Sched
         echo ...
         echo #{msg}
         echo ...
-        chain http://#{ENV["SCHED_HOST"]}:#{ENV["SCHED_PORT"]}/boot.ipxe/mac/${mac:hexhyp}"
+        chain http://#{ENV["SCHED_HOST"]}:#{ENV["SCHED_PORT"]}/boot.ipxe/mac/${mac:hexhyp}?arch=${buildarch}&hostname=${hostname}&ip=${net0/ip}"
   end
 
   private def get_boot_container(job : Job)

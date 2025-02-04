@@ -7,16 +7,20 @@ class Sched
 
     value = @env.params.url["value"]
     boot_type = @env.params.url["boot_type"]
+    host = @env.params.url["hostname"]
+    arch = @env.params.url["arch"]
+    tags = @env.params.url["tags"] # format: tag1,tag2,...
 
-    mac = normalize_mac(value)
-    host = @redis.hash_get("sched/mac2host", mac)
+    mac = Utils.normalize_mac(value)
+    host ||= @hosts_cache.mac2hostname(mac)
+    host ||= @redis.hash_get("sched/mac2host", mac)
     return boot_content(nil, boot_type) unless host
 
     set_hw_tbox_to_redis(host)
 
     @env.set "testbox", host unless host.nil?
 
-    response = hw_get_job_boot(host, boot_type)
+    response = hw_get_job_boot(host, arch, boot_type, tags)
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     @env.set "job_id", job_id
@@ -57,14 +61,17 @@ class Sched
     @redis.del("#{tbox}") if tbox
   end
 
-  def hw_get_job_from_ready_queues(boot_type, host_machine)
+  def hw_get_job_from_ready_queues(boot_type, arch, host_machine, tags)
     etcd_job = nil
     return etcd_job if host_machine.nil?
 
     @log.info("hw get job from ready queues by host_machine: #{host_machine}")
+
+    host_req = HostRequest.new(arch, host_machine, host_machine, "hw", tags, UInt32::MAX, false)
+
     60.times do |_i|
-      etcd_job = GetJob.new.get_job_by_tbox_type(host_machine, "hw")
-      @log.info("GetJob.new.get_job_by_tbox_type #{host_machine}, hw, return: #{etcd_job}")
+      etcd_job = tbox_request_job(host_req)
+      @log.info("tbox_request_job #{host_machine}, hw, return: #{etcd_job}")
       break if etcd_job
       sleep 10.seconds
     end
@@ -73,12 +80,12 @@ class Sched
     return nil
   end
 
-  def hw_get_job_boot(host, boot_type, pre_job=nil)
+  def hw_get_job_boot(host, arch, boot_type, tags, pre_job=nil)
     @env.set "state", "requesting"
     send_mq_msg
     host_machine = host
 
-    job_id = hw_get_job_from_ready_queues(boot_type, host_machine)
+    job_id = hw_get_job_from_ready_queues(boot_type, arch, host_machine, tags)
     @log.info("hw get job from ready queues boot_type: #{boot_type}, host_machine: #{host_machine}, return: #{job_id}")
 
     job = @es.get_job(job_id.to_s) if job_id

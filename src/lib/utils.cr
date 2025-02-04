@@ -8,6 +8,10 @@ require "./json_logger"
 module Utils
   extend self
 
+  def normalize_mac(mac : String)
+    mac.gsub(":", "-").downcase()
+  end
+
   def get_host_info(testbox)
     file_name = testbox =~ /^(vm-|dc-)/ ? testbox.split(".")[0] : testbox
     host_info_file = "#{CCI_REPOS}/#{LAB_REPO}/hosts/#{file_name}"
@@ -22,6 +26,38 @@ module Utils
   def get_memory(host_info)
     if host_info.has_key?("memory")
       return $1 if "#{host_info["memory"]}" =~ /(\d+)g/i
+    end
+  end
+
+  def parse_memory_mb(strmem : String) : UInt32
+    # Remove any whitespace and make the string lowercase
+    strmem = strmem.strip.downcase
+
+    # If the string has no suffix, assume it's already in MB
+    if strmem.match(/^\d+$/)
+      return strmem.to_u32
+    end
+
+    # Extract the numeric part and the suffix
+    numeric_part = strmem.match(/^\d+/).try(&.[0]) || "0"
+    suffix = strmem.match(/[a-z]+$/).try(&.[0]) || ""
+
+    # Convert the numeric part to an integer
+    value = numeric_part.to_u32
+
+    # Convert to MB based on the suffix
+    case suffix
+    when "k", "kb"
+      value >> 10 # KB to MB
+    when "m", "mb"
+      value # Already in MB
+    when "g", "gb"
+      value << 10 # GB to MB
+    when "t", "tb"
+      value << 20 # TB to MB
+    else
+      # If the suffix is unrecognized, assume it's already in MB
+      value
     end
   end
 
