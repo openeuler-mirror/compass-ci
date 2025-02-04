@@ -6,6 +6,7 @@ require "kemal"
 require "../lib/web_env"
 require "../lib/sched"
 require "../lib/json_logger"
+require "../lib/host"
 
 # -------------------------------------------------------------------------------------------
 # end_user:
@@ -78,6 +79,12 @@ module Scheduler
   # echo alive
   get "/" do |env|
     env.sched.alive(VERSION)
+  end
+
+  post "/register-host" do |env|
+    host_info = JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+
+    env.sched.register_host(host_info)
   end
 
   # for XXX_runner get job
@@ -502,4 +509,5 @@ module Scheduler
   post "/scheduler/repo/set-srpm-info" do |env|
     env.sched.set_srpm_info
   end
+
 end

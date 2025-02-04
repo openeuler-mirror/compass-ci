@@ -8,12 +8,12 @@
 
 1.2) guest.host rule for vm/docker:
 
-        ${vm_tbox_group}.$host_testbox-M
-        ${dc_tbox_group}.$host_testbox-M
+        ${vm_tbox_group}-N.$host_testbox
+        ${dc_tbox_group}-N.$host_testbox
 
 Example:
 
-        vm-2p8g.taishan200-2280-2s48p-256g--a101-M
+        vm-2p8g-N.taishan200-2280-2s48p-256g--a101
 
 2) 测试机与队列的关系
 
