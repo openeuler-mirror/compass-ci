@@ -188,4 +188,123 @@ module Manticore
       result
     end
   end
+
+  module FullTextWords
+
+    def self.process_word(word : String) : String?
+      # Trim leading/trailing non-alphanumeric characters
+      trimmed = word.gsub(/\(R\)\z/, "")
+      trimmed = trimmed.gsub(/^[^A-Za-z0-9]*|[^A-Za-z0-9]*$/, "")
+
+      # Exclude empty or symbol-only words
+      return nil if trimmed.empty? || trimmed =~ /\A[^[:alnum:]]*\z/
+      trimmed
+    end
+
+    def self.is_number?(word : String) : Bool
+      if word =~ /\A[+-]?(?:\d+\.?\d*|\.\d+)\z/
+        true
+      else
+        false
+      end
+    end
+
+    def self.is_unit?(word : String) : Bool
+      if word =~ /\A[[:alpha:]]+\z/
+        true
+      else
+        false
+      end
+    end
+
+    def self.break_full_text_words(input : String) : Array(String)
+      words = input.split(/\s+/)
+      processed = [] of String
+      words.each do |word|
+        result = process_word(word)
+        processed << result if result
+      end
+
+      # Merge numbers with units
+      i = 0
+      while i < processed.size
+        current = processed[i].as(String)
+        if is_number?(current) && i + 1 < processed.size && is_unit?(processed[i + 1])
+          merged = current + processed[i + 1].as(String)
+          processed[i] = merged
+          processed.delete_at(i + 1)
+        end
+        i += 1
+      end
+
+      processed
+    end
+
+    def self.flatten_hash(hash : Hash(String, JSON::Any), prefix = "", result = Hash(String, JSON::Any).new) : Hash(String, JSON::Any)
+      hash.each do |key, value|
+        current_key = prefix.empty? ? key : "#{prefix}.#{key}"
+
+        if (nested_hash = value.as_h?)
+          # Recursively flatten nested hashes
+          flatten_hash(nested_hash, current_key, result)
+        elsif (array = value.as_a?)
+          # Separate array elements into hashes and primitives
+          hashes = array.select { |item| item.as_h? }
+          primitives = array.reject { |item| item.as_h? }
+
+          # Flatten each hash in the array
+          hashes.each do |item|
+            flatten_hash(item.as_h, current_key, result)
+          end
+
+          # Collect primitives into an array under the current key
+          unless primitives.empty?
+            primitive_values = primitives.map { |p| JSON::Any.new(p.raw) }
+            add_to_result(result, current_key, JSON::Any.new(primitive_values))
+          end
+        else
+          # Handle primitive values
+          add_to_result(result, current_key, value)
+        end
+      end
+      result
+    end
+
+    private def self.add_to_result(result, key, value)
+      existing = result[key]?
+        if existing.nil?
+          result[key] = value
+      else
+        # Convert existing value to an array if not already
+        existing_array = existing.as_a? || [existing]
+        new_value = value.as_a? || [value]
+        result[key] = JSON::Any.new(existing_array + new_value)
+      end
+    end
+
+    def self.create_full_text_kv(host_info : Hash(String, JSON::Any), keys : Array(String)) : Array(String)
+      flattened_hash = flatten_hash(host_info)
+      full_text_kv = [] of String
+
+      key_regex = %r{\A(#{keys.join('|')})\.}
+
+      flattened_hash.each do |key, values|
+        next unless key =~ key_regex
+        if (array = values.as_a?)
+          array.each do |value|
+            break_full_text_words(value.as_s).each do |word|
+              full_text_kv << "#{key}=#{word}"
+            end
+          end
+        else
+          break_full_text_words(values.as_s).each do |word|
+            full_text_kv << "#{key}=#{word}"
+          end
+        end
+      end
+
+      full_text_kv.uniq
+    end
+
+  end
 end
