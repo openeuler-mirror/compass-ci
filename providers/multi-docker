@@ -23,8 +23,8 @@ options = OptionParser.new do |opts|
   opts.banner = 'Usage: multi-docker -n -q -p -c -r'
 
   opts.separator ''
-  opts.on('-n HOSTNAME_PREFIX', '--name HOSTNAME_PREFIX', 'format: $tbox_group.$HOSTNAME') do |name|
-    opt['hostname_prefix'] = name
+  opts.on('-n HOSTNAME', '--name HOSTNAME', 'format: $HOSTNAME') do |name|
+    opt['hostname'] = name
   end
 
   opts.on('-c count', '--count count', 'how many containers do you need') do |num|
@@ -56,7 +56,7 @@ end
 
 options.parse!(ARGV)
 
-HOSTNAME = opt['hostname_prefix'] || "dc-1g.#{ENV['HOSTNAME']}"
+HOSTNAME = opt['hostname'] || "#{ENV['HOSTNAME']}"
 QUEUES = opt['queues'] || "dc-1g.#{ENV['HOSTNAME']}"
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']

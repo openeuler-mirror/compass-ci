@@ -22,8 +22,8 @@ options = OptionParser.new do |opts|
   opts.banner = 'Usage: multi-qemu -n -c -q -l -i -h'
 
   opts.separator ''
-  opts.on('-n HOSTNAME_PREFIX', '--name HOSTNAME_PREFIX', 'format: $tbox_group.$HOSTNAME') do |name|
-    opt['hostname_prefix'] = name
+  opts.on('-n HOSTNAME', '--name HOSTNAME', 'format: $HOSTNAME') do |name|
+    opt['hostname'] = name
   end
 
   opts.on('-c count', '--count count', 'how many VM do you need') do |num|
@@ -61,7 +61,7 @@ options.parse!(ARGV)
 
 # Run multiple QEMU in parallel
 PWD      = Dir.pwd
-HOSTNAME = opt['hostname_prefix'] || "vm-2p8g.#{ENV['HOSTNAME']}"
+HOSTNAME = opt['hostname'] || "#{ENV['HOSTNAME']}"
 QUEUES   = opt['queues'] || "#{ENV['HOSTNAME']}.#{RUBY_PLATFORM.split('-')[0]}"
 LOG_DIR  = opt['log_dir'] || '/srv/cci/serial/logs'
 COMPUTE_FLAG = opt['compute']
