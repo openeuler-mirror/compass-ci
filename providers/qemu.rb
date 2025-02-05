@@ -52,60 +52,6 @@ def get_url(hostname, left_mem, mac)
   end
 end
 
-def register_host2redis(mem_total)
-  hostname = ENV.fetch('hostname')
-
-  if is_remote
-    config = load_my_config
-    owner = config['ACCOUNT']
-    jwt = load_jwt?
-    api_client = RemoteClient.new()
-    url = "https://#{DOMAIN_NAME}/api/register-host2redis?hostname=#{hostname}&type=vm&owner=#{owner}&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{arch}"
-    response = api_client.register_host2redis(url, jwt)
-    return if response.nil? || response.empty?
-    response = JSON.parse(response)
-    if response.has_key?('status_code') and response['status_code'] == 401
-      puts "jwt maybe timeout retry once"
-      jwt = load_jwt?(force_update=true) # jwt maybe timeout and retry once
-      api_client = RemoteClient.new(SCHED_HOST, SCHED_PORT)
-      response = api_client.register_host2redis(url, jwt)
-      return if response.nil? || response.empty?
-      response = JSON.parse(response)
-    end
-    check_return_code(response)
-    puts JSON.pretty_generate(response)
-  else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/register-host2redis?hostname=#{hostname}&type=vm&owner=local&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{arch}'"
-    system cmd
-  end
-end
-
-def del_host2queues(hostname)
-  hostname = ENV.fetch('hostname')
-
-  if is_remote
-    jwt = load_jwt?
-    config = load_my_config
-    api_client = RemoteClient.new()
-    url = "https://#{DOMAIN_NAME}/api/del_host2queues?hostname=#{hostname}"
-    response = api_client.del_host2queues(url, jwt)
-    return if response.nil? || response.empty?
-    response = JSON.parse(response)
-    if response.has_key?('status_code') and response['status_code'] == 401
-      jwt = load_jwt?(force_update=true) # jwt maybe timeout and retry once
-      api_client = RemoteClient.new(SCHED_HOST, SCHED_PORT)
-      response = api_client.del_host2queues(url, jwt)
-      return if response.nil? || response.empty?
-      response = JSON.parse(response)
-    end
-    check_return_code(response)
-    puts JSON.pretty_generate(response)
-  else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host2queues?host=#{hostname}'"
-    system cmd
-  end
-end
-
 def parse_response(url, hostname, ipxe_script_path)
   puts "multi-qemu in running..."
 
@@ -135,21 +81,7 @@ def parse_response(url, hostname, ipxe_script_path)
   end
 end
 
-def set_host_info(hostname, mac)
-  # use "," replace " "
-  api_queues = ENV['queues'].gsub(/ +/, ',')
-
-  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/set_host_mac?hostname=#{hostname}&mac=#{mac}'")
-  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/set_host2queues?host=#{hostname}&queues=#{api_queues}'")
-end
-
-def del_host_info(hostname, mac)
-  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host_mac?mac=#{mac}' > /dev/null 2>&1")
-  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host2queues?host=#{hostname}' > /dev/null 2>&1")
-end
-
 def post_work(hostname, mac, lockfile)
-  del_host_info(hostname, mac)
   release_mem(hostname) if ENV['index']
   system("lockfile-remove --lock-name #{lockfile}")
 end
@@ -290,7 +222,6 @@ def prepare_qemu(hostname, host_seq, mac, ipxe_script_path)
 
   get_lock(retry_time, retry_remain_times, lockfile)
 
-  set_host_info(hostname, mac)
   at_exit { post_work(hostname, mac, lockfile) }
 
   job_hash = custom_vm_info(hostname, ipxe_script_path)
@@ -370,7 +301,6 @@ def start
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
 
   mem_total = get_total_memory
-  register_host2redis(mem_total)
 
   loop do
     begin
@@ -385,7 +315,6 @@ def start
       sleep 5
     end
   end
-  del_host2queues
 end
 
 start

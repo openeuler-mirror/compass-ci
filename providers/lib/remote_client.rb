@@ -22,23 +22,6 @@ class RemoteClient
     resource.get
   end
 
-  def register_host2redis(url, jwt)
-    puts url
-    begin
-      RestClient.put(url, {}, { content_type: :json, accept: :json, 'Authorization' => jwt })
-    rescue RestClient::ExceptionWithResponse => e
-      return "{\"status_code\": #{e.response.code}}"
-    end
-  end
-
-  def del_host2queues(url, jwt)
-    begin
-      RestClient.put(url, {}, { content_type: :json, accept: :json, 'Authorization' => jwt })
-    rescue RestClient::ExceptionWithResponse => e
-      return "{\"status_code\": #{e.response.code}}"
-    end
-  end
-
   private def url_prefix
     @url_prefix = if @host.match('.*[a-zA-Z]+.*')
                     # Internet users should use domain name and https

@@ -14,20 +14,6 @@ load_cci_defaults
 : ${queues:="vm-1p8g.$(arch)"}
 : ${log_file:=/srv/cci/serial/logs/$hostname}
 
-set_host_info()
-{
-	# use "," replace " "
-	local api_queues=$(echo $queues | sed -r 's/ +/,/g')
-	curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/set_host_mac?hostname=${hostname}&mac=${mac}"
-	curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/set_host2queues?host=${hostname}&queues=${api_queues}"
-}
-
-del_host_info()
-{
-	curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/del_host_mac?mac=${mac}" > /dev/null 2>&1
-	curl -X PUT "http://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/del_host2queues?host=${hostname}" > /dev/null 2>&1
-}
-
 release_mem()
 {
 	[ -n "$index" ] && command -v ruby && ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "release_mem '$hostname'"
@@ -35,7 +21,6 @@ release_mem()
 
 post_work()
 {
-	del_host_info
 	release_mem
 	lockfile-remove --lock-name $lockfile
 }
@@ -81,7 +66,6 @@ main()
 	echo "arp -n | grep ${mac//-/:}" > ip.sh
 	chmod +x ip.sh
 
-	set_host_info
 	trap post_work EXIT
 
 	(

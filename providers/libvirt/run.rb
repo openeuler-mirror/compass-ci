@@ -38,13 +38,9 @@ def request_job(context, sched_client, logger)
   mac = context.info['mac']
   hostname = context.info['hostname']
   queues = context.info['queues']
-  sched_client.register_mac2host(hostname, mac)
-  sched_client.register_host2queues(hostname, queues)
   response = JSON.parse(sched_client.consume_job('libvirt', 'mac', mac))
   unless job_exist?(response)
     logger.info('No job now')
-    sched_client.delete_mac2host(mac)
-    sched_client.delete_host2queues(hostname)
     response = nil
   end
   return response
@@ -103,8 +99,6 @@ def start(context, logger, libvirt)
 end
 
 def clean(context, sched_client, libvirt)
-  sched_client.delete_mac2host(context.info['mac'])
-  sched_client.delete_host2queues(context.info['hostname'])
   libvirt.close
 end
 

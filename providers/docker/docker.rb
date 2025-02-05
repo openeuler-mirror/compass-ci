@@ -50,57 +50,6 @@ def get_url(hostname, left_mem, is_remote)
   end
 end
 
-def register_host2redis(hostname, mem_total, is_remote)
-  if is_remote == 'true'
-    config = load_my_config
-    owner = config['ACCOUNT']
-    jwt = load_jwt?
-    api_client = RemoteClient.new()
-    url = "https://#{DOMAIN_NAME}/api/register-host2redis?hostname=#{hostname}&type=dc&owner=#{owner}&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{ARCH}"
-    response = api_client.register_host2redis(url, jwt)
-    return if response.nil? || response.empty?
-    response = JSON.parse(response)
-    if response.has_key?('status_code') and response['status_code'] == 401
-      puts "jwt maybe timeout retry once"
-      jwt = load_jwt?(force_update=true) # jwt maybe timeout and retry once
-      api_client = RemoteClient.new(SCHED_HOST, SCHED_PORT)
-      response = api_client.register_host2redis(url, jwt)
-      return if response.nil? || response.empty?
-      response = JSON.parse(response)
-    end
-    check_return_code(response)
-    puts JSON.pretty_generate(response)
-  else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/register-host2redis?hostname=#{hostname}&type=dc&owner=local&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{ARCH}'"
-    system cmd
-  end
-end
-
-
-def del_host2queues(hostname, is_remote)
-  if is_remote == 'true'
-    jwt = load_jwt?
-    config = load_my_config
-    api_client = RemoteClient.new()
-    url = "https://#{DOMAIN_NAME}/api/del_host2queues?hostname=#{hostname}"
-    response = api_client.del_host2queues(url, jwt)
-    return if response.nil? || response.empty?
-    response = JSON.parse(response)
-    if response.has_key?('status_code') and response['status_code'] == 401
-      jwt = load_jwt?(force_update=true) # jwt maybe timeout and retry once
-      api_client = RemoteClient.new(SCHED_HOST, SCHED_PORT)
-      response = api_client.del_host2queues(url, jwt)
-      return if response.nil? || response.empty?
-      response = JSON.parse(response)
-    end
-    check_return_code(response)
-    puts JSON.pretty_generate(response)
-  else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host2queues?host=#{hostname}'"
-    system cmd
-  end
-end
-
 def parse_response(url, hostname, uuid, index, is_remote)
   log_file = "#{LOG_DIR}/#{hostname}"
   record_start_log(log_file, hash: {"#{hostname}"=> "start the docker"})
@@ -298,7 +247,6 @@ end
 def start(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
   mem_total = get_total_memory
-  register_host2redis(hostname, mem_total, is_remote)
   loop do
     begin
       break if File.exist?(safe_stop_file)
@@ -312,5 +260,4 @@ def start(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
       sleep 5
     end
   end
-  del_host2queues(hostname, queues, is_remote)
 end
