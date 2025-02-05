@@ -9,7 +9,6 @@ require 'set'
 
 require_relative 'lib/common'
 require_relative 'lib/jwt'
-require_relative '../lib/mq_client'
 require_relative '../container/defconfig'
 require_relative './docker/docker'
 
@@ -67,16 +66,11 @@ SAFE_STOP_FILE = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
 names = Set.new %w[
   SCHED_HOST
   SCHED_PORT
-  MQ_HOST
-  MQ_PORT
 ]
 defaults = relevant_defaults(names)
 
-
 SCHED_HOST = defaults['SCHED_HOST'] || ENV['LKP_SERVER'] || ENV['SCHED_HOST'] || config['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT = defaults['SCHED_PORT'] || ENV['LKP_CGI_PORT'] || ENV['SCHED_PORT'] || config['SCHED_PORT'] || '3000'
-MQ_HOST = defaults['MQ_HOST'] || ENV['MQ_HOST'] || ENV['LKP_SERVER'] || config['MQ_HOST'] || 'localhost'
-MQ_PORT = defaults['MQ_PORT'] || ENV['MQ_PORT'] || config['MQ_PORT'] || 5672
 
 if COMPUTE_FLAG
   puts 'use compute max dc numbers'
@@ -87,22 +81,7 @@ end
 
 puts NR_DC
 def start
-  unless IS_REMOTE == 'true'
-    reboot_thr = Thread.new do
-      loop_reboot_testbox(HOSTNAME, 'dc', MQ_HOST, MQ_PORT)
-    end
-  end
-
-  threads = {}
-  start(HOSTNAME,  opt['tags'], IS_REMOTE)
-
-  manage_thr = Thread.new do
-    manage_multi_qemu_docker(threads.merge({ 'manage' => manage_thr }), MQ_HOST, MQ_PORT)
-  end
-  
-  manage_thr.exit
-  reboot_thr.exit
-  puts 'all threads exit'
+  loop_main(HOSTNAME, opt['tags'], IS_REMOTE)
 
   safe_stop
   puts "exit"

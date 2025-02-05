@@ -10,7 +10,6 @@ require 'securerandom'
 
 require_relative 'lib/common'
 require_relative 'lib/jwt'
-require_relative '../lib/mq_client'
 require_relative '../container/defconfig'
 
 opt = {
@@ -73,15 +72,11 @@ SAFE_STOP_FILE = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
 names = Set.new %w[
   SCHED_HOST
   SCHED_PORT
-  MQ_HOST
-  MQ_PORT
 ]
 defaults = relevant_defaults(names)
 
 SCHED_HOST = ENV['LKP_SERVER'] || '172.17.0.1'
 SCHED_PORT = ENV['LKP_CGI_PORT'] || '3000'
-MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || '172.17.0.1'
-MQ_PORT = ENV['MQ_PORT'] || 5672
 
 if COMPUTE_FLAG
   puts 'auto compute max vm numbers'
@@ -112,21 +107,8 @@ def loop_main
 end
 
 def multiqemu
-  unless IS_REMOTE
-    reboot_thr = Thread.new do
-      loop_reboot_testbox(HOSTNAME, 'vm', MQ_HOST, MQ_PORT)
-    end
-  end
-
-  threads = {}
   loop_main
 
-  manage_thr = Thread.new do
-    manage_multi_qemu_docker(threads.merge({ 'manage' => manage_thr }), MQ_HOST, MQ_PORT)
-  end
-
-  manage_thr.exit
-  reboot_thr.exit
   puts 'all threads exit'
 
   safe_stop

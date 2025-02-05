@@ -10,31 +10,6 @@ require 'eventmachine'
 
 require_relative 'jwt'
 
-def loop_reboot_testbox(hostname, type, mq_host, mq_port)
-  loop do
-    begin
-      reboot_testbox(hostname, type, mq_host, mq_port)
-    rescue Exception => e
-      puts e.backtrace.inspect
-      sleep 5
-    end
-  end
-end
-
-def reboot_testbox(hostname, type, mq_host, mq_port)
-  mq = MQClient.new(hostname: mq_host, port: mq_port, automatically_recover: false, recovery_attempts: 0)
-  queue = mq.queue(hostname, { durable: true })
-  queue.subscribe({ block: true, manual_ack: true }) do |info, _pro, msg|
-    Process.fork do
-      deal_reboot_msg(mq, msg, info, type)
-    end
-  end
-rescue Bunny::NetworkFailure => e
-  puts e
-  sleep 5
-  retry
-end
-
 def reboot(type, job_id)
   r, io = IO.pipe
   res = if type == 'dc'
@@ -55,17 +30,6 @@ def report_event(info, res, msg)
   data['state'] = 'reboot_testbox'
   cmd = "curl -H 'Content-Type: application/json' -X POST #{SCHED_HOST}:#{SCHED_PORT}/report_event -d '#{data.to_json}'"
   system cmd
-end
-
-def deal_reboot_msg(mq, msg, info, type)
-  puts msg
-  machine_info = JSON.parse(msg)
-  job_id = machine_info['job_id']
-  res, msg = reboot(type, job_id)
-  report_event(machine_info, res, msg)
-  mq.ack(info)
-rescue Exception => e
-  puts e.backtrace.inspect
 end
 
 def get_mem_available
@@ -107,36 +71,7 @@ def get_arch
   return %x(arch).chomp
 end
 
-def manage_multi_qemu_docker(threads, mq_host, mq_port)
-  loop do
-    begin
-      puts 'manage thread begin'
-      monitor_mq_message(threads, mq_host, mq_port)
-    rescue StandardError => e
-      puts e.backtrace
-      sleep 5
-    end
-  end
-end
-
-# msg:
-# { "type" => "safe-stop" or "restart",
-#   "hostname_array" => ["ALL"] or ["taishan200-2280-2s64p-256g--a1", "taishan200-2280-2s64p-256g--a2"]
-#   "commit_id" => "xxxxxx"
-# }
-def monitor_mq_message(threads, mq_host, mq_port)
-  mq = MQClient.new(hostname: mq_host, port: mq_port, automatically_recover: false, recovery_attempts: 0)
-  queue = mq.fanout_queue('multi-manage', "#{HOSTNAME}-manage")
-  queue.subscribe({ block: true }) do |_info, _pro, msg|
-    deal_mq_manage_message(threads, msg)
-  end
-rescue Bunny::NetworkFailure => e
-  puts e
-  sleep 5
-  retry
-end
-
-def deal_mq_manage_message(threads, msg)
+def deal_manage_message(threads, msg)
   puts msg
   msg = JSON.parse(msg)
   unless fit_me?(msg)
@@ -150,7 +85,7 @@ def deal_mq_manage_message(threads, msg)
   when 'restart'
     manage_restart(threads, msg)
   else
-    puts "deal mq manage message: unknow type message -- #{msg['type']}"
+    puts "deal manage message: unknow type message -- #{msg['type']}"
   end
 rescue StandardError => e
   puts e.backtrace.inspect

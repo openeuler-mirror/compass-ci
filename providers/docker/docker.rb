@@ -13,7 +13,6 @@ require 'rest-client'
 require_relative "../lib/jwt"
 require_relative "../lib/remote_client"
 require_relative '../lib/common'
-require_relative '../../lib/mq_client'
 require_relative '../../container/defconfig'
 
 BASE_DIR = '/srv/dc'
@@ -22,8 +21,6 @@ job_info = {}
 names = Set.new %w[
   SCHED_HOST
   SCHED_PORT
-  MQ_HOST
-  MQ_PORT
   DOMAIN_NAME
 ]
 
@@ -34,8 +31,6 @@ SCHED_PORT = ENV['SCHED_HOST'] || ENV['LKP_CGI_PORT'] ||defaults['SCHED_PORT'] |
 LOG_DIR = '/srv/cci/serial/logs'
 Dir.mkdir(LOG_DIR) unless File.exist?(LOG_DIR)
 
-MQ_HOST = ENV['MQ_HOST'] || ENV['LKP_SERVER'] || defaults['MQ_HOST'] || 'localhost'
-MQ_PORT = ENV['MQ_PORT'] || defaults['MQ_PORT'] || 5672
 DOMAIN_NAME = defaults['DOMAIN_NAME']
 
 HOST_MACHINE = ENV["HOSTNAME"]
@@ -244,7 +239,7 @@ def check_vm_status
   end
 end
 
-def start(hostname, tags, is_remote)
+def loop_main(hostname, tags, is_remote)
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
   mem_total = get_total_memory
   loop do
