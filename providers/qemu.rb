@@ -20,7 +20,6 @@ HOST_MACHINE = ENV["HOSTNAME"]
 ARCH = get_arch
 
 hostname = ENV.fetch('hostname', 'vm-1p1g-1')
-queues = ENV.fetch('queues', "vm-1p1g.#{ARCH}")
 is_remote = ENV["is_remote"] == 'true' ? true : false
 
 names = Set.new %w[

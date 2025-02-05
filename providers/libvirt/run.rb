@@ -37,7 +37,6 @@ end
 def request_job(context, sched_client, logger)
   mac = context.info['mac']
   hostname = context.info['hostname']
-  queues = context.info['queues']
   response = JSON.parse(sched_client.consume_job('libvirt', 'mac', mac))
   unless job_exist?(response)
     logger.info('No job now')
@@ -102,10 +101,10 @@ def clean(context, sched_client, libvirt)
   libvirt.close
 end
 
-def main(hostname, queues)
+def main(hostname)
   logger = create_logger(hostname)
   mac = compute_mac hostname
-  context = Context.new(mac, hostname, queues)
+  context = Context.new(mac, hostname)
   libvirt = LibvirtConnect.new
   resource = Resource.new(hostname, logger)
   sched_client = SchedClient.new

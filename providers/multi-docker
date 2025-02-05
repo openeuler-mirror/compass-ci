@@ -11,6 +11,7 @@ require_relative 'lib/common'
 require_relative 'lib/jwt'
 require_relative '../lib/mq_client'
 require_relative '../container/defconfig'
+require_relative './docker/docker'
 
 config = cci_defaults
 
@@ -60,7 +61,6 @@ HOSTNAME = opt['hostname'] || "#{ENV['HOSTNAME']}"
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']
 
-UUID = SecureRandom.uuid
 SUITE_FILE = "/tmp/#{ENV['HOSTNAME']}/suite"
 SAFE_STOP_FILE = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
 
@@ -94,7 +94,7 @@ def start
   end
 
   threads = {}
-  loop_main
+  start(HOSTNAME,  opt['tags'], IS_REMOTE)
 
   manage_thr = Thread.new do
     manage_multi_qemu_docker(threads.merge({ 'manage' => manage_thr }), MQ_HOST, MQ_PORT)
@@ -105,14 +105,7 @@ def start
   puts 'all threads exit'
 
   safe_stop
-  puts "#{UUID} exit"
-end
-
-def loop_main
-    system(
-        { 'hostname' => HOSTNAME, 'tags' => opt['tags'], 'uuid' => UUID, 'maxdc' => NR_DC, 'is_remote' => IS_REMOTE },
-        ENV['CCI_SRC'] + '/providers/docker.rb'
-      )
+  puts "exit"
 end
 
 if $PROGRAM_NAME == __FILE__

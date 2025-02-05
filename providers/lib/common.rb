@@ -233,7 +233,7 @@ ensure
   f1&.close
 end
 
-def ws_boot(url, hostname, index, ipxe_script_path = nil, is_remote = false)
+def ws_boot(url, hostname, ipxe_script_path = nil, is_remote = false)
   threads = []
   response = nil
 
@@ -255,7 +255,7 @@ def ws_boot(url, hostname, index, ipxe_script_path = nil, is_remote = false)
     end
 
     ws.on :message do |event|
-      response ||= deal_ws_event(event, threads, ws, hostname, index)
+      response ||= deal_ws_event(event, threads, ws, hostname)
     end
 
     ws.on :close do
@@ -289,7 +289,7 @@ def check_wheather_load_jwt(event)
 end
 
 
-def deal_ws_event(event, threads, ws, hostname, index)
+def deal_ws_event(event, threads, ws, hostname)
   response = nil
   data = JSON.parse(event.data)
   puts "=== ws data ==="

@@ -50,11 +50,11 @@ def get_url(hostname, left_mem, is_remote)
   end
 end
 
-def parse_response(url, hostname, uuid, index, is_remote)
+def parse_response(url, hostname, is_remote)
   log_file = "#{LOG_DIR}/#{hostname}"
   record_start_log(log_file, hash: {"#{hostname}"=> "start the docker"})
   record_log(log_file, ["ws boot start"])
-  response = ws_boot(url, hostname, index, is_remote)
+  response = ws_boot(url, hostname, is_remote)
   record_log(log_file, [response])
   hash = response.is_a?(String) ? JSON.parse(response) : {}
   return nil if hash['job_id'] == '0'
@@ -191,7 +191,7 @@ def upload_dmesg(job_info, log_file, is_remote)
   %x(curl -sSf -F "file=@#{log_file}" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
 end
 
-def main(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
+def main(hostname, tags, is_remote)
   puts "multi_docker status is running"
   vm_containers = check_vm_status
   return nil if vm_containers.nil?
@@ -200,7 +200,7 @@ def main(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
   left_mem = get_left_memory
   url = get_url(pre_hostname, left_mem, is_remote)
   puts url
-  hash = parse_response(url, pre_hostname, uuid, index, is_remote)
+  hash = parse_response(url, pre_hostname, is_remote)
   puts hash
   return nil if hash.nil?
   if hash['memory_minimum'].nil? || hash['memory_minimum'].empty?
@@ -244,13 +244,13 @@ def check_vm_status
   end
 end
 
-def start(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
+def start(hostname, tags, is_remote)
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
   mem_total = get_total_memory
   loop do
     begin
       break if File.exist?(safe_stop_file)
-      main(hostname, queues, uuid, index, maxdc, is_remote)
+      main(hostname, tags, is_remote)
     rescue StandardError => e
       puts e.backtrace
       puts e
