@@ -206,7 +206,7 @@ def main(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
   if hash['memory_minimum'].nil? || hash['memory_minimum'].empty?
     hash['memory_minimum'] = '8'
   end
-  record_spec_mem(hash, pre_num, 'dc')
+  # record_spec_mem(hash, pre_num, 'dc')
   thr = Thread.new do
     run_container(pre_hostname, hash, thr, is_remote)
   end
@@ -229,7 +229,7 @@ def run_container(hostname, hash, thr, is_remote)
   upload_dmesg(job_info, log_file, is_remote)
 ensure
   record_log(log_file, ["finished the docker"])
-  release_spec_mem(hostname, hash, 'dc')
+  # release_spec_mem(hostname, hash, 'dc')
   thr.exit
 end
 

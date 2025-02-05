@@ -81,31 +81,6 @@ def parse_response(url, hostname, ipxe_script_path)
   end
 end
 
-def post_work(hostname, mac, lockfile)
-  release_mem(hostname) if ENV['index']
-  system("lockfile-remove --lock-name #{lockfile}")
-end
-
-def get_lock(retry_time, retry_remain_times, lockfile)
-  puts "try to get lock: #{lockfile}"
-
-  system("lockfile-create -q --lock-name -p --retry 0 #{lockfile}")
-
-  puts "vm got lock succeeded: #{lockfile}, uuid: #{ENV['UUID']}"
-  return true
-rescue
-  puts 'rescue get lock'
-  retry_time += 1
-
-  if retry_time <= retry_remain_times
-    puts "retry times: #{retry_time}"
-
-    retry
-  else
-    return false
-  end
-end
-
 def check_host_status(free_mem)
   rest_vms = pre_check_tbox('vm')
   if rest_vms
@@ -215,14 +190,8 @@ def prepare_qemu(hostname, host_seq, mac, ipxe_script_path)
   load_path = "#{WORKSPACE}/#{hostname}"
   FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
 
-  lockfile = "#{load_path}/#{hostname}.lock"
-
   retry_time = 0
   retry_remain_times = 600
-
-  get_lock(retry_time, retry_remain_times, lockfile)
-
-  at_exit { post_work(hostname, mac, lockfile) }
 
   job_hash = custom_vm_info(hostname, ipxe_script_path)
 
@@ -234,7 +203,7 @@ def prepare_qemu(hostname, host_seq, mac, ipxe_script_path)
     job_hash['memory_minimum'] = job_hash['memory']
   end
 
-  record_spec_mem(job_hash, host_seq, 'vm')
+  # record_spec_mem(job_hash, host_seq, 'vm')
 
   host_file_path = "#{ENV['LKP_SRC']}/hosts/vm-#{job_hash['cpu_minimum'].to_i.to_s}p#{job_hash['memory_minimum'].to_i.to_s}g"
 
@@ -272,7 +241,6 @@ def run_qemu(thr, job_hash, host_file_path, hostname, mac)
   )
 
   puts "pwd: #{Dir.pwd}, hostname: #{hostname}, mac: #{mac}"
-  puts "vm finish run, release lock: #{lockfile}, uuid: #{ENV['UUID']}"
 
   upload_dmesg(job_hash) if job_hash['id']
 rescue StandardError => e
@@ -281,7 +249,7 @@ rescue StandardError => e
 ensure
   LOGGER.info "finished the qemu"
   clean_test_source(hostname)
-  release_spec_mem(hostname, job_hash, 'vm')
+  # release_spec_mem(hostname, job_hash, 'vm')
   thr.exit
 end
 

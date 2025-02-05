@@ -14,29 +14,6 @@ load_cci_defaults
 : ${queues:="vm-1p8g.$(arch)"}
 : ${log_file:=/srv/cci/serial/logs/$hostname}
 
-release_mem()
-{
-	[ -n "$index" ] && command -v ruby && ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "release_mem '$hostname'"
-}
-
-post_work()
-{
-	release_mem
-	lockfile-remove --lock-name $lockfile
-}
-
-get_lock()
-{
-	[[ $(($retry_time % $retry_remain_times)) -eq 0 ]] && {
-		log_info "uuid: $UUID" | tee -a $log_file
-		log_info "try to get lock: $lockfile" | tee -a $log_file
-		log_info "already retry times: $retry_time" | tee -a $log_file
-	}
-
-	lockfile-create -q --lock-name -p --retry 0 $lockfile || return 1
-	log_info "vm got lock succeeded: $lockfile, uuid: $UUID" | tee -a $log_file
-}
-
 main()
 {
 	WORKSPACE=${WORKSPACE:-$(pwd)}
@@ -45,18 +22,6 @@ main()
 	log_info "chdir to workspace: $WORKSPACE" | tee -a $log_file
 
 	cd $WORKSPACE
-
-	# why lock this?
-	# because one mac match one vm, and only one vm with unique mac can running/requesting at any time.
-
-	lockfile="${hostname}.lock"
-
-	local retry_remain_times=600
-	local retry_time=0
-	while ! get_lock; do
-		sleep 1
-		retry_time=$(($retry_time + 1))
-	done
 
 	# unicast prefix: x2, x6, xA, xE
 	export mac=$(echo $hostname | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/0a-\1-\2-\3-\4-\5/')
@@ -91,7 +56,6 @@ main()
 	)
 
 	log_info "pwd: $(pwd), hostname: $hostname, mac: $mac" | tee -a $log_file
-	log_info "vm finish run, release lock: $lockfile, uuid: $UUID" | tee -a $log_file
 
 	[ -n "$id" ] && upload_files -t $(cat job_id) $log_file
 

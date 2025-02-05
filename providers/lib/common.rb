@@ -76,26 +76,6 @@ def get_mem_figure(value)
   return value.split[0].to_i
 end
 
-def save_mem_yaml_file(mem_info, file)
-  File.open(file, 'w') do |f|
-    f.write(YAML.dump(mem_info))
-  end
-end
-
-def init_specmeminfo(t_max, t_type)
-  FileUtils.mkdir_p("/tmp/#{ENV['HOSTNAME']}") unless File.exist?("/tmp/#{ENV['HOSTNAME']}")
-  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
-  mem_info = {}
-  digits = Array(1..t_max.to_i).sort.reverse.join(",")
-  mem_info['usage'] = "0 G"
-  if t_type == 'dc'
-    mem_info['containers'] = "#{digits}"
-  elsif t_type == 'vm'
-    mem_info['vms'] = "#{digits}"
-  end
-  save_mem_yaml_file(mem_info, spec_mem_info_file)
-end
-
 def compute_max_vm
   host_cpu = %x(grep "^processor" /proc/cpuinfo | wc -l).to_i
   host_mem = %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024
@@ -123,123 +103,9 @@ def get_free_memory
   return %x(grep MemFree /proc/meminfo | awk '{print $2}').to_i / 1024
 end
 
-def get_left_memory
-  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
-  if File.exist?(spec_mem_info_file)
-    spec_mem_info = YAML.load_file(spec_mem_info_file)
-    usage_mem = get_mem_figure(spec_mem_info['usage'])
-    return (get_total_memory - usage_mem)
-  else
-    return get_total_memory
-  end
-end
-
 def get_arch
   return %x(arch).chomp
 end
-
-def pre_check_tbox(t_type)
-  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
-  spec_mem_info = YAML.load_file(spec_mem_info_file)
-  t_boxes = spec_mem_info['containers'] if t_type == 'dc'
-  t_boxes = spec_mem_info['vms'] if t_type == 'vm'
-  rest_numbers = t_boxes.split(",").map { |ele| ele = ele.to_i }
-  return nil if rest_numbers.empty?
-  return rest_numbers
-end
-
-def record_spec_mem(hash, pre_num, t_type)
-  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
-
-  memory = hash['memory_minimum'].to_i
-
-  begin
-    File.open("#{spec_mem_info_file}", 'a') do |f|
-      puts "record memory: try to get specmeminfo lock"
-      f.flock(File::LOCK_EX)
-      puts "record memory: get specmeminfo lock success"
-      spec_mem_info = YAML.load_file(spec_mem_info_file)
-      record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_file, t_type)
-    end
-  rescue Exception => e
-    puts 'record spec mem exception.'
-    puts e.message
-    puts e.backtrace.inspect
-  end
-end
-
-def record_hostname_to_meminfo(pre_num, memory, spec_mem_info, spec_mem_info_file, t_type)
-  if t_type == 'dc'
-    tboxes = spec_mem_info['containers']
-  elsif t_type == 'vm'
-    tboxes = spec_mem_info['vms']
-  end
-
-  rest_numbers = tboxes.split(",").map { |ele| ele = ele.to_i }
-  rest_numbers.delete_if { |n| n == pre_num.to_i }
-  rest_numbers = rest_numbers.sort.reverse.join(",")
-  spec_mem_info['usage'] = "#{get_mem_figure(spec_mem_info['usage']) + memory} G"
-
-  if t_type == 'dc'
-    spec_mem_info['containers'] = "#{rest_numbers}"
-  elsif t_type == 'vm'
-    spec_mem_info['vms'] = "#{rest_numbers}"
-  end
-
-  save_mem_yaml_file(spec_mem_info, spec_mem_info_file)
-end
-
-def release_spec_mem(hostname, hash, t_type)
-  spec_mem_info_file = "/tmp/#{ENV['HOSTNAME']}/specmeminfo.yaml"
-  release_success = false
-
-  memory = hash['memory_minimum'].to_i
-
-  until release_success
-    begin
-      File.open("#{spec_mem_info_file}", 'a') do |f|
-        puts "#{hostname}-release: try to get specmeminfo lock"
-        f.flock(File::LOCK_EX)
-        puts "#{hostname}-release: get specmeminfo lock success"
-
-        spec_mem_info = YAML.load_file(spec_mem_info_file)
-
-        del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_info_file, t_type)
-        release_success = true
-      end
-    rescue Exception => e
-      puts 'release record mem exception.'
-      puts e.message
-      puts e.backtrace.inspect
-    ensure
-      # avoid all testboxes request lock at the same time
-      unless release_success
-        sleep 2
-      end
-    end
-  end
-end
-
-def del_record_hostname_from_meminfo(hostname, memory, spec_mem_info, spec_mem_info_file, t_type)
-  if t_type == 'dc'
-    tboxes = spec_mem_info['containers']
-  elsif t_type == 'vm'
-    tboxes = spec_mem_info['vms']
-  end
-
-  rest_numbers = tboxes.split(",").map { |ele| ele = ele.to_i }
-  if rest_numbers.include? hostname.split("-")[-1].to_i
-    puts "this number was already added in containers: #{hostname}"
-    return nil
-  end
-  rest_numbers.push(hostname.split("-")[-1].to_i)
-  rest_numbers = rest_numbers.sort.reverse.join(",")
-  spec_mem_info['usage'] = "#{get_mem_figure(spec_mem_info['usage']) - memory} G"
-  spec_mem_info['containers'] = "#{rest_numbers}" if t_type == 'dc'
-  spec_mem_info['vms'] = "#{rest_numbers}" if t_type == 'vm'
-  save_mem_yaml_file(spec_mem_info, spec_mem_info_file)
-end
-
 
 def save_running_suite
   FileUtils.mkdir_p("/tmp/#{ENV['HOSTNAME']}") unless File.exist?("/tmp/#{ENV['HOSTNAME']}")
