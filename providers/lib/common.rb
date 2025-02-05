@@ -170,7 +170,6 @@ end
 
 def manage_restart(threads, msg)
   update_code(msg['commit_id'])
-  File.new(RESTART_FILE, 'w')
   threads.each do |name, thr|
     next if name == 'manage'
 
@@ -185,26 +184,15 @@ def update_code(commit_id)
   # the code is not updated
   return unless commit_id
 
-  dir = "/tmp/#{ENV['HOSTNAME']}/restart"
-  FileUtils.mkdir_p(dir) unless File.exist?(dir)
-
-  f = File.new(RESTART_LOCK_FILE, 'a+')
-  f.flock(File::LOCK_EX)
-  return if f.readlines[0].to_s.chomp == commit_id
-
-  update_restart_lock(commit_id)
+  dir = "#{ENV['CCI_SRC']}/in-pull"
+  return unless File.exist? dir
+  FileUtils.mkdir(dir) rescue return
 
   cmd = "cd #{ENV['CCI_SRC']};git pull;git reset --hard #{commit_id}"
   puts cmd
   system(cmd)
 ensure
-  f&.flock(File::LOCK_UN)
-end
-
-def update_restart_lock(commit_id)
-  File.open(RESTART_LOCK_FILE, 'w') do |f|
-    f.puts commit_id
-  end
+  FileUtils.rmdir(dir)
 end
 
 def safe_stop
@@ -222,14 +210,6 @@ def safe_stop
   end
 
   system("systemctl stop #{ENV['suite']}.service")
-end
-
-def get_lock(file)
-  f = File.new(file, 'a')
-  puts "#{file}: try to get file lock"
-  f.flock(File::LOCK_EX)
-  puts "#{file}: get file lock success"
-  f
 end
 
 def delete_running_suite

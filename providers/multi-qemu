@@ -69,8 +69,6 @@ IS_REMOTE = opt['is_remote']
 UUID = SecureRandom.uuid
 SUITE_FILE = "/tmp/#{ENV['HOSTNAME']}/suite"
 SAFE_STOP_FILE = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
-RESTART_FILE = "/tmp/#{ENV['HOSTNAME']}/restart/#{UUID}"
-RESTART_LOCK_FILE = "/tmp/#{ENV['HOSTNAME']}/restart/lock"
 
 names = Set.new %w[
   SCHED_HOST
