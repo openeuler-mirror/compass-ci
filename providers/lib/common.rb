@@ -99,7 +99,6 @@ def fit_me?(msg)
 end
 
 def manage_safe_stop(threads)
-  File.new(SAFE_STOP_FILE, 'w')
   threads['manage'].exit
 end
 
@@ -131,8 +130,6 @@ ensure
 end
 
 def safe_stop
-  return unless File.exist?(SAFE_STOP_FILE)
-
   running_suites = delete_running_suite
 
   # kill lkp-tests sleep process
@@ -145,27 +142,6 @@ def safe_stop
   end
 
   system("systemctl stop #{ENV['suite']}.service")
-end
-
-def delete_running_suite
-  f1 = File.new(SUITE_FILE)
-  f1.flock(File::LOCK_EX)
-  arr = []
-  f1.each_line do |line|
-    arr << line.chomp
-  end
-  arr.uniq!
-  arr.delete("#{ENV['suite']}")
-
-  f2 = File.new(SUITE_FILE, 'w')
-  arr.each do |line|
-    f2.puts line
-  end
-  return arr
-ensure
-  f2&.close
-  f1&.flock(File::LOCK_UN)
-  f1&.close
 end
 
 def ws_boot(url, hostname, ipxe_script_path = nil, is_remote = false)
@@ -222,7 +198,6 @@ def check_wheather_load_jwt(event)
     jwt = load_jwt?(force_update=true)
   end
 end
-
 
 def deal_ws_event(event, threads, ws, hostname)
   response = nil

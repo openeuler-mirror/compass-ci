@@ -60,9 +60,6 @@ HOSTNAME = opt['hostname'] || "#{ENV['HOSTNAME']}"
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']
 
-SUITE_FILE = "/tmp/#{ENV['HOSTNAME']}/suite"
-SAFE_STOP_FILE = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
-
 names = Set.new %w[
   SCHED_HOST
   SCHED_PORT
