@@ -68,109 +68,17 @@ rescue Exception => e
   puts e.backtrace.inspect
 end
 
-def get_memory_from_hostname(hostname)
-  return hostname.split('.')[0][/[0-9]*g/][/[0-9]*/].to_i
-end
-
 def get_mem_available
   return %x(echo $(($(grep MemAvailable /proc/meminfo | awk '{print $2}') / 1024))).to_i
-end
-
-def check_mem_available(_hostname, memory)
-  return (get_mem_available - memory) >= 20
 end
 
 def get_mem_figure(value)
   return value.split[0].to_i
 end
 
-def check_mem_idle(memory, idle_memory)
-  return get_mem_figure(idle_memory) >= memory
-end
-
-def add_hostname_to_meminfo(hostname, memory, mem_info, mem_info_file)
-  mem_info['usage'] = "#{get_mem_figure(mem_info['usage']) + memory} G"
-  mem_info['idle'] = "#{get_mem_figure(mem_info['idle']) - memory} G"
-  mem_info[hostname] = "#{memory} G"
-  save_mem_yaml_file(mem_info, mem_info_file)
-end
-
 def save_mem_yaml_file(mem_info, file)
   File.open(file, 'w') do |f|
     f.write(YAML.dump(mem_info))
-  end
-end
-
-def del_hostname_from_meminfo(hostname, memory, mem_info, mem_info_file)
-  mem_info['usage'] = "#{get_mem_figure(mem_info['usage']) - memory} G"
-  mem_info['idle'] = "#{get_mem_figure(mem_info['idle']) + memory} G"
-  mem_info.delete(hostname)
-  save_mem_yaml_file(mem_info, mem_info_file)
-end
-
-def request_mem(hostname)
-  mem_info_file = "/tmp/#{ENV['HOSTNAME']}/meminfo"
-  request_success = false
-
-  until request_success
-    begin
-      memory = get_memory_from_hostname(hostname)
-      File.open("#{mem_info_file}.lock", 'a') do |f|
-        puts "#{hostname}-request: try to get meminfo lock"
-        f.flock(File::LOCK_EX)
-        puts "#{hostname}-request: get meminfo lock success"
-
-        next unless check_mem_available(hostname, memory)
-
-        mem_info = YAML.load_file(mem_info_file)
-        if mem_info.has_key?(hostname)
-          puts "testbox was already added in meminfo: #{hostname}"
-          request_success = true
-          break
-        end
-
-        next unless check_mem_idle(memory, mem_info['idle'])
-
-        # if all resources are sufficient, then record this testbox to resource file, and release the lock.
-        add_hostname_to_meminfo(hostname, memory, mem_info, mem_info_file)
-        request_success = true
-      end
-    rescue Exception => e
-      puts 'request mem exception.'
-      puts e.message
-      puts e.backtrace.inspect
-    ensure
-      # avoid all testboxes request lock at the same time
-      unless request_success
-        sleep(Random.rand(10))
-      end
-    end
-  end
-end
-
-def release_mem(hostname)
-  mem_info_file = "/tmp/#{ENV['HOSTNAME']}/meminfo"
-  release_success = false
-
-  until release_success
-    begin
-      memory = get_memory_from_hostname(hostname)
-      File.open("#{mem_info_file}.lock", 'a') do |f|
-        puts "#{hostname}-release: try to get meminfo lock"
-        f.flock(File::LOCK_EX)
-        puts "#{hostname}-release: get meminfo lock success"
-
-        mem_info = YAML.load_file(mem_info_file)
-        return unless mem_info.has_key?(hostname)
-
-        del_hostname_from_meminfo(hostname, memory, mem_info, mem_info_file)
-        release_success = true
-      end
-    rescue Exception => e
-      puts 'release mem exception.'
-      puts e.message
-      puts e.backtrace.inspect
-    end
   end
 end
 
@@ -533,7 +441,6 @@ def additional_ipxe_script(response, ipxe_script_path)
   return unless response
   return unless ipxe_script_path
 
-
   File.open(ipxe_script_path, 'w') do |f|
     f.puts response
   end
@@ -553,11 +460,6 @@ def deal_ws_event(event, threads, ws, hostname, index)
   puts data.to_json
   puts data['type']
   case data['type']
-  when 'request_memory', 'release_memory'
-    thr = Thread.new do
-      ack_memory(data['type'], ws, hostname, index)
-    end
-    threads << thr
   when 'boot'
     response = data['response']
   when 'close'
@@ -567,21 +469,6 @@ def deal_ws_event(event, threads, ws, hostname, index)
   end
 
   response
-end
-
-def ack_memory(type, ws, hostname, index)
-  if index.to_s.empty?
-    ws.send({ 'type' => type }.to_json)
-    return
-  end
-
-  if type == 'request_memory'
-    request_mem(hostname)
-  else
-    release_mem(hostname)
-  end
-
-  ws.send({ 'type' => type }.to_json)
 end
 
 def clean_test_source(hostname)
