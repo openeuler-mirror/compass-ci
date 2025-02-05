@@ -10,7 +10,7 @@
 : ${docker_image:="centos:7"}
 : ${load_path:="${HOME}/jobs"}
 : ${hostname:="dc-8g-1"}
-: ${log_dir:="/srv/cci/serial/logs/$hostname"}
+: ${log_file:="/srv/cci/logs/$hostname"}
 
 if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
 	tbox_group=${BASH_REMATCH[1]}
@@ -71,7 +71,7 @@ check_package_optimization_strategy
 cmd=(
 	docker run
 	--rm
-	--name ${job_id}
+	--name ${hostname}
 	--hostname $host.compass-ci.net
 	# --cpus $nr_cpu
 	-m $memory
@@ -102,5 +102,5 @@ cmd=(
 	/root/sbin/entrypoint.sh
 )
 
-echo "less $log_dir"
-"${cmd[@]}" 2>&1 | awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_dir"
+echo "less $log_file"
+"${cmd[@]}" 2>&1 | awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_file"

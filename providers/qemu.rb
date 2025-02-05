@@ -15,48 +15,20 @@ require_relative 'lib/remote_client'
 require_relative 'lib/common'
 require_relative '../container/defconfig'
 
-HOST_MACHINE = ENV["HOSTNAME"]
-ARCH = get_arch
-
-hostname = ENV.fetch('hostname', 'vm-1p1g-1')
 is_remote = ENV["is_remote"] == 'true' ? true : false
-
-names = Set.new %w[
-  SCHED_HOST
-  SCHED_PORT
-  DOMAIN_NAME
-]
-
-defaults = relevant_defaults(names)
-SCHED_HOST = ENV['SCHED_HOST'] || defaults['SCHED_HOST'] || '172.17.0.1'
-SCHED_PORT = ENV['SCHED_PORT'] || defaults['SCHED_PORT'] || 3000
-
 DOMAIN_NAME = defaults['DOMAIN_NAME']
 
-WORKSPACE = '/srv/vm'
-LOG_FILE = '/srv/cci/serial/logs/' + hostname
+HOSTNAME = ENV["hostname"]
+LOG_FILE = ENV["log_file"]
 LOGGER = Logger.new(LOG_FILE)
-
-def get_url(hostname, left_mem, mac)
-  common = "ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=#{is_remote}&host_machine=${HOST_MACHINE}&arch=#{ARCH}"
-  if is_remote
-    "ws://#{DOMAIN_NAME}/#{common}"
-  else
-    "ws://#{SCHED_HOST}:#{SCHED_PORT}/#{common}"
-  end
-end
 
 def parse_response(url, hostname, ipxe_script_path)
   puts "multi-qemu in running..."
-
-  index = ENV.fetch('index', nil)
 
   LOGGER.info "Starting qemu for #{hostname}"
   LOGGER.info "Ws boot start"
 
   begin
-    response = ws_boot(url, hostname, index, ipxe_script_path)
-
     ipxe_script_content = File.read(ipxe_script_path)
 
     if ipxe_script_content.match? 'No job now'
@@ -75,33 +47,19 @@ def parse_response(url, hostname, ipxe_script_path)
   end
 end
 
-def check_host_status(free_mem)
-  rest_vms = pre_check_tbox('vm')
-  if rest_vms
-    return rest_vms
-  else
-    puts "testbox is not reday"
-    return nil
+def start_qemu_instance(message)
+  hostname_with_seq = message['hostname']
+
+  host_dir = "#{ENV["HOSTS_DIR"]}/#{hostname_with_seq}"
+
+  if Dir.exist? host_dir
+    FileUtils.rm_rf(host_dir)
   end
-end
+  Dir.mkdir(host_dir)
 
-def main
-  hostname = ENV['hostname']
+  Dir.chdir(host_dir)
+  ipxe_script_path="#{host_dir}/ipxe_script"
 
-  free_mem = get_free_memory
-  return nil if free_mem < 4
-
-  host_vms = check_host_status(free_mem)
-  return nil if host_vms.nil? || host_vms.empty?
-
-  host_seq = host_vms[-1].to_s
-  hostname_with_seq = "#{hostname}-#{host_seq}"
-
-  Dir.mkdir("#{WORKSPACE}/#{hostname_with_seq}") unless Dir.exist? "#{WORKSPACE}/#{hostname_with_seq}"
-  Dir.chdir("#{WORKSPACE}/#{hostname_with_seq}")
-  ipxe_script_path="#{WORKSPACE}/#{hostname_with_seq}/ipxe_script"
-
-  left_mem = get_free_memory
   mac = `echo #{hostname_with_seq} | md5sum`.chomp.gsub(/^(\w\w)(\w\w)(\w\w)(\w\w)(\w\w).*/, '0a-\1-\2-\3-\4-\5')
 
   puts "hostname: #{hostname_with_seq}"
@@ -110,19 +68,14 @@ def main
   File.write('ip.sh', "arp -n | grep #{mac.gsub('-', ':')}")
   File.chmod(0755, 'ip.sh')
 
-  url = get_url(hostname_with_seq, left_mem, mac)
-
   return nil unless parse_response(url, hostname_with_seq, ipxe_script_path)
 
-  job_hash, host_file_path = prepare_qemu(hostname_with_seq, host_seq, mac, ipxe_script_path)
+  job_hash, host_file_path = prepare_qemu(hostname_with_seq, mac, ipxe_script_path)
 
-  thr = Thread.new do
-    run_qemu(thr, job_hash, host_file_path, hostname_with_seq, mac)
-  end
+  run_qemu(job_hash, host_file_path, hostname_with_seq, mac)
 end
 
 def parse_ipxe_script(hostname, ipxe_script_path)
-  log_file = "/srv/cci/serial/logs/#{hostname}"
   append = ''
   initrds = ''
   kernel = ''
@@ -138,12 +91,12 @@ def parse_ipxe_script(hostname, ipxe_script_path)
 
         File.write('job_id', job_id.to_s)
       end
-      system("wget --timestamping -nv -a #{log_file} #{line_list[1]}")
+      system("wget --timestamping -nv -a #{LOG_FILE} #{line_list[1]}")
       initrds += "#{file} "
       puts initrds
     when 'kernel'
       kernel = File.basename(line_list[1])
-      system("wget --timestamping -nv -a #{log_file} #{line_list[1]}")
+      system("wget --timestamping -nv -a #{LOG_FILE} #{line_list[1]}")
 
       line_list = line_list.drop 2
       append = line_list.join(' ').gsub(/ initrd=[^ ]+/, '')
@@ -179,10 +132,8 @@ def custom_vm_info(hostname, ipxe_script_path)
   job_hash
 end
 
-def prepare_qemu(hostname, host_seq, mac, ipxe_script_path)
+def prepare_qemu(hostname, mac, ipxe_script_path)
   LOGGER.info "prepare_qemu"
-  load_path = "#{WORKSPACE}/#{hostname}"
-  FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
 
   retry_time = 0
   retry_remain_times = 600
@@ -197,14 +148,12 @@ def prepare_qemu(hostname, host_seq, mac, ipxe_script_path)
     job_hash['memory_minimum'] = job_hash['memory']
   end
 
-  # record_spec_mem(job_hash, host_seq, 'vm')
-
   host_file_path = "#{ENV['LKP_SRC']}/hosts/vm-#{job_hash['cpu_minimum'].to_i.to_s}p#{job_hash['memory_minimum'].to_i.to_s}g"
 
   return job_hash, host_file_path
 end
 
-def run_qemu(thr, job_hash, host_file_path, hostname, mac)
+def run_qemu(job_hash, host_file_path, hostname, mac)
   LOGGER.info "run_qemu"
 
   return unless File.exist? host_file_path
@@ -242,41 +191,15 @@ rescue StandardError => e
   puts e.message
 ensure
   LOGGER.info "finished the qemu"
-  clean_test_source(hostname)
-  # release_spec_mem(hostname, job_hash, 'vm')
-  thr.exit
 end
 
 def upload_dmesg(hash)
-  log_file = "/srv/cci/serial/logs/#{hash['hostname']}"
-
   if is_remote
     upload_url = "#{hash["RESULT_WEBDAV_HOST"]}:#{hash["RESULT_WEBDAV_PORT"]}#{hash["result_root"]}/dmesg"
   else
     upload_url = "http://#{hash["RESULT_WEBDAV_HOST"]}:#{hash["RESULT_WEBDAV_PORT"]}#{hash["result_root"]}/dmesg"
   end
 
-  %x(curl -sSf -F "file=@#{log_file}" #{upload_url} --cookie "JOBID=#{hash["id"]}")
+  %x(curl -sSf -F "file=@#{LOG_FILE}" #{upload_url} --cookie "JOBID=#{hash["id"]}")
 end
 
-def start
-  safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
-
-  mem_total = get_total_memory
-
-  loop do
-    begin
-      break if File.exist?(safe_stop_file)
-      main
-
-    rescue StandardError => e
-      puts e.backtrace
-      puts e
-      sleep 25
-    ensure
-      sleep 5
-    end
-  end
-end
-
-start

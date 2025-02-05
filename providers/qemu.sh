@@ -11,7 +11,7 @@
 load_cci_defaults
 
 : ${hostname:="vm-1p8g-1"}
-: ${log_file:=/srv/cci/serial/logs/$hostname}
+: ${log_file:=/srv/cci/logs/$hostname}
 
 main()
 {

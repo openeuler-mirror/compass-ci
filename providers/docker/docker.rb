@@ -13,77 +13,15 @@ require 'rest-client'
 require_relative "../lib/jwt"
 require_relative "../lib/remote_client"
 require_relative '../lib/common'
-require_relative '../../container/defconfig'
 
 BASE_DIR = '/srv/dc'
 job_info = {}
-
-names = Set.new %w[
-  SCHED_HOST
-  SCHED_PORT
-  DOMAIN_NAME
-]
-
-defaults = relevant_defaults(names)
-SCHED_HOST = ENV['SCHED_HOST'] || defaults['SCHED_HOST'] || '172.17.0.1'
-SCHED_PORT = ENV['SCHED_HOST'] || defaults['SCHED_PORT'] || 3000
-
-LOG_DIR = '/srv/cci/serial/logs'
-Dir.mkdir(LOG_DIR) unless File.exist?(LOG_DIR)
-
-DOMAIN_NAME = defaults['DOMAIN_NAME']
-
-HOST_MACHINE = ENV["HOSTNAME"]
-ARCH = get_arch
-
-def get_url(hostname, left_mem, is_remote)
-  common = "ws/boot.container?hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=dc&is_remote=#{is_remote}&host_machine=${HOST_MACHINE}&arch=#{ARCH}"
-  if is_remote == 'true'
-    "wss://#{DOMAIN_NAME}/#{common}"
-  else
-    "ws://#{SCHED_HOST}:#{SCHED_PORT}/#{common}"
-  end
-end
-
-def parse_response(url, hostname, is_remote)
-  log_file = "#{LOG_DIR}/#{hostname}"
-  record_start_log(log_file, hash: {"#{hostname}"=> "start the docker"})
-  record_log(log_file, ["ws boot start"])
-  response = ws_boot(url, hostname, is_remote)
-  record_log(log_file, [response])
-  hash = response.is_a?(String) ? JSON.parse(response) : {}
-  return nil if hash['job_id'] == '0'
-
-  unless hash.key?('initrds')
-    puts response
-    return nil
-  end
-  return hash
-end
 
 def curl_cmd(path, url, name)
   %x(curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -idu -D #{path})
 end
 
-def build_load_path(hostname)
-  return BASE_DIR + '/' + hostname
-end
-
-def clean_dir(path)
-  Dir.foreach(path) do |file|
-    if file != '.' && file != '..'
-      filename = File.join(path, file)
-      if File.directory?(filename)
-        FileUtils.rm_r(filename)
-      else
-        File.delete(filename)
-      end
-    end
-  end
-end
-
 def load_initrds(load_path, hash, log_file)
-  clean_dir(load_path) if Dir.exist?(load_path)
   initrds = JSON.parse(hash['initrds'])
   record_log(log_file, initrds)
   initrds.each do |initrd|
@@ -107,7 +45,7 @@ def load_package_optimization_strategy(load_path)
   return cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock
 end
 
-def start_container(hostname, load_path, hash)
+def start_container(hostname, load_path, log_file, hash)
   docker_image = hash['docker_image']
   system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
   cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock = load_package_optimization_strategy(load_path)
@@ -123,10 +61,9 @@ def start_container(hostname, load_path, hash)
       'nr_cpu' => hash['nr_cpu'],
       'memory' => hash['memory'],
       'load_path' => load_path,
-      'log_dir' => "#{LOG_DIR}/#{hostname}" },
+      'log_file' => log_file },
     ENV['CCI_SRC'] + '/providers/docker/run.sh'
   )
-  clean_dir(load_path)
 end
 
 def record_log(log_file, list)
@@ -186,73 +123,24 @@ def upload_dmesg(job_info, log_file, is_remote)
   %x(curl -sSf -F "file=@#{log_file}" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
 end
 
-def main(hostname, tags, is_remote)
-  puts "multi_docker status is running"
-  vm_containers = check_vm_status
-  return nil if vm_containers.nil?
-  pre_num = vm_containers[-1].to_s
-  pre_hostname = "#{hostname}-#{pre_num}"
-  left_mem = get_left_memory
-  url = get_url(pre_hostname, left_mem, is_remote)
-  puts url
-  hash = parse_response(url, pre_hostname, is_remote)
-  puts hash
-  return nil if hash.nil?
-  if hash['memory_minimum'].nil? || hash['memory_minimum'].empty?
-    hash['memory_minimum'] = '8'
+def start_container_instance(message)
+  log_file = "#{ENV["LOG_DIR"]}/#{message["hostname"]}"
+  load_path = "#{ENV["HOSTS_DIR"]}/#{message["hostname"]}"
+
+  if Dir.exist? load_path
+    FileUtils.rm_rf(load_path)
   end
-  # record_spec_mem(hash, pre_num, 'dc')
-  thr = Thread.new do
-    run_container(pre_hostname, hash, thr, is_remote)
-  end
-end
+  Dir.mkdir(load_path)
 
-def run_container(hostname, hash, thr, is_remote)
-  log_file = "#{LOG_DIR}/#{hostname}"
-  load_path = build_load_path(hostname)
-  FileUtils.mkdir_p(load_path) unless File.exist?(load_path)
-  lock_file = load_path + "/#{hostname}.lock"
+  start_time = record_inner_log(log_file, hash: message)
 
-  start_time = record_inner_log(log_file, hash: hash)
-
-  load_initrds(load_path, hash, log_file)
+  load_initrds(load_path, message, log_file)
   job_info = get_job_info("#{load_path}/lkp/scheduled/job.yaml")
 
-  start_container(hostname, load_path, hash)
+  start_container(hostname, load_path, log_file, message)
 
   record_end_log(log_file, start_time)
   upload_dmesg(job_info, log_file, is_remote)
 ensure
   record_log(log_file, ["finished the docker"])
-  # release_spec_mem(hostname, hash, 'dc')
-  thr.exit
-end
-
-def check_vm_status
-  free_mem = get_free_memory
-  rest_containers = pre_check_tbox('dc')
-  if rest_containers and free_mem > 4
-    return rest_containers
-  else
-    puts "testbox is not reday"
-    return nil
-  end
-end
-
-def loop_main(hostname, tags, is_remote)
-  safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
-  mem_total = get_total_memory
-  loop do
-    begin
-      break if File.exist?(safe_stop_file)
-      main(hostname, tags, is_remote)
-    rescue StandardError => e
-      puts e.backtrace
-      puts e
-      # if an exception occurs, request the next time after 30 seconds
-      sleep 25
-    ensure
-      sleep 5
-    end
-  end
 end

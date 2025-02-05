@@ -6,7 +6,7 @@
 
 : ${nr_cpu:=1}
 : ${memory:=1G}
-: ${log_dir:=/srv/cci/serial/logs}
+: ${log_dir:=/srv/cci/logs}
 
 source ${CCI_SRC}/lib/log.sh
 source ${LKP_SRC}/lib/yaml.sh
@@ -343,7 +343,7 @@ public_option()
 		-no-reboot
 		-nographic
 		-monitor null
-		-pidfile qemu.pid
+		-pidfile $PIDS_DIR/qemu-$hostname.pid
 	)
 
 	[ -n "$cpu_model" ] && kvm+="-cpu $cpu_model"
@@ -396,7 +396,7 @@ watch_oops()
 {
 	tail -f $log_file | grep -q "${oops_patterns[@]}" && {
 		sleep 1
-		kill $(<qemu.pid)
+		kill $(<$PIDS_DIR/qemu-$hostname.pid)
 		echo "Detected kernel oops, killing qemu" >> $log_file
 	}
 }

@@ -119,46 +119,6 @@ def safe_stop
   system("systemctl stop #{ENV['suite']}.service")
 end
 
-def ws_boot(url, hostname, ipxe_script_path = nil, is_remote = false)
-  threads = []
-  response = nil
-
-  EM.run do
-    if is_remote.to_s == 'true'
-      jwt = load_jwt?
-      ws = Faye::WebSocket::Client.new(url,[],:headers => { 'Authorization' => jwt })
-    else
-      ws = Faye::WebSocket::Client.new(url)
-    end
-
-    threads << Thread.new do
-      sleep(300)
-      ws.close(1000, 'timeout')
-    end
-
-    ws.on :open do |_event|
-      puts "connect to #{url}"
-    end
-
-    ws.on :message do |event|
-      response ||= deal_ws_event(event, threads, ws, hostname)
-    end
-
-    ws.on :close do
-      if is_remote.to_s == 'true'
-        check_wheather_load_jwt(event)
-      end
-
-      threads.map(&:exit)
-      EM.stop
-    end
-  end
-  additional_ipxe_script(response, ipxe_script_path)
-  response
-rescue StandardError => e
-  puts e
-end
-
 def additional_ipxe_script(response, ipxe_script_path)
   return unless response
   return unless ipxe_script_path
@@ -166,32 +126,4 @@ def additional_ipxe_script(response, ipxe_script_path)
   File.open(ipxe_script_path, 'w') do |f|
     f.puts response
   end
-end
-
-def check_wheather_load_jwt(event)
-  if event.code == 1002
-    jwt = load_jwt?(force_update=true)
-  end
-end
-
-def deal_ws_event(event, threads, ws, hostname)
-  response = nil
-  data = JSON.parse(event.data)
-  puts "=== ws data ==="
-  puts data.to_json
-  puts data['type']
-  case data['type']
-  when 'boot'
-    response = data['response']
-  when 'close'
-    ws.close(1000, 'close')
-  else
-    raise 'unknow message type'
-  end
-
-  response
-end
-
-def clean_test_source(hostname)
-  FileUtils.rm_rf("#{WORKSPACE}/#{hostname}") if Dir.exist?("#{WORKSPACE}/#{hostname}")
 end
