@@ -63,94 +63,6 @@ low_mem_wait()
 	done
 }
 
-write_logfile()
-{
-	ipxe_script=ipxe_script
-	while true
-	do
-		# check if need safe-stop:
-		# - stop multi-qemu systemd
-		# - stop all multi-qemu process
-		#   - curling vm: stop after curl timeout <== following code used for this step
-		#   - running vm: stop after vm run finished
-		# - kill sleep $runtime process
-		# - then lkp will reboot hw.
-		[ -f "/tmp/$HOSTNAME/safe-stop" ] && {
-			log_info "safe stop: $hostname" | tee -a $log_file
-			exit 0
-		}
-
-		# check if need restart:
-		# - upgrade code
-		# - stop all multi-qemu process
-		#   - curling vm: stop after curl timeout <== following code used for this step
-		#   - running vm: stop after vm run finished
-		# - start multi-qemu process by systemd
-		#
-		# what's UUID:
-		# - UUID is generate at the beginning of ${CCI_SRC}/providers/multi-qemu.
-		# - then, if multi-qemu need restart, `/tmp/$HOSTNAME/restart/$UUID` will be generated,
-		# - so curl will exit.
-		[ -n "$UUID" ] && [ -f "/tmp/$HOSTNAME/restart/$UUID" ] && {
-			log_info "restart vm with uuid. vm: $hostname. uuid: $UUID" | tee -a $log_file
-			exit 0
-		}
-
-		log_info "start request job: $hostname" | tee -a $log_file
-
-		# empty file
-		# prevent the contents of the last file from being affected
-		echo -n '' > $ipxe_script
-
-		url=ws://${SCHED_HOST:-172.17.0.1}:${SCHED_PORT:-3000}/ws/boot.ipxe/mac/${mac}
-		ipxe_script_path="$(pwd)/${ipxe_script}"
-		command -v ruby &&
-			ruby -r "${CCI_SRC}/providers/lib/common.rb" -e "ws_boot '$url','$hostname','$index','$ipxe_script_path'"
-
-		cat $ipxe_script | grep "No job now" && {
-			log_info "no job now: $hostname" | tee -a $log_file
-			continue
-		}
-
-		log_info "got job: $hostname" | tee -a $log_file
-		break
-	done
-}
-
-parse_ipxe_script()
-{
-	append=
-	initrds=
-	while read a b c
-	do
-		case "$a" in
-			'#')
-				;;
-			initrd)
-				file=$(basename "$b")
-				[ $file == "job.cgz" ] && {
-					job_id=$(basename $(dirname "$b"))
-				}
-				wget --timestamping -nv -a ${log_file} $b
-				initrds+="$file "
-				;;
-			kernel)
-				kernel=$(basename "$b")
-				wget --timestamping -nv -a ${log_file} $b
-				append=$(echo "$c" | sed -r "s/ initrd=[^ ]+//g")
-				;;
-			*)
-				;;
-		esac
-	done < $ipxe_script
-
-	# why add job_id:
-	# - one vm executes different job in different time, but the runtime workdir for one vm won't change.
-	# - so job id of vm in different time is important obviously.
-	# - so we record the job id, and for the possible usage. such as business monitor, etc.
-	echo $job_id > job_id
-}
-
 check_kernel()
 {
 	[ -n "$kernel" ] || {
@@ -526,29 +438,6 @@ write_dmesg_flag()
 	fi
 }
 
-custom_vm_info()
-{
-	gzip -dc job.cgz | cpio -div
-
-	nr_node=1
-	nr_cpu=1
-	memory=8G
-	unset cpu_model
-
-	job_fields=(
-			-e nr_
-			-e cpu
-			-e memory
-			-e qemu_prefix
-			-e RESULT_WEBDAV_HOST
-			-e RESULT_WEBDAV_PORT
-			-e result_root
-	)
-
-	grep "${job_fields[@]}" lkp/scheduled/job.yaml > lkp/scheduled/job_vm.yaml
-	create_yaml_variables "lkp/scheduled/job_vm.yaml"
-}
-
 upload_dmesg()
 {
 	local id=$job_id
@@ -559,11 +448,6 @@ upload_dmesg()
 
 check_logfile
 ipxe_script=ipxe_script
-# write_logfile
-
-# moved to qemu.rb
-# parse_ipxe_script
-# custom_vm_info
 
 check_kernel
 write_dmesg_flag 'start'

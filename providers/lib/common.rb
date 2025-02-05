@@ -24,22 +24,6 @@ def reboot(type, job_id)
   return res, msg.join(';')
 end
 
-def report_event(info, res, msg)
-  data = { 'msg' => msg, 'res' => res }
-  data.merge!(info)
-  data['state'] = 'reboot_testbox'
-  cmd = "curl -H 'Content-Type: application/json' -X POST #{SCHED_HOST}:#{SCHED_PORT}/report_event -d '#{data.to_json}'"
-  system cmd
-end
-
-def get_mem_available
-  return %x(echo $(($(grep MemAvailable /proc/meminfo | awk '{print $2}') / 1024))).to_i
-end
-
-def get_mem_figure(value)
-  return value.split[0].to_i
-end
-
 def compute_max_vm
   host_cpu = %x(grep "^processor" /proc/cpuinfo | wc -l).to_i
   host_mem = %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024
@@ -130,16 +114,7 @@ ensure
 end
 
 def safe_stop
-  running_suites = delete_running_suite
-
-  # kill lkp-tests sleep process
-  # so the multi-qemu job will over soon
-  # only do this when there is no running multi-qemu in this testbox
-  cmd = "kill -9 `ps -ef|grep sleep|grep #{ENV['runtime']}|grep -v grep|awk '{print $2}'`"
-  if running_suites.empty?
-    puts cmd
-    system(cmd)
-  end
+  # TODO: stop docker / qemu started by us
 
   system("systemctl stop #{ENV['suite']}.service")
 end

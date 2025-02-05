@@ -9,10 +9,7 @@ require 'set'
 
 require_relative 'lib/common'
 require_relative 'lib/jwt'
-require_relative '../container/defconfig'
 require_relative './docker/docker'
-
-config = cci_defaults
 
 opt = {
   'compute' => false,
@@ -59,15 +56,6 @@ options.parse!(ARGV)
 HOSTNAME = opt['hostname'] || "#{ENV['HOSTNAME']}"
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']
-
-names = Set.new %w[
-  SCHED_HOST
-  SCHED_PORT
-]
-defaults = relevant_defaults(names)
-
-SCHED_HOST = defaults['SCHED_HOST'] || ENV['LKP_SERVER'] || ENV['SCHED_HOST'] || config['SCHED_HOST'] || '172.17.0.1'
-SCHED_PORT = defaults['SCHED_PORT'] || ENV['LKP_CGI_PORT'] || ENV['SCHED_PORT'] || config['SCHED_PORT'] || '3000'
 
 if COMPUTE_FLAG
   puts 'use compute max dc numbers'

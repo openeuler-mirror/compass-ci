@@ -10,7 +10,6 @@ require 'securerandom'
 
 require_relative 'lib/common'
 require_relative 'lib/jwt'
-require_relative '../container/defconfig'
 
 opt = {
   'compute': false,
@@ -65,17 +64,6 @@ LOG_DIR  = opt['log_dir'] || '/srv/cci/serial/logs'
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']
 
-UUID = SecureRandom.uuid
-
-names = Set.new %w[
-  SCHED_HOST
-  SCHED_PORT
-]
-defaults = relevant_defaults(names)
-
-SCHED_HOST = ENV['LKP_SERVER'] || '172.17.0.1'
-SCHED_PORT = ENV['LKP_CGI_PORT'] || '3000'
-
 if COMPUTE_FLAG
   puts 'auto compute max vm numbers'
   # base on vm-2p4g
@@ -94,7 +82,6 @@ def loop_main
       'tags' => "#{opt['tags']}",
       'max_vm' => NR_VM.to_s,
       'log_dir' => LOG_DIR,
-      'UUID' => UUID,
       'is_remote' => IS_REMOTE.to_s,
       'WORKSPACE' => pwd_hostname,
     },
@@ -110,7 +97,7 @@ def multiqemu
   puts 'all threads exit'
 
   safe_stop
-  puts "#{UUID} exit"
+  puts "exit"
 end
 
 if $PROGRAM_NAME == __FILE__

@@ -25,8 +25,8 @@ names = Set.new %w[
 ]
 
 defaults = relevant_defaults(names)
-SCHED_HOST = ENV['SCHED_HOST'] || ENV['LKP_SERVER'] || defaults['SCHED_HOST'] || '172.17.0.1'
-SCHED_PORT = ENV['SCHED_HOST'] || ENV['LKP_CGI_PORT'] ||defaults['SCHED_PORT'] || 3000
+SCHED_HOST = ENV['SCHED_HOST'] || defaults['SCHED_HOST'] || '172.17.0.1'
+SCHED_PORT = ENV['SCHED_HOST'] || defaults['SCHED_PORT'] || 3000
 
 LOG_DIR = '/srv/cci/serial/logs'
 Dir.mkdir(LOG_DIR) unless File.exist?(LOG_DIR)
