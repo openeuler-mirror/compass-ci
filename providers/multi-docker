@@ -20,7 +20,7 @@ opt = {
 }
 
 options = OptionParser.new do |opts|
-  opts.banner = 'Usage: multi-docker -n -q -p -c -r'
+  opts.banner = 'Usage: multi-docker -n -t -p -c -r'
 
   opts.separator ''
   opts.on('-n HOSTNAME', '--name HOSTNAME', 'format: $HOSTNAME') do |name|
@@ -31,8 +31,8 @@ options = OptionParser.new do |opts|
     opt['nr_container'] = num
   end
 
-  opts.on('-q queues', '--queues queues', 'separated by ","') do |queues|
-    opt['queues'] = queues
+  opts.on('-t tags', '--tags tags', 'separated by ","') do |tags|
+    opt['tags'] = tags
   end
 
   opts.on('-p', '--compute', 'set use compute max dc numbers by cpu and will ignore -c number') do
@@ -57,7 +57,6 @@ end
 options.parse!(ARGV)
 
 HOSTNAME = opt['hostname'] || "#{ENV['HOSTNAME']}"
-QUEUES = opt['queues'] || "dc-1g.#{ENV['HOSTNAME']}"
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']
 
@@ -113,7 +112,7 @@ end
 
 def loop_main
     system(
-        { 'hostname' => HOSTNAME, 'queues' => QUEUES, 'uuid' => UUID, 'maxdc' => NR_DC, 'is_remote' => IS_REMOTE },
+        { 'hostname' => HOSTNAME, 'tags' => opt['tags'], 'uuid' => UUID, 'maxdc' => NR_DC, 'is_remote' => IS_REMOTE },
         ENV['CCI_SRC'] + '/providers/docker.rb'
       )
 end

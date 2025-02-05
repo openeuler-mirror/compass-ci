@@ -19,7 +19,7 @@ opt = {
 }
 
 options = OptionParser.new do |opts|
-  opts.banner = 'Usage: multi-qemu -n -c -q -l -i -h'
+  opts.banner = 'Usage: multi-qemu -n -c -t -l -i -h'
 
   opts.separator ''
   opts.on('-n HOSTNAME', '--name HOSTNAME', 'format: $HOSTNAME') do |name|
@@ -30,8 +30,8 @@ options = OptionParser.new do |opts|
     opt['nr_vm'] = num
   end
 
-  opts.on('-q queues', '--queues queues', 'separated by ","') do |queues|
-    opt['queues'] = queues
+  opts.on('-t tags', '--tags tags', 'separated by ","') do |tags|
+    opt['tags'] = tags
   end
 
   opts.on('-l log_dir', '--log_dir log_dir', 'directory for save qemu log') do |dir|
@@ -62,7 +62,6 @@ options.parse!(ARGV)
 # Run multiple QEMU in parallel
 PWD      = Dir.pwd
 HOSTNAME = opt['hostname'] || "#{ENV['HOSTNAME']}"
-QUEUES   = opt['queues'] || "#{ENV['HOSTNAME']}.#{RUBY_PLATFORM.split('-')[0]}"
 LOG_DIR  = opt['log_dir'] || '/srv/cci/serial/logs'
 COMPUTE_FLAG = opt['compute']
 IS_REMOTE = opt['is_remote']
@@ -101,7 +100,7 @@ def loop_main
 
   system(
     { 'hostname' => HOSTNAME,
-      'queues' => "#{QUEUES}",
+      'tags' => "#{opt['tags']}",
       'max_vm' => NR_VM.to_s,
       'log_dir' => LOG_DIR,
       'UUID' => UUID,
