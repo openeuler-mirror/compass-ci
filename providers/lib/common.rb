@@ -107,16 +107,6 @@ def get_arch
   return %x(arch).chomp
 end
 
-def save_running_suite
-  FileUtils.mkdir_p("/tmp/#{ENV['HOSTNAME']}") unless File.exist?("/tmp/#{ENV['HOSTNAME']}")
-  f = File.new(SUITE_FILE, 'a')
-  f.flock(File::LOCK_EX)
-  f.puts("#{ENV['suite']}")
-ensure
-  f&.flock(File::LOCK_UN)
-  f&.close
-end
-
 def manage_multi_qemu_docker(threads, mq_host, mq_port)
   loop do
     begin

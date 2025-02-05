@@ -136,7 +136,5 @@ def multiqemu
 end
 
 if $PROGRAM_NAME == __FILE__
-  save_running_suite
-  init_specmeminfo(NR_VM, 'vm')
   multiqemu
 end
