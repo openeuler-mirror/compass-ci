@@ -101,24 +101,6 @@ def del_host2queues(hostname, is_remote)
   end
 end
 
-def heart_beat(hostname, is_remote)
-  jwt = nil
-  if is_remote == 'true'
-    jwt = load_jwt?
-    url = "https://#{DOMAIN_NAME}/api/heart-beat?hostname=#{hostname}&type=dc&is_remote=#{is_remote}"
-  else
-    url = "http://#{SCHED_HOST}:#{SCHED_PORT}/heart-beat?hostname=#{hostname}&type=dc&is_remote=#{is_remote}"
-  end
-  api_client = RemoteClient.new()
-  response = api_client.heart_beat(url, jwt)
-  response = JSON.parse(response)
-  puts "heart_beat running status: #{response}"
-  if response.has_key?('status_code') and response['status_code'] == 1001
-    mem_total = get_total_memory
-    register_host2redis(hostname, mem_total, is_remote)
-  end
-end
-
 def parse_response(url, hostname, uuid, index, is_remote)
   log_file = "#{LOG_DIR}/#{hostname}"
   record_start_log(log_file, hash: {"#{hostname}"=> "start the docker"})
@@ -313,29 +295,10 @@ def check_vm_status
   end
 end
 
-def loop_heart_beat(hostname, heart_thr, is_remote)
-  safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
-  loop do
-    begin
-      heart_thr.exit if File.exist?(safe_stop_file)
-      heart_beat(hostname, is_remote)
-      puts "heart_beat is running"
-    rescue StandardError => e
-      puts e.backtrace
-      sleep 10
-    ensure
-      sleep 30
-    end
-  end
-end
-
 def start(hostname, queues, uuid = nil, index = nil, maxdc, is_remote)
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
   mem_total = get_total_memory
   register_host2redis(hostname, mem_total, is_remote)
-  heart_thr = Thread.new do
-    loop_heart_beat(hostname, heart_thr, is_remote)
-  end
   loop do
     begin
       break if File.exist?(safe_stop_file)

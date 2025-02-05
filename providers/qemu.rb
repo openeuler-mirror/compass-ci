@@ -106,27 +106,6 @@ def del_host2queues(hostname)
   end
 end
 
-def heart_beat
-  hostname = ENV.fetch('hostname')
-
-  jwt = nil
-  if is_remote
-    jwt = load_jwt?
-    url = "https://#{DOMAIN_NAME}/api/heart-beat?hostname=#{hostname}&type=vm&is_remote=#{is_remote}"
-  else
-    url = "http://#{SCHED_HOST}:#{SCHED_PORT}/heart-beat?hostname=#{hostname}&type=vm&is_remote=#{is_remote}"
-  end
-
-  api_client = RemoteClient.new()
-  response = api_client.heart_beat(url, jwt)
-  response = JSON.parse(response)
-  puts "heart_beat running status: #{response}"
-  if response.has_key?('status_code') and response['status_code'] == 1001
-    mem_total = get_total_memory
-    register_host2redis(mem_total)
-  end
-end
-
 def parse_response(url, hostname, ipxe_script_path)
   puts "multi-qemu in running..."
 
@@ -387,31 +366,11 @@ def upload_dmesg(hash)
   %x(curl -sSf -F "file=@#{log_file}" #{upload_url} --cookie "JOBID=#{hash["id"]}")
 end
 
-def loop_heart_beat(heart_thr, safe_stop_file)
-  hostname = ENV.fetch('hostname')
-
-  loop do
-    begin
-      heart_thr.exit if File.exist?(safe_stop_file)
-      heart_beat
-      # puts "heart_beat is running"
-    rescue StandardError => e
-      puts e.backtrace
-      sleep 10
-    ensure
-      sleep 30
-    end
-  end
-end
-
 def start
   safe_stop_file = "/tmp/#{ENV['HOSTNAME']}/safe-stop"
 
   mem_total = get_total_memory
   register_host2redis(mem_total)
-  heart_thr = Thread.new do
-    loop_heart_beat(heart_thr, safe_stop_file)
-  end
 
   loop do
     begin

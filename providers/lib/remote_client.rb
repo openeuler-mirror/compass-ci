@@ -31,21 +31,6 @@ class RemoteClient
     end
   end
 
-  def heart_beat(url, jwt)
-    begin
-      if jwt.nil?
-        resource = RestClient::Resource.new(url)
-      else
-        resource = RestClient::Resource.new(url, :headers => { :Authorization => jwt})
-      end
-      response=resource.get
-      return response
-    rescue RestClient::ExceptionWithResponse => e
-      puts e
-      return "{\"status_code\": #{e.response.code}}"
-    end
-  end
-
   def del_host2queues(url, jwt)
     begin
       RestClient.put(url, {}, { content_type: :json, accept: :json, 'Authorization' => jwt })
