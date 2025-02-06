@@ -24,25 +24,6 @@ def reboot(type, job_id)
   return res, msg.join(';')
 end
 
-def compute_max_vm
-  host_cpu = %x(grep "^processor" /proc/cpuinfo | wc -l).to_i
-  host_mem = %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024
-
-  nr_vm_on_cpu = host_cpu / 2
-  nr_vm_on_mem = host_mem / 4
-
-  puts "nr_vm_on_cpu: #{nr_vm_on_cpu}"
-  puts "nr_vm_on_mem: #{nr_vm_on_mem}"
-
-  max_vm = [nr_vm_on_cpu, nr_vm_on_mem].min
-
-  return max_vm
-end
-
-def compute_max_dc
-  return %x(grep "^processor" /proc/cpuinfo | wc -l).to_i / 4
-end
-
 def get_total_memory
   return %x(grep MemTotal /proc/meminfo | awk '{print $2}').to_i / 1024
 end

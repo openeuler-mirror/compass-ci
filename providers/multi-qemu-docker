@@ -37,8 +37,8 @@ class MultiQemuDocker
     is_remote: false
   }.freeze
 
-  MAX_QEMU_PER_CPU = 4
-  MAX_CONTAINER_PER_CPU = 2
+  MIN_QEMU_CPU = 2
+  MIN_CONTAINER_CPU = 2
   MIN_QEMU_MEMORY = 4       # GB
   MIN_CONTAINER_MEMORY = 8  # GB
 
@@ -59,6 +59,7 @@ class MultiQemuDocker
     @last_free_mem = free_memory_mb
     @last_status_time = Time.now
     setup_directories
+    update_options
     @jobs = JobTracker.new
     @fifo_thread = start_fifo_listener
   end
@@ -69,6 +70,15 @@ class MultiQemuDocker
     FileUtils.mkdir_p(ENV["JOBS_DIR"] = "/srv/cci/jobs")
     FileUtils.mkdir_p(ENV["PIDS_DIR"] = "/srv/cci/pids")
     FileUtils.mkdir_p(ENV["LOGS_DIR"] = "/srv/cci/logs")
+  end
+
+  def update_options
+    if @options[:max_qemu] == 0
+      @options[:max_qemu] = compute_max_vm
+    end
+    if @options[:max_container] == 0
+      @options[:max_container] = compute_max_dc
+    end
   end
 
   def create_fifo
@@ -149,6 +159,25 @@ class MultiQemuDocker
     options
   end
 
+  def compute_max_vm
+    host_cpu = %x(grep -c "^processor" /proc/cpuinfo).to_i
+    host_mem = total_memory_mb >> 10
+
+    nr_vm_on_cpu = host_cpu / MIN_QEMU_CPU
+    nr_vm_on_mem = host_mem / MIN_QEMU_MEMORY
+
+    puts "nr_vm_on_cpu: #{nr_vm_on_cpu}"
+    puts "nr_vm_on_mem: #{nr_vm_on_mem}"
+
+    max_vm = [nr_vm_on_cpu, nr_vm_on_mem].min
+
+    return max_vm
+  end
+
+  def compute_max_dc
+    return %x(grep -c "^processor" /proc/cpuinfo).to_i / MIN_CONTAINER_CPU
+  end
+
   def build_scheduler_url
     if @options[:is_remote]
       "https://#{DOMAIN_NAME}/"
@@ -190,7 +219,7 @@ class MultiQemuDocker
     File.open('/proc/meminfo', 'r') do |file|
       file.each_line do |line|
         key, value = line.split(':')
-        meminfo_hash[key.strip] = value.strip.to_i / 1024 # Convert bytes to MiB
+        meminfo_hash[key.strip] = value.strip.to_i >> 10 # Convert bytes to MiB
       end
     end
     meminfo_hash
