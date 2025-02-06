@@ -2,6 +2,7 @@
 
 require 'optparse'
 require 'json'
+require 'etc'
 require 'fileutils'
 require 'yaml'
 require 'faye/websocket'
@@ -160,7 +161,7 @@ class MultiQemuDocker
   end
 
   def compute_max_vm
-    host_cpu = %x(grep -c "^processor" /proc/cpuinfo).to_i
+    host_cpu = Etc.nprocessors
     host_mem = total_memory_mb >> 10
 
     nr_vm_on_cpu = host_cpu / MIN_QEMU_CPU
@@ -170,12 +171,10 @@ class MultiQemuDocker
     puts "nr_vm_on_mem: #{nr_vm_on_mem}"
 
     max_vm = [nr_vm_on_cpu, nr_vm_on_mem].min
-
-    return max_vm
   end
 
   def compute_max_dc
-    return %x(grep -c "^processor" /proc/cpuinfo).to_i / MIN_CONTAINER_CPU
+    Etc.nprocessors / MIN_CONTAINER_CPU
   end
 
   def build_scheduler_url
