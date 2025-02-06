@@ -65,7 +65,7 @@ class MultiQemuDocker
     FileUtils.mkdir_p(ENV["HOSTS_DIR"] = "/srv/cci/hosts")
     FileUtils.mkdir_p(ENV["JOBS_DIR"] = "/srv/cci/jobs")
     FileUtils.mkdir_p(ENV["PIDS_DIR"] = "/srv/cci/pids")
-    FileUtils.mkdir_p(ENV["LOG_DIR"] = "/srv/cci/logs")
+    FileUtils.mkdir_p(ENV["LOGS_DIR"] = "/srv/cci/logs")
   end
 
   def open_websocket(url)
@@ -221,7 +221,7 @@ class MultiQemuDocker
     if fork_pid == nil
       ENV["hostname"] = hostname
       ENV["host_dir"] = "#{ENV["HOSTS_DIR"]}/#{hostname}"
-      ENV["log_file"] = "#{ENV["LOG_DIR"]}/#{hostname}"
+      ENV["log_file"] = "#{ENV["LOGS_DIR"]}/#{hostname}"
       ENV["is_remote"] = @options[:is_remote].to_s
       case message['tbox_type']
       when 'qemu'
@@ -250,7 +250,7 @@ class MultiQemuDocker
   def watch_log(message)
     job_id = message['job_id']
     job = @jobs[job_id]
-    log_file = "#{ENV["LOG_DIR"]}/#{job[:hostname]}.log"
+    log_file = "#{ENV["LOGS_DIR"]}/#{job[:hostname]}.log"
 
     # Create a pipe to capture the output of the tail process
     reader, writer = IO.pipe
