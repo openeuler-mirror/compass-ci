@@ -9,11 +9,6 @@ require 'fileutils'
 require 'yaml'
 require 'rest-client'
 
-require_relative 'lib/jwt'
-require_relative 'lib/remote_client'
-require_relative 'lib/common'
-require_relative '../container/defconfig'
-
 class QemuManager
   def initialize(message)
     @hostname = message["hostname"]

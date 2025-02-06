@@ -1,20 +1,20 @@
 #!/usr/bin/env ruby
 
 require 'optparse'
-require 'json'
 require 'etc'
-require 'fileutils'
+require 'json'
 require 'yaml'
+require 'rbconfig'
+require 'fileutils'
 require 'faye/websocket'
 require 'eventmachine'
 
 # Load common libraries
-require_relative 'lib/common'
 require_relative 'lib/jwt'
 require_relative 'lib/job_tracker'
 require_relative 'docker/docker'
-require_relative 'qemu'
-require_relative '../../container/defconfig'
+require_relative 'qemu/qemu'
+require_relative '../container/defconfig'
 
 names = Set.new %w[
   SCHED_HOST
@@ -27,7 +27,6 @@ SCHED_HOST = ENV['SCHED_HOST'] || defaults['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT = ENV['SCHED_HOST'] || defaults['SCHED_PORT'] || 3000
 
 DOMAIN_NAME = defaults['DOMAIN_NAME']
-ARCH = get_arch
 
 class MultiQemuDocker
   DEFAULT_OPTIONS = {
@@ -200,7 +199,7 @@ class MultiQemuDocker
       freemem: free_memory_mb,
       tbox_type: @options[:tbox_type],
       is_remote: @options[:is_remote],
-      arch: ARCH
+      arch: RbConfig::CONFIG['host_cpu']
     }
     @ws.send(status.to_json)
   end
@@ -358,6 +357,22 @@ class MultiQemuDocker
   def tail_log(job_id)
     # Log streaming logic using WebSocket
     system("tail -f /srv/cci/serial/logs/#{job_id}.log")
+  end
+
+  def update_code(commit_id)
+    # if there is no commit_id
+    # the code is not updated
+    return unless commit_id
+
+    dir = "#{ENV['CCI_SRC']}/in-pull"
+    return unless File.exist? dir
+    FileUtils.mkdir(dir) rescue return
+
+    cmd = "cd #{ENV['CCI_SRC']};git pull;git reset --hard #{commit_id}"
+    puts cmd
+    system(cmd)
+  ensure
+    FileUtils.rmdir(dir)
   end
 
   def safe_stop

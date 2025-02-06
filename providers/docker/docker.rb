@@ -10,10 +10,6 @@ require 'fileutils'
 require 'yaml'
 require 'rest-client'
 
-require_relative "../lib/jwt"
-require_relative "../lib/remote_client"
-require_relative '../lib/common'
-
 # Global variables
 HOST_DIR = ENV["HOST_DIR"] || "/srv/cci/hosts"
 LOG_FILE = ENV["LOG_FILE"] || "/srv/cci/logs"
