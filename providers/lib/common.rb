@@ -118,12 +118,3 @@ def safe_stop
 
   system("systemctl stop #{ENV['suite']}.service")
 end
-
-def additional_ipxe_script(response, ipxe_script_path)
-  return unless response
-  return unless ipxe_script_path
-
-  File.open(ipxe_script_path, 'w') do |f|
-    f.puts response
-  end
-end
