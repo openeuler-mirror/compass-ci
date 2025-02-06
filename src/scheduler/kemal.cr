@@ -93,29 +93,6 @@ module Scheduler
   end
 
 
-  ws "/ws/boot.:boot_type" do |socket, env|
-    env.set "ws", true
-    env.set "ws_state", "normal"
-    sched = Sched.instance
-
-    # XXX: port cbs
-    # spawn sched.get_job_boot_content
-    spawn sched.find_job_boot(env, socket)
-
-    socket.on_message do |msg|
-      msg = JSON.parse(msg.to_s).as_h?
-      (spawn env.channel.send(msg)) if msg
-    end
-
-    socket.on_close do
-      env.set "ws_state", "close"
-      env.log.info({
-        "from" => env.request.remote_address.to_s,
-        "message" => "socket on closed"
-      }.to_json)
-    end
-  end
-
   # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
   get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
     Sched.instance.find_next_job_boot(env)
@@ -273,15 +250,6 @@ module Scheduler
   # echo alive
   get "/scheduler/" do |env|
     Sched.instance.alive(VERSION)
-  end
-
-  # for XXX_runner get job
-  #
-  # /boot.ipxe/mac/${mac}
-  # /boot.xxx/host/${hostname}
-  # /boot.yyy/mac/${mac}
-  get "/scheduler/boot.:boot_type/:parameter/:value" do |env|
-    Sched.instance.find_job_boot(env)
   end
 
   ws "/scheduler/ws/boot.:boot_type/:parameter/:value" do |socket, env|
