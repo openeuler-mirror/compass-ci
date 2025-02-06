@@ -20,9 +20,9 @@ require "../lib/host"
 #  -- when no job return <#!ipxe no job messages>
 #
 # - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
-# - restful API [get "/~lkp/cgi-bin/lkp-jobfile-append-var"] report job var that should be append
-# - restful API [get "/~lkp/cgi-bin/lkp-cluster-sync"] for nodes to request cluster state
-# - restful API [get "/~lkp/cgi-bin/lkp-post-run" ] to move job from redis queue "sched/jobs_running" to "sched/extract_stats" and remove job from redis queue "sched/id2job"
+# - restful API [get "/scheduler/lkp/jobfile-append-var"] report job var that should be append
+# - restful API [get "/scheduler/lkp/cluster-sync"] for nodes to request cluster state
+# - restful API [get "/scheduler/lkp/post-run" ] to move job from redis queue "sched/jobs_running" to "sched/extract_stats" and remove job from redis queue "sched/id2job"
 #
 # -------------------------------------------------------------------------------------------
 # scheduler:
@@ -59,7 +59,6 @@ module Scheduler
 
   # ----------------------------------------
   # old scheduler api
-  # will remove all of them after 2022-4-7
   # ----------------------------------------
 
   # echo alive
@@ -110,11 +109,11 @@ module Scheduler
     Sched.instance.cancel_jobs(env).to_json
   end
 
-  post "/scheduler/update_subqueues" do |env|
+  post "/scheduler/update-subqueues" do |env|
     Sched.instance.update_subqueues(env).to_json
   end
 
-  post "/scheduler/delete_subqueue" do |env|
+  post "/scheduler/delete-subqueue" do |env|
     Sched.instance.delete_subqueue(env).to_json
   end
 
@@ -273,101 +272,76 @@ module Scheduler
     end
   end
 
-  # /scheduler/~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
-  get "/scheduler/~lkp/cgi-bin/gpxelinux.cgi" do |env|
+  # /scheduler/lkp/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
+  get "/scheduler/lkp/boot-next-job" do |env|
     Sched.instance.find_next_job_boot(env)
   end
 
   # enqueue
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
-  post "/scheduler/submit_job" do |env|
+  post "/scheduler/submit-job" do |env|
     Sched.instance.submit_job(env).to_json
   end
 
   # delete jobs from queue
-  post "/scheduler/cancel_jobs" do |env|
+  post "/scheduler/cancel-jobs" do |env|
     Sched.instance.cancel_jobs(env).to_json
   end
 
   # for client to report event
   # this event is recorded in the log
   # curl -H 'Content-Type: application/json' -X POST #{SCHED_HOST}:#{SCHED_PORT}/scheduler/report_event -d '#{data.to_json}'
-  post "/scheduler/report_event" do |env|
+  post "/scheduler/report-event" do |env|
     Sched.instance.report_event(env).to_s
   end
 
   # extend the deadline
   # curl "http://localhost:3000/scheduler/renew_deadline?job_id=1&time=100
-  get "/scheduler/renew_deadline" do |env|
+  get "/scheduler/renew-deadline" do |env|
     Sched.instance.renew_deadline(env).to_s
   end
 
   # get testbox deadline
   # curl "http://localhost:3000/scheduler/get_deadline?testbox=xxx
-  get "/scheduler/get_deadline" do |env|
+  get "/scheduler/get-deadline" do |env|
     Sched.instance.get_deadline(env).to_s
   end
 
   # get testbox info
   # curl "http://localhost:3000/scheduler/get_testbox?testbox=xxx
-  get "/scheduler/get_testbox" do |env|
+  get "/scheduler/get-testbox" do |env|
     Sched.instance.get_testbox(env).to_json
   end
 
   # file download server
-  get "/scheduler/job_initrd_tmpfs/:job_id/:job_package" do |env|
+  get "/scheduler/job-initrd-tmpfs/:job_id/:job_package" do |env|
     Sched.instance.download_file(env)
   end
 
-  # client(runner) report its hostname and mac
-  #  - when a runner pull jobs with it's mac infor, scheduler find out what hostname is it
-  # /set_host_mac?hostname=$hostname&mac=$mac (mac like ef-01-02-03-04-05)
-  # add a <mac> => <hostname>
-  #
-  # curl -X PUT "http://localhost:3000/scheduler/set_host_mac?hostname=wfg&mac=00-01-02-03-04-05"
-  put "/scheduler/set_host_mac" do |env|
-    # obsolete API
-  end
-
-  # curl -X PUT "http://localhost:3000/scheduler/set_host2queues?queues=vm-2p8g.aarch64&host=vm-2p8g.aarch64"
-  put "/scheduler/set_host2queues" do |env|
-    # obsolete API
-  end
-
-  # curl -X PUT "http://localhost:3000/scheduler/del_host_mac?mac=00-01-02-03-04-05"
-  put "/scheduler/del_host_mac" do |env|
-    # obsolete API
-  end
-
-  # curl -X PUT "http://localhost:3000/scheduler/del_host2queues?host=vm-2p8g.aarch64"
-  put "/scheduler/del_host2queues" do |env|
-    # obsolete API
-  end
-
   # client(runner) report job's status
-  # /scheduler/~lkp/cgi-bin/lkp-jobfile-append-var
+  # /scheduler/lkp/jobfile-append-var
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=running&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
-  get "/scheduler/~lkp/cgi-bin/lkp-jobfile-append-var" do |env|
+  get "/scheduler/lkp/jobfile-append-var" do |env|
     Sched.instance.update_job_parameter(env)
 
     "Done"
   end
 
   # client(runner) report job's stage
-  # /scheduler/~lkp/cgi-bin/set-job-stage
+  # /scheduler/lkp/set-job-stage
   #   ?job_stage=on_fail&job_id=10
   #   ?job_stage=on_fail&job_id=10&timeout=21400
-  get "/scheduler/~lkp/cgi-bin/set-job-stage" do |env|
+  get "/scheduler/lkp/set-job-stage" do |env|
     Sched.instance.set_job_stage(env)
 
     "Done"
   end
 
   # node in cluster requests cluster state
-  # wget 'http://localhost:3000/scheduler/~lkp/cgi-bin/lkp-cluster-sync?job_id=<job_id>&state=<state>'
+  # wget 'http://localhost:3000/scheduler/lkp/cluster-sync?job_id=<job_id>&state=<state>'
   # 1) state   : "wait_ready"
   #    response: return "abort" if one node state is "abort",
   #              "ready" if all nodes are "ready", "retry" otherwise.
@@ -383,43 +357,37 @@ module Scheduler
   # 5) state   : roles_ip
   #    response: get "server ip" from cluster state,
   #              return "server=<server ip>".
-  get "/scheduler/~lkp/cgi-bin/lkp-cluster-sync" do |env|
+  get "/scheduler/lkp/cluster-sync" do |env|
     Sched.instance.request_cluster_state(env)
   end
 
   # client(runner) report job post_run finished
-  # /scheduler/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
+  # /scheduler/lkp/post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
-  get "/scheduler/~lkp/cgi-bin/lkp-post-run" do |env|
+  get "/scheduler/lkp/post-run" do |env|
     Sched.instance.close_job(env).to_json
   end
 
-  get "/scheduler/~lkp/cgi-bin/lkp-wtmp" do |env|
-    # obsolete API 
-
-    "Done"
-  end
-
-  get "/scheduler/~lkp/cgi-bin/report_ssh_port" do |env|
+  get "/scheduler/lkp/report-ssh-port" do |env|
     Sched.instance.report_ssh_port(env)
 
     "Done"
   end
 
   # content='{"tbox_name": "'$HOSTNAME'", "job_id": "'$id'", "ssh_port": "'$ssh_port'", "message": "'$message'"}'
-  # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/scheduler/~lkp/cgi-bin/report_ssh_info" -d "$content"
-  post "/scheduler/~lkp/cgi-bin/report_ssh_info" do |env|
+  # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/scheduler/lkp/report_ssh_info" -d "$content"
+  post "/scheduler/lkp/report-ssh-info" do |env|
     Sched.instance.report_ssh_info(env)
 
     "Done"
   end
 
   # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/scheduler/rpmbuild/submit_reverse_depend_jobs" -d "$content"
-  post "/scheduler/rpmbuild/submit_reverse_depend_jobs" do |env|
+  post "/scheduler/rpmbuild/submit-reverse-depend-jobs" do |env|
     Sched.instance.submit_reverse_depend_jobs(env)
   end
 
-  post "/scheduler/rpmbuild/submit_install_rpm" do |env|
+  post "/scheduler/rpmbuild/submit-install-rpm" do |env|
     Sched.instance.submit_install_rpm(env)
   end
 

@@ -11,7 +11,7 @@ class SchedulerAPI
   end
 
   def close_job(job_id, job_state = nil, source = nil, job_health = nil)
-    url = "/~lkp/cgi-bin/lkp-post-run?job_id=#{job_id}&source=#{source}"
+    url = "/scheduler/lkp/post-run?job_id=#{job_id}&source=#{source}"
     url += "&job_state=#{job_state}" if job_state
     url += "&job_health=#{job_health}" if job_health
     client = HTTP::Client.new(@host, port: @port)
