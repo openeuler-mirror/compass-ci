@@ -2,8 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def submit_install_rpm
-    body = @env.request.body.not_nil!.gets_to_end
+  def submit_install_rpm(env)
+    body = env.request.body.not_nil!.gets_to_end
     body = JSON.parse(body).as_h
     return if body["rpm_dest"].to_s.empty?
 
@@ -15,7 +15,7 @@ class Sched
 
     spawn Jobfile::Operate.auto_submit_job("install-rpm.yaml", job_info)
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
@@ -32,9 +32,9 @@ class Sched
     job_info
   end
 
-  def submit_reverse_depend_jobs
-    body = @env.request.body.not_nil!.gets_to_end
-    @env.set "log", body
+  def submit_reverse_depend_jobs(env)
+    body = env.request.body.not_nil!.gets_to_end
+    env.set "log", body
 
     body = JSON.parse(body).as_h
     return if body["reverse_depends"].to_s.empty?
@@ -47,7 +47,7 @@ class Sched
 
     submit_reverse_depend_job(common_info)
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s

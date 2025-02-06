@@ -17,15 +17,14 @@ require "./mq"
 # - json formated data stored in the @mq.queue("update_repo")
 #
 class Repo
-  def initialize(env : HTTP::Server::Context)
+  def initialize
     @mq = MQClient.instance
-    @env = env
     @log = JSONLogger.new
   end
 
-  def upload_repo
+  def upload_repo(env : HTTP::Server::Context)
     begin
-      body = @env.request.body.not_nil!.gets_to_end
+      body = env.request.body.not_nil!.gets_to_end
       data = JSON.parse(body.to_s).as_h?
     rescue e
       @log.warn(e)

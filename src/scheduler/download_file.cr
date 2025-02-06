@@ -2,20 +2,20 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def download_file
-    job_id = @env.params.url["job_id"]
-    job_package = @env.params.url["job_package"]
+  def download_file(env)
+    job_id = env.params.url["job_id"]
+    job_package = env.params.url["job_package"]
     file_path = ::File.join [Kemal.config.public_folder, job_id, job_package]
 
-    @env.set "job_id", job_id
-    @env.set "job_state", "download"
+    env.set "job_id", job_id
+    env.set "job_state", "download"
 
-    send_file @env, file_path
+    send_file env, file_path
 
     # delete the folder after the download is complete
     FileUtils.rm_rf(::File.join [Kemal.config.public_folder, job_id])
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s

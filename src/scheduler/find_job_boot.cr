@@ -8,35 +8,35 @@ require "../lib/json_logger"
 require "../lib/string_utils"
 
 class Sched
-  def find_job_boot
+  def find_job_boot(env, socket = nil)
     job = nil
 
-    if @env.get?("ws")
+    if env.get?("ws")
       @log.info("get job boot content")
 
-      send_timeout_signal
+      send_timeout_signal(env)
 
-      arch = @env.params.query["arch"]
-      host_machine = @env.params.query["host_machine"]
-      hostname = @env.params.query["hostname"]
-      tags = @env.params.query["tags"]  # format: tag1,tag2,...
-      freemem = @env.params.query["left_mem"]
-      is_remote = @env.params.query["is_remote"]
-      boot_type = @env.ws_route_lookup.params["boot_type"]
+      arch = env.params.query["arch"]
+      host_machine = env.params.query["host_machine"]
+      hostname = env.params.query["hostname"]
+      tags = env.params.query["tags"]  # format: tag1,tag2,...
+      freemem = env.params.query["left_mem"]
+      is_remote = env.params.query["is_remote"]
+      boot_type = env.ws_route_lookup.params["boot_type"]
     else
-      arch = @env.params.url["arch"]
-      host_machine = @env.params.url["host_machine"]
-      hostname = @env.params.url["hostname"]
-      tags = @env.params.url["tags"]
-      freemem = @env.params.url["left_mem"]
-      is_remote = @env.params.url["is_remote"]
-      boot_type = @env.params.url["boot_type"]
+      arch = env.params.url["arch"]
+      host_machine = env.params.url["host_machine"]
+      hostname = env.params.url["hostname"]
+      tags = env.params.url["tags"]
+      freemem = env.params.url["left_mem"]
+      is_remote = env.params.url["is_remote"]
+      boot_type = env.params.url["boot_type"]
     end
 
-    @env.set "testbox", hostname
-    @env.set "state", "requesting"
-    @env.set "job_stage", "boot"
-    send_mq_msg
+    env.set "testbox", hostname
+    env.set "state", "requesting"
+    env.set "job_stage", "boot"
+    send_mq_msg(env)
 
     # get job
     freemem = Utils.parse_memory_mb(freemem)
@@ -49,36 +49,34 @@ class Sched
 
     # set job_id to @env
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    @env.set "job_id", job_id
+    env.set "job_id", job_id
 
     set_job2watch(job, "boot", "success")
 
     # return response to testbox
-    if @env.get?("ws")
-      @env.socket.send({
+    if socket
+      socket.send({
         "type" => "boot",
         "response" => response
-      }.to_json) unless @env.get?("ws_state") == "close"
+      }.to_json) unless env.get?("ws_state") == "close"
     else
       response
     end
   rescue e
     set_job2watch(job, "boot", "failed")
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    close_resources
-    send_mq_msg
+    close_resources(env, socket) if socket
+    send_mq_msg(env)
   end
 
-  def close_resources
-    return unless @env.get?("ws")
-
+  def close_resources(env, socket)
     begin
-      @env.socket.send({"type" => "close"}.to_json)
+      socket.send({"type" => "close"}.to_json)
     rescue e
       @log.warn({
         "message" => "socket send close message failed",
@@ -87,7 +85,7 @@ class Sched
     end
 
     begin
-      @env.socket.close
+      socket.close
     rescue e
       @log.warn({
         "message" => "close socket failed",
@@ -96,7 +94,7 @@ class Sched
     end
 
     begin
-      @env.channel.close
+      env.channel.close
     rescue e
       @log.warn({
         "message" => "close channel failed",
@@ -105,14 +103,14 @@ class Sched
     end
   end
 
-  def send_timeout_signal
+  def send_timeout_signal(env)
     spawn do
       90.times do
         sleep 2.seconds
-        break if @env.channel.closed?
+        break if env.channel.closed?
       end
 
-      @env.channel.send({"type" => "timeout"}) unless @env.channel.closed?
+      env.channel.send({"type" => "timeout"}) unless env.channel.closed?
     end
   end
 
@@ -183,12 +181,12 @@ class Sched
     end
   end
 
-  def create_job_boot(job, boot_type)
+  def create_job_boot(env, job, boot_type)
     job.last_success_stage = "boot"
-    @env.set "job_id", job.id
-    @env.set "deadline", job.deadline
-    @env.set "job_stage", job.job_stage
-    @env.set "state", "booting"
+    env.set "job_id", job.id
+    env.set "deadline", job.deadline
+    env.set "job_stage", job.job_stage
+    env.set "state", "booting"
     create_job_cpio(job, Kemal.config.public_folder)
 
     # UPDATE the large fields to null

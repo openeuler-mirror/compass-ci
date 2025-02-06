@@ -2,11 +2,11 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 #
 class Sched
-  def heart_beat
+  def heart_beat(env)
     # hostname = k8s-at1
-    type = @env.params.query["type"]
-    hostname = @env.params.query["hostname"]
-    is_remote = @env.params.query["is_remote"]
+    type = env.params.query["type"]
+    hostname = env.params.query["hostname"]
+    is_remote = env.params.query["is_remote"]
 
     _hostname = "local-#{hostname}"
     _hostname = "remote-#{hostname}" if is_remote == "true"

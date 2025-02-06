@@ -26,10 +26,6 @@ class Sched
     @etcd.delete("sched/id2job/#{id}")
   end
 
-  def update_tbox_wtmp(testbox, wtmp_hash)
-    @etcd.update("sched/tbox_wtmp/#{testbox}", wtmp_hash)
-  end
-
   def move_process2stats(job : Job)
     f_queue = "sched/in_process/#{job.queue}/#{job.subqueue}/#{job.id}"
     t_queue = "extract_stats/#{job.id}"

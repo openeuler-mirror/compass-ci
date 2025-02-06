@@ -23,8 +23,8 @@ class Sched
     end
   end
 
-  def delete_subqueue
-    body = @env.request.body.not_nil!.gets_to_end
+  def delete_subqueue(env)
+    body = env.request.body.not_nil!.gets_to_end
     content = JSON.parse(body)
 
     ["my_email", "subqueue"].each do |key|
@@ -44,9 +44,9 @@ class Sched
     { "error_msg" => e.to_s }
   end
 
-  def update_subqueues 
+  def update_subqueues(env)
     results = Array(Hash(String, String)).new
-    body = @env.request.body.not_nil!.gets_to_end
+    body = env.request.body.not_nil!.gets_to_end
 
     content = JSON.parse(body)
     ["my_email", "subqueues"].each do |key|
@@ -61,7 +61,7 @@ class Sched
 
     Subqueue.instance.update(content["subqueues"])
   rescue e
-    @env.response.status_code = 202
+    env.response.status_code = 202
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s

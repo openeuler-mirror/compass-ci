@@ -2,8 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def set_job_stage
-    job_id, job_stage, timeout = get_params_info
+  def set_job_stage(env)
+    job_id, job_stage, timeout = get_params_info(env)
 
     job = @es.get_job(job_id.to_s)
     raise "can't faind this job in es: #{job_id}" unless job
@@ -12,21 +12,22 @@ class Sched
     # no need to update job
     return if job.job_health == "return"
 
-    @env.set "time", get_time
+    env.set "time", get_time
 
     change_job_stage(job, job_stage, timeout)
+    env.set "deadline", job.set_deadline(job_stage, timeout.to_i32).to_s
     update_database(job)
 
     report_workflow_job_event(job_id.to_s, job)
 
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    send_mq_msg
+    send_mq_msg(env)
   end
 
   def update_database(job)
@@ -39,16 +40,15 @@ class Sched
     job.job_stage = job_stage
     job.last_success_stage = job_stage
     job.set_time("#{job_stage}_time")
-    @env.set "deadline", job.set_deadline(job_stage, timeout.to_i32).to_s
   end
 
-  def get_params_info
-    job_id = @env.params.query["job_id"]?.to_s
-    job_stage = @env.params.query["job_stage"]?.to_s
-    timeout = @env.params.query["timeout"]?.to_s || 0.to_s
+  def get_params_info(env)
+    job_id = env.params.query["job_id"]?.to_s
+    job_stage = env.params.query["job_stage"]?.to_s
+    timeout = env.params.query["timeout"]?.to_s || 0.to_s
 
-    @env.set "job_id", job_id
-    @env.set "job_stage", job_stage
+    env.set "job_id", job_id
+    env.set "job_stage", job_stage
 
     check_params({"job_id" => job_id, "job_stage" => job_stage})
     [job_id, job_stage, timeout]

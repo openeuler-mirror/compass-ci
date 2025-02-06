@@ -2,8 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def submit_job
-    body = @env.request.body.not_nil!.gets_to_end
+  def submit_job(env)
+    body = env.request.body.not_nil!.gets_to_end
 
     job_content = JSON.parse(body)
     job = Job.new(job_content.as_h)
@@ -20,7 +20,7 @@ class Sched
       response = submit_cluster_job(job, cluster_config)
     end
   rescue e
-    @env.response.status_code = 202
+    env.response.status_code = 202
     @log.warn({
       "message" => e.to_s,
       "job_content" => public_content(job_content),

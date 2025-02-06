@@ -2,15 +2,15 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def update_job_parameter
-    job_id = @env.params.query["job_id"]?
+  def update_job_parameter(env)
+    job_id = env.params.query["job_id"]?
     return false unless job_id
 
     job = @es.get_job(job_id)
     return false unless job
 
-    @env.set "job_id", job_id
-    @env.set "time", get_time
+    env.set "job_id", job_id
+    env.set "time", get_time
 
     # the user actively returned this testbox
     # no need to update job
@@ -20,7 +20,7 @@ class Sched
     delta_job = Job.new(Hash(String, JSON::Any).new, nil)
 
     (%w(start_time end_time loadavg job_state)).each do |parameter|
-      value = @env.params.query[parameter]?
+      value = env.params.query[parameter]?
       next if value.nil? || value == ""
 
       if parameter == "start_time" || parameter == "end_time"
@@ -44,8 +44,8 @@ class Sched
         job.last_success_stage = value
         job.set_time("#{value}_time")
         job.set_boot_elapsed_time
-        @env.set "job_stage", value
-        @env.set "deadline", job.set_deadline(value).to_s
+        env.set "job_stage", value
+        env.set "deadline", job.set_deadline(value).to_s
       else
         value = "success" if value == "finished"
         delta_job.job_health = value
@@ -62,27 +62,27 @@ class Sched
     log.hash_plain["job_id"] = job_id
     log.hash_plain.delete("id")
 
-    @env.set "log", log.to_json
+    env.set "log", log.to_json
 
     @es.set_job(job)
-    update_testbox_info(job)
+    update_testbox_info(env, job)
 
     report_workflow_job_event(job_id.to_s, job)
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    send_mq_msg
+    send_mq_msg(env)
   end
 
-  def update_testbox_info(job)
+  def update_testbox_info(env, job)
     testbox = job.testbox
-    deadline = @env.get?("deadline")
+    deadline = env.get?("deadline")
 
-    hash = {"time" => @env.get?("time").to_s}
+    hash = {"time" => env.get?("time").to_s}
     hash["deadline"] = deadline.to_s if deadline
 
     @es.update_tbox(testbox, hash)

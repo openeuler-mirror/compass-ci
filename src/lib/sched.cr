@@ -8,7 +8,6 @@ require "any_merge"
 require "./mq"
 require "./job"
 require "./utils"
-require "./web_env"
 require "./etcd_client"
 require "./block_helper"
 require "./remote_git_client"
@@ -44,31 +43,48 @@ require "../scheduler/heart_beat"
 require "../scheduler/dispatch"
 require "../scheduler/options"
 
+def sched
+  Scheduler.sched
+end
+
 class Sched
   property es
   property redis
   property block_helper
+  property cluster
+  property finally
+  property pkgbuild
+  property hosts_cache
 
   class_property options = SchedOptions.new
 
   @@block_helper = BlockHelper.new
 
-  def initialize(env : HTTP::Server::Context)
+  @@instance : self?
+
+  def self.instance : self
+    @@instance ||= new
+  end
+
+  def initialize()
     @es = Elasticsearch::Client.new
     @redis = RedisClient.instance
     @mq = MQClient.instance
     @etcd = EtcdClient.new
     @rgc = RemoteGitClient.new
-    @env = env
-    @log = env.log.as(JSONLogger)
-
+    @log = JSONLogger.new
+    @lifecycle = Lifecycle.new
+    @repo = Repo.new
+    @cluster = Cluster.new
+    @finally = Finally.new
+    @pkgbuild = PkgBuild.new
     # Load initial hosts data from ES
     @hosts_cache = Hosts.new(@es)
     refresh_cache_from_es
   end
 
-  def debug_message(response)
-    @log.info(%({"from": "#{@env.request.remote_address}", "response": #{response.to_json}}))
+  def debug_message(env, response)
+    @log.info(%({"from": "#{env.request.remote_address}", "response": #{response.to_json}}))
   end
 
   def etcd_close
@@ -81,122 +97,16 @@ class Sched
     @log.warn(e.inspect_with_backtrace)
   end
 
-  def set_host_mac
-    if (hostname = @env.params.query["hostname"]?) && (mac = @env.params.query["mac"]?)
-      @redis.hash_set("sched/mac2host", Utils.normalize_mac(mac), hostname)
-
-      "Done"
-    else
-      "No yet!"
-    end
-  rescue e
-    @log.warn(e.inspect_with_backtrace)
-  end
-
-  def del_host_mac
-    if mac = @env.params.query["mac"]?
-      @redis.hash_del("sched/mac2host", Utils.normalize_mac(mac))
-
-      "Done"
-    else
-      "No yet!"
-    end
-  rescue e
-    @log.warn(e.inspect_with_backtrace)
-  end
-
-  def set_host2queues
-    if (queues = @env.params.query["queues"]?) && (hostname = @env.params.query["host"]?)
-      @redis.hash_set("sched/host2queues", hostname, queues)
-
-      "Done"
-    else
-      "No yet!"
-    end
-  rescue e
-    @log.warn(e.inspect_with_backtrace)
-  end
-
-  def register_host2redis
-    type = @env.params.query["type"]
-    data = Hash(String, String).new
-    data["type"] = type
-    data["arch"] = @env.params.query["arch"]
-    data["owner"] = @env.params.query["owner"]
-    data["max_mem"] = @env.params.query["max_mem"]
-    data["hostname"] = @env.params.query["hostname"]
-    data["is_remote"] = @env.params.query["is_remote"]
-
-
-    unless TBOX_TYPES.includes?(type)
-      @log.warn("type is not support, type: #{type}")
-      raise "type is not support, type: #{type}"
-    end
-
-    hostname = "local-#{data["hostname"]}"
-    hostname = data["is_remote"] == "true"? "remote-#{data["hostname"]}" : hostname
-    data["hostname"] = hostname
-
-    tbox = "/tbox/#{type}/#{data["hostname"]}"
-    @redis.set(tbox, data.to_json )
-    @redis.expire(tbox, 60)
-  rescue e
-    @log.warn(e.inspect_with_backtrace)
-  end
-
-  def del_host2queues
-    if hostname = @env.params.query["host"]?
-      @redis.hash_del("sched/host2queues", hostname)
-
-      "Done"
-    else
-      "No yet!"
-    end
-  rescue e
-    @log.warn(e.inspect_with_backtrace)
-  end
-
   def get_time
     Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
-  def update_tbox_wtmp
-    testbox = ""
-    hash = Hash(String, String | Nil).new
-
-    hash["time"] = get_time
-
-    %w(mac ip job_id tbox_name tbox_state).each do |parameter|
-      if (value = @env.params.query[parameter]?)
-        case parameter
-        when "tbox_name"
-          testbox = value
-        when "tbox_state"
-          hash["state"] = value
-        when "mac"
-          hash["mac"] = Utils.normalize_mac(value)
-        else
-          hash[parameter] = value
-        end
-      end
-    end
-
-    @redis.update_wtmp(testbox, hash)
-    @es.update_tbox(testbox, hash)
-
-    # json log
-    hash["testbox"] = testbox
-    @log.info(hash.to_json)
-  rescue e
-    @log.warn(e.inspect_with_backtrace)
-  end
-
-  def send_mq_msg
-    job_stage = @env.get?("job_stage").to_s
-    deadline = @env.get?("deadline").to_s
+  def send_mq_msg(env)
+    job_stage = env.get?("job_stage").to_s
+    deadline = env.get?("deadline").to_s
 
     # the state of the testbox
-    state = @env.get?("state").to_s
+    state = env.get?("state").to_s
 
     # only need send job_stage info
     return if job_stage.empty?
@@ -207,8 +117,8 @@ class Sched
     return if deadline.empty? && state != "requesting"
 
     mq_msg = {
-      "job_id" => @env.get?("job_id").to_s,
-      "testbox" => @env.get?("testbox").to_s,
+      "job_id" => env.get?("job_id").to_s,
+      "testbox" => env.get?("testbox").to_s,
       "deadline" => deadline,
       "time" => get_time,
       "job_stage" => job_stage
@@ -226,8 +136,8 @@ class Sched
     new_queues
   end
 
-  def get_api
-    resource = @env.request.resource
+  def get_api(env)
+    resource = env.request.resource
     api = resource.split("?")[0].split("/")
     if resource.starts_with?("/boot.")
       return "boot"
@@ -307,14 +217,14 @@ class Sched
     "unknown"
   end
 
-  def get_testbox
-    testbox = @env.params.query["testbox"]?.to_s
+  def get_testbox(env)
+    testbox = env.params.query["testbox"]?.to_s
     testbox_info = @es.get_tbox(testbox)
     raise "cant find the testbox in es, testbox: #{testbox}" unless testbox_info
 
     testbox_info
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s

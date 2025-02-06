@@ -2,42 +2,42 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def hw_find_job_boot
-    @env.set "job_stage", "boot"
+  def hw_find_job_boot(env)
+    env.set "job_stage", "boot"
 
-    value = @env.params.url["value"]
-    boot_type = @env.params.url["boot_type"]
-    host = @env.params.url["hostname"]
-    arch = @env.params.url["arch"]
-    tags = @env.params.url["tags"] # format: tag1,tag2,...
+    value = env.params.url["value"]
+    boot_type = env.params.url["boot_type"]
+    host = env.params.url["hostname"]
+    arch = env.params.url["arch"]
+    tags = env.params.url["tags"] # format: tag1,tag2,...
 
     mac = Utils.normalize_mac(value)
     host ||= @hosts_cache.mac2hostname(mac)
     host ||= @redis.hash_get("sched/mac2host", mac)
     return boot_content(nil, boot_type) unless host
 
-    set_hw_tbox_to_redis(host)
+    set_hw_tbox_to_redis(env, host)
 
-    @env.set "testbox", host unless host.nil?
+    env.set "testbox", host unless host.nil?
 
-    response = hw_get_job_boot(host, arch, boot_type, tags)
+    response = hw_get_job_boot(env, host, arch, boot_type, tags)
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    @env.set "job_id", job_id
+    env.set "job_id", job_id
 
     response
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    del_hw_tbox_from_redis
-    send_mq_msg
+    del_hw_tbox_from_redis(env)
+    send_mq_msg(env)
   end
 
-  def set_hw_tbox_to_redis(host)
+  def set_hw_tbox_to_redis(env, host)
     data = Hash(String, String).new
     data["type"] = "hw"
     data["hostname"] = "#{host}"
@@ -53,11 +53,11 @@ class Sched
     @redis.set(tbox, data.to_json)
     @redis.expire(tbox, 600)
 
-    @env.set "redis_tbox", tbox
+    env.set "redis_tbox", tbox
   end
 
-  def del_hw_tbox_from_redis
-    tbox = @env.get "redis_tbox"
+  def del_hw_tbox_from_redis(env)
+    tbox = env.get "redis_tbox"
     @redis.del("#{tbox}") if tbox
   end
 
@@ -80,9 +80,9 @@ class Sched
     return nil
   end
 
-  def hw_get_job_boot(host, arch, boot_type, tags, pre_job=nil)
-    @env.set "state", "requesting"
-    send_mq_msg
+  def hw_get_job_boot(env, host, arch, boot_type, tags, pre_job=nil)
+    env.set "state", "requesting"
+    send_mq_msg(env)
     host_machine = host
 
     job_id = hw_get_job_from_ready_queues(boot_type, arch, host_machine, tags)
@@ -109,10 +109,10 @@ class Sched
 
       report_workflow_job_event(job["id"].to_s, job)
 
-      @env.set "job_id", job.id
-      @env.set "deadline", job.deadline
-      @env.set "job_stage", job.job_stage
-      @env.set "state", "booting"
+      env.set "job_id", job.id
+      env.set "deadline", job.deadline
+      env.set "job_stage", job.job_stage
+      env.set "state", "booting"
       create_job_cpio(job, Kemal.config.public_folder)
       set_id2upload_dirs(job)
     end

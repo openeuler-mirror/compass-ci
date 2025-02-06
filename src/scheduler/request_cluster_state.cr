@@ -6,9 +6,9 @@ class Sched
   # all request states:
   #     wait_ready | abort | failed | finished | wait_finish |
   #     write_state | roles_ip
-  def request_cluster_state
-    request_state = @env.params.query["state"]
-    job_id = @env.params.query["job_id"]
+  def request_cluster_state(env)
+    request_state = env.params.query["state"]
+    job_id = env.params.query["job_id"]
     cluster_id = @redis.hash_get("sched/id2cluster", job_id).not_nil!
     cluster_state = ""
 
@@ -26,10 +26,10 @@ class Sched
     when "wait_start", "wait_ready", "wait_finish", "finished"
       return block_until_state(cluster_id, job_id, states[request_state])
     when "write_state"
-      node_roles = @env.params.query["node_roles"]
-      node_ip = @env.params.query["ip"]
-      direct_ips = @env.params.query["direct_ips"]
-      direct_macs = @env.params.query["direct_macs"]
+      node_roles = env.params.query["node_roles"]
+      node_ip = env.params.query["ip"]
+      direct_ips = env.params.query["direct_ips"]
+      direct_macs = env.params.query["direct_macs"]
 
       job_info = {"roles"       => node_roles,
                   "ip"          => node_ip,
@@ -54,7 +54,7 @@ class Sched
     # show cluster state
     return @redis.hash_get("sched/cluster_state", cluster_id)
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s

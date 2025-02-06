@@ -2,19 +2,19 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def set_srpm_info
+  def set_srpm_info(env)
     # body's data structure:
     # {"type": "create", "job_id": "1", "srpms": [{"os":"centos7", "srpm":"test", "repo_name": "base"}]}
-    body = @env.request.body.not_nil!.gets_to_end
+    body = env.request.body.not_nil!.gets_to_end
     body = JSON.parse(body).as_h
 
     check_params({"srpms" => body["srpms"]?, "job_id" => body["job_id"]?, "type" => body["type"]})
-    @env.set "log", {"job_id" => body["job_id"], "type" => body["type"]}.to_json
+    env.set "log", {"job_id" => body["job_id"], "type" => body["type"]}.to_json
     @log.info("start bulk save srpms")
 
     bulk_save_srpms(body["srpms"].as_a, body["type"].to_s, body["job_id"].to_s)
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s

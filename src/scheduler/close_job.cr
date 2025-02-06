@@ -38,14 +38,14 @@ class Sched
     end
   end
 
-  def close_job
-    job_id = @env.params.query["job_id"]?
-    mem = @env.params.query["mem"]?
-    cpu = @env.params.query["cpu"]?
+  def close_job(env)
+    job_id = env.params.query["job_id"]?
+    mem = env.params.query["mem"]?
+    cpu = env.params.query["cpu"]?
     return unless job_id
 
-    @env.set "job_id", job_id
-    @env.set "job_stage", "finish"
+    env.set "job_id", job_id
+    env.set "job_stage", "finish"
 
     # etcd id2job only stores partial job content
     # so query full job from es
@@ -53,13 +53,13 @@ class Sched
     raise "can't find job from es, job_id: #{job_id}" unless job
 
     # update job content
-    job_state = @env.params.query["job_state"]?
+    job_state = env.params.query["job_state"]?
     job.job_state = job_state if job_state
     job.job_state = "complete" if job.job_state == "boot"
 
     job.job_stage = "finish"
 
-    job_health = @env.params.query["job_health"]?
+    job_health = env.params.query["job_health"]?
     if job_health && job_health == "return"
       # if user returns this testbox
       # job_health needs to be return
@@ -83,7 +83,7 @@ class Sched
     end
 
     job.set_time("finish_time")
-    @env.set "finish_time", job.finish_time
+    env.set "finish_time", job.finish_time
 
     if job.has_key?("running_time") && job.has_key?("finish_time")
       running_time = Time.parse(job.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
@@ -91,9 +91,9 @@ class Sched
       job.run_seconds = (finish_time - running_time).to_s
     end
 
-    if @env.params.query["source"]? != "lifecycle"
+    if env.params.query["source"]? != "lifecycle"
       deadline = job.get_deadline("finish")
-      @env.set "deadline", deadline.to_s
+      env.set "deadline", deadline.to_s
       @es.update_tbox(job.testbox, {"deadline" => deadline})
       job.last_success_stage = "finish"
     end
@@ -111,14 +111,14 @@ class Sched
     report_workflow_job_event(job_id.to_s, job)
     "success"
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
     e.to_s
   ensure
-    send_mq_msg if @env.params.query["source"]? != "lifecycle"
+    send_mq_msg(env) if env.params.query["source"]? != "lifecycle"
     if job
       # need update the end job_health to etcd
       res = update_id2job(job)

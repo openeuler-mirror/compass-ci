@@ -8,60 +8,60 @@ require "../lib/json_logger"
 require "../lib/string_utils"
 
 class Sched
-  def get_job_boot_content
+  def get_job_boot_content(env)
     job = nil
-    @env.set "job_stage", "boot"
+    env.set "job_stage", "boot"
 
-    if @env.get?("ws")
+    if env.get?("ws")
       send_timeout_signal
       @log.info("get job boot content")
-      hostname = @env.params.query["hostname"]
-      is_remote = @env.params.query["is_remote"]
-      boot_type = @env.ws_route_lookup.params["boot_type"]
+      hostname = env.params.query["hostname"]
+      is_remote = env.params.query["is_remote"]
+      boot_type = env.ws_route_lookup.params["boot_type"]
     else
-      hostname = @env.params.url["hostname"]
-      is_remote = @env.params.url["is_remote"]
-      boot_type = @env.params.url["boot_type"]
+      hostname = env.params.url["hostname"]
+      is_remote = env.params.url["is_remote"]
+      boot_type = env.params.url["boot_type"]
     end
 
     host = is_remote == "true" ? "remote-#{hostname}" : "local-#{hostname}"
 
-    @env.set "testbox", host
+    env.set "testbox", host
 
     # get job
     response, job = create_job_boot(host, boot_type)
 
     # set job_id to @env
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    @env.set "job_id", job_id
+    env.set "job_id", job_id
 
     set_job2watch(job, "boot", "success")
     # return response to testbox
-    if @env.get?("ws")
-      @env.socket.send({
+    if env.get?("ws")
+      env.socket.send({
         "type" => "boot",
         "response" => response
-      }.to_json) unless @env.get?("ws_state") == "close"
+      }.to_json) unless env.get?("ws_state") == "close"
     else
       response
     end
   rescue e
     set_job2watch(job, "boot", "failed")
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
     close_resources
-    send_mq_msg
+    send_mq_msg(env)
   end
 
-  def close_resources
-    return unless @env.get?("ws")
+  def close_resources(env)
+    return unless env.get?("ws")
 
     begin
-      @env.socket.send({"type" => "close"}.to_json)
+      env.socket.send({"type" => "close"}.to_json)
     rescue e
       @log.warn({
         "message" => "socket send close message failed",
@@ -70,7 +70,7 @@ class Sched
     end
 
     begin
-      @env.socket.close
+      env.socket.close
     rescue e
       @log.warn({
         "message" => "close socket failed",
@@ -79,7 +79,7 @@ class Sched
     end
 
     begin
-      @env.channel.close
+      env.channel.close
     rescue e
       @log.warn({
         "message" => "close channel failed",
@@ -88,14 +88,14 @@ class Sched
     end
   end
 
-  def send_timeout_signal
+  def send_timeout_signal(env)
     spawn do
       90.times do
         sleep 2
-        break if @env.channel.closed?
+        break if env.channel.closed?
       end
 
-      @env.channel.send({"type" => "timeout"}) unless @env.channel.closed?
+      env.channel.send({"type" => "timeout"}) unless env.channel.closed?
     end
   end
 
@@ -157,9 +157,9 @@ class Sched
     end
   end
 
-  def create_job_boot(host, boot_type)
-    @env.set "state", "requesting"
-    send_mq_msg
+  def create_job_boot(env, host, boot_type)
+    env.set "state", "requesting"
+    send_mq_msg(env)
 
     job = get_job_from_ready_queues(boot_type, host)
     update_testbox_and_job(job, host, ["//#{host}"]) if job
@@ -167,10 +167,10 @@ class Sched
     if job
       job.last_success_stage = "boot"
       @es.set_job(job)
-      @env.set "job_id", job.id
-      @env.set "deadline", job.deadline
-      @env.set "job_stage", job.job_stage
-      @env.set "state", "booting"
+      env.set "job_id", job.id
+      env.set "deadline", job.deadline
+      env.set "job_stage", job.job_stage
+      env.set "state", "booting"
       create_job_cpio(job, Kemal.config.public_folder)
     end
 

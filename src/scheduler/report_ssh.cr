@@ -2,10 +2,10 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def report_ssh_port
-    testbox = @env.params.query["tbox_name"]
-    ssh_port = @env.params.query["ssh_port"].to_s
-    job_id = @env.params.query["job_id"].to_s
+  def report_ssh_port(env)
+    testbox = env.params.query["tbox_name"]
+    ssh_port = env.params.query["ssh_port"].to_s
+    job_id = env.params.query["job_id"].to_s
 
     if testbox && ssh_port
       @redis.hash_set("sched/tbox2ssh_port", testbox, ssh_port)
@@ -16,8 +16,8 @@ class Sched
     @log.warn(e.inspect_with_backtrace)
   end
 
-  def report_ssh_info
-    body =  @env.request.body.not_nil!.gets_to_end
+  def report_ssh_info(env)
+    body =  env.request.body.not_nil!.gets_to_end
     ssh_info = JSON.parse(body).as_h
     ssh_port = ssh_info["ssh_port"]?.to_s
 

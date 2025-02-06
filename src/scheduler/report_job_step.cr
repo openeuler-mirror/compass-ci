@@ -4,12 +4,12 @@
 require "json"
 
 class Sched
-  def report_job_step
-    job_id = @env.params.query["job_id"]?.to_s
-    job_step = @env.params.query["job_step"]?.to_s
+  def report_job_step(env)
+    job_id = env.params.query["job_id"]?.to_s
+    job_step = env.params.query["job_step"]?.to_s
 
-    @env.set "job_id", job_id
-    @env.set "job_step", job_step
+    env.set "job_id", job_id
+    env.set "job_step", job_step
 
     check_params({"job_id" => job_id, "job_step" => job_step})
 
@@ -19,13 +19,13 @@ class Sched
     report_workflow_job_event(job_id, job, job_step)
 
   rescue e
-    @env.response.status_code = 500
+    env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    send_mq_msg
+    send_mq_msg(env)
   end
 
   def pack_job_event(job_id, job, event_type, job_step, only_stage = false)

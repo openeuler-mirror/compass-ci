@@ -4,11 +4,11 @@ require "../lib/job_quota"
 
 class Sched
 
-  def submit_job
+  def submit_job(env)
     #jq = JobQuota.new
     #jq.total_jobs_quota
     response = [] of Hash(String, String)
-    body = @env.request.body.not_nil!.gets_to_end
+    body = env.request.body.not_nil!.gets_to_end
 
     job_content = JSON.parse(body)
     origin_job = init_job(job_content)
@@ -22,12 +22,12 @@ class Sched
     end
 
     #jq.subqueue_jobs_quota(origin_job)
-    jobs = @env.cluster.handle_job(origin_job)
+    jobs = Sched.instance.cluster.handle_job(origin_job)
     jobs.each do |job|
       job.delete_account_info
       init_job_id(job)
-      @env.pkgbuild.handle_job(job)
-      @env.finally.handle_job(job)
+      Sched.instance.pkgbuild.handle_job(job)
+      Sched.instance.finally.handle_job(job)
 
       response << {
         "job_id"      => job.id,
@@ -39,7 +39,7 @@ class Sched
 
     return response
   rescue e
-    @env.response.status_code = 202
+    env.response.status_code = 202
     @log.warn({
       "message"       => e.to_s,
       "job_content"   => public_content(job_content),

@@ -3,7 +3,6 @@
 
 require "kemal"
 
-require "../lib/web_env"
 require "../lib/lifecycle"
 require "../lib/json_logger"
 

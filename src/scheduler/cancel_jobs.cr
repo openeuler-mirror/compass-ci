@@ -2,8 +2,8 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def cancel_jobs
-    body = @env.request.body.not_nil!.gets_to_end
+  def cancel_jobs(env)
+    body = env.request.body.not_nil!.gets_to_end
 
     content = JSON.parse(body)
     raise "Missing required key: 'my_email'" unless content["my_email"]?
@@ -20,7 +20,7 @@ class Sched
 
     { "results" => results }
   rescue e
-    @env.response.status_code = 202
+    env.response.status_code = 202
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
