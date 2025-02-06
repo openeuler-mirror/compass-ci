@@ -272,11 +272,6 @@ module Scheduler
     end
   end
 
-  # /scheduler/lkp/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
-  get "/scheduler/lkp/boot-next-job" do |env|
-    Sched.instance.find_next_job_boot(env)
-  end
-
   # enqueue
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed

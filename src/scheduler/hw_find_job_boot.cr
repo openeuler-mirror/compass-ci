@@ -10,6 +10,7 @@ class Sched
     host = env.params.url["hostname"]
     arch = env.params.url["arch"]
     tags = env.params.url["tags"] # format: tag1,tag2,...
+    pre_job_id = env.params.url["pre_job_id"]?
 
     mac = Utils.normalize_mac(value)
     host ||= @hosts_cache.mac2hostname(mac)
@@ -20,7 +21,7 @@ class Sched
 
     env.set "testbox", host unless host.nil?
 
-    response = hw_get_job_boot(env, host, arch, boot_type, tags)
+    response = hw_get_job_boot(env, host, arch, boot_type, tags, pre_job_id)
 
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     env.set "job_id", job_id
@@ -80,7 +81,7 @@ class Sched
     return nil
   end
 
-  def hw_get_job_boot(env, host, arch, boot_type, tags, pre_job=nil)
+  def hw_get_job_boot(env, host, arch, boot_type, tags, pre_job_id=nil)
     env.set "state", "requesting"
     send_mq_msg(env)
     host_machine = host
