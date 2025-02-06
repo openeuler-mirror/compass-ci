@@ -46,6 +46,8 @@ class MultiQemuDocker
   MEM_CHECK_INTERVAL = 1    # second
   MEM_DELTA_THRESHOLD = 100 # 100MB
 
+  JOB_DONE_FIFO_PATH = "/tmp/job_completion_fifo"
+
   attr_reader :options, :scheduler_url, :scheduler_ws_url
   attr_accessor :last_free_mem, :last_status_time
 
@@ -58,6 +60,7 @@ class MultiQemuDocker
     @last_status_time = Time.now
     setup_directories
     @jobs = JobTracker.new
+    @fifo_thread = start_fifo_listener
   end
 
   def setup_directories
@@ -66,6 +69,26 @@ class MultiQemuDocker
     FileUtils.mkdir_p(ENV["JOBS_DIR"] = "/srv/cci/jobs")
     FileUtils.mkdir_p(ENV["PIDS_DIR"] = "/srv/cci/pids")
     FileUtils.mkdir_p(ENV["LOGS_DIR"] = "/srv/cci/logs")
+  end
+
+  def create_fifo
+    unless File.exist?(JOB_DONE_FIFO_PATH)
+      FileUtils.mkfifo(JOB_DONE_FIFO_PATH)
+    end
+  end
+
+  def start_fifo_listener
+    create_fifo
+
+    Thread.new do
+      File.open(FIFO_PATH, 'r') do |fifo|
+        loop do
+          job_id = fifo.gets.chomp
+          @jobs.remove_job(job_id)
+          puts "Job #{job_id} completed and removed from the job list."
+        end
+      end
+    end
   end
 
   def open_websocket(url)
@@ -87,7 +110,6 @@ class MultiQemuDocker
         send_status
         start_heartbeat
         start_mem_monitoring
-        start_job_monitoring
       end
 
       @ws.on(:message) do |event|
@@ -190,11 +212,6 @@ class MultiQemuDocker
     end
   end
 
-  def start_job_monitoring
-    # Placeholder for job monitoring implementation
-    # Implement logic to detect job finish events and trigger status update
-  end
-
   def handle_websocket_message(data)
     message = JSON.parse(data)
     case message['type']
@@ -217,24 +234,32 @@ class MultiQemuDocker
 
     hostname = @jobs.find_hostname(message['tbox_group'])
     message['hostname'] = hostname
-    fork_pid = Process.fork
-    if fork_pid == nil
+
+    fork_pid = Process.fork do
       ENV["hostname"] = hostname
       ENV["host_dir"] = "#{ENV["HOSTS_DIR"]}/#{hostname}"
       ENV["log_file"] = "#{ENV["LOGS_DIR"]}/#{hostname}"
       ENV["is_remote"] = @options[:is_remote].to_s
+
       case message['tbox_type']
       when 'qemu'
-        fork_pid = start_qemu_instance(message)
+        start_qemu_instance(message)
       when 'container'
-        fork_pid = start_container_instance(message)
+        start_container_instance(message)
       end
-    else
+
+      # Write job_id to FIFO when job is done
+      File.open(JOB_DONE_FIFO_PATH, 'a') do |fifo|
+        fifo.puts job_id
+      end
+    end
+
+    if fork_pid
       Process.detach(fork_pid)
       job = {
-        id: job_id
-        tbox_type: message['tbox_type']
-        hostname: hostname
+        id: job_id,
+        tbox_type: message['tbox_type'],
+        hostname: hostname,
         fork_pid: fork_pid
       }
       @jobs.add_job(job)
