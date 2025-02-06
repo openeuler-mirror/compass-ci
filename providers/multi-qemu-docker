@@ -246,10 +246,19 @@ class MultiQemuDocker
       boot_job(message)
     when 'cancel-job'
       cancel_job(message)
+
     when 'watch-job-log'
       watch_log(message)
     when 'unwatch-job-log'
       unwatch_log(message)
+
+    when 'request-console'
+      start_console_session(message)
+    when 'console-input'
+      write_to_console(message)
+    when 'close-console'
+      close_console_session(message)
+
     else
       puts "Unknown message type: #{message['type']}"
     end
@@ -359,6 +368,78 @@ class MultiQemuDocker
     system("tail -f /srv/cci/serial/logs/#{job_id}.log")
   end
 
+  def start_console_session(message)
+    job_id = message['job_id']
+    testbox_type = message['testbox_type']
+    job = @jobs[job_id]
+
+    unless job[:console_io]
+      if testbox_type == 'qemu'
+        start_qemu_console(job_id, job)
+      elsif testbox_type == 'docker'
+        start_docker_console(job_id, job)
+      end
+    end
+  end
+
+  def start_qemu_console(message)
+    job_id = message['job_id']
+    job = @jobs[job_id]
+    return unless job[:console_io]
+
+    begin
+      # Connect to the Unix domain socket created by QEMU
+      socket_path = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/qemu-console"
+      socket = UNIXSocket.new(socket_path)
+      job[:console_io] = socket
+
+      job[:console_thread] = Thread.new do
+        while (output = socket.gets)
+          @ws.send({ type: 'console-output', job_id: job_id, data: output }.to_json)
+        end
+      end
+    rescue => e
+      puts "Failed to attach to QEMU console: #{e.message}"
+    end
+  end
+
+  def start_docker_console(job_id, job)
+    begin
+      PTY.spawn("docker exec -it #{job_id} sh") do |read, write, pid|
+        job[:console_io] = { read: read, write: write, pid: pid }
+        job[:console_thread] = Thread.new do
+          while (output = read.gets)
+            @ws.send({ type: 'console-output', job_id: job_id, data: output }.to_json)
+          end
+        end
+      end
+    rescue => e
+      puts "Failed to attach to Docker container: #{e.message}"
+    end
+  end
+
+  def write_to_console(message)
+    job_id = message['job_id']
+    data = message['data']
+    job = @jobs[job_id]
+    if job && job[:console_io]
+      job[:console_io][:write].puts(data)
+    end
+  end
+
+  def close_console_session(message)
+    job_id = message['job_id']
+    job = @jobs[job_id]
+    if job && job[:console_io]
+      job[:console_io][:read].close
+      job[:console_io][:write].close
+      Process.kill('TERM', job[:console_io][:pid])
+      job[:console_thread].kill
+      job[:console_io] = nil
+      job[:console_thread] = nil
+    end
+  end
+
   def update_code(commit_id)
     # if there is no commit_id
     # the code is not updated
@@ -380,6 +461,7 @@ class MultiQemuDocker
     EventMachine.stop
     system("systemctl stop #{ENV['suite']}.service")
   end
+
 end
 
 MultiQemuDocker.new(ARGV).start_event_machine if __FILE__ == $PROGRAM_NAME

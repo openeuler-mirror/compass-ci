@@ -343,6 +343,8 @@ public_option()
 		-no-reboot
 		-nographic
 		-monitor null
+		-serial stdio
+		-serial unix:$host_dir/qemu-console,server=on,wait=off
 		-pidfile $PIDS_DIR/qemu-$hostname.pid
 	)
 
