@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 require "./scheduler/constants.cr"
-require "./scheduler/kemal.cr"
+require "./scheduler/api.cr"
 require "./lib/json_logger"
 require "./lib/do_local_pack"
 require "./lib/create_secrets_yaml"
@@ -83,6 +83,12 @@ module Scheduler
   rescue e
     LOG.error(e)
   end
+end
+
+# Graceful shutdown handling
+Signal::INT.trap do
+  Sched.instance.shutdown
+  Kemal.stop
 end
 
 # Run the scheduler

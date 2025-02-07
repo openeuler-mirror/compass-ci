@@ -68,7 +68,7 @@ class Sched
 
     @log.info("hw get job from ready queues by host_machine: #{host_machine}")
 
-    host_req = HostRequest.new(arch, host_machine, host_machine, "hw", tags, UInt32::MAX, false)
+    host_req = HostRequest.new(arch, host_machine, "hw", tags, UInt32::MAX, false)
 
     60.times do |_i|
       etcd_job = tbox_request_job(host_req)

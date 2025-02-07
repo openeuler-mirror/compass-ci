@@ -21,7 +21,6 @@ require "../scheduler/renew_deadline"
 require "../scheduler/auto_depend_submit_job"
 require "../scheduler/find_job_boot"
 require "../scheduler/hw_find_job_boot"
-require "../scheduler/find_next_job_boot"
 require "../scheduler/close_job"
 require "../scheduler/cancel_jobs"
 require "../scheduler/update_subqueues"
@@ -41,6 +40,7 @@ require "../scheduler/plugins/finally"
 require "../scheduler/plugins/cluster"
 require "../scheduler/heart_beat"
 require "../scheduler/dispatch"
+require "../scheduler/hub"
 require "../scheduler/options"
 
 def sched
@@ -48,6 +48,7 @@ def sched
 end
 
 class Sched
+
   property es
   property redis
   property block_helper

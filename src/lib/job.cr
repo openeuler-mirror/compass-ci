@@ -139,6 +139,9 @@ class JobHash
   property schedule_memmb : UInt32 = 0u32
   property schedule_priority : Int8 = 0
 
+  # ES uses string id, so add in-memory id64 for convenience
+  property id64 : Int64 = 0
+
   PLAIN_SET = Set(String).new PLAIN_KEYS
   ARRAY_SET = Set(String).new ARRAY_KEYS
   HH_SET    = Set(String).new HH_KEYS
@@ -152,6 +155,10 @@ class JobHash
     @hash_hhh   = HashHHH.new
 
     import2hash(job_content)
+
+    if id = self.id?
+      @id64 = id.to_i64
+    end
   end
 
   def initialize(ajob : JobHash)
@@ -160,6 +167,7 @@ class JobHash
     @hash_array = ajob.hash_array.dup
     @hash_hh    = ajob.hash_hh.dup
     @hash_hhh   = ajob.hash_hhh.dup
+    @id64 = ajob.id64
   end
 
   # this mimics any_merge for the known types
@@ -774,6 +782,7 @@ class Job < JobHash
   def submit(id = "-1")
     # init job with "-1", or use the original job.id
     self.id = id
+    self.id64 = id.to_i64
     self.job_state = "submit"
     self.job_stage = "submit"
 
@@ -1585,6 +1594,7 @@ class Job < JobHash
 
   def update_id(id)
     self.id = id
+    self.id64 = id.to_i64
 
     # "result_root" => "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
     # set_initrds_uri -> get_initrds -> common_initrds => ".../#{id}/job.cgz"

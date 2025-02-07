@@ -3,42 +3,34 @@ require "set"
 
 # a host's job request parameters
 struct HostRequest
+  include JSON::Serializable
+
   property arch : String
 
   # e.g. taishan200-2280-2s64p-256g--a61
   property host_machine : String
-
-  # e.g. vm-2p8g-1 | vm-custom-1
-  property hostname : String
-
-  # e.g. vm-2p8g-1.taishan200-2280-2s64p-256g
-  property full_hostname : String
-
-  # e.g. vm-2p8g
-  property tbox_group : String
 
   # e.g. hw | vm | dc | vm,dc
   property tbox_type : String
 
   # [hostname, tbox_group, hw.$arch] for hw
   # vm.$arch | dc.$arch for vm | dc
-  property host_keys : Array(String)
+  @[JSON::Field(ignore: true)]
+  property host_keys = Array(String).new
+  @[JSON::Field(ignore: true)]
+  property time : Int64 = 0
 
   property freemem : UInt32 # unit: MB
   property is_remote : Bool
   property tags : Set(String)
 
-  def initialize(@arch, @host_machine, @hostname, @tbox_type, tags, @freemem, @is_remote)
-    @tbox_group = JobHelper.match_tbox_group(@hostname.sub(/-\d+$/, ""))
+  def initialize(@arch, @host_machine, @tbox_type, tags, @freemem, @is_remote)
 
-    if @host_machine == @hostname
-      # hw
-      @full_hostname = @host_machine
-      @host_keys = [ @host_machine, @tbox_group, "hw.#{@arch}" ]
+    if @tbox_type == "hw"
+      tbox_group = JobHelper.match_tbox_group(@host_machine.sub(/-\d+$/, ""))
+      @host_keys = [ @host_machine, tbox_group, "hw.#{@arch}" ]
     else
       # refer to doc/job/fields/testbox.md
-      # vm_testbox => ${vm_tbox_group}-N.$host_testbox
-      @full_hostname = "#{@hostname}.#{@host_machine}"
       @host_keys = [ @host_machine ]
       @tbox_type.split(",") { |t| @host_keys << "#{t}.#{@arch}" }
     end
@@ -148,7 +140,8 @@ class Sched
   end
 
   def record_hostreq(host_req : HostRequest)
-    @hosts_request[host_req.full_hostname] = host_req
+    host_req.time = Time.local.to_unix
+    @hosts_request[host_req.host_machine] = host_req
     @hosts_cache[host_req.host_machine].freemem = host_req.freemem
     host_req
   end

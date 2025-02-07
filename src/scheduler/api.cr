@@ -92,11 +92,6 @@ module Scheduler
   end
 
 
-  # /~lkp/cgi-bin/gpxelinux.cgi?hostname=:hostname&mac=:mac&last_kernel=:last_kernel
-  get "/~lkp/cgi-bin/gpxelinux.cgi" do |env|
-    Sched.instance.find_next_job_boot(env)
-  end
-
   # enqueue
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
@@ -272,6 +267,19 @@ module Scheduler
     end
   end
 
+  # Handle connections from MultiQEMUDocker instances
+  # Each host machine can run only one single MultiQEMUDocker instance
+  ws "/scheduler/vm-container-provider/:host" do |socket, env|
+    sched = Sched.instance
+    sched.handle_provider_websocket(socket, env)
+  end
+
+  # Client connection handler
+  ws "/scheduler/client" do |socket, env|
+    sched = Sched.instance
+    sched.handle_client_websocket(socket, env)
+  end
+
   # enqueue
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
@@ -282,6 +290,18 @@ module Scheduler
   # delete jobs from queue
   post "/scheduler/cancel-jobs" do |env|
     Sched.instance.cancel_jobs(env).to_json
+  end
+
+  # force stop a running job, reboot/reclaim the hw/vm/container machine running the job immediately
+  get "/scheduler/stop-job/:job_id" do |env|
+    job_id = env.params.url["job_id"].to_i64
+    Sched.instance.stop_job(job_id)
+  end
+
+  # wait until any job field value meets the expected value
+  # return the remaining unmet job fields
+  # use post instead of ws to enable shell wget/curl clients
+  post "/scheduler/wait-jobs" do |env|
   end
 
   # for client to report event

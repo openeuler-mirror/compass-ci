@@ -8,6 +8,7 @@ require 'rbconfig'
 require 'fileutils'
 require 'faye/websocket'
 require 'eventmachine'
+require 'docker-api'
 
 # Load common libraries
 require_relative 'lib/jwt'
@@ -53,13 +54,12 @@ class MultiQemuDocker
 
   def initialize(argv)
     @options = DEFAULT_OPTIONS.merge(parse_cli_options(argv))
-    @scheduler_url = build_scheduler_url
-    @scheduler_ws_url = build_scheduler_ws_url
     @last_meminfo = parse_meminfo
     @last_free_mem = free_memory_mb
     @last_status_time = Time.now
     setup_directories
     update_options
+    @scheduler_ws_url = build_scheduler_ws_url
     @jobs = JobTracker.new
     @fifo_thread = start_fifo_listener
   end
@@ -176,19 +176,11 @@ class MultiQemuDocker
     Etc.nprocessors / MIN_CONTAINER_CPU
   end
 
-  def build_scheduler_url
-    if @options[:is_remote]
-      "https://#{DOMAIN_NAME}/"
-    else
-      "http://#{SCHED_HOST}:#{SCHED_PORT}/"
-    end
-  end
-
   def build_scheduler_ws_url
     if @options[:is_remote]
-      "wss://#{DOMAIN_NAME}/ws/vm-container-provider"
+      "wss://#{DOMAIN_NAME}/ws/vm-container-provider/#{@options[:hostname]}"
     else
-      "ws://#{SCHED_HOST}:#{SCHED_PORT}/ws/vm-container-provider"
+      "ws://#{SCHED_HOST}:#{SCHED_PORT}/ws/vm-container-provider/#{@options[:hostname]}"
     end
   end
 
@@ -200,6 +192,7 @@ class MultiQemuDocker
       tbox_type: @options[:tbox_type],
       is_remote: @options[:is_remote],
       arch: RbConfig::CONFIG['host_cpu']
+      tags: []
     }
     @ws.send(status.to_json)
   end
@@ -244,8 +237,8 @@ class MultiQemuDocker
     case message['type']
     when 'boot-job'
       boot_job(message)
-    when 'cancel-job'
-      cancel_job(message)
+    when 'stop-job'
+      stop_job(message)
 
     when 'watch-job-log'
       watch_log(message)
@@ -302,7 +295,7 @@ class MultiQemuDocker
     end
   end
 
-  def cancel_job(message)
+  def stop_job(message)
     job_id = message['job_id']
     puts "Canceling job: #{job_id}"
     @jobs.stop_job(job_id)
@@ -329,7 +322,7 @@ class MultiQemuDocker
       begin
         while line = reader.gets
           # Send log output to WebSocket
-          @ws.send({ type: 'log', job_id: job_id, data: line }.to_json)
+          @ws.send({ type: 'job-log', job_id: job_id, data: line }.to_json)
         end
       rescue IOError => e
         puts "Error reading from tail process for job #{job_id}: #{e.message}"
@@ -373,29 +366,28 @@ class MultiQemuDocker
     testbox_type = message['testbox_type']
     job = @jobs[job_id]
 
-    unless job[:console_io]
-      if testbox_type == 'qemu'
-        start_qemu_console(job_id, job)
-      elsif testbox_type == 'docker'
-        start_docker_console(job_id, job)
-      end
+    return if job[:console_io]
+
+    if testbox_type == 'qemu'
+      start_qemu_console(job_id, job)
+    elsif testbox_type == 'docker'
+      start_docker_console(job_id, job)
     end
   end
 
-  def start_qemu_console(message)
-    job_id = message['job_id']
-    job = @jobs[job_id]
-    return unless job[:console_io]
-
+  def start_qemu_console(job_id, job)
+    socket_path = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/qemu-console.sock"
     begin
-      # Connect to the Unix domain socket created by QEMU
-      socket_path = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/qemu-console"
       socket = UNIXSocket.new(socket_path)
       job[:console_io] = socket
 
+      # Thread to read from QEMU socket and send output
       job[:console_thread] = Thread.new do
-        while (output = socket.gets)
+        loop do
+          output = socket.readpartial(1024)
           @ws.send({ type: 'console-output', job_id: job_id, data: output }.to_json)
+        rescue => e
+          break
         end
       end
     rescue => e
@@ -404,17 +396,19 @@ class MultiQemuDocker
   end
 
   def start_docker_console(job_id, job)
-    begin
-      PTY.spawn("docker exec -it #{job_id} sh") do |read, write, pid|
-        job[:console_io] = { read: read, write: write, pid: pid }
-        job[:console_thread] = Thread.new do
-          while (output = read.gets)
-            @ws.send({ type: 'console-output', job_id: job_id, data: output }.to_json)
-          end
-        end
+    container_id = job_id
+    exec = Docker::Exec.create(container_id, cmd: '/bin/bash', tty: true, stdin: true)
+    stream = Docker::Exec.start(exec, tty: true, stdin: true, socket: true)
+
+    job[:console_io] = stream
+
+    # Thread to read from docker exec stream
+    job[:console_thread] = Thread.new do
+      while data = stream.read(1024)
+        @ws.send({ type: 'console-output', job_id: job_id, data: data }.to_json)
       end
     rescue => e
-      puts "Failed to attach to Docker container: #{e.message}"
+      puts "Docker console error: #{e}"
     end
   end
 
@@ -422,22 +416,27 @@ class MultiQemuDocker
     job_id = message['job_id']
     data = message['data']
     job = @jobs[job_id]
-    if job && job[:console_io]
-      job[:console_io][:write].puts(data)
+    return unless job
+    return unless job[:console_io]
+
+    begin
+      job[:console_io].write(data)
+      job[:console_io].flush
+    rescue => e
+      puts "Error writing to console: #{e}"
     end
   end
 
   def close_console_session(message)
     job_id = message['job_id']
     job = @jobs[job_id]
-    if job && job[:console_io]
-      job[:console_io][:read].close
-      job[:console_io][:write].close
-      Process.kill('TERM', job[:console_io][:pid])
-      job[:console_thread].kill
-      job[:console_io] = nil
-      job[:console_thread] = nil
-    end
+    return unless job
+    return unless job[:console_io]
+
+    job[:console_io].close
+    job[:console_thread].kill if job[:console_thread]
+    job.delete(:console_io)
+    job.delete(:console_thread)
   end
 
   def update_code(commit_id)

@@ -14,6 +14,7 @@ pkgs=(
 	ruby-rubygems
 	rubygems-integration
 	ruby-dev
+	ruby-docker-api
 	bridge-utils
 	qemu-system
 	lvm2

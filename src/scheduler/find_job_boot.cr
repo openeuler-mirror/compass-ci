@@ -128,7 +128,7 @@ class Sched
       return nil
     end
 
-    host_req = HostRequest.new(arch, host_machine, testbox, tbox_type, tags, freemem, is_remote)
+    host_req = HostRequest.new(arch, host_machine, tbox_type, tags, freemem, is_remote)
 
     # get partial job from dispatch queues
     partial_job = tbox_request_job(host_req)

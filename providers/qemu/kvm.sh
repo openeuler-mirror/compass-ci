@@ -344,7 +344,7 @@ public_option()
 		-nographic
 		-monitor null
 		-serial stdio
-		-serial unix:$host_dir/qemu-console,server=on,wait=off
+		-serial unix:$host_dir/qemu-console.sock,server=on,wait=off
 		-pidfile $PIDS_DIR/qemu-$hostname.pid
 	)
 
