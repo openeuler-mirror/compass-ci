@@ -721,7 +721,7 @@ class JobHash
   def set_memmb
     mb = 0u32
     mb = [mb, Utils.parse_memory_mb(self.need_memory)].max if self.has_key? "need_memory"
-    mb = [mb, Utils.parse_memory_mb(self.memory_minimum + "GB")].max if self.has_key? "memory_minimum"
+    mb = [mb, Utils.parse_memory_mb(self.memory_minimum)].max if self.has_key? "memory_minimum"
     if self.tbox_group =~ /^(vm|dc)-(\d+)p(\d+)g$/
       mb = [mb, $3.to_u32].max
     end

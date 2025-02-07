@@ -56,8 +56,8 @@ module Utils
     when "t", "tb"
       value << 20 # TB to MB
     else
-      # If the suffix is unrecognized, assume it's already in MB
-      value
+      # If the suffix is unrecognized, assume it's in GB
+      value << 10
     end
   end
 
