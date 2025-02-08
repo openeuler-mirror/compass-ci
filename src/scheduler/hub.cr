@@ -35,7 +35,6 @@ class WebSocketSession
   end
 end
 
-# Thread-safe scheduler state management
 class Sched
 
   property client_sessions = {} of Int64 => WebSocketSession
@@ -44,12 +43,189 @@ class Sched
   property console_jobid2client_sid = {} of Int64 => Int64
   property watchlog_jobid2client_sids = {} of Int64 => Array(Int64)
 
+  # << hosts write job request to it
+  # >> dispatch worker reads them, find job, then
+  # - tbox_type = hw: write to hw_machine_channels[host]
+  # - tbox_type = vm|dc: write to provider_sessions[host].socket
+  @host_request_job_channel = Channel(HostRequest).new
+  @hw_machine_channels = {} of String => Channel(JobHash)
+  @host_requests = [] of HostRequest  # Using sorted array instead of PriorityQueue
+
+  @wait_client_channel = Hash(Int64, Channel(Int64)).new # /scheduler/wait-jobs clientid => Channel(jobid)
+  @wait_client_spec = Hash(Int64, Hash(String, Hash(String, JSON::Any))).new
+  @@last_wait_client_id : Int64 = -1_i64
+
   property jobs_cache = Hash(Int64, JobHash).new
 
+  # on updated job fields, should check this mapping to wake up possible jobs/clients
+  # @jobs_wait_by[job.wait_on.keys.each] << job.id64
+  # @jobs_wait_by[jobid] << negative clientid
+  property jobs_wait_by = Hash(Int64, Array(Int64)).new  # Array(Int64) is waiting for first Int64
+
   def get_job(job_id : Int64) : JobHash?
+    job = @jobs_cache[job_id]? ||
+          @jobs_cache_in_submit[job_id]?
+    return job if job
+
     job = @es.get_job(job_id.to_s)
-    @jobs_cache[job_id] if job
+    add_job_to_cache(job) if job
     job
+  end
+
+  def on_job_updated(job_id : Int64)
+    return unless @jobs_wait_by.has_key? job_id
+    return unless job = get_job(job_id)
+
+    @jobs_wait_by[job_id].each do |id|
+      if id >= 0
+        # another job is waiting for me
+        handle_job_dependency(id, job)
+      else
+        # a http post "/scheduler/wait-jobs" client is waiting for me
+        handle_client_dependency(id, job_id)
+      end
+    end
+  end
+
+  private def handle_job_dependency(dependent_id : Int64, job : JobHash)
+    dependent_job = get_job(dependent_id)
+    return unless dependent_job && (wait_spec = dependent_job["wait_on"]?.try(&.as_h?))
+
+    if check_wait_spec(job.id64, wait_spec)
+      dependent_job.delete("wait_on")
+      add_job_to_cache(dependent_job)
+      @jobs_cache.delete(dependent_id)
+    end
+  end
+
+  private def handle_client_dependency(client_id : Int64, job_id : Int64)
+    client_spec = @wait_client_spec[client_id]?
+    return unless client_spec
+
+    job_spec = client_spec[job_id.to_s]?.try(&.as_h)
+    return unless job_spec
+
+    if check_wait_spec(job_id, job_spec)
+      @wait_client_channel[client_id]?.try &.send(job_id)
+    end
+  end
+
+  JOB_STAGE_NAME2ID = {
+    "submit"        =>  1,
+    "download"      =>  2,
+    "boot"          =>  3,
+    "running"       =>  4,
+    "abort"         =>  5, # pre-condition not met, cannot continue
+    "cancled"       =>  6, # cancled by user
+    "uploading"     =>  7,
+    "post_run"      =>  8,
+    "finished"      =>  9, # test script run to end
+    "manual_check"  => 10, # interactive user login
+    "renew"         => 11, # extended borrow time for interactive user login
+    "complete"      => 12, # stats available&valid
+  }
+
+  def check_wait_spec(job_id : Int64, wait_spec : Hash)
+    job = get_job(job_id)
+    return false unless job
+
+    # example wait_spec:
+    # {
+    #   jobid1: { field1: value1 },
+    #   jobid2: { field1: value2, field2: value3 },
+    #   jobid3: { },
+    # }
+    wait_spec = {"job_stage" => JSON::Any.new("complete")} if wait_spec.empty?
+
+    wait_spec.each do |field, expected|
+      job_value = job[field]?
+      expected_str = expected.as_s
+
+      if field == "job_stage"
+        current_id = JOB_STAGE_NAME2ID[job_value]?
+        expected_id = JOB_STAGE_NAME2ID[expected_str]?
+        return false unless current_id && expected_id && current_id >= expected_id
+      elsif job_value != expected_str
+        return false
+      end
+    end
+    true
+  end
+
+  def api_wait_jobs(env)
+    wait_spec = parse_wait_spec(env)
+    return wait_spec.to_json if initial_check(wait_spec)
+
+    client_id, channel = setup_wait_client(wait_spec)
+    job_ids = register_wait_client(client_id, wait_spec)
+
+    wait_for_updates(channel, wait_spec)
+  ensure
+    cleanup_wait_client(client_id, job_ids) if job_ids
+    wait_spec.to_json
+  end
+
+  private def parse_wait_spec(env)
+    body = env.request.body.not_nil!.gets_to_end
+    JSON.parse(body).as_h.transform_values(&.as_h)
+  end
+
+  private def initial_check(wait_spec)
+    nr = wait_spec.size
+    wait_spec.reject! do |jobid_str, spec|
+      job_id = jobid_str.to_i64
+      check_wait_spec(job_id, spec)
+    end
+    nr > wait_spec.size
+  end
+
+  private def setup_wait_client(wait_spec)
+    client_id = @@last_wait_client_id
+    @@last_wait_client_id -= 1
+    if @@last_wait_client_id <= Int64::MIN
+      # wrap around, ensure negative
+      @@last_wait_client_id = -1
+    end
+
+    channel = Channel(Int64).new
+    @wait_client_channel[client_id] = channel
+    @wait_client_spec[client_id] = wait_spec.dup
+
+    {client_id, channel}
+  end
+
+  private def register_wait_client(client_id, wait_spec)
+    job_ids = wait_spec.keys.map(&.to_i64)
+    job_ids.each do |job_id|
+      @jobs_wait_by[job_id] ||= [] of Int64
+      @jobs_wait_by[job_id] << client_id
+    end
+    job_ids
+  end
+
+  private def wait_for_updates(channel, wait_spec)
+    timeout_channel = Channel(Nil).new
+    spawn { sleep 10.seconds; timeout_channel.send(nil) }
+
+    loop do
+      select
+      when job_id = channel.receive
+        wait_spec.delete(job_id.to_s)
+        break # if wait_spec.empty?
+      when timeout_channel.receive
+        break
+      end
+    end
+  end
+
+  private def cleanup_wait_client(client_id, job_ids)
+    job_ids.each do |job_id|
+      next unless list = @jobs_wait_by[job_id]?
+      list.delete(client_id)
+      @jobs_wait_by.delete(job_id) if list.empty?
+    end
+    @wait_client_channel.delete(client_id)
+    @wait_client_spec.delete(client_id)
   end
 
   # Graceful shutdown cleanup
@@ -61,15 +237,16 @@ class Sched
       @provider_sessions.clear
   end
 
-  def stop_job(job_id : Int64)
+  def api_stop_job(job_id : Int64)
     job = get_job(job_id)
     return unless job
+    return unless ["booting", "running"].includes? job.job_stage
     host = job.host_machine
     provider_ws = @provider_sessions[host]
     provider_ws.send({ type: "stop-job", job_id: job_id }.to_json)
   end
 
-  def handle_provider_websocket(socket, env)
+  def api_provider_websocket(socket, env)
     host = env.params.url["host"]?
     unless host
       socket.close(HTTP::WebSocket::CloseCode::PolicyViolation, "Missing host parameter")
@@ -115,7 +292,7 @@ class Sched
     end
   end
 
-  def handle_client_websocket(socket, env)
+  def api_client_websocket(socket, env)
     session = WebSocketSession.new(WebSocketSession::SessionType::Client, socket, env)
 
     @client_sessions[session.sid] = session
