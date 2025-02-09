@@ -349,10 +349,14 @@ class JobHash
 
     time
     submit_time
+    download_time
     boot_time
     running_time
+    uploading_time
     post_run_time
     finish_time
+    manual_check_time
+    renew_time
 
     start_time
     end_time

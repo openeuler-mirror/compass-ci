@@ -169,7 +169,7 @@ module Scheduler
   #   ?job_stage=on_fail&job_id=10
   #   ?job_stage=on_fail&job_id=10&timeout=21400
   get "/~lkp/cgi-bin/set-job-stage" do |env|
-    Sched.instance.set_job_stage(env)
+    Sched.instance.api_set_job_stage(env)
 
     "Done"
   end
@@ -272,9 +272,9 @@ module Scheduler
   end
 
   # force stop a running job, reboot/reclaim the hw/vm/container machine running the job immediately
-  get "/scheduler/stop-job/:job_id" do |env|
+  get "/scheduler/terminate-job/:job_id" do |env|
     job_id = env.params.url["job_id"].to_i64
-    Sched.instance.api_stop_job(job_id)
+    Sched.instance.api_terminate_job(job_id)
   end
 
   # wait until any job meets the expected field values
@@ -331,7 +331,7 @@ module Scheduler
   #   ?job_stage=on_fail&job_id=10
   #   ?job_stage=on_fail&job_id=10&timeout=21400
   get "/scheduler/lkp/set-job-stage" do |env|
-    Sched.instance.set_job_stage(env)
+    Sched.instance.api_set_job_stage(env)
 
     "Done"
   end

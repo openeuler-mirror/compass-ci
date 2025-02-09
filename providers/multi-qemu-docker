@@ -237,8 +237,8 @@ class MultiQemuDocker
     case message['type']
     when 'boot-job'
       boot_job(message)
-    when 'stop-job'
-      stop_job(message)
+    when 'terminate-job'
+      terminate_job(message)
 
     when 'watch-job-log'
       watch_log(message)
@@ -295,10 +295,10 @@ class MultiQemuDocker
     end
   end
 
-  def stop_job(message)
+  def terminate_job(message)
     job_id = message['job_id']
     puts "Canceling job: #{job_id}"
-    @jobs.stop_job(job_id)
+    @jobs.terminate_job(job_id)
   end
 
   def watch_log(message)

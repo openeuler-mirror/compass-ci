@@ -238,11 +238,17 @@ class Sched
 
   private def check_system_health(hostname, line)
     OOPS_PATTERNS.each do |pattern|
-      if line.includes?(pattern)
-        ipmi_reboot(hostname)
-
-        break
+      next unless line.includes?(pattern)
+      next unless ipmi_reboot(hostname)
+      job_id = @hosts_cache[hostname].job_id
+      if job = @jobs_cache[job_id]?
+        if JOB_STAGE_NAME2ID[job.job_stage] < JOB_STAGE_NAME2ID["finish"]
+          job.job_stage = "incomplete"
+          job.job_health = "kernel_panic"
+          on_job_updated(job_id)
+        end
       end
+      break
     end
   end
 

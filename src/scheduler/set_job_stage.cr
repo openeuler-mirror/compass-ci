@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def set_job_stage(env)
+  def api_set_job_stage(env)
     job_id, job_stage, timeout = get_params_info(env)
 
     job = @es.get_job(job_id.to_s)
@@ -14,7 +14,7 @@ class Sched
 
     env.set "time", get_time
 
-    change_job_stage(job, job_stage, timeout)
+    change_job_stage(job, job_stage)
     env.set "deadline", job.set_deadline(job_stage, timeout.to_i32).to_s
     update_database(job)
 
@@ -36,7 +36,7 @@ class Sched
     update_testbox_info(job)
   end
 
-  def change_job_stage(job, job_stage, timeout)
+  def change_job_stage(job, job_stage)
     job.job_stage = job_stage
     job.last_success_stage = job_stage
     job.set_time("#{job_stage}_time")

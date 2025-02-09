@@ -52,7 +52,7 @@ class Sched
   @host_requests = [] of HostRequest  # Using sorted array instead of PriorityQueue
 
   @wait_client_channel = Hash(Int64, Channel(Int64)).new # /scheduler/wait-jobs clientid => Channel(jobid)
-  @wait_client_spec = Hash(Int64, Hash(String, Hash(String, JSON::Any))).new
+  @wait_client_spec = Hash(Int64, HashHH).new
   @@last_wait_client_id : Int64 = -1_i64
 
   property jobs_cache = Hash(Int64, JobHash).new
@@ -89,10 +89,10 @@ class Sched
 
   private def handle_job_dependency(dependent_id : Int64, job : JobHash)
     dependent_job = get_job(dependent_id)
-    return unless dependent_job && (wait_spec = dependent_job["wait_on"]?.try(&.as_h?))
+    return unless dependent_job && (wait_spec = dependent_job.hash_hhh["wait_on"]?)
 
     if check_wait_spec(job.id64, wait_spec)
-      dependent_job.delete("wait_on")
+      dependent_job.hash_hhh.delete("wait_on")
       add_job_to_cache(dependent_job)
       @jobs_cache.delete(dependent_id)
     end
@@ -102,7 +102,7 @@ class Sched
     client_spec = @wait_client_spec[client_id]?
     return unless client_spec
 
-    job_spec = client_spec[job_id.to_s]?.try(&.as_h)
+    job_spec = client_spec[job_id.to_s]?
     return unless job_spec
 
     if check_wait_spec(job_id, job_spec)
@@ -110,36 +110,15 @@ class Sched
     end
   end
 
-  JOB_STAGE_NAME2ID = {
-    "submit"        =>  1,
-    "download"      =>  2,
-    "boot"          =>  3,
-    "running"       =>  4,
-    "abort"         =>  5, # pre-condition not met, cannot continue
-    "cancled"       =>  6, # cancled by user
-    "uploading"     =>  7,
-    "post_run"      =>  8,
-    "finished"      =>  9, # test script run to end
-    "manual_check"  => 10, # interactive user login
-    "renew"         => 11, # extended borrow time for interactive user login
-    "complete"      => 12, # stats available&valid
-  }
+  def check_wait_spec(job_id : Int64, wait_spec : Hash | Nil)
+    return unless wait_spec
 
-  def check_wait_spec(job_id : Int64, wait_spec : Hash)
     job = get_job(job_id)
     return false unless job
 
-    # example wait_spec:
-    # {
-    #   jobid1: { field1: value1 },
-    #   jobid2: { field1: value2, field2: value3 },
-    #   jobid3: { },
-    # }
-    wait_spec = {"job_stage" => JSON::Any.new("complete")} if wait_spec.empty?
-
     wait_spec.each do |field, expected|
       job_value = job[field]?
-      expected_str = expected.as_s
+      expected_str = expected
 
       if field == "job_stage"
         current_id = JOB_STAGE_NAME2ID[job_value]?
@@ -153,7 +132,8 @@ class Sched
   end
 
   def api_wait_jobs(env)
-    wait_spec = parse_wait_spec(env)
+    body = env.request.body.not_nil!.gets_to_end
+    wait_spec = wait_json2hash(JSON.parse(body).as_h)
     return wait_spec.to_json if initial_check(wait_spec)
 
     client_id, channel = setup_wait_client(wait_spec)
@@ -165,9 +145,31 @@ class Sched
     wait_spec.to_json
   end
 
-  private def parse_wait_spec(env)
-    body = env.request.body.not_nil!.gets_to_end
-    JSON.parse(body).as_h.transform_values(&.as_h)
+  # example input:
+  # {
+  #   jobid1: { field1: value1 },
+  #   jobid2: { field1: value2, field2: value3 },
+  #   jobid3: { },
+  # }
+  private def wait_json2hash(json : Hash(String, JSON::Any)) : HashHH
+    result = HashHH.new
+
+    json.each do |job_id, value|
+      job_hash = HashH.new
+      if value.is_a?(Nil) || (value.is_a?(Hash) && value.empty?)
+        # Create a default hash for empty jobs
+        job_hash["job_stage"] = "complete"
+      else
+        # Convert the JSON::Hash to HashH with string values
+        value.as_h.each do |field, jval|
+          job_hash[field] = jval.as_s
+        end
+      end
+
+      result[job_id] = job_hash
+    end
+
+    result
   end
 
   private def initial_check(wait_spec)
@@ -237,13 +239,21 @@ class Sched
       @provider_sessions.clear
   end
 
-  def api_stop_job(job_id : Int64)
+  def api_terminate_job(job_id : Int64)
     job = get_job(job_id)
     return unless job
     return unless ["booting", "running"].includes? job.job_stage
+    terminate_job(job)
+  end
+
+  def terminate_job(job)
     host = job.host_machine
-    provider_ws = @provider_sessions[host]
-    provider_ws.send({ type: "stop-job", job_id: job_id }.to_json)
+    if job.tbox_type == "hw"
+      ipmi_reboot(host)
+    else
+      provider_ws = @provider_sessions[host]
+      provider_ws.send({ type: "terminate-job", job_id: job.job_id }.to_json)
+    end
   end
 
   def api_provider_websocket(socket, env)
