@@ -246,38 +246,17 @@ module Scheduler
     Sched.instance.alive(VERSION)
   end
 
-  ws "/scheduler/ws/boot.:boot_type/:parameter/:value" do |socket, env|
-    env.set "ws", true
-    env.set "ws_state", "normal"
-    sched = Sched.instance
-
-    spawn sched.find_job_boot(env, socket)
-
-    socket.on_message do |msg|
-      msg = JSON.parse(msg.to_s).as_h?
-      (spawn env.channel.send(msg)) if msg
-    end
-
-    socket.on_close do
-      env.set "ws_state", "close"
-      env.log.info({
-        "from" => env.request.remote_address.to_s,
-        "message" => "socket on closed"
-      }.to_json)
-    end
-  end
-
   # Handle connections from MultiQEMUDocker instances
   # Each host machine can run only one single MultiQEMUDocker instance
   ws "/scheduler/vm-container-provider/:host" do |socket, env|
     sched = Sched.instance
-    sched.handle_provider_websocket(socket, env)
+    sched.api_provider_websocket(socket, env)
   end
 
   # Client connection handler
   ws "/scheduler/client" do |socket, env|
     sched = Sched.instance
-    sched.handle_client_websocket(socket, env)
+    sched.api_client_websocket(socket, env)
   end
 
   # enqueue
@@ -295,13 +274,15 @@ module Scheduler
   # force stop a running job, reboot/reclaim the hw/vm/container machine running the job immediately
   get "/scheduler/stop-job/:job_id" do |env|
     job_id = env.params.url["job_id"].to_i64
-    Sched.instance.stop_job(job_id)
+    Sched.instance.api_stop_job(job_id)
   end
 
-  # wait until any job field value meets the expected value
-  # return the remaining unmet job fields
+  # wait until any job meets the expected field values
+  # return the remaining unmet jobs/fields
   # use post instead of ws to enable shell wget/curl clients
   post "/scheduler/wait-jobs" do |env|
+    env.response.content_type = "application/json"
+    Sched.instance.api_wait_jobs(env).to_s
   end
 
   # for client to report event

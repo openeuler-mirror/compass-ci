@@ -70,15 +70,33 @@ class Sched
 
     host_req = HostRequest.new(arch, host_machine, "hw", tags, UInt32::MAX, false)
 
-    60.times do |_i|
-      etcd_job = tbox_request_job(host_req)
-      @log.info("tbox_request_job #{host_machine}, hw, return: #{etcd_job}")
-      break if etcd_job
-      sleep 10.seconds
-    end
+    etcd_job = tbox_request_job(host_req)
+    etcd_job ||= hw_wait_job(host_machine)
 
+    @log.info("tbox_request_job #{host_machine}, hw, return: #{etcd_job}")
     return etcd_job["id"]? if etcd_job
     return nil
+  end
+
+  def hw_wait_job(host_machine)
+    if @hw_machine_channels.has_key? host_machine
+      channel = @hw_machine_channels[host_machine]
+    else
+      channel = @hw_machine_channels[host_machine] = Channel(JobHash).new
+    end
+
+    job = nil
+    select
+    # add_job_to_cache() checks @hw_machine_channels
+    # => @host_request_job_channel.send
+    # => dispatch_worker/collect_host_requests()
+    # => dispatch_worker/find_dispatch_jobs()
+    # => dispatch_job() to us
+    when job = channel.receive
+    when timeout(10.seconds)
+    end
+    @hw_machine_channels.delete host_machine
+    return job
   end
 
   def hw_get_job_boot(env, host, arch, boot_type, tags, pre_job_id=nil)

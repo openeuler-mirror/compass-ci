@@ -66,6 +66,7 @@ module Scheduler
     spawn Queue.instance.timing_refresh_from_etcd
     spawn Subqueue.instance.timing_refresh_from_es
     spawn InitReadyQueues.instance.loop_init
+    spawn Sched.instance.dispatch_worker
   end
 
   # Start the Kemal server using the configuration

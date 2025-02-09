@@ -8,6 +8,10 @@ require "any_merge"
 require "digest"
 require "base64"
 
+# The 3 major stages are handled by
+# - client submit incomplete job spec => Job class validate/amend/augment fields => save to @es and in-memory job caches
+# - hw/provider hosts request for job => dispatch.cr select & move ready jobs from @jobs_cache_in_submit to @jobs_cache
+# - hub.cr manages waiting/running jobs in @jobs_cache: wait/wakeup, update job fields on progress, forward watch log and remote login
 class JobHash
 end
 
@@ -475,6 +479,7 @@ class JobHash
     monitors
     pkg_data
     upload_fields
+    wait_on
   )
 
   # stats/result are Hash(String, Number|String), so cannot fit in HH_KEYS
@@ -770,7 +775,11 @@ class Job < JobHash
 
   def initialize(job_content, id : String|Nil)
     super(job_content)
-    @hash_plain["id"] = id unless id.nil?
+
+    unless id.nil?
+      @hash_plain["id"] = id
+      @id64 = id.to_i64
+    end
 
     @es = Elasticsearch::Client.new
     @account_info = JobHash.new(Hash(String, JSON::Any).new)

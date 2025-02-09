@@ -126,14 +126,14 @@ class Sched
   def add_jobs_from_query(results)
     results.each do |hit|
       job = JobHash.new(hit["_source"].as_h)
-      add_job(job)
+      add_job_to_cache(job)
     end
   end
 
   # providers/qemu.rb get_url "ws://#{DOMAIN_NAME}/ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=true"
   def tbox_request_job(host_req : HostRequest)
     record_hostreq(host_req)
-    job = try_dispatch_to(host_req)
+    job = choose_job_for(host_req)
     if job
       on_consumed_job(job)
     end
@@ -147,7 +147,7 @@ class Sched
   end
 
   def on_job_submit(job : JobHash)
-    if add_job(job)
+    if add_job_to_cache(job)
       # try_dispatch(job)
     end
   end
@@ -159,7 +159,7 @@ class Sched
   # - some vm/dc offered by any hw machine
   # - some vm/dc, prefer some cache, may in some hw machines
   # - some vm/dc, must in some hw machines
-  def try_dispatch_to(host_req : HostRequest) : JobHash?
+  def choose_job_for(host_req : HostRequest) : JobHash?
     return nil if @jobs_cache_in_submit.empty?
 
     hostkeys = host_req.host_keys
@@ -311,44 +311,160 @@ class Sched
     end
   end
 
-  def add_job(job : JobHash)
+  def add_job_to_cache(job : JobHash)
     job_id = job["id"].to_i64
     user = job["my_account"]
     queue = job["queue"]?
 
-    to_consume = [] of String
+    if job.hash_hhh.has_key?("wait_on")
+      return if @jobs_cache.has_key?(job_id)
+      handle_wait_on_job(job, job_id)
+      return # not ready for schedule
+    else
+      return if @jobs_cache_in_submit.has_key?(job_id)
+      @jobs_cache_in_submit[job_id] = job
+    end
 
-    # Update indexes
-    return if @jobs_cache_in_submit.has_key? job_id
-    @jobs_cache_in_submit[job_id] = job
+    configure_job_properties(job)
+    update_job_indices(job, job_id, user, queue)
+  end
 
+  private def configure_job_properties(job : JobHash)
     job.set_tbox_type
     job.update_tbox_group_from_testbox
     job.set_memmb
     job.set_hostkeys
     job.set_priority
+  end
 
-    host_keys = job.set_hostkeys
-    host_keys.each do |hostkey|
-      @nr_jobs_by_hostkey[hostkey] += 1
-      to_consume << hostkey if @nr_jobs_by_hostkey[hostkey] == 1
+  private def handle_wait_on_job(job : JobHash, job_id : Int64)
+    @jobs_cache[job_id] = job
+    job.wait_on.each do |id, _|
+      id = id.to_i64
+      @jobs_wait_by[id] ||= [] of Int64
+      @jobs_wait_by[id] << job_id
+    end
+  end
 
-      @jobid_by_user[hostkey] ||= Hash(String, Hash(Int8, Set(Int64))).new
-      jobid_by_user = @jobid_by_user[hostkey]
-      jobid_by_user[user][job.schedule_priority] ||= Set(Int64).new
-      jobid_by_user[user][job.schedule_priority] << job_id
+  private def update_job_indices(job : JobHash, job_id : Int64, user : String, queue : String?)
+    job.set_hostkeys.each do |hostkey|
+      update_hostkey_indices(hostkey)
+      update_user_indices(job, job_id, user, hostkey)
+      update_queue_indices(job, job_id, queue, hostkey) if queue
+    end
+  end
 
-      if queue
-        @jobid_by_queue[hostkey] ||= Hash(String, Hash(Int8, Set(Int64))).new
-        jobid_by_queue = @jobid_by_queue[hostkey]
-        jobid_by_queue[queue][job.schedule_priority] ||= Set(Int64).new
-        jobid_by_queue[queue][job.schedule_priority] << job_id
+  private def update_hostkey_indices(hostkey : String)
+    @nr_jobs_by_hostkey[hostkey] += 1
+
+    # if some hw host is waiting job, wakeup dispatch_worker for it
+    if @hw_machine_channels.has_key?(hostkey)
+      @host_request_job_channel.send(@hosts_request[hostkey])
+    end
+  end
+
+  private def update_user_indices(job : JobHash, job_id : Int64, user : String, hostkey : String)
+    # Update user-specific indices
+    @jobid_by_user[hostkey] ||= Hash(String, Hash(Int8, Set(Int64))).new
+    user_jobs = @jobid_by_user[hostkey]
+    user_jobs[user] ||= Hash(Int8, Set(Int64)).new
+    user_jobs[user][job.schedule_priority] ||= Set(Int64).new
+    user_jobs[user][job.schedule_priority] << job_id
+  end
+
+  private def update_queue_indices(job : JobHash, job_id : Int64, queue : String, hostkey : String)
+    # Update queue-specific indices if queue is present
+    @jobid_by_queue[hostkey] ||= Hash(String, Hash(Int8, Set(Int64))).new
+    queue_jobs = @jobid_by_queue[hostkey]
+    queue_jobs[queue] ||= Hash(Int8, Set(Int64)).new
+    queue_jobs[queue][job.schedule_priority] ||= Set(Int64).new
+    queue_jobs[queue][job.schedule_priority] << job_id
+  end
+
+  def dispatch_worker
+    loop do
+      # Step 1: Collect all pending host requests
+      collect_host_requests
+
+      # Step 2: Process jobs only if we have both jobs and hosts
+      if !@jobs_cache_in_submit.empty?
+        find_dispatch_jobs
+      else
+        # Sleep to prevent busy looping when no work
+        sleep 0.1.seconds
       end
+    end
+  end
 
+  private def collect_host_requests
+    # Non-blocking read all pending host requests
+    while hostreq = @host_request_job_channel.receive?
+      add_hostreq(hostreq)
     end
 
-    # Try immediate consumption
-    to_consume
+    # Block read to prevent busy looping when no work
+    while @host_requests.empty?
+      hostreq = @host_request_job_channel.receive
+      add_hostreq(hostreq)
+    end
+
+  rescue Channel::ClosedError
+    Log.info { "Host request channel closed" }
+  end
+
+  private def add_hostreq(hostreq)
+      # Only consider hosts with sufficient resources
+      if hostreq.freemem >= 10
+        # Maintain sorted order by freemem (descending)
+        index = @host_requests.bsearch_index { |x| x.freemem > hostreq.freemem } || @host_requests.size
+        @host_requests.insert(index, hostreq)
+      end
+  end
+
+  private def find_dispatch_jobs
+    # Process hosts in freemem order
+    while hostreq = @host_requests.pop?
+      job = choose_job_for(hostreq)
+      next unless job
+
+      # Dispatch the job
+      if dispatch_job(hostreq, job)
+        # Update host resources
+        hostreq.freemem -= job.schedule_memmb
+
+        # Re-add to queue if still has capacity
+        add_hostreq(hostreq)
+      end
+
+      break if @jobs_cache_in_submit.empty?
+    end
+  end
+
+  private def dispatch_job(hostreq : HostRequest, job : JobHash) : Bool
+    case job.tbox_type
+    when "hw"
+      if channel = @hw_machine_channels[job.host_machine]?
+        channel.send(job)
+        true
+      else
+        Log.error { "HW channel not found for #{job.host_machine}" }
+        false
+      end
+    when "vm", "dc"
+      if provider = @provider_sessions[job.host_machine]?
+        provider.socket.send(job.to_json)
+        true
+      else
+        Log.error { "Provider not found for #{job.host_machine}" }
+        false
+      end
+    else
+      Log.error { "Unknown tbox_type: #{job.tbox_type}" }
+      false
+    end
+  rescue ex
+    Log.error(exception: ex) { "Failed to dispatch job #{job.id}" }
+    false
   end
 
 end
