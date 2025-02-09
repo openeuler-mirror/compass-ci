@@ -109,7 +109,7 @@ class Sched
 
     job = @es.get_job(job_id.to_s) if job_id
 
-    if job
+    if job && job_id
       @log.info("#{host} got the job #{job_id}")
       update_testbox_and_job(job, host, ["//#{host}"]) if job
 
@@ -121,6 +121,7 @@ class Sched
                 "result_root": "/srv#{job.result_root}",
                 "job_state": "set result root"}))
 
+      @hosts_cache[host_machine].job_id = job_id.to_i64
       update_id2job(job)
 
       job["last_success_stage"] = "boot"

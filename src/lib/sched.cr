@@ -41,6 +41,7 @@ require "../scheduler/plugins/cluster"
 require "../scheduler/heart_beat"
 require "../scheduler/dispatch"
 require "../scheduler/hub"
+require "../scheduler/ipmi_console"
 require "../scheduler/options"
 
 def sched
@@ -82,6 +83,7 @@ class Sched
     # Load initial hosts data from ES
     @hosts_cache = Hosts.new(@es)
     refresh_cache_from_es
+    setup_serial_consoles
   end
 
   def debug_message(env, response)

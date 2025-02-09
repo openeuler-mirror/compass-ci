@@ -12,11 +12,12 @@ class HostInfo
 
   # Internal hash members to store dynamic data
   property id : Int64 = 0
+  property job_id : Int64 = 0
   @job_defaults : Hash(String, String) = Hash(String, String).new
-  @hash_uint32 : Hash(String, UInt32) = Hash(String, UInt32).new
-  @hash_str : Hash(String, String) = Hash(String, String).new
-  @hash_str_array : Hash(String, Array(String)) = Hash(String, Array(String)).new
-  @hash_bool : Hash(String, Bool) = Hash(String, Bool).new
+  property hash_uint32 : Hash(String, UInt32) = Hash(String, UInt32).new
+  property hash_str : Hash(String, String) = Hash(String, String).new
+  property hash_str_array : Hash(String, Array(String)) = Hash(String, Array(String)).new
+  property hash_bool : Hash(String, Bool) = Hash(String, Bool).new
   property hash_all : Hash(String, JSON::Any) = Hash(String, JSON::Any).new
 
   # Load HostInfo from a YAML file
@@ -281,7 +282,11 @@ class Hosts
       end
   end
 
-  def [](hostname : String) : HostInfo | Nil
+  def []?(hostname : String) : HostInfo | Nil
+    @hosts[hostname]?
+  end
+
+  def [](hostname : String) : HostInfo
     @hosts[hostname]
   end
 
