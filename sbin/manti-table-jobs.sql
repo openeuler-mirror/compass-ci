@@ -1,6 +1,13 @@
 CREATE TABLE jobs(
 	id		bigint,
 
+	suite		string,
+	category	string,
+	my_account	string,
+	testbox		string,
+	arch		string,
+	osv		string,
+
 	submit_time	bigint,
 	boot_time	bigint,
 	running_time	bigint,
@@ -8,6 +15,9 @@ CREATE TABLE jobs(
 
 	boot_seconds	int,
 	run_seconds	int,
+
+	istage		int,
+	ihealth		int,
 
 	j		json,
 	errid		text,

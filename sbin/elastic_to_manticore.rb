@@ -41,6 +41,7 @@ require 'net/http'
 require 'time'
 require_relative '../container/defconfig.rb'
 require_relative '../lib/constants.rb'
+require_relative '../lib/constants-manticore.rb'
 
 # Constants
 N = ARGV[0]&.to_i || 100 # Default to 100 records
@@ -48,16 +49,7 @@ MANTICORE_HOST = 'localhost'
 MANTICORE_PORT = 9308
 
 # Field lists
-DIRECT_FIELDS = %w[id submit_time boot_time running_time finish_time].freeze
 DURATION_FIELDS = %w[boot_seconds run_seconds].freeze
-ES_PROPERTIES = %w[
-  tbox_type build_type spec_file_name
-  suite category queue all_params_md5 pp_params_md5 testbox tbox_group hostname
-  host_machine group_id os osv os_arch os_version
-  pr_merge_reference_name my_account job_stage job_health
-  last_success_stage os_project package build_id os_variant
-  target_machines
-].freeze
 
 # Connect to Elasticsearch
 def connect_elasticsearch(host:, user:, password:)
@@ -111,11 +103,17 @@ def process_nested_fields(prefix, hash)
 end
 
 # Transform Elasticsearch job to Manticore format
+# Similar to ../src/lib/job.cr to_manticore()
 def transform_job(job)
   manti = {}
 
   # Direct fields
-  DIRECT_FIELDS.each do |field|
+  MANTI_STRING_FIELDS.each do |field|
+    next unless job.key?(field)
+    mjob[field.to_sym] = job[field]
+  end
+
+  MANTI_INT64_FIELDS.each do |field|
     next unless job.key?(field)
 
     if field.end_with?('_time')
@@ -142,8 +140,11 @@ def transform_job(job)
   full_text_kv += process_nested_fields('ss', job['ss'])
 
   # Remaining fields
-  ES_PROPERTIES.each do |field|
-    next if DIRECT_FIELDS.include?(field) || DURATION_FIELDS.include?(field)
+  MANTI_STRING_FIELDS.each do |field|
+    value = job[field]
+    full_text_kv << "#{field}=#{value}"
+  end
+  MANTI_FULLTEXT_FIELDS.each do |field|
     next unless job.key?(field)
 
     value = job[field]

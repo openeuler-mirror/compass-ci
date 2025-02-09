@@ -35,6 +35,9 @@ struct SchedOptions
   property manticore_host : String = JOB_MANTICORE_HOST
   property manticore_port : Int32 = JOB_MANTICORE_PORT
 
+  property ipmi_user : String = ""
+  property ipmi_password : String = ""
+
   STRING_OPTIONS = %w(
       lab_id
       redis_host

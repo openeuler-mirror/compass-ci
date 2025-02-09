@@ -8,6 +8,7 @@ CREATE TABLE hosts(
 	nr_ssd_partitions	int,
 
 	active_time		int,
+	job_id			bigint,
 
 	j			json,
 	full_text_kv		text

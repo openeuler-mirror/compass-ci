@@ -4,21 +4,15 @@
 require 'json'
 require 'net/http'
 require 'time'
+require_relative './constants-manticore.rb'
 
 module Manticore
   HOST = ENV['MANTICORE_HOST'] || 'localhost'
   PORT = ENV['MANTICORE_PORT'] || 9308
   DEFAULT_INDEX = 'jobs'
-  ES_PROPERTIES = %w[
-    tbox_type build_type max_duration spec_file_name memory_minimum use_remote_tbox
-    suite category queue all_params_md5 pp_params_md5 testbox tbox_group hostname
-    host_machine target_machines group_id os osv os_arch os_version depend_job_id
-    pr_merge_reference_name nr_run my_email my_account user job_stage job_health
-    last_success_stage tags os_project package build_id os_variant start_time end_time
-  ].freeze
 
   def self.filter_sql_fields(sql)
-    sql.gsub(/\b(#{ES_PROPERTIES.join('|')})\b/, 'j.\1').gsub(/j\.j\./, 'j.')
+    sql.gsub(/\b(#{MANTI_JSON_PROPERTIES.join('|')})\b/, 'j.\1').gsub(/j\.j\./, 'j.')
   end
 
   def self.filter_sql_result(body)
@@ -64,7 +58,7 @@ module Manticore
     end
 
     def add_filter(field, values)
-      if ES_PROPERTIES.include?(field)
+      if MANTI_JSON_PROPERTIES.include?(field)
         @full_text_terms[:full_text_kv] ||= []
         @full_text_terms[:full_text_kv] += values.map { |v| "#{field}=#{v}" }
       elsif field == 'errid'

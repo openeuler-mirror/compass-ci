@@ -1,21 +1,37 @@
 require "http/client"
 require "json"
+require "./constants-manticore.cr"
 
 module Manticore
   HOST = ENV["MANTICORE_HOST"]? || "localhost"
   PORT = (ENV["MANTICORE_PORT"]? || 9308).to_i
 
-  ES_PROPERTIES = %w[
+  # Field lists
+  MANTI_STRING_FIELDS = %w[suite category my_account testbox arch osv]
+  MANTI_INT64_FIELDS = %w[id submit_time boot_time running_time finish_time]
+  MANTI_INT32_FIELDS = %w[boot_seconds run_seconds istage ihealth]
+  MANTI_FULLTEXT_FIELDS = %w[
     tbox_type build_type spec_file_name
     suite category queue all_params_md5 pp_params_md5 testbox tbox_group hostname
-    host_machine group_id os osv os_arch os_version
+    host_machine group_id os osv arch os_version
     pr_merge_reference_name my_account job_stage job_health
+    last_success_stage os_project package build_id os_variant
+  ]
+  MANTI_FULLTEXT_ARRAY_FIELDS = %w[
+    target_machines
+  ]
+  # = MANTI_FULLTEXT_FIELDS + MANTI_FULLTEXT_ARRAY_FIELDS - MANTI_STRING_FIELDS
+  MANTI_JSON_PROPERTIES = %w[
+    tbox_type build_type spec_file_name
+    queue all_params_md5 pp_params_md5 tbox_group hostname
+    host_machine group_id os os_arch os_version
+    pr_merge_reference_name job_stage job_health
     last_success_stage os_project package build_id os_variant
     target_machines
   ]
 
   def self.filter_sql_fields(sql : String) : String
-    regex = /\b(#{Regex.union(ES_PROPERTIES)})\b/
+    regex = /\b(#{Regex.union(MANTI_JSON_PROPERTIES)})\b/
     sql.gsub(regex) { |m| "j.#{$1}" }.gsub(/j\.j\./, "j.")
   end
 

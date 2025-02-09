@@ -15,6 +15,7 @@ require "base64"
 class JobHash
 end
 
+require "./constants-manticore.cr"
 require "../scheduler/constants.cr"
 require "../scheduler/jobfile_operate.cr"
 require "../scheduler/kernel_params.cr"
@@ -622,25 +623,16 @@ class JobHash
     @hash_plain[key] = value
   end
 
-  # Field lists
-  MANTI_DIRECT_FIELDS = %w[id submit_time boot_time running_time finish_time]
-  MANTI_DURATION_FIELDS = %w[boot_seconds run_seconds]
-  MANTI_FULLTEXT_FIELDS = %w[
-    tbox_type build_type spec_file_name
-    suite category queue all_params_md5 pp_params_md5 testbox tbox_group hostname
-    host_machine group_id os osv os_arch os_version
-    pr_merge_reference_name my_account job_stage job_health
-    last_success_stage os_project package build_id os_variant
-  ]
-  MANTI_FULLTEXT_ARRAY_FIELDS = %w[
-    target_machines
-  ]
-
   # Transform Elasticsearch job to Manticore format
   def to_manticore
     mjob = {} of String => JSON::Any
 
-    MANTI_DIRECT_FIELDS.each do |field|
+    MANTI_STRING_FIELDS.each do |field|
+      next unless self.has_key?(field)
+      mjob[field] = JSON::Any.new self[field]
+    end
+
+    MANTI_INT64_FIELDS.each do |field|
       next unless self.has_key?(field)
 
       if field.ends_with?("_time")
@@ -650,10 +642,14 @@ class JobHash
       end
     end
 
-    MANTI_DURATION_FIELDS.each do |field|
+    MANTI_INT32_FIELDS.each do |field|
       next unless self.has_key?(field)
 
-      mjob[field] = JSON::Any.new duration_to_seconds(self[field])
+      if field.ends_with?("_seconds")
+        mjob[field] = JSON::Any.new duration_to_seconds(self[field])
+      else
+        mjob[field] = JSON::Any.new self[field].to_i32
+      end
     end
 
     # errid as space-separated string
@@ -667,8 +663,11 @@ class JobHash
     full_text_kv += hh_to_kv_array("ss") if @hash_hhh.has_key? "ss"
 
     # Remaining fields
+    MANTI_STRING_FIELDS.each do |field|
+      value = self[field]
+      full_text_kv << "#{field}=#{value}"
+    end
     MANTI_FULLTEXT_FIELDS.each do |field|
-      next if MANTI_DIRECT_FIELDS.includes?(field) || MANTI_DURATION_FIELDS.includes?(field)
       next unless self.has_key?(field)
 
       value = self[field]

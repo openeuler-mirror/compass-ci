@@ -59,6 +59,7 @@ class HostInfo
     hi.load_string(parsed_data, "arch")
     hi.load_string(parsed_data, "model_name")
     hi.load_string(parsed_data, "serial_number")
+    hi.load_string(parsed_data, "ipmi_ip")
 
     # Load string array properties
     hi.load_mac(parsed_data, "mac_addr")
