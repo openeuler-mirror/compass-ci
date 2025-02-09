@@ -199,7 +199,7 @@ module Scheduler
   # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
   get "/~lkp/cgi-bin/lkp-post-run" do |env|
-    Sched.instance.close_job(env).to_json
+    Sched.instance.api_close_job(env).to_json
   end
 
   get "/~lkp/cgi-bin/lkp-wtmp" do |env|
@@ -361,7 +361,7 @@ module Scheduler
   # /scheduler/lkp/post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
   get "/scheduler/lkp/post-run" do |env|
-    Sched.instance.close_job(env).to_json
+    Sched.instance.api_close_job(env).to_json
   end
 
   get "/scheduler/lkp/report-ssh-port" do |env|

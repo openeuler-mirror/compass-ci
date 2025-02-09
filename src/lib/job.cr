@@ -772,6 +772,14 @@ class JobHash
     self.host_keys = host_keys
   end
 
+  def set_time
+    self.time = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
+  def set_time(key)
+    self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
+  end
+
 end
 
 class Job < JobHash
@@ -1275,14 +1283,6 @@ class Job < JobHash
     end
 
     return package_dir
-  end
-
-  def set_time
-    self.time = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
-  end
-
-  def set_time(key)
-    self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
   def get_repositories_dir

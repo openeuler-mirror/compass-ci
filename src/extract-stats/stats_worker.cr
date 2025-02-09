@@ -22,26 +22,17 @@ class StatsWorker
     @log = JSONLogger.new
   end
 
-  def handle(queue_path, channel, commit_channel)
+  def handle(job)
     begin
-      res = @etcd.range(queue_path)
-      return nil if res.count == 0
-
-      job_id = queue_path.split("/")[-1]
-      job = @es.get_job(job_id)
-      return unless job
-      result_post_processing(job_id, queue_path, job)
-      commit_channel.send(job.upstream_commit) if job.nr_run? && job.upstream_commit? && job.base_commit?
-      target_queue_path = "/queues/post-extract/#{job_id}"
-      @etcd.put(target_queue_path,job_id)
-      @etcd.delete(queue_path)
+      result_post_processing(job)
+      target_queue_path = "/queues/post-extract/#{job.id}"
+      @etcd.put(target_queue_path, job.id)
     rescue e
-      # channel.send(queue_path)
       @log.error(e.message)
       # incase of many error message when ETCD, ES does not work
       sleep(10.seconds)
     ensure
-      delete_id2job(job_id) if job_id
+      delete_id2job(job.id) if job.id
       @etcd.close
     end
   end
@@ -162,20 +153,9 @@ class StatsWorker
     end
   end
 
-  def result_post_processing(job_id : String, queue_path : String, job)
-    result_root = "#{job.result_root?}"
+  def result_post_processing(job)
+    result_root = job.result_root?
     return nil unless result_root && File.exists?(result_root)
-
-    del_testbox = job.del_testbox?
-    if del_testbox == "yes"
-      @es.@client.delete(
-        {
-          :index => "jobs",
-          :type => "_doc",
-          :id => job.testbox? # XXX
-        }
-      )
-    end
 
     suite = job.suite?
     store_device(result_root, job) if suite == "boards-scan"
@@ -185,20 +165,19 @@ class StatsWorker
     system "#{ENV["CCI_SRC"]}/sbin/result2stats #{result_root}"
 
     # storage stats to job in es
-    update_job = JobHash.new
     result_json = load_json_hash("#{result_root}/result.json")
-    update_job.import2hash result_json.as_h if result_json
+    job.import2hash result_json.as_h if result_json
 
     stats_json = load_json_hash("#{result_root}/stats.json")
-    update_job.import2hash ({"stats" => stats_json}) if stats_json
-    add_errid(update_job)
+    job.import2hash ({"stats" => stats_json}) if stats_json
+    add_errid(job)
 
     error_ids = load_error_ids(result_root)
-    update_job.error_ids = error_ids unless error_ids.empty?
+    job.error_ids = error_ids unless error_ids.empty?
 
-    es_save_results(update_job, job_id)
+    @es.set_job(job)
 
-    notify_error(error_ids, job_id)
+    notify_error(error_ids, job.id)
   end
 
   def load_json_hash(path : String)
@@ -228,17 +207,6 @@ class StatsWorker
     e = Array(String).new
     s.as_h.keys.each { |k| e << k if is_failure(k) }
     update_job.errid = e
-  end
-
-  def es_save_results(update_job : JobHash, job_id : String)
-    @es.@client.update(
-      {
-        :index => "jobs", :type => "_doc",
-        :refresh => true,
-        :id => job_id,
-        :body => {:doc => update_job.to_json_any},
-      }
-    )
   end
 
   def notify_error(error_ids, job_id)

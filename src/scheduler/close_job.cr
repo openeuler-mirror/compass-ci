@@ -38,7 +38,7 @@ class Sched
     end
   end
 
-  def close_job(env)
+  def api_close_job(env)
     job_id = env.params.query["job_id"]?
     mem = env.params.query["mem"]?
     cpu = env.params.query["cpu"]?
@@ -49,7 +49,7 @@ class Sched
 
     # etcd id2job only stores partial job content
     # so query full job from es
-    job = @es.get_job(job_id)
+    job = get_job(job_id.to_i64)
     raise "can't find job from es, job_id: #{job_id}" unless job
 
     # update job content
@@ -91,16 +91,9 @@ class Sched
       job.run_seconds = (finish_time - running_time).to_s
     end
 
-    if env.params.query["source"]? != "lifecycle"
-      deadline = job.get_deadline("finish")
-      env.set "deadline", deadline.to_s
-      @es.update_tbox(job.testbox, {"deadline" => deadline})
-      job.last_success_stage = "finish"
-    end
-
     set_job2watch(job, "close", job.job_health)
     update_wait_job_by_ss(job)
-
+    on_job_updated(job.id64)
 
     response = @es.set_job(job)
     if response["_id"] == nil
@@ -123,7 +116,7 @@ class Sched
       # need update the end job_health to etcd
       res = update_id2job(job)
       @log.info("scheduler update job to id2job #{job.id}: #{res}")
-      res = move_process2extract(job)
+      res = @stats_worker.handle(job)
       @log.info("scheduler move in_process to extract_stats #{job.id}: #{res}")
     end
   end

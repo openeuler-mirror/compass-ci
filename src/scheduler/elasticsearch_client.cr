@@ -143,7 +143,7 @@ class Elasticsearch::Client
   end
 
   # caller should judge response["_id"] != nil
-  def set_job(job : Job, is_create = false)
+  def set_job(job : JobHash, is_create = false)
     job.set_time
     @log.info("set job content, account: #{job.my_account}")
 
@@ -214,7 +214,7 @@ class Elasticsearch::Client
 
     case response
     when JSON::Any
-      job = Job.new(response.as_h, job_id)
+      job = JobHash.new(response.as_h, job_id)
     else
       job = nil
     end

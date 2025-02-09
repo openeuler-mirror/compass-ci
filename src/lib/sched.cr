@@ -43,6 +43,7 @@ require "../scheduler/dispatch"
 require "../scheduler/hub"
 require "../scheduler/lifecycle"
 require "../scheduler/ipmi_console"
+require "../extract-stats/stats_worker"
 require "../scheduler/options"
 
 def sched
@@ -86,6 +87,7 @@ class Sched
     refresh_cache_from_es
     setup_serial_consoles
     start_lifecycle_worker
+    @stats_worker = StatsWorker.new
   end
 
   def debug_message(env, response)
