@@ -19,7 +19,7 @@ class Sched
     # try to get report value and then update it
     delta_job = Job.new(Hash(String, JSON::Any).new, nil)
 
-    (%w(start_time end_time loadavg job_state)).each do |parameter|
+    (%w(start_time end_time loadavg job_state milestones)).each do |parameter|
       value = env.params.query[parameter]?
       next if value.nil? || value == ""
 
@@ -36,6 +36,13 @@ class Sched
         delta_job.loadavg = value
       when "job_state"
         delta_job.job_state = value
+      when "milestones"
+        values = value.split(/[ ,]+/)
+        if delta_job.hash_array.has_key? "milestones"
+          delta_job.milestones += value.split(" ")
+        else
+          delta_job.milestones = value.split(" ")
+        end
       end
       next unless parameter == "job_state"
 

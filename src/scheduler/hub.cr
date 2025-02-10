@@ -110,24 +110,37 @@ class Sched
     end
   end
 
+  # return true if all match; false if any not match
   def check_wait_spec(job_id : Int64, wait_spec : Hash | Nil)
     return unless wait_spec
 
     job = get_job(job_id)
-    return false unless job
+    return unless job
 
     wait_spec.each do |field, expected|
-      job_value = job[field]?
       expected_str = expected
 
       if field == "job_stage"
+        job_value = job.job_stage
         current_id = JOB_STAGE_NAME2ID[job_value]?
         expected_id = JOB_STAGE_NAME2ID[expected_str]?
-        return false unless current_id && expected_id && current_id >= expected_id
-      elsif job_value != expected_str
+        return false unless current_id && expected_id
+        return false unless current_id >= expected_id
+      end
+
+      if field == "milestones"
+        # XXX: currently there's only need to wait on single milestone value
+        return false unless job.hash_array.has_key? "milestones"
+        return false unless job.hash_array[field].includes? expected_str
+      end
+
+      return false unless job.hash_plain.has_key? field
+      job_value = job.hash_plain[field]
+      if job_value != expected_str
         return false
       end
     end
+
     true
   end
 

@@ -453,6 +453,8 @@ class JobHash
     target_machines
     cache_dirs
 
+    milestones
+
     errid
     error_ids
   )
@@ -480,8 +482,13 @@ class JobHash
   HHH_KEYS = %w(
     pp
     ss
+
+    setup
+    daemon
     monitor
     monitors
+    program
+
     pkg_data
     upload_fields
     wait_on
