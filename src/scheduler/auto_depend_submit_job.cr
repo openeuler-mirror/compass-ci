@@ -4,7 +4,10 @@ require "../lib/job_quota"
 
 class Sched
 
-  def submit_job(env)
+	# for avoiding id duplication
+	@@last_jobid = 0_i64
+
+  def api_submit_job(env)
     #jq = JobQuota.new
     #jq.total_jobs_quota
     response = [] of Hash(String, String)
@@ -99,7 +102,17 @@ class Sched
   # 1<<63
   # =>  9223372036854775808
   def Sched.get_job_id
-    Time.local.to_s("#{@@options.lab_id}%y%m%d%H%M%S%3N")
+    id = Time.local.to_s("#{@@options.lab_id}%y%m%d%H%M%S%3N")
+
+		# check duplicate with @@last_jobid
+		id64 = id.to_i64
+		if id64 <= @@last_jobid
+			id64 = @@last_jobid + 1
+      id = id64.to_s
+    end
+    @@last_jobid = id64
+
+    id
   end
 
   def set_commit_date(job)

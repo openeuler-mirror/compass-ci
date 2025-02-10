@@ -96,7 +96,7 @@ module Scheduler
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
   post "/submit_job" do |env|
-    Sched.instance.submit_job(env).to_json
+    Sched.instance.api_submit_job(env).to_json
   end
 
   # delete jobs from queue
@@ -263,7 +263,7 @@ module Scheduler
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
   post "/scheduler/submit-job" do |env|
-    Sched.instance.submit_job(env).to_json
+    Sched.instance.api_submit_job(env).to_json
   end
 
   # delete jobs from queue
