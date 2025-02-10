@@ -351,6 +351,8 @@ class JobHash
     submit_time
     download_time
     boot_time
+    setup_time
+    wait_peer_time
     running_time
     uploading_time
     post_run_time
@@ -470,6 +472,7 @@ class JobHash
     boot_params
     on_fail
     ss_wait_jobs
+    cluster_jobs
     waited
     hw
     vt

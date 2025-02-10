@@ -6,14 +6,16 @@ JOB_STAGE_NAME2ID = {
   "submit"       =>  1,
   "download"     =>  2,
   "boot"         =>  3,
-  "running"      =>  4,
-  "post_run"     =>  5,
-  "uploading"    =>  6,
-  "finish"       =>  7,   # test script run to end
-  "manual_check" =>  8,   # interactive user login
-  "renew"        =>  9,   # extended borrow time for interactive user login
-  "complete"     =>  10,  # stats available&valid
-  "incomplete"   =>  11,  # no valid stats, bisect should skip
+  "setup"        =>  4,
+  "wait_peer"    =>  5,
+  "running"      =>  6,
+  "post_run"     =>  7,
+  "uploading"    =>  8,
+  "finish"       =>  9,   # test script run to end
+  "manual_check" =>  10,   # interactive user login
+  "renew"        =>  11,   # extended borrow time for interactive user login
+  "complete"     =>  12,  # stats available&valid
+  "incomplete"   =>  13,  # no valid stats, bisect should skip
 }
 
 # order is not important
@@ -37,9 +39,11 @@ JOB_HEALTH_NAME2ID = {
   "disturbed"           =>  17,
   "timeout_download"    =>  18,   # set by lifecycle terminate_timeout_jobs()
   "timeout_boot"        =>  19,
-  "timeout_running"     =>  20,
-  "timeout_post_run"    =>  21,
-  "timeout_uploading"   =>  22,
+  "timeout_setup"       =>  20,
+  "timeout_running"     =>  21,
+  "timeout_wait_peer"   =>  22,
+  "timeout_post_run"    =>  23,
+  "timeout_uploading"   =>  24,
 }
 
 JOB_STAGE_ID2NAME = JOB_STAGE_NAME2ID.invert

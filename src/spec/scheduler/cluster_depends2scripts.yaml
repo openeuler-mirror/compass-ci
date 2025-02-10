@@ -1,0 +1,176 @@
+test_cases:
+  - name: "Basic server-client dependency"
+    input:
+      jobs:
+        - id: "job1"
+          components:
+            daemon:
+              xxx:
+                if-role: "server"
+        - id: "job2"
+          components:
+            program:
+              yyy:
+                if-role: "client"
+                depends-on: "xxx"
+        - id: "job3"
+          components:
+            program:
+              yyy:
+                if-role: "client"
+                depends-on: "xxx"
+      jobid2roles:
+        job1: "server"
+        job2: "client"
+        job3: "client"
+    expected:
+      jobs:
+        - id: "job1"
+          components:
+            daemon:
+              xxx:
+                post-script: |
+                  jobfile_append_var milestones=xxx-ready
+                  wait-jobs.sh job2.milestones=yyy-done job3.milestones=yyy-done
+        - id: "job2"
+          components:
+            program:
+              yyy:
+                pre-script: "wait-jobs.sh job1.milestones=xxx-ready"
+                post-script: "jobfile_append_var milestones=yyy-done"
+        - id: "job3"
+          components:
+            program:
+              yyy:
+                pre-script: "wait-jobs.sh job1.milestones=xxx-ready"
+                post-script: "jobfile_append_var milestones=yyy-done"
+
+  - name: "Multi-role dependencies"
+    input:
+      jobs:
+        - id: "job1"
+          components:
+            daemon:
+              db:
+                if-role: "database storage"
+        - id: "job2"
+          components:
+            program:
+              app:
+                if-role: "web"
+                depends-on: "db"
+      jobid2roles:
+        job1: "database,storage"
+        job2: "web"
+    expected:
+      jobs:
+        - id: "job1"
+          components:
+            daemon:
+              db:
+                post-script: |
+                  jobfile_append_var milestones=db-ready
+                  wait-jobs.sh job2.milestones=app-done
+        - id: "job2"
+          components:
+            program:
+              app:
+                pre-script: "wait-jobs.sh job1.milestones=db-ready"
+                post-script: "jobfile_append_var milestones=app-done"
+
+  - name: "Self-dependency ignored"
+    input:
+      jobs:
+        - id: "job1"
+          components:
+            program:
+              loop:
+                depends-on: "loop"
+                if-role: "test"
+      jobid2roles:
+        job1: "test"
+    expected:
+      jobs:
+        - id: "job1"
+          components:
+            program:
+              loop:
+
+  - name: "Missing dependency target"
+    input:
+      jobs:
+        - id: "job1"
+          components:
+            program:
+              orphan:
+                depends-on: "missing"
+                if-role: "standalone"
+      jobid2roles:
+        job1: "standalone"
+    expected:
+      jobs:
+        - id: "job1"
+          components:
+            program:
+              orphan:
+
+  - name: "Cross-component dependencies"
+    input:
+      jobs:
+        - id: "job1"
+          components:
+            daemon:
+              storage:
+                if-role: "storage"
+        - id: "job2"
+          components:
+            program:
+              processor:
+                depends-on: "storage"
+                if-role: "compute"
+      jobid2roles:
+        job1: "storage"
+        job2: "compute"
+    expected:
+      jobs:
+        - id: "job1"
+          components:
+            daemon:
+              storage:
+                post-script: |
+                  jobfile_append_var milestones=storage-ready
+                  wait-jobs.sh job2.milestones=processor-done
+        - id: "job2"
+          components:
+            program:
+              processor:
+                pre-script: "wait-jobs.sh job1.milestones=storage-ready"
+                post-script: "jobfile_append_var milestones=processor-done"
+
+  - name: "Multiple dependencies single component"
+    input:
+      jobs:
+        - id: "job1"
+          components:
+            daemon:
+              db:
+                if-role: "database"
+            program:
+              cache:
+                depends-on: "db"
+                if-role: "cache"
+      jobid2roles:
+        job1: "database,cache"
+    expected:
+      jobs:
+        - id: "job1"
+          components:
+            daemon:
+              db:
+                post-script: |
+                  jobfile_append_var milestones=db-ready
+                  wait-jobs.sh job1.milestones=cache-done
+            program:
+              cache:
+                pre-script: "wait-jobs.sh job1.milestones=db-ready"
+                post-script: "jobfile_append_var milestones=cache-done"
