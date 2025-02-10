@@ -9,13 +9,33 @@ class Cluster < PluginsCommon
 
     cluster_spec = get_cluster_spec_by_job(job) ||
                     get_cluster_spec_by_lab(cluster_file, job.lab)
-    jobs = split_cluster_job(job, cluster_spec)
+    jobs = split_cluster_job(job, cluster_spec.as_h)
   end
 
   def get_cluster_spec_by_job(job)
     return job.cluster_spec?
   end
 
+  # example cluster_spec files:
+  # wfg /c/lkp-tests% cat cluster/cs-vm-2p16g
+  # ip0: 1
+  # nodes:
+  #    vm-2p16g-multi-node--1:
+  #      roles: [ server ]
+  #
+  #    vm-2p16g-multi-node--2:
+  #      roles: [ client ]
+  # wfg /c/lkp-tests% head cluster/ceph-cluster
+  # switch: Switch-P12
+  # ip0: 1
+  # nodes:
+  #   taishan200-2280-2s48p-256g--a99:
+  #     roles: [ cephnode1 ]
+  #     macs: [ "44:67:47:d7:6d:14" ]
+  #
+  #   taishan200-2280-2s48p-256g--a32:
+  #     roles: [ cephnode2 ]
+  #     macs: [ "44:67:47:c9:db:38" ]
   def get_cluster_spec_by_lab(cluster_file, lab)
     data = JSON.parse(%({"git_repo": "/gitee.com/compass-ci/lab-#{lab}.git",
                       "git_command": ["git-show", "HEAD:cluster/#{cluster_file}"]}))
@@ -26,9 +46,7 @@ class Cluster < PluginsCommon
   end
 
   # return:
-  #   success: [{"job_id" => job_id1, "message => "", "job_state" => "submit"}, ...]
-  #   failure: [..., {"job_id" => 0, "message" => err_msg, "job_state" => "submit"}]
-  def split_cluster_job(job, cluster_spec)
+  def split_cluster_job(job, cluster_spec : Hash(String, JSON::Any))
     job_messages = Array(Hash(String, String)).new
     lab = job.lab
     subqueue = job.subqueue
@@ -54,9 +72,6 @@ class Cluster < PluginsCommon
       job_id = Sched.get_job_id
       single_job = Job.new(JSON.parse(job.to_json).as_h, job_id)
       single_job.delete_host_info
-      single_job.update_kernel_params
-      queue = host.to_s
-      queue = queue = $1 if queue =~ /(\S+)--[0-9]+$/
 
       # return when job_id is '0'
       # 2 Questions:
@@ -65,9 +80,9 @@ class Cluster < PluginsCommon
       job_ids << job_id
 
       # add to job content when multi-test
-      single_job.testbox = queue
-      single_job.queue = queue
-      single_job.update_tbox_group(queue)
+      single_job.testbox = host
+      single_job.update_tbox_group(host)
+      single_job.update_kernel_params
       single_job.os_arch = single_job.arch
       single_job.node_roles = spec["roles"].as_a.join(" ")
       if spec["macs"]?
@@ -108,8 +123,11 @@ class Cluster < PluginsCommon
   end
 
   def get_roles(job)
-    # XXX
-    roles = job.hash_any.keys.map { |key| $1 if key =~ /^if role (.*)/ }
-    roles.compact.map(&.strip)
+    # TODO: refine this code
+    roles = []
+    %w(daemon program).each do |k|
+      roles += job.hash_hhh[k].each.map { |_, val| if (val) val.as_h["if-role"]?.split(" ")  }
+    end
+    roles.flatten.compact.map(&.strip)
   end
 end
