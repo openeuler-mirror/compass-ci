@@ -2,56 +2,65 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def update_job_parameter(env)
+  def api_update_job(env) : String
     job_id = env.params.query["job_id"]?
-    return false unless job_id
+    raise "Error: no job_id" unless job_id
 
-    job = @es.get_job(job_id)
-    return false unless job
+    job = get_job(job_id.to_i64)
+    raise "Error: job not found" unless job
 
     env.set "job_id", job_id
     env.set "time", get_time
 
-    # the user actively returned this testbox
     # no need to update job
-    return if job.job_health? == "return"
+    raise "Warning: job finish, cannot update" if JOB_STAGE_NAME2ID[job.job_stage] >= JOB_STAGE_NAME2ID["finish"]
 
     # try to get report value and then update it
-    delta_job = Job.new(Hash(String, JSON::Any).new, nil)
+    delta_job = JobHash.new
 
-    (%w(job_state milestones)).each do |parameter|
+    %w(job_state job_stage job_step milestones renew_seconds).each do |parameter|
       value = env.params.query[parameter]?
       next if value.nil? || value == ""
 
+      env.set parameter, value
+
       case parameter
-      when "job_state"
-        delta_job.job_state = value
+      when "job_step"
+          job.job_step = value
+          delta_job.job_step = value
+      when "job_state", "job_stage"
+        if JOB_STAGE_NAME2ID.has_key? value
+          change_job_stage(job, value, nil)
+          delta_job.job_stage = value
+        elsif JOB_HEALTH_NAME2ID.has_key? value
+          change_job_stage(job, "incomplete", value)
+          delta_job.job_health = value
+        else
+          raise "Error: api_update_job: unknown #{parameter}=#{value}"
+        end
+
+        # job finished?
+        if JOB_STAGE_NAME2ID[job.job_stage] >= JOB_STAGE_NAME2ID["finish"]
+          job.set_boot_elapsed_time
+          on_job_finish(job)
+        end
+
       when "milestones"
         values = value.split(/[ ,]+/)
-        if delta_job.hash_array.has_key? "milestones"
-          delta_job.milestones += value.split(" ")
+        if job.hash_array.has_key? "milestones"
+          job.milestones += value.split(" ")
         else
-          delta_job.milestones = value.split(" ")
+          job.milestones = value.split(" ")
         end
-      end
-      next unless parameter == "job_state"
+        delta_job.milestones = job.milestones
 
-      if JOB_STAGES.includes?(value)
-        delta_job.job_stage = value
-        job.last_success_stage = value
-        job.set_time("#{value}_time")
-        job.set_boot_elapsed_time
-        env.set "job_stage", value
-        env.set "deadline", job.set_deadline(value).to_s
-      else
-        value = "success" if value == "finished"
-        delta_job.job_health = value
+      when "renew_seconds"
+        raise "Warning: only running job can renew, your job stage is: #{job.job_stage}" if job.job_stage == "submit"
+        job.renew_addtime(value.to_i32)
       end
     end
 
-    job.merge!(delta_job)
     delta_job.id = job_id
-
     update_id2job(delta_job)
 
     # json log
@@ -60,19 +69,21 @@ class Sched
     log.hash_plain.delete("id")
 
     env.set "log", log.to_json
+    send_mq_msg(env)
 
-    @es.set_job(job)
+    # optimize away db updates except in on_finish_job()
+    # @es.set_job(job)
     update_testbox_info(env, job)
 
     report_workflow_job_event(job_id.to_s, job)
+    return "Success"
   rescue e
     env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
-  ensure
-    send_mq_msg(env)
+    return e.to_s
   end
 
   def update_testbox_info(env, job)
@@ -84,4 +95,18 @@ class Sched
 
     @es.update_tbox(testbox, hash)
   end
+
+  def change_job_stage(job, job_stage, job_health)
+    job.job_stage = job_stage
+    job.set_time("#{job_stage}_time")
+
+    if job_health
+      job.job_health = job_health
+    else
+      job.last_success_stage = job_stage 
+    end
+
+    on_job_updated(job.id64)
+  end
+
 end

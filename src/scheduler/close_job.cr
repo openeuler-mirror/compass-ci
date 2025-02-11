@@ -38,42 +38,7 @@ class Sched
     end
   end
 
-  def api_close_job(env)
-    job_id = env.params.query["job_id"]?
-    mem = env.params.query["mem"]?
-    cpu = env.params.query["cpu"]?
-    return unless job_id
-
-    env.set "job_id", job_id
-    env.set "job_stage", "finish"
-
-    # etcd id2job only stores partial job content
-    # so query full job from es
-    job = get_job(job_id.to_i64)
-    raise "can't find job from es, job_id: #{job_id}" unless job
-
-    # update job content
-    job_state = env.params.query["job_state"]?
-    job.job_state = job_state if job_state
-    job.job_state = "complete" if job.job_state == "boot"
-
-    job.job_stage = "finish"
-
-    job_health = env.params.query["job_health"]?
-    if job_health && job_health == "return"
-      # if user returns this testbox
-      # job_health needs to be return
-      job.job_health = job_health
-    else
-      unless job.has_key?("job_health")
-        job.job_health = (job_health || "success")
-      end
-    end
-
-    if job.job_health == "success" || job.job_health == "oom"
-      # update job resource
-      update_job_resource(job, mem, cpu)
-    end
+  def on_job_finish(job)
 
     if job.job_health != "success"
       if job.has_key?("snapshot_id") && !job.snapshot_id.empty?
@@ -81,9 +46,6 @@ class Sched
         @etcd.put_not_exists("update_jobs/#{job.id}", data.to_json)
       end
     end
-
-    job.set_time("finish_time")
-    env.set "finish_time", job.finish_time
 
     if job.has_key?("running_time") && job.has_key?("finish_time")
       running_time = Time.parse(job.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
@@ -93,25 +55,13 @@ class Sched
 
     set_job2watch(job, "close", job.job_health)
     update_wait_job_by_ss(job)
-    on_job_updated(job.id64)
 
     response = @es.set_job(job)
     if response["_id"] == nil
       # es update fail, raise exception
-      raise "es set job content fail!"
+      raise "Error: es set job content fail!"
     end
 
-    report_workflow_job_event(job_id.to_s, job)
-    "success"
-  rescue e
-    env.response.status_code = 500
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
-    e.to_s
-  ensure
-    send_mq_msg(env) if env.params.query["source"]? != "lifecycle"
     if job
       # need update the end job_health to etcd
       res = update_id2job(job)
@@ -119,5 +69,8 @@ class Sched
       res = @stats_worker.handle(job)
       @log.info("scheduler move in_process to extract_stats #{job.id}: #{res}")
     end
+
+    report_workflow_job_event(job.id, job)
   end
+
 end

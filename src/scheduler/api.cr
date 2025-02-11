@@ -119,18 +119,6 @@ module Scheduler
     Sched.instance.report_event(env).to_s
   end
 
-  # extend the deadline
-  # curl "http://localhost:3000/renew_deadline?job_id=1&time=100
-  get "/renew_deadline" do |env|
-    Sched.instance.renew_deadline(env).to_s
-  end
-
-  # get testbox deadline
-  # curl "http://localhost:3000/get_deadline?testbox=xxx
-  get "/get_deadline" do |env|
-    Sched.instance.get_deadline(env).to_s
-  end
-
   # get testbox info
   # curl "http://localhost:3000/get_testbox?testbox=xxx
   get "/get_testbox" do |env|
@@ -148,9 +136,7 @@ module Scheduler
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
   get "/~lkp/cgi-bin/lkp-jobfile-append-var" do |env|
-    Sched.instance.update_job_parameter(env)
-
-    "Done"
+    Sched.instance.api_update_job(env)
   end
 
   # client(runner) report job's step
@@ -159,9 +145,7 @@ module Scheduler
   #  ?job_step=smoke_baseinfo&job_id=10
   #  ?job_step=smoke_docker&job_id=10
   get "/~lkp/cgi-bin/report-job-step" do |env|
-    Sched.instance.report_job_step(env)
-
-    "Done"
+    Sched.instance.api_update_job(env)
   end
 
   # client(runner) report job's stage
@@ -169,9 +153,7 @@ module Scheduler
   #   ?job_stage=on_fail&job_id=10
   #   ?job_stage=on_fail&job_id=10&timeout=21400
   get "/~lkp/cgi-bin/set-job-stage" do |env|
-    Sched.instance.api_set_job_stage(env)
-
-    "Done"
+    Sched.instance.api_update_job(env)
   end
 
   # node in cluster requests cluster state
@@ -199,7 +181,8 @@ module Scheduler
   # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
   get "/~lkp/cgi-bin/lkp-post-run" do |env|
-    Sched.instance.api_close_job(env).to_json
+    # obsolete API
+    # job will be closed when client setting job_stage to finish or set_job_state to some error string
   end
 
   get "/~lkp/cgi-bin/lkp-wtmp" do |env|
@@ -292,18 +275,6 @@ module Scheduler
     Sched.instance.report_event(env).to_s
   end
 
-  # extend the deadline
-  # curl "http://localhost:3000/scheduler/renew_deadline?job_id=1&time=100
-  get "/scheduler/renew-deadline" do |env|
-    Sched.instance.renew_deadline(env).to_s
-  end
-
-  # get testbox deadline
-  # curl "http://localhost:3000/scheduler/get_deadline?testbox=xxx
-  get "/scheduler/get-deadline" do |env|
-    Sched.instance.get_deadline(env).to_s
-  end
-
   # get testbox info
   # curl "http://localhost:3000/scheduler/get_testbox?testbox=xxx
   get "/scheduler/get-testbox" do |env|
@@ -319,20 +290,8 @@ module Scheduler
   # /scheduler/lkp/jobfile-append-var
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=running&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
-  get "/scheduler/lkp/jobfile-append-var" do |env|
-    Sched.instance.update_job_parameter(env)
-
-    "Done"
-  end
-
-  # client(runner) report job's stage
-  # /scheduler/lkp/set-job-stage
-  #   ?job_stage=on_fail&job_id=10
-  #   ?job_stage=on_fail&job_id=10&timeout=21400
-  get "/scheduler/lkp/set-job-stage" do |env|
-    Sched.instance.api_set_job_stage(env)
-
-    "Done"
+  get "/scheduler/job/update" do |env|
+    Sched.instance.api_update_job(env)
   end
 
   # node in cluster requests cluster state
@@ -354,13 +313,6 @@ module Scheduler
   #              return "server=<server ip>".
   get "/scheduler/lkp/cluster-sync" do |env|
     Sched.instance.request_cluster_state(env)
-  end
-
-  # client(runner) report job post_run finished
-  # /scheduler/lkp/post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
-  #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
-  get "/scheduler/lkp/post-run" do |env|
-    Sched.instance.api_close_job(env).to_json
   end
 
   get "/scheduler/lkp/report-ssh-port" do |env|

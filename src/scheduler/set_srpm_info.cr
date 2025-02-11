@@ -33,4 +33,15 @@ class Sched
     # XXX: string id not supported by manticore, may use "update by query", or Manticore.hash_string_to_i64()
     @es.bulk(payload.to_json, false)
   end
+
+  def check_params(hash)
+    missing_params = Array(String).new
+    hash.each do |k, v|
+      missing_params << k if v.to_s.empty?
+    end
+    return if missing_params.empty?
+
+    raise "param error: missing #{missing_params}"
+  end
+
 end

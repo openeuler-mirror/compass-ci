@@ -342,6 +342,7 @@ class JobHash
     node_roles
 
     loadavg
+    job_step
     job_state
     job_stage
     job_health
@@ -373,6 +374,7 @@ class JobHash
     ssh_pub_key
     deadline
     renew_deadline
+    renew_seconds
     custom_bootstrap
 
     runtime
@@ -787,6 +789,29 @@ class JobHash
     self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
+  def set_boot_elapsed_time
+    return if @hash_plain.has_key?("boot_seconds")
+    return unless self.running_time?
+
+    boot_time = Time.parse(self.boot_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    running_time = Time.parse(self.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+
+    self.boot_seconds = (running_time - boot_time).to_s
+  end
+
+  def renew_addtime(secs)
+    deadline = Time.parse(self.deadline, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    deadline = (deadline + secs.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
+    self.renew_deadline = deadline
+    self.deadline = deadline
+
+    if self.renew_seconds?
+      self.renew_seconds = (self.renew_seconds.to_i32 + secs).to_s
+    else
+      self.renew_seconds = secs.to_s
+    end
+  end
+
 end
 
 class Job < JobHash
@@ -979,16 +1004,6 @@ class Job < JobHash
     end
 
     self.all_params_md5 = get_md5(all_params)
-  end
-
-  def set_boot_elapsed_time
-    return if @hash_plain.has_key?("boot_seconds")
-    return unless self.running_time?
-
-    boot_time = Time.parse(self.boot_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    running_time = Time.parse(self.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-
-    self.boot_seconds = (running_time - boot_time).to_s
   end
 
   # defaults to the 1st value
@@ -1216,14 +1231,6 @@ class Job < JobHash
     deadline = get_deadline(stage, timeout)
     return nil unless deadline
 
-    self.deadline = deadline
-  end
-
-  # XXX: get/update ES, tell lifecycle
-  def renew_deadline(time)
-    deadline = Time.parse(self.deadline, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    deadline = (deadline + time.to_i32.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
-    self.renew_deadline = deadline
     self.deadline = deadline
   end
 

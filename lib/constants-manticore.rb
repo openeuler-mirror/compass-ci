@@ -34,16 +34,17 @@ JOB_HEALTH_NAME2ID = {
   "soft_timeout"        =>  12,
   "nfs_hang"            =>  13,
   "mount_fs_fail"       =>  14,
-  "microcode_mismatch"  =>  15,
-  "error_mount"         =>  16,
-  "disturbed"           =>  17,
-  "timeout_download"    =>  18,   # set by lifecycle terminate_timeout_jobs()
-  "timeout_boot"        =>  19,
-  "timeout_setup"       =>  20,
-  "timeout_running"     =>  21,
-  "timeout_wait_peer"   =>  22,
-  "timeout_post_run"    =>  23,
-  "timeout_uploading"   =>  24,
+  "miss_result_fs"      =>  15,
+  "microcode_mismatch"  =>  16,
+  "error_mount"         =>  17,
+  "disturbed"           =>  18,
+  "timeout_download"    =>  19,   # set by lifecycle terminate_timeout_jobs()
+  "timeout_boot"        =>  20,
+  "timeout_setup"       =>  21,
+  "timeout_running"     =>  22,
+  "timeout_wait_peer"   =>  23,
+  "timeout_post_run"    =>  24,
+  "timeout_uploading"   =>  25,
 }
 
 JOB_STAGE_ID2NAME = JOB_STAGE_NAME2ID.invert
