@@ -360,9 +360,6 @@ class JobHash
     manual_check_time
     renew_time
 
-    start_time
-    end_time
-
     boot_seconds
     run_seconds
 

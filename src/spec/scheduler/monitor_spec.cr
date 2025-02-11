@@ -18,28 +18,6 @@ end
 
 describe Scheduler::Monitor do
   describe "job maintain" do
-    it "recieve job parameters, then update the job parameter in redis" do
-      context = gen_put_context("/scheduler/lkp/jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_id=100&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698")
-      parameter_key = "start_time"
-
-      # job_id =  context.request.query_params["job"]
-      job_id = "100"
-      parameter_value = context.request.query_params[parameter_key]
-
-      resources = Scheduler::Resources.new
-      resources.redis_client(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
-      raw_redis = Redis.new(JOB_REDIS_HOST, JOB_REDIS_PORT_DEBUG)
-      raw_redis.del("sched/id2job")
-
-      # add 100, this job contains { testbox: wfg-e595, tbox_group: wfg-e595}
-      resources.fsdir_root("./public")
-
-      job_content = {"id" => job_id, parameter_key => parameter_value}
-      Scheduler::Monitor.update_job_parameter(job_content, context, resources)
-
-      response = resources.@redis_client.not_nil!.get_job(job_id)
-      (response[parameter_key]).should eq("1587725398")
-    end
 
     it "when job finished, update the job status" do
       context = gen_put_context("/scheduler/lkp/post-run?job_file=/lkp/scheduled/job.yaml&job_id=1")

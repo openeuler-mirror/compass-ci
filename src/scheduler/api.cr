@@ -319,7 +319,6 @@ module Scheduler
   # /scheduler/lkp/jobfile-append-var
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=running&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
-  #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
   get "/scheduler/lkp/jobfile-append-var" do |env|
     Sched.instance.update_job_parameter(env)
 

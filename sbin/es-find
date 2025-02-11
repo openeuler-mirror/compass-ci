@@ -131,7 +131,7 @@ opt_parser = OptionParser.new do |opts|
     options[:size] = n.to_i
   end
 
-  opts.on('-d', '--desc-keyword KEYWORD', 'order by keyword: start_time|end_time|...') do |d|
+  opts.on('-d', '--desc-keyword KEYWORD', 'order by keyword: boot_time|finish_time|...') do |d|
     options[:desc_keyword] = d
   end
 

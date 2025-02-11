@@ -28,7 +28,7 @@ class Serviceslogs
     @query_result = {
       'total' => 0,
       'cols' => %w[first_date service count handler error_message],
-      'filter' => { 'start_time' => @one_day_ago, 'end_time' => @today },
+      'filter' => { 'boot_time' => @one_day_ago, 'finish_time' => @today },
       'data' => []
     }
 

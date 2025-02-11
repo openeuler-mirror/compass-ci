@@ -195,11 +195,11 @@ end
 
 # Range Query Example:
 # range = {
-#   start_time: {
+#   boot_time: {
 #     gte: '2020-09-10 01:50:00',
 #     lte: '2020-09-10 01:53:00'
 #   },
-#   end_time: {
+#   finish_time: {
 #     gt: '2020-09-10 01:52:00',
 #     lt: '2020-09-10 01:54:00'
 #   }

@@ -326,7 +326,7 @@ end
 #   eg:
 #     { "total": 4,
 #       "cols": ["first_date","service","count","error_message"],
-#       "filter": {"start_time":"2021-06-21 14:17:32","end_time":"2021-06-22 14:17:32"},
+#       "filter": {"boot_time":"2021-06-21 14:17:32","finish_time":"2021-06-22 14:17:32"},
 #       "data": [
 #                  {"first_date":"2021-06-18 06:11:04","service":"scheduler-3000", "count":"503", "error_message":"Failed to verify the account."},
 #                  {"first_date":"2021-06-18 06:09:38","service":"scheduler-3000", "count":"110", "error_message":"Error reading socket: Connection reset by peer"},
