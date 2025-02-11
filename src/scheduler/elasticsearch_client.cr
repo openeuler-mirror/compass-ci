@@ -108,7 +108,7 @@ class Elasticsearch::Client
   end
 
   private def write_to_manticore(index : String, id : Int64, content : Hash(String, JSON::Any) | Hash(String, String), is_create : Bool)
-    return unless Sched.options.has_manticore
+    return unless Sched.options.should_write_manticore
 
     begin
       if is_create
@@ -122,7 +122,7 @@ class Elasticsearch::Client
   end
 
   def set_content_by_id(index, id, content)
-    es_response = if Sched.options.has_es && @client.exists({:index => index, :type => "_doc", :id => id})
+    es_response = if Sched.options.should_write_es && @client.exists({:index => index, :type => "_doc", :id => id})
                     @client.update({
                       :index => index, :type => "_doc",
                       :refresh => "wait_for",
@@ -138,18 +138,17 @@ class Elasticsearch::Client
                     })
                   end
 
-    write_to_manticore(index, id.to_i64, content, !Sched.options.has_es)
+    write_to_manticore(index, id.to_i64, content, !Sched.options.should_write_es)
     es_response
   end
 
-  # caller should judge response["_id"] != nil
   def set_job(job : JobHash, is_create = false)
     job.set_time
     @log.info("set job content, account: #{job.my_account}")
 
     es_response = nil
 
-    if Sched.options.has_es
+    if Sched.options.should_write_es
       content = job.to_json_any
       es_response = if is_create
                       create_job(content, job.id)
@@ -158,7 +157,7 @@ class Elasticsearch::Client
                     end
     end
 
-    if Sched.options.has_manticore
+    if Sched.options.should_write_manticore
       content = job.to_manticore
       es_response = write_to_manticore("jobs", job.id.to_i64, content, is_create)
     end
@@ -170,7 +169,7 @@ class Elasticsearch::Client
   def set_host(host : HostInfo)
     es_response = nil
 
-    if Sched.options.has_es
+    if Sched.options.should_write_es
       content = host.to_json_any
       es_response = @client.create({
                       :index => "hosts", :type => "_doc",
@@ -179,7 +178,7 @@ class Elasticsearch::Client
                     })
     end
 
-    if Sched.options.has_manticore
+    if Sched.options.should_write_manticore
       content = host.to_manticore
       es_response = write_to_manticore("hosts", host.id, content, true)
     end
@@ -189,14 +188,14 @@ class Elasticsearch::Client
   end
 
   def get_job_content(job_id : String)
-    return unless Sched.options.has_es || Sched.options.has_manticore
+    return unless Sched.options.should_read_es || Sched.options.should_read_manticore
 
-    if Sched.options.has_es
+    if Sched.options.should_read_es
       response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
       return response.as_h if response.is_a?(JSON::Any)
     end
 
-    if Sched.options.has_manticore && !Sched.options.has_es
+    if Sched.options.should_read_manticore && !Sched.options.should_read_es
       begin
         response = Manticore::Client.get_source("jobs", job_id.to_i64)
         return nil if !response.is_a?(JSON::Any)
@@ -223,7 +222,7 @@ class Elasticsearch::Client
   end
 
   def get_account(my_email : String)
-    if Sched.options.has_es
+    if Sched.options.should_read_es
       query = {:index => "accounts", :type => "_doc", :id => my_email}
       response = JSON.parse({"_id" => my_email, "found" => false}.to_json)
       return response unless @client.exists(query)
@@ -231,7 +230,7 @@ class Elasticsearch::Client
       result = @client.get_source(query)
       raise result unless result.is_a?(JSON::Any)
       result
-    elsif Sched.options.has_manticore
+    elsif Sched.options.should_read_manticore
       begin
         return Manticore::Client.get_source("accounts", my_email.to_i64)
       rescue
@@ -243,14 +242,14 @@ class Elasticsearch::Client
   end
 
   def get_hit_total(index, query)
-    if Sched.options.has_es
+    if Sched.options.should_read_es
       results = @client.search({:index => index, :body => query})
       raise results unless results.is_a?(JSON::Any)
 
       total = results["hits"]["total"]["value"].to_s.to_i32
       id = total >= 1 ? results["hits"]["hits"][0]["_source"]["id"] : 0
       return total, id
-    elsif Sched.options.has_manticore
+    elsif Sched.options.should_read_manticore
       begin
         # expect the caller to define query["index"]
         response = Manticore::Client.search(query)
@@ -267,7 +266,7 @@ class Elasticsearch::Client
   end
 
   def search(index : String, query, ignore_error = true)
-    if Sched.options.has_es
+    if Sched.options.should_read_es
       results = @client.search({:index => index, :body => query})
       raise results unless results.is_a?(JSON::Any)
 
@@ -280,7 +279,7 @@ class Elasticsearch::Client
         error_results << results
       end
       return error_results
-    elsif Sched.options.has_manticore
+    elsif Sched.options.should_read_manticore
       begin
         case query
         when Hash(String, JSON::Any)
@@ -306,7 +305,7 @@ class Elasticsearch::Client
   end
 
   def search_by_fields(index : String, kvs : Hash, size=10, source=Array(String).new, ignore_error = true)
-    if Sched.options.has_es
+    if Sched.options.should_read_es
       must = Array(Hash(String, Hash(String, Hash(String, String)))).new
       kvs.each do |field, value|
         must << {"term" => {field.to_s => {"value" => value.to_s}}}
@@ -321,7 +320,7 @@ class Elasticsearch::Client
         }
       }
       search(index, real_query, ignore_error)
-    elsif Sched.options.has_manticore
+    elsif Sched.options.should_read_manticore
       begin
         must = Array(Hash(String, Hash(String, Hash(String, String)))).new
         kvs.each do |field, value|
@@ -349,7 +348,7 @@ class Elasticsearch::Client
   end
 
   def update_account(account_content : JSON::Any, my_email : String)
-    if Sched.options.has_es
+    if Sched.options.should_write_es
       es_response = @client.update(
         {
           :index => "accounts", :type => "_doc",
@@ -359,7 +358,7 @@ class Elasticsearch::Client
       )
     end
 
-    if Sched.options.has_manticore
+    if Sched.options.should_write_manticore
       begin
         Manticore::Client.update("accounts", my_email.to_i64, account_content)
       rescue e
@@ -371,7 +370,7 @@ class Elasticsearch::Client
   end
 
   def get_tbox(testbox)
-    if Sched.options.has_es
+    if Sched.options.should_read_es
       query = {:index => "testbox", :type => "_doc", :id => testbox}
       return nil unless @client.exists(query)
 
@@ -382,7 +381,7 @@ class Elasticsearch::Client
       else
         return nil
       end
-    elsif Sched.options.has_manticore
+    elsif Sched.options.should_read_manticore
       begin
         results = self.select("testbox", {"testbox" => testbox})
         return nil unless results
@@ -397,7 +396,7 @@ class Elasticsearch::Client
   end
 
   def update_tbox(testbox : String, wtmp_hash : Hash)
-    if Sched.options.has_es
+    if Sched.options.should_write_es
       query = {:index => "testbox", :type => "_doc", :id => testbox}
       if @client.exists(query)
         result = @client.get_source(query)
@@ -424,7 +423,7 @@ class Elasticsearch::Client
       )
     end
 
-    if Sched.options.has_manticore
+    if Sched.options.should_write_manticore
       begin
         id = Manticore.hash_string_to_i64(testbox)
         Manticore::Client.update("testbox", id, wtmp_hash)
@@ -435,7 +434,7 @@ class Elasticsearch::Client
   end
 
   def create_subqueue(content, id)
-    if Sched.options.has_es
+    if Sched.options.should_write_es
       es_response = @client.create(
         {
           :index => "subqueue",
@@ -446,7 +445,7 @@ class Elasticsearch::Client
       )
     end
 
-    if Sched.options.has_manticore
+    if Sched.options.should_write_manticore
       begin
         id = Manticore.hash_string_to_i64(id)
         Manticore::Client.create("subqueue", id, content)
@@ -459,7 +458,7 @@ class Elasticsearch::Client
   end
 
   private def create_job(job_content : JSON::Any, job_id : String)
-    # only called on Sched.options.has_es
+    # only called on Sched.options.should_write_es
     @client.create({
       :index => "jobs", :type => "_doc",
       :refresh => "wait_for",
@@ -469,7 +468,7 @@ class Elasticsearch::Client
   end
 
   private def update_job(job_content : JSON::Any, job_id : String)
-    # only called on Sched.options.has_es
+    # only called on Sched.options.should_write_es
     @client.update({
       :index => "jobs", :type => "_doc",
       :refresh => "wait_for",
@@ -479,9 +478,9 @@ class Elasticsearch::Client
   end
 
   def delete(index, id)
-    es_response = @client.delete({:index => index, :type => "_doc", :id => id}) if Sched.options.has_es
+    es_response = @client.delete({:index => index, :type => "_doc", :id => id}) if Sched.options.should_write_es
 
-    if Sched.options.has_manticore
+    if Sched.options.should_write_manticore
       begin
         Manticore::Client.delete(index, id.to_i64)
       rescue e
@@ -508,7 +507,7 @@ class Elasticsearch::Client
 
   def select(index : String, matches : Hash(String, String), fields : String = "*", others : String = "")
     results = nil
-    if Sched.options.has_manticore
+    if Sched.options.should_read_manticore
       match = build_query_string(matches, " ", false)
       fields = Manticore.filter_sql_fields(fields)
       match = Manticore.filter_sql_fields(match)
@@ -523,7 +522,7 @@ class Elasticsearch::Client
       results
     end
 
-    if Sched.options.has_es
+    if Sched.options.should_read_es
       # `path=_nlpcn/sql` refers to lib/es_client.rb opendistro_sql()
       # can verify with "cci select" command
       match = build_query_string(matches, " AND ", true)
@@ -575,7 +574,7 @@ class Elasticsearch::Client
     # Manticore bulk API strategy:
     # - Convert "update" actions to "replace" (Manticore uses replace for updates)
     # - Convert "_index" field to "index" (Manticore's field naming)
-    if Sched.options.has_manticore && has_id
+    if Sched.options.should_write_manticore && has_id
       endpoint = "http://#{Sched.options.manticore_host}:#{Sched.options.manticore_port}/bulk"
       modified_body = body.gsub(/"update":/, "\"replace\":")
                          .gsub(/"_index":/, "\"index\":")
@@ -585,7 +584,7 @@ class Elasticsearch::Client
     # Elasticsearch bulk API strategy:
     # - Convert payload to NDJSON format with proper action metadata
     # - Ensure "_index" field exists and doc content is properly structured
-    if Sched.options.has_es
+    if Sched.options.should_write_es
       endpoint = "http://#{@host}:#{@port}/_bulk"
       converted_body = es_bulkify(body)
       perform_bulk_request(endpoint, converted_body)

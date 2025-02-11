@@ -12,8 +12,10 @@ struct SchedOptions
 
   property has_redis : Bool = true
   property has_etcd : Bool = true
-  property has_es : Bool = true
-  property has_manticore : Bool = false
+  property should_read_es : Bool = true
+  property should_write_es : Bool = true
+  property should_read_manticore : Bool = false
+  property should_write_manticore : Bool = false
 
   property lab_id : String = "" # at most 3-digit int, or null
   property sched_port : Int32 = 3000
