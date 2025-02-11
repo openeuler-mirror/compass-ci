@@ -15,12 +15,16 @@ RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/ && \
     gem install yaml io-console elasticsearch:7.11.1
 
-COPY --chown=1090:1090 --chmod=750  compass-ci	/c/compass-ci
-COPY --chown=1090:1090 lkp-tests /c/lkp-tests
+COPY compass-ci	/c/compass-ci
+COPY lkp-tests /c/lkp-tests
+
+RUN chown -R 1090:1090 /c/compass-ci /c/lkp-tests && chown -R 750 /c/compass-ci
 
 ENV SCHED_RUNTIME_DIR /c/cci/scheduler
 RUN mkdir -p $SCHED_RUNTIME_DIR 
 WORKDIR $SCHED_RUNTIME_DIR
 
-COPY --chown=1090:1090 scheduler .
-COPY --chown=1090:1090 create-job-cpio.sh .
+COPY scheduler .
+COPY create-job-cpio.sh .
+
+RUN chown 1090:1090 /c/cci/scheduler/scheduler /c/cci/scheduler/create-job-cpio.sh
