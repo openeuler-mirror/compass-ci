@@ -9,32 +9,179 @@ require "yaml"
 
 require "./jobfile_operate"
 
-class Sched
-  private def prepare_dir(file_path : String)
-    file_path_dir = File.dirname(file_path)
-    unless File.exists?(file_path_dir)
-      FileUtils.mkdir_p(file_path_dir)
+# job2sh Key Features:
+
+# 1) Conditional Execution (if statements):
+#
+#    program:
+#      pkgbuild:
+#        param1: 100
+#        if: [[ "$role" = client ]]
+#
+#    =>
+#    if [[ "$role" = client ]]
+#        run_program param1=100 pkgbuild
+#    fi
+
+# 2) Pre/Post Scripts:
+#
+#    program:
+#      pkgbuild:
+#        pre-script: sleep 1
+#        post-script: sleep 2
+#
+#    =>
+#    sleep 1
+#    run_program pkgbuild
+#    sleep 2
+
+# 3) Environment Variable Handling:
+#
+#    program:
+#      test:
+#        iterations: 5
+#        mode: "stress test"
+#
+#    =>
+#    run_program iterations=5 mode='stress test' test
+
+class JobHash
+  def generate_shell_script
+    generate_shell_vars +
+    generate_shell_run
+  end
+
+  def generate_shell_run
+    String.build do |str|
+      str << "run_job()\n"
+      str << "{\n"
+      str << "\techo $$ > $TMP/run-job.pid\n"
+      str << "\n"
+      str << "\t. $LKP_SRC/lib/http.sh\n"
+      str << "\t. $LKP_SRC/lib/job.sh\n"
+      str << "\t. $LKP_SRC/lib/env.sh\n"
+      str << "\n"
+
+      process_section(str, "setup")
+      process_section(str, "daemon")
+      process_section(str, "monitor")
+      process_section(str, "program")
+
+      str << "}\n\n"
+    end
+  end
+
+  def generate_shell_vars
+    script_lines = [] of String
+    script_lines << "check_set_var()"
+    script_lines << "{"
+    script_lines << "        local name=\"${1%=*}\""
+    script_lines << "        [ -z \"$vars\" -o \"${vars#*$name}\" != \"$vars\" ] && readonly \"$1\""
+    script_lines << "}\n"
+    script_lines << "read_job_vars()"
+    script_lines << "{"
+    script_lines << "\tlocal vars=\"$*\""
+    script_lines << "\n"
+
+    @hash_plain.each { |key, val| parse_one(script_lines, key, val) }
+    if hw = self.hw?
+      hw.each { |key, val| parse_one(script_lines, key, val) }
+    end
+    if sv = self.services?
+      sv.each { |key, val| parse_one(script_lines, key, val) }
+    end
+
+    script_lines << "}\n"
+
+    script_lines.to_s
+  end
+
+  private def process_section(str, section)
+    return unless entries = @hash_hhh[section]?
+
+    entries.each do |program, config|
+      next unless config.is_a?(Hash)
+
+      # Handle pre-script
+      if pre_script = config["pre-script"]?
+        str << "\t#{pre_script}\n"
+      end
+
+      # Handle conditional
+      if condition = config["if"]?
+        str << "\tif #{condition}\n"
+      end
+
+      # Generate command line
+      command = build_command(section, program, config)
+      str << "\t#{command}\n"
+
+      # Close conditional
+      if condition
+        str << "\tfi\n"
+      end
+
+      # Handle post-script
+      if post_script = config["post-script"]?
+        str << "\t#{post_script}\n"
+      end
+    end
+  end
+
+  private def build_command(section, program, config)
+    command = case section
+              when "monitor" then "run_monitor"
+              when "setup"   then "run_setup"
+              when "daemon"  then "start_daemon"
+              when "program" then "run_program"
+              else                ""
+              end
+
+    # Process environment variables
+    env_vars = get_program_env(config)
+    env_str = env_vars.map { |k, v| "#{shell_encode_keyword(k)}=#{shell_escape_expand(v)}" }.join(" ")
+
+    # Build command line
+    [env_str, command, program].reject(&.empty?).join(" ")
+  end
+
+  private def get_program_env(config)
+    program_env = {} of String => String
+    return program_env unless config.is_a?(Hash)
+
+    config.each do |k, v|
+      next if ["if", "if-role", "depends-on", "pre-script", "post-script"].includes?(k)
+
+      case v
+      when Hash
+        v.each { |sk, sv| program_env[sk.to_s] = sv.to_s }
+      else
+        program_env[k.to_s] = v.to_s
+      end
+    end
+
+    program_env
+  end
+
+  private def shell_encode_keyword(key)
+    key.gsub(/[^a-zA-Z0-9_]/) { |m| "_#{m.ord}_" }
+  end
+
+  private def shell_escape_expand(val)
+    case val
+    when nil, ""
+      ""
+    when Int
+      val.to_s
+    when /^[a-zA-Z0-9_+=:@\/.-]+$/
+      val
+    else
+      "'#{val.gsub("'", "'\"'\"'")}'"
     end
   end
 
   private def valid_shell_variable?(key)
     key =~ /^[a-zA-Z_]+[a-zA-Z0-9_]*$/
-  end
-
-  private def create_job_sh(job_sh_content : Array(JSON::Any), path : String)
-    File.open(path, "w", File::Permissions.new(0o775)) do |file|
-      file.puts "#!/bin/sh\n\n"
-
-      job_sh_content.each do |line|
-        if line.as_a?
-          line.as_a.each { |val| file.puts val }
-        else
-          file.puts line
-        end
-      end
-
-      file.puts "\"$@\""
-    end
   end
 
   private def shell_escape(val)
@@ -57,66 +204,28 @@ class Sched
     return false if !valid_shell_variable?(key)
 
     value = shell_escape(val)
-    if value
-      is_done = false
-      script_lines.each_with_index do |line, index|
-        if line.starts_with?("\tcheck_set_var #{key}=")
-          script_lines[index] = "\tcheck_set_var #{key}=" + value
-          is_done = true
-          break
-        end
-      end
-      unless is_done
-        script_lines << "\tcheck_set_var #{key}=" + value
-      end
+		script_lines << "\tcheck_set_var #{key}=" + value if value
+  end
+
+end
+
+#################################################################################
+class Sched
+  private def prepare_dir(file_path : String)
+    file_path_dir = File.dirname(file_path)
+    unless File.exists?(file_path_dir)
+      FileUtils.mkdir_p(file_path_dir)
     end
   end
 
-  private def parse_one(script_lines, key, val : JSON::Any)
-    return false if !valid_shell_variable?(key)
-    return false if val.as_h?
+  private def create_job_sh(job_sh_content : String, path : String)
+    File.open(path, "w", File::Permissions.new(0o775)) do |file|
+      file.puts "#!/bin/sh\n\n"
 
-    value = shell_escape(val.as_a? || val.to_s)
-    if value
-      is_done = false
-      script_lines.each_with_index do |line, index|
-        if line.starts_with?("\tcheck_set_var #{key}=")
-          script_lines[index] = "\tcheck_set_var #{key}=" + value
-          is_done = true
-          break
-        end
-      end
-      unless is_done
-        script_lines << "\tcheck_set_var #{key}=" + value
-      end
+			file.puts job_sh_content
+
+      file.puts "\"$@\""
     end
-  end
-
-  private def sh_export_top_env(job : JobHash)
-    script_lines = [] of String
-    script_lines << "check_set_var()"
-    script_lines << "{"
-    script_lines << "        local name=\"${1%=*}\""
-    script_lines << "        [ -z \"$vars\" -o \"${vars#*$name}\" != \"$vars\" ] && readonly \"$1\""
-    script_lines << "}\n"
-    script_lines << "read_job_vars()"
-    script_lines << "{"
-    script_lines << "\tlocal vars=\"$*\""
-    script_lines << "\n"
-
-    job.hash_plain.each { |key, val| parse_one(script_lines, key, val) }
-    job.hash_any.each { |key, val| parse_one(script_lines, key, val) }
-    if hw = job.hw?
-      hw.each { |key, val| parse_one(script_lines, key, val) }
-    end
-    if sv = job.services?
-      sv.each { |key, val| parse_one(script_lines, key, val) }
-    end
-
-    script_lines << "}\n"
-
-    script_lines = script_lines.to_s
-    script_lines = JSON.parse(script_lines)
   end
 
   def create_secrets_yaml(job_id, base_dir)
@@ -144,19 +253,7 @@ class Sched
   def create_job_cpio(job : JobHash, base_dir : String)
     create_secrets_yaml(job.id, base_dir)
 
-    # put job2sh in an array
-    if job.job2sh?
-      tmp_job_sh_content = job.job2sh
-      job.delete("job2sh")
-
-      job_sh_array = [] of JSON::Any
-      tmp_job_sh_content.as_h.each do |_key, val|
-        next if val == nil
-        job_sh_array += val.as_a
-      end
-    else
-      job_sh_array = [] of JSON::Any
-    end
+		job.delete("job2sh")
 
     # generate job.yaml
     temp_yaml = base_dir + "/#{job.id}/job.yaml"
@@ -170,13 +267,9 @@ class Sched
       file.puts(job.to_yaml)
     end
 
-    # generate unbroken job shell content
-    sh_export_top_env = sh_export_top_env(job)
-    job_sh_content = sh_export_top_env.as_a + job_sh_array
-
     # generate job.sh
     job_sh = base_dir + "/#{job.id}/job.sh"
-    create_job_sh(job_sh_content.to_a, job_sh)
+    create_job_sh(job.generate_shell_script, job_sh)
 
     job_dir = base_dir + "/#{job.id}"
 
@@ -204,4 +297,5 @@ class Sched
              "#{src_dir}/job.yaml"]
     FileUtils.cp(files, dst_dir)
   end
+
 end
