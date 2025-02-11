@@ -75,7 +75,6 @@ class Sched
     @etcd = EtcdClient.new
     @rgc = RemoteGitClient.new
     @log = JSONLogger.new
-    @lifecycle = Lifecycle.new
     @repo = Repo.new
     @cluster = Cluster.new
     @finally = Finally.new
@@ -84,7 +83,6 @@ class Sched
     @hosts_cache = Hosts.new(@es)
     refresh_cache_from_es
     setup_serial_consoles
-    start_lifecycle_worker
     @stats_worker = StatsWorker.new
   end
 
