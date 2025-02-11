@@ -2,26 +2,6 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def update_job_resource(job, mem, cpu)
-    return unless mem
-    return unless cpu
-
-    begin
-      index = "job_resource"
-      if ["rpmbuild", "hotpatch"].includes?("#{job.suite}")
-        id = "#{job.suite}_#{job.arch}_#{job.os_project}_#{job.package}_#{job.spec_file_name}"
-      else
-        return
-      end
-      content = { "mem" => mem, "cpu" => cpu }
-      @es.set_content_by_id(index, id, content)
-    rescue e
-      @log.warn({
-        "message" => e.to_s,
-        "error_message" => e.inspect_with_backtrace.to_s
-      }.to_json)
-    end
-  end
 
   def update_wait_job_by_ss(job)
     job_waited = job.waited?

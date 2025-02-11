@@ -121,27 +121,6 @@ class Elasticsearch::Client
     end
   end
 
-  def set_content_by_id(index, id, content)
-    es_response = if Sched.options.should_write_es && @client.exists({:index => index, :type => "_doc", :id => id})
-                    @client.update({
-                      :index => index, :type => "_doc",
-                      :refresh => "wait_for",
-                      :id => id,
-                      :body => {:doc => content},
-                    })
-                  else
-                    @client.create({
-                      :index => index, :type => "_doc",
-                      :refresh => "wait_for",
-                      :id => id,
-                      :body => {:doc => content},
-                    })
-                  end
-
-    write_to_manticore(index, id.to_i64, content, !Sched.options.should_write_es)
-    es_response
-  end
-
   def set_job(job : JobHash, is_create = false)
     job.set_time
     @log.info("set job content, account: #{job.my_account}")
