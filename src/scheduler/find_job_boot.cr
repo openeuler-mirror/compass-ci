@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 #
-require "./get_job"
 
 require "../lib/common"
 require "../lib/json_logger"
@@ -51,8 +50,6 @@ class Sched
     job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
     env.set "job_id", job_id
 
-    set_job2watch(job, "boot", "success")
-
     # return response to testbox
     if socket
       socket.send({
@@ -63,7 +60,6 @@ class Sched
       response
     end
   rescue e
-    set_job2watch(job, "boot", "failed")
     env.response.status_code = 500
     @log.warn({
       "message" => e.to_s,
@@ -166,19 +162,8 @@ class Sched
     @log.info(%({"job_id": "#{job_id}",
               "result_root": "/srv#{job.result_root}",
               "job_state": "set result root"}))
-    update_id2job(job)
 
     return job
-  end
-
-  def set_job2watch(job, stage, health)
-    return unless job
-
-    if !job["in_watch_queue"].empty?
-      current_time = Time.local.to_s("%Y-%m-%d %H:%M:%S")
-      data = {"job_id" => job["id"], "job_stage" => stage, "job_health" => health, "current_time" => current_time}
-      @etcd.put_not_exists("watch_queue/#{job["in_watch_queue"]}/#{job["id"]}", data.to_json)
-    end
   end
 
   def create_job_boot(env, job, boot_type)

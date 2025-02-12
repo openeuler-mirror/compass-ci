@@ -93,7 +93,6 @@ class Sched
       next unless job
 
       job["job_health"] = "cancel"
-      delete_job_from_submit_queue(job_id)
       update_jobs << { "update" => { "index" => "jobs", "id" => job_id, "doc" => job.to_json_any}}
     rescue e
       @log.warn({
@@ -113,13 +112,4 @@ class Sched
     results
   end
 
-  def delete_job_from_submit_queue(job_id)
-    res = @etcd.delete("/queues/sched/submit/dc-custom/#{job_id}")
-    @etcd.delete("queues/sched/id2job/#{job_id}") if res.deleted == 1
-  end
-
-  def delete_job_from_ready_queue(queue, subqueue, job_id)
-    res = @etcd.delete("/queues/sched/ready/#{queue}/#{subqueue}/#{job_id}")
-    @etcd.delete("queues/sched/id2job/#{job_id}") if res.deleted == 1
-  end
 end

@@ -14,8 +14,6 @@ class Sched
 
     job.set_boot_seconds
 
-    set_job2watch(job, "close", job.job_health)
-
     response = @es.set_job(job)
     if response["_id"] == nil
       # es update fail, raise exception
@@ -23,9 +21,6 @@ class Sched
     end
 
     if job
-      # need update the end job_health to etcd
-      res = update_id2job(job)
-      @log.info("scheduler update job to id2job #{job.id}: #{res}")
       res = @stats_worker.handle(job)
       @log.info("scheduler move in_process to extract_stats #{job.id}: #{res}")
     end

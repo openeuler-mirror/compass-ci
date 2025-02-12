@@ -122,7 +122,6 @@ class Sched
                 "job_state": "set result root"}))
 
       @hosts_cache[host_machine].job_id = job_id.to_i64
-      update_id2job(job)
 
       job["last_success_stage"] = "boot"
       @es.set_job(job)

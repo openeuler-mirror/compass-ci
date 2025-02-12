@@ -60,7 +60,6 @@ class Sched
     end
 
     delta_job.id = job_id
-    update_id2job(delta_job)
 
     # json log
     log = delta_job.dup
