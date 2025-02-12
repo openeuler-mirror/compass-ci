@@ -30,7 +30,8 @@ class Sched
       job.delete_account_info
       init_job_id(job)
       Sched.instance.pkgbuild.handle_job(job)
-      Sched.instance.finally.handle_job(job)
+
+      on_job_submit(job)
 
       response << {
         "job_id"      => job.id,
@@ -75,7 +76,7 @@ class Sched
 
   def init_job(job_content)
     job_hash = job_content.as_h
-    fields = ["id", "plugins", "added_by", "errid", "stats",
+    fields = ["id", "plugins", "errid", "stats",
               "start_time", "end_time", "finish_time",
               "job_health", "job_stage", "job_state"]
     fields.each do |field|

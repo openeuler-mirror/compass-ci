@@ -108,8 +108,13 @@ class Sched
     progress = check_wait_spec(cjob.id64, wait_spec)
 
     if progress && !wait_spec.has_key?("wait_on")
-      add_job_to_cache(dependent_job)
-      @jobs_cache.delete(wjob_id)
+      if progress == :fail_fast
+        change_job_stage(dependent_job, "incomplete", "abort_wait")
+        on_job_close(dependent_job)
+      else
+        add_job_to_cache(dependent_job)
+        @jobs_cache.delete(wjob_id)
+      end
     end
 
     progress
@@ -124,7 +129,7 @@ class Sched
     end
   end
 
-  def check_wait_spec(cjob_id : Int64, wait_spec : HashHHH) : Bool
+  def check_wait_spec(cjob_id : Int64, wait_spec : HashHHH) : Bool|Symbol
     wait_on = wait_spec["wait_on"]? || return false
     job_id_str = cjob_id.to_s
     return false unless wait_on.has_key?(job_id_str)
@@ -170,7 +175,7 @@ class Sched
       # Process fail_fast
       if wait_options.has_key?("fail_fast") && cjob.job_stage == "incomplete"
         wait_spec.delete("wait_on")
-        return true
+        return :fail_fast
       end
     end
 

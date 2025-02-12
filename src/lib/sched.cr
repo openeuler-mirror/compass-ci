@@ -34,7 +34,6 @@ require "../scheduler/report_ssh"
 require "../scheduler/rpmbuild"
 require "../scheduler/report_job_step"
 require "../scheduler/plugins/pkgbuild"
-require "../scheduler/plugins/finally"
 require "../scheduler/plugins/cluster"
 require "../scheduler/heart_beat"
 require "../scheduler/dispatch"
@@ -54,7 +53,6 @@ class Sched
   property redis
   property block_helper
   property cluster
-  property finally
   property pkgbuild
   property hosts_cache
 
@@ -77,7 +75,6 @@ class Sched
     @log = JSONLogger.new
     @repo = Repo.new
     @cluster = Cluster.new
-    @finally = Finally.new
     @pkgbuild = PkgBuild.new
     # Load initial hosts data from ES
     @hosts_cache = Hosts.new(@es)

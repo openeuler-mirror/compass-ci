@@ -3,22 +3,7 @@
 
 class Sched
 
-  def update_wait_job_by_ss(job)
-    job_waited = job.waited?
-    return unless job_waited
-
-    job_waited.not_nil!.each do |k, v|
-      k_job = @es.get_job(k)
-      next unless k_job
-      next unless k_job.ss_wait_jobs?
-
-      k_job.ss_wait_jobs.not_nil!.merge!({job.id => job.job_health})
-      k_job.job_health = job.job_health if job.job_health != "success"
-      @es.set_job(k_job)
-    end
-  end
-
-  def on_job_finish(job)
+  def on_job_close(job)
 
     if job.job_health != "success"
       if job.has_key?("snapshot_id") && !job.snapshot_id.empty?
@@ -27,14 +12,9 @@ class Sched
       end
     end
 
-    if job.has_key?("running_time") && job.has_key?("finish_time")
-      running_time = Time.parse(job.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-      finish_time = Time.parse(job.finish_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-      job.run_seconds = (finish_time - running_time).to_s
-    end
+    job.set_boot_seconds
 
     set_job2watch(job, "close", job.job_health)
-    update_wait_job_by_ss(job)
 
     response = @es.set_job(job)
     if response["_id"] == nil
@@ -51,6 +31,13 @@ class Sched
     end
 
     report_workflow_job_event(job.id, job)
+
+    if job.job_stage == "incomplete"
+      @jobs_cache.delete job.id64
+      if @jobs_cache_in_submit.has_key? job.id64
+        on_consumed_job(job)
+      end
+    end
   end
 
 end

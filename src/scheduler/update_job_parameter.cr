@@ -41,8 +41,7 @@ class Sched
 
         # job finished?
         if JOB_STAGE_NAME2ID[job.job_stage] >= JOB_STAGE_NAME2ID["finish"]
-          job.set_boot_elapsed_time
-          on_job_finish(job)
+          on_job_close(job)
         end
 
       when "milestones"

@@ -449,7 +449,6 @@ class JobHash
     initrd_pkgs
     kernel_params
     kernel_rpms_url
-    added_by
 
     target_machines
     cache_dirs
@@ -792,14 +791,17 @@ class JobHash
     self[key] = Time.local.to_s("%Y-%m-%dT%H:%M:%S+0800")
   end
 
-  def set_boot_elapsed_time
-    return if @hash_plain.has_key?("boot_seconds")
+  def set_boot_seconds
+    return unless self.boot_time?
     return unless self.running_time?
+    return unless self.finish_time?
 
-    boot_time = Time.parse(self.boot_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    running_time = Time.parse(self.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    boot_time =     Time.parse(self.boot_time,    "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    running_time =  Time.parse(self.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    finish_time =   Time.parse(self.finish_time,  "%Y-%m-%dT%H:%M:%S", Time.local.location)
 
     self.boot_seconds = (running_time - boot_time).to_s
+    self.run_seconds = (finish_time - running_time).to_s
   end
 
   def renew_addtime(secs)

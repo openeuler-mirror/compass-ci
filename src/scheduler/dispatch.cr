@@ -147,6 +147,7 @@ class Sched
   end
 
   def on_job_submit(job : JobHash)
+    @es.set_job(job, true)
     if add_job_to_cache(job)
       # try_dispatch(job)
     end
