@@ -7,7 +7,8 @@ CREATE TABLE hosts(
 	nr_hdd_partitions	int,
 	nr_ssd_partitions	int,
 
-	active_time		int,
+	boot_time		int,
+	reboot_time		int,
 	job_id			bigint,
 
 	j			json,

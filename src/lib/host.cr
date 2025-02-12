@@ -20,6 +20,44 @@ class HostInfo
   property hash_bool : Hash(String, Bool) = Hash(String, Bool).new
   property hash_all : Hash(String, JSON::Any) = Hash(String, JSON::Any).new
 
+  # freemem unit: MB, dynamic updated, only for qemu/docker host machines
+  UINT32_KEYS = %w(
+    nr_node
+    nr_cpu
+    memory
+    nr_disks
+    nr_hdd_partitions
+    nr_ssd_partitions
+
+    freemem
+    boot_time
+    reboot_time
+  )
+
+  STR_ARRAY_KEYS = %w(
+    mac_addr
+    rootfs_disk
+    hdd_partitions
+    ssd_partitions
+  )
+
+  STRING_KEYS = %w(
+    arch
+    model_name
+    serial_number
+    hostname
+    tbox_type
+
+    ip
+    suite
+    my_account
+    result_root
+  )
+
+  BOOL_KEYS = %w(
+    is_remote
+  )
+
   # Load HostInfo from a YAML file
   def self.from_yaml(file_path : String) : HostInfo
     yaml_data = File.read(file_path)
@@ -46,27 +84,10 @@ class HostInfo
   def self.from_parsed(parsed_data : Hash(String, JSON::Any)) : HostInfo
     hi = HostInfo.new
 
-    # Load integer properties
-    hi.load_uint32(parsed_data, "nr_node")
-    hi.load_uint32(parsed_data, "nr_cpu")
-    hi.load_uint32(parsed_data, "nr_hdd_partitions")
-    hi.load_uint32(parsed_data, "nr_ssd_partitions")
-    hi.load_uint32(parsed_data, "active_time")
-
-    # it may either be pure number, or number + g/G suffix
-    hi.load_memory(parsed_data, "memory")
-
-    # Load string properties
-    hi.load_string(parsed_data, "arch")
-    hi.load_string(parsed_data, "model_name")
-    hi.load_string(parsed_data, "serial_number")
-    hi.load_string(parsed_data, "ipmi_ip")
-
-    # Load string array properties
-    hi.load_mac(parsed_data, "mac_addr")
-    hi.load_string_array(parsed_data, "rootfs_disk")
-    hi.load_string_array(parsed_data, "hdd_partitions")
-    hi.load_string_array(parsed_data, "ssd_partitions")
+    BOOL_KEYS.each      do |key| hi.load_bool(parsed_data, key) end
+    UINT32_KEYS.each    do |key| hi.load_uint32(parsed_data, key) end
+    STRING_KEYS.each    do |key| hi.load_string(parsed_data, key) end
+    STR_ARRAY_KEYS.each do |key| hi.load_string_array(parsed_data, key) end
 
     hi.load_job_defaults(parsed_data)
     hi.load_id(parsed_data)
@@ -98,19 +119,19 @@ class HostInfo
     hash.as_h.each { |k, v| @job_defaults[k] = v.as_s }
   end
 
-  def load_memory(parsed_data, key : String)
-    value = parsed_data[key].as_s.to_i rescue nil
-    @hash_uint32[key] = value.to_u32 if value
-  end
-
   def load_uint32(parsed_data, key : String)
-    value = parsed_data[key].as_i64 rescue nil
+    if (key == "memory")
+      # it may either be pure number, or number + g/G suffix
+      value = parsed_data[key].as_s.to_i rescue parsed_data[key].as_i64 rescue nil
+    else
+      value = parsed_data[key].as_i64 rescue nil
+    end
     @hash_uint32[key] = value.to_u32 if value
   end
 
   def load_bool(parsed_data, key : String)
     value = parsed_data[key].as_bool rescue nil
-    @hash_str[key] = value if value
+    @hash_bool[key] = value if value
   end
 
   def load_string(parsed_data, key : String)
@@ -118,14 +139,13 @@ class HostInfo
     @hash_str[key] = value if value
   end
 
-  def load_mac(parsed_data, key : String)
-    value = parsed_data[key].as_a.map(&.as_s) rescue nil
-    @hash_str_array[key] = value.map { |v| Utils.normalize_mac(v) } if value
-  end
-
   def load_string_array(parsed_data, key : String)
     value = parsed_data[key].as_a.map(&.as_s) rescue nil
-    @hash_str_array[key] = value if value
+    if (key == "mac_addr")
+      @hash_str_array[key] = value.map { |v| Utils.normalize_mac(v) } if value
+    else
+      @hash_str_array[key] = value if value
+    end
   end
 
   FULL_TEXT_KEYS = %w[ model_name bios system baseboard cpu memory_info cards network disks ]
@@ -133,6 +153,7 @@ class HostInfo
   def to_manticore
     mjob = @hash_all.dup
     mjob["id"] = JSON::Any.new(@id)
+    mjob["job_id"] = JSON::Any.new(@job_id)
 
     @hash_uint32.keys.each do |field|
       mjob[field] = JSON::Any.new @hash_uint32[field]
@@ -152,7 +173,6 @@ class HostInfo
 
     mjob
   end
-
 
   def merge2hash_all
     hash_all = @hash_all.dup
@@ -203,40 +223,49 @@ class HostInfo
     end
   end
 
-  # Mimic properties with instance methods
-  def nr_node : UInt32?;                          @hash_uint32["nr_node"]; end
-  def nr_cpu : UInt32?;                           @hash_uint32["nr_cpu"]; end
-  def memory : UInt32?;                           @hash_uint32["memory"]; end
-  def nr_hdd_partitions : UInt32?;                @hash_uint32["nr_hdd_partitions"]; end
-  def nr_ssd_partitions : UInt32?;                @hash_uint32["nr_ssd_partitions"]; end
+  # Generate methods for UInt32 properties
+  {% for name in UINT32_KEYS %}
+    def {{name.id}} : UInt32
+      @hash_uint32[{{name}}]
+    end
 
-  def mac_addr : Array(String)?;                  @hash_str_array["mac_addr"]; end
-  def rootfs_disk : Array(String)?;               @hash_str_array["rootfs_disk"]; end
-  def hdd_partitions : Array(String)?;            @hash_str_array["hdd_partitions"]; end
-  def ssd_partitions : Array(String)?;            @hash_str_array["ssd_partitions"]; end
+    def {{name.id + "?"}} : UInt32?
+      @hash_uint32[{{name}}]?
+    end
 
-  def arch : String?;                             @hash_str["arch"]; end
-  def model_name : String?;                       @hash_str["model_name"]; end
-  def serial_number : String?;                    @hash_str["serial_number"]; end
+    def {{(name + "=").id}}(value : UInt32)
+      @hash_uint32[{{name}}] = value
+    end
+  {% end %}
 
-  # properties not from yaml
-  def host_machine : String?;                     @hash_str["host_machine"]; end
-  def host_machine=(value : String);              @hash_str["host_machine"] = value; end
+  # Generate methods for Array(String) properties
+  {% for name in STR_ARRAY_KEYS %}
+    def {{name.id}};              @hash_str_array[{{name}}];      end
+    def {{(name + "?").id}};      @hash_str_array[{{name}}]?;     end
+    def {{(name + "=").id}}(v);   @hash_str_array[{{name}}] = v;  end
+  {% end %}
 
-  def hostname : String?;                         @hash_str["hostname"]; end
-  def hostname=(value : String);                  @hash_str["hostname"] = value; end
+  # Generate methods for String properties
+  {% for name in STRING_KEYS %}
+    def {{name.id}};              @hash_str[{{name}}];      end
+    def {{(name + "?").id}};      @hash_str[{{name}}]?;     end
+    def {{(name + "=").id}}(v);   @hash_str[{{name}}] = v;  end
+  {% end %}
 
-  def tbox_type : String?;                        @hash_str["tbox_type"]; end
-  def tbox_type=(value : String);                 @hash_str["tbox_type"] = value; end
+  # Generate methods for Bool properties
+  {% for name in BOOL_KEYS %}
+    def {{name.id}} : Bool
+      @hash_bool[{{name}}].to_b
+    end
 
-  def is_remote : Bool?;                          @hash_bool["is_remote"].to_b; end
-  def is_remote=(value : Bool);                   @hash_bool["is_remote"] = value.to_s; end
+    def {{name.id + "?"}} : Bool?
+      @hash_bool[{{name}}]?.try(&.to_b)
+    end
 
-  # unit: MB, dynamic updated, only for qemu/docker host machines
-  def freemem : UInt32?;                          @hash_uint32["freemem"]; end
-  def freemem=(value : UInt32);                   @hash_uint32["freemem"] = value; end
-  def active_time : UInt32?;                      @hash_uint32["active_time"]; end
-  def active_time=(value : UInt32);               @hash_uint32["active_time"] = value; end
+    def {{(name + "=").id}}(value : Bool)
+      @hash_bool[{{name}}] = value.to_s
+    end
+  {% end %}
 
   def self.determine_tbox_type(hostname : String) : String
     case hostname
