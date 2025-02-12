@@ -341,8 +341,8 @@ class Sched
     @jobs_cache[job_id] = job
     job.wait_on.each do |id, _|
       id = id.to_i64
-      @jobs_wait_by[id] ||= [] of Int64
-      @jobs_wait_by[id] << job_id
+      @jobs_wait_on[id] = Set(Int64).new
+      @jobs_wait_on[id] << job_id
     end
   end
 

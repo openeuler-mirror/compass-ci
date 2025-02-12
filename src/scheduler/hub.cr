@@ -58,9 +58,9 @@ class Sched
   property jobs_cache = Hash(Int64, JobHash).new
 
   # on updated job fields, should check this mapping to wake up possible jobs/clients
-  # @jobs_wait_by[job.wait_on.keys.each] << job.id64
-  # @jobs_wait_by[jobid] << negative clientid
-  property jobs_wait_by = Hash(Int64, Array(Int64)).new  # Array(Int64) is waiting for first Int64
+  # @jobs_wait_on[job.wait_on.keys.each] << job.id64
+  # @jobs_wait_on[jobid] << negative clientid
+  property jobs_wait_on = Hash(Int64, Set(Int64)).new  # Array(Int64) is waiting for first Int64
 
   def get_job(job_id : Int64) : JobHash?
     job = @jobs_cache[job_id]? ||
@@ -72,56 +72,78 @@ class Sched
     job
   end
 
-  def on_job_updated(job_id : Int64)
-    return unless @jobs_wait_by.has_key? job_id
-    return unless job = get_job(job_id)
+  def on_job_updated(cjob_id : Int64)
+    return unless @jobs_wait_on.has_key? cjob_id
+    return unless cjob = get_job(cjob_id)
 
-    @jobs_wait_by[job_id].each do |id|
+    to_remove = [] of Int64
+    @jobs_wait_on[cjob_id].each do |id|
       if id >= 0
         # another job is waiting for me
-        handle_job_dependency(id, job)
+        to_remove << id if handle_job_dependency(id, cjob)
       else
         # a http post "/scheduler/wait-jobs" client is waiting for me
-        handle_client_dependency(id, job_id)
+        to_remove << id if handle_client_dependency(id, cjob_id)
       end
     end
-  end
 
-  private def handle_job_dependency(dependent_id : Int64, job : JobHash)
-    dependent_job = get_job(dependent_id)
-    return unless dependent_job && (wait_spec = dependent_job.hash_hhh["wait_on"]?)
-
-    if check_wait_spec(job.id64, wait_spec)
-      dependent_job.hash_hhh.delete("wait_on")
-      add_job_to_cache(dependent_job)
-      @jobs_cache.delete(dependent_id)
+    if to_remove.size == @jobs_wait_on[cjob_id].size
+      @jobs_wait_on.delete cjob_id
+    else
+      to_remove.each { |id| @jobs_wait_on[cjob_id].delete id }
     end
   end
 
-  private def handle_client_dependency(client_id : Int64, job_id : Int64)
+  # wjob: waiting job (wait_on cjob)
+  # cjob: changed job
+  private def handle_job_dependency(wjob_id : Int64, cjob : JobHash)
+    dependent_job = get_job(wjob_id)
+    unless dependent_job && (wait_spec = dependent_job.hash_hhh["wait_on"]?)
+      # cannot find the job or job info that wait on me,
+      # return true to remove it from tracking
+      return true
+    end
+
+    if check_wait_spec(cjob.id64, wait_spec) && wait_spec.empty?
+      dependent_job.hash_hhh.delete("wait_on")
+      add_job_to_cache(dependent_job)
+      @jobs_cache.delete(wjob_id)
+    end
+  end
+
+  private def handle_client_dependency(client_id : Int64, cjob_id : Int64)
     client_spec = @wait_client_spec[client_id]?
     return unless client_spec
 
-    job_spec = client_spec[job_id.to_s]?
-    return unless job_spec
-
-    if check_wait_spec(job_id, job_spec)
-      @wait_client_channel[client_id]?.try &.send(job_id)
+    if check_wait_spec(cjob_id, client_spec)
+      @wait_client_channel[client_id]?.try &.send(cjob_id)
     end
   end
 
-  # return true if all match; false if any not match
-  def check_wait_spec(job_id : Int64, wait_spec : Hash | Nil)
-    return unless wait_spec
+  # return true if this changed job all match; remove it from tracking
+  # return false if any not match
+  def check_wait_spec(cjob_id : Int64, wait_spec : HashHH)
+    return unless wait_spec.has_key? cjob_id.to_s
 
-    job = get_job(job_id)
-    return unless job
+    job_spec = wait_spec[cjob_id.to_s]
 
-    wait_spec.each do |field, expected|
-      expected_str = expected
+    cjob = get_job(cjob_id)
+    return unless cjob
 
+    # if only jobid, the default condition is job complete
+    if job_spec.nil? || job_spec.empty?
+      if JOB_STAGE_NAME2ID[cjob.job_stage] >= JOB_STAGE_NAME2ID["complete"]
+        # remove already matched job
+        wait_spec.delete cjob_id.to_s
+        return true
+      else
+        return false
+      end
+    end
+
+    job_spec.each do |field, expected_str|
       if field == "job_stage"
-        job_value = job.job_stage
+        job_value = cjob.job_stage
         current_id = JOB_STAGE_NAME2ID[job_value]?
         expected_id = JOB_STAGE_NAME2ID[expected_str]?
         return false unless current_id && expected_id
@@ -130,17 +152,18 @@ class Sched
 
       if field == "milestones"
         # XXX: currently there's only need to wait on single milestone value
-        return false unless job.hash_array.has_key? "milestones"
-        return false unless job.hash_array[field].includes? expected_str
+        return false unless cjob.hash_array.has_key? "milestones"
+        return false unless cjob.hash_array[field].includes? expected_str
       end
 
-      return false unless job.hash_plain.has_key? field
-      job_value = job.hash_plain[field]
+      return false unless cjob.hash_plain.has_key? field
+      job_value = cjob.hash_plain[field]
       if job_value != expected_str
         return false
       end
     end
 
+    wait_spec.delete cjob_id.to_s
     true
   end
 
@@ -163,23 +186,22 @@ class Sched
   #   jobid1: { field1: value1 },
   #   jobid2: { field1: value2, field2: value3 },
   #   jobid3: { },
+  #   jobid4:
   # }
   private def wait_json2hash(json : Hash(String, JSON::Any)) : HashHH
     result = HashHH.new
 
     json.each do |job_id, value|
-      job_hash = HashH.new
       if value.is_a?(Nil) || (value.is_a?(Hash) && value.empty?)
-        # Create a default hash for empty jobs
-        job_hash["job_stage"] = "complete"
+        result[job_id] = nil
       else
+        job_hash = HashH.new
         # Convert the JSON::Hash to HashH with string values
         value.as_h.each do |field, jval|
           job_hash[field] = jval.as_s
         end
+        result[job_id] = job_hash
       end
-
-      result[job_id] = job_hash
     end
 
     result
@@ -187,9 +209,9 @@ class Sched
 
   private def initial_check(wait_spec)
     nr = wait_spec.size
-    wait_spec.reject! do |jobid_str, spec|
+    wait_spec.keys.each do |jobid_str|
       job_id = jobid_str.to_i64
-      check_wait_spec(job_id, spec)
+      check_wait_spec(job_id, wait_spec)
     end
     nr > wait_spec.size
   end
@@ -212,8 +234,8 @@ class Sched
   private def register_wait_client(client_id, wait_spec)
     job_ids = wait_spec.keys.map(&.to_i64)
     job_ids.each do |job_id|
-      @jobs_wait_by[job_id] ||= [] of Int64
-      @jobs_wait_by[job_id] << client_id
+      @jobs_wait_on[job_id] ||= Set(Int64).new
+      @jobs_wait_on[job_id] << client_id
     end
     job_ids
   end
@@ -235,9 +257,9 @@ class Sched
 
   private def cleanup_wait_client(client_id, job_ids)
     job_ids.each do |job_id|
-      next unless list = @jobs_wait_by[job_id]?
+      next unless list = @jobs_wait_on[job_id]?
       list.delete(client_id)
-      @jobs_wait_by.delete(job_id) if list.empty?
+      @jobs_wait_on.delete(job_id) if list.empty?
     end
     @wait_client_channel.delete(client_id)
     @wait_client_spec.delete(client_id)
