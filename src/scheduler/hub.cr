@@ -441,26 +441,31 @@ class Sched
       host = job.host_machine
       provider_session = @provider_sessions[host]?
 
-      unless provider_session
-        session.send({type: "error", message: "Provider #{host} unavailable"}.to_json)
-        return
-      end
-
       case msg["type"]?.try(&.as_s)
-      when "watch-job-event"
-        @watchjob_jobid2client_sids[job_id] ||= [] of Int64
-        @watchjob_jobid2client_sids[job_id] << session.sid
-      when "watch-job-log"
+      when "watch-job-event" # JSON and RabbitMQ messages
+        @watchjob_jobid2client_sids[job_id].delete session.sid
+      when "unwatch-job-event"
+        @watchjob_jobid2client_sids[job_id].delete session.sid
+
+      when "watch-job-log"  # serial logs
         @watchlog_jobid2client_sids[job_id] ||= [] of Int64
         @watchlog_jobid2client_sids[job_id] << session.sid
-        provider_session.send(raw_message)
+        provider_session.send(raw_message) if provider_session
+      when "unwatch-job-log"
+        provider_session.send(raw_message) if provider_session
+        @watchlog_jobid2client_sids[job_id].delete session.sid
+
       when "request-console"
-        provider_session.send(raw_message)
+        provider_session.send(raw_message) if provider_session
         @console_jobid2client_sid[job_id] = session.sid
       when "console-input"
-        provider_session.send(raw_message)
+        if provider_session
+          provider_session.send(raw_message)
+        elsif channel = @hw_serial_login_channels[host]?
+          channel.send(raw_message)
+        end
       when "close-console"
-        provider_session.send(raw_message)
+        provider_session.send(raw_message) if provider_session
         @console_jobid2client_sid.delete(job_id)
       else
         session.send({type: "error", message: "Unknown message type"}.to_json)
