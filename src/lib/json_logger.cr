@@ -60,7 +60,14 @@ class JSONLogger < Log
       logger_hash.any_merge!(message)
       logger_hash.any_merge!(@env_info)
 
-      io << logger_hash.to_json
+      json_str = logger_hash.to_json
+
+      if logger_hash.has_key? "job_id"
+        jobid = logger_hash["job_id"].as_s.to_i64
+        Sched.instance.send_job_event(jobid, json_str)
+      end
+
+      io << json_str
     end
   end
 

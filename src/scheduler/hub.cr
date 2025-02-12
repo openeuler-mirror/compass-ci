@@ -42,6 +42,7 @@ class Sched
 
   property console_jobid2client_sid = {} of Int64 => Int64
   property watchlog_jobid2client_sids = {} of Int64 => Array(Int64)
+  property watchjob_jobid2client_sids = {} of Int64 => Array(Int64)
 
   # << hosts write job request to it
   # >> dispatch worker reads them, find job, then
@@ -402,6 +403,14 @@ class Sched
     end
   end
 
+  def send_job_event(jobid, event : String)
+    sids = @watchjob_jobid2client_sids[jobid]
+    sids.each do |sid|
+      client_ws = @client_sessions[sid]
+      client_ws.send(event)
+    end
+  end
+
   private def handle_job_logs(msg, raw_message)
     job_id = msg["job_id"]?.try(&.as_s.to_i64?)
     return unless job_id
@@ -438,18 +447,21 @@ class Sched
       end
 
       case msg["type"]?.try(&.as_s)
-      when "watch-job-log", "request-console", "console-input"
+      when "watch-job-event"
+        @watchjob_jobid2client_sids[job_id] ||= [] of Int64
+        @watchjob_jobid2client_sids[job_id] << session.sid
+      when "watch-job-log"
+        @watchlog_jobid2client_sids[job_id] ||= [] of Int64
+        @watchlog_jobid2client_sids[job_id] << session.sid
         provider_session.send(raw_message)
-
-        # Track console sessions
-        if msg["type"].as_s == "request-console"
-          @console_jobid2client_sid[job_id] = session.sid
-        end
-
+      when "request-console"
+        provider_session.send(raw_message)
+        @console_jobid2client_sid[job_id] = session.sid
+      when "console-input"
+        provider_session.send(raw_message)
       when "close-console"
         provider_session.send(raw_message)
         @console_jobid2client_sid.delete(job_id)
-
       else
         session.send({type: "error", message: "Unknown message type"}.to_json)
       end
@@ -459,6 +471,9 @@ class Sched
     end
   end
 
+  private def get_provider_session(jobid : Int64)
+  end
+
   private def cleanup_session(sid : Int64)
     # Remove from console mappings
     @console_jobid2client_sid.reject! { |_, client_sid| client_sid == sid }
@@ -466,6 +481,10 @@ class Sched
     # Remove from log watchers
     @watchlog_jobid2client_sids.each do |job_id, sids|
       @watchlog_jobid2client_sids[job_id] = sids.reject { |s| s == sid }
+    end
+
+    @watchjob_jobid2client_sids.each do |job_id, sids|
+      @watchjob_jobid2client_sids[job_id] = sids.reject { |s| s == sid }
     end
   end
 

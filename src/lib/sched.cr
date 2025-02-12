@@ -123,7 +123,13 @@ class Sched
       "time" => get_time,
       "job_stage" => job_stage
     }
-    spawn mq_publish_confirm(JOB_MQ, mq_msg.to_json)
+    json_str = mq_msg.to_json
+
+    unless mq_msg["job_id"].empty?
+      send_job_event(mq_msg["job_id"].to_i64, json_str)
+    end
+
+    spawn mq_publish_confirm(JOB_MQ, json_str)
   end
 
   # input:  ["sched/ready/$queue/$subqueue/$id"]
