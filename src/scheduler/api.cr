@@ -20,9 +20,7 @@ require "../lib/host"
 #  -- when no job return <#!ipxe no job messages>
 #
 # - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
-# - restful API [get "/scheduler/lkp/jobfile-append-var"] report job var that should be append
-# - restful API [get "/scheduler/lkp/cluster-sync"] for nodes to request cluster state
-# - restful API [get "/scheduler/lkp/post-run" ] to move job from redis queue "sched/jobs_running" to "sched/extract_stats" and remove job from redis queue "sched/id2job"
+# - restful API [get "/scheduler/job/update"] report job var that should be append
 #
 # -------------------------------------------------------------------------------------------
 # scheduler:
@@ -148,27 +146,6 @@ module Scheduler
     Sched.instance.api_update_job(env)
   end
 
-  # node in cluster requests cluster state
-  # wget 'http://localhost:3000/~lkp/cgi-bin/lkp-cluster-sync?job_id=<job_id>&state=<state>'
-  # 1) state   : "wait_ready"
-  #    response: return "abort" if one node state is "abort",
-  #              "ready" if all nodes are "ready", "retry" otherwise.
-  # 2) state   : wait_finish
-  #    response: return "abort" if one node state is "abort",
-  #              "finish" if all nodes are "finish", "retry" otherwise.
-  # 3) state   : abort | failed
-  #    response: update the node state to "abort",
-  #              return all nodes states at this moment.
-  # 4) state   : write_state
-  #    response: add "roles" and "ip" fields to cluster state,
-  #              return all nodes states at this moment.
-  # 5) state   : roles_ip
-  #    response: get "server ip" from cluster state,
-  #              return "server=<server ip>".
-  get "/~lkp/cgi-bin/lkp-cluster-sync" do |env|
-    Sched.instance.request_cluster_state(env)
-  end
-
   # client(runner) report job post_run finished
   # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
@@ -284,27 +261,6 @@ module Scheduler
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
   get "/scheduler/job/update" do |env|
     Sched.instance.api_update_job(env)
-  end
-
-  # node in cluster requests cluster state
-  # wget 'http://localhost:3000/scheduler/lkp/cluster-sync?job_id=<job_id>&state=<state>'
-  # 1) state   : "wait_ready"
-  #    response: return "abort" if one node state is "abort",
-  #              "ready" if all nodes are "ready", "retry" otherwise.
-  # 2) state   : wait_finish
-  #    response: return "abort" if one node state is "abort",
-  #              "finish" if all nodes are "finish", "retry" otherwise.
-  # 3) state   : abort | failed
-  #    response: update the node state to "abort",
-  #              return all nodes states at this moment.
-  # 4) state   : write_state
-  #    response: add "roles" and "ip" fields to cluster state,
-  #              return all nodes states at this moment.
-  # 5) state   : roles_ip
-  #    response: get "server ip" from cluster state,
-  #              return "server=<server ip>".
-  get "/scheduler/lkp/cluster-sync" do |env|
-    Sched.instance.request_cluster_state(env)
   end
 
   get "/scheduler/lkp/report-ssh-port" do |env|
