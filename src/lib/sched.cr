@@ -21,7 +21,6 @@ require "../scheduler/find_job_boot"
 require "../scheduler/hw_find_job_boot"
 require "../scheduler/close_job"
 require "../scheduler/cancel_jobs"
-require "../scheduler/update_subqueues"
 require "../scheduler/request_cluster_state"
 require "../scheduler/update_job_parameter"
 require "../scheduler/set_srpm_info"
@@ -127,16 +126,6 @@ class Sched
     end
   end
 
-  # input:  ["sched/ready/$queue/$subqueue/$id"]
-  # output: ["$queue"]
-  def fetch_queues(queues)
-    new_queues = [] of String
-    queues.each do |queue|
-      new_queues << queue.split("/")[2]
-    end
-    new_queues
-  end
-
   def get_api(env)
     resource = env.request.resource
     api = resource.split("?")[0].split("/")
@@ -180,7 +169,6 @@ class Sched
       "suite" => nil,
       "my_account" => nil,
       "time" => get_time,
-      "queues" => JSON.parse(fetch_queues(queues).to_json),
       "type" => get_type(testbox),
       "name" => testbox,
       "tbox_group" => JobHelper.match_tbox_group(testbox.to_s),

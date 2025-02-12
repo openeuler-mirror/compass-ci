@@ -104,14 +104,6 @@ module Scheduler
     Sched.instance.cancel_jobs(env).to_json
   end
 
-  post "/scheduler/update-subqueues" do |env|
-    Sched.instance.update_subqueues(env).to_json
-  end
-
-  post "/scheduler/delete-subqueue" do |env|
-    Sched.instance.delete_subqueue(env).to_json
-  end
-
   # for client to report event
   # this event is recorded in the log
   # curl -H 'Content-Type: application/json' -X POST #{SCHED_HOST}:#{SCHED_PORT}/report_event -d '#{data.to_json}'

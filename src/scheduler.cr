@@ -6,9 +6,6 @@ require "./scheduler/api.cr"
 require "./lib/json_logger"
 require "./lib/do_local_pack"
 require "./lib/create_secrets_yaml"
-require "./lib/queue"
-require "./lib/subqueue"
-require "./lib/init_ready_queues"
 
 require "kemal"
 require "option_parser"
@@ -63,9 +60,6 @@ module Scheduler
 
   # Start background tasks
   def self.start_background_tasks
-    spawn Queue.instance.timing_refresh_from_etcd
-    spawn Subqueue.instance.timing_refresh_from_es
-    spawn InitReadyQueues.instance.loop_init
     spawn Sched.instance.dispatch_worker
   end
 
