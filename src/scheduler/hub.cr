@@ -52,7 +52,7 @@ class Sched
   @host_requests = [] of HostRequest  # Using sorted array instead of PriorityQueue
 
   @wait_client_channel = Hash(Int64, Channel(Int64)).new # /scheduler/wait-jobs clientid => Channel(jobid)
-  @wait_client_spec = Hash(Int64, HashHH).new
+  @wait_client_spec = Hash(Int64, HashHHH).new
   @@last_wait_client_id : Int64 = -1_i64
 
   property jobs_cache = Hash(Int64, JobHash).new
@@ -98,17 +98,21 @@ class Sched
   # cjob: changed job
   private def handle_job_dependency(wjob_id : Int64, cjob : JobHash)
     dependent_job = get_job(wjob_id)
-    unless dependent_job && (wait_spec = dependent_job.hash_hhh["wait_on"]?)
-      # cannot find the job or job info that wait on me,
-      # return true to remove it from tracking
-      return true
-    end
+    # cannot find the job or job info that wait on me,
+    # return true to remove it from tracking
+    return true unless dependent_job
 
-    if check_wait_spec(cjob.id64, wait_spec) && wait_spec.empty?
-      dependent_job.hash_hhh.delete("wait_on")
+    wait_spec = dependent_job.hash_hhh
+    return true unless wait_spec["wait_on"]?
+
+    progress = check_wait_spec(cjob.id64, wait_spec)
+
+    if progress && !wait_spec.has_key?("wait_on")
       add_job_to_cache(dependent_job)
       @jobs_cache.delete(wjob_id)
     end
+
+    progress
   end
 
   private def handle_client_dependency(client_id : Int64, cjob_id : Int64)
@@ -120,100 +124,123 @@ class Sched
     end
   end
 
-  # return true if this changed job all match; remove it from tracking
-  # return false if any not match
-  def check_wait_spec(cjob_id : Int64, wait_spec : HashHH)
-    return unless wait_spec.has_key? cjob_id.to_s
+  def check_wait_spec(cjob_id : Int64, wait_spec : HashHHH) : Bool
+    wait_on = wait_spec["wait_on"]? || return false
+    job_id_str = cjob_id.to_s
+    return false unless wait_on.has_key?(job_id_str)
 
-    job_spec = wait_spec[cjob_id.to_s]
-
+    job_spec = wait_on[job_id_str]
     cjob = get_job(cjob_id)
-    return unless cjob
+    return false unless cjob
 
     # if only jobid, the default condition is job complete
     if job_spec.nil? || job_spec.empty?
-      if JOB_STAGE_NAME2ID[cjob.job_stage] >= JOB_STAGE_NAME2ID["complete"]
-        # remove already matched job
-        wait_spec.delete cjob_id.to_s
+      return false unless JOB_STAGE_NAME2ID[cjob.job_stage] >= JOB_STAGE_NAME2ID["complete"]
+    else
+      job_spec.each do |field, expected_str|
+        if field == "job_stage"
+          current_id = JOB_STAGE_NAME2ID[cjob.job_stage]?
+          expected_id = JOB_STAGE_NAME2ID[expected_str]?
+          return false unless current_id && expected_id && current_id >= expected_id
+        elsif field == "milestones"
+          return false unless cjob.hash_array.has_key?("milestones") && cjob.hash_array["milestones"].includes?(expected_str)
+        else
+          return false unless cjob.hash_plain[field]? == expected_str
+        end
+      end
+    end
+
+    # Process get_fields
+    waited_job = Hash(String, String).new
+    waited_job["job_stage"] = cjob.job_stage
+    waited_jobs = wait_spec["waited_jobs"] ||= HashHH.new
+    waited_jobs[job_id_str] = waited_job
+    if wait_options = wait_spec["wait_options"]?
+      if get_fields = wait_options["get_fields"]?
+
+        get_fields.each_key do |field|
+          waited_job[field] = cjob.hash_plain[field]? ||
+                              cjob.hash_array[field]?.try(&.join(" ")) ||
+                              cjob.hash_hh[field]?.try(&.to_json) ||
+                              ""
+        end
+
+      end
+
+      # Process fail_fast
+      if wait_options.has_key?("fail_fast") && cjob.job_stage == "incomplete"
+        wait_spec.delete("wait_on")
         return true
-      else
-        return false
       end
     end
 
-    job_spec.each do |field, expected_str|
-      if field == "job_stage"
-        job_value = cjob.job_stage
-        current_id = JOB_STAGE_NAME2ID[job_value]?
-        expected_id = JOB_STAGE_NAME2ID[expected_str]?
-        return false unless current_id && expected_id
-        return false unless current_id >= expected_id
-      end
-
-      if field == "milestones"
-        # XXX: currently there's only need to wait on single milestone value
-        return false unless cjob.hash_array.has_key? "milestones"
-        return false unless cjob.hash_array[field].includes? expected_str
-      end
-
-      return false unless cjob.hash_plain.has_key? field
-      job_value = cjob.hash_plain[field]
-      if job_value != expected_str
-        return false
-      end
-    end
-
-    wait_spec.delete cjob_id.to_s
+    wait_on.delete(job_id_str)
+    wait_spec.delete("wait_on") if wait_spec["wait_on"].empty?
     true
   end
 
   def api_wait_jobs(env)
     body = env.request.body.not_nil!.gets_to_end
-    wait_spec = wait_json2hash(JSON.parse(body).as_h)
+    json = JSON.parse(body)
+    wait_spec = wait_json2hash(json)
     return wait_spec.to_json if initial_check(wait_spec)
 
     client_id, channel = setup_wait_client(wait_spec)
     job_ids = register_wait_client(client_id, wait_spec)
 
-    wait_for_updates(channel, wait_spec)
+    wait_for_updates(channel, wait_spec) unless job_ids.empty?
   ensure
-    cleanup_wait_client(client_id, job_ids) if job_ids
+    cleanup_wait_client(client_id, job_ids) unless job_ids.nil? || job_ids.empty?
     wait_spec.to_json
   end
 
-  # example input:
-  # {
-  #   jobid1: { field1: value1 },
-  #   jobid2: { field1: value2, field2: value3 },
-  #   jobid3: { },
-  #   jobid4:
-  # }
-  private def wait_json2hash(json : Hash(String, JSON::Any)) : HashHH
-    result = HashHH.new
+  private def wait_json2hash(json : JSON::Any) : HashHHH
+    result = HashHHH.new
+    json_h = json.as_h
 
-    json.each do |job_id, value|
-      if value.is_a?(Nil) || (value.is_a?(Hash) && value.empty?)
-        result[job_id] = nil
-      else
-        job_hash = HashH.new
-        # Convert the JSON::Hash to HashH with string values
-        value.as_h.each do |field, jval|
-          job_hash[field] = jval.as_s
+    # Parse wait_on
+    if wait_on_json = json_h["wait_on"]?
+      wait_on = HashHH.new
+      wait_on_json.as_h.each do |job_id, value|
+        if value.raw.is_a?(Nil) || (value.raw.is_a?(Hash) && value.as_h.empty?)
+          wait_on[job_id] = nil
+        else
+          job_hash = HashH.new
+          value.as_h.each { |k, v| job_hash[k] = v.as_s }
+          wait_on[job_id] = job_hash
         end
-        result[job_id] = job_hash
       end
+      result["wait_on"] = wait_on
     end
 
+    # Parse wait_options
+    if wait_options_json = json_h["wait_options"]?
+      wait_options = HashHH.new
+      wait_options_json.as_h.each do |k, v|
+        if k == "get_fields"
+          get_fields = HashH.new
+          v.as_h.each { |field, _| get_fields[field] = "" }
+          wait_options["get_fields"] = get_fields
+        else
+          wait_options[k] = nil
+        end
+      end
+      result["wait_options"] = wait_options
+    end
+
+    # Parse waited_jobs (output only)
+    result["waited_jobs"] = HashHH.new
     result
   end
 
-  private def initial_check(wait_spec)
-    nr = wait_spec.size
-    wait_spec.keys.each do |jobid_str|
+  private def initial_check(wait_spec : HashHHH)
+    wait_on = wait_spec["wait_on"]? || return true
+    initial_count = wait_on.size
+    wait_on.keys.each do |jobid_str|
       job_id = jobid_str.to_i64
       check_wait_spec(job_id, wait_spec)
     end
-    nr > wait_spec.size
+    initial_count > wait_on.size
   end
 
   private def setup_wait_client(wait_spec)
@@ -231,11 +258,14 @@ class Sched
     {client_id, channel}
   end
 
-  private def register_wait_client(client_id, wait_spec)
-    job_ids = wait_spec.keys.map(&.to_i64)
-    job_ids.each do |job_id|
-      @jobs_wait_on[job_id] ||= Set(Int64).new
-      @jobs_wait_on[job_id] << client_id
+  private def register_wait_client(client_id, wait_spec : HashHHH)
+    job_ids = [] of Int64
+    if wait_on = wait_spec["wait_on"]?
+      wait_on.keys.each do |jobid_str|
+        job_id = jobid_str.to_i64
+        @jobs_wait_on[job_id] << client_id
+        job_ids << job_id
+      end
     end
     job_ids
   end
@@ -246,8 +276,8 @@ class Sched
 
     loop do
       select
-      when job_id = channel.receive
-        wait_spec.delete(job_id.to_s)
+      when cjob_id = channel.receive
+        wait_spec.delete(cjob_id.to_s)
         break # if wait_spec.empty?
       when timeout_channel.receive
         break

@@ -493,7 +493,10 @@ class JobHash
 
     pkg_data
     upload_fields
+
     wait_on
+    wait_options
+    waited_jobs
   )
 
   # stats/result are Hash(String, Number|String), so cannot fit in HH_KEYS
