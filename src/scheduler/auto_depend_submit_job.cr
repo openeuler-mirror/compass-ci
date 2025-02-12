@@ -23,7 +23,6 @@ class Sched
       }]
     end
 
-    #jq.subqueue_jobs_quota(origin_job)
     jobs = Sched.instance.cluster.handle_job(origin_job)
     jobs.each do |job|
       job.delete_account_info

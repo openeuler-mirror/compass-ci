@@ -412,30 +412,6 @@ class Elasticsearch::Client
     end
   end
 
-  def create_subqueue(content, id)
-    if Sched.options.should_write_es
-      es_response = @client.create(
-        {
-          :index => "subqueue",
-          :type => "_doc",
-          :id => id,
-          :body => content
-        }
-      )
-    end
-
-    if Sched.options.should_write_manticore
-      begin
-        id = Manticore.hash_string_to_i64(id)
-        Manticore::Client.create("subqueue", id, content)
-      rescue e
-        @log.error("Manticore create_subqueue failed: #{e.message}")
-      end
-    end
-
-    es_response || JSON::Any.new({} of String => JSON::Any)
-  end
-
   private def create_job(job_content : JSON::Any, job_id : String)
     # only called on Sched.options.should_write_es
     @client.create({

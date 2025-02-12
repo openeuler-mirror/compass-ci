@@ -51,7 +51,6 @@ class Cluster < PluginsCommon
   def split_cluster_job(job, cluster_spec : Hash(String, JSON::Any))
     job_messages = Array(Hash(String, String)).new
     lab = job.lab
-    subqueue = job.subqueue
     roles = Cluster.get_roles(job)
 
     # collect all job ids
