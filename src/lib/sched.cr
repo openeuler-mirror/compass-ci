@@ -5,7 +5,6 @@ require "kemal"
 require "yaml"
 require "any_merge"
 
-require "./mq"
 require "./job"
 require "./utils"
 require "./etcd_client"
@@ -69,7 +68,6 @@ class Sched
   def initialize()
     @es = Elasticsearch::Client.new
     @redis = RedisClient.instance
-    @mq = MQClient.instance
     @etcd = EtcdClient.new
     @rgc = RemoteGitClient.new
     @log = JSONLogger.new
@@ -128,8 +126,6 @@ class Sched
     unless mq_msg["job_id"].empty?
       send_job_event(mq_msg["job_id"].to_i64, json_str)
     end
-
-    spawn mq_publish_confirm(JOB_MQ, json_str)
   end
 
   # input:  ["sched/ready/$queue/$subqueue/$id"]
@@ -252,13 +248,4 @@ class Sched
     type
   end
 
-  def mq_publish_confirm(queue, msg)
-    3.times do
-      @mq.publish_confirm(queue, msg)
-      break
-    rescue e
-      @mq.reconnect
-      sleep 5.seconds
-    end
-  end
 end
