@@ -1,0 +1,11 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+CURRENT_PATH=$(dirname `readlink -f $0`)
+
+if [ -d "$CURRENT_PATH/compass-ci" ]; then
+        rm -rf $CURRENT_PATH/compass-ci
+fi
+
+git clone https://gitee.com/openeuler/compass-ci
