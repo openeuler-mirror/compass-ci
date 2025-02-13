@@ -64,12 +64,6 @@ module Scheduler
     Sched.instance.alive(VERSION)
   end
 
-  post "/register-host" do |env|
-    host_info = JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
-
-    Sched.instance.register_host(host_info)
-  end
-
   # for XXX_runner get job
   #
   # /boot.ipxe/mac/${mac}
@@ -107,12 +101,6 @@ module Scheduler
   # curl -H 'Content-Type: application/json' -X POST #{SCHED_HOST}:#{SCHED_PORT}/report_event -d '#{data.to_json}'
   post "/report_event" do |env|
     Sched.instance.report_event(env).to_s
-  end
-
-  # get testbox info
-  # curl "http://localhost:3000/get_testbox?testbox=xxx
-  get "/get_testbox" do |env|
-    Sched.instance.get_testbox(env).to_json
   end
 
   # file download server
@@ -244,10 +232,19 @@ module Scheduler
     Sched.instance.report_event(env).to_s
   end
 
-  # get testbox info
-  # curl "http://localhost:3000/scheduler/get_testbox?testbox=xxx
-  get "/scheduler/get-testbox" do |env|
-    Sched.instance.get_testbox(env).to_json
+  # get host machine info
+  # curl "http://localhost:3000/scheduler/host?hostname=xxx
+  get "/scheduler/host" do |env|
+    env.response.content_type = "application/json"
+    hostname = env.params.query["hostname"].to_s
+    Sched.instance.api_get_host(hostname).to_json
+  end
+
+  # register host machine
+  post "/scheduler/host" do |env|
+    host_info = JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+
+    Sched.instance.api_register_host(host_info)
   end
 
   # file download server

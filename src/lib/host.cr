@@ -325,7 +325,7 @@ class Hosts
     @mac2hostname[mac]?
   end
 
-  def get(hostname : String) : HostInfo | Nil
+  def get_host(hostname : String) : HostInfo | Nil
     return @hosts[hostname] if @hosts.has_key? hostname
     find_host_in_es({"hostname" => hostname})
     @hosts[hostname]?
@@ -339,12 +339,26 @@ class Hosts
     end
   end
 
+  def update_job_info(job)
+    return unless job.tbox_type == "hw"
+
+    host = get_host(job.hostname)
+    return unless host
+
+    host.job_id = job.id
+    host.suite = job.suite
+    host.my_account = job.my_account
+    host.result_root = job.result_root
+    host.boot_time = Time.utc.seconds
+    host.reboot_time = job.deadline
+  end
+
 end
 
 class Sched
-  def register_host(host_hash : Hash(String, JSON::Any))
+  def api_register_host(host_hash : Hash(String, JSON::Any))
     host_info = HostInfo.from_parsed(host_hash)
     @hosts_cache.add_host(host_info)
-    @es.set_host(host_info)
+    @es.save_host(host_info)
   end
 end

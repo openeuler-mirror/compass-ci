@@ -137,51 +137,6 @@ class Sched
     end
   end
 
-  def update_job_when_boot(job)
-    return unless job
-
-    job.set_deadline("boot")
-    job.job_state = "boot"
-    job.job_stage = "boot"
-  end
-
-  def update_testbox_boot_info(job, hash)
-    return hash unless job
-
-    hash["deadline"] = job.deadline
-    hash["job_id"] = job.id
-    hash["suite"] = job.suite
-    hash["my_account"] = job.my_account
-    hash["result_root"] = job.result_root
-    hash["state"] = "booting"
-    hash["timeout_period"] = job.timeout?
-    hash["arch"] = job.os_arch
-    hash["hostname"] = job.host_machine?
-    hash["type"] = job.tbox_type
-  end
-
-  def update_testbox_and_job(job, testbox, queues)
-    hash = {
-      "deadline" => nil,
-      "job_id" => "",
-      "state" => "requesting",
-      "suite" => nil,
-      "my_account" => nil,
-      "time" => get_time,
-      "type" => get_type(testbox),
-      "name" => testbox,
-      "tbox_group" => JobHelper.match_tbox_group(testbox.to_s),
-      "hostname" => get_host_machine(testbox.to_s),
-      "timeout_period" => "1800",
-      "arch" => get_testbox_arch(testbox.to_s)
-    }
-    update_job_when_boot(job)
-    update_testbox_boot_info(job, hash)
-
-    @redis.update_wtmp(testbox.to_s, hash)
-    @es.update_tbox(testbox.to_s, hash)
-  end
-
   def get_host_machine(testbox)
     return testbox unless testbox =~ /^(vm-|dc-)/
 
@@ -189,36 +144,10 @@ class Sched
     testbox.split(".")[1].reverse.split("-", 2)[1].reverse
   end
 
-  def get_testbox_arch(testbox)
-    host_machine = get_host_machine(testbox)
-    host_machine_file = "#{CCI_REPOS}/#{LAB_REPO}/hosts/#{host_machine}"
-    return "unknown" unless File.exists?(host_machine_file)
-
-    host_machine_info = YAML.parse(File.read(host_machine_file)).as_h
-    return host_machine_info["arch"].to_s
-  rescue e
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s,
-      "testbox" => testbox
-    }.to_json)
-    "unknown"
-  end
-
-  def get_testbox(env)
-    testbox = env.params.query["testbox"]?.to_s
-    testbox_info = @es.get_tbox(testbox)
-    raise "cant find the testbox in es, testbox: #{testbox}" unless testbox_info
-
-    testbox_info
-  rescue e
-    env.response.status_code = 500
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
-
-    return Hash(String, JSON::Any).new
+  def api_get_host(hostname : String)
+    host_info = @hosts_cache.get_host(hostname)
+    raise "cant find the testbox in es, hostname: #{hostname}" unless host_info
+    host_info
   end
 
   def get_type(testbox)

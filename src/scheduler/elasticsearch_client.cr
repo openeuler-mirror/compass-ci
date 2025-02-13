@@ -145,7 +145,18 @@ class Elasticsearch::Client
     es_response
   end
 
-  def set_host(host : HostInfo)
+  def query_host(hostname)
+      begin
+        results = self.select("hosts", {"hostname" => hostname})
+        return nil unless results
+
+        results[0]["_source"]
+      rescue
+        return nil
+      end
+  end
+
+  def save_host(host : HostInfo)
     es_response = nil
 
     if Sched.options.should_write_es
@@ -346,32 +357,6 @@ class Elasticsearch::Client
     end
 
     es_response || JSON::Any.new({} of String => JSON::Any)
-  end
-
-  def get_tbox(testbox)
-    if Sched.options.should_read_es
-      query = {:index => "testbox", :type => "_doc", :id => testbox}
-      return nil unless @client.exists(query)
-
-      response = @client.get_source(query)
-      case response
-      when JSON::Any
-        return response
-      else
-        return nil
-      end
-    elsif Sched.options.should_read_manticore
-      begin
-        results = self.select("testbox", {"testbox" => testbox})
-        return nil unless results
-
-        results[0]["_source"]
-      rescue
-        return nil
-      end
-    else
-      raise "No backend enabled for read operations"
-    end
   end
 
   def update_tbox(testbox : String, wtmp_hash : Hash)

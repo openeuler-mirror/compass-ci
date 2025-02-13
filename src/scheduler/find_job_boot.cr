@@ -42,7 +42,6 @@ class Sched
     job = get_job_from_ready_queues(arch, host_machine, hostname, boot_type, tags, freemem, is_remote == "true")
     return boot_content(nil, boot_type) unless job
 
-    update_testbox_and_job(job, hostname, ["//#{hostname}"])
     create_job_boot(job, boot_type)
     response = boot_content(job, boot_type)
 
@@ -155,7 +154,7 @@ class Sched
     end
 
     job.set_remote_mount_repo()
-    job.update({"testbox" => tbox_type, "host_machine" => host_machine})
+    job.update({"tbox_type" => tbox_type, "host_machine" => host_machine})
     job.update_kernel_params
     job.set_result_root
     job.set_time("boot_time")
@@ -360,14 +359,7 @@ class Sched
     }.to_json
   end
 
-  def set_id2upload_dirs(job)
-    @log.info("set sched/id2upload_dirs #{job.id}, #{job.upload_dirs}")
-    @redis.hash_set("sched/id2upload_dirs", job.id, job.upload_dirs)
-  end
-
   def boot_content(job : Job | Nil, boot_type : String)
-    set_id2upload_dirs(job) if job
-
     case boot_type
     when "ipxe"
       return job ? get_boot_ipxe(job) : boot_msg(boot_type, "No job now")

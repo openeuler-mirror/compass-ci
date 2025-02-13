@@ -71,7 +71,6 @@ class Sched
 
     # optimize away db updates except in on_finish_job()
     # @es.set_job(job)
-    update_testbox_info(env, job)
 
     report_workflow_job_event(job_id.to_s, job)
     return "Success"
@@ -82,16 +81,6 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
     return e.to_s
-  end
-
-  def update_testbox_info(env, job)
-    testbox = job.testbox
-    deadline = env.get?("deadline")
-
-    hash = {"time" => env.get?("time").to_s}
-    hash["deadline"] = deadline.to_s if deadline
-
-    @es.update_tbox(testbox, hash)
   end
 
   def change_job_stage(job, job_stage, job_health)

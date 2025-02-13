@@ -1190,53 +1190,6 @@ class Job < JobHash
     return "physical"
   end
 
-  def get_boot_time
-    3600
-  end
-
-  def get_reboot_time
-    type = get_testbox_type
-    return 1200 if type == "physical"
-    return 60
-  end
-
-  def get_deadline(stage, timeout=0)
-    return format_add_time(timeout) unless timeout == 0
-
-    case stage
-    when "boot"
-      time = get_boot_time
-    when "running"
-      time = (self.timeout? || self.runtime? || 3600).to_s.to_i32
-      extra_time = 0 if self.timeout?
-      extra_time ||= [time / 8, 300].max.to_i32 + Math.sqrt(time).to_i32
-    when "renew"
-      return self.renew_deadline?
-    when "post_run"
-      time = 1800
-    when "manual_check"
-      time = 36000
-    when "finish"
-      time = get_reboot_time
-    else
-      return nil
-    end
-
-    extra_time ||= 0
-    format_add_time(time + extra_time)
-  end
-
-  def format_add_time(time)
-    (Time.local + time.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
-  end
-
-  def set_deadline(stage, timeout=0)
-    deadline = get_deadline(stage, timeout)
-    return nil unless deadline
-
-    self.deadline = deadline
-  end
-
   def set_result_root
     self.result_root = File.join("/result/#{suite}/#{submit_date}/#{tbox_group}/#{rootfs}", "#{sort_pp_params}", "#{id}")
     set_upload_dirs()

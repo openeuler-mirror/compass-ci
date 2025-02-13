@@ -14,10 +14,7 @@ class Sched
 
     mac = Utils.normalize_mac(value)
     host ||= @hosts_cache.mac2hostname(mac)
-    host ||= @redis.hash_get("sched/mac2host", mac)
     return boot_content(nil, boot_type) unless host
-
-    set_hw_tbox_to_redis(env, host)
 
     env.set "testbox", host unless host.nil?
 
@@ -34,32 +31,7 @@ class Sched
       "error_message" => e.inspect_with_backtrace.to_s
     }.to_json)
   ensure
-    del_hw_tbox_from_redis(env)
     send_mq_msg(env)
-  end
-
-  def set_hw_tbox_to_redis(env, host)
-    data = Hash(String, String).new
-    data["type"] = "hw"
-    data["hostname"] = "#{host}"
-
-    data["arch"] = "x86_64"
-    data["arch"] = "aarch64" if host.starts_with?("taishan")
-
-    data["max_mem"] = "16"
-    max_mem = /-(\d+)g--/.match(host)
-    data["max_mem"] = "#{max_mem[1]}" if max_mem
-
-    tbox =  "/tbox/#{data["type"]}/#{data["hostname"]}"
-    @redis.set(tbox, data.to_json)
-    @redis.expire(tbox, 600)
-
-    env.set "redis_tbox", tbox
-  end
-
-  def del_hw_tbox_from_redis(env)
-    tbox = env.get "redis_tbox"
-    @redis.del("#{tbox}") if tbox
   end
 
   def hw_get_job_from_ready_queues(boot_type, arch, host_machine, tags)
@@ -111,9 +83,8 @@ class Sched
 
     if job && job_id
       @log.info("#{host} got the job #{job_id}")
-      update_testbox_and_job(job, host, ["//#{host}"]) if job
 
-      job.update({"testbox" => host, "host_machine" => host_machine})
+      job.update({"hostname" => host_machine, "tbox_type" => "hw", "host_machine" => host_machine})
       job.update_kernel_params
       job.set_result_root
       job.set_time("boot_time")
@@ -121,7 +92,7 @@ class Sched
                 "result_root": "/srv#{job.result_root}",
                 "job_state": "set result root"}))
 
-      @hosts_cache[host_machine].job_id = job_id.to_i64
+      @hosts_cache.update_job_info(job)
 
       job["last_success_stage"] = "boot"
       @es.set_job(job)
