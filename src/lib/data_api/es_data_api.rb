@@ -15,7 +15,7 @@ module EsDataApi
   ES_ACCOUNTS = ESClient.new(index: 'accounts')
   ES_AUTHORIZED = ESClient.new(index: 'authorized')
   # TODO lkp_jobs lkp_programs lkp_workflows之后在远程LAB方案确定后考虑走独立服务获取
-  OPEN_INDEX = Set.new(%w[jobs hosts lkp_jobs lkp_programs lkp_workflows])
+  OPEN_INDEX = Set.new(%w[jobs hosts lkp_jobs lkp_programs lkp_workflows bisect_task])
   REQUIRED_TOKEN_INDEX = Set.new([])
   ES_QUERY_KEYWORD = Set.new(%w[term match])
 
