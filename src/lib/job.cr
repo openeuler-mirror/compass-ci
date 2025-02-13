@@ -146,6 +146,7 @@ class JobHash
 
   # ES uses string id, so add in-memory id64 for convenience
   property id64 : Int64 = 0
+  property is_remote = false
 
   PLAIN_SET = Set(String).new PLAIN_KEYS
   ARRAY_SET = Set(String).new ARRAY_KEYS
@@ -596,23 +597,6 @@ class JobHash
     update(json.as_h)
   end
 
-  def force_delete(key : String)
-    @hash_plain.delete(key) ||
-    @hash_array.delete(key) ||
-    @hash_hh.delete(key) ||
-    @hash_hhh.delete(key) ||
-    @hash_any.delete(key)
-  end
-
-  def delete(key : String)
-    initialized_keys = get_initialized_keys
-    if initialized_keys.includes?(key)
-      raise "Should not delete #{key}"
-    else
-      force_delete key
-    end
-  end
-
   def [](key : String) : String
     assert_key_in(key, PLAIN_SET)
     "#{@hash_plain[key]?}"
@@ -815,63 +799,6 @@ class JobHash
     end
   end
 
-end
-
-class Job < JobHash
-
-  def initialize(job_content, id : String|Nil)
-    super(job_content)
-
-    unless id.nil?
-      @hash_plain["id"] = id
-      @id64 = id.to_i64
-    end
-
-    @es = Elasticsearch::Client.new
-    @account_info = JobHash.new(Hash(String, JSON::Any).new)
-    @upload_pkg_data = Array(String).new
-
-    @is_remote = nil
-  end
-
-  def submit(id = "-1")
-    # init job with "-1", or use the original job.id
-    self.id = id
-    self.id64 = id.to_i64
-    self.job_state = "submit"
-    self.job_stage = "submit"
-
-    #self.merge! Utils.get_service_env()
-    #self.merge! Utils.get_testbox_env(@is_remote)
-
-    #self.emsx ||= "ems1"
-    self.emsx = "ems1" unless @hash_plain.has_key?("emsx")
-    self.emsx = self.emsx.downcase
-    # XXX move into ["services"] subkey?
-    if IS_CLUSTER
-      @hash_any.merge!(Utils.testbox_env_k8s(flag="local", emsx=self["emsx"]))
-    else
-      self.merge! Utils.set_testbox_env(flag="local")
-    end
-
-    check_required_keys()
-    check_fields_format()
-
-    set_account_info()
-    check_run_time()
-    set_defaults()
-    delete_account_info()
-    checkout_max_run()
-  end
-
-  def set_http_prefix
-    self["HTTP_PREFIX"] = ENV["LKP_HTTP_PREFIX"]
-  end
-
-  def set_remote_testbox_env
-    @is_remote = true
-  end
-
   def set_remote_mount_repo
     lmra = ""
     lmrn = ""
@@ -930,6 +857,64 @@ class Job < JobHash
     self.external_mount_repo_priority = mrp.strip
   end
 
+  def settle_job_fields(hostreq : HostRequest)
+    self.host_machine = hostreq.host_machine
+    self.update_kernel_params
+
+    self.is_remote = hostreq.is_remote
+    self.set_depends_initrd()
+    self.set_kernel()
+    self.set_initrds_uri()
+    self.set_remote_mount_repo()
+  end
+
+end
+
+class Job < JobHash
+
+  def initialize(job_content, id : String|Nil)
+    super(job_content)
+
+    unless id.nil?
+      @hash_plain["id"] = id
+      @id64 = id.to_i64
+    end
+
+    @es = Elasticsearch::Client.new
+    @account_info = JobHash.new(Hash(String, JSON::Any).new)
+    @upload_pkg_data = Array(String).new
+  end
+
+  def submit(id = "-1")
+    # init job with "-1", or use the original job.id
+    self.id = id
+    self.id64 = id.to_i64
+    self.job_state = "submit"
+    self.job_stage = "submit"
+
+    #self.merge! Utils.get_service_env()
+    #self.merge! Utils.get_testbox_env(@is_remote)
+
+    #self.emsx ||= "ems1"
+    self.emsx = "ems1" unless @hash_plain.has_key?("emsx")
+    self.emsx = self.emsx.downcase
+    # XXX move into ["services"] subkey?
+    if IS_CLUSTER
+      @hash_any.merge!(Utils.testbox_env_k8s(flag="local", emsx=self["emsx"]))
+    else
+      self.merge! Utils.set_testbox_env(flag="local")
+    end
+
+    check_required_keys()
+    check_fields_format()
+
+    set_account_info()
+    check_run_time()
+    set_defaults()
+    delete_account_info()
+    checkout_max_run()
+  end
+
   def set_defaults
     extract_user_pkg()
     append_init_field()
@@ -941,9 +926,6 @@ class Job < JobHash
     set_rootfs()
     set_result_root()
     set_result_service()
-    set_depends_initrd()
-    set_kernel()
-    set_initrds_uri()
     set_lkp_server()
     set_sshr_info()
     set_queue()
@@ -1071,15 +1053,6 @@ class Job < JobHash
     # docker tags may change over time, so no way to enforce check here
   end
 
-  private def set_kernel
-    return if os_mount == "container"
-
-    set_kernel_version()
-    set_kernel_uri()
-    set_modules_uri()
-    set_kernel_params()
-  end
-
   private def append_init_field
     DEFAULT_FIELD.each do |k, v|
       k = k.to_s
@@ -1170,10 +1143,6 @@ class Job < JobHash
 
     @account_info.hash_array["my_ssh_pubkey"] << pub_key
     @es.update_account(@account_info.to_json_any, self.my_email)
-  end
-
-  def os_dir
-    return "#{os}/#{os_arch}/#{os_version}"
   end
 
   private def set_submit_date
@@ -1364,208 +1333,6 @@ class Job < JobHash
     raise error_msg if to_seconds(sleep_run_time) > max_run_time
   end
 
-  private def get_initialized_keys
-    initialized_keys = [] of String
-    initialized_keys.concat REQUIRED_KEYS
-    initialized_keys.concat PLAIN_KEYS
-    initialized_keys.concat ARRAY_KEYS
-    initialized_keys.concat HH_KEYS
-    initialized_keys.concat HHH_KEYS
-
-    DEFAULT_FIELD.each do |key, _value|
-      initialized_keys << key.to_s
-    end
-
-    initialized_keys += ["os",
-                         "os_arch",
-                         "os_version",
-                         "result_service",
-                         "LKP_SERVER",
-                         "LKP_CGI_PORT",
-                         "SCHED_HOST",
-                         "SCHED_PORT"]
-
-    initialized_keys -= ["my_token",
-                         "kernel_version",
-                         "kernel_uri",
-                         "modules_uri",
-                         "kernel_params",
-                         "ipxe_kernel_params"]
-  end
-
-  def boot_dir
-    return "#{SRV_OS}/#{os_dir}/boot"
-  end
-
-  private def set_kernel_version
-    #self.kernel_version ||= File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
-    self.put_if_not_absent("kernel_version",  File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", ""))
-  end
-
-  private def set_kernel_uri
-    return if @hash_plain.has_key?("kernel_uri")
-    vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
-    self.kernel_uri = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(vmlinuz_path)
-  end
-
-  private def set_modules_uri
-    return if @hash_array.has_key?("modules_uri")
-    return if self.os_mount == "local"
-
-    modules_path = File.realpath("#{boot_dir}/modules-#{kernel_version}.cgz")
-    self.modules_uri = ["#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)]
-  end
-
-  # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/vmlinuz
-  def update_kernel_uri(full_kernel_uri)
-    self.kernel_uri = full_kernel_uri
-  end
-
-  # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/modules.cgz
-  def update_modules_uri(full_modules_uri)
-    self.modules_uri = full_modules_uri
-  end
-
-  def get_common_initrds
-    temp_initrds = [] of String
-
-    initrd_http_prefix = @is_remote ? ENV["DOMAIN_NAME"] : INITRD_HTTP_PREFIX
-    sched_http_prefix = @is_remote ?  ENV["DOMAIN_NAME"] : SCHED_HTTP_PREFIX
-    # init custom_bootstrap cgz
-    # if has custom_bootstrap field, just give bootstrap cgz to testbox, no need lkp-test/job cgz
-    if @hash_plain.has_key?("custom_bootstrap")
-      raise "need runtime field in the job yaml." unless @hash_plain.has_key?("runtime")
-
-      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-        JobHelper.service_path("#{SRV_INITRD}/custom_bootstrap/#{self.my_email}/bootstrap-#{os_arch}.cgz")
-
-      return temp_initrds
-    end
-
-    # init job.cgz
-    temp_initrds << "#{sched_http_prefix}/job_initrd_tmpfs/#{id}/job.cgz"
-
-    # pkg_data:
-    #   lkp-tests:
-    #     tag: v1.0
-    #     md5: xxxx
-    #     content: yyy (base64)
-    raise "you should update your lkp-tests repo." unless @hash_hhh["pkg_data"]?
-
-    @hash_hhh["pkg_data"].each do |key, value|
-      next unless value
-      program = value
-      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-        JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{os_arch}/#{program["tag"]}.cgz")
-      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-        JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
-    end
-
-    return temp_initrds
-  end
-
-  private def initramfs_initrds
-    temp_initrds = [] of String
-
-    osimage_dir = "#{SRV_INITRD}/osimage/#{os_dir}"
-    temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-                    JobHelper.service_path("#{osimage_dir}/current")
-    temp_initrds << "#{INITRD_HTTP_PREFIX}" +
-                    JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
-
-    temp_initrds.concat(self.initrd_deps)
-    temp_initrds.concat(self.initrd_pkgs)
-    return temp_initrds
-  end
-
-  private def nfs_cifs_initrds
-    temp_initrds = [] of String
-
-    temp_initrds << "#{OS_HTTP_PREFIX}" +
-                    JobHelper.service_path("#{SRV_OS}/#{os_dir}/initrd.lkp")
-
-    return temp_initrds
-  end
-
-  private def get_initrds
-    temp_initrds = [] of String
-
-    if self.os_mount == "initramfs"
-      temp_initrds.concat(initramfs_initrds())
-    elsif ["nfs", "cifs", "local"].includes? self.os_mount
-      temp_initrds.concat(nfs_cifs_initrds())
-    end
-
-    temp_initrds.concat(get_common_initrds())
-
-    return temp_initrds
-  end
-
-  private def initrds_basename : Array(String)
-    return self.os_mount == "container" ? [] of String : get_initrds.map { |initrd| "initrd=#{File.basename(initrd)}" }
-  end
-
-  private def set_initrds_uri
-    self.initrds_uri = get_initrds()
-  end
-
-  def append_initrd_uri(initrd_uri)
-    self.initrds_uri << initrd_uri if self.os_mount == "initramfs"
-    self.initrd_deps << initrd_uri
-  end
-
-  private def set_depends_initrd
-    initrd_deps_arr = Array(String).new
-    initrd_pkgs_arr = Array(String).new
-
-    get_depends_initrd(get_program_params(), initrd_deps_arr, initrd_pkgs_arr)
-
-    self.initrd_deps = initrd_deps_arr.uniq
-    self.initrd_pkgs = initrd_pkgs_arr.uniq
-  end
-
-  private def get_program_params
-    program_params = HashHH.new
-    program_params.merge!(@hash_hhh["monitor"]) if @hash_hhh["monitor"]?
-    program_params.merge!(@hash_hhh["monitors"]) if @hash_hhh["monitors"]? # to be removed in future
-    program_params.merge!(@hash_hhh["pp"]) if @hash_hhh["pp"]?
-    program_params
-  end
-
-  private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkgs_arr)
-    initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
-    mount_type = self.os_mount == "cifs" ? "nfs" : self.os_mount
-
-    # init deps lkp.cgz
-    deps_lkp_cgz = "#{SRV_INITRD}/deps/#{mount_type}/#{self.os_dir}/lkp/lkp.cgz"
-    if File.exists?(deps_lkp_cgz)
-      initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_lkp_cgz)
-    end
-
-    program_params.keys.each do |program|
-      if program =~ /^(.*)-\d+$/
-        program = $1
-      end
-
-      # XXX
-      if @hash_any["#{program}_version"]?
-        program_version = @hash_any["#{program}_version"].as_s
-      else
-        program_version = "latest"
-      end
-
-      deps_dest_file = "#{SRV_INITRD}/deps/#{mount_type}/#{self.os_dir}/#{program}/#{program}.cgz"
-      pkg_dest_file = "#{SRV_INITRD}/pkg/#{mount_type}/#{self.os_dir}/#{program}/#{program_version}.cgz"
-
-      if File.exists?(deps_dest_file)
-        initrd_deps_arr << "#{initrd_http_prefix}" + JobHelper.service_path(deps_dest_file)
-      end
-      if File.exists?(pkg_dest_file)
-        initrd_pkgs_arr << "#{initrd_http_prefix}" + JobHelper.service_path(pkg_dest_file)
-      end
-    end
-  end
-
   def update_tbox_group(tbox_group)
     self.tbox_group = tbox_group
 
@@ -1585,19 +1352,6 @@ class Job < JobHash
     #  so when update id, we need redo set_
     set_result_root()
     set_initrds_uri()
-  end
-
-  def update_kernel_params
-    host_info = Utils.get_host_info(self.testbox)
-    return unless host_info
-
-    hw_job = JobHash.new({"hw" => host_info})
-    set_crashkernel(Utils.get_crashkernel(host_info.as_h)) unless self.crashkernel?
-    self.merge!(hw_job)
-  end
-
-  def set_crashkernel(p)
-    self.crashkernel = p
   end
 
   def get_uuid_tag

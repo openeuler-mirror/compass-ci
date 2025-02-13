@@ -134,9 +134,6 @@ class Sched
   def tbox_request_job(host_req : HostRequest)
     record_hostreq(host_req)
     job = choose_job_for(host_req)
-    if job
-      on_consumed_job(job)
-    end
   end
 
   def record_hostreq(host_req : HostRequest)
@@ -144,13 +141,6 @@ class Sched
     @hosts_request[host_req.host_machine] = host_req
     @hosts_cache[host_req.host_machine].freemem = host_req.freemem
     host_req
-  end
-
-  def on_job_submit(job : JobHash)
-    @es.set_job(job, true)
-    if add_job_to_cache(job)
-      # try_dispatch(job)
-    end
   end
 
   # jobs are submit to either
@@ -295,42 +285,54 @@ class Sched
     @hostkey_sequence[host_machine].pop
   end
 
-  def on_consumed_job(job : JobHash)
-    job_id = job["id"].to_i64
-    user = job["my_account"]
-    queue = job["queue"]?
+  def on_job_submit(job : JobHash)
+    @es.save_job(job, true)
+    add_job_to_cache(job)
+  end
 
-    if !@jobs_cache_in_submit.delete(job_id)
-      @log.error "trying to delete non-existing job_id #{job_id}"
+  def on_job_consume(job : JobHash)
+    move_job_cache(job)
+    @es.save_job(job)
+  end
+
+  # Called for es fetched jobs, new or updated jobs.
+  # Both may may already been cached.
+  def add_job_to_cache(job : JobHash)
+    job_id = job.id64
+
+    # Waiting on other jobs?
+    if job.hash_hhh.has_key?("wait_on")
+      return if @jobs_cache.has_key?(job_id)
+      @jobs_cache[job_id] = job
+      register_wait_on_job(job, job_id)
+      return # Not ready for scheduling
+    end
+
+    # Cache running jobs
+    if job.job_stage != "submit"
+      return if @jobs_cache.has_key?(job_id)
+      @jobs_cache[job_id] = job
       return
     end
 
-    job.host_keys.each do |hostkey|
-      @nr_jobs_by_hostkey[hostkey] -= 1
-      @jobid_by_user[hostkey][user][job.schedule_priority].delete(job_id)
-      @jobid_by_queue[hostkey][queue][job.schedule_priority].delete(job_id) if queue
-    end
+    # Create data structures for job scheduling
+    return if @jobs_cache_in_submit.has_key?(job_id)
+    @jobs_cache_in_submit[job_id] = job
+
+    set_job_schedule_properties(job)
+    create_job_schedule_indices(job, job_id)
   end
 
-  def add_job_to_cache(job : JobHash)
-    job_id = job["id"].to_i64
-    user = job["my_account"]
-    queue = job["queue"]?
+  # on job consume, move job from dispatch data structures
+  # to the next stage @jobs_cache[]
+  def move_job_cache(job : JobHash)
+    job_id = job.id64
 
-    if job.hash_hhh.has_key?("wait_on")
-      return if @jobs_cache.has_key?(job_id)
-      handle_wait_on_job(job, job_id)
-      return # not ready for schedule
-    else
-      return if @jobs_cache_in_submit.has_key?(job_id)
-      @jobs_cache_in_submit[job_id] = job
-    end
-
-    configure_job_properties(job)
-    update_job_indices(job, job_id, user, queue)
+    remove_job_schedule_indices(job, job_id)
+    @jobs_cache[job_id] = job
   end
 
-  private def configure_job_properties(job : JobHash)
+  private def set_job_schedule_properties(job : JobHash)
     job.set_tbox_type
     job.update_tbox_group_from_testbox
     job.set_memmb
@@ -338,8 +340,7 @@ class Sched
     job.set_priority
   end
 
-  private def handle_wait_on_job(job : JobHash, job_id : Int64)
-    @jobs_cache[job_id] = job
+  private def register_wait_on_job(job : JobHash, job_id : Int64)
     job.wait_on.each do |id, _|
       id = id.to_i64
       @jobs_wait_on[id] = Set(Int64).new
@@ -347,7 +348,21 @@ class Sched
     end
   end
 
-  private def update_job_indices(job : JobHash, job_id : Int64, user : String, queue : String?)
+  private def remove_job_schedule_indices(job, job_id)
+    return if !@jobs_cache_in_submit.delete(job_id)
+
+    user = job["my_account"]
+    queue = job["queue"]
+    job.host_keys.each do |hostkey|
+      @nr_jobs_by_hostkey[hostkey] -= 1
+      @jobid_by_user[hostkey][user][job.schedule_priority].delete(job_id)
+      @jobid_by_queue[hostkey][queue][job.schedule_priority].delete(job_id) if queue
+    end
+  end
+
+  private def create_job_schedule_indices(job : JobHash, job_id : Int64)
+    user = job["my_account"]
+    queue = job["queue"]
     job.set_hostkeys.each do |hostkey|
       update_hostkey_indices(hostkey)
       update_user_indices(job, job_id, user, hostkey)
@@ -444,19 +459,21 @@ class Sched
   private def dispatch_job(hostreq : HostRequest, job : JobHash) : Bool
     case job.tbox_type
     when "hw"
-      if channel = @hw_machine_channels[job.host_machine]?
+      if channel = @hw_machine_channels[hostreq.host_machine]?
         channel.send(job)
         true
       else
-        Log.error { "HW channel not found for #{job.host_machine}" }
+        Log.error { "HW channel not found for #{hostreq.host_machine}" }
         false
       end
     when "vm", "dc"
-      if provider = @provider_sessions[job.host_machine]?
-        provider.socket.send(job.to_json)
+      if provider = @provider_sessions[hostreq.host_machine]?
+        on_job_dispatch(job, hostreq)
+        msg = boot_content(job, job.tbox_type)
+        provider.socket.send(msg)
         true
       else
-        Log.error { "Provider not found for #{job.host_machine}" }
+        Log.error { "Provider not found for #{hostreq.host_machine}" }
         false
       end
     else

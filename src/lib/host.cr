@@ -345,12 +345,12 @@ class Hosts
     host = get_host(job.hostname)
     return unless host
 
-    host.job_id = job.id
+    host.job_id = job.id64
     host.suite = job.suite
     host.my_account = job.my_account
     host.result_root = job.result_root
-    host.boot_time = Time.utc.seconds
-    host.reboot_time = job.deadline
+    host.boot_time = Time.local.to_unix.to_u32
+    # host.reboot_time = job.deadline
   end
 
 end

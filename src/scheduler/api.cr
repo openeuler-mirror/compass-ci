@@ -70,7 +70,11 @@ module Scheduler
   # /boot.xxx/host/${hostname}
   # /boot.yyy/mac/${mac}
   get "/boot.:boot_type/:parameter/:value" do |env|
-    Sched.instance.hw_find_job_boot(env)
+    Sched.instance.api_hw_find_job_boot(env)
+  end
+
+  get "/scheduler/job/request" do |env|
+    Sched.instance.api_hw_find_job_boot(env)
   end
 
   get "/heart-beat" do |env|

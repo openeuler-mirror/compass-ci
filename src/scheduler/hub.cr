@@ -73,7 +73,7 @@ class Sched
     job
   end
 
-  def on_job_updated(cjob_id : Int64)
+  def on_job_update(cjob_id : Int64)
     return unless @jobs_wait_on.has_key? cjob_id
     return unless cjob = get_job(cjob_id)
 
@@ -95,6 +95,36 @@ class Sched
     end
   end
 
+  # job finish or abort
+  def on_job_close(job)
+
+    if job.job_health != "success"
+      if job.has_key?("snapshot_id") && !job.snapshot_id.empty?
+        data = {"build_id" => job.build_id, "job_id" => job.id, "build_type" => job.build_type, "emsx" => job.emsx}
+        @etcd.put_not_exists("update_jobs/#{job.id}", data.to_json)
+      end
+    end
+
+    job.set_boot_seconds
+
+    if job.job_stage == "incomplete"
+      remove_job_schedule_indices(job, job.id64)
+      on_job_complete(job)
+    else
+      spawn {
+        @stats_worker.handle(job)
+        on_job_complete(job)
+      }
+    end
+    report_workflow_job_event(job.id, job)
+  end
+
+  # job stats created
+  def on_job_complete(job)
+    @es.save_job(job)
+    @jobs_cache.delete job.id64
+  end
+
   # wjob: waiting job (wait_on cjob)
   # cjob: changed job
   private def handle_job_dependency(wjob_id : Int64, cjob : JobHash)
@@ -114,7 +144,6 @@ class Sched
         on_job_close(dependent_job)
       else
         add_job_to_cache(dependent_job)
-        @jobs_cache.delete(wjob_id)
       end
     end
 

@@ -7,180 +7,27 @@ require "../lib/json_logger"
 require "../lib/string_utils"
 
 class Sched
-  def find_job_boot(env, socket = nil)
-    job = nil
 
-    if env.get?("ws")
-      @log.info("get job boot content")
+  def on_job_dispatch(job : JobHash, hostreq : HostRequest)
+    job.settle_job_fields(hostreq)
+    change_job_stage(job, "boot", nil)
+    create_job_cpio(job, Kemal.config.public_folder)
+    @hosts_cache.update_job_info(job)
 
-      send_timeout_signal(env)
+    move_job_cache(job)
 
-      arch = env.params.query["arch"]
-      host_machine = env.params.query["host_machine"]
-      hostname = env.params.query["hostname"]
-      tags = env.params.query["tags"]  # format: tag1,tag2,...
-      freemem = env.params.query["left_mem"]
-      is_remote = env.params.query["is_remote"]
-      boot_type = env.ws_route_lookup.params["boot_type"]
-    else
-      arch = env.params.url["arch"]
-      host_machine = env.params.url["host_machine"]
-      hostname = env.params.url["hostname"]
-      tags = env.params.url["tags"]
-      freemem = env.params.url["left_mem"]
-      is_remote = env.params.url["is_remote"]
-      boot_type = env.params.url["boot_type"]
-    end
+    job.hash_hh.delete "services"
+    @es.save_job(job)
 
-    env.set "testbox", hostname
-    env.set "state", "requesting"
-    env.set "job_stage", "boot"
-    send_mq_msg(env)
-
-    # get job
-    freemem = Utils.parse_memory_mb(freemem)
-    job = get_job_from_ready_queues(arch, host_machine, hostname, boot_type, tags, freemem, is_remote == "true")
-    return boot_content(nil, boot_type) unless job
-
-    create_job_boot(job, boot_type)
-    response = boot_content(job, boot_type)
-
-    # set job_id to @env
-    job_id = response[/tmpfs\/(.*)\/job\.cgz/, 1]?
-    env.set "job_id", job_id
-
-    # return response to testbox
-    if socket
-      socket.send({
-        "type" => "boot",
-        "response" => response
-      }.to_json) unless env.get?("ws_state") == "close"
-    else
-      response
-    end
-  rescue e
-    env.response.status_code = 500
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
-  ensure
-    close_resources(env, socket) if socket
-    send_mq_msg(env)
-  end
-
-  def close_resources(env, socket)
-    begin
-      socket.send({"type" => "close"}.to_json)
-    rescue e
-      @log.warn({
-        "message" => "socket send close message failed",
-        "error_message" => e.to_s
-      }.to_json)
-    end
-
-    begin
-      socket.close
-    rescue e
-      @log.warn({
-        "message" => "close socket failed",
-        "error_message" => e.to_s
-      }.to_json)
-    end
-
-    begin
-      env.channel.close
-    rescue e
-      @log.warn({
-        "message" => "close channel failed",
-        "error_message" => e.to_s
-      }.to_json)
-    end
-  end
-
-  def send_timeout_signal(env)
-    spawn do
-      90.times do
-        sleep 2.seconds
-        break if env.channel.closed?
-      end
-
-      env.channel.send({"type" => "timeout"}) unless env.channel.closed?
-    end
-  end
-
-  def get_job_from_ready_queues(arch, host_machine, testbox, boot_type, tags, freemem, is_remote)
-    job = nil
-    tbox_type = nil
-
-    @log.info("get_job_from_ready_queues: host_machine=#{host_machine} boot_type=#{boot_type} freemem=#{freemem}")
-    case boot_type
-    when "container"
-                      tbox_type = "dc"
-    when "ipxe"
-                      tbox_type = "vm"
-    else
-      return nil
-    end
-
-    host_req = HostRequest.new(arch, host_machine, tbox_type, tags, freemem, is_remote)
-
-    # get partial job from dispatch queues
-    partial_job = tbox_request_job(host_req)
-    return nil unless partial_job
-
-    job_id = partial_job["id"]
-    return nil unless job_id
-
-    @log.info("get_job_from_ready_queues: job=#{partial_job}, host_machine=#{host_machine}")
-
-    # get full job from ES
-    begin
-      job = @es.get_job(job_id.to_s)
-      unless job
-        @log.warn("job_is_nil, job id=#{job_id.to_s}")
-        return nil
-      end
-    rescue ex
-      @log.warn("Invalid job (id=#{job_id}) in es. Info: #{ex}")
-      @log.warn(ex.inspect_with_backtrace)
-      return nil
-    end
-
-    # update job content
-    if is_remote
-      job.set_remote_testbox_env
-      job.set_http_prefix()
-    end
-
-    job.set_remote_mount_repo()
-    job.update({"tbox_type" => tbox_type, "host_machine" => host_machine})
-    job.update_kernel_params
-    job.set_result_root
-    job.set_time("boot_time")
-    @log.info(%({"job_id": "#{job_id}",
+    # Log/notify
+    @log.info("#{hostreq.host_machine} got the job #{job.id}")
+    @log.info(%({"job_id": "#{job.id}",
               "result_root": "/srv#{job.result_root}",
               "job_state": "set result root"}))
-
-    return job
+    report_workflow_job_event(job["id"].to_s, job)
   end
 
-  def create_job_boot(env, job, boot_type)
-    job.last_success_stage = "boot"
-    env.set "job_id", job.id
-    env.set "deadline", job.deadline
-    env.set "job_stage", job.job_stage
-    env.set "state", "booting"
-    create_job_cpio(job, Kemal.config.public_folder)
-
-    # UPDATE the large fields to null
-    job.job2sh = JSON::Any.new(nil)
-    job.services = nil
-    @es.set_job(job)
-    report_workflow_job_event(job.id, job)
-  end
-
-  private def boot_msg(boot_type, msg)
+  private def hw_boot_msg(boot_type, msg)
     "#!#{boot_type}
         echo ...
         echo #{msg}
@@ -188,7 +35,7 @@ class Sched
         chain http://#{ENV["SCHED_HOST"]}:#{ENV["SCHED_PORT"]}/boot.ipxe/mac/${mac:hexhyp}?arch=${buildarch}&hostname=${hostname}&ip=${net0/ip}"
   end
 
-  private def get_boot_container(job : Job)
+  private def get_boot_container(job : JobHash)
     response = Hash(String, String).new
     response["job_id"] = job.id.to_s
     response["docker_image"] = "#{job.docker_image}"
@@ -205,7 +52,7 @@ class Sched
     return response.to_json
   end
 
-  private def get_boot_native(job : Job)
+  private def get_boot_native(job : JobHash)
     response = Hash(String, String).new
     response["job_id"] = job.id.to_s
     response["initrds"] = job.get_common_initrds().to_json
@@ -213,7 +60,7 @@ class Sched
     return response.to_json
   end
 
-  private def get_boot_grub(job : Job)
+  private def get_boot_grub(job : JobHash)
     initrd_lkp_cgz = "lkp-#{job.os_arch}.cgz"
 
     response = "#!grub\n\n"
@@ -269,7 +116,7 @@ class Sched
     return modules_uri
   end
 
-  private def init_3rd_party_kernel(job : Job)
+  private def init_3rd_party_kernel(job : JobHash)
     return "", ""  unless job.kernel_rpms_url?
     job_id = job.id
 
@@ -301,7 +148,7 @@ class Sched
     return vmlinuz_uri, modules_uri
   end
 
-  private def get_boot_ipxe(job : Job)
+  private def get_boot_ipxe(job : JobHash)
     return job.custom_ipxe if job.suite.starts_with?("install-iso") && job.has_key?("custom_ipxe")
 
     response = "#!ipxe\n\n"
@@ -339,7 +186,7 @@ class Sched
     return response
   end
 
-  private def get_boot_libvirt(job : Job)
+  private def get_boot_libvirt(job : JobHash)
     _kernel_params = job.kernel_params?
     _kernel_params = _kernel_params.map(&.to_s).join(" ") if _kernel_params
 
@@ -359,15 +206,15 @@ class Sched
     }.to_json
   end
 
-  def boot_content(job : Job | Nil, boot_type : String)
+  def boot_content(job : JobHash | Nil, boot_type : String)
     case boot_type
-    when "ipxe"
-      return job ? get_boot_ipxe(job) : boot_msg(boot_type, "No job now")
+    when "ipxe", "vm"
+      return job ? get_boot_ipxe(job) : hw_boot_msg(boot_type, "No job now")
     when "grub"
-      return job ? get_boot_grub(job) : boot_msg(boot_type, "No job now")
+      return job ? get_boot_grub(job) : hw_boot_msg(boot_type, "No job now")
     when "native"
       return job ? get_boot_native(job) : {"job_id" => "0"}.to_json
-    when "container"
+    when "container", "dc"
       return job ? get_boot_container(job) : {"job_id" => "0"}.to_json
     when "libvirt"
       return job ? get_boot_libvirt(job) : {"job_id" => ""}.to_json

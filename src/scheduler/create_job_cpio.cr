@@ -164,7 +164,7 @@ class JobHash
   end
 
   private def shell_encode_keyword(key)
-    key.gsub(/[^a-zA-Z0-9_]/) { |m| "_#{m.ord}_" }
+    key.gsub(/[^a-zA-Z0-9_]/) { |m| "_#{m.codepoints.first}_" }
   end
 
   private def shell_escape_expand(val)
@@ -253,7 +253,7 @@ class Sched
   def create_job_cpio(job : JobHash, base_dir : String)
     create_secrets_yaml(job.id, base_dir)
 
-		job.delete("job2sh")
+    job.hash_any.delete("job2sh")
 
     # generate job.yaml
     temp_yaml = base_dir + "/#{job.id}/job.yaml"

@@ -13,7 +13,7 @@ require "../lib/json_logger"
 require "../lib/manticore"
 
 # -------------------------------------------------------------------------------------------
-# set_job(job_content)
+# save_job(job_content)
 #  - set job_content to es jobs/_doc/id["_source"]
 #  - return response as JSON::Any
 #
@@ -121,7 +121,7 @@ class Elasticsearch::Client
     end
   end
 
-  def set_job(job : JobHash, is_create = false)
+  def save_job(job : JobHash, is_create = false)
     job.set_time
     @log.info("set job content, account: #{job.my_account}")
 

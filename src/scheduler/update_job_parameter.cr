@@ -70,7 +70,7 @@ class Sched
     send_mq_msg(env)
 
     # optimize away db updates except in on_finish_job()
-    # @es.set_job(job)
+    # @es.save_job(job)
 
     report_workflow_job_event(job_id.to_s, job)
     return "Success"
@@ -93,7 +93,7 @@ class Sched
       job.last_success_stage = job_stage 
     end
 
-    on_job_updated(job.id64)
+    on_job_update(job.id64)
   end
 
 end

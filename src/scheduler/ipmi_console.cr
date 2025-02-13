@@ -245,7 +245,7 @@ class Sched
         if JOB_STAGE_NAME2ID[job.job_stage] < JOB_STAGE_NAME2ID["finish"]
           job.job_stage = "incomplete"
           job.job_health = "kernel_panic"
-          on_job_updated(job_id)
+          on_job_update(job_id)
         end
       end
       break

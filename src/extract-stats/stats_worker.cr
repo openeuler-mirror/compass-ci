@@ -175,8 +175,6 @@ class StatsWorker
     error_ids = load_error_ids(result_root)
     job.error_ids = error_ids unless error_ids.empty?
 
-    @es.set_job(job)
-
     notify_error(error_ids, job.id)
   end
 

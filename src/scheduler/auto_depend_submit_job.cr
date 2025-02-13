@@ -132,6 +132,6 @@ class Sched
     return nil unless job.secrets?
 
     @redis.hash_set("id2secrets", job_id, job.secrets.to_json)
-    job.force_delete("secrets")
+    job.hash_hh.delete("secrets")
   end
 end
