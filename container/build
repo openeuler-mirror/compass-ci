@@ -1,0 +1,132 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+set -e
+
+app_name=$1
+arch=$(uname -m)
+
+PACK_FLAG=${PACK_FLAG:-"false"}
+# TODO: Change this repo name to our own registry
+REPO_NAME=${REPO_NAME:-""}
+BASE_IMAGE_URL=${BASE_IMAGE_URL:-"https://eulermaker.compass-ci.openeuler.openatom.cn/api/repositories/EulerMaker/base-images"}
+
+CURRENT_PATH=$(dirname `readlink -f $0`)
+PROJECT_PATH=$(dirname $(dirname `readlink -f $0`))
+IAMGE_PATH=$CURRENT_PATH/_images
+
+. $PROJECT_PATH/container/defconfig.sh
+
+if [ -z $app_name ]; then
+	echo "Usage: $0 <app_name>"
+	exit 1
+fi
+
+if [ ! -d "$CURRENT_PATH/$app_name" ]; then
+	echo "Component $app_name not exists"
+	exit 1
+fi
+
+_gen_image_tag() {
+	local build_date=$(date +$(($(date +%Y)-2024)).%02m.%02d)
+	local git_commit_hash=$(git rev-parse --short=8 HEAD)
+	echo "$build_date-$git_commit_hash"
+}
+
+_load_base_image() {
+	local image=$1
+	[[ $image != *":"* ]] && image=$image:latest
+
+	docker images --format "{{.Repository}}:{{.Tag}}" | grep $image && return
+
+	local base_image_path=$IAMGE_PATH/base/$arch
+	mkdir -p $base_image_path
+
+	local image_tar_gz=$(echo $image | awk -F'/' '{print $NF}' | sed 's/:/-/g')-$arch.tar.gz
+
+	[ ! -e $base_image_path/$image_tar_gz ] && wget --no-check-certificate $BASE_IMAGE_URL/$arch/$image_tar_gz -P $base_image_path
+
+	docker load -i $base_image_path/$image_tar_gz
+}
+
+build_image() {
+	local build_opt=""
+
+	local image_path=$IAMGE_PATH/$arch
+	mkdir -p $image_path
+
+	pushd $CURRENT_PATH/$app_name
+	local tag=$(_gen_image_tag)
+	local tag_latest="latest"
+
+	[ -f "prepare" ] && {
+		chmod +x ./prepare && ./prepare
+	}
+
+for base_image in $(grep '^FROM' Dockerfile | awk '{print $2}'); do
+	_load_base_image $base_image
+done
+
+if grep -Eq "^[[:space:]]*(COPY|ADD)" Dockerfile; then 
+	build_opt+="--no-cache"
+fi
+
+load_service_authentication
+available_memory=$(get_available_memory)
+
+declare -a build_args=()
+case "$app_name" in
+	etcd)
+		version="v3.5.7"
+		[ "$arch" = "aarch64" ] && arch=arm64
+		[ "$arch" = "x86_64" ] && arch=amd64
+		build_args=(
+			--build-arg ARCH=$arch
+			--build-arg VERSION=$version
+		)
+		;;
+	redis)
+		build_args=(
+			--build-arg ARCH=$arch
+			--build-arg PASSWD=$REDIS_PASSWD
+		)
+		;;
+	kibana|es)
+		build_args=(
+			--build-arg ARCH=$arch
+			--build-arg USER=$ES_SUPER_USER
+			--build-arg PASSWORD=$ES_SUPER_PASSWORD
+			--build-arg MEMORY=$available_memory
+			)
+			;;
+	kibana-logging|logging-es)
+		build_args=(
+			--build-arg ARCH=$arch
+			--build-arg USER=$LOGGING_ES_USER
+			--build-arg PASSWORD=$LOGGING_ES_PASSWORD
+			--build-arg MEMORY=$available_memory
+			)
+			;;
+	*)
+		build_args=(
+			--build-arg ARCH=$arch
+			)
+			;;
+esac
+
+docker build --network=host $build_opt \
+	-t $app_name:$tag \
+	-t $app_name:$tag_latest \
+	"${build_args[@]}" .
+
+popd
+
+if [ $PACK_FLAG == "true" ]; then
+	echo "Packing image..."
+	docker save -o $image_path/$app_name-$tag-$arch.tar $app_name:$tag
+	gzip -9f $image_path/$app_name-$tag-$arch.tar
+fi
+}
+
+build_image

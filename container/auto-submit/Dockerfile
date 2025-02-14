@@ -15,7 +15,7 @@ RUN /bin/bash -c 'adduser -u 1090 -D lkp'
 RUN gem sources -r https://rubygems.org/ -a https://gems.ruby-china.com/
 
 RUN umask 002 && \
-    gem install bunny json activesupport:6.1.4.4 git rest-client io-console elasticsearch:7.11.1 md5sum base64
+    gem install bunny json activesupport:6.1.4.4 git rest-client io-console elasticsearch:7.11.1 digest base64
 
 ENV PIP_SOURCE https://mirrors.huaweicloud.com/repository/pypi/simple/
 

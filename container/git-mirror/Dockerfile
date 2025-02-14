@@ -16,7 +16,7 @@ RUN apk update --no-cache && \
 
 RUN umask 002 && \
     gem sources -r https://rubygems.org/ -a https://mirrors.aliyun.com/rubygems/ &&\
-    gem install bunny:2.19.0 json PriorityQueue elasticsearch:7.11.1 --no-document
+    gem install set:1.0.3 bunny:2.19.0 json:2.7.6 PriorityQueue elasticsearch:7.11.1 --no-document
 
 COPY compass-ci /c/compass-ci
 

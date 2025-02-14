@@ -1,0 +1,4 @@
+#!/bin/bash
+
+umask 027
+/bin/bash "$@"

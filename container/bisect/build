@@ -1,0 +1,21 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2024 Huawei Technologies Co., Ltd. All rights reserved.
+
+. ../defconfig.sh
+
+docker_skip_rebuild "bisect"
+
+load_cci_defaults
+
+download_repo "compass-ci" "$git_branch_cbs"
+download_repo "lkp-tests" "$git_branch_lkp"
+if [ $? -ne 0 ]; then
+        echo "Failed to clone lkp-tests, copying SRC directory instead..."
+        cp -r "$LKP_SRC" lkp-tests
+fi
+
+docker build -t bisect .
+
+push_image bisect:latest
+

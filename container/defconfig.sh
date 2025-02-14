@@ -186,3 +186,21 @@ config_yaml()
                     squid.yaml > k8s/squid-${name}.yaml
         done
 }
+
+# 获取系统内存信息并计算可用内存
+get_available_memory() {
+  # 从 /proc/meminfo 提取 MemTotal (单位 kB)
+  local memtotal_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+
+  # 转换为 GB (1 GB = 1024*1024 kB)
+  local memtotal_gb=$(echo "scale=6; $memtotal_kb / 1048576" | bc -l)
+
+  # 计算中间值: sqrt(memtotal_gb) * 1024 (保留小数)
+  local intermediate=$(echo "scale=6; sqrt($memtotal_gb) * 1024" | bc -l)
+
+  # 三值排序取中位数 (使用数值排序支持浮点)
+  local sorted_values=($(printf "%s\n" 1024 30720 "$intermediate" | sort -g))
+
+  # 取中间值并截断小数部分
+  echo "${sorted_values[1]}" | awk '{print int($1)}'
+}

@@ -1,0 +1,27 @@
+#!/bin/bash
+set -e
+
+CURRENT_PATH=$(dirname `readlink -f $0`)
+PROJECT_PATH=$(dirname $(dirname $CURRENT_PATH))
+
+declare -A REPOS=(
+["compass-ci"]="https://gitee.com/openeuler/compass-ci"
+["lkp-tests"]="https://gitee.com/compass-ci/lkp-tests"
+)
+
+process_repos() {
+	for repo_dir in "${!REPOS[@]}"; do
+		local full_path="$CURRENT_PATH/$repo_dir"
+
+		if [[ -d "$full_path" ]]; then
+			rm -rf "$full_path"
+		fi
+
+		if ! git clone --depth=1 "${REPOS[$repo_dir]}" "$full_path"; then
+			echo "ERROR: Failed to clone ${REPOS[$repo_dir]}" >&2
+			exit 1
+		fi
+	done
+}
+
+process_repos
