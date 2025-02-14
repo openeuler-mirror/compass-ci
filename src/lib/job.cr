@@ -315,7 +315,6 @@ class JobHash
     testbox
     cluster
     queue
-    subqueue
     priority
 
     rootfs
@@ -932,8 +931,7 @@ class Job < JobHash
     set_result_service()
     set_lkp_server()
     set_sshr_info()
-    set_queue()
-    set_subqueue()
+    check_queue()
     set_secrets()
     set_time("submit_time")
     set_params_md5()
@@ -1252,23 +1250,11 @@ class Job < JobHash
     self.result_service = "raw_upload"
   end
 
-  private def set_queue
-    return unless @hash_plain["queue"]?
+  private def check_queue
+    return unless q = @hash_plain["queue"]?
+    return if Sched::GREEN_QUEUES.includes? q
 
-    # set default value
-    self.queue = self.tbox_group
-    if self.tbox_group.starts_with?(/(vm|dc|vt)-/)
-      self.queue = "#{self.tbox_group}.#{self.arch}"
-    end
-    #self.put_if_not_absent("queue", queue)
-  end
-
-  private def set_subqueue
-    if @hash_plain["submit_user"]? == "vip" && @hash_plain["submit_role"]? == "maintainer" && @hash_plain["build_type"]? == "single"
-      self.subqueue = "vip"
-    else
-      self.subqueue = self.my_email unless @hash_plain["subqueue"]? == "idle"
-    end
+    @hash_plain.delete "queue"
   end
 
   private def set_secrets
