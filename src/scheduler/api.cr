@@ -7,6 +7,7 @@ require "../lib/web_env"
 require "../lib/sched"
 require "../lib/json_logger"
 require "../lib/host"
+require "../lib/account"
 
 # -------------------------------------------------------------------------------------------
 # end_user:

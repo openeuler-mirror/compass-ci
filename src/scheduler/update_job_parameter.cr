@@ -70,7 +70,7 @@ class Sched
     send_mq_msg(env)
 
     # optimize away db updates except in on_finish_job()
-    # @es.save_job(job)
+    # @es.update_doc("jobs", ...)
 
     report_workflow_job_event(job_id.to_s, job)
     return "Success"

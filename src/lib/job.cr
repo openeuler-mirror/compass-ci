@@ -148,6 +148,10 @@ class JobHash
   property id64 : Int64 = 0
   property is_remote = false
 
+  def id_es
+    self.id
+  end
+
   PLAIN_SET = Set(String).new PLAIN_KEYS
   ARRAY_SET = Set(String).new ARRAY_KEYS
   HH_SET    = Set(String).new HH_KEYS
@@ -1142,7 +1146,7 @@ class Job < JobHash
     return if @account_info.hash_array["my_ssh_pubkey"].includes?(pub_key)
 
     @account_info.hash_array["my_ssh_pubkey"] << pub_key
-    @es.update_account(@account_info.to_json_any, self.my_email)
+    @es.replace_doc("accounts", @account_info)
   end
 
   private def set_submit_date

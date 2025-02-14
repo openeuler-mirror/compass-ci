@@ -107,107 +107,79 @@ class Elasticsearch::Client
     @log = JSONLogger.new
   end
 
-  private def write_to_manticore(index : String, id : Int64, content : Hash(String, JSON::Any) | Hash(String, String), is_create : Bool)
-    return unless Sched.options.should_write_manticore
-
-    begin
-      if is_create
-        Manticore::Client.create(index, id, content)
-      else
-        Manticore::Client.update(index, id, content)
-      end
-    rescue e
-      @log.error("Manticore write failed: #{e.message}")
-    end
-  end
-
-  def save_job(job : JobHash, is_create = false)
-    job.set_time
-    @log.info("set job content, account: #{job.my_account}")
-
+  def insert_doc(index, doc)
     es_response = nil
+    manticore_response = nil
 
     if Sched.options.should_write_es
-      content = job.to_json_any
-      es_response = if is_create
-                      create_job(content, job.id)
-                    else
-                      update_job(content, job.id)
-                    end
+      content = doc.to_json_any
+      es_response = es_create_doc(index, doc.id_es, content)
     end
 
     if Sched.options.should_write_manticore
-      content = job.to_manticore
-      es_response = write_to_manticore("jobs", job.id.to_i64, content, is_create)
+      content = doc.to_manticore
+      manticore_response = Manticore::Client.insert_by_id(index, doc.id64, content)
     end
 
-    raise "no db configured" unless es_response
-    es_response
+    es_response || manticore_response
   end
 
-  private def create_job(job_content : JSON::Any, job_id : String)
-    # only called on Sched.options.should_write_es
+  def replace_doc(index, doc)
+    es_response = nil
+    manticore_response = nil
+
+    if Sched.options.should_write_es
+      content = doc.to_json_any
+      es_response = es_update_doc(index, doc.id_es, content)
+    end
+
+    if Sched.options.should_write_manticore
+      content = doc.to_manticore
+      manticore_response = Manticore::Client.replace_by_id(index, doc.id64, content)
+    end
+
+    es_response || manticore_response
+  end
+
+  private def es_create_doc(index : String, id : Int64|String, job_content : JSON::Any)
     @client.create({
-      :index => "jobs", :type => "_doc",
+      :index => index, :type => "_doc",
       :refresh => "wait_for",
-      :id => job_id,
+      :id => id,
       :body => job_content,
     })
   end
 
-  private def update_job(job_content : JSON::Any, job_id : String)
+  private def es_update_doc(index : String, id : Int64|String, job_content : JSON::Any)
     # only called on Sched.options.should_write_es
     @client.update({
-      :index => "jobs", :type => "_doc",
+      :index => index, :type => "_doc",
       :refresh => "wait_for",
-      :id => job_id,
+      :id => id,
       :body => {:doc => job_content},
     })
   end
 
-  def save_host(host : HostInfo)
-    es_response = nil
-
-    if Sched.options.should_write_es
-      content = host.to_json_any
-      es_response = @client.create({
-                      :index => "hosts", :type => "_doc",
-                      :id => host.id,
-                      :body => {:doc => content},
-                    })
-    end
-
-    if Sched.options.should_write_manticore
-      content = host.to_manticore
-      es_response = write_to_manticore("hosts", host.id, content, true)
-    end
-
-    raise "no db configured" unless es_response
-    es_response
-  end
-
   def query_host(hostname)
-      begin
-        results = self.select("hosts", {"hostname" => hostname})
-        return nil unless results
+    begin
+      results = self.select("hosts", {"hostname" => hostname})
+      return nil unless results
 
-        results[0]["_source"]
-      rescue
-        return nil
-      end
+      results[0]["_source"]
+    rescue
+      return nil
+    end
   end
 
-  def get_job_content(job_id : String)
-    return unless Sched.options.should_read_es || Sched.options.should_read_manticore
-
+  def get_doc(id64 : Int64)
     if Sched.options.should_read_es
-      response = @client.get_source({:index => "jobs", :type => "_doc", :id => job_id})
+      response = @client.get_source({:index => "jobs", :type => "_doc", :id => id64.to_s})
       return response.as_h if response.is_a?(JSON::Any)
     end
 
     if Sched.options.should_read_manticore && !Sched.options.should_read_es
       begin
-        response = Manticore::Client.get_source("jobs", job_id.to_i64)
+        response = Manticore::Client.get_source("jobs", id64)
         return nil if !response.is_a?(JSON::Any)
         response = Manticore.job_from_manticore(response.as_h)
       rescue
@@ -219,7 +191,7 @@ class Elasticsearch::Client
   end
 
   def get_job(job_id : String)
-    response = get_job_content(job_id)
+    response = get_doc(job_id.to_i64)
 
     case response
     when JSON::Any
@@ -355,28 +327,6 @@ class Elasticsearch::Client
     else
       raise "No backend enabled for read operations"
     end
-  end
-
-  def update_account(account_content : JSON::Any, my_email : String)
-    if Sched.options.should_write_es
-      es_response = @client.update(
-        {
-          :index => "accounts", :type => "_doc",
-          :id => my_email,
-          :body => {:doc => account_content}
-        }
-      )
-    end
-
-    if Sched.options.should_write_manticore
-      begin
-        Manticore::Client.update("accounts", my_email.to_i64, account_content)
-      rescue e
-        @log.error("Manticore update_account failed: #{e.message}")
-      end
-    end
-
-    es_response || JSON::Any.new({} of String => JSON::Any)
   end
 
   def delete(index, id)

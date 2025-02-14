@@ -17,7 +17,7 @@ class Sched
     move_job_cache(job)
 
     job.hash_hh.delete "services"
-    @es.save_job(job)
+    @es.replace_doc("jobs", job)
 
     # Log/notify
     @log.info("#{hostreq.host_machine} got the job #{job.id}")

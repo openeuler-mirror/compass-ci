@@ -121,7 +121,7 @@ class Sched
 
   # job stats created
   def on_job_complete(job)
-    @es.save_job(job)
+    @es.replace_doc("jobs", job)
     @jobs_cache.delete job.id64
   end
 

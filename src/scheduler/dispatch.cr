@@ -286,13 +286,13 @@ class Sched
   end
 
   def on_job_submit(job : JobHash)
-    @es.save_job(job, true)
+    @es.insert_doc("jobs", job)
     add_job_to_cache(job)
   end
 
   def on_job_consume(job : JobHash)
     move_job_cache(job)
-    @es.save_job(job)
+    @es.replace_doc("jobs", job)
   end
 
   # Called for es fetched jobs, new or updated jobs.
