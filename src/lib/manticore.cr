@@ -74,7 +74,7 @@ module Manticore
   end
 
   module Client
-    def self.sql(sql : String) : HTTP::Client::Response
+    def self.run_sql(sql : String) : HTTP::Client::Response
       client = HTTP::Client.new(HOST, PORT)
       headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded"}
       response = client.post("/sql", headers: headers, form: {"mode" => "raw", "query" => sql})
@@ -122,7 +122,51 @@ module Manticore
       result["hits"]["hits"][0]["_source"]
     end
 
-    def self.replace(index : String, id : Int64, doc : JSON::Any | Hash) : JSON::Any
+    # curl -sX POST http://localhost:9308/insert  -d '
+    # {
+    #   "table":"products",
+    #   "id":1,
+    #   "doc":
+    #   {
+    #     "title" : "Crossbody Bag with Tassel",
+    #     "price" : 19.85
+    #   }
+    # }
+    # '
+    def self.insert_by_id(index : String, id : Int64, doc : JSON::Any | Hash) : Bool
+      json_by_id("/insert", index, id, doc)
+    end
+
+    # curl -sX POST http://localhost:9308/replace -H "Content-Type: application/x-ndjson" -d '
+    # {
+    #   "table":"products",
+    #   "id":1,
+    #   "doc":
+    #   {
+    #     "title":"product one",
+    #     "price":10
+    #   }
+    # }
+    # '
+    def self.replace_by_id(index : String, id : Int64, doc : JSON::Any | Hash) : Bool
+      json_by_id("/replace", index, id, doc)
+    end
+
+    # curl -sX POST http://localhost:9308/update  -d '
+    # {
+    #   "table":"test",
+    #   "id":1,
+    #   "doc":
+    #    {
+    #      "gid" : 100,
+    #      "price" : 1000
+    #    }
+    # }
+    def self.update_by_id(index : String, id : Int64, doc : JSON::Any | Hash) : Bool
+      json_by_id("/update", index, id, doc)
+    end
+
+    def self.json_by_id(api : String, index : String, id : Int64, doc : JSON::Any | Hash) : Bool
       client = HTTP::Client.new(HOST, PORT)
       headers = HTTP::Headers{"Content-Type" => "application/json"}
       body = {
@@ -130,52 +174,28 @@ module Manticore
         "id"    => id,
         "doc"   => doc
       }.to_json
-      response = client.post("/replace", headers: headers, body: body)
+      response = client.post(api, headers: headers, body: body)
       raise "HTTP error: #{response.status_code}" unless response.status.success?
 
       result = JSON.parse(response.body)
-      if result["errors"]?
-        raise "Update error: #{result}"
-      end
-      result
+      result.as_h.has_key? "errors"
     end
 
     # Manticore's "POST /update" is partial replace, it has limitation that can
     # only update row-wise attributes. In Compass we only update number fields
     # efficiently by this API. We won't use /_update API since it requires
     # Manticore Buddy, which is not as stable and performant.
-    def self.update(index : String, id : Int64, doc : JSON::Any | Hash) : JSON::Any
-      client = HTTP::Client.new(HOST, PORT)
-      headers = HTTP::Headers{"Content-Type" => "application/json"}
-      response = client.post("/#{index}/update/#{id}", headers: headers, body: doc.to_json)
-      raise "HTTP error: #{response.status_code}" unless response.status.success?
-
-      result = JSON.parse(response.body)
-      if result["errors"]?
-        raise "Update error: #{result}"
-      end
-      result
+    # API example: UPDATE products SET enabled=0 WHERE id=10;
+    def self.update_by_query(index : String, query : String, kv : String) : Bool
+      run_sql("UPDATE #{index} SET #{kv} WHERE #{query};")
     end
 
-    def self.create(index : String, id : Int64, doc : JSON::Any | Hash) : JSON::Any
-      client = HTTP::Client.new(HOST, PORT)
-      headers = HTTP::Headers{"Content-Type" => "application/json"}
-      body = {
-        "index" => index,
-        "id"    => id,
-        "doc"   => doc
-      }.to_json
-      response = client.post("/insert", headers: headers, body: body)
-      raise "HTTP error: #{response.status_code}" unless response.status.success?
-
-      result = JSON.parse(response.body)
-      if result["errors"]?
-        raise "Create error: #{result}"
-      end
-      result
+    # API example: REPLACE INTO products VALUES(1, "document one", 10);
+    def self.replace(index : String, values : String) : Bool
+      run_sql("REPLACE INTO #{index} VALUES (#{values})")
     end
 
-    def self.delete(index : String, id : Int64) : JSON::Any
+    def self.delete(index : String, id : Int64) : Bool
       client = HTTP::Client.new(HOST, PORT)
       headers = HTTP::Headers{"Content-Type" => "application/json"}
       body = {
@@ -183,13 +203,10 @@ module Manticore
         "id"    => id
       }.to_json
       response = client.post("/delete", headers: headers, body: body)
-      raise "HTTP error: #{response.status_code}" unless response.status.success?
+      # raise "HTTP error: #{response.status_code}" unless response.status.success?
 
       result = JSON.parse(response.body)
-      if result["errors"]?
-        raise "Delete error: #{result}"
-      end
-      result
+      result.has_key? "errors"
     end
 
     def self.bulk(ndjson : String) : JSON::Any
