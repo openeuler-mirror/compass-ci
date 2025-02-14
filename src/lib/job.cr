@@ -1378,9 +1378,10 @@ class Job < JobHash
   end
 
   private def get_user_uploadfiles_fields_from_config
-    user_uploadfiles_fields_config = "#{ENV["CCI_SRC"]}/src/lib/user_uploadfiles_fields_config.yaml"
-    yaml_any_array = YAML.parse(File.read(user_uploadfiles_fields_config)).as_a
-    return yaml_any_array
+    @user_uploadfiles_fields_config ||= begin
+      user_uploadfiles_fields_config = "#{ENV["CCI_SRC"]}/src/lib/user_uploadfiles_fields_config.yaml"
+      YAML.parse(File.read(user_uploadfiles_fields_config)).as_a
+    end
   end
 
   private def check_config_integrity(md5, dest_config_file)
