@@ -265,6 +265,13 @@ module Scheduler
     Sched.instance.api_update_job(env)
   end
 
+  # returns JSON job, fields are "," separated strings, limited to PLAIN_KEYS
+  get "/scheduler/job/view" do |env|
+    job_id = env.params.query["job_id"]
+    fields = env.params.query["fields"]
+    Sched.instance.api_view_job(job_id.to_i64, fields)
+  end
+
   get "/scheduler/lkp/report-ssh-port" do |env|
     Sched.instance.report_ssh_port(env)
 

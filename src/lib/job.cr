@@ -292,6 +292,12 @@ class JobHash
     lab: LAB,
   }
 
+  SENSITIVE_ACCOUNT_KEYS = Set.new %w[
+    my_email
+    my_name
+    my_token
+  ]
+
   PLAIN_KEYS = %w(
     id
     job_id
@@ -554,11 +560,10 @@ class JobHash
       raise "invalid key #{key}" unless vals.includes? key
   end
 
-  def shrink_to_etcd_fields
+  def export_trivial_fields(fields : Array(String))
     h = Hash(String, String).new
-    %w(job_stage job_health last_success_stage
-      testbox deadline time boot_time).each do |k|
-      assert_key_in(k, PLAIN_SET)
+    fields.each do |k|
+      next if SENSITIVE_ACCOUNT_KEYS.includes? k
       h[k] = @hash_plain[k] if @hash_plain.has_key? k
     end
     h
@@ -945,10 +950,9 @@ class Job < JobHash
   end
 
   def delete_account_info
-    @hash_plain.delete("my_uuid")
-    @hash_plain.delete("my_token")
-    @hash_plain.delete("my_email")
-    @hash_plain.delete("my_name")
+    SENSITIVE_ACCOUNT_KEYS.each do |k|
+      @hash_plain.delete(k)
+    end
   end
 
   private def checkout_max_run
@@ -1289,7 +1293,7 @@ class Job < JobHash
     REQUIRED_KEYS.each do |key|
       if !@hash_plain[key]?
         error_msg = "Missing required job key: '#{key}'."
-        if ["my_email", "my_name", "my_token"].includes?(key)
+        if SENSITIVE_ACCOUNT_KEYS.includes?(key)
           error_msg += "\nPlease refer to https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md"
         end
         raise error_msg
