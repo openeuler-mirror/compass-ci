@@ -132,6 +132,7 @@ end
 
 class JobHash
 
+  getter hash_int32 : Hash(String, Int32)
   getter hash_plain : Hash(String, String)
   getter hash_array : HashArray
   getter hash_hh : HashHH
@@ -152,6 +153,7 @@ class JobHash
     self.id
   end
 
+  INT32_SET = Set(String).new INT32_KEYS
   PLAIN_SET = Set(String).new PLAIN_KEYS
   ARRAY_SET = Set(String).new ARRAY_KEYS
   HH_SET    = Set(String).new HH_KEYS
@@ -159,6 +161,7 @@ class JobHash
 
   def initialize(job_content = nil)
     @hash_any   = Str2AnyHash.new
+    @hash_int32 = Hash(String, Int32).new
     @hash_plain = Hash(String, String).new
     @hash_array = HashArray.new
     @hash_hh    = HashHH.new
@@ -173,6 +176,7 @@ class JobHash
 
   def initialize(ajob : JobHash)
     @hash_any   = ajob.hash_any.dup
+    @hash_int32 = ajob.hash_int32.dup
     @hash_plain = ajob.hash_plain.dup
     @hash_array = ajob.hash_array.dup
     @hash_hh    = ajob.hash_hh.dup
@@ -194,6 +198,8 @@ class JobHash
           raise "invalid type, expect hash of hash: Job[#{k}] = #{v}" if HHH_SET.includes? k
           @hash_any[k] = v
         end
+      elsif INT32_SET.includes? k
+        @hash_int32[k] = v.as_i
       elsif PLAIN_SET.includes? k
         @hash_plain[k] = v.to_s
       elsif ARRAY_SET.includes? k
@@ -229,6 +235,7 @@ class JobHash
   end
 
   def merge!(other_job : JobHash)
+    @hash_int32.merge!(other_job.hash_int32)
     @hash_plain.merge!(other_job.hash_plain)
     @hash_any.any_merge!(other_job.hash_any)
 
@@ -261,6 +268,7 @@ class JobHash
 
   def merge2hash_all
     hash_all = @hash_any.dup
+    @hash_int32.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_plain.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_array.each do |k, v|
       hash_all[k] ||= JSON::Any.new([] of JSON::Any)
@@ -298,6 +306,16 @@ class JobHash
     my_token
   ]
 
+  # Only add new number fields here, to keep comptability with exising ES mapping
+  INT32_KEYS = %w(
+    istage
+    ihealth
+    priority
+    renew_seconds
+    timeout_seconds
+    deadline_utc
+  )
+
   PLAIN_KEYS = %w(
     id
     job_id
@@ -321,7 +339,6 @@ class JobHash
     testbox
     cluster
     queue
-    priority
 
     rootfs
     docker_image
@@ -380,9 +397,6 @@ class JobHash
     my_token
 
     ssh_pub_key
-    deadline
-    renew_deadline
-    renew_seconds
     custom_bootstrap
 
     runtime
@@ -519,6 +533,12 @@ class JobHash
     result
   )
 
+  {% for name in INT32_KEYS %}
+    def {{name.id}};              @hash_int32[{{name}}];      end
+    def {{(name + "?").id}};      @hash_int32[{{name}}]?;     end
+    def {{(name + "=").id}}(v);   @hash_int32[{{name}}] = v;  end
+  {% end %}
+
   {% for name in PLAIN_KEYS %}
     def {{name.id}};              @hash_plain[{{name}}];      end
     def {{(name + "?").id}};      @hash_plain[{{name}}]?;     end
@@ -563,7 +583,11 @@ class JobHash
     h = Hash(String, String).new
     fields.each do |k|
       next if SENSITIVE_ACCOUNT_KEYS.includes? k
-      h[k] = @hash_plain[k] if @hash_plain.has_key? k
+      if @hash_plain.has_key? k
+        h[k] = @hash_plain[k]
+      elsif @hash_int32.has_key? k
+        h[k] = @hash_int32[k].to_s
+      end
     end
     h
   end
@@ -793,17 +817,47 @@ class JobHash
     self.run_seconds = (finish_time - running_time).to_s
   end
 
-  def renew_addtime(secs)
-    deadline = Time.parse(self.deadline, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    deadline = (deadline + secs.second).to_s("%Y-%m-%dT%H:%M:%S+0800")
-    self.renew_deadline = deadline
-    self.deadline = deadline
+  def get_runtime() : Int32 | Nil
+    return self.runtime.to_i if self.has_key? "runtime"
+    return unless @hash_hhh.has_key? "pp"
 
-    if self.renew_seconds?
-      self.renew_seconds = (self.renew_seconds.to_i32 + secs).to_s
-    else
-      self.renew_seconds = secs.to_s
+    runtime = 0
+    self.pp.each do |_prog, v|
+      runtime += v["runtime"].to_i if v && v.has_key? "runtime"
     end
+
+    if runtime > 0
+      return runtime
+    else
+      return nil
+    end
+  end
+
+  def set_timeout_seconds
+    if self.has_key? "timeout"
+      return self.timeout_seconds = to_seconds(self.timeout)
+    end
+
+    secs = get_runtime
+    if secs
+      return self.timeout_seconds = secs + ([secs // 8, 300].max) + Math.sqrt(secs).to_i32
+    end
+
+    self.timeout_seconds = JOB_STAGE_TIMEOUT["running"]
+  end
+
+  def renew_addtime(secs)
+    if self.renew_seconds?
+      self.renew_seconds += secs
+    else
+      self.renew_seconds = secs
+    end
+  end
+
+  # deadline_utc is a dynamic value, it will be regularly checked and refreshed
+  # in lifecycle terminate_timeout_jobs()
+  def set_deadline
+    self.deadline_utc = Time.utc.to_unix.to_i32 + self.timeout_seconds
   end
 
   def set_remote_mount_repo
@@ -873,6 +927,7 @@ class JobHash
     self.set_kernel()
     self.set_initrds_uri()
     self.set_remote_mount_repo()
+    self.set_deadline()
   end
 
 end
@@ -898,6 +953,7 @@ class Job < JobHash
     self.id64 = id.to_i64
     self.job_state = "submit"
     self.job_stage = "submit"
+    self.istage = JOB_STAGE_NAME2ID["submit"] || 0
 
     #self.merge! Utils.get_service_env()
     #self.merge! Utils.get_testbox_env(@is_remote)
@@ -929,7 +985,6 @@ class Job < JobHash
     set_os_arch()
     set_os_version()
     check_docker_image()
-    set_submit_date()
     set_rootfs()
     set_result_root()
     set_result_service()
@@ -938,6 +993,8 @@ class Job < JobHash
     check_queue()
     set_secrets()
     set_time("submit_time")
+    set_submit_date()
+    set_timeout_seconds()
     set_params_md5()
     set_memory_minimum()
   end
@@ -1257,6 +1314,7 @@ class Job < JobHash
     return unless q = @hash_plain["queue"]?
     return if Sched::GREEN_QUEUES.includes? q
 
+    # remove invalid queue
     @hash_plain.delete "queue"
   end
 

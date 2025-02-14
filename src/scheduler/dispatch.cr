@@ -290,11 +290,6 @@ class Sched
     add_job_to_cache(job)
   end
 
-  def on_job_consume(job : JobHash)
-    move_job_cache(job)
-    @es.replace_doc("jobs", job)
-  end
-
   # Called for es fetched jobs, new or updated jobs.
   # Both may may already been cached.
   def add_job_to_cache(job : JobHash)

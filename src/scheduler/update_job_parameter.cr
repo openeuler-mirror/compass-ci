@@ -85,10 +85,12 @@ class Sched
 
   def change_job_stage(job, job_stage, job_health)
     job.job_stage = job_stage
+    job.istage = JOB_STAGE_NAME2ID[job_stage] || -1
     job.set_time("#{job_stage}_time")
 
     if job_health
       job.job_health = job_health
+      job.ihealth = JOB_HEALTH_NAME2ID[job_health] || -1
     else
       job.last_success_stage = job_stage 
     end

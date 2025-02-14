@@ -26,18 +26,10 @@ def get_timeout(job, stage) : Int32
       JOB_STAGE_TIMEOUT[stage]
     end
   when "running"
-    secs = job.timeout?
-    return secs.to_i32 if secs
-    if secs = job.runtime?
-      secs = secs.to_i32
-      secs += [secs // 8, 300].max + Math.sqrt(secs).to_i32
-      return secs
-    else
-      return JOB_STAGE_TIMEOUT[stage]
-    end
+    secs = job.timeout_seconds
   when "renew"
-    if job.hash_plain.has_key? "renew_seconds"
-      secs = job.renew_seconds.to_i32
+    if job.hash_int32.has_key? "renew_seconds"
+      secs = job.renew_seconds
       return secs
     else
       JOB_STAGE_TIMEOUT[stage]
@@ -59,13 +51,18 @@ class Sched
   end
 
   def terminate_timeout_jobs
+    now = Time.utc
     @jobs_cache.each do |jobid, job|
+      next if job.deadline_utc > now
+
       stage = job.job_stage
       next unless JOB_STAGE_TIMEOUT.has_key? stage
+
       timeout = get_timeout(job, stage)
       start_time = Time.parse(job["#{stage}_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
-      now = Time.local
-      if now - start_time > Time::Span.new(seconds: timeout)
+
+      job.deadline_utc = start_time.to_utc + timeout
+      if job.deadline_utc < now
         if terminate_job(job) && JOB_STAGE_NAME2ID[stage] < JOB_STAGE_NAME2ID["finish"]
           job.job_stage = "incomplete"
           job.job_health = "timeout_#{stage}"
