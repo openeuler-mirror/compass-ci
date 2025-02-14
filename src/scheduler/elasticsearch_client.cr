@@ -145,15 +145,24 @@ class Elasticsearch::Client
     es_response
   end
 
-  def query_host(hostname)
-      begin
-        results = self.select("hosts", {"hostname" => hostname})
-        return nil unless results
+  private def create_job(job_content : JSON::Any, job_id : String)
+    # only called on Sched.options.should_write_es
+    @client.create({
+      :index => "jobs", :type => "_doc",
+      :refresh => "wait_for",
+      :id => job_id,
+      :body => job_content,
+    })
+  end
 
-        results[0]["_source"]
-      rescue
-        return nil
-      end
+  private def update_job(job_content : JSON::Any, job_id : String)
+    # only called on Sched.options.should_write_es
+    @client.update({
+      :index => "jobs", :type => "_doc",
+      :refresh => "wait_for",
+      :id => job_id,
+      :body => {:doc => job_content},
+    })
   end
 
   def save_host(host : HostInfo)
@@ -175,6 +184,17 @@ class Elasticsearch::Client
 
     raise "no db configured" unless es_response
     es_response
+  end
+
+  def query_host(hostname)
+      begin
+        results = self.select("hosts", {"hostname" => hostname})
+        return nil unless results
+
+        results[0]["_source"]
+      rescue
+        return nil
+      end
   end
 
   def get_job_content(job_id : String)
@@ -357,26 +377,6 @@ class Elasticsearch::Client
     end
 
     es_response || JSON::Any.new({} of String => JSON::Any)
-  end
-
-  private def create_job(job_content : JSON::Any, job_id : String)
-    # only called on Sched.options.should_write_es
-    @client.create({
-      :index => "jobs", :type => "_doc",
-      :refresh => "wait_for",
-      :id => job_id,
-      :body => job_content,
-    })
-  end
-
-  private def update_job(job_content : JSON::Any, job_id : String)
-    # only called on Sched.options.should_write_es
-    @client.update({
-      :index => "jobs", :type => "_doc",
-      :refresh => "wait_for",
-      :id => job_id,
-      :body => {:doc => job_content},
-    })
   end
 
   def delete(index, id)

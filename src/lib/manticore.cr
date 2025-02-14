@@ -140,13 +140,14 @@ module Manticore
       result
     end
 
-    # This is partial replace, not Manticore's "POST /update", which won't be
-    # used in our project due to it can only work on row-wise attribute values.
-    # Partial replace requires Manticore Buddy. If it doesn't work, make sure Buddy is installed.
+    # Manticore's "POST /update" is partial replace, it has limitation that can
+    # only update row-wise attributes. In Compass we only update number fields
+    # efficiently by this API. We won't use /_update API since it requires
+    # Manticore Buddy, which is not as stable and performant.
     def self.update(index : String, id : Int64, doc : JSON::Any | Hash) : JSON::Any
       client = HTTP::Client.new(HOST, PORT)
       headers = HTTP::Headers{"Content-Type" => "application/json"}
-      response = client.post("/#{index}/_update/#{id}", headers: headers, body: doc.to_json)
+      response = client.post("/#{index}/update/#{id}", headers: headers, body: doc.to_json)
       raise "HTTP error: #{response.status_code}" unless response.status.success?
 
       result = JSON.parse(response.body)
