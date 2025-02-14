@@ -359,44 +359,6 @@ class Elasticsearch::Client
     es_response || JSON::Any.new({} of String => JSON::Any)
   end
 
-  def update_tbox(testbox : String, wtmp_hash : Hash)
-    if Sched.options.should_write_es
-      query = {:index => "testbox", :type => "_doc", :id => testbox}
-      if @client.exists(query)
-        result = @client.get_source(query)
-        raise result unless result.is_a?(JSON::Any)
-
-        result = result.as_h
-      else
-        result = wtmp_hash
-      end
-
-      history = JSON::Any.new([] of JSON::Any)
-      body = { "history" => history}
-
-      body.any_merge!(result)
-      body.any_merge!(wtmp_hash)
-
-      @client.create(
-        {
-          :index => "testbox",
-          :type => "_doc",
-          :id => testbox,
-          :body => body
-        }
-      )
-    end
-
-    if Sched.options.should_write_manticore
-      begin
-        id = Manticore.hash_string_to_i64(testbox)
-        Manticore::Client.update("testbox", id, wtmp_hash)
-      rescue e
-        @log.error("Manticore update_tbox failed: #{e.message}")
-      end
-    end
-  end
-
   private def create_job(job_content : JSON::Any, job_id : String)
     # only called on Sched.options.should_write_es
     @client.create({
