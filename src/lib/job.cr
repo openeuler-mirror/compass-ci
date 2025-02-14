@@ -390,7 +390,6 @@ class JobHash
 
     config
     commit
-    commit_date
     base_commit
     upstream_repo
     upstream_commit

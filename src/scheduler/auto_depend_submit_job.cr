@@ -87,7 +87,6 @@ class Sched
 
     job = Job.new(job_hash, nil)
     job.submit
-    set_commit_date(job)
 
     return job
   end
@@ -116,20 +115,6 @@ class Sched
     @@last_jobid = id64
 
     id
-  end
-
-  def set_commit_date(job)
-    return unless job.upstream_repo?
-    return unless job.upstream_commit?
-
-    repo = job.upstream_repo
-    repo = "#{repo}.git" unless repo.includes?(".git")
-
-    data = JSON.parse(%({"git_repo": "#{repo}",
-                   "git_command": ["git-log", "--pretty=format:%cd", "--date=unix",
-                   "#{job.upstream_commit}", "-1"]}))
-    response = @rgc.git_command(data)
-    job.commit_date = response.body if response.status_code == 200
   end
 
   def save_secrets(job, job_id)
