@@ -39,6 +39,9 @@ else
         }
       ],
       "properties" : {
+        "id" : {
+          "type" : "long"
+        },
         "my_account" : {
           "type" : "keyword"
         },
