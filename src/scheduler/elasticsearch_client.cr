@@ -124,6 +124,7 @@ class Elasticsearch::Client
     es_response || manticore_response
   end
 
+  # caution: pass full doc to replace old doc as a whole
   def replace_doc(index, doc)
     es_response = nil
     manticore_response = nil
@@ -136,6 +137,25 @@ class Elasticsearch::Client
     if Sched.options.should_write_manticore
       content = doc.to_manticore
       manticore_response = Manticore::Client.replace_by_id(index, doc.id64, content)
+    end
+
+    es_response || manticore_response
+  end
+
+  # caution: manticore only supports in-place updating row-wise attributes,
+  # like numbers
+  def update_doc(index, partial_doc)
+    es_response = nil
+    manticore_response = nil
+
+    if Sched.options.should_write_es
+      content = partial_doc.to_json_any
+      es_response = es_update_doc(index, partial_doc.id_es, content)
+    end
+
+    if Sched.options.should_write_manticore
+      content = partial_doc.to_manticore
+      manticore_response = Manticore::Client.update_by_id(index, partial_doc.id64, content)
     end
 
     es_response || manticore_response
