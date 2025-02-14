@@ -20,7 +20,16 @@ class HostInfo
   property hash_bool : Hash(String, Bool) = Hash(String, Bool).new
   property hash_all : Hash(String, JSON::Any) = Hash(String, JSON::Any).new
 
+  def id64
+    @id
+  end
+
+  def id_es
+    @id
+  end
+
   # freemem unit: MB, dynamic updated, only for qemu/docker host machines
+  # please keep UINT32_KEYS in sync with sbin/manti-table-hosts.sql
   UINT32_KEYS = %w(
     nr_node
     nr_cpu
@@ -100,8 +109,6 @@ class HostInfo
   def load_id(parsed_data)
     if parsed_data.has_key? "id"
       @id = parsed_data["id"].as_i64
-    elsif @hash_str_array.has_key? "mac_addr"
-      @id = mac_to_int64(self.mac_addr.first)
     else
       @id = Manticore.hash_string_to_i64(self.hostname)
     end
@@ -150,14 +157,15 @@ class HostInfo
 
   FULL_TEXT_KEYS = %w[ model_name bios system baseboard cpu memory_info cards network disks ]
 
+  # please keep top level key assignments in sync with sbin/manti-table-hosts.sql
   def to_manticore
     mjob = @hash_all.dup
     mjob["id"] = JSON::Any.new(@id)
-    mjob["job_id"] = JSON::Any.new(@job_id)
 
     @hash_uint32.keys.each do |field|
       mjob[field] = JSON::Any.new @hash_uint32[field]
     end
+    mjob["job_id"] = JSON::Any.new(@job_id)
 
     full_text_kv = Manticore::FullTextWords.create_full_text_kv(mjob, FULL_TEXT_KEYS)
 
@@ -359,6 +367,6 @@ class Sched
   def api_register_host(host_hash : Hash(String, JSON::Any))
     host_info = HostInfo.from_parsed(host_hash)
     @hosts_cache.add_host(host_info)
-    @es.save_host(host_info)
+    @es.replace_doc("hosts", host_info)
   end
 end
