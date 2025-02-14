@@ -5,7 +5,6 @@ require "../redis_client"
 require "../elasticsearch_client"
 require "../../lib/utils"
 require "../../lib/json_logger"
-require "../../lib/etcd_client"
 require "../../lib/remote_git_client"
 require "../../lib/scheduler_api"
 

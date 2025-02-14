@@ -98,13 +98,6 @@ class Sched
   # job finish or abort
   def on_job_close(job)
 
-    if job.job_health != "success"
-      if job.has_key?("snapshot_id") && !job.snapshot_id.empty?
-        data = {"build_id" => job.build_id, "job_id" => job.id, "build_type" => job.build_type, "emsx" => job.emsx}
-        @etcd.put_not_exists("update_jobs/#{job.id}", data.to_json)
-      end
-    end
-
     job.set_boot_seconds
 
     if job.job_stage == "incomplete"

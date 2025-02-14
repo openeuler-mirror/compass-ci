@@ -7,7 +7,6 @@ require "any_merge"
 
 require "./job"
 require "./utils"
-require "./etcd_client"
 require "./block_helper"
 require "./remote_git_client"
 require "./constants"
@@ -64,7 +63,6 @@ class Sched
   def initialize()
     @es = Elasticsearch::Client.new
     @redis = RedisClient.instance
-    @etcd = EtcdClient.new
     @rgc = RemoteGitClient.new
     @log = JSONLogger.new
     @repo = Repo.new
@@ -79,10 +77,6 @@ class Sched
 
   def debug_message(env, response)
     @log.info(%({"from": "#{env.request.remote_address}", "response": #{response.to_json}}))
-  end
-
-  def etcd_close
-    @etcd.close
   end
 
   def alive(version)

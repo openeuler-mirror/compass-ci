@@ -3,7 +3,6 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 require "yaml"
 
-require "../lib/etcd_client"
 require "../lib/json_logger"
 require "../scheduler/elasticsearch_client"
 require "../scheduler/redis_client"
@@ -17,7 +16,6 @@ class StatsWorker
 
   def initialize
     @es = Elasticsearch::Client.new
-    @etcd = EtcdClient.new
     @rc = RegressionClient.new
     @log = JSONLogger.new
   end
@@ -25,21 +23,11 @@ class StatsWorker
   def handle(job)
     begin
       result_post_processing(job)
-      target_queue_path = "/queues/post-extract/#{job.id}"
-      @etcd.put(target_queue_path, job.id)
     rescue e
       @log.error(e.message)
       # incase of many error message when ETCD, ES does not work
       sleep(10.seconds)
-    ensure
-      delete_id2job(job.id) if job.id
-      @etcd.close
     end
-  end
-
-  def delete_id2job(id)
-    res = @etcd.delete("sched/id2job/#{id}")
-    @log.info("extract-stats delete id2job from etcd #{id}: #{res}")
   end
 
   def store_device(result_root, job)
@@ -212,10 +200,6 @@ class StatsWorker
     unless new_error_ids.empty?
       sample_error_id = new_error_ids.sample
       @log.info("send a delimiter task: job_id is #{job_id}")
-      queue = "#{DELIMITER_TASK_QUEUE}/#{job_id}"
-      value = %({"job_id": "#{job_id}", "error_id": "#{sample_error_id}"})
-      @etcd.put(queue, value)
-
       msg = %({"job_id": "#{job_id}", "new_error_id": "#{sample_error_id}"})
       @log.info(msg)
     end

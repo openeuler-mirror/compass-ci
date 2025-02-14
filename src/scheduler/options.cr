@@ -11,7 +11,6 @@ struct SchedOptions
   include YAML::Serializable
 
   property has_redis : Bool = true
-  property has_etcd : Bool = true
   property should_read_es : Bool = true
   property should_write_es : Bool = true
   property should_read_manticore : Bool = false
@@ -24,10 +23,6 @@ struct SchedOptions
   property redis_port : Int32 = JOB_REDIS_PORT
   property redis_passwd : String = ""
   property redis_is_cluster : Bool = false
-
-  property etcd_host : String = ETCD_HOST
-  property etcd_port : Int32 = ETCD_PORT
-  property etcd_version : String = ETCD_VERSION
 
   property es_host : String = JOB_ES_HOST
   property es_port : Int32 = JOB_ES_PORT
@@ -44,8 +39,6 @@ struct SchedOptions
       lab_id
       redis_host
       redis_passwd
-      etcd_host
-      etcd_passwd
       es_host
       es_user
       es_password
@@ -54,7 +47,6 @@ struct SchedOptions
   NUMBER_OPTIONS = %w(
       sched_port
       redis_port
-      etcd_port
       es_port
       manticore_port
   )
