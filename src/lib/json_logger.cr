@@ -72,7 +72,7 @@ class JSONLogger < Log
       end
 
       # Build the TSV+KV line
-      tsv_line = [level, datetime].join("\t")
+      tsv_line = [level, datetime, logger_hash.delete("message")].join("\t")
       kv_pairs = logger_hash.map { |key, value| "#{key}=#{value}" }.join("\t")
 
       # Write the TSV+KV line to the output

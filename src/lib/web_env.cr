@@ -3,7 +3,6 @@
 
 require "./sched"
 require "./json_logger"
-require "./updaterepo"
 
 class HTTP::Server
   # Instances of this class are passed to an `HTTP::Server` handler.

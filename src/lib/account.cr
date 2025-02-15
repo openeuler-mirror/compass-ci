@@ -113,9 +113,9 @@ class Sched
     return unless detect_local_client(env)
 
     account_hash = JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
-    pass = account_hash.delete("admin_password")
+    pass = account_hash.delete("admin_token")
     return unless pass
-    return unless pass.as_s == Sched.options.admin_password
+    return unless pass.as_s == Sched.options.admin_token
 
     account_info = AccountInfo.from_json(account_hash.to_json)
     @accounts_cache.add_account(account_info)

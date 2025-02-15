@@ -15,12 +15,12 @@ module Scheduler
 
   # Parse command-line options
   def self.parse_options
-    config_file = SCHEDULER_CONFIG_FILE
+    config_files = ["./scheduler-config.yaml", SCHEDULER_CONFIG_FILE]
     OptionParser.parse do |parser|
       parser.banner = "Usage: scheduler [arguments]"
 
       parser.on "-c CONFIG", "--config=CONFIG", "Path to the configuration file" do |config|
-        config_file = config
+        config_files = [config]
       end
 
       parser.on "-h", "--help", "Show help" do
@@ -35,17 +35,19 @@ module Scheduler
       end
     end
 
-    load_config(config_file)
+    load_config(config_files)
   end
 
   # Load the configuration file into a SchedOptions struct
-  def self.load_config(config_file : String)
-    if File.exists?(config_file)
-      Sched.options = SchedOptions.from_yaml(File.read(config_file))
-      Sched.options.load_env # ENV vars can override config options
-    else
-      LOG.warn("Config file #{config_file} not found. Using default options.")
+  def self.load_config(config_files : Array(String))
+    config_files.each do |config_file|
+      if File.exists?(config_file)
+        Sched.options = SchedOptions.from_yaml(File.read(config_file))
+        Sched.options.load_env # ENV vars can override config options
+        return
+      end
     end
+    LOG.warn("Config files #{config_files.join(" or ")} not found. Using default options.")
   rescue e
     LOG.error("Failed to load config file: #{e}")
     exit(1)
@@ -58,7 +60,7 @@ module Scheduler
 
   # Start the Kemal server using the configuration
   def self.start_kemal_server
-    Kemal.run(ENV["NODE_PORT"].to_i32)
+    Kemal.run((ENV["NODE_PORT"]? || "3000").to_i32)
   end
 
   # Main entry point for the scheduler

@@ -15,6 +15,7 @@ pkgs=(
 	rubygems-integration
 	ruby-dev
 	ruby-docker-api
+	ruby-faye-websocket
 	bridge-utils
 	qemu-system
 	lvm2

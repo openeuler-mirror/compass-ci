@@ -191,7 +191,7 @@ class MultiQemuDocker
       freemem: free_memory_mb,
       tbox_type: @options[:tbox_type],
       is_remote: @options[:is_remote],
-      arch: RbConfig::CONFIG['host_cpu']
+      arch: RbConfig::CONFIG['host_cpu'],
       tags: []
     }
     @ws.send(status.to_json)

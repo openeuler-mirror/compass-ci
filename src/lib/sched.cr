@@ -65,7 +65,6 @@ class Sched
     @redis = RedisClient.instance
     @rgc = RemoteGitClient.new
     @log = JSONLogger.new
-    @repo = Repo.new
     @cluster = Cluster.new
     @pkgbuild = PkgBuild.new
     # Load initial hosts data from ES
