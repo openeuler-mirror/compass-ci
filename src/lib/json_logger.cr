@@ -46,7 +46,7 @@ class JSONLogger < Log
       get_env_info(@env.as(HTTP::Server::Context)) if @env
 
       # Use local timezone or UTC for the timestamp
-      datetime = entry.timestamp.to_s("%Y-%m-%d_%H:%M:%S.%3N%z")
+      datetime = entry.timestamp.to_s("%Y-%m-%d %H:%M:%S.%3N%z")
       level = entry.severity.to_s.upcase
 
       # Handle message of types Exception | String | Hash(String, String)

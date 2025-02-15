@@ -4,11 +4,11 @@ require 'optparse'
 require 'etc'
 require 'json'
 require 'yaml'
+require 'fcntl'
 require 'rbconfig'
 require 'fileutils'
 require 'faye/websocket'
 require 'eventmachine'
-require 'docker-api'
 
 # Load common libraries
 require_relative 'lib/jwt'
@@ -29,9 +29,11 @@ SCHED_PORT = ENV['SCHED_HOST'] || defaults['SCHED_PORT'] || 3000
 
 DOMAIN_NAME = defaults['DOMAIN_NAME']
 
+BASE_DIR = Process.uid.zero? ? "/srv" : "#{ENV['HOME']}/.cache"
+
 class MultiQemuDocker
   DEFAULT_OPTIONS = {
-    hostname: ENV['HOSTNAME'] || 'default-host',
+    hostname: ENV['HOST'] || ENV['HOSTNAME'] || `hostname`.chomp,
     tbox_type: 'qemu,container',
     max_qemu: 0,
     max_container: 0,
@@ -66,10 +68,10 @@ class MultiQemuDocker
 
   def setup_directories
     File.umask(0000) # Ensure directories are created with proper permissions
-    FileUtils.mkdir_p(ENV["HOSTS_DIR"] = "/srv/cci/hosts")
-    FileUtils.mkdir_p(ENV["JOBS_DIR"] = "/srv/cci/jobs")
-    FileUtils.mkdir_p(ENV["PIDS_DIR"] = "/srv/cci/pids")
-    FileUtils.mkdir_p(ENV["LOGS_DIR"] = "/srv/cci/logs")
+    FileUtils.mkdir_p(ENV["HOSTS_DIR"] = "#{BASE_DIR}/cci/hosts")
+    FileUtils.mkdir_p(ENV["JOBS_DIR"] = "#{BASE_DIR}/cci/jobs")
+    FileUtils.mkdir_p(ENV["PIDS_DIR"] = "#{BASE_DIR}/cci/pids")
+    FileUtils.mkdir_p(ENV["LOGS_DIR"] = "#{BASE_DIR}/cci/logs")
   end
 
   def update_options
@@ -83,7 +85,7 @@ class MultiQemuDocker
 
   def create_fifo
     unless File.exist?(JOB_DONE_FIFO_PATH)
-      FileUtils.mkfifo(JOB_DONE_FIFO_PATH)
+      system('mkfifo', JOB_DONE_FIFO_PATH)
     end
   end
 
@@ -91,7 +93,7 @@ class MultiQemuDocker
     create_fifo
 
     Thread.new do
-      File.open(FIFO_PATH, 'r') do |fifo|
+      File.open(JOB_DONE_FIFO_PATH, 'r') do |fifo|
         loop do
           job_id = fifo.gets.chomp
           @jobs.remove_job(job_id)
@@ -102,7 +104,7 @@ class MultiQemuDocker
   end
 
   def open_websocket(url)
-    if is_remote.to_s == 'true'
+    if @options[:is_remote]
       jwt = load_jwt?
       ws = Faye::WebSocket::Client.new(url, [], :headers => { 'Authorization' => jwt })
     else
@@ -178,9 +180,9 @@ class MultiQemuDocker
 
   def build_scheduler_ws_url
     if @options[:is_remote]
-      "wss://#{DOMAIN_NAME}/ws/vm-container-provider/#{@options[:hostname]}"
+      "wss://#{DOMAIN_NAME}/scheduler/vm-container-provider/#{@options[:hostname]}"
     else
-      "ws://#{SCHED_HOST}:#{SCHED_PORT}/ws/vm-container-provider/#{@options[:hostname]}"
+      "ws://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/vm-container-provider/#{@options[:hostname]}"
     end
   end
 
@@ -356,11 +358,6 @@ class MultiQemuDocker
     end
   end
 
-  def tail_log(job_id)
-    # Log streaming logic using WebSocket
-    system("tail -f /srv/cci/serial/logs/#{job_id}.log")
-  end
-
   def start_console_session(message)
     job_id = message['job_id']
     testbox_type = message['testbox_type']
@@ -397,18 +394,33 @@ class MultiQemuDocker
 
   def start_docker_console(job_id, job)
     container_id = job_id
-    exec = Docker::Exec.create(container_id, cmd: '/bin/bash', tty: true, stdin: true)
-    stream = Docker::Exec.start(exec, tty: true, stdin: true, socket: true)
+    job[:console_io] = nil
 
-    job[:console_io] = stream
+    begin
+      job[:console_thread] = Thread.new do
+        PTY.spawn("docker", "exec", "-it", container_id, "/bin/bash") do |output, input, pid|
+          job[:console_io] = input
+          job[:docker_pid] = pid
 
-    # Thread to read from docker exec stream
-    job[:console_thread] = Thread.new do
-      while data = stream.read(1024)
-        @ws.send({ type: 'console-output', job_id: job_id, data: data }.to_json)
+          begin
+            loop do
+              data = output.readpartial(1024)
+              @ws.send({ type: 'console-output', job_id: job_id, data: data }.to_json)
+            end
+          rescue EOFError, Errno::EIO
+            # Process exited normally
+          rescue => e
+            puts "Docker console read error: #{e}"
+          ensure
+            input.close rescue nil
+            output.close rescue nil
+            job.delete(:console_io)
+            job.delete(:docker_pid)
+          end
+        end
+      rescue => e
+        puts "Failed to start Docker console: #{e}"
       end
-    rescue => e
-      puts "Docker console error: #{e}"
     end
   end
 
@@ -433,10 +445,24 @@ class MultiQemuDocker
     return unless job
     return unless job[:console_io]
 
-    job[:console_io].close
+    begin
+      job[:console_io].close
+    rescue => e
+      puts "Error closing console IO: #{e}"
+    end
+
+    if job[:docker_pid]
+      begin
+        Process.kill('TERM', job[:docker_pid])
+      rescue => e
+        puts "Error killing Docker process: #{e}"
+      end
+    end
+
     job[:console_thread].kill if job[:console_thread]
     job.delete(:console_io)
     job.delete(:console_thread)
+    job.delete(:docker_pid)
   end
 
   def update_code(commit_id)
@@ -458,7 +484,6 @@ class MultiQemuDocker
   def safe_stop
     # Graceful shutdown logic
     EventMachine.stop
-    system("systemctl stop #{ENV['suite']}.service")
   end
 
 end
