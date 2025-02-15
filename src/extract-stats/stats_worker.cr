@@ -24,7 +24,7 @@ class StatsWorker
     begin
       result_post_processing(job)
     rescue e
-      @log.error(e.message)
+      @log.error(e)
       # incase of many error message when ETCD, ES does not work
       sleep(10.seconds)
     end
@@ -211,7 +211,7 @@ class StatsWorker
       begin
         is_exists = @rc.check_error_id error_id
       rescue e
-        @log.error(e.message)
+        @log.error(e)
         next
       end
       next if is_exists

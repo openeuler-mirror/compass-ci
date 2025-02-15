@@ -33,9 +33,9 @@ class Sched
   end
 
   def submit_reverse_depend_jobs(env)
-    body = env.request.body.not_nil!.gets_to_end
-    env.set "log", body
+    env.set "log", env.request.body.to_s
 
+    body = env.request.body.not_nil!.gets_to_end
     body = JSON.parse(body).as_h
     return if body["reverse_depends"].to_s.empty?
 

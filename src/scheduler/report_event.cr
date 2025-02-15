@@ -3,8 +3,8 @@
 
 class Sched
   def report_event(env)
-    body = env.request.body.not_nil!.gets_to_end
-    env.set "log", body
+    body = env.request.body
+    env.set "log", body.to_s
   rescue e
     env.response.status_code = 500
     @log.warn({

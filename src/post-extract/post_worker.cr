@@ -33,7 +33,7 @@ class PostWorker
       @etcd.delete(queue_path)
     rescue e
       channel.send(queue_path)
-      @log.error(e.message)
+      @log.error(e)
       # incase of many error message when ETCD, ES does not work
       sleep(10.seconds)
     ensure

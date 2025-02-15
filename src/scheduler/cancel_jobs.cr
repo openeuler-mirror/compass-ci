@@ -18,10 +18,7 @@ class Sched
     { "results" => results }
   rescue e
     env.response.status_code = 202
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
+    @log.warn(e)
 
     { "error_msg" => e.to_s }
   end
@@ -92,12 +89,7 @@ class Sched
       job["job_health"] = "cancel"
       update_jobs << { "update" => { "index" => "jobs", "id" => job_id, "doc" => job.to_json_any}}
     rescue e
-      @log.warn({
-        "job_id" => job_id,
-        "job_state" => "cancel",
-        "message" => e.to_s,
-        "error_message" => e.inspect_with_backtrace.to_s
-      })
+      @log.warn(e)
 
       results << {
         "result" => "failed",

@@ -146,7 +146,6 @@ class PkgBuild < PluginsCommon
     end
 
     build_job.import2hash(default)
-    @log.info(build_job)
     return build_job
   end
 

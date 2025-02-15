@@ -3,71 +3,80 @@
 
 require "log"
 require "json"
-require "any_merge"
 require "kemal"
 
 add_context_storage_type(Time::Span)
 
 class JSONLogger < Log
   def initialize(@env = nil)
-    @env_info = Hash(String, String | Int32 | Float64 | JSON::Any).new
+    @env_info = Hash(String, String | Int32 | Int64).new
     super("", Log::IOBackend.new(formatter: my_formatter), :trace)
   end
 
-  def trace(msg)
+  def trace(msg : Exception | String | Hash(String, String))
     self.trace { msg }
   end
 
-  def debug(msg)
+  def debug(msg : Exception | String | Hash(String, String))
     self.debug { msg }
   end
 
-  def info(msg)
+  def info(msg : Exception | String | Hash(String, String))
     self.info { msg }
   end
 
-  def notice(msg)
+  def notice(msg : Exception | String | Hash(String, String))
     self.notice { msg }
   end
 
-  def warn(msg)
+  def warn(msg : Exception | String | Hash(String, String))
     self.warn { msg }
   end
 
-  def error(msg)
+  def error(msg : Exception | String | Hash(String, String))
     self.error { msg }
   end
 
-  def fatal(msg)
+  def fatal(msg : Exception | String | Hash(String, String))
     self.fatal { msg }
   end
 
   def my_formatter
     Log::Formatter.new do |entry, io|
       get_env_info(@env.as(HTTP::Server::Context)) if @env
-      level_num = entry.severity.to_i32
-      datetime = entry.timestamp.to_s("%Y-%m-%dT%H:%M:%S.%3N+0800")
-      logger_hash = JSON.parse(%({"level_num": #{level_num},
-                               "level": "#{entry.severity.to_s.upcase}",
-                               "time": "#{datetime}"})).as_h
 
+      # Use local timezone or UTC for the timestamp
+      datetime = entry.timestamp.to_s("%Y-%m-%d_%H:%M:%S.%3N%z")
+      level = entry.severity.to_s.upcase
+
+      # Handle message of types Exception | String | Hash(String, String)
       msg = entry.message
-      begin
-        message = JSON.parse(msg).as_h
-      rescue
-        message = {"message" => msg}
+      message = case msg
+                when Exception
+                  {"message" => msg.message.to_s, "exception" => msg.class.to_s}
+                when String
+                  {"message" => msg}
+                when Hash
+                  msg
+                else
+                  {"message" => msg.to_s}
+                end
+
+      # Merge message and @env_info
+      logger_hash = message.merge(@env_info)
+
+      # Send job event if job_id is present
+      if logger_hash.has_key?("job_id")
+        jobid = logger_hash["job_id"].to_i64
+        Sched.instance.send_job_event(jobid, logger_hash.to_json)
       end
-      logger_hash.any_merge!(message)
-      logger_hash.any_merge!(@env_info)
 
-      json_str = logger_hash.to_json
+      # Build the TSV+KV line
+      tsv_line = [level, datetime].join("\t")
+      kv_pairs = logger_hash.map { |key, value| "#{key}=#{value}" }.join("\t")
 
-      if logger_hash.has_key? "job_id"
-        jobid = logger_hash["job_id"].as_s.to_i64
-        Sched.instance.send_job_event(jobid, json_str)
-      end
-
-      io << json_str
+      # Write the TSV+KV line to the output
+      io << tsv_line << "\t" << kv_pairs
     end
   end
 
@@ -82,14 +91,6 @@ class JSONLogger < Log
     @env_info["api"] = env.get?("api").to_s if env.get?("api")
 
     set_elapsed(env)
-    merge_env_log(env)
-  end
-
-  private def merge_env_log(env)
-    return unless log = env.get?("log")
-
-    log = JSON.parse(log.to_s).as_h
-    @env_info.any_merge!(log)
   end
 
   private def set_elapsed(env : HTTP::Server::Context)
@@ -97,7 +98,7 @@ class JSONLogger < Log
     return unless start_time
 
     elapsed_time = (Time.monotonic - start_time.as(Time::Span)).total_milliseconds
-    @env_info["elapsed_time"] = elapsed_time
+    @env_info["elapsed_time"] = elapsed_time.to_i32
 
     if elapsed_time >= 1
       elapsed = "#{elapsed_time.round(2)}ms"
