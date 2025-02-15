@@ -4,8 +4,6 @@
 require "./scheduler/constants.cr"
 require "./scheduler/api.cr"
 require "./lib/json_logger"
-require "./lib/do_local_pack"
-require "./lib/create_secrets_yaml"
 
 require "kemal"
 require "option_parser"
@@ -53,11 +51,6 @@ module Scheduler
     exit(1)
   end
 
-  def self.initialize_scheduler
-    create_secrets_yaml("scheduler")
-    do_local_pack
-  end
-
   # Start background tasks
   def self.start_background_tasks
     spawn Sched.instance.dispatch_worker
@@ -72,7 +65,6 @@ module Scheduler
   def self.run
     parse_options
 
-    initialize_scheduler
     start_background_tasks
     start_kemal_server
   rescue e
