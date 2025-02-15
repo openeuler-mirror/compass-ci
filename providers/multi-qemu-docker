@@ -5,13 +5,13 @@ require 'etc'
 require 'json'
 require 'yaml'
 require 'fcntl'
-require 'rbconfig'
 require 'fileutils'
 require 'faye/websocket'
 require 'eventmachine'
 
 # Load common libraries
 require_relative 'lib/jwt'
+require_relative 'lib/metrics'
 require_relative 'lib/job_tracker'
 require_relative 'docker/docker'
 require_relative 'qemu/qemu'
@@ -28,6 +28,10 @@ SCHED_HOST = ENV['SCHED_HOST'] || defaults['SCHED_HOST'] || '172.17.0.1'
 SCHED_PORT = ENV['SCHED_HOST'] || defaults['SCHED_PORT'] || 3000
 
 DOMAIN_NAME = defaults['DOMAIN_NAME']
+
+ARCH = `arch`.chomp
+NR_NODE = Dir.glob('/sys/devices/system/node/node*').count
+NR_CPU = Etc.nprocessors
 
 BASE_DIR = Process.uid.zero? ? "/srv" : "#{ENV['HOME']}/.cache"
 
@@ -187,37 +191,44 @@ class MultiQemuDocker
   end
 
   def send_status
+    now = Time.now
+    return if @prev_io_timestamp && now - @prev_io_timestamp < 1
+
+    # Pre-calculate values
+    cpu_stats = cpu_metrics(now)
+    disk_usage = disk_max_used_percent
+    network_stats = network_metrics(now)
+
     status = {
       type: 'host-job-request',
-      host_machine: @options[:hostname],
-      freemem: free_memory_mb,
+      hostname: @options[:hostname],
+      arch: ARCH,
+      nr_cpu: NR_CPU,
+      nr_node: NR_NODE,
       tbox_type: @options[:tbox_type],
       is_remote: @options[:is_remote],
-      arch: RbConfig::CONFIG['host_cpu'],
-      tags: []
+      tags: [],
+
+      freemem: free_memory_mb, # duplicate for fast access in HostRequest
+      disk_max_used_string: disk_usage[:string], # "92% /srv/os"
+      metrics: { # must be number values
+        freemem: free_memory_mb,
+        freemem_percent: (100 * free_memory_mb) / total_memory_mb, # Integer division
+        disk_max_used_percent: disk_usage[:value], # 92
+        cpu_idle_percent: cpu_stats[:idle],
+        cpu_iowait_percent: cpu_stats[:iowait],
+        cpu_system_percent: cpu_stats[:system],
+        disk_io_util_percent: disk_io_utilization(now),
+        network_util_percent: network_stats[:utilization],
+        network_errors_per_sec: network_stats[:errors],
+        uptime_minutes: (File.read('/proc/uptime').split[0].to_i / 60), # Integer division
+      }
     }
+    # pp status
     @ws.send(status.to_json)
   end
 
-  def total_memory_mb
-    @last_meminfo["MemTotal"]
-  end
-
-  def free_memory_mb
-    @last_meminfo["MemFree"]
-  end
-
-  def parse_meminfo
-    meminfo_hash = {}
-    File.open('/proc/meminfo', 'r') do |file|
-      file.each_line do |line|
-        key, value = line.split(':')
-        meminfo_hash[key.strip] = value.strip.to_i >> 10 # Convert bytes to MiB
-      end
-    end
-    meminfo_hash
-  end
-
+  # report status every 10 seconds
   def start_heartbeat
     EM.add_periodic_timer(HEARTBEAT_INTERVAL) { send_status }
   end
