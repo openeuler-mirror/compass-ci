@@ -75,44 +75,6 @@ module Utils
     end
   end
 
-  def is_valid_account?(my_info, account_info)
-    return false unless account_info.is_a?(JSON::Any)
-
-    account_info = account_info.as_h
-
-    return false unless my_info["my_name"]? == account_info["my_name"]?
-    return false unless my_info["my_token"]? == account_info["my_token"]?
-    return false unless my_info["my_account"]? == account_info["my_account"]?
-    return true
-  end
-
-  def check_account_info(my_info, account_info)
-    error_msg = "Failed to verify the account.\n"
-    error_msg += "Please refer to https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md"
-
-    unless my_info["my_account"]?
-      error_msg = "Missing required job key: my_account.\n"
-      error_msg += "We generated the my_account for you automatically.\n"
-      error_msg += "Add 'my_account: #{account_info["my_account"]}' to: "
-      error_msg += "~/.config/compass-ci/defaults/account.yaml\n"
-      error_msg += "You can also re-send 'apply account' email to specify a custom my_account name.\n"
-      flag = false
-    end
-
-    flag = is_valid_account?(my_info, account_info) unless flag == false
-    return if flag
-
-    JSONLogger.new.warn({
-      "msg" => "Invalid account",
-      "my_email" => my_info["my_email"]?.to_s,
-      "my_name" => my_info["my_name"]?.to_s,
-      "suite" => my_info["suite"]?.to_s,
-      "testbox" => my_info["testbox"]?.to_s
-    }.to_json)
-
-    raise error_msg
-  end
-
   def get_project_info(json_file, project_name)
     begin
       jf = File.read(json_file)
@@ -215,5 +177,38 @@ module Utils
       pp "cant find /etc/compass-ci/scheduler/vms.yaml"
       return Hash(String, Hash(String, Hash(String, String))).new
     end
+  end
+
+  def private_ip?(ip : String) : Bool
+    # Check for localhost (IPv4 and IPv6)
+    return true if ip == "127.0.0.1" || ip == "::1"
+
+    # Check for IPv4 private ranges
+    if ip.includes?('.')
+      ip_parts = ip.split('.').map(&.to_i)
+      case ip_parts[0]
+      when 10
+        return true
+      when 172
+        return ip_parts[1] >= 16 && ip_parts[1] <= 31
+      when 192
+        return ip_parts[1] == 168
+      else
+        return false
+      end
+    end
+
+    # Check for IPv6 private ranges (Unique Local Addresses, fc00::/7)
+    if ip.includes?(':')
+      # Extract the first 8 bits (first 2 hex digits) of the IPv6 address
+      first_two_hex = ip.split(':').first
+      first_byte = first_two_hex.to_i(16) >> 8
+
+      # Check if the address is in the fc00::/7 range (fc00:: to fdff::)
+      return true if first_byte >= 0xfc && first_byte <= 0xfd
+    end
+
+    # If none of the above, it's a public IP
+    false
   end
 end

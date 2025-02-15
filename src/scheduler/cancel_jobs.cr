@@ -6,17 +6,14 @@ class Sched
     body = env.request.body.not_nil!.gets_to_end
 
     content = JSON.parse(body)
-    raise "Missing required key: 'my_email'" unless content["my_email"]?
-
-    account_info = @es.get_account(content["my_email"].to_s)
-    Utils.check_account_info(content, account_info)
+    @accounts_cache.verify_account(content.as_h)
 
     job_ids = content["job_ids"]?
     query = content["query"]?
     raise "Missing required key: 'job_ids' or 'query''" unless (job_ids || query)
 
     job_ids = job_ids.as_a.map(&.as_i64) if job_ids
-    results = cancel(query, job_ids, account_info["my_account"].to_s)
+    results = cancel(query, job_ids, content["my_account"].to_s)
 
     { "results" => results }
   rescue e

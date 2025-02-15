@@ -70,6 +70,7 @@ class Sched
     @pkgbuild = PkgBuild.new
     # Load initial hosts data from ES
     @hosts_cache = Hosts.new(@es)
+    @accounts_cache = Accounts.new(@es)
     refresh_cache_from_es
     setup_serial_consoles
     @stats_worker = StatsWorker.new

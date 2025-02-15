@@ -252,6 +252,11 @@ module Scheduler
     Sched.instance.api_register_host(host_info)
   end
 
+  # register account, only allowed from LAN IP and admin account
+  post "/scheduler/account" do |env|
+    Sched.instance.api_register_account(env)
+  end
+
   # file download server
   get "/scheduler/job-initrd-tmpfs/:job_id/:job_package" do |env|
     Sched.instance.download_file(env)

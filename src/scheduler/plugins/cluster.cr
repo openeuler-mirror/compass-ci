@@ -99,7 +99,6 @@ class Cluster < PluginsCommon
       single_job.nr_nic = "2"
 
       single_job.update_id(job_id)
-      single_job.set_account_info
       single_job.set_defaults
 
       jobs << single_job

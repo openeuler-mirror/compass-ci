@@ -943,7 +943,6 @@ class Job < JobHash
     end
 
     @es = Elasticsearch::Client.new
-    @account_info = JobHash.new(Hash(String, JSON::Any).new)
     @upload_pkg_data = Array(String).new
   end
 
@@ -971,7 +970,6 @@ class Job < JobHash
     check_required_keys()
     check_fields_format()
 
-    set_account_info()
     check_run_time()
     set_defaults()
     delete_account_info()
@@ -997,12 +995,6 @@ class Job < JobHash
     set_timeout_seconds()
     set_params_md5()
     set_memory_minimum()
-  end
-
-  def set_account_info
-    account_info = @es.get_account(self.my_email)
-    Utils.check_account_info(@hash_plain, account_info)
-    @account_info = JobHash.new(account_info.as_h)
   end
 
   def delete_account_info
@@ -1186,25 +1178,6 @@ class Job < JobHash
     s["sshr_port"] = ENV["SSHR_PORT"]
     s["sshr_port_base"] = ENV["SSHR_PORT_BASE"]
     s["sshr_port_len"] = ENV["SSHR_PORT_LEN"]
-
-    return if @account_info.hash_any["found"]? == false
-
-    set_my_ssh_pubkey
-  end
-
-  private def set_my_ssh_pubkey
-    pub_key = self.ssh_pub_key?
-    update_account_my_pub_key(pub_key)
-    self.ssh_pub_key = @account_info.hash_array["my_ssh_pubkey"].first
-  end
-
-  private def update_account_my_pub_key(pub_key)
-    return if pub_key.nil? || pub_key.empty?
-    @account_info.hash_array["my_ssh_pubkey"] ||= [] of String
-    return if @account_info.hash_array["my_ssh_pubkey"].includes?(pub_key)
-
-    @account_info.hash_array["my_ssh_pubkey"] << pub_key
-    @es.replace_doc("accounts", @account_info)
   end
 
   private def set_submit_date
