@@ -94,17 +94,19 @@ end
 # in-memory cache. For safety, only allow api_register_account() from internal
 # IP and admin account.
 class Sched
-  def detect_local_client(env)
-    # Extract the local address
-    local_address = env.request.local_address
-    local_ip = local_address.is_a?(Socket::IPAddress) ? local_address.address : nil
-    return true if local_ip && Utils.private_ip?(local_ip)
+  def check_address(addr)
+    if addr.is_a?(Socket::IPAddress)
+      ip = addr.address
+      return true if ip && Utils.private_ip?(ip)
+    else
+      return false
+    end
+  end
 
-    # Extract the remote address
-    remote_address = env.request.remote_address
-    remote_ip = remote_address.is_a?(Socket::IPAddress) ? remote_address.address : nil
-    return true if remote_ip && Utils.private_ip?(remote_ip)
-    false
+  def detect_local_client(env)
+    return false unless check_address(env.request.local_address)
+    return false unless check_address(env.request.remote_address)
+    return true
   end
 
   def api_register_account(env)
