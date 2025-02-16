@@ -86,8 +86,11 @@ module Utils
   end
 
   def get_service_envs
+    path = "/etc/compass-ci/service/service-env.yaml"
     hash = Hash(String, JSON::Any).new
-    yaml_any = File.open("/etc/compass-ci/service/service-env.yaml") do |content|
+    return hash unless File.exists? path
+
+    yaml_any = File.open(path) do |content|
       YAML.parse(content).as_h?
     end
     return hash unless yaml_any
@@ -95,8 +98,11 @@ module Utils
   end
 
   def get_testbox_keys(flag = "local")
+    path = "/etc/compass-ci/scheduler/#{flag}-testbox-env.yaml"
     hash = Hash(String, JSON::Any).new
-    yaml_any = File.open("/etc/compass-ci/scheduler/#{flag}-testbox-env.yaml") do |content|
+    return hash unless File.exists? path
+
+    yaml_any = File.open(path) do |content|
       YAML.parse(content).as_h?
     end
     return hash unless yaml_any
@@ -138,7 +144,10 @@ module Utils
   end
 
   def get_out_service_keys
-    yaml_any = File.open("/etc/compass-ci/scheduler/local-testbox-env.yaml") do |content|
+    path = "/etc/compass-ci/scheduler/local-testbox-env.yaml"
+    return Hash(String, YAML::Any).new unless File.exists? path
+
+    yaml_any = File.open(path) do |content|
       YAML.parse(content).as_h?
     end
 
@@ -147,7 +156,10 @@ module Utils
 
   def get_k8s_service_env(emsx)
     hash = Hash(String, JSON::Any).new
-    yaml_any = File.open("/etc/compass-ci/service/k8s-env.yaml") do |content|
+    path = "/etc/compass-ci/service/k8s-env.yaml"
+    return hash unless File.exists? path
+
+    yaml_any = File.open(path) do |content|
       YAML.parse(content).as_h?
     end
     return hash unless yaml_any
