@@ -47,7 +47,7 @@ module Scheduler
         return
       end
     end
-    LOG.warn("Config files #{config_files.join(" or ")} not found. Using default options.")
+    LOG.warn("Config files #{config_files.join(" and ")} not found. Using default options.")
   rescue e
     LOG.error("Failed to load config file: #{e}")
     exit(1)

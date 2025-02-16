@@ -331,7 +331,7 @@ class Hosts
       @hosts[host_info.hostname] = host_info
       host_info.mac_addr.each do |mac|
         @mac2hostname[mac] = host_info.hostname
-      end
+      end if host_info.hash_str_array.has_key? "mac_addr"
   end
 
   def []?(hostname : String) : HostInfo | Nil
