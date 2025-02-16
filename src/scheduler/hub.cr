@@ -370,12 +370,13 @@ class Sched
 
     socket.on_message do |raw_message|
       begin
-        msg = JSON.parse(raw_message)
+        msg = JSON.parse(raw_message).as_h
 
         case msg["type"]?.try(&.as_s)
         when "host-job-request"
           begin
             hostreq = HostRequest.from_json(raw_message)
+            @hosts_cache.pass_info_to_host(hostreq, msg)
             record_hostreq(hostreq)
           rescue ex : JSON::ParseException
             Log.error { "Invalid host request format: #{ex.message}" }

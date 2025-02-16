@@ -247,9 +247,7 @@ module Scheduler
 
   # register host machine
   post "/scheduler/host" do |env|
-    host_info = JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
-
-    Sched.instance.api_register_host(host_info)
+    Sched.instance.api_register_host(env)
   end
 
   # register account, only allowed from LAN IP and admin account

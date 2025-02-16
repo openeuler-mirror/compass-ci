@@ -28,7 +28,7 @@ class HostInfo
     @id
   end
 
-  # freemem unit: MB, dynamic updated, only for qemu/docker host machines
+  # memory unit: MB
   # please keep UINT32_KEYS in sync with sbin/manti-table-hosts.sql
   UINT32_KEYS = %w(
     nr_node
@@ -38,9 +38,22 @@ class HostInfo
     nr_hdd_partitions
     nr_ssd_partitions
 
-    freemem
     boot_time
     reboot_time
+  )
+
+  # freemem unit: MB, dynamic updated, only for qemu/docker host machines
+  UINT32_METRIC_KEYS = %w(
+    freemem
+    freemem_percent
+    disk_max_used_percent
+    cpu_idle_percent
+    cpu_iowait_percent
+    cpu_system_percent
+    disk_io_util_percent
+    network_util_percent
+    network_errors_per_sec
+    uptime_minutes
   )
 
   STR_ARRAY_KEYS = %w(
@@ -61,6 +74,8 @@ class HostInfo
     suite
     my_account
     result_root
+
+    disk_max_used_string
   )
 
   BOOL_KEYS = %w(
@@ -129,7 +144,7 @@ class HostInfo
   def load_uint32(parsed_data, key : String)
     if (key == "memory")
       # it may either be pure number, or number + g/G suffix
-      value = parsed_data[key].as_s.to_i rescue parsed_data[key].as_i64 rescue nil
+      value = Utils.parse_memory_mb(parsed_data[key].as_s).to_i rescue nil
     else
       value = parsed_data[key].as_i64 rescue nil
     end
@@ -232,7 +247,7 @@ class HostInfo
   end
 
   # Generate methods for UInt32 properties
-  {% for name in UINT32_KEYS %}
+  {% for name in UINT32_KEYS + UINT32_METRIC_KEYS %}
     def {{name.id}} : UInt32
       @hash_uint32[{{name}}]
     end
@@ -361,12 +376,44 @@ class Hosts
     # host.reboot_time = job.deadline
   end
 
+  def pass_info_to_host(host_req, msg)
+    hostinfo = get_host(host_req.host_machine)
+    unless hostinfo
+      hostinfo = HostInfo.from_parsed(msg)
+      add_host hostinfo
+    end
+
+    # Pass on metrics from provider websocket regular messages.
+    # HW machine metrics are not reported together in msg, but via api_register_host() "report_metrics" case.
+    if host_req.tbox_type != "hw"
+      HostInfo::UINT32_METRIC_KEYS.each do |key|
+        hostinfo.hash_uint32[key] =
+        host_req.metrics[key] if host_req.metrics.has_key? key
+      end
+      hostinfo.hash_str["disk_max_used_string"] = host_req.disk_max_used_string unless host_req.disk_max_used_string.empty?
+      hostinfo.freemem = host_req.freemem
+    end
+  end
 end
 
 class Sched
-  def api_register_host(host_hash : Hash(String, JSON::Any))
-    host_info = HostInfo.from_parsed(host_hash)
-    @hosts_cache.add_host(host_info)
-    @es.replace_doc("hosts", host_info)
+  def update_host_metrics(hostname, hash)
+    return unless @hosts_cache.hosts.has_key? hostname
+    hi = @hosts_cache[hostname]
+    HostInfo::UINT32_METRIC_KEYS.each do |key| hi.load_uint32(hash, key) end
+    ["disk_max_used_string"].each do |key| hi.load_string(hash, key) end
   end
+
+  def api_register_host(env)
+    host_hash = JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+    for_metrics = env.params.query.has_key? "report_metrics"
+    if for_metrics
+      update_host_metrics(host_hash["hostname"].as_s, host_hash)
+    else
+			host_info = HostInfo.from_parsed(host_hash)
+      @hosts_cache.add_host(host_info)
+      @es.replace_doc("hosts", host_info)
+    end
+  end
+
 end

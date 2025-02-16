@@ -239,7 +239,7 @@ class Elasticsearch::Client
         return JSON.parse({"_id" => my_email, "found" => false}.to_json)
       end
     else
-      raise "No backend enabled for read operations"
+      nil
     end
   end
 
@@ -263,7 +263,7 @@ class Elasticsearch::Client
         return 0, 0
       end
     else
-      raise "No backend enabled for read operations"
+      return 0, 0
     end
   end
 
@@ -302,7 +302,7 @@ class Elasticsearch::Client
         return Array(JSON::Any).new
       end
     else
-      raise "No backend enabled for read operations"
+      return Array(JSON::Any).new
     end
   end
 
@@ -345,7 +345,7 @@ class Elasticsearch::Client
         return Array(JSON::Any).new
       end
     else
-      raise "No backend enabled for read operations"
+      return Array(JSON::Any).new
     end
   end
 
@@ -378,7 +378,6 @@ class Elasticsearch::Client
   end
 
   def select(index : String, matches : Hash(String, String), fields : String = "*", others : String = "")
-    results = nil
     if Sched.options.should_read_manticore
       match = build_query_string(matches, " ", false)
       fields = Manticore.filter_sql_fields(fields)
@@ -391,7 +390,7 @@ class Elasticsearch::Client
       body = Manticore.filter_sql_result(body) if fields != '*'
       results = JSON.parse(body)["hits"]["hits"].as_a
       results = Manticore.jobs_from_manticore(results)
-      results
+      return results
     end
 
     if Sched.options.should_read_es
@@ -402,11 +401,10 @@ class Elasticsearch::Client
       host_port = "#{@settings[:host]}:#{@settings[:port]}"
       response = perform_one_request(host_port, "_nlpcn/sql", nil, "POST", sql_cmd)
       body = response.body
-      results = JSON.parse(body)["hits"]["hits"].as_a
+      return results = JSON.parse(body)["hits"]["hits"].as_a
     end
 
-    raise "no db configured" unless results
-    results
+    results = Array(JSON::Any).new
   end
 
   def count_groups(index : String, dimension : String, matches : Hash(String, String)) : Hash(String, Int32)

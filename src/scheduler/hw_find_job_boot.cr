@@ -19,7 +19,7 @@ class Sched
     return boot_content(nil, boot_type) unless host
 
     arch ||= @hosts_cache[host].arch
-    host_req = HostRequest.new(arch, host, "hw", tags, UInt32::MAX, false)
+    host_req = HostRequest.new(arch, host, "hw", tags, @hosts_cache[host].memory, false)
     job = tbox_request_job(host_req)
     job ||= hw_wait_job(host)
     return hw_boot_msg(boot_type, "No job now") unless job

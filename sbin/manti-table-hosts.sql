@@ -7,11 +7,11 @@ CREATE TABLE hosts(
 	nr_hdd_partitions	int,
 	nr_ssd_partitions	int,
 
-	freemem			int,
 	boot_time		int,
 	reboot_time		int,
+
 	job_id			bigint,
 
 	full_text_kv		text
 	j			json,
-) engine='columnar' charset_table='U+0021..U+007E'
+) charset_table='U+0021..U+007E'

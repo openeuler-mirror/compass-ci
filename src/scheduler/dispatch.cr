@@ -20,9 +20,12 @@ struct HostRequest
   @[JSON::Field(ignore: true)]
   property time : Int64 = 0
 
-  property freemem : UInt32 # unit: MB
   property is_remote : Bool
   property tags : Set(String)
+  property freemem : UInt32 # unit: MB, duplicates metrics.freemem for fast access
+
+  property metrics : Hash(String, UInt32)
+  property disk_max_used_string : String
 
   def initialize(@arch, @host_machine, @tbox_type, tags, @freemem, @is_remote)
 
@@ -36,6 +39,9 @@ struct HostRequest
     end
 
     @tags = Set(String).new (tags||"").split(",")
+
+    @disk_max_used_string = ""
+    @metrics = Hash(String, UInt32).new
   end
 end
 
@@ -130,16 +136,15 @@ class Sched
     end
   end
 
-  # providers/qemu.rb get_url "ws://#{DOMAIN_NAME}/ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=true"
   def tbox_request_job(host_req : HostRequest)
     record_hostreq(host_req)
     job = choose_job_for(host_req)
   end
 
   def record_hostreq(host_req : HostRequest)
+    hostname = host_req.host_machine
     host_req.time = Time.local.to_unix
-    @hosts_request[host_req.host_machine] = host_req
-    @hosts_cache[host_req.host_machine].freemem = host_req.freemem
+    @hosts_request[hostname] = host_req
     host_req
   end
 
