@@ -1,5 +1,3 @@
-class MultiQemuDocker
-
 =begin
   Background:
   This module collects and reports server resource metrics (CPU, memory, disk, network) for a cluster monitoring dashboard.
@@ -39,6 +37,43 @@ class MultiQemuDocker
   - Relies on `/proc` filesystem for metric collection.
   - Assumes `df` and `uname` are available on the system.
 =end
+
+def count_disks_sys_block
+  # List directories under /sys/block, which correspond to disks
+  disks = Dir.entries('/sys/block')
+
+  # Filter out hidden entries (e.g., '.' and '..') and device mapper devices (e.g., 'dm-*')
+  disks.reject! { |entry| entry.start_with?('.') || entry.start_with?('dm-') }
+
+  # Return the number of disks found
+  disks.size
+end
+
+def disk_max_used_percent
+  max = {value: 0, string: "0% /"}
+  `df -P`.split("\n")[1..-1].each do |line|
+    parts = line.split
+    usage = parts[4].to_i
+    if usage > max[:value]
+      max[:value] = usage
+      max[:string] = "#{usage}% #{parts[-1]}"
+    end
+  end
+  max
+end
+
+def parse_meminfo
+  meminfo_hash = {}
+  File.open('/proc/meminfo', 'r') do |file|
+    file.each_line do |line|
+      key, value = line.split(':')
+      meminfo_hash[key.strip] = value.strip.to_i >> 10 # Convert bytes to MiB
+    end
+  end
+  meminfo_hash
+end
+
+class MultiQemuDocker
 
   def cpu_metrics(now)
     return @cpu_metrics if @cpu_metrics && @cpu_metrics[:timestamp] && (now - @cpu_metrics[:timestamp] < 1) # Cache for 1 second
@@ -118,19 +153,6 @@ class MultiQemuDocker
     @prev_io_timestamp = now
   end
 
-  def disk_max_used_percent
-    max = {value: 0, string: "0% /"}
-    `df -P`.split("\n")[1..-1].each do |line|
-      parts = line.split
-      usage = parts[4].to_i
-      if usage > max[:value]
-        max[:value] = usage
-        max[:string] = "#{usage}% #{parts[-1]}"
-      end
-    end
-    max
-  end
-
   def total_memory_mb
     @last_meminfo["MemTotal"]
   end
@@ -138,17 +160,6 @@ class MultiQemuDocker
   def free_memory_mb
     @last_meminfo["MemFree"] +
     (@last_meminfo["MemAvailable"] - @last_meminfo["MemFree"]) / 2
-  end
-
-  def parse_meminfo
-    meminfo_hash = {}
-    File.open('/proc/meminfo', 'r') do |file|
-      file.each_line do |line|
-        key, value = line.split(':')
-        meminfo_hash[key.strip] = value.strip.to_i >> 10 # Convert bytes to MiB
-      end
-    end
-    meminfo_hash
   end
 
 end
