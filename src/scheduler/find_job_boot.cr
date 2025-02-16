@@ -120,7 +120,7 @@ class Sched
     return "", ""  unless job.kernel_rpms_url?
     job_id = job.id
 
-    kernel_cache_dir = "/srv/initrd/osimage/custom/kernel_cache_dir"
+    kernel_cache_dir = "#{BASE_DIR}/initrd/osimage/custom/kernel_cache_dir"
     rpms_dir = "#{kernel_cache_dir}/rpms"
     cpio_dir = "#{kernel_cache_dir}/cpio/#{job_id}"
     initrd_dir = "#{kernel_cache_dir}/initrds/#{job_id}"

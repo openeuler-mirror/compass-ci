@@ -39,10 +39,12 @@ SRV_HTTP_CCI_PORT = (ENV.has_key?("SRV_HTTP_CCI_PORT") ? ENV["SRV_HTTP_CCI_PORT"
 CCI_REPOS = (ENV.has_key?("CCI_REPOS") ? ENV["CCI_REPOS"] : "/c")
 LAB_REPO  = "lab-#{LAB}"
 
-SRV_OS     = "/srv/os"
-SRV_INITRD = "/srv/initrd"
-SRV_UPLOAD = "/srv/upload-files"
-SRV_USER_FILE_UPLOAD = "/srv/cci/user-files"
+BASE_DIR = ENV["USER"] == "root" ? "/srv" : "#{ENV["HOME"]}/.cache/cci"
+
+SRV_OS     = "#{BASE_DIR}/os"
+SRV_INITRD = "#{BASE_DIR}/initrd"
+SRV_UPLOAD = "#{BASE_DIR}/upload-files"
+SRV_USER_FILE_UPLOAD = "#{BASE_DIR}/user-files"
 
 INITRD_HTTP_PREFIX = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
 OS_HTTP_PREFIX = "http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}"

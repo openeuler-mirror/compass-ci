@@ -34,7 +34,7 @@ NR_NODE = Dir.glob('/sys/devices/system/node/node*').count
 NR_CPU = Etc.nprocessors
 NR_DISKS = count_disks_sys_block
 
-BASE_DIR = Process.uid.zero? ? "/srv" : "#{ENV['HOME']}/.cache"
+BASE_DIR = Process.uid.zero? ? "/srv" : "#{ENV['HOME']}/.cache/cci"
 
 class MultiQemuDocker
   DEFAULT_OPTIONS = {
@@ -73,10 +73,10 @@ class MultiQemuDocker
 
   def setup_directories
     File.umask(0000) # Ensure directories are created with proper permissions
-    FileUtils.mkdir_p(ENV["HOSTS_DIR"] = "#{BASE_DIR}/cci/hosts")
-    FileUtils.mkdir_p(ENV["JOBS_DIR"] = "#{BASE_DIR}/cci/jobs")
-    FileUtils.mkdir_p(ENV["PIDS_DIR"] = "#{BASE_DIR}/cci/pids")
-    FileUtils.mkdir_p(ENV["LOGS_DIR"] = "#{BASE_DIR}/cci/logs")
+    FileUtils.mkdir_p(ENV["HOSTS_DIR"] = "#{BASE_DIR}/hosts")
+    FileUtils.mkdir_p(ENV["JOBS_DIR"] = "#{BASE_DIR}/jobs")
+    FileUtils.mkdir_p(ENV["PIDS_DIR"] = "#{BASE_DIR}/pids")
+    FileUtils.mkdir_p(ENV["LOGS_DIR"] = "#{BASE_DIR}/logs")
   end
 
   def update_options
