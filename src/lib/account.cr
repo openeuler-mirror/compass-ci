@@ -82,6 +82,8 @@ class Accounts
   end
 
   private def is_valid_account?(request)
+    return true if Sched.options.skip_account_verification
+
     account_info = get_account(request["my_account"].as_s)
     raise "no account for #{request["my_account"].as_s}" unless account_info
 

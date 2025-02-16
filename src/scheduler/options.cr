@@ -12,6 +12,8 @@ struct SchedOptions
 
   property admin_token : String = ""
 
+  property skip_account_verification : Bool = true
+
   property has_redis : Bool = false
   property should_read_es : Bool = false
   property should_write_es : Bool = false
