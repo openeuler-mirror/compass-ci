@@ -9,6 +9,7 @@ CREATE TABLE hosts(
 
 	boot_time		int,
 	reboot_time		int,
+	active_time		int,
 
 	job_id			bigint,
 

@@ -275,6 +275,10 @@ module Scheduler
     Sched.instance.api_view_job(job_id.to_i64, fields)
   end
 
+  get "/scheduler/dashboard/hosts" do |env|
+    Sched.instance.api_dashboard_hosts(env)
+  end
+
   get "/scheduler/lkp/report-ssh-port" do |env|
     Sched.instance.report_ssh_port(env)
 

@@ -43,6 +43,7 @@ class HostInfo
 
     boot_time
     reboot_time
+    active_time
   )
 
   # freemem unit: MB, dynamic updated, only for qemu/docker host machines
@@ -281,15 +282,16 @@ class HostInfo
   # Generate methods for Bool properties
   {% for name in BOOL_KEYS %}
     def {{name.id}} : Bool
-      @hash_bool[{{name}}].to_b
+      @hash_bool.has_key?({{name}}) &&
+      @hash_bool[{{name}}]
     end
 
     def {{name.id + "?"}} : Bool?
-      @hash_bool[{{name}}]?.try(&.to_b)
+      @hash_bool[{{name}}]?
     end
 
     def {{(name + "=").id}}(value : Bool)
-      @hash_bool[{{name}}] = value.to_s
+      @hash_bool[{{name}}] = value
     end
   {% end %}
 

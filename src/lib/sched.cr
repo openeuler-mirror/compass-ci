@@ -34,6 +34,7 @@ require "../scheduler/dispatch"
 require "../scheduler/hub"
 require "../scheduler/lifecycle"
 require "../scheduler/ipmi_console"
+require "../scheduler/dashboard_hosts"
 require "../extract-stats/stats_worker"
 require "../scheduler/options"
 
