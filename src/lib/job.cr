@@ -919,7 +919,7 @@ class JobHash
   end
 
   def settle_job_fields(hostreq : HostRequest)
-    self.host_machine = hostreq.host_machine
+    self.host_machine = hostreq.hostname
     self.update_kernel_params
 
     self.is_remote = hostreq.is_remote

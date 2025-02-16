@@ -20,7 +20,7 @@ class Sched
     @es.replace_doc("jobs", job)
 
     # Log/notify
-    @log.info("#{hostreq.host_machine} got the job #{job.id}")
+    @log.info("#{hostreq.hostname} got the job #{job.id}")
     @log.info(%({"job_id": "#{job.id}",
               "result_root": "/srv#{job.result_root}",
               "job_state": "set result root"}))

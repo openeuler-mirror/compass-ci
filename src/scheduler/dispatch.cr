@@ -8,7 +8,7 @@ struct HostRequest
   property arch : String
 
   # e.g. taishan200-2280-2s64p-256g--a61
-  property host_machine : String
+  property hostname : String
 
   # e.g. hw | vm | dc | vm,dc
   property tbox_type : String
@@ -27,14 +27,14 @@ struct HostRequest
   property metrics : Hash(String, UInt32)
   property disk_max_used_string : String
 
-  def initialize(@arch, @host_machine, @tbox_type, tags, @freemem, @is_remote)
+  def initialize(@arch, @hostname, @tbox_type, tags, @freemem, @is_remote)
 
     if @tbox_type == "hw"
-      tbox_group = JobHelper.match_tbox_group(@host_machine.sub(/-\d+$/, ""))
-      @host_keys = [ @host_machine, tbox_group, "hw.#{@arch}" ]
+      tbox_group = JobHelper.match_tbox_group(@hostname.sub(/-\d+$/, ""))
+      @host_keys = [ @hostname, tbox_group, "hw.#{@arch}" ]
     else
       # refer to doc/job/fields/testbox.md
-      @host_keys = [ @host_machine ]
+      @host_keys = [ @hostname ]
       @tbox_type.split(",") { |t| @host_keys << "#{t}.#{@arch}" }
     end
 
@@ -70,7 +70,7 @@ class Sched
   # key: host_req.host_keys[]
   property user_sequence = Hash(String, Array(String)).new
 
-  # key: host_machine
+  # key: hostname
   property hostkey_sequence = Hash(String, Array(String)).new
 
   # queues enjoy "green channel", where jobs will be dispatched first when present
@@ -142,7 +142,7 @@ class Sched
   end
 
   def record_hostreq(host_req : HostRequest)
-    hostname = host_req.host_machine
+    hostname = host_req.hostname
     host_req.time = Time.local.to_unix
     @hosts_request[hostname] = host_req
     host_req
@@ -160,7 +160,7 @@ class Sched
 
     hostkeys = host_req.host_keys
     until hostkeys.empty?
-      host_key = next_hostkey_to_try(host_req.host_machine, hostkeys)
+      host_key = next_hostkey_to_try(host_req.hostname, hostkeys)
       next unless host_key
       next unless hostkeys.delete host_key
 
@@ -459,21 +459,21 @@ class Sched
   private def dispatch_job(hostreq : HostRequest, job : JobHash) : Bool
     case job.tbox_type
     when "hw"
-      if channel = @hw_machine_channels[hostreq.host_machine]?
+      if channel = @hw_machine_channels[hostreq.hostname]?
         channel.send(job)
         true
       else
-        Log.error { "HW channel not found for #{hostreq.host_machine}" }
+        Log.error { "HW channel not found for #{hostreq.hostname}" }
         false
       end
     when "vm", "dc"
-      if provider = @provider_sessions[hostreq.host_machine]?
+      if provider = @provider_sessions[hostreq.hostname]?
         on_job_dispatch(job, hostreq)
         msg = boot_content(job, job.tbox_type)
         provider.socket.send(msg)
         true
       else
-        Log.error { "Provider not found for #{hostreq.host_machine}" }
+        Log.error { "Provider not found for #{hostreq.hostname}" }
         false
       end
     else

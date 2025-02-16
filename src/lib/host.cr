@@ -377,7 +377,7 @@ class Hosts
   end
 
   def pass_info_to_host(host_req, msg)
-    hostinfo = get_host(host_req.host_machine)
+    hostinfo = get_host(host_req.hostname)
     unless hostinfo
       hostinfo = HostInfo.from_parsed(msg)
       add_host hostinfo
