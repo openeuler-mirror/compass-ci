@@ -38,6 +38,9 @@ class HostInfo
     nr_hdd_partitions
     nr_ssd_partitions
 
+    nr_vm
+    nr_container
+
     boot_time
     reboot_time
   )

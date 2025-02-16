@@ -207,6 +207,8 @@ class MultiQemuDocker
       nr_cpu: NR_CPU,
       nr_node: NR_NODE,
       nr_disks: NR_DISKS,
+      nr_vm: JobTracker.nr_vm,
+      nr_container: JobTracker.nr_container,
       tbox_type: @options[:tbox_type],
       is_remote: @options[:is_remote],
       tags: [],
