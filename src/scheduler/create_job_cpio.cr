@@ -281,7 +281,7 @@ class Sched
 
     # create result dir and copy job.sh, job.yaml and job.cgz to result dir
     src_dir = File.dirname(temp_yaml)
-    dst_dir = File.join("/srv", job.result_root)
+    dst_dir = File.join(BASE_DIR, job.result_root)
     10.times do
       begin
         FileUtils.mkdir_p(dst_dir)

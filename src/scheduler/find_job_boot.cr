@@ -22,7 +22,7 @@ class Sched
     # Log/notify
     @log.info({"message" => "#{hostreq.hostname} got the job #{job.id}",
                "job_id" => "#{job.id}",
-               "result_root" => "/srv#{job.result_root}",
+               "result_root" => "#{BASE_DIR}#{job.result_root}",
                "job_state" => "set result root"})
     report_workflow_job_event(job["id"].to_s, job)
   end

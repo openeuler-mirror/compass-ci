@@ -36,7 +36,7 @@ class Sched
         "job_id"      => job.id,
         "message"     => "",
         "job_state"   => "submit",
-        "result_root" => "/srv#{job.result_root}",
+        "result_root" => "#{BASE_DIR}#{job.result_root}",
       }
       @log.info(response.last)
     end
