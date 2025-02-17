@@ -287,7 +287,7 @@ class Sched
         FileUtils.mkdir_p(dst_dir)
         break
       rescue e
-        @log.warn("create result_root dir error, result_root: #{dst_dir} error: #{e.to_s}")
+        @log.warn { "create result_root dir error, result_root: #{dst_dir} error: #{e.to_s}" }
         sleep 1.seconds
       end
     end

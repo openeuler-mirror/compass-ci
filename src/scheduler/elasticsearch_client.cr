@@ -298,7 +298,7 @@ class Elasticsearch::Client
         end
         return results
       rescue e
-        @log.error("Manticore search failed: #{e.message}")
+        @log.error(e)
         return Array(JSON::Any).new
       end
     else

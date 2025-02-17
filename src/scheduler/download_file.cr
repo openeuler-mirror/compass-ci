@@ -16,10 +16,7 @@ class Sched
     FileUtils.rm_rf(::File.join [Kemal.config.public_folder, job_id])
   rescue e
     env.response.status_code = 500
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
+    @log.warn(e)
   end
 
 end

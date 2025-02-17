@@ -20,10 +20,10 @@ class Sched
     @es.replace_doc("jobs", job)
 
     # Log/notify
-    @log.info("#{hostreq.hostname} got the job #{job.id}")
-    @log.info(%({"job_id": "#{job.id}",
-              "result_root": "/srv#{job.result_root}",
-              "job_state": "set result root"}))
+    @log.info({"message" => "#{hostreq.hostname} got the job #{job.id}",
+               "job_id" => "#{job.id}",
+               "result_root" => "/srv#{job.result_root}",
+               "job_state" => "set result root"})
     report_workflow_job_event(job["id"].to_s, job)
   end
 

@@ -38,27 +38,21 @@ class Sched
         "job_state"   => "submit",
         "result_root" => "/srv#{job.result_root}",
       }
+      @log.info(response.last)
     end
-
     return response
   rescue e
     env.response.status_code = 202
     @log.warn({
-      "message"       => e.to_s,
+      "message"       => e.inspect_with_backtrace,
       "job_content"   => public_content(job_content),
-      "error_message" => e.inspect_with_backtrace.to_s,
-    }.to_json)
+    })
 
     response = [{
       "job_id"    => "0",
-      "message"   => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s,
       "job_state" => "submit",
+      "message"   => e.inspect_with_backtrace,
     }]
-  ensure
-    response.each do |job_message|
-      @log.info(job_message.to_json)
-    end
   end
 
   def public_content(job_content)

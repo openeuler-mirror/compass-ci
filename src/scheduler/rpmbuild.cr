@@ -16,10 +16,7 @@ class Sched
     spawn Jobfile::Operate.auto_submit_job("install-rpm.yaml", job_info)
   rescue e
     env.response.status_code = 500
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
+    @log.warn(e)
   end
 
   def get_job_info(job)
@@ -48,10 +45,7 @@ class Sched
     submit_reverse_depend_job(common_info)
   rescue e
     env.response.status_code = 500
-    @log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
+    @log.warn(e)
   end
 
   def submit_reverse_depend_job(common_info)

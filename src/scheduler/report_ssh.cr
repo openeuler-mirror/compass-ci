@@ -11,9 +11,9 @@ class Sched
       @redis.hash_set("sched/tbox2ssh_port", testbox, ssh_port)
     end
 
-    @log.info(%({"job_id": "#{job_id}", "state": "set ssh port", "ssh_port": "#{ssh_port}", "tbox_name": "#{testbox}"}))
+    @log.info({"job_id" => "#{job_id}", "state" => "set ssh port", "ssh_port" => "#{ssh_port}", "tbox_name" => "#{testbox}"})
   rescue e
-    @log.warn(e.inspect_with_backtrace)
+    @log.warn(e)
   end
 
   def report_ssh_info(env)
@@ -31,6 +31,6 @@ class Sched
     end
 
     ssh_info["state"] = JSON::Any.new("set ssh port")
-    @log.info(ssh_info.to_json)
+    @log.info { ssh_info.to_json }
   end
 end

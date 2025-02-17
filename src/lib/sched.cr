@@ -83,7 +83,7 @@ class Sched
   def alive(version)
     "LKP Alive! The time is #{Time.local}, version = #{version}"
   rescue e
-    @log.warn(e.inspect_with_backtrace)
+    @log.warn(e)
   end
 
   def get_time

@@ -40,7 +40,7 @@ class PkgBuild < PluginsCommon
     end
 
   rescue ex
-    @log.error("pkgbuild handle job #{ex}")
+    @log.error { "pkgbuild handle job #{ex}" }
     raise ex.to_s
   end
 
@@ -63,7 +63,7 @@ class PkgBuild < PluginsCommon
     job_yaml = create_pkgbuild_yaml(build_for_job_id, pkg_name, pbp)
 
     response = %x($LKP_SRC/sbin/submit #{job_yaml})
-    @log.info("submit pkgbuild job response: #{job_yaml}, #{response}")
+    @log.info{ "submit pkgbuild job response: #{job_yaml}, #{response}" }
 
     response = response.split("\n")[-3]
     return {"latest" => $1} if response =~ /latest job id=(.*)/

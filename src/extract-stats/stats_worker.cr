@@ -199,8 +199,8 @@ class StatsWorker
     new_error_ids = check_new_error_ids(error_ids, job_id)
     unless new_error_ids.empty?
       sample_error_id = new_error_ids.sample
-      @log.info("send a delimiter task: job_id is #{job_id}")
-      msg = %({"job_id": "#{job_id}", "new_error_id": "#{sample_error_id}"})
+      @log.info {"send a delimiter task: job_id is #{job_id}"}
+      msg = {"job_id" => "#{job_id}", "new_error_id" => "#{sample_error_id}"}
       @log.info(msg)
     end
   end

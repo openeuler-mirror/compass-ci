@@ -14,7 +14,7 @@ class Sched
     if TBOX_TYPES.includes?(type)
       key = "/tbox/#{type}/#{_hostname}"
       val = @redis.get(key)
-      @log.info("please retry register, hostname: #{hostname}") if val.nil?
+      @log.info{ "please retry register, hostname: #{hostname}" } if val.nil?
       return 1001 if val.nil?
 
       @redis.expire(key, 60)

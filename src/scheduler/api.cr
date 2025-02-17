@@ -30,7 +30,7 @@ require "../lib/account"
 #
 module Scheduler
   VERSION = "0.2.0"
-  logging false
+  logging true
 
   add_context_storage_type(Time::Span)
 
@@ -39,21 +39,18 @@ module Scheduler
     env.response.headers["Connection"] = "close"
     env.set "api", Sched.instance.get_api(env).to_s
   rescue e
-    env.log.warn(e.inspect_with_backtrace)
+    env.log.warn(e)
   end
 
   after_all do |env|
     env.log.info({
       "from" => env.request.remote_address.to_s,
       "message" => "access_record"
-    }.to_json) if env.response.status_code == 200
+    }) if env.response.status_code == 200
 
     GC.collect
   rescue e
-    env.log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
+    env.log.warn(e)
   end
 
   # ----------------------------------------
@@ -82,10 +79,7 @@ module Scheduler
     status = Sched.instance.heart_beat(env)
     {"status_code" => status}.to_json
   rescue e
-    env.log.warn({
-      "message" => e.to_s,
-      "error_message" => e.inspect_with_backtrace.to_s
-    }.to_json)
+    env.log.warn(e)
   end
 
 

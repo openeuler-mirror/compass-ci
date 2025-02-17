@@ -81,20 +81,16 @@ class Sched
     event_type = job_step.nil? ? "job/stage" : "job/step"
     if job.job_stage? == "finish"
       finish_event = pack_job_event(job_id, job, event_type, job_step, true)
-      return unless !finish_event.nil?
+      return unless finish_event
 
       # XXX: notify pipeline by websocket
       # @etcd.put_not_exists("raw_events/job/#{job_id}/finish", finish_event.to_json)
-      @log.info({
-        "report_event" => finish_event,
-      }.to_json)
+      @log.info { finish_event.to_json }
     end
     event = pack_job_event(job_id, job, event_type, job_step)
-    return unless !event.nil?
+    return unless event
 
     # @etcd.put_not_exists("raw_events/job/#{job_id}", event.to_json)
-    @log.info({
-      "report_event" => event,
-    }.to_json)
+    @log.info { event.to_json }
   end
 end
