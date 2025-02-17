@@ -61,6 +61,7 @@ module Scheduler
   # Start the Kemal server using the configuration
   def self.start_kemal_server
     Kemal.config.host_binding = "::" # listen on all available network interfaces, including both IPv4 and IPv6.
+    Kemal.config.add_handler HTTP::CompressHandler.new
     Kemal.run((ENV["NODE_PORT"]? || "3000").to_i32)
   end
 
