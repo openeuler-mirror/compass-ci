@@ -39,7 +39,7 @@ BASE_DIR = Process.uid.zero? ? "/srv" : "#{ENV['HOME']}/.cache/cci"
 class MultiQemuDocker
   DEFAULT_OPTIONS = {
     hostname: ENV['HOST'] || ENV['HOSTNAME'] || `hostname`.chomp,
-    tbox_type: 'qemu,container',
+    tbox_type: 'vm,dc',
     max_qemu: 0,
     max_container: 0,
     is_remote: false
@@ -160,7 +160,7 @@ class MultiQemuDocker
       opts.banner = 'Usage: multi-qemu-docker [options]'
 
       opts.on('-n HOSTNAME', '--name HOSTNAME', 'Hostname for reporting') { |v| options[:hostname] = v }
-      opts.on('-t TYPE', '--tbox-type TYPE', 'Testbox type (qemu, container, or both by default)') { |v| options[:tbox_type] = v }
+      opts.on('-t TYPE', '--tbox-type TYPE', 'Testbox type (vm/dc, or both by default)') { |v| options[:tbox_type] = v }
       opts.on('--max-qemu COUNT', 'Number of QEMU instances (0 for auto-computing)') { |v| options[:max_qemu] = v }
       opts.on('--max-container COUNT', 'Number of container instances (0 for auto-computing)') { |v| options[:max_container] = v }
       opts.on('-t tags', '--tags TAGS', 'separated by ","') { |v| opt['tags'] = v }
@@ -293,9 +293,9 @@ class MultiQemuDocker
       ENV["is_remote"] = @options[:is_remote].to_s
 
       case message['tbox_type']
-      when 'qemu'
+      when 'vm', 'qemu'
         QemuManager.new(message).start_qemu_instance
-      when 'container'
+      when 'dc', 'container'
         start_container_instance(message)
       end
 
