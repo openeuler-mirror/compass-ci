@@ -139,6 +139,11 @@ class MultiQemuDocker
         safe_stop
         EM.stop
       end
+
+      @ws.on :error do |event|
+        puts "Error occurred: #{event.message}"
+        puts "Please check if server is running on #{@scheduler_ws_url}" if event.message == Errno::ECONNREFUSED
+      end
     end
   rescue => e
     puts "WebSocket error: #{e.message}"
