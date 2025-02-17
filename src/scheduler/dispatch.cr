@@ -430,7 +430,7 @@ class Sched
 
   private def add_hostreq(hostreq)
       # Only consider hosts with sufficient resources
-      if hostreq.freemem >= 10
+      if hostreq.freemem >= 3000
         # Maintain sorted order by freemem (descending)
         index = @host_requests.bsearch_index { |x| x.freemem > hostreq.freemem } || @host_requests.size
         @host_requests.insert(index, hostreq)
