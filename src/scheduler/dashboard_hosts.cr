@@ -266,7 +266,7 @@ class Sched
         <html>
         <head>
           <title>Host Dashboard</title>
-          <meta http-equiv="refresh" content="10">
+          <meta http-equiv="refresh" content="600">
           <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
           <style>
             :root { font-family: 'Roboto', sans-serif; }
