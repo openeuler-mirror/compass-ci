@@ -352,7 +352,7 @@ class Sched
     return if !@jobs_cache_in_submit.delete(job_id)
 
     user = job["my_account"]
-    queue = job["queue"]
+    queue = job["queue"]?
     job.host_keys.each do |hostkey|
       @nr_jobs_by_hostkey[hostkey] -= 1
       @jobid_by_user[hostkey][user][job.schedule_priority].delete(job_id)
@@ -362,7 +362,7 @@ class Sched
 
   private def create_job_schedule_indices(job : JobHash, job_id : Int64)
     user = job["my_account"]
-    queue = job["queue"]
+    queue = job["queue"]?
     job.set_hostkeys.each do |hostkey|
       update_hostkey_indices(hostkey)
       update_user_indices(job, job_id, user, hostkey)

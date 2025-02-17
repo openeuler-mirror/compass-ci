@@ -265,7 +265,8 @@ module Scheduler
   # returns JSON job, fields are "," separated strings, limited to PLAIN_KEYS
   get "/scheduler/job/view" do |env|
     job_id = env.params.query["job_id"]
-    fields = env.params.query["fields"]
+    fields = env.params.query["fields"]?
+    env.response.content_type = "application/json"
     Sched.instance.api_view_job(job_id.to_i64, fields)
   end
 

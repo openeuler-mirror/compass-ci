@@ -579,17 +579,21 @@ class JobHash
       raise "invalid key #{key}" unless vals.includes? key
   end
 
-  def export_trivial_fields(fields : Array(String))
-    h = Hash(String, String).new
-    fields.each do |k|
-      next if SENSITIVE_ACCOUNT_KEYS.includes? k
-      if @hash_plain.has_key? k
-        h[k] = @hash_plain[k]
-      elsif @hash_int32.has_key? k
-        h[k] = @hash_int32[k].to_s
+  def export_public_fields(fields : String?)
+    if fields
+      h = Hash(String, String).new
+      fields.split(",").each do |k|
+        next if SENSITIVE_ACCOUNT_KEYS.includes? k
+        if @hash_plain.has_key? k
+          h[k] = @hash_plain[k]
+        elsif @hash_int32.has_key? k
+          h[k] = @hash_int32[k].to_s
+        end
       end
+      h.to_pretty_json
+    else
+      Sched.public_content(merge2hash_all).to_pretty_json
     end
-    h
   end
 
   def to_json

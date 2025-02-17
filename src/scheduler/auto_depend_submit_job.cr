@@ -45,8 +45,8 @@ class Sched
     env.response.status_code = 202
     @log.warn({
       "message"       => e.inspect_with_backtrace,
-      "job_content"   => public_content(job_content),
-    })
+      "job_content"   => Sched.public_content(job_content.as_h).to_json,
+    }) if job_content
 
     response = [{
       "job_id"    => "0",
@@ -55,16 +55,16 @@ class Sched
     }]
   end
 
-  def public_content(job_content)
+  def self.public_content(job_content)
     return "" unless job_content
 
-    temp = job_content.as_h
-    fields = ["my_email", "my_token", "my_ssh_pubkey", "secrets", "pkg_data"]
+    temp = job_content
+    fields = ["my_email", "my_token", "my_ssh_pubkey", "secrets", "pkg_data", "stats"]
     fields.each do |field|
-      temp.delete(field) if temp.has_key?(field)
+      temp.delete(field)
     end
 
-    return temp.to_json
+    return temp
   end
 
   def init_job(job_content)

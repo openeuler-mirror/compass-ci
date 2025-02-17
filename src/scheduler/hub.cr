@@ -63,10 +63,10 @@ class Sched
   # @jobs_wait_on[jobid] << negative clientid
   property jobs_wait_on = Hash(Int64, Set(Int64)).new  # Array(Int64) is waiting for first Int64
 
-  def api_view_job(job_id : Int64, fields : String)
+  def api_view_job(job_id : Int64, fields : String?)
     job = get_job(job_id)
     return unless job
-    job.export_trivial_fields(fields.split(",")).to_json
+    job.export_public_fields(fields)
   end
 
   def get_job(job_id : Int64) : JobHash?
