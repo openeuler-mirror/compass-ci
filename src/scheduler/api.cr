@@ -273,6 +273,10 @@ module Scheduler
     Sched.instance.api_dashboard_hosts(env)
   end
 
+  get "/scheduler/debug/dispatch" do |env|
+    Sched.instance.api_debug_dispatch(env)
+  end
+
   get "/scheduler/lkp/report-ssh-port" do |env|
     Sched.instance.report_ssh_port(env)
 

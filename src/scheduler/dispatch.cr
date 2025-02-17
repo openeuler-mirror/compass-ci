@@ -485,4 +485,17 @@ class Sched
     false
   end
 
+	# debug dump dispatch data structures
+	def api_debug_dispatch(env)
+		str = "
+@nr_jobs_by_hostkey: #{@nr_jobs_by_hostkey.to_pretty_json}\n
+@jobid_by_user: #{@jobid_by_user.to_pretty_json}\n
+@jobid_by_queue: #{@jobid_by_queue.to_pretty_json}\n
+@hosts_request: #{@hosts_request.to_pretty_json}\n
+@user_sequence: #{@user_sequence.to_pretty_json}\n
+@hostkey_sequence: #{@hostkey_sequence.to_pretty_json}\n
+@user_weights: #{@user_weights.to_pretty_json}\n
+"
+  end
+
 end
