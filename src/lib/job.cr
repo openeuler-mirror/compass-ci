@@ -769,7 +769,7 @@ class JobHash
   end
 
   def set_priority
-    if self.priority
+    if self.priority?
       @schedule_priority = self.priority.to_i8
     end
   end
@@ -789,7 +789,7 @@ class JobHash
       host_keys << "#{self.tbox_type}.#{self.arch}"
     end
 
-    if self.has_key? "target_machines"
+    if self.hash_array.has_key? "target_machines"
       host_keys += self.target_machines
     end
 

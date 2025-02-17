@@ -359,7 +359,8 @@ class Sched
     host = env.params.url["host"]?
     unless host
       socket.close(HTTP::WebSocket::CloseCode::PolicyViolation, "Missing host parameter")
-      return
+      @log.warn("Missing host parameter")
+      return "Missing host parameter"
     end
 
     session = WebSocketSession.new(WebSocketSession::SessionType::Provider, socket, env)
@@ -400,6 +401,8 @@ class Sched
       @provider_sessions.delete(host)
       Log.info { "Provider #{host} disconnected" }
     end
+  rescue ex
+      Log.error(exception: ex) { "api_provider_websocket error processing client message" }
   end
 
   def api_client_websocket(socket, env)
@@ -433,6 +436,7 @@ class Sched
   end
 
   def send_job_event(jobid, event : String)
+    return unless @watchjob_jobid2client_sids.has_key? jobid
     sids = @watchjob_jobid2client_sids[jobid]
     sids.each do |sid|
       client_ws = @client_sessions[sid]
