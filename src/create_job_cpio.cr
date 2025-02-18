@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-# shellwords require from '/c/lkp-tests/lib/'
-require "shellwords"
 require "file_utils"
 require "process"
 require "json"
@@ -196,8 +194,29 @@ class JobHash
     elsif !val.includes?('"')
       return "\"#{val}\""
     else
-      return Shellwords.shellescape(val)
+      return shellescape(val)
     end
+  end
+
+  # code copied from Shellwords.shellescape
+  private def shellescape(str)
+    str = str.to_s
+
+    # An empty argument will be skipped, so return empty quotes.
+    return "''".dup if str.empty?
+
+    str = str.dup
+
+    # Treat multibyte characters as is. It is the caller's responsibility
+    # to encode the string in the right encoding for the shell
+    # environment.
+    str = str.gsub(/[^A-Za-z0-9_\-.,:+\/@\n]/, "\\\\\\0")
+
+    # A LF cannot be escaped with a backslash because a backslash + LF
+    # combo is regarded as a line continuation and simply ignored.
+    str = str.gsub(/\n/, "'\n'")
+
+    str
   end
 
   private def parse_one(script_lines, key, val : String)
