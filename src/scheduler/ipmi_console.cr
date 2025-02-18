@@ -116,7 +116,7 @@ class Sched
   private def log_to_host_file(hostname, line)
     time = Time.utc
     month_dir = time.to_s("%Y-%m")
-    log_dir = File.join("#{BASE_DIR}/logs", hostname, month_dir)
+    log_dir = File.join("#{BASE_DIR}/scheduler/serial", hostname, month_dir)
 
     daily_file = File.join(log_dir, "#{time.to_s("%Y-%m-%d")}.log")
 
@@ -126,7 +126,7 @@ class Sched
 
       Dir.mkdir_p(log_dir)
       # Create/update current.log symlink
-      current_link = File.join("#{BASE_DIR}/logs", hostname, "current.log")
+      current_link = File.join("#{BASE_DIR}/scheduler/serial", hostname, "current.log")
       File.delete(current_link) if File.symlink?(current_link)
       File.symlink(daily_file, current_link)
 
@@ -137,7 +137,7 @@ class Sched
   end
 
   private def cleanup_old_logs(hostname)
-    base_dir = File.join("#{BASE_DIR}/logs", hostname)
+    base_dir = File.join("#{BASE_DIR}/scheduler/serial", hostname)
     cutoff = Time.utc - 365.days
 
     Dir.glob(File.join(base_dir, "????-??/????-??-??.log")).each do |path|

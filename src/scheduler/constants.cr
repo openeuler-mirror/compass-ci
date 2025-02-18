@@ -43,8 +43,8 @@ BASE_DIR = ENV["USER"] == "root" ? "/srv" : "#{ENV["HOME"]}/.cache/cci"
 
 SRV_OS     = "#{BASE_DIR}/os"
 SRV_INITRD = "#{BASE_DIR}/initrd"
-SRV_UPLOAD = "#{BASE_DIR}/upload-files"
-SRV_USER_FILE_UPLOAD = "#{BASE_DIR}/user-files"
+SRV_UPLOAD = "#{BASE_DIR}/scheduler/upload-files"
+SRV_USER_FILE_UPLOAD = "#{BASE_DIR}/scheduler/user-files"
 
 INITRD_HTTP_PREFIX = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
 OS_HTTP_PREFIX = "http://#{OS_HTTP_HOST}:#{OS_HTTP_PORT}"

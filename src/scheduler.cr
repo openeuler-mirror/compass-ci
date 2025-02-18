@@ -62,7 +62,7 @@ module Scheduler
   def self.start_kemal_server
     Kemal.config.host_binding = "::" # listen on all available network interfaces, including both IPv4 and IPv6.
     Kemal.config.add_handler HTTP::CompressHandler.new
-    Kemal.config.public_folder = "#{BASE_DIR}/cci/pending-jobs"
+    Kemal.config.public_folder = "#{BASE_DIR}/scheduler/pending-jobs"
     Kemal.run((ENV["NODE_PORT"]? || "3000").to_i32)
   end
 
