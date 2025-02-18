@@ -127,6 +127,7 @@ class MultiQemuDocker
       mbps = ((delta_rx + delta_tx) * 8) / (1 + 1_000_000 * time_diff.to_i) # Integer division
       utilization = (mbps * 100) / 1000 # Assuming 1Gbps, integer division
       utilization = [utilization, 100].min # Clamp to 100
+      utilization = 0 if utilization < 0
     else
       utilization = 0
     end
