@@ -140,7 +140,6 @@ class JobHash
   getter hash_any : Str2AnyHash
 
   # only in-memory, for matching to host tags
-  property host_keys = Array(String).new
   property schedule_tags = Set(String).new
   property schedule_memmb : UInt32 = 0u32
   property schedule_priority : Int8 = 0
@@ -268,6 +267,8 @@ class JobHash
 
   def merge2hash_all
     hash_all = @hash_any.dup
+    hash_all["schedule_memmb"] = JSON::Any.new(@schedule_memmb)
+    hash_all["is_remote"] = JSON::Any.new(@is_remote)
     @hash_int32.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_plain.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_array.each do |k, v|
@@ -471,6 +472,7 @@ class JobHash
     kernel_params
     kernel_rpms_url
 
+    host_keys
     target_machines
     cache_dirs
 
