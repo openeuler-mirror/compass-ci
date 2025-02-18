@@ -212,23 +212,6 @@ end
 
 #################################################################################
 class Sched
-  private def prepare_dir(file_path : String)
-    file_path_dir = File.dirname(file_path)
-    unless File.exists?(file_path_dir)
-      FileUtils.mkdir_p(file_path_dir)
-    end
-  end
-
-  private def create_job_sh(job_sh_content : String, path : String)
-    File.open(path, "w", File::Permissions.new(0o775)) do |file|
-      file.puts "#!/bin/sh\n\n"
-
-			file.puts job_sh_content
-
-      file.puts "\"$@\""
-    end
-  end
-
   def create_secrets_yaml(job_id, base_dir)
     secrets = @redis.hash_get("id2secrets", job_id)
     unless secrets
@@ -245,51 +228,68 @@ class Sched
     end
   end
 
-  def create_job_cpio(job : JobHash, base_dir : String)
-    create_secrets_yaml(job.id, base_dir)
+  def save_job_files(job : JobHash, base_dir : String)
+    # Create the job directory
+    job_dir = File.join(base_dir, job.id.to_s)
+    FileUtils.mkdir_p(job_dir)
 
+    # Remove "job2sh" from the job hash
     job.hash_any.delete("job2sh")
 
-    # generate job.yaml
-    temp_yaml = base_dir + "/#{job.id}/job.yaml"
-    prepare_dir(temp_yaml)
+    # Generate job.yaml and job.sh
+    job_yaml_path = create_job_yaml(job, job_dir)
+    job_sh_path = create_job_sh(job, job_dir)
 
-    # no change to <object> content { "#! jobs/pixz.yaml": null }
-    #  - this will create a <'#! jobs/pixz.yaml':> in the yaml file
-    #  - but the orange is <#! jobs/pixz.yaml> in the user job.yaml
-    # tested : no effect to job.sh
-    File.open(temp_yaml, "w") do |file|
-      file.puts(job.to_yaml)
-    end
+    # Create CPIO archive
+    create_job_cpio(job_dir)
 
-    # generate job.sh
-    job_sh = base_dir + "/#{job.id}/job.sh"
-    create_job_sh(job.generate_shell_script, job_sh)
-
-    job_dir = base_dir + "/#{job.id}"
-
-    create_cpio(job_dir)
-
-    # create result dir and copy job.sh, job.yaml to result dir
-    src_dir = File.dirname(temp_yaml)
-    dst_dir = File.join(BASE_DIR, job.result_root)
-    10.times do
-      begin
-        FileUtils.mkdir_p(dst_dir)
-        break
-      rescue e
-        @log.warn { "create result_root dir error, result_root: #{dst_dir} error: #{e.to_s}" }
-        sleep 1.seconds
-      end
-    end
-
-    # the job.yaml is not final version
-    files = ["#{src_dir}/job.sh",
-             "#{src_dir}/job.yaml"]
-    FileUtils.cp(files, dst_dir)
+    # Copy job.sh and job.yaml to the result directory
+    copy_to_result_root(job, job_yaml_path, job_sh_path)
   end
 
-  def create_cpio(job_dir : String)
+  def create_job_yaml(job : JobHash, job_dir : String) : String
+    job_yaml_path = File.join(job_dir, "job.yaml")
+    File.write(job_yaml_path, job.to_yaml)
+    job_yaml_path
+  end
+
+  def create_job_sh(job : JobHash, job_dir : String) : String
+    job_sh_path = File.join(job_dir, "job.sh")
+
+    script_content = <<-SCRIPT
+      #!/bin/sh
+
+      #{job.generate_shell_script}
+
+      "$@"
+    SCRIPT
+
+    File.write(job_sh_path, script_content, perm: 0o775)
+    job_sh_path
+  end
+
+  # Copy job.sh and job.yaml to the result directory
+  def copy_to_result_root(job : JobHash, job_yaml_path : String, job_sh_path : String)
+    dst_dir = File.join(BASE_DIR, job.result_root)
+
+    retry_create_dir(dst_dir) &&
+    FileUtils.cp([job_sh_path, job_yaml_path], dst_dir)
+  end
+
+  private def retry_create_dir(dir : String, max_attempts : Int32 = 10, delay : Time::Span = 1.second)
+    max_attempts.times do |attempt|
+      begin
+        FileUtils.mkdir_p(dir)
+        return true
+      rescue e
+        @log.warn { "Cannot create result_root: #{dir} error: #{e.to_s}" }
+        sleep(delay)
+      end
+    end
+    return false
+  end
+
+  def create_job_cpio(job_dir : String)
     # Ensure the job directory exists
     unless Dir.exists?(job_dir)
       raise "Directory #{job_dir} does not exist"

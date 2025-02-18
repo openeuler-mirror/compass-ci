@@ -92,7 +92,7 @@ describe Jobfile::Operate do
     end
   end
 
-  describe "create_job_cpio" do
+  describe "save_job_files" do
     # when debug this,it seems to execute "chmod +x /c/lkp-tests/sbin/create-job-cpio.sh" to get permission
     it "from jobid create job.cgz" do
       job_id = "100"
@@ -105,7 +105,7 @@ describe Jobfile::Operate do
       job_hash.result_root = fs_root
       job_hash.id = job_id
 
-      Jobfile::Operate.create_job_cpio(job_hash, fs_root)
+      Jobfile::Operate.save_job_files(job_hash, fs_root)
       (File.exists?(::File.join [old_dir, "job.cgz"])).should be_true
       FileUtils.rm_r(old_dir) if File.exists?(old_dir)
     end
