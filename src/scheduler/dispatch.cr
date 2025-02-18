@@ -145,7 +145,8 @@ class Sched
   end
 
   def tbox_request_job(host_req : HostRequest)
-    record_hostreq(host_req)
+    # the assignment is necessary to get back the changed host_req
+    host_req = record_hostreq(host_req)
     job = choose_job_for(host_req)
     if job
       dispatch_job(host_req, job)
