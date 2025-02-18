@@ -66,6 +66,7 @@ class Sched
   # keys "#{hostname}" are loaded from lab hosts/* yaml, then on-demand loaded from ES 'hosts' index
   property hosts_cache : Hosts
   property hosts_request = Hash(String, HostRequest).new
+  @host_requests = [] of HostRequest  # Using sorted array instead of PriorityQueue
 
   # key: host_req.host_keys[]
   property user_sequence = Hash(String, Array(String)).new
@@ -189,10 +190,12 @@ class Sched
     queues.each do |queue|
       next if jobid_by_queue[queue].empty?
 
-      jobid_by_queue[queue].each do |job_id|
-        job = @jobs_cache_in_submit[job_id]
-        if match_job_to_host(job, host_req)
-          return job
+      jobid_by_queue[queue].each do |priority, job_set|
+        job_set.each do |job_id|
+          job = @jobs_cache_in_submit[job_id]
+          if match_job_to_host(job, host_req)
+            return job
+          end
         end
       end
     end
@@ -200,7 +203,7 @@ class Sched
   end
 
   private def consume_job_by_users(host_req : HostRequest, host_key : String) : JobHash?
-    return nil unless @jobid_by_queue.has_key? host_key
+    return nil unless @jobid_by_user.has_key? host_key
     jobid_by_user = @jobid_by_user[host_key]
 
     users = jobid_by_user.keys
@@ -210,10 +213,13 @@ class Sched
       next unless users.delete user
       next if jobid_by_user[user].empty?
 
-      jobid_by_user[user].each do |job_id|
-        job = @jobs_cache_in_submit[job_id]
-        if match_job_to_host(job, host_req)
-          return job
+      # Iterate over each priority and job set
+      jobid_by_user[user].each do |priority, job_set|
+        job_set.each do |job_id|
+          job = @jobs_cache_in_submit[job_id]
+          if match_job_to_host(job, host_req)
+            return job
+          end
         end
       end
     end

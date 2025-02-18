@@ -50,7 +50,6 @@ class Sched
   # - tbox_type = vm|dc: write to provider_sessions[host].socket
   @host_request_job_channel = Channel(HostRequest).new
   @hw_machine_channels = {} of String => Channel(JobHash)
-  @host_requests = [] of HostRequest  # Using sorted array instead of PriorityQueue
 
   @wait_client_channel = Hash(Int64, Channel(Int64)).new # /scheduler/wait-jobs clientid => Channel(jobid)
   @wait_client_spec = Hash(Int64, HashHHH).new
