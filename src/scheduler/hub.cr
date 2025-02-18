@@ -380,7 +380,7 @@ class Sched
             @hosts_cache.pass_info_to_host(hostreq, msg)
             record_hostreq(hostreq)
           rescue ex : JSON::ParseException
-            Log.error { "Invalid host request format: #{ex.message}" }
+            Log.error { "Invalid host request format: #{ex.message} raw_message is #{raw_message}" }
           end
 
         when "console-output"
@@ -393,7 +393,7 @@ class Sched
           Log.warn { "Unknown provider message type: #{msg["type"]?}" }
         end
       rescue ex
-        Log.error(exception: ex) { "Error processing provider message" }
+        Log.error(exception: ex) { "Error processing provider message #{raw_message}" }
       end
     end
 

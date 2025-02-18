@@ -488,13 +488,26 @@ class Sched
 	# debug dump dispatch data structures
 	def api_debug_dispatch(env)
 		str = "
+@jobs_cache_in_submit.keys: #{@jobs_cache_in_submit.keys.to_pretty_json}\n
 @nr_jobs_by_hostkey: #{@nr_jobs_by_hostkey.to_pretty_json}\n
 @jobid_by_user: #{@jobid_by_user.to_pretty_json}\n
 @jobid_by_queue: #{@jobid_by_queue.to_pretty_json}\n
 @hosts_request: #{@hosts_request.to_pretty_json}\n
+@host_requests: #{@host_requests.to_pretty_json}\n
 @user_sequence: #{@user_sequence.to_pretty_json}\n
 @hostkey_sequence: #{@hostkey_sequence.to_pretty_json}\n
 @user_weights: #{@user_weights.to_pretty_json}\n
+
+@jobs_cache.keys: #{@jobs_cache.keys.to_pretty_json}\n
+@jobs_wait_on: #{@jobs_wait_on.to_pretty_json}\n
+@client_sessions.keys: #{@client_sessions.keys.to_pretty_json}\n
+@provider_sessions.keys: #{@provider_sessions.keys.to_pretty_json}\n
+@console_jobid2client_sid: #{@console_jobid2client_sid.to_pretty_json}\n
+@watchlog_jobid2client_sids: #{@watchlog_jobid2client_sids.to_pretty_json}\n
+@watchjob_jobid2client_sids: #{@watchjob_jobid2client_sids.to_pretty_json}\n
+@hw_machine_channels.keys: #{@hw_machine_channels.keys.to_pretty_json}\n
+@wait_client_channel.keys: #{@wait_client_channel.keys.to_pretty_json}\n
+@wait_client_spec: #{@wait_client_spec.to_pretty_json}\n
 "
   end
 
