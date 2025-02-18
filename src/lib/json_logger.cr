@@ -14,7 +14,7 @@ class JSONLogger < Log
   def initialize(@env = nil)
     @env_info = Hash(String, String).new
     @info_hash = Hash(String, String).new
-    super("", Log::IOBackend.new(formatter: my_formatter), :trace)
+    super("", Log::IOBackend.new(formatter: my_formatter), Log::Severity.from_value(Sched.options.log_level))
   end
 
   # Improved logging methods with exception and hash handling
@@ -83,6 +83,8 @@ class JSONLogger < Log
 
   def my_formatter
     Log::Formatter.new do |entry, io|
+      # next unless entry.severity.to_i32 >= Sched.options.log_level
+
       get_env_info(@env.as(HTTP::Server::Context)) if @env
 
       # Use local timezone or UTC for the timestamp
@@ -106,7 +108,7 @@ class JSONLogger < Log
       end
 
       # Build the TSV+KV line
-      tsv_line = [level, datetime, logger_hash.delete("message")].join("\t")
+      tsv_line = [datetime, level, logger_hash.delete("message")].join("\t")
       kv_pairs = logger_hash.map { |key, value| "#{key}=#{value}" }.join("\t")
 
       # Write the TSV+KV line to the output

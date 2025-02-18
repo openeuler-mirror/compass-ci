@@ -371,15 +371,15 @@ class Sched
     socket.on_message do |raw_message|
       begin
         msg = JSON.parse(raw_message).as_h
-
         case msg["type"]?.try(&.as_s)
         when "host-job-request"
           begin
+            @log.debug("host-job-request: raw_message is #{raw_message}")
             hostreq = HostRequest.from_json(raw_message)
             @hosts_cache.pass_info_to_host(hostreq, msg)
-            record_hostreq(hostreq)
+            tbox_request_job(hostreq)
           rescue ex : JSON::ParseException
-            Log.error { "Invalid host request format: #{ex.message} raw_message is #{raw_message}" }
+            @log.error { "Invalid host request format: #{ex.message} raw_message is #{raw_message}" }
           end
 
         when "console-output"
@@ -389,19 +389,19 @@ class Sched
           handle_job_logs(msg, raw_message)
 
         else
-          Log.warn { "Unknown provider message type: #{msg["type"]?}" }
+          @log.warn { "Unknown provider message type: #{msg["type"]?}" }
         end
       rescue ex
-        Log.error(exception: ex) { "Error processing provider message #{raw_message}" }
+        @log.error(exception: ex) { "Error processing provider message #{raw_message}" }
       end
     end
 
     socket.on_close do
       @provider_sessions.delete(host)
-      Log.info { "Provider #{host} disconnected" }
+      @log.info { "Provider #{host} disconnected" }
     end
   rescue ex
-      Log.error(exception: ex) { "api_provider_websocket error processing client message" }
+      @log.error(exception: ex) { "api_provider_websocket error processing client message" }
   end
 
   def api_client_websocket(socket, env)
@@ -416,7 +416,7 @@ class Sched
     socket.on_close do
       @client_sessions.delete(session.sid)
       cleanup_session(session.sid)
-      Log.info { "Client #{session.sid} disconnected" }
+      @log.info { "Client #{session.sid} disconnected" }
     end
   end
 
@@ -503,7 +503,7 @@ class Sched
         session.send({type: "error", message: "Unknown message type"}.to_json)
       end
     rescue ex
-      Log.error(exception: ex) { "Error processing client message" }
+      @log.error(exception: ex) { "Error processing client message" }
       session.send({type: "error", message: "Internal server error"}.to_json)
     end
   end

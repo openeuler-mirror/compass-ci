@@ -20,9 +20,9 @@ struct HostRequest
 
   # [hostname, tbox_group, hw.$arch] for hw
   # vm.$arch | dc.$arch for vm | dc
-  @[JSON::Field(ignore: true)]
+  @[JSON::Field(ignore_deserialize: true)]
   property host_keys = Array(String).new
-  @[JSON::Field(ignore: true)]
+  @[JSON::Field(ignore_deserialize: true)]
   property time : Int64 = 0
 
   property is_remote : Bool
@@ -33,7 +33,14 @@ struct HostRequest
   property disk_max_used_string : String
 
   def initialize(@arch, @hostname, @tbox_type, tags, @freemem, @is_remote)
+    set_host_keys
+    @tags = Set(String).new (tags||"").split(",")
 
+    @disk_max_used_string = ""
+    @metrics = Hash(String, UInt32).new
+  end
+
+  def set_host_keys
     if @tbox_type == "hw"
       tbox_group = JobHelper.match_tbox_group(@hostname.sub(/-\d+$/, ""))
       @host_keys = [ @hostname, tbox_group, "hw.#{@arch}" ]
@@ -42,11 +49,6 @@ struct HostRequest
       @host_keys = [ @hostname ]
       @tbox_type.split(",") { |t| @host_keys << "#{t}.#{@arch}" }
     end
-
-    @tags = Set(String).new (tags||"").split(",")
-
-    @disk_max_used_string = ""
-    @metrics = Hash(String, UInt32).new
   end
 end
 
@@ -145,11 +147,16 @@ class Sched
   def tbox_request_job(host_req : HostRequest)
     record_hostreq(host_req)
     job = choose_job_for(host_req)
+    if job
+      dispatch_job(host_req, job)
+    end
+    job
   end
 
   def record_hostreq(host_req : HostRequest)
     hostname = host_req.hostname
     host_req.time = Time.local.to_unix
+    host_req.set_host_keys
     @hosts_request[hostname] = host_req
     host_req
   end
@@ -220,6 +227,7 @@ class Sched
 
       # Iterate over each priority and job set
       jobid_by_user[user].each do |priority, job_set|
+        @log.debug { "Checking user=#{user}, priority=#{priority}, jobs=#{job_set.size}" }
         job_set.each do |job_id|
           job = @jobs_cache_in_submit[job_id]
           if match_job_to_host(job, host_req)
@@ -291,7 +299,7 @@ class Sched
     positioned_users.sort_by! { |entry| {entry[0], entry[1]} }
 
     # Extract the sorted user sequence
-    sequence = positioned_users.map { |entry| entry[1] }
+    positioned_users.map { |entry| entry[1] }
   end
 
   def next_user_to_try(host_key : String) : String?
@@ -306,6 +314,7 @@ class Sched
 
     # Store the sequence for future use
     @user_sequence[host_key] = Sched.create_users_sequence(users, @user_weights)
+    @log.debug { "create_users_sequence #{@user_sequence[host_key]}" }
 
     # Pop and return the next user
     @user_sequence[host_key].pop
@@ -388,6 +397,7 @@ class Sched
 
     # Store the sequence for future use
     @hostkey_sequence[host_machine] = Sched.generate_interleaved_sequence(host_keys, @nr_jobs_by_hostkey)
+    @log.debug { "generate_interleaved_sequence #{@hostkey_sequence[host_machine]}" }
 
     # Pop and return the next host_key
     @hostkey_sequence[host_machine].pop
@@ -528,7 +538,7 @@ class Sched
     end
 
   rescue Channel::ClosedError
-    Log.info { "Host request channel closed" }
+    @log.info { "Host request channel closed" }
   end
 
   private def add_hostreq(hostreq)
@@ -566,7 +576,7 @@ class Sched
         channel.send(job)
         true
       else
-        Log.error { "HW channel not found for #{hostreq.hostname}" }
+        @log.error { "HW channel not found for #{hostreq.hostname}" }
         false
       end
     when "vm", "dc"
@@ -576,15 +586,15 @@ class Sched
         provider.socket.send(msg)
         true
       else
-        Log.error { "Provider not found for #{hostreq.hostname}" }
+        @log.error { "Provider not found for #{hostreq.hostname}" }
         false
       end
     else
-      Log.error { "Unknown tbox_type: #{job.tbox_type}" }
+      @log.error { "Unknown tbox_type: #{job.tbox_type}" }
       false
     end
   rescue ex
-    Log.error(exception: ex) { "Failed to dispatch job #{job.id}" }
+    @log.error(exception: ex) { "Failed to dispatch job #{job.id}" }
     false
   end
 

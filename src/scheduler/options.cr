@@ -10,6 +10,7 @@ SCHEDULER_CONFIG_FILE = "/etc/compass-ci/scheduler/config.yaml" # Default config
 struct SchedOptions
   include YAML::Serializable
 
+  property log_level : Int32 = 0
   property admin_token : String = ""
 
   property skip_account_verification : Bool = true
