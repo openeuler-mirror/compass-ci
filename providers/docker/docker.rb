@@ -14,6 +14,8 @@ require 'rest-client'
 HOST_DIR = ENV["HOST_DIR"] || "/srv/cci/hosts"
 LOG_FILE = ENV["LOG_FILE"] || "/srv/cci/logs"
 
+IS_REMOTE = ENV["is_remote"] == 'true'
+
 def curl_cmd(path, url, name)
   %x(curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -idu -D #{path})
 end
@@ -109,10 +111,10 @@ def get_job_info
   YAML.load_file("#{HOST_DIR}/lkp/scheduled/job.yaml")
 end
 
-def upload_dmesg(job_info, is_remote)
+def upload_dmesg(job_info)
   return if job_info.empty?
 
-  if is_remote == 'true'
+  if IS_REMOTE
     upload_url = "#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
   else
     upload_url = "http://#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
@@ -136,7 +138,7 @@ def start_container_instance(message)
   start_container(hostname, message)
 
   record_end_log(start_time)
-  upload_dmesg(job_info, message["is_remote"])
+  upload_dmesg(job_info)
 ensure
   record_log(["finished the docker"])
 end

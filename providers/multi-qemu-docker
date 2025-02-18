@@ -137,7 +137,7 @@ class MultiQemuDocker
           puts "Received: #{event.data}"
           handle_websocket_message(event.data)
         rescue => e
-          puts "Message handling error: #{e.message}"
+          puts "Message handling error: #{e.message} #{e.backtrace}"
         end
 
         @ws.on(:close) do |event|

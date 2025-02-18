@@ -24,6 +24,7 @@ class Sched
                "job_id" => "#{job.id}",
                "result_root" => "#{BASE_DIR}#{job.result_root}",
                "job_state" => "set result root"})
+    # puts caller.join('\n')
     report_workflow_job_event(job["id"].to_s, job)
   end
 
@@ -37,7 +38,9 @@ class Sched
 
   private def get_boot_container(job : JobHash)
     response = Hash(String, String).new
+    response["type"] = "boot-job"
     response["job_id"] = job.id.to_s
+    response["tbox_group"] = job.tbox_group
     response["docker_image"] = "#{job.docker_image}"
     response["initrds"] = job.get_common_initrds().to_json
     response["memory_minimum"] = "#{job["memory_minimum"]}"

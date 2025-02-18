@@ -584,6 +584,14 @@ class Sched
       if provider = @provider_sessions[hostreq.hostname]?
         on_job_dispatch(job, hostreq)
         msg = boot_content(job, job.tbox_type)
+        if job.tbox_type == "vm"
+          msg = { "type" => "boot-job",
+                  "ipxe_script" => msg,
+                  "job_id" => job.id,
+                  "tbox_type" => job.tbox_type,
+                  "tbox_group" => job.tbox_group,
+          }.to_json
+        end
         provider.socket.send(msg)
         true
       else
