@@ -4,6 +4,7 @@
 # shellwords require from '/c/lkp-tests/lib/'
 require "shellwords"
 require "file_utils"
+require "process"
 require "json"
 require "yaml"
 
@@ -244,12 +245,6 @@ class Sched
     end
   end
 
-  # this depends on LKP_SRC, more exactly
-  # - sbin/create-job-cpio.sh
-  # - sbin/job2sh and its lib/ depends
-  # Normal end users don't need change those logics, so it's enough to
-  # use static *mainline* lkp-tests source here instead of per-user
-  # uploaded lkp-tests code.
   def create_job_cpio(job : JobHash, base_dir : String)
     create_secrets_yaml(job.id, base_dir)
 
@@ -273,13 +268,9 @@ class Sched
 
     job_dir = base_dir + "/#{job.id}"
 
-    cmd = "./create-job-cpio.sh #{job_dir}"
-    idd = `#{cmd}`
+    create_cpio(job_dir)
 
-    # if the create job cpio failed, what to do?
-    puts idd if idd.match(/ERROR/)
-
-    # create result dir and copy job.sh, job.yaml and job.cgz to result dir
+    # create result dir and copy job.sh, job.yaml to result dir
     src_dir = File.dirname(temp_yaml)
     dst_dir = File.join(BASE_DIR, job.result_root)
     10.times do
@@ -296,6 +287,49 @@ class Sched
     files = ["#{src_dir}/job.sh",
              "#{src_dir}/job.yaml"]
     FileUtils.cp(files, dst_dir)
+  end
+
+  def create_cpio(job_dir : String)
+    # Ensure the job directory exists
+    unless Dir.exists?(job_dir)
+      raise "Directory #{job_dir} does not exist"
+    end
+
+    # Find all .sh and .yaml files in the job directory
+    files = Dir.glob(["#{job_dir}/*.sh", "#{job_dir}/*.yaml"])
+
+    # Check if there are any files to process
+    if files.empty?
+      raise "No .sh or .yaml files found in #{job_dir}"
+    end
+
+    # Define temporary directory structure
+    tmp_dir = File.join(job_dir, ".tmp")
+    lkp_dir = File.join(tmp_dir, "lkp", "scheduled")
+
+    # Create necessary directories
+    FileUtils.mkdir_p(lkp_dir)
+
+    # Copy files to the temporary directory using hard links
+    files.each do |file|
+      File.link(file, File.join(lkp_dir, File.basename(file)))
+    end
+
+    # Define output .cgz file path
+    out_cgz = File.join(job_dir, "job.cgz")
+
+    # Create the .cgz archive
+    Dir.cd(tmp_dir) do
+      Process.run(
+        "find lkp | cpio --quiet -o -H newc | gzip -9 > #{Process.quote(out_cgz)}",
+        shell: true
+      )
+    end
+
+    # Clean up the temporary directory
+    FileUtils.rm_rf(tmp_dir)
+
+    # puts "Created #{out_cgz} successfully."
   end
 
 end
