@@ -10,7 +10,7 @@
 : ${docker_image:="centos:7"}
 : ${load_path:="${HOME}/jobs"}
 : ${hostname:="dc-8g-1"}
-: ${log_file:="/srv/cci/logs/$hostname"}
+: ${log_file:="/srv/provider/logs/$hostname"}
 
 if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
 	tbox_group=${BASH_REMATCH[1]}

@@ -47,7 +47,7 @@ class Resource
   end
 
   def log_file
-    @info['log_file'] = "/srv/cci/serial/logs/#{@hostname}"
+    @info['log_file'] = "/srv/provider/logs/#{@hostname}"
   end
 
   def parse_host_config

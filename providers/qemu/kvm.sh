@@ -6,7 +6,7 @@
 
 : ${nr_cpu:=1}
 : ${memory:=1G}
-: ${log_dir:=/srv/cci/logs}
+: ${log_dir:=/srv/provider/logs}
 
 source ${CCI_SRC}/lib/log.sh
 source ${LKP_SRC}/lib/yaml.sh

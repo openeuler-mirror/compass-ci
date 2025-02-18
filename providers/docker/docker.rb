@@ -11,8 +11,8 @@ require 'yaml'
 require 'rest-client'
 
 # Global variables
-HOST_DIR = ENV["HOST_DIR"] || "/srv/cci/hosts"
-LOG_FILE = ENV["LOG_FILE"] || "/srv/cci/logs"
+HOST_DIR = ENV["host_dir"]
+LOG_FILE = ENV["log_file"]
 
 IS_REMOTE = ENV["is_remote"] == 'true'
 

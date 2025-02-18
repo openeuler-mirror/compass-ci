@@ -9,7 +9,7 @@ source ${CCI_SRC}/lib/log.sh
 : ${nr_cpu:=1}
 : ${memory:=1G}
 
-serial_log=/srv/cci/serial/logs/${hostname}
+serial_log=/srv/provider/logs/${hostname}
 if [ ! -f "$serial_log" ]; then
 	touch $serial_log
 	# fluentd refresh time is 1s
