@@ -439,7 +439,7 @@ arg1|arg2|arg3:
     - @env.cluster.handle_job: $CCI_SRC/src/scheduler/plugins/cluster.cr
         处理传入的job, 返回一个job的列表，列表长度>=1
     - 设置job_id: redis中的key(queues/seqno), 每次自增1作为新job的id
-    - id2secrets敏感信息处理：在redis里保存job的secrets信息, 格式{id2secrets: {job_id: $secrets}}, 同时在job中删除，避免敏感信息泄露。
+    - 敏感信息处理：在本地job_dir(在容器中是/srv/cci/pending-jobs/$job_id)里保存job的secrets信息, 同时在job中删除，不上传到数据库，避免敏感信息泄露。
     - 保存job到es数据库
     - 保存job到etcd
     - 保存job_id到etcd的指定队列中等待测试机执行： sched/ready/#{job.queue}/#{job.subqueue}/#{job.id}

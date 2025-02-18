@@ -212,19 +212,18 @@ end
 
 #################################################################################
 class Sched
-  def create_secrets_yaml(job_id, base_dir)
-    secrets = @redis.hash_get("id2secrets", job_id)
-    unless secrets
-      cluster_id = @redis.hash_get("sched/id2cluster", job_id)
-      secrets = @redis.hash_get("id2secrets", cluster_id) if cluster_id
-    end
+  # Save to job_dir, to be picked up by create_job_cpio() at dispatch time.
+  # It assumes there is not other scheduler running on other machine.
+  def save_secrets(job, job_id)
+    secrets = job.hash_hh.delete "secrets"
     return nil unless secrets
 
-    secrets_yaml = base_dir + "/#{job_id}/secrets.yaml"
-    prepare_dir(secrets_yaml)
+    job_dir = File.join(Kemal.config.public_folder, job.id)
+    FileUtils.mkdir_p(job_dir)
 
+    secrets_yaml = "#{job_dir}/secrets.yaml"
     File.open(secrets_yaml, "w") do |file|
-      YAML.dump(JSON.parse(secrets), file)
+      YAML.dump(secrets, file)
     end
   end
 
