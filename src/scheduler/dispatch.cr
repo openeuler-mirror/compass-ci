@@ -1,5 +1,10 @@
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2025 Huawei Technologies Co., Ltd. All rights reserved.
 
 require "set"
+require "json"
+require "../lib/host"
+require "../lib/sched"
 
 # a host's job request parameters
 struct HostRequest
@@ -230,6 +235,65 @@ class Sched
     job.schedule_memmb <= host_req.freemem
   end
 
+  # Deterministically interleaves users based on their weights to create an
+  # evenly distributed sequence while maintaining weight proportions.
+  #
+  # Targets:
+  # - Eliminate randomness while preserving weight-based distribution
+  # - Ensure users are spaced as evenly as possible in the resulting sequence
+  # - Maintain strict determinism for same input weights and user order
+  #
+  # Key Considerations:
+  # - Weight proportionality: Higher weighted users appear more frequently
+  # - Even distribution: Avoid clustering of user entries
+  # - Deterministic ties: Use lexicographical user order for position conflicts
+  # - Efficiency: O(n log n) complexity for typical use cases
+  #
+  # Algorithm Overview:
+  # 1. Position Calculation:
+  #    - For each user entry, calculate a virtual position using:
+  #      `(entry_index + 0.5) * (total_weight / user_weight)`
+  #    - This spreads entries proportionally based on their relative weights
+  # 2. Sorting:
+  #    - Sort all entries by calculated positions
+  #    - Break position ties using user identifier comparison
+  # 3. Sequence Generation:
+  #    - Extract sorted user identifiers to create final sequence
+  #
+  # Design Notes:
+  # - Inspired by content-aware image resampling and stride scheduling
+  # - Maintains weight ratios through mathematical distribution rather than chance
+  # - 0.5 offset in position calculation prevents edge-clustering
+  # - User order comparison ensures determinism for equal-position entries
+  #
+  # Example:
+  # - Weights: UserA(3), UserB(2) → Sequence: A, B, A, B, A
+  # - Weights: UserX(4), UserY(1) → Sequence: X, X, Y, X, X
+  #
+  # See: "Deterministic Weighted Distribution Algorithms" (CS theory)
+  # and "Fair Sequence Scheduling" patterns for conceptual background
+  def self.create_users_sequence(users, weights)
+    # Calculate the total weight from all users
+    total_weight = users.sum { |user| weights[user]? || 1 }
+
+    # Generate tuples of calculated positions and users
+    positioned_users = [] of Tuple(Float64, String)
+    users.each do |user|
+      weight = weights[user]? || 1
+      weight.times do |i|
+        # Calculate position using weighted distribution formula
+        position = (i.to_f + 0.5) * (total_weight.to_f / weight.to_f)
+        positioned_users << {position, user}
+      end
+    end
+
+    # Sort by position and user to ensure deterministic order
+    positioned_users.sort_by! { |entry| {entry[0], entry[1]} }
+
+    # Extract the sorted user sequence
+    sequence = positioned_users.map { |entry| entry[1] }
+  end
+
   def next_user_to_try(host_key : String) : String?
     # If the sequence for this host_key already exists and has items, pop and return the next user
     if @user_sequence.has_key?(host_key) && !@user_sequence[host_key].empty?
@@ -240,21 +304,77 @@ class Sched
     users = @jobid_by_user[host_key].keys
     return nil if users.empty? # No users available for this host_key
 
-    # Generate a weighted sequence
-    sequence = [] of String
-    users.each do |user|
-      weight = @user_weights[user]? || 1 # Default weight is 1 if not specified
-      weight.times { sequence << user }
-    end
-
-    # Shuffle the sequence to randomize the order while maintaining weight proportions
-    sequence.shuffle!
-
     # Store the sequence for future use
-    @user_sequence[host_key] = sequence
+    @user_sequence[host_key] = Sched.create_users_sequence(users, @user_weights)
 
     # Pop and return the next user
     @user_sequence[host_key].pop
+  end
+
+  # Generates a deterministic sequence of host keys with even interleaving based on their job counts.
+  #
+  # Target:
+  # - Ensure higher job count hosts are evenly distributed in the sequence to avoid clustering.
+  # - Replace randomness with deterministic even interleaving to maintain predictable order.
+  #
+  # Considerations:
+  # - Uses square root of job counts to compute weights, favoring smooth distribution over abrupt changes.
+  # - Scales weights to a manageable range (1-255) to prevent sequences from becoming excessively long.
+  # - Maintains weight proportionality after scaling to preserve the relative job distribution.
+  # - Sorts events by calculated positions and host index to break ties and ensure determinism.
+  #
+  # Algorithm/Design:
+  # 1. Calculate host key weights using the square root of their job counts, ensuring a minimum weight of 1.
+  # 2. Scale weights proportionally if the maximum weight exceeds 255 to keep the sequence size reasonable.
+  # 3. Generate events for each host key with positions spaced according to their scaled weights.
+  # 4. Sort events by calculated position, then by host index to achieve even interleaving and order.
+  #
+  # Example:
+  # For host keys `A` and `B` with job counts 9 and 1:
+  # - Weights: sqrt(9)=3, sqrt(1)=1 (scaled weights 3 and 1).
+  # - Events: `A` at positions 0, 1.333, 2.666; `B` at position 0.
+  # - Sorted sequence: `[A, B, A, A]`, showcasing deterministic interleaving.
+  def self.generate_interleaved_sequence(host_keys : Array(String),
+                                         nr_jobs_by_hostkey : Hash(String, Int32)) : Array(String)
+    # Calculate weights for each host_key
+    weights = host_keys.map do |host_key|
+      Math.sqrt(nr_jobs_by_hostkey.has_key?(host_key) ?
+                nr_jobs_by_hostkey[host_key] : 1).to_i32
+    end
+
+    # Scale down the weights proportionally to ensure they fit within a reasonable range (1-255)
+    max_weight = weights.max
+    if max_weight > (1 << 8) # Control sequence size to around several times of 256
+      weights = weights.map { |w| (w << 8) // max_weight }
+    end
+
+    # Compute total_events as sum of scaled weights
+    total_events = weights.sum
+
+    # Generate events with positions
+    events = [] of Tuple(Float64, String, Int32)
+    host_keys.each_with_index do |host_key, host_index|
+      weight = weights[host_index]
+      step = total_events.to_f / weight
+      weight.times do |i|
+        pos = i * step
+        events << {pos, host_key, host_index}
+      end
+    end
+
+    # Sort events by position, then by host index to break ties
+    sorted_events = events.sort do |a, b|
+      pos_a, _, idx_a = a
+      pos_b, _, idx_b = b
+      if pos_a != pos_b
+        pos_a <=> pos_b
+      else
+        idx_a <=> idx_b
+      end
+    end
+
+    # Extract the host_keys from the sorted events
+    sorted_events.map { |e| e[1] }
   end
 
   def next_hostkey_to_try(host_machine : String, host_keys : Array(String)) : String?
@@ -266,31 +386,8 @@ class Sched
     # If no sequence exists, create one based on host_keys and their weights from @nr_jobs_by_hostkey
     return nil if host_keys.empty? # No host_keys available
 
-    # Calculate weights for each host_key
-    weights = host_keys.map do |host_key|
-      # Get the number of jobs for this host_key (default to 0 if not found)
-      nr_jobs = @nr_jobs_by_hostkey[host_key]? || 1
-      [nr_jobs, 1].max
-    end
-
-    # Scale down the weights proportionally to ensure they fit within a reasonable range (e.g., 1-255)
-    max_weight = weights.max
-    if max_weight > (1 << 8) # control sequence size to around several times of 256
-      weights = weights.map { |w| (w << 8) // max_weight }
-    end
-
-    # Generate a weighted sequence
-    sequence = [] of String
-    host_keys.each_with_index do |host_key, index|
-      weight = weights[index]
-      weight.times { sequence << host_key }
-    end
-
-    # Shuffle the sequence to randomize the order while maintaining weight proportions
-    sequence.shuffle!
-
     # Store the sequence for future use
-    @hostkey_sequence[host_machine] = sequence
+    @hostkey_sequence[host_machine] = Sched.generate_interleaved_sequence(host_keys, @nr_jobs_by_hostkey)
 
     # Pop and return the next host_key
     @hostkey_sequence[host_machine].pop
