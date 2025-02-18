@@ -30,13 +30,13 @@ module Utils
   end
 
   def parse_memory_mb(strmem : String) : UInt32
+    # If the string has no suffix, assume it's in GB
+    if strmem.match(/^\d+$/)
+      return strmem.to_u32 << 10
+    end
+
     # Remove any whitespace and make the string lowercase
     strmem = strmem.strip.downcase
-
-    # If the string has no suffix, assume it's already in MB
-    if strmem.match(/^\d+$/)
-      return strmem.to_u32
-    end
 
     # Extract the numeric part and the suffix
     numeric_part = strmem.match(/^\d+/).try(&.[0]) || "0"
