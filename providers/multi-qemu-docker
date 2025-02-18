@@ -69,6 +69,7 @@ class MultiQemuDocker
     @scheduler_ws_url = build_scheduler_ws_url
     @jobs = JobTracker.new
     @fifo_thread = start_fifo_listener
+    @reconnect_attempts = 0
   end
 
   def setup_directories
@@ -119,37 +120,49 @@ class MultiQemuDocker
   end
 
   def start_event_machine
-    EM.run do
-      @ws = open_websocket(@scheduler_ws_url)
+    begin
+      EM.run do
+        puts "Initializing new connection..."
+        @ws = open_websocket(@scheduler_ws_url)
 
-      @ws.on(:open) do
-        puts "WebSocket connection opened"
-        send_status
-        start_heartbeat
-        start_mem_monitoring
-      end
+        @ws.on(:open) do
+          puts "WebSocket connection opened"
+          @reconnect_attempts = 0
+          send_status
+          start_heartbeat
+          start_mem_monitoring
+        end
 
-      @ws.on(:message) do |event|
-        puts "Received: #{event.data}"
-        handle_websocket_message(event.data)
-      end
+        @ws.on(:message) do |event|
+          puts "Received: #{event.data}"
+          handle_websocket_message(event.data)
+        rescue => e
+          puts "Message handling error: #{e.message}"
+        end
 
-      @ws.on(:close) do |event|
-        puts "WebSocket closed with code #{event.code}"
-        safe_stop
-        EM.stop
-      end
+        @ws.on(:close) do |event|
+          puts "Connection closed with code #{event.code}"
+          EM.stop_event_loop
+        end
 
-      @ws.on :error do |event|
-        puts "Error occurred: #{event.message}"
-        puts "Please check if server is running on #{@scheduler_ws_url}" if event.message == Errno::ECONNREFUSED
+        @ws.on(:error) do |event|
+          puts "WebSocket error: #{event.message}"
+          puts "Please check if server is running on #{@scheduler_ws_url}" if event.message == Errno::ECONNREFUSED
+          EM.stop_event_loop
+          
+          @reconnect_attempts += 1
+          delay = [2 ** @reconnect_attempts, 30].min
+          puts "Attempting reconnect in #{delay} second..."
+          sleep(delay)
+        end
       end
+    rescue => e
+      puts "Connection failed: #{e.message}"
+    ensure
+      # Cleanup resources if needed
+      @ws = nil
     end
-  rescue => e
-    puts "WebSocket error: #{e.message}"
-    retry
   end
-
 
   private
 
@@ -508,5 +521,10 @@ class MultiQemuDocker
 
 end
 
-MultiQemuDocker.new(ARGV).start_event_machine if __FILE__ == $PROGRAM_NAME
-
+if __FILE__ == $PROGRAM_NAME
+  provider = MultiQemuDocker.new(ARGV)
+  loop do
+    provider.start_event_machine 
+    sleep 1
+  end
+end
