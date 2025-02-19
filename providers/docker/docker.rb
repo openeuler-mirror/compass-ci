@@ -16,8 +16,8 @@ class DockerManager
   def initialize(message)
     @message = message
     @hostname = message["hostname"]
-    @host_dir = message["host_dir"]
-    @log_file = message["log_file"]
+    @host_dir = ENV["host_dir"]
+    @log_file = ENV["log_file"]
     @is_remote = ENV["is_remote"] == 'true'
   end
 
