@@ -62,7 +62,9 @@ check_package_optimization_strategy()
 	fi
 }
 
-squid_host=$(kubectl get svc -n ems1 | grep "^squid-${HOSTNAME} "| awk '{print $3}')
+if command -v kubectl >/dev/null; then
+	squid_host=$(kubectl get svc -n ems1 | grep "^squid-${HOSTNAME} "| awk '{print $3}')
+fi
 
 DIR=$(dirname $(realpath $0))
 check_busybox
