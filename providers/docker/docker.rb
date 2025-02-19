@@ -122,7 +122,7 @@ class DockerManager
     if Dir.exist?(@host_dir)
       FileUtils.rm_rf(@host_dir)
     end
-    Dir.mkdir_p(@host_dir)
+    FileUtils.mkdir_p(@host_dir)
 
     start_time = record_inner_log
 
