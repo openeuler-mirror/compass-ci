@@ -39,7 +39,7 @@ SRV_HTTP_CCI_PORT = (ENV.has_key?("SRV_HTTP_CCI_PORT") ? ENV["SRV_HTTP_CCI_PORT"
 CCI_REPOS = (ENV.has_key?("CCI_REPOS") ? ENV["CCI_REPOS"] : "/c")
 LAB_REPO  = "lab-#{LAB}"
 
-BASE_DIR = ENV["USER"] == "root" ? "/srv" : "#{ENV["HOME"]}/.cache/cci"
+BASE_DIR = ENV["USER"] == "root" ? "/srv" : "#{ENV["HOME"]}/.cache/compass-ci"
 
 SRV_OS     = "#{BASE_DIR}/os"
 SRV_INITRD = "#{BASE_DIR}/initrd"
