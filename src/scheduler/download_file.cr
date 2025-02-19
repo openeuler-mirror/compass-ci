@@ -26,7 +26,7 @@ class Sched
 
     # Ensure the requested path starts with BASE_DIR/scheduler and does not contain any '..' sequences
     # base_dir = Path[BASE_DIR] / "scheduler"
-    requested_path = Path[requested_path].expand
+    # requested_path = Path[requested_path].expand
 
     # return nil unless requested_path.starts_with?("#{BASE_DIR}/scheduler")
 
@@ -69,6 +69,7 @@ class Sched
 
     # Verify file exists
     unless File.exists?(full_path) && File.file?(full_path)
+      @log.debug "File not found: #{full_path} #{requested_path}"
       env.response.status_code = 404
       return "File not found"
     end

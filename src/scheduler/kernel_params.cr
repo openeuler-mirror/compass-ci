@@ -109,7 +109,7 @@ class JobHash
   private def set_kernel_uri
     return if @hash_plain.has_key?("kernel_uri")
     vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
-    self.kernel_uri = "#{OS_HTTP_PREFIX}" + JobHelper.service_path(vmlinuz_path)
+    self.kernel_uri = "#{os_http_prefix}" + JobHelper.service_path(vmlinuz_path)
   end
 
   private def set_modules_uri
@@ -117,7 +117,7 @@ class JobHash
     return if self.os_mount == "local"
 
     modules_path = File.realpath("#{boot_dir}/modules-#{kernel_version}.cgz")
-    self.modules_uri = ["#{OS_HTTP_PREFIX}" + JobHelper.service_path(modules_path)]
+    self.modules_uri = ["#{os_http_prefix}" + JobHelper.service_path(modules_path)]
   end
 
   # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/vmlinuz
@@ -130,17 +130,27 @@ class JobHash
     self.modules_uri = full_modules_uri
   end
 
+  def os_http_prefix
+    @is_remote ? ENV["DOMAIN_NAME"] : OS_HTTP_PREFIX
+  end
+
+  def initrd_http_prefix
+    @is_remote ? ENV["DOMAIN_NAME"] : INITRD_HTTP_PREFIX
+  end
+
+  def sched_http_prefix
+    @is_remote ? ENV["DOMAIN_NAME"] : SCHED_HTTP_PREFIX
+  end
+
   def get_common_initrds
     temp_initrds = [] of String
 
-    initrd_http_prefix = @is_remote ? ENV["DOMAIN_NAME"] : INITRD_HTTP_PREFIX
-    sched_http_prefix = @is_remote ?  ENV["DOMAIN_NAME"] : SCHED_HTTP_PREFIX
     # init custom_bootstrap cgz
     # if has custom_bootstrap field, just give bootstrap cgz to testbox, no need lkp-test/job cgz
     if @hash_plain.has_key?("custom_bootstrap")
       raise "need runtime field in the job yaml." unless @hash_plain.has_key?("runtime")
 
-      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+      temp_initrds << "#{initrd_http_prefix}" +
         JobHelper.service_path("#{SRV_INITRD}/custom_bootstrap/#{self.my_email}/bootstrap-#{os_arch}.cgz")
 
       return temp_initrds
@@ -159,9 +169,9 @@ class JobHash
     @hash_hhh["pkg_data"].each do |key, value|
       next unless value
       program = value
-      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+      temp_initrds << "#{initrd_http_prefix}" +
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{os_arch}/#{program["tag"]}.cgz")
-      temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+      temp_initrds << "#{initrd_http_prefix}" +
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
     end
 
@@ -172,9 +182,9 @@ class JobHash
     temp_initrds = [] of String
 
     osimage_dir = "#{SRV_INITRD}/osimage/#{os_dir}"
-    temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+    temp_initrds << "#{initrd_http_prefix}" +
                     JobHelper.service_path("#{osimage_dir}/current")
-    temp_initrds << "#{INITRD_HTTP_PREFIX}" +
+    temp_initrds << "#{initrd_http_prefix}" +
                     JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
 
     temp_initrds.concat(self.initrd_deps)
@@ -185,7 +195,7 @@ class JobHash
   private def nfs_cifs_initrds
     temp_initrds = [] of String
 
-    temp_initrds << "#{OS_HTTP_PREFIX}" +
+    temp_initrds << "#{os_http_prefix}" +
                     JobHelper.service_path("#{SRV_OS}/#{os_dir}/initrd.lkp")
 
     return temp_initrds
@@ -233,7 +243,6 @@ class JobHash
   end
 
   private def get_depends_initrd(program_params, initrd_deps_arr, initrd_pkgs_arr)
-    initrd_http_prefix = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
     mount_type = self.os_mount == "cifs" ? "nfs" : self.os_mount
 
     # init deps lkp.cgz

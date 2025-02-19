@@ -374,7 +374,7 @@ class Sched
         case msg["type"]?.try(&.as_s)
         when "host-job-request"
           begin
-            @log.debug("host-job-request: raw_message is #{raw_message}")
+            # @log.debug("host-job-request: raw_message is #{raw_message}")
             hostreq = HostRequest.from_json(raw_message)
             @hosts_cache.pass_info_to_host(hostreq, msg)
             tbox_request_job(hostreq)

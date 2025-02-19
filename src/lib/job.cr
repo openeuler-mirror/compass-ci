@@ -49,7 +49,7 @@ module JobHelper
 
   def self.service_path(path, need_exists = true)
     temp_path = need_exists ? File.realpath(path) : path
-    return temp_path.split("/srv")[-1]
+    return temp_path.sub(BASE_DIR, "/srv")
   end
 end
 

@@ -228,7 +228,7 @@ class Sched
 
       # Iterate over each priority and job set
       jobid_by_user[user].each do |priority, job_set|
-        @log.debug { "Checking user=#{user}, priority=#{priority}, jobs=#{job_set.size}" }
+        # @log.debug { "Checking user=#{user}, priority=#{priority}, jobs=#{job_set.size}" }
         job_set.each do |job_id|
           job = @jobs_cache_in_submit[job_id]
           if match_job_to_host(job, host_req)
@@ -315,7 +315,7 @@ class Sched
 
     # Store the sequence for future use
     @user_sequence[host_key] = Sched.create_users_sequence(users, @user_weights)
-    @log.debug { "create_users_sequence #{@user_sequence[host_key]}" }
+    # @log.debug { "create_users_sequence #{@user_sequence[host_key]}" }
 
     # Pop and return the next user
     @user_sequence[host_key].pop
@@ -398,7 +398,7 @@ class Sched
 
     # Store the sequence for future use
     @hostkey_sequence[host_machine] = Sched.generate_interleaved_sequence(host_keys, @nr_jobs_by_hostkey)
-    @log.debug { "generate_interleaved_sequence #{@hostkey_sequence[host_machine]}" }
+    # @log.debug { "generate_interleaved_sequence #{@hostkey_sequence[host_machine]}" }
 
     # Pop and return the next host_key
     @hostkey_sequence[host_machine].pop

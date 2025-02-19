@@ -85,14 +85,14 @@ class Sched
     return response
   end
 
-  private def get_vmlinuz_uri(cpio_dir, initrd_dir)
+  private def get_vmlinuz_uri(job, cpio_dir, initrd_dir)
     vmlinuz_uri = ""
     boot_dir = File.join(cpio_dir, "boot")
     if Dir.exists?(boot_dir)
       Dir.each_child(File.join(cpio_dir, "boot")) do |entry|
         if entry.starts_with?("vmlinuz-")
           File.copy("#{cpio_dir}/boot/#{entry}", "#{initrd_dir}/#{entry}")
-          vmlinuz_uri = "#{INITRD_HTTP_PREFIX}/#{initrd_dir.sub("/srv/", "")}/#{entry}"
+          vmlinuz_uri = "#{job.initrd_http_prefix}/#{initrd_dir.sub(BASE_DIR, "srv")}/#{entry}"
           break
         end
       end
@@ -101,7 +101,7 @@ class Sched
     return vmlinuz_uri
   end
 
-  private def get_modules_uri(cpio_dir, initrd_dir)
+  private def get_modules_uri(job, cpio_dir, initrd_dir)
     modules_uri = ""
     modules_dir = File.join(cpio_dir, "lib", "modules")
     output_file = "modules.cgz"
@@ -114,7 +114,7 @@ class Sched
 
       FileUtils.mkdir_p(initrd_dir)
       File.copy("#{cpio_dir}/#{output_file}", "#{initrd_dir}/#{output_file}")
-      modules_uri = "#{INITRD_HTTP_PREFIX}/#{initrd_dir.sub("/srv/", "")}/#{output_file}"
+      modules_uri = "#{job.initrd_http_prefix}/#{initrd_dir.sub(BASE_DIR, "srv")}/#{output_file}"
     end
 
     return modules_uri
@@ -146,8 +146,8 @@ class Sched
       raise "rpm2cpio #{rpms_dir}/#{rpm} to #{cpio_dir} error." if result.exit_code != 0
     end
 
-    vmlinuz_uri = get_vmlinuz_uri(cpio_dir, initrd_dir)
-    modules_uri = get_modules_uri(cpio_dir, initrd_dir)
+    vmlinuz_uri = get_vmlinuz_uri(job, cpio_dir, initrd_dir)
+    modules_uri = get_modules_uri(job, cpio_dir, initrd_dir)
 
     return vmlinuz_uri, modules_uri
   end
