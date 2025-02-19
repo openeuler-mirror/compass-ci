@@ -157,7 +157,7 @@ class JobHash
     end
 
     # init job.cgz
-    temp_initrds << "#{sched_http_prefix}/job_initrd_tmpfs/#{id}/job.cgz"
+    temp_initrds << "#{sched_http_prefix}/srv/scheduler/pending-jobs/#{id}/job.cgz"
 
     # pkg_data:
     #   lkp-tests:

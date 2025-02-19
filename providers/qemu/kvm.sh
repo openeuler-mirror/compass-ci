@@ -260,7 +260,7 @@ create_disk()
 
 set_mac()
 {
-	job_id=$(awk -F'/' '/job_initrd_tmpfs/{print $(NF-1)}' $ipxe_script)
+	job_id=$(awk -F'/' '/pending-jobs/{print $(NF-1)}' $ipxe_script)
 	nr_nic=$(awk -F'=' '/^# nr_nic=/{print $2}' $ipxe_script)
 
 	mac_arr[1]=$mac

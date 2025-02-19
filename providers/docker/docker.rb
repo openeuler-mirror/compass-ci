@@ -22,9 +22,10 @@ class DockerManager
   end
 
   def curl_cmd(path, url, name)
-    cmd = %W(curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -idu -D #{path})
-    puts cmd.join(" ")
-    system(*cmd)
+    cmd = %W(curl -sS --create-dirs -o #{path}/#{name} #{url})
+    # puts cmd.join(" ")
+    system(*cmd) &&
+    system(%Q(gzip -dc #{path}/#{name} | cpio -idu --quiet -D #{path}))
   end
 
   def load_initrds

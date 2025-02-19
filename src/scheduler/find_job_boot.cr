@@ -77,7 +77,7 @@ class Sched
     response += JobHelper.service_path("#{SRV_OS}/#{job.os_dir}/initrd.lkp")
     response += " (http,#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT})"
     response += JobHelper.service_path("#{SRV_INITRD}/lkp/#{job.lkp_initrd_user || "latest"}/#{initrd_lkp_cgz}")
-    response += " (http,#{SCHED_HOST}:#{SCHED_PORT})/job_initrd_tmpfs/"
+    response += " (http,#{SCHED_HOST}:#{SCHED_PORT})/srv/scheduler/pending-jobs/"
     response += "#{job.id}/job.cgz\n"
 
     response += "boot\n"
