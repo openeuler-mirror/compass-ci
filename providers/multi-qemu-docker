@@ -99,14 +99,22 @@ class MultiQemuDocker
     create_fifo
 
     Thread.new do
-      File.open(JOB_DONE_FIFO_PATH, 'r') do |fifo|
-        loop do
-          job_id = fifo.gets.chomp
-          @jobs.remove_job(job_id)
-          puts "Job #{job_id} completed and removed from the job list."
+      loop do
+        # Need re-open FIFO for block reading, since the other side always
+        # close FIFO after writing one line of job_id.
+        File.open(JOB_DONE_FIFO_PATH, 'r') do |fifo|
+          job_id = fifo.gets
+          if job_id
+            job_id.chomp!
+            @jobs.remove_job(job_id)
+            puts "Job #{job_id} completed and removed from the job list."
+          else
+            puts "Unexpected end of input from the FIFO."
+          end
         end
       end
     end
+
   end
 
   def open_websocket(url)
@@ -137,7 +145,8 @@ class MultiQemuDocker
           puts "Received: #{event.data}"
           handle_websocket_message(event.data)
         rescue => e
-          puts "Message handling error: #{e.message} #{e.backtrace}"
+          puts "Message handling error: #{e.message}"
+          puts e.backtrace.join("\n")
         end
 
         @ws.on(:close) do |event|
@@ -149,7 +158,7 @@ class MultiQemuDocker
           puts "WebSocket error: #{event.message}"
           puts "Please check if server is running on #{@scheduler_ws_url}" if event.message == Errno::ECONNREFUSED
           EM.stop_event_loop
-          
+
           @reconnect_attempts += 1
           delay = [2 ** @reconnect_attempts, 30].min
           puts "Attempting reconnect in #{delay} second..."
@@ -309,7 +318,7 @@ class MultiQemuDocker
       when 'vm', 'qemu'
         QemuManager.new(message).start_qemu_instance
       when 'dc', 'container'
-        start_container_instance(message)
+        DockerManager.new(message).start_container_instance
       end
 
       # Write job_id to FIFO when job is done
@@ -524,7 +533,7 @@ end
 if __FILE__ == $PROGRAM_NAME
   provider = MultiQemuDocker.new(ARGV)
   loop do
-    provider.start_event_machine 
+    provider.start_event_machine
     sleep 1
   end
 end

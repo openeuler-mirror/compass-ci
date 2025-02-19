@@ -16,7 +16,6 @@
 #   kill $(<$PIDS_DIR/$hostname)
 
 class JobTracker
-  @jobs = {}
   attr_reader :jobs
 
   @@nr_vm = 0
@@ -31,6 +30,7 @@ class JobTracker
   end
 
   def initialize
+    @jobs = {}
     load_jobs
   end
 
@@ -62,7 +62,7 @@ class JobTracker
   end
 
   def remove_job(job_id)
-    @jobs.delete job_id
+    job_data = @jobs.delete job_id
     FileUtils.rm(job_file_path(job_id))
     if job_data[:tbox_type] == "vm"
       @@nr_vm += 1
