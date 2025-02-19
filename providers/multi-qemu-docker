@@ -314,16 +314,21 @@ class MultiQemuDocker
       ENV["log_file"] = "#{ENV["LOGS_DIR"]}/#{hostname}"
       ENV["is_remote"] = @options[:is_remote].to_s
 
-      case message['tbox_type']
-      when 'vm', 'qemu'
-        QemuManager.new(message).start_qemu_instance
-      when 'dc', 'container'
-        DockerManager.new(message).start_container_instance
-      end
-
-      # Write job_id to FIFO when job is done
-      File.open(JOB_DONE_FIFO_PATH, 'a') do |fifo|
-        fifo.puts job_id
+      begin
+        case message['tbox_type']
+        when 'vm', 'qemu'
+          QemuManager.new(message).start_qemu_instance
+        when 'dc', 'container'
+          DockerManager.new(message).start_container_instance
+        end
+      rescue => e
+        puts "Error starting instance: #{e.message}"
+        puts e.backtrace.join("\n")
+      ensure
+        # Ensure the job done event is always informed
+        File.open(JOB_DONE_FIFO_PATH, 'a') do |fifo|
+          fifo.puts job_id
+        end
       end
     end
 
