@@ -36,7 +36,7 @@ class JobTracker
 
   def load_jobs
     Dir[File.join(ENV["JOBS_DIR"], '*.yaml')].each do |file|
-      job_data = YAML.safe_load(File.read(file))
+      job_data = YAML.safe_load(File.read(file), permitted_classes: [Symbol])
       @jobs[job_data[:id]] = job_data
       if job_data[:tbox_type] == "vm"
         @@nr_vm += 1
