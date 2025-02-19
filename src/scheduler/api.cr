@@ -104,7 +104,11 @@ module Scheduler
 
   # file download server
   get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
-    Sched.instance.download_file(env)
+    Sched.instance.api_download_job_file(env)
+  end
+
+  get "/srv/*path" do |env|
+    Sched.instance.api_download_srv_file(env)
   end
 
   # client(runner) report job's status
@@ -247,11 +251,6 @@ module Scheduler
   # register account, only allowed from LAN IP and admin account
   post "/scheduler/account" do |env|
     Sched.instance.api_register_account(env)
-  end
-
-  # file download server
-  get "/scheduler/job-initrd-tmpfs/:job_id/:job_package" do |env|
-    Sched.instance.download_file(env)
   end
 
   # client(runner) report job's status
