@@ -10,135 +10,129 @@ require 'fileutils'
 require 'yaml'
 require 'rest-client'
 
-# Global variables
-HOST_DIR = ENV["host_dir"]
-LOG_FILE = ENV["log_file"]
+class DockerManager
+  attr_accessor :host_dir, :log_file, :is_remote, :message, :hostname
 
-IS_REMOTE = ENV["is_remote"] == 'true'
-
-def curl_cmd(path, url, name)
-  %x(curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -idu -D #{path})
-end
-
-def load_initrds(hash)
-  initrds = JSON.parse(hash['initrds'])
-  record_log(initrds)
-  initrds.each do |initrd|
-    curl_cmd(HOST_DIR, initrd, initrd.to_s)
-  end
-end
-
-def load_package_optimization_strategy
-  job_yaml = "#{HOST_DIR}/lkp/scheduled/job.yaml"
-  job_info = YAML.load_file(job_yaml)
-  cpu_minimum = job_info['cpu_minimum'].to_s
-  memory_minimum = job_info['memory_minimum'].to_s
-  bin_shareable = job_info['bin_shareable'].to_s
-  ccache_enable = job_info['ccache_enable'].to_s
-
-  need_docker_sock = 'n'
-  if job_info.has_key?('build_mini_docker')
-    need_docker_sock = 'y'
+  def initialize(message)
+    @message = message
+    @hostname = message["hostname"]
+    @host_dir = message["host_dir"]
+    @log_file = message["log_file"]
+    @is_remote = ENV["is_remote"] == 'true'
   end
 
-  return cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock
-end
+  def curl_cmd(path, url, name)
+    %x(curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -idu -D #{path})
+  end
 
-def start_container(hostname, hash)
-  docker_image = hash['docker_image']
-  system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
-  cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock = load_package_optimization_strategy
-  system(
-    { 'job_id' => hash['job_id'],
-      'cpu_minimum' => "#{cpu_minimum}",
-      'memory_minimum' => "#{memory_minimum}",
-      'bin_shareable' => "#{bin_shareable}",
-      'ccache_enable' => "#{ccache_enable}",
-      'need_docker_sock' => "#{need_docker_sock}",
-      'hostname' => hostname,
-      'docker_image' => docker_image,
-      'nr_cpu' => hash['nr_cpu'],
-      'memory' => hash['memory'],
-      'load_path' => HOST_DIR,
-      'log_file' => LOG_FILE },
-    ENV['CCI_SRC'] + '/providers/docker/run.sh'
-  )
-end
-
-def record_log(list)
-  File.open(LOG_FILE, 'a') do |f|
-    list.each do |line|
-      f.puts line
+  def load_initrds
+    initrds = JSON.parse(@message['initrds'])
+    record_log(initrds)
+    initrds.each do |initrd|
+      curl_cmd(@host_dir, initrd, initrd.to_s)
     end
   end
-end
 
-def record_start_log(hash: {})
-  start_time = Time.new
-  File.open(LOG_FILE, 'w') do |f|
-    # fluentd refresh time is 1s
-    # let fluentd to monitor this file first
-    sleep(2)
-    f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting DOCKER"
-    f.puts "\n#{hash['job']}"
+  def load_package_optimization_strategy
+    job_yaml = "#{@host_dir}/lkp/scheduled/job.yaml"
+    job_info = YAML.load_file(job_yaml)
+    cpu_minimum = job_info['cpu_minimum'].to_s
+    memory_minimum = job_info['memory_minimum'].to_s
+    bin_shareable = job_info['bin_shareable'].to_s
+    ccache_enable = job_info['ccache_enable'].to_s
+
+    need_docker_sock = 'n'
+    if job_info.has_key?('build_mini_docker')
+      need_docker_sock = 'y'
+    end
+
+    return cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock
   end
-  return start_time
-end
 
-def record_inner_log(hash: {})
-  start_time = Time.new
-  File.open(LOG_FILE, 'a') do |f|
-    # fluentd refresh time is 1s
-    # let fluentd to monitor this file first
-    sleep(2)
-    f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting DOCKER"
-    f.puts "\n#{hash['job']}"
+  def start_container
+    docker_image = @message['docker_image']
+    system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
+    cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock = load_package_optimization_strategy
+    system(
+      { 'job_id' => @message['job_id'],
+        'cpu_minimum' => "#{cpu_minimum}",
+        'memory_minimum' => "#{memory_minimum}",
+        'bin_shareable' => "#{bin_shareable}",
+        'ccache_enable' => "#{ccache_enable}",
+        'need_docker_sock' => "#{need_docker_sock}",
+        'hostname' => @hostname,
+        'docker_image' => docker_image,
+        'nr_cpu' => @message['nr_cpu'],
+        'memory' => @message['memory'],
+        'load_path' => @host_dir,
+        'log_file' => @log_file },
+      ENV['CCI_SRC'] + '/providers/docker/run.sh'
+    )
   end
-  return start_time
-end
 
-def record_end_log(start_time)
-  duration = ((Time.new - start_time) / 60).round(2)
-  File.open(LOG_FILE, 'a') do |f|
-    f.puts "\nTotal DOCKER duration:  #{duration} minutes"
+  def record_log(list)
+    File.open(@log_file, 'a') do |f|
+      list.each do |line|
+        f.puts line
+      end
+    end
   end
-  # Allow fluentd sufficient time to read the contents of the log file
-  sleep(5)
-end
 
-def get_job_info
-  return {} unless File.exist?("#{HOST_DIR}/lkp/scheduled/job.yaml")
-  YAML.load_file("#{HOST_DIR}/lkp/scheduled/job.yaml")
-end
+  def record_inner_log
+    start_time = Time.new
+    File.open(@log_file, 'a') do |f|
+      # fluentd refresh time is 1s
+      # let fluentd to monitor this file first
+      sleep(2)
 
-def upload_dmesg(job_info)
-  return if job_info.empty?
-
-  if IS_REMOTE
-    upload_url = "#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
-  else
-    upload_url = "http://#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
+      f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting DOCKER"
+      f.puts "\n#job_id={@message['job_id']}"
+    end
+    return start_time
   end
-  %x(curl -sSf -F "file=@#{LOG_FILE}" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
-end
 
-def start_container_instance(message)
-  hostname = message["hostname"]
-
-  if Dir.exist?(HOST_DIR)
-    FileUtils.rm_rf(HOST_DIR)
+  def record_end_log(start_time)
+    duration = ((Time.new - start_time) / 60).round(2)
+    File.open(@log_file, 'a') do |f|
+      f.puts "\nTotal DOCKER duration:  #{duration} minutes"
+    end
   end
-  Dir.mkdir(HOST_DIR)
 
-  start_time = record_inner_log(hash: message)
+  def get_job_info
+    return {} unless File.exist?("#{@host_dir}/lkp/scheduled/job.yaml")
+    YAML.load_file("#{@host_dir}/lkp/scheduled/job.yaml")
+  end
 
-  load_initrds(message)
-  job_info = get_job_info
+  def upload_dmesg(job_info)
+    return if job_info.empty?
 
-  start_container(hostname, message)
+    if @is_remote
+      upload_url = "#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
+    else
+      upload_url = "http://#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
+    end
+    %x(curl -sSf -F "file=@#{@log_file}" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
+  end
 
-  record_end_log(start_time)
-  upload_dmesg(job_info)
-ensure
-  record_log(["finished the docker"])
+  def start_container_instance
+    if Dir.exist?(@host_dir)
+      FileUtils.rm_rf(@host_dir)
+    end
+    Dir.mkdir(@host_dir)
+
+    start_time = record_inner_log
+
+    load_initrds
+    job_info = get_job_info
+
+    start_container
+
+    record_end_log(start_time)
+    upload_dmesg(job_info)
+
+    # Allow fluentd sufficient time to read the contents of the log file
+    sleep(5)
+  ensure
+    record_log(["finished the docker"])
+  end
 end
