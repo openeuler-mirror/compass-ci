@@ -22,15 +22,18 @@ class DockerManager
   end
 
   def curl_cmd(path, url, name)
-    %x(curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -idu -D #{path})
+    cmd = %W(curl -sS --create-dirs -o #{path}/#{name} #{url} && gzip -dc #{path}/#{name} | cpio -idu -D #{path})
+    puts cmd.join(" ")
+    system(*cmd)
   end
 
   def load_initrds
     initrds = JSON.parse(@message['initrds'])
     record_log(initrds)
     initrds.each do |initrd|
-      curl_cmd(@host_dir, initrd, initrd.to_s)
+      return false unless curl_cmd(@host_dir, initrd, initrd.to_s.sub(/.*:\/\//, ""))
     end
+    true
   end
 
   def load_package_optimization_strategy
@@ -122,7 +125,7 @@ class DockerManager
 
     start_time = record_inner_log
 
-    load_initrds
+    return unless load_initrds
     job_info = get_job_info
 
     start_container
