@@ -115,7 +115,7 @@ class JobTracker
   end
 
   def load_job_from_disk(job_id)
-    YAML.safe_load(File.read(job_file_path(job_id))) if job_file_exists?(job_id)
+    YAML.safe_load(File.read(job_file_path(job_id)), permitted_classes: [Symbol]) if job_file_exists?(job_id)
   end
 
   def terminate_qemu(job)
