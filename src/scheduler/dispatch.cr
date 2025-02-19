@@ -588,7 +588,7 @@ class Sched
           msg = { "type" => "boot-job",
                   "ipxe_script" => msg,
                   "job_id" => job.id,
-                  "tbox_type" => job.tbox_type,
+                  "tbox_type" => "vm",
                   "tbox_group" => job.tbox_group,
           }.to_json
         end

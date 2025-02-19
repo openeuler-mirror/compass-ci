@@ -40,6 +40,7 @@ class Sched
     response = Hash(String, String).new
     response["type"] = "boot-job"
     response["job_id"] = job.id.to_s
+    response["tbox_type"] = "dc"
     response["tbox_group"] = job.tbox_group
     response["docker_image"] = "#{job.docker_image}"
     response["initrds"] = job.get_common_initrds().to_json
