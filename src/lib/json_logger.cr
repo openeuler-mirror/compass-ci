@@ -96,10 +96,13 @@ class JSONLogger < Log
       unless entry.message.empty?
         message.merge!({"message" => entry.message})
       end
-      message.merge! @info_hash if @info_hash
+
+      message.merge! @info_hash
+      @info_hash.clear
 
       # Merge message and @env_info
       logger_hash = message.merge(@env_info)
+      @env_info.clear
 
       # Send job event if job_id is present
       if logger_hash.has_key?("job_id")
