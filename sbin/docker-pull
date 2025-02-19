@@ -13,16 +13,18 @@ image_name=$1
 
 local_repository()
 {
-	echo "pull image from local repository"
-	docker pull $DOCKER_REGISTRY_HOST:$DOCKER_REGISTRY_PORT/$image_name 2> /dev/null && {
+	cmd="docker pull $DOCKER_REGISTRY_HOST:$DOCKER_REGISTRY_PORT/$image_name"
+	echo "$cmd"
+	$cmd 2> /dev/null && {
 		docker tag $DOCKER_REGISTRY_HOST:$DOCKER_REGISTRY_PORT/$image_name $image_name
 	}
 }
 
 docker_hub()
 {
-	echo "pull image from docker hub"
-	docker pull $image_name
+	cmd="docker pull $image_name"
+	echo "$cmd"
+	$cmd
 }
 
 main()
