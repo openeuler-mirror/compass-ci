@@ -111,6 +111,12 @@ module Scheduler
     Sched.instance.api_download_srv_file(env)
   end
 
+  post "/result/*path" do |env|
+    code, text = Sched.instance.api_upload_result(env)
+    env.response.status_code = code
+    text
+  end
+
   # client(runner) report job's status
   # /~lkp/cgi-bin/lkp-jobfile-append-var
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=running&job_id=10
