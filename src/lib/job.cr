@@ -3,6 +3,7 @@
 
 require "json"
 require "yaml"
+require "uuid"
 require "set"
 require "any_merge"
 require "digest"
@@ -305,6 +306,7 @@ class JobHash
     my_email
     my_name
     my_token
+    job_token
   ]
 
   # Only add new number fields here, to keep comptability with exising ES mapping
@@ -396,6 +398,7 @@ class JobHash
     my_email
     my_name
     my_token
+    job_token
 
     ssh_pub_key
     custom_bootstrap
@@ -925,6 +928,7 @@ class JobHash
   end
 
   def settle_job_fields(hostreq : HostRequest)
+    self.job_token = UUID.random.to_s
     self.host_machine = hostreq.hostname
     self.update_kernel_params
 

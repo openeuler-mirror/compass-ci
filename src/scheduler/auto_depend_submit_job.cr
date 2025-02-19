@@ -59,7 +59,7 @@ class Sched
     return "" unless job_content
 
     temp = job_content
-    fields = ["my_email", "my_token", "my_ssh_pubkey", "secrets", "pkg_data", "stats"]
+    fields = ["my_email", "my_token", "job_token", "my_ssh_pubkey", "secrets", "pkg_data", "stats"]
     fields.each do |field|
       temp.delete(field)
     end

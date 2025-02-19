@@ -77,6 +77,9 @@ class Sched
     send_file env, full_path
   end
 
+  # job_token is created on dispatched jobs.
+  # It won't be stored to ES.
+  # If scheduler crash, it can reloaded from job_dir's job.yaml
   def api_upload_result(env)
     # Extract query parameters
     job_id = env.params.query["job_id"]?
