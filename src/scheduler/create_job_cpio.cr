@@ -94,7 +94,7 @@ class JobHash
 
     script_lines << "}\n"
 
-    script_lines.to_s
+    script_lines.join("\n")
   end
 
   private def process_section(str, section)
