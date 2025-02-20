@@ -47,10 +47,19 @@ module Scheduler
         return
       end
     end
-    LOG.warn { "Config files #{config_files.join(" and ")} not found. Using default options." }
+    puts "Config files #{config_files.join(" and ")} not found. Using default options."
   rescue e
     LOG.error(e)
     exit(1)
+  end
+
+  def self.create_lkp_cgz
+    %w(x86_64 aarch64).each do |arch|
+      cgz_path = "#{BASE_DIR}/scheduler/upload-files/lkp-tests/#{arch}/#{BASE_TAG}.cgz"
+      next if File.exists? cgz_path
+      puts "Preparing #{cgz_path} to run LKP tests"
+      %x(#{ENV["LKP_SRC"]}/sbin/create-lkp-cgz.sh #{ENV["LKP_SRC"]} #{BASE_TAG} #{cgz_path})
+    end
   end
 
   # Start background tasks
@@ -70,6 +79,7 @@ module Scheduler
   def self.run
     parse_options
 
+    create_lkp_cgz
     start_background_tasks
     start_kemal_server
   rescue e
