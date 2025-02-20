@@ -31,7 +31,7 @@ main()
 {
 	# Check if the image already exists locally
 	if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^$image_name$"; then
-		echo "Docker image $image_name exists locally. Skipping pull."
+		echo "Found docker image $image_name"
 	else
 		local_repository || docker_hub
 	fi

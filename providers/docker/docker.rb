@@ -68,7 +68,8 @@ class DockerManager
         'docker_image' => docker_image,
         'nr_cpu' => @message['nr_cpu'],
         'memory' => @message['memory'],
-        'load_path' => @host_dir,
+        'result_root' => @message['result_root'],
+        'host_dir' => @host_dir,
         'log_file' => @log_file },
       ENV['CCI_SRC'] + '/providers/docker/run.sh'
     )

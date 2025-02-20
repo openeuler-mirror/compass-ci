@@ -340,6 +340,7 @@ public_option()
 		-m $memory
 		-rtc base=localtime
 		-k en-us
+		-virtfs local,path=$host_dir/result_root,mount_tag=9p/result_root,security_model=none,id=$job_id \
 		-no-reboot
 		-nographic
 		-monitor null

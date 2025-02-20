@@ -8,9 +8,9 @@
 
 : ${job_id:=$$}
 : ${docker_image:="centos:7"}
-: ${load_path:="${HOME}/jobs"}
 : ${hostname:="dc-8g-1"}
-: ${log_file:="/srv/provider/logs/$hostname"}
+: ${host_dir:="${HOME}/.cache/compass-ci/provider/hosts/$hostname"}
+: ${log_file:="${HOME}/.cache/compass-ci/provider/logs/$hostname"}
 
 if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
 	tbox_group=${BASH_REMATCH[1]}
@@ -89,12 +89,12 @@ cmd=(
 	-v /sys/kernel/debug:/sys/kernel/debug:ro
 	$mount_docker_sock
 	-v /usr/bin/docker:/usr/bin/docker:ro
-	-v ${load_path}/lkp:/lkp
-	-v ${load_path}/opt:/opt
+	-v ${host_dir}/lkp:/lkp
+	-v ${host_dir}/opt:/opt
 	-v ${DIR}/bin:/root/sbin:ro
 	-v $CCI_SRC:/c/compass-ci:ro
 	-v /srv/git:/srv/git:ro
-	-v /srv/result:/srv/result:ro
+	-v $host_dir/result_root:$result_root
 	-v ${busybox_path}:/usr/local/bin/busybox
 	$volumes_from
 	--log-driver json-file

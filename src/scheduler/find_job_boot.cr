@@ -45,6 +45,7 @@ class Sched
     response["docker_image"] = "#{job.docker_image}"
     response["initrds"] = job.get_common_initrds().to_json
     response["memory_minimum"] = "#{job["memory_minimum"]}"
+    response["result_root"] = "#{job["result_root"]}"
     if cpu = job.hw.not_nil!.["nr_cpu"]?
       response["nr_cpu"] = cpu
     end

@@ -35,7 +35,7 @@ class QemuManager
   def setup_working_directory(hostname)
     host_dir = "#{ENV["HOSTS_DIR"]}/#{hostname}"
     FileUtils.rm_rf(host_dir) if Dir.exist?(host_dir)
-    FileUtils.mkdir_p(host_dir)
+    FileUtils.mkdir_p(host_dir + "/result_root")
 
     Dir.chdir(host_dir) do
       yield host_dir
