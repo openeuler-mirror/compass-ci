@@ -90,7 +90,6 @@ cmd=(
 	$mount_docker_sock
 	-v /usr/bin/docker:/usr/bin/docker:ro
 	-v ${host_dir}/lkp:/lkp
-	-v ${host_dir}/opt:/opt
 	-v ${DIR}/bin:/root/sbin:ro
 	-v $CCI_SRC:/c/compass-ci:ro
 	-v /srv/git:/srv/git:ro
