@@ -998,7 +998,6 @@ class Job < JobHash
     set_timeout_seconds()
     set_rootfs()
     set_result_root()
-    set_result_service()
     set_lkp_server()
     set_sshr_info()
     check_queue()
@@ -1287,10 +1286,6 @@ class Job < JobHash
 
   def set_upload_dirs
     self.upload_dirs = "#{result_root}#{get_package_dir}#{get_repositories_dir}#{get_upload_dirs_from_config}"
-  end
-
-  private def set_result_service
-    self.result_service = "raw_upload"
   end
 
   private def check_queue
