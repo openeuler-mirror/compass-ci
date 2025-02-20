@@ -68,6 +68,7 @@ DIR=$(dirname $(realpath $0))
 check_busybox
 check_docker_sock
 check_package_optimization_strategy
+mkdir -p /var/lib/docker/cache
 cmd=(
 	docker run
 	--rm
@@ -84,6 +85,7 @@ cmd=(
 	-e CCACHE_DIR=$CCACHE_DIR
 	-e CCACHE_COMPILERCHECK=content
 	-e CCACHE_ENABLE=$ccache_enable
+	-v /var/lib/docker/cache:/srv/cache
 	-v /sys/kernel/debug:/sys/kernel/debug:ro
 	$mount_docker_sock
 	-v /usr/bin/docker:/usr/bin/docker:ro
