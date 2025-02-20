@@ -37,6 +37,14 @@ class JobTracker
   def load_jobs
     Dir[File.join(ENV["JOBS_DIR"], '*.yaml')].each do |file|
       job_data = YAML.safe_load(File.read(file), permitted_classes: [Symbol])
+
+      # Check if the process with fork_pid exists
+      if job_data[:fork_pid] && !Process.kill(0, job_data[:fork_pid])
+        # If the process does not exist, remove the file and skip to the next iteration
+        File.delete(file)
+        next
+      end
+
       @jobs[job_data[:id]] = job_data
       if job_data[:tbox_type] == "vm"
         @@nr_vm += 1
