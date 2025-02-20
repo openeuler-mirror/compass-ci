@@ -83,9 +83,9 @@ class DockerManager
     end
   end
 
-  def record_inner_log
+  def record_startup_log
     start_time = Time.new
-    File.open(@log_file, 'a') do |f|
+    File.open(@log_file, 'w') do |f|
       # fluentd refresh time is 1s
       # let fluentd to monitor this file first
       sleep(2)
@@ -125,7 +125,7 @@ class DockerManager
     end
     FileUtils.mkdir_p(@host_dir)
 
-    start_time = record_inner_log
+    start_time = record_startup_log
 
     return unless load_initrds
     job_info = get_job_info
