@@ -39,6 +39,7 @@ cmd = %w[
   -v #{DEFAULT_USER_CONFIG_DIR}:#{DEFAULT_BISECT_CONFIG_DIR}:ro
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
+  -p 9999:9999
   bisect
 ]
 
