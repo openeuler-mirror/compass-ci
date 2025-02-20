@@ -13,6 +13,8 @@ require 'rest-client'
 class DockerManager
   attr_accessor :host_dir, :log_file, :is_remote, :message, :hostname
 
+  CPIO_PATTERN_FILE = "/tmp/docker_cpio_pattern.txt"
+
   def initialize(message)
     @message = message
     @hostname = message["hostname"]
@@ -21,18 +23,21 @@ class DockerManager
     @is_remote = ENV["is_remote"] == 'true'
   end
 
-  def curl_cmd(path, url, name)
+  def download_extract_cpio(path, url, name)
+    File.write(CPIO_PATTERN_FILE, "lkp*") unless File.exist? CPIO_PATTERN_FILE
+
     cmd = %W(curl -sS --create-dirs -o #{path}/#{name} #{url})
     # puts cmd.join(" ")
+
     system(*cmd) &&
-    system(%Q(gzip -dc #{path}/#{name} | cpio -idu --quiet -D #{path}))
+    system(%Q(gzip -dc #{path}/#{name} | cpio -idu --quiet -D #{path} --pattern-file=#{CPIO_PATTERN_FILE}))
   end
 
   def load_initrds
     initrds = JSON.parse(@message['initrds'])
     record_log(initrds)
     initrds.each do |initrd|
-      return false unless curl_cmd(@host_dir, initrd, initrd.to_s.sub(/.*:\/\//, ""))
+      return false unless download_extract_cpio(@host_dir, initrd, initrd.to_s.sub(/.*:\/\//, ""))
     end
     true
   end
