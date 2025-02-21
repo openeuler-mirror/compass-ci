@@ -92,7 +92,7 @@ class JobHash
       sv.each { |key, val| parse_one(script_lines, key, val) }
     end
 
-    script_lines << "}\n"
+    script_lines << "}\n\n"
 
     script_lines.join("\n")
   end
@@ -256,12 +256,11 @@ class Sched
     job_sh_path = File.join(job_dir, "job.sh")
 
     script_content = <<-SCRIPT
-      #!/bin/sh
+#!/bin/sh
 
-      #{job.generate_shell_script}
-
-      "$@"
-    SCRIPT
+#{job.generate_shell_script}
+"$@"
+SCRIPT
 
     File.write(job_sh_path, script_content, perm: 0o775)
     job_sh_path
