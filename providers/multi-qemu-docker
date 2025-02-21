@@ -133,10 +133,10 @@ class MultiQemuDocker
   # ruby version of $LKP_SRC/lib/upload.sh upload_one()
   def upload_one(job, local_file, remote_path)
       # URL encode the remote path (important for spaces, etc.)
-      encoded_remote_path = remote_path.gsub(/([^a-zA-Z0-9_.-])/) { |match| "%#{match.ord.to_s(16).upcase}" }
+      encoded_remote_path = remote_path.gsub(/([^a-zA-Z0-9_.\/-])/) { |match| "%#{match.ord.to_s(16).upcase}" }
 
       # Construct the target path
-      target_path = "#{job[:result_root]}/#{encoded_remote_path}"
+      target_path = File.join(job[:result_root], encoded_remote_path)
 
       # Construct the HTTP URL
       http_url = "http://#{SCHED_HOST}:#{SCHED_PORT}#{target_path}?job_id=#{job[:id]}&job_token=#{job[:job_token]}"
@@ -193,7 +193,7 @@ class MultiQemuDocker
 
   def upload_results(job)
     # Construct the base directory path
-    base_dir = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/result_root"
+    base_dir = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/result_root/"
 
     # Recursively find all files under the base directory
     Find.find(base_dir) do |local_file|
