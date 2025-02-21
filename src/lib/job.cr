@@ -970,6 +970,7 @@ class Job < JobHash
     self.job_state = "submit"
     self.job_stage = "submit"
     self.istage = JOB_STAGE_NAME2ID["submit"] || 0
+    self.idata_readiness = JOB_DATA_READINESS_NAME2ID["N/A"] || 0
 
     #self.merge! Utils.get_service_env()
     #self.merge! Utils.get_testbox_env(@is_remote)

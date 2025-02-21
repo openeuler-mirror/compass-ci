@@ -100,9 +100,13 @@ class Sched
     # end
 
     # Validate job stage
-    if job.istage >= JOB_STAGE_NAME2ID["complete"] ||
-        job.istage < JOB_STAGE_NAME2ID["finished"]
-      return 403, "Job stage invalid"
+    if job.hash_int32.has_key? "idata_readiness" &&
+       job.idata_readiness >= JOB_DATA_READINESS_NAME2ID["uploaded"]
+      return 403, "Job data already uploaded"
+    end
+
+    if job.istage < JOB_STAGE_NAME2ID["download"]
+      return 403, "Job not running"
     end
 
     # Extract and validate path parameter
