@@ -11,8 +11,7 @@ alias LogHash = Hash(String, String)
 alias LogData = Hash(String, String) | Exception | String
 
 class JSONLogger < Log
-  def initialize(@env = nil)
-    @env_info = Hash(String, String).new
+  def initialize
     @info_hash = Hash(String, String).new
     super("", Log::IOBackend.new(formatter: my_formatter), Log::Severity.from_value(Sched.options.log_level))
   end
@@ -85,10 +84,8 @@ class JSONLogger < Log
     Log::Formatter.new do |entry, io|
       # next unless entry.severity.to_i32 >= Sched.options.log_level
 
-      get_env_info(@env.as(HTTP::Server::Context)) if @env
-
       # Use local timezone or UTC for the timestamp
-      datetime = entry.timestamp.to_s("%Y-%m-%d %H:%M:%S.%3N%z")
+      datetime = entry.timestamp.to_s("%Y-%m-%d %H:%M:%S%z")
       level = entry.severity.to_s.upcase
 
       # Integrate message of types Exception | Hash(String, String)
@@ -97,12 +94,8 @@ class JSONLogger < Log
         message.merge!({"message" => entry.message})
       end
 
-      message.merge! @info_hash
+      logger_hash = message.merge @info_hash
       @info_hash.clear
-
-      # Merge message and @env_info
-      logger_hash = message.merge(@env_info)
-      @env_info.clear
 
       # Send job event if job_id is present
       if logger_hash.has_key?("job_id")
@@ -117,34 +110,6 @@ class JSONLogger < Log
       # Write the TSV+KV line to the output
       io << tsv_line << "\t" << kv_pairs
     end
-  end
-
-  private def get_env_info(env : HTTP::Server::Context)
-    @env_info["status_code"] = env.response.status_code.to_s
-    @env_info["method"] = env.request.method
-    @env_info["resource"] = env.request.resource
-
-    @env_info["testbox"] = env.get?("testbox").to_s if env.get?("testbox")
-    @env_info["job_id"] = env.get?("job_id").to_s if env.get?("job_id")
-    @env_info["job_state"] = env.get?("job_state").to_s if env.get?("job_state")
-    @env_info["api"] = env.get?("api").to_s if env.get?("api")
-
-    set_elapsed(env)
-  end
-
-  private def set_elapsed(env : HTTP::Server::Context)
-    start_time = env.get?("start_time")
-    return unless start_time
-
-    elapsed_time = (Time.monotonic - start_time.as(Time::Span)).total_milliseconds
-
-    if elapsed_time >= 1
-      elapsed = "#{elapsed_time.round(2)}ms"
-    else
-      elapsed = "#{(elapsed_time * 1000).round(2)}µs"
-    end
-
-    @env_info["elapsed"] = elapsed
   end
 
   def set_env(env : HTTP::Server::Context)

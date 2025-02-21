@@ -8,7 +8,7 @@ class HTTP::Server
   # Instances of this class are passed to an `HTTP::Server` handler.
   class Context
     def create_log
-      @log = JSONLogger.new(env: self)
+      @log = JSONLogger.new
     end
 
     def log

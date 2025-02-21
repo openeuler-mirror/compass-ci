@@ -34,25 +34,6 @@ module Scheduler
 
   add_context_storage_type(Time::Span)
 
-  before_all do |env|
-    env.set "start_time", Time.monotonic
-    env.response.headers["Connection"] = "close"
-    env.set "api", Sched.instance.get_api(env).to_s
-  rescue e
-    env.log.warn(e)
-  end
-
-  after_all do |env|
-    env.log.info({
-      "from" => env.request.remote_address.to_s,
-      "message" => "access_record"
-    }) if env.response.status_code == 200
-
-    GC.collect
-  rescue e
-    env.log.warn(e)
-  end
-
   # ----------------------------------------
   # old scheduler api
   # ----------------------------------------
