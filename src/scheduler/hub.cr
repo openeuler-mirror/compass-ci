@@ -78,6 +78,46 @@ class Sched
     job
   end
 
+  def change_job_data_readiness(job, job_data_readiness, do_wakeup : Bool = true)
+    job.job_data_readiness = job_data_readiness
+    job.idata_readiness = JOB_DATA_READINESS_NAME2ID[job_data_readiness] || -1
+
+    on_job_update(job.id64) if do_wakeup
+
+    if job.idata_readiness == JOB_DATA_READINESS_NAME2ID["uploaded"]
+      on_job_data_uploaded(job)
+    end
+
+    if job.idata_readiness >= JOB_DATA_READINESS_NAME2ID["complete"]
+      job.set_time("complete_time")
+      on_job_complete(job)
+    else
+      job.set_time("#{job_data_readiness}_time")
+    end
+  end
+
+  def change_job_stage(job, job_stage, health_problem)
+    if health_problem
+      job.job_health = health_problem
+      job.ihealth = JOB_HEALTH_NAME2ID[health_problem] || -1
+      job.last_success_stage = job.job_stage
+      if health_problem == "cancel"
+        change_job_data_readiness(job, "norun", false)
+      end
+    end
+
+    job.job_stage = job_stage
+    job.istage = JOB_STAGE_NAME2ID[job_stage] || -1
+    job.set_time("#{job_stage}_time")
+
+    on_job_update(job.id64)
+
+    # job finished?
+    if job.istage == JOB_STAGE_NAME2ID["finish"]
+      on_job_finish(job)
+    end
+  end
+
   def on_job_update(cjob_id : Int64)
     return unless @jobs_wait_on.has_key? cjob_id
     return unless cjob = get_job(cjob_id)
@@ -101,25 +141,30 @@ class Sched
   end
 
   # job finish or abort
-  def on_job_close(job)
-
+  def on_job_finish(job)
     job.set_boot_seconds
-
-    if job.job_stage == "incomplete"
-      remove_job_schedule_indices(job, job.id64)
-      on_job_complete(job)
-    else
-      spawn {
-        @stats_worker.handle(job)
-        on_job_complete(job)
-      }
-    end
-    report_workflow_job_event(job.id, job)
+    check_retire_job(job)
   end
 
-  # job stats created
+  def on_job_data_uploaded(job)
+    spawn {
+      @stats_worker.handle(job)
+      change_job_data_readiness(job, "complete")
+    }
+  end
+
+  # called on 2 data conditions:
+  # - complete: job stats created
+  # - incomplete: won't change any more
   def on_job_complete(job)
     @es.replace_doc("jobs", job)
+    report_workflow_job_event(job.id, job)
+    check_retire_job(job)
+  end
+
+  def check_retire_job(job)
+    return if job.istage < JOB_STAGE_NAME2ID["finish"]
+    return if job.idata_readiness < JOB_DATA_READINESS_NAME2ID["complete"]
     @jobs_cache.delete job.id64
   end
 
@@ -138,8 +183,8 @@ class Sched
 
     if progress && !wait_spec.has_key?("wait_on")
       if progress == :fail_fast
-        change_job_stage(dependent_job, "incomplete", "abort_wait")
-        on_job_close(dependent_job)
+        change_job_stage(dependent_job, "finish", "abort_wait")
+        change_job_data_readiness(dependent_job, "incomplete")
       else
         add_job_to_cache(dependent_job)
       end
@@ -168,12 +213,16 @@ class Sched
 
     # if only jobid, the default condition is job complete
     if job_spec.nil? || job_spec.empty?
-      return false unless JOB_STAGE_NAME2ID[cjob.job_stage] >= JOB_STAGE_NAME2ID["complete"]
+      return false unless cjob.idata_readiness >= JOB_DATA_READINESS_NAME2ID["complete"]
     else
       job_spec.each do |field, expected_str|
         if field == "job_stage"
-          current_id = JOB_STAGE_NAME2ID[cjob.job_stage]?
+          current_id = cjob.istage?
           expected_id = JOB_STAGE_NAME2ID[expected_str]?
+          return false unless current_id && expected_id && current_id >= expected_id
+        elsif field == "job_stage"
+          current_id = cjob.idata_readiness?
+          expected_id = JOB_DATA_READINESS_NAME2ID[expected_str]?
           return false unless current_id && expected_id && current_id >= expected_id
         elsif field == "milestones"
           return false unless cjob.hash_array.has_key?("milestones") && cjob.hash_array["milestones"].includes?(expected_str)

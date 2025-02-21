@@ -28,20 +28,19 @@ class Sched
       when "job_step"
           job.job_step = value
           delta_job.job_step = value
-      when "job_state", "job_stage"
-        if JOB_STAGE_NAME2ID.has_key? value
+
+      when "job_state", "job_stage", "job_data_readiness"
+        if JOB_DATA_READINESS_NAME2ID.has_key? value
+          change_job_data_readiness(job, value)
+          delta_job.job_data_readiness = value
+        elsif JOB_STAGE_NAME2ID.has_key? value
           change_job_stage(job, value, nil)
           delta_job.job_stage = value
         elsif JOB_HEALTH_NAME2ID.has_key? value
-          change_job_stage(job, "incomplete", value)
+          change_job_stage(job, "finish", value)
           delta_job.job_health = value
         else
           raise "Error: api_update_job: unknown #{parameter}=#{value}"
-        end
-
-        # job finished?
-        if JOB_STAGE_NAME2ID[job.job_stage] >= JOB_STAGE_NAME2ID["finish"]
-          on_job_close(job)
         end
 
       when "milestones"
@@ -78,21 +77,6 @@ class Sched
     env.response.status_code = 500
     @log.warn(e)
     return e.to_s
-  end
-
-  def change_job_stage(job, job_stage, job_health)
-    job.job_stage = job_stage
-    job.istage = JOB_STAGE_NAME2ID[job_stage] || -1
-    job.set_time("#{job_stage}_time")
-
-    if job_health
-      job.job_health = job_health
-      job.ihealth = JOB_HEALTH_NAME2ID[job_health] || -1
-    else
-      job.last_success_stage = job_stage 
-    end
-
-    on_job_update(job.id64)
   end
 
 end

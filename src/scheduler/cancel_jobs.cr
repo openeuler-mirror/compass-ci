@@ -86,7 +86,7 @@ class Sched
       next unless result["result"] == "success"
       next unless job
 
-      job["job_health"] = "cancel"
+      change_job_stage(job, "finish", "cancel")
       update_jobs << { "update" => { "index" => "jobs", "id" => job_id, "doc" => job.to_json_any}}
     rescue e
       @log.warn(e)

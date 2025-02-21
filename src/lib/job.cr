@@ -313,6 +313,7 @@ class JobHash
   INT32_KEYS = %w(
     istage
     ihealth
+    idata_readiness
     priority
     renew_seconds
     timeout_seconds
@@ -377,6 +378,7 @@ class JobHash
     job_stage
     job_health
     last_success_stage
+    job_data_readiness
 
     time
     submit_time
@@ -385,11 +387,14 @@ class JobHash
     setup_time
     wait_peer_time
     running_time
-    uploading_time
     post_run_time
-    finish_time
     manual_check_time
     renew_time
+    finish_time
+
+    uploading_time
+    uploaded_time
+    complete_time
 
     boot_seconds
     run_seconds

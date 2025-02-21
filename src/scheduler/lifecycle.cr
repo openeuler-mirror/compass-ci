@@ -1,15 +1,14 @@
 
-# default timeout for each stage
+# default timeout for each stage,
+# here we only care about jobs actually consuming testbox machine time
 # unit: seconds
 JOB_STAGE_TIMEOUT = {
   "download"     =>  3600,
   "boot"         =>  1200,
   "setup"        =>   600,
-  "running"      =>  3600,
   "wait_peer"    =>  7200,
-  "uploading"    =>  3600,
+  "running"      =>  3600,
   "post_run"     =>  1800,
-  "finish"       =>  300,
   "manual_check" =>  10 * 3600,     # 10 hours
   "renew"        =>  3 * 24 * 3600, # 3 days
 }
@@ -63,10 +62,8 @@ class Sched
 
       job.deadline_utc = start_time.to_utc + timeout
       if job.deadline_utc < now
-        if terminate_job(job) && JOB_STAGE_NAME2ID[stage] < JOB_STAGE_NAME2ID["finish"]
-          job.job_stage = "incomplete"
-          job.job_health = "timeout_#{stage}"
-          on_job_updated(jobid)
+        if terminate_job(job)
+          change_job_stage(job, "finish", "timeout_#{stage}")
         end
       end
     end

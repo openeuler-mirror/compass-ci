@@ -18,6 +18,7 @@ CREATE TABLE jobs(
 
 	istage		int,
 	ihealth		int,
+	idata_readiness	int,
 
 	j		json,
 	errid		text,
