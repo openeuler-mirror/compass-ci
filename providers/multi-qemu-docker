@@ -7,6 +7,7 @@ require 'yaml'
 require 'fcntl'
 require 'fileutils'
 require 'find'
+require 'open3'
 require 'shellwords'
 require 'faye/websocket'
 require 'eventmachine'
@@ -121,6 +122,7 @@ class MultiQemuDocker
 
   end
 
+  # ruby version of $LKP_SRC/lib/upload.sh upload_one()
   def upload_one(job, local_file, remote_path)
       # URL encode the remote path (important for spaces, etc.)
       encoded_remote_path = remote_path.gsub(/([^a-zA-Z0-9_.-])/) { |match| "%#{match.ord.to_s(16).upcase}" }
@@ -137,14 +139,23 @@ class MultiQemuDocker
       retry_delay = 5
       retry_count = 0
 
+      # Read the file content in binary mode
+      file_content = File.binread(local_file)
+
       # Retry loop
       loop do
-        # Use curl to upload the file
-        response = `curl -s -X POST -w "%{http_code}" -d "@#{Shellwords.escape(local_file)}" "#{http_url}"`
+        # Use Open3 to execute curl with stdin_data
+        stdout, stderr, status = Open3.capture3(
+          'curl', '-s', '-X', 'POST', '-w', '\ncode=%{http_code}', '--data-binary', '@-', http_url,
+          stdin_data: file_content
+        )
+
+        # Extract the HTTP status code from the output
+        response = stdout.match(/code=(\d+)/)[1]
 
         case response
         when "200", "201"
-          puts "Upload successful: #{local_file} to #{target_path}"
+          # puts "Upload successful: #{local_file} to #{target_path}"
           break
         when "409"
           puts "Error: File already exists on server: #{target_path}"
