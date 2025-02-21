@@ -70,38 +70,66 @@ DIR=$(dirname $(realpath $0))
 check_busybox
 check_docker_sock
 check_package_optimization_strategy
+
+# Determine container runtime (podman or docker)
+container_runtime=$(command -v podman || command -v docker)
+if [[ -z "$container_runtime" ]]; then
+	echo "Error: Neither podman nor docker is installed." >&2
+	exit 1
+fi
+
+# Base command
 cmd=(
-	docker run
+	"$container_runtime" run
 	--rm
-	--name ${hostname}
-	--hostname $host.compass-ci.net
-	# --cpus $nr_cpu
-	-m $memory
+	--name "$hostname"
+	--hostname "$host.compass-ci.net"
+	-m "$memory"
 	--tmpfs /tmp:rw,exec,nosuid,nodev
-	--privileged
 	--net=host
-	-e SQUID_HOST=$squid_host
+	-e SQUID_HOST="$squid_host"
 	-e CCI_SRC=/c/compass-ci
 	-e CCACHE_UMASK=002
-	-e CCACHE_DIR=$CCACHE_DIR
+	-e CCACHE_DIR="$CCACHE_DIR"
 	-e CCACHE_COMPILERCHECK=content
-	-e CCACHE_ENABLE=$ccache_enable
-	-v /sys/kernel/debug:/sys/kernel/debug:ro
-	$mount_docker_sock
-	-v /usr/bin/docker:/usr/bin/docker:ro
-	-v ${host_dir}/lkp:/lkp
-	-v ${DIR}/bin:/root/sbin:ro
-	-v $CCI_SRC:/c/compass-ci:ro
-	-v /srv/git:/srv/git:ro
-	-v $host_dir/result_root:$result_root
-	-v ${busybox_path}:/usr/local/bin/busybox
-	$volumes_from
+	-e CCACHE_ENABLE="$ccache_enable"
+	-v "${host_dir}/lkp:/lkp"
+	-v "${DIR}/bin/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro"
+	-v "$CCI_SRC:/c/compass-ci:ro"
+	-v "/srv/git:/srv/git:ro"
+	-v "$host_dir/result_root:$result_root"
+	-v "${busybox_path}:/usr/local/bin/busybox"
 	--log-driver json-file
 	--log-opt max-size=10m
 	--oom-score-adj="-1000"
-	${docker_image}
-	/root/sbin/entrypoint.sh
+	"$docker_image"
+	/usr/local/bin/entrypoint.sh
 )
 
+# Add --cpus if nr_cpu is provided
+if [[ -n "$nr_cpu" ]]; then
+	cmd+=(--cpus "$nr_cpu")
+fi
+
+# Add --privileged if running as root
+if [[ $(id -u) -eq 0 ]]; then
+	cmd+=(--privileged)
+	cmd+=(-v /sys/kernel/debug:/sys/kernel/debug:ro)
+fi
+
+# Add Docker-specific options if runtime is docker
+if [[ "$container_runtime" == *"docker"* ]]; then
+	cmd+=(
+	-v /var/run/docker.sock:/var/run/docker.sock
+	-v /usr/bin/docker:/usr/bin/docker:ro
+)
+fi
+
+# Add volumes_from if provided
+if [[ -n "$volumes_from" ]]; then
+	cmd+=(--volumes-from "$volumes_from")
+fi
+
+# Execute the command
 echo "less $log_file"
 "${cmd[@]}" 2>&1 | awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_file"

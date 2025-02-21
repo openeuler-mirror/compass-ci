@@ -128,7 +128,7 @@ class DockerManager
     if Dir.exist?(@host_dir)
       FileUtils.rm_rf(@host_dir)
     end
-    FileUtils.mkdir_p(@host_dir)
+    FileUtils.mkdir_p(@host_dir + "/result_root")
 
     start_time = record_startup_log
 
