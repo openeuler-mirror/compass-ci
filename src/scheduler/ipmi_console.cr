@@ -199,7 +199,7 @@ class Sched
       START_PATTERNS.each do |pattern|
         if line.includes?(pattern)
           return unless job.result_root
-          log_path = File.join(job.result_root, "dmesg")
+          log_path = File.join(job.result_root, "console.log")
           @hw_jobfile[hostname] = File.open(log_path, "a")
           break
         end
