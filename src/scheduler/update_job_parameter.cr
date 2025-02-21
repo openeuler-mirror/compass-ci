@@ -2,43 +2,31 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 class Sched
-  def api_update_job(env) : String
+  def api_update_job(env : HTTP::Server::Context) : String
     job_id = env.params.query["job_id"]?
     raise "Error: no job_id" unless job_id
 
     job = get_job(job_id.to_i64)
     raise "Error: job not found" unless job
 
-    env.set "job_id", job_id
-    env.set "time", get_time
-
     # no need to update job
     raise "Warning: job finish, cannot update" if JOB_STAGE_NAME2ID[job.job_stage] >= JOB_STAGE_NAME2ID["finish"]
-
-    # try to get report value and then update it
-    delta_job = JobHash.new
 
     %w(job_state job_stage job_step milestones renew_seconds).each do |parameter|
       value = env.params.query[parameter]?
       next if value.nil? || value == ""
 
-      env.set parameter, value
-
       case parameter
       when "job_step"
           job.job_step = value
-          delta_job.job_step = value
 
       when "job_state", "job_stage", "job_data_readiness"
         if JOB_DATA_READINESS_NAME2ID.has_key? value
           change_job_data_readiness(job, value)
-          delta_job.job_data_readiness = value
         elsif JOB_STAGE_NAME2ID.has_key? value
           change_job_stage(job, value, nil)
-          delta_job.job_stage = value
         elsif JOB_HEALTH_NAME2ID.has_key? value
           change_job_stage(job, "finish", value)
-          delta_job.job_health = value
         else
           raise "Error: api_update_job: unknown #{parameter}=#{value}"
         end
@@ -50,23 +38,12 @@ class Sched
         else
           job.milestones = value.split(" ")
         end
-        delta_job.milestones = job.milestones
 
       when "renew_seconds"
         raise "Warning: only running job can renew, your job stage is: #{job.job_stage}" if job.job_stage == "submit"
         job.renew_addtime(value.to_i32)
       end
     end
-
-    delta_job.id = job_id
-
-    # json log
-    log = delta_job.dup
-    log.hash_plain["job_id"] = job_id
-    log.hash_plain.delete("id")
-
-    env.set "log", log.to_json
-    send_mq_msg(env)
 
     # optimize away db updates except in on_finish_job()
     # @es.update_doc("jobs", ...)
