@@ -408,6 +408,8 @@ class JobHash
     ssh_pub_key
     custom_bootstrap
 
+    debug_lkp
+
     runtime
     timeout
 
