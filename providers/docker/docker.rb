@@ -113,17 +113,6 @@ class DockerManager
     YAML.load_file("#{@host_dir}/lkp/scheduled/job.yaml")
   end
 
-  def upload_dmesg(job_info)
-    return if job_info.empty?
-
-    if @is_remote
-      upload_url = "#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
-    else
-      upload_url = "http://#{job_info["RESULT_WEBDAV_HOST"]}:#{job_info["RESULT_WEBDAV_PORT"]}#{job_info["result_root"]}/dmesg"
-    end
-    %x(curl -sSf -F "file=@#{@log_file}" #{upload_url} --cookie "JOBID=#{job_info["id"]}")
-  end
-
   def start_container_instance
     if Dir.exist?(@host_dir)
       FileUtils.rm_rf(@host_dir)
@@ -138,7 +127,6 @@ class DockerManager
     start_container
 
     record_end_log(start_time)
-    upload_dmesg(job_info)
 
     # Allow fluentd sufficient time to read the contents of the log file
     sleep(5)

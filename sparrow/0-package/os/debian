@@ -22,7 +22,7 @@ pkgs=(
 	dmidecode
 	redis-server
 	wget
-	busybox
+	busybox-static
 	iproute2
 	hostname
 	libvirt-daemon-system

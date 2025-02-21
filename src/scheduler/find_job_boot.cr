@@ -46,6 +46,7 @@ class Sched
     response["initrds"] = job.get_common_initrds().to_json
     response["memory_minimum"] = "#{job["memory_minimum"]}"
     response["result_root"] = "#{job["result_root"]}"
+    response["job_token"] = "#{job["job_token"]}"
     if cpu = job.hw.not_nil!.["nr_cpu"]?
       response["nr_cpu"] = cpu
     end
