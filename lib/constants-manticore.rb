@@ -16,6 +16,7 @@ JOB_STAGE_NAME2ID = {
   "manual_check" =>  7,   # interactive user login
   "renew"        =>  8,   # extended borrow time for interactive user login
   "finish"       =>  9,   # to release testbox resource
+  "cancel"       => 10,   # cancel by user before running. No start, so no finish.
 }
 
 # DATA-DOMAIN STAGES

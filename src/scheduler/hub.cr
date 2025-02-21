@@ -101,9 +101,9 @@ class Sched
       job.job_health = health_problem
       job.ihealth = JOB_HEALTH_NAME2ID[health_problem] || -1
       job.last_success_stage = job.job_stage
-      if health_problem == "cancel"
-        change_job_data_readiness(job, "norun", false)
-      end
+    end
+    if job_stage == "cancel"
+      change_job_data_readiness(job, "norun", false)
     end
 
     job.job_stage = job_stage
@@ -113,7 +113,7 @@ class Sched
     on_job_update(job.id64)
 
     # job finished?
-    if job.istage == JOB_STAGE_NAME2ID["finish"]
+    if job.istage >= JOB_STAGE_NAME2ID["finish"]
       on_job_finish(job)
     end
   end
