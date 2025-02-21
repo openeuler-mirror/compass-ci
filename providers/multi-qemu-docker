@@ -110,8 +110,16 @@ class MultiQemuDocker
           if job_id
             job_id.chomp!
             job = @jobs.remove_job(job_id)
+
             upload_log(job)
             upload_results(job)
+            status = {
+              type: 'job-update',
+              job_id: job_id,
+              job_data_readiness: "uploaded",  # trigger extract-stats
+            }
+            @ws.send(status.to_json)
+
             puts "Job #{job_id} completed and removed from the job list."
           else
             puts "Unexpected end of input from the FIFO."
@@ -132,7 +140,6 @@ class MultiQemuDocker
 
       # Construct the HTTP URL
       http_url = "http://#{SCHED_HOST}:#{SCHED_PORT}#{target_path}?job_id=#{job[:id]}&job_token=#{job[:job_token]}"
-      puts http_url
 
       # Maximum retries and retry delay
       max_retries = 50
