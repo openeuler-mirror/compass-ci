@@ -28,6 +28,46 @@ require "../lib/account"
 # - use [redis incr] as job_id, a 64bit int number
 # - restful API [get "/"] default echo
 #
+
+module Kemal
+  # Custom LogHandler that outputs local time instead of UTC
+  class LocalTimeLogHandler < Kemal::BaseLogHandler
+    def initialize(@io : IO = STDOUT)
+    end
+
+    def call(context : HTTP::Server::Context)
+      # Measure the elapsed time for the request
+      elapsed_time = Time.measure { call_next(context) }
+      elapsed_text = elapsed_text(elapsed_time)
+
+      # Output the log with local time
+      @io << Time.local << ' ' <<
+      context.response.status_code << ' ' <<
+      context.request.method << ' ' <<
+      context.request.resource << ' ' <<
+      elapsed_text << '\n'
+      @io.flush
+      context
+    end
+
+    def write(message : String)
+      @io << message
+      @io.flush
+      @io
+    end
+
+    private def elapsed_text(elapsed)
+      millis = elapsed.total_milliseconds
+      return "#{millis.round(2)}ms" if millis >= 1
+
+      "#{(millis * 1000).round(2)}µs"
+    end
+  end
+end
+
+# Replace the default logger with the custom LocalTimeLogHandler
+logger Kemal::LocalTimeLogHandler.new
+
 module Scheduler
   VERSION = "0.2.0"
   logging true
