@@ -73,10 +73,11 @@ class JobTracker
     job_data = @jobs.delete job_id
     FileUtils.rm(job_file_path(job_id))
     if job_data[:tbox_type] == "vm"
-      @@nr_vm += 1
+      @@nr_vm -= 1
     else
-      @@nr_container += 1
+      @@nr_container -= 1
     end
+    job_data
   end
 
   def terminate_job(job_id)
