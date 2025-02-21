@@ -142,8 +142,9 @@ class StatsWorker
   end
 
   def result_post_processing(job)
-    result_root = job.result_root?
-    return nil unless result_root && File.exists?(result_root)
+    result_root = job.result_root
+    result_root = "#{BASE_DIR}/#{result_root}"
+    raise "result_root #{result_root} not exist" unless File.exists?(result_root)
 
     suite = job.suite?
     store_device(result_root, job) if suite == "boards-scan"
