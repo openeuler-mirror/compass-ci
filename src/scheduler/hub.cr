@@ -431,6 +431,10 @@ class Sched
             @log.error { "Invalid host request format: #{ex.message} raw_message is #{raw_message}" }
           end
 
+        when "job-update"
+          params = msg.transform_values(&.to_s)
+          update_job_from_hash(params)
+
         when "console-output"
           handle_console_output(msg, raw_message)
 
