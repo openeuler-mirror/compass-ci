@@ -39,8 +39,9 @@ class JobTracker
       job_data = YAML.safe_load(File.read(file), permitted_classes: [Symbol])
 
       # Check if the process with fork_pid exists
-      if job_data[:fork_pid] && !Process.kill(0, job_data[:fork_pid])
+      if job_data[:fork_pid] && !Dir.exist?("/proc/#{job_data[:fork_pid]}")
         # If the process does not exist, remove the file and skip to the next iteration
+        puts "removing stale job info #{file}"
         File.delete(file)
         next
       end
