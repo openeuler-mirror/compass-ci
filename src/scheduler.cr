@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-require "./scheduler/constants.cr"
-require "./scheduler/api.cr"
+require "./constants.cr"
+require "./api.cr"
 require "./lib/json_logger"
 
 require "kemal"

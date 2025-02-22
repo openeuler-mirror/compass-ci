@@ -5,8 +5,8 @@ require "yaml"
 require "http/client"
 
 require "../lib/etcd_client"
-require "../lib/json_logger"
-require "../scheduler/elasticsearch_client"
+require "../json_logger"
+require "../elasticsearch_client"
 
 class MailWorker
   def initialize

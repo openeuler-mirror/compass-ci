@@ -2,9 +2,9 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 #
 
-require "../lib/common"
-require "../lib/json_logger"
-require "../lib/string_utils"
+require "./common"
+require "./lib/json_logger"
+require "./lib/string_utils"
 
 class Sched
 

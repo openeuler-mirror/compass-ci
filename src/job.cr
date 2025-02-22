@@ -16,14 +16,14 @@ require "base64"
 class JobHash
 end
 
-require "./constants-manticore.cr"
-require "../scheduler/constants.cr"
-require "../scheduler/jobfile_operate.cr"
-require "../scheduler/kernel_params.cr"
-require "../scheduler/pp_params.cr"
-require "../scheduler/elasticsearch_client"
-require "./utils"
-require "./unit"
+require "./constants-job.cr"
+require "./lib/constants.cr"
+require "./jobfile_operate.cr"
+require "./kernel_params.cr"
+require "./pp_params.cr"
+require "./elasticsearch_client"
+require "./lib/utils"
+require "./lib/unit"
 
 struct JSON::Any
   def []=(key : String, value : String)

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-require "./sched"
+require "../sched"
 require "./json_logger"
 
 class HTTP::Server

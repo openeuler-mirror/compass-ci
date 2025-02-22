@@ -3,11 +3,11 @@
 
 require "kemal"
 
-require "../lib/web_env"
-require "../lib/sched"
-require "../lib/json_logger"
-require "../lib/host"
-require "../lib/account"
+require "./lib/web_env"
+require "./lib/json_logger"
+require "./sched"
+require "./host"
+require "./account"
 
 # -------------------------------------------------------------------------------------------
 # end_user:

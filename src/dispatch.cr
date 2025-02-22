@@ -3,8 +3,8 @@
 
 require "set"
 require "json"
-require "../lib/host"
-require "../lib/sched"
+require "./host"
+require "./sched"
 
 # a host's job request parameters
 struct HostRequest

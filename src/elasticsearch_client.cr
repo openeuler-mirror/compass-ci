@@ -8,9 +8,9 @@ require "any_merge"
 require "elasticsearch-crystal/elasticsearch/api"
 require "elasticsearch-crystal/elasticsearch/api/utils"
 require "./constants"
-require "../lib/job"
-require "../lib/json_logger"
-require "../lib/manticore"
+require "./job"
+require "./lib/json_logger"
+require "./manticore"
 
 # -------------------------------------------------------------------------------------------
 # save_job(job_content)

@@ -6,7 +6,7 @@ require "http/client"
 
 require "../lib/etcd_client"
 require "../lib/json_logger"
-require "../scheduler/elasticsearch_client"
+require "../elasticsearch_client"
 
 class PostWorker
   def initialize

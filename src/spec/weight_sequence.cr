@@ -1,5 +1,5 @@
 require "spec"
-require "../../scheduler/dispatch"
+require "../dispatch.cr"
 
 # This test suite verifies:
 # - Basic Weight Compliance: Validates proportional distribution

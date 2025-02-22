@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2025 Huawei Technologies Co., Ltd. All rights reserved.
 
-require "./utils.cr"
-require "../scheduler/elasticsearch_client.cr"
+require "./lib/utils.cr"
+require "./elasticsearch_client.cr"
 
 # Static info describing a testbox (for hw machines) or tbox_group (for vm-* dc-*)
 # - batch loaded from lab {hosts,devices}/* yaml

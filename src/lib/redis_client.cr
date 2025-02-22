@@ -6,7 +6,7 @@ require "redis"
 require "redis/cluster"
 
 require "./constants"
-require "../lib/job"
+require "../job"
 require "singleton"
 
 class RedisClient

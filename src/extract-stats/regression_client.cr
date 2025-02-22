@@ -1,5 +1,5 @@
 require "elasticsearch-crystal/elasticsearch/api"
-require "../scheduler/constants.cr"
+require "../constants.cr"
 
 class RegressionClient
   HOST = (ENV.has_key?("ES_HOST") ? ENV["ES_HOST"] : JOB_ES_HOST)

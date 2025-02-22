@@ -1,7 +1,7 @@
 require "spec"
 require "yaml"
-require "../../lib/job.cr"
-require "../../scheduler/plugins/cluster.cr"
+require "../job.cr"
+require "../plugins/cluster.cr"
 
 # mock class
 class MockJob < JobHash

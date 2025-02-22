@@ -4,9 +4,9 @@
 require "yaml"
 
 require "../lib/json_logger"
-require "../scheduler/elasticsearch_client"
-require "../scheduler/redis_client"
-require "../scheduler/constants"
+require "../elasticsearch_client"
+require "../lib/redis_client"
+require "../constants"
 require "./regression_client"
 require "./constants.cr"
 

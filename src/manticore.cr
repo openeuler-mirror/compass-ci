@@ -1,6 +1,6 @@
 require "http/client"
 require "json"
-require "./constants-manticore.cr"
+require "./constants-job.cr"
 
 module Manticore
   HOST = ENV["MANTICORE_HOST"]? || "localhost"

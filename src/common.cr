@@ -1,4 +1,4 @@
-require "../scheduler/elasticsearch_client"
+require "./elasticsearch_client"
 
 class Common
   # If you do not restart the system to consume the next job,
