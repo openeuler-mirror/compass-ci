@@ -68,7 +68,7 @@ class JobHash
       process_section(str, "monitor")
       process_section(str, "program")
 
-      str << "}\n\n"
+      str << "}\n"
     end
   end
 
@@ -82,7 +82,6 @@ class JobHash
     script_lines << "read_job_vars()"
     script_lines << "{"
     script_lines << "\tlocal vars=\"$*\""
-    script_lines << "\n"
 
     @hash_plain.each { |key, val| parse_one(script_lines, key, val) }
     if hw = self.hw?
