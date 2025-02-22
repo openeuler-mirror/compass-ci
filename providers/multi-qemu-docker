@@ -329,6 +329,13 @@ class MultiQemuDocker
       is_remote: @options[:is_remote],
       tags: [],
 
+      services: { # must be string values
+        sched_host: SCHED_HOST,
+        sched_port: SCHED_PORT.to_s,
+        result_host: SCHED_HOST,
+        result_port: SCHED_PORT.to_s,
+      },
+
       freemem: free_memory_mb, # duplicate for fast access in HostRequest
       disk_max_used_string: disk_usage[:string], # "92% /srv/os"
       metrics: { # must be number values

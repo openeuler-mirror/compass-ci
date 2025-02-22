@@ -13,13 +13,16 @@ class Sched
     tags = env.params.query["tags"]? # format: tag1,tag2,...
     pre_job_id = env.params.query["pre_job_id"]?
 
+    sched_host = env.params.query["sched_host"]? || "172.17.0.1"
+    sched_port = env.params.query["sched_port"]? || "3000"
+
     # Normalize MAC address and resolve hostname if necessary
     mac = Utils.normalize_mac(mac)
     host ||= @hosts_cache.mac2hostname(mac)
     return boot_content(nil, boot_type) unless host
 
     arch ||= @hosts_cache[host].arch
-    host_req = HostRequest.new(arch, host, "hw", tags, @hosts_cache[host].memory, false)
+    host_req = HostRequest.new(arch, host, "hw", tags, @hosts_cache[host].memory, false, sched_host, sched_port)
     job = tbox_request_job(host_req)
     job ||= hw_wait_job(host)
     return hw_boot_msg(boot_type, "No job now") unless job

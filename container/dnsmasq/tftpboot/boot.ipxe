@@ -18,7 +18,7 @@ set port 3000
 
 :retry_boot
 
-chain http://${scheduler}:${port}/boot.ipxe/mac/${mac:hexhyp}?arch=${buildarch}&hostname=${hostname}&ip=${net0/ip} || goto failed
+chain http://${scheduler}:${port}/boot.ipxe/mac/${mac:hexhyp}?arch=${buildarch}&hostname=${hostname}&ip=${net0/ip}&sched_host=${scheduler}&sched_port=${port} || goto failed
 
 :failed
 echo get job failed...

@@ -30,14 +30,21 @@ struct HostRequest
   property freemem : UInt32 # unit: MB, duplicates metrics.freemem for fast access
 
   property metrics : Hash(String, UInt32)
+  property services : Hash(String, String)
   property disk_max_used_string : String
 
-  def initialize(@arch, @hostname, @tbox_type, tags, @freemem, @is_remote)
+  def initialize(@arch, @hostname, @tbox_type, tags, @freemem, @is_remote, sched_host, sched_port)
     set_host_keys
     @tags = Set(String).new (tags||"").split(",")
 
     @disk_max_used_string = ""
     @metrics = Hash(String, UInt32).new
+
+    @services = Hash(String, String).new
+    @services["sched_host"] = sched_host
+    @services["sched_port"] = sched_port
+    @services["result_host"] = sched_host
+    @services["result_port"] = sched_port
   end
 
   def set_host_keys

@@ -934,12 +934,16 @@ class JobHash
     self.external_mount_repo_priority = mrp.strip
   end
 
-  def settle_job_fields(hostreq : HostRequest)
-    self.job_token = UUID.random.to_s
+  def set_tbox_info(hostreq : HostRequest)
     self.host_machine = hostreq.hostname
+    self.is_remote = hostreq.is_remote
+    self.services = hostreq.services
+  end
+
+  def settle_job_fields
+    self.job_token = UUID.random.to_s
     self.update_kernel_params
 
-    self.is_remote = hostreq.is_remote
     self.set_depends_initrd()
     self.set_kernel()
     self.set_initrds_uri()
@@ -979,6 +983,8 @@ class Job < JobHash
     self.emsx = "ems1" unless @hash_plain.has_key?("emsx")
     self.emsx = self.emsx.downcase
     # XXX move into ["services"] subkey?
+    # XXX this should be done at dispatch time, when we know where the
+    # testbox come from, refer to the new scheme in JobHash set_tbox_info(hostreq)
     if IS_CLUSTER
       @hash_any.merge!(Utils.testbox_env_k8s(flag="local", emsx=self["emsx"]))
     else
