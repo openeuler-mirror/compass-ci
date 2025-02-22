@@ -26,6 +26,37 @@ class Sched
     lines.join("\n")
   end
 
+  # Helper method to format uptime with days, hours, and minutes
+  def format_uptime(minutes)
+    if minutes < 60
+      "#{minutes}M"
+    else
+      hours = minutes // 60
+      remaining_minutes = minutes % 60
+
+      if hours < 24
+        "#{hours}H #{remaining_minutes}M"
+      else
+        days = hours // 24
+        remaining_hours = hours % 24
+        "#{days}D #{remaining_hours}H #{remaining_minutes}M"
+      end
+    end
+  end
+
+  # Helper method to format memory size
+  def format_memory(memory_in_mb)
+    return "N/A" if memory_in_mb.nil?
+
+    if memory_in_mb < 1024
+      "#{memory_in_mb} MB"
+    elsif memory_in_mb < 1024 * 1024
+      "#{(memory_in_mb / 1024.0).round(2)} GB"
+    else
+      "#{(memory_in_mb / (1024.0 * 1024.0)).round(2)} TB"
+    end
+  end
+
   def api_dashboard_hosts(env)
     # Filter parameters
     selected_arches = env.params.query.fetch_all("arch")
@@ -49,8 +80,6 @@ class Sched
       nr_vm
       nr_container
       tbox_type
-      is_remote
-      boot_time
       active_time
       reboot_time
       uptime_minutes
@@ -66,9 +95,41 @@ class Sched
       cpu_iowait_percent
       cpu_system_percent
       disk_io_util_percent
-      network_util_percent
-      network_errors_per_sec
     ]
+    # skipped fields to avoid too long line
+    # is_remote
+    # boot_time
+    # network_util_percent
+    # network_errors_per_sec
+
+    field_display_name = {
+      "hostname"               => "hostname",
+      "arch"                   => "arch",
+      "nr_cpu"                 => "NR<br>cpu",
+      "nr_disks"               => "NR<br>disk",
+      "nr_vm"                  => "NR<br>vm",
+      "nr_container"           => "NR<br>dc",
+      "tbox_type"              => "Type",
+      "is_remote"              => "Remote",
+      "boot_time"              => "Boot<br>time",
+      "active_time"            => "Active<br>time",
+      "reboot_time"            => "Reboot<br>time",
+      "uptime_minutes"         => "Uptime",
+
+      "job_id"                 => "Job ID",
+      "suite"                  => "Suite",
+      "my_account"             => "Account",
+
+      "freemem"                => "Free<br>mem",
+      "freemem_percent"        => "Free<br>mem%",
+      "disk_max_used_percent"  => "DSK<br>use%",
+      "cpu_idle_percent"       => "CPU<br>id%",
+      "cpu_iowait_percent"     => "CPU<br>wa%",
+      "cpu_system_percent"     => "CPU<br>sy%",
+      "disk_io_util_percent"   => "IO<br>util%",
+      "network_util_percent"   => "Net<br>util%",
+      "network_errors_per_sec" => "Net<br>err/s"
+    }
 
     output_format = env.params.query["output"]? || "html"
 
@@ -131,11 +192,12 @@ class Sched
         "boot_time"         => !host.boot_time? ? "N/A" : Time.unix(host.boot_time).to_s("%Y-%m-%d %H:%M"),
         "active_time"       => !host.active_time? ? "N/A" : ((Time.utc.to_unix - host.active_time) / 60).to_s,
         "reboot_time"       => !host.reboot_time? ? "N/A" : Time.unix(host.reboot_time).to_s("%Y-%m-%d %H:%M"),
-        "uptime_minutes"    => !host.uptime_minutes? ? "N/A" : host.uptime_minutes.to_s,
+        "uptime_minutes"    => !host.uptime_minutes? ? "N/A" : format_uptime(host.uptime_minutes),
+
         "active_status"     => !host.active_time? ? "inactive" : (Time.utc.to_unix - host.active_time <= 600 ? "active" : "inactive"),
         "reboot_status"     => !host.reboot_time? ? "unknown" : (Time.utc.to_unix > host.reboot_time ? "needs_reboot" : "ok"),
 
-        "freemem"                 => "#{host.freemem} MB",
+        "freemem"                 => format_memory(host.freemem),
         "freemem_percent"         => host.freemem_percent?.to_s,
         "disk_max_used_percent"   => host.disk_max_used_percent?.to_s,
         "disk_max_used_string"    => host.disk_max_used_string? || "",
@@ -222,13 +284,13 @@ class Sched
         options:     tbox_counts,
         selected:    selected_tbox_types,
       },
-      {
-        type:        :select,
-        name:        "is_remote",
-        title:       "Remote Status",
-        options:     remote_counts,
-        selected:    selected_is_remote,
-      },
+#     {
+#       type:        :checkbox_group,
+#       name:        "is_remote",
+#       title:       "Remote Status",
+#       options:     remote_counts,
+#       selected:    selected_is_remote,
+#     },
       {
         type:        :checkbox_group,
         name:        "my_account",
@@ -243,17 +305,17 @@ class Sched
         options:     suite_counts,
         selected:    selected_suites,
       },
+#     {
+#       type:        :checkbox_group,
+#       name:        "load",
+#       title:       "Load Level",
+#       options:     {"heavy" => nil, "medium" => nil, "light" => nil},
+#       selected:    selected_load,
+#     },
       {
         type:        :checkbox_group,
-        name:        "load",
-        title:       "Load Level",
-        options:     {"heavy" => nil, "medium" => nil, "light" => nil},
-        selected:    selected_load,
-      },
-      {
-        type:        :select,
         name:        "has_job",
-        title:       "Has Active Job",
+        title:       "Running Job",
         options:     hasjob_counts,
         selected:    has_job,
       },
@@ -275,8 +337,8 @@ class Sched
             .filter-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
             .filter-group { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
             table { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-top: 2rem; }
-            th { background: #f7cac9; color: white; padding: 1rem; }
-            td { padding: 0.75rem; border-bottom: 1px solid #ecf0f1; }
+            th { background: #f7cac9; color: white; padding: 0.3rem; }
+            td { padding: 0.5rem; border-bottom: 1px solid #ecf0f1; }
             tr:hover { background: #f8f9fa; }
             .text-critical { color: #e74c3c; }
             .text-warning { color: #f39c12; }
@@ -311,7 +373,7 @@ class Sched
         when :select
           html << "<select name=\"#{filter[:name]}\" style=\"margin-left: 8px;\">"
           filter[:options].each do |opt, count|
-            selected = opt == filter[:selected] ? "selected" : ""
+            selected = filter[:selected].includes?(opt) ? "selected" : ""
             html << "<option value=\"#{opt}\" #{selected}>#{opt} (#{count})</option>"
           end
           html << "</select>"
@@ -335,7 +397,7 @@ class Sched
           form.add("sort", field)
           form.add("order", current_order)
         end
-        html << "<th><a href=\"?#{params}\">#{field.tr("_", " ").capitalize}</a></th>"
+        html << "<th><a href=\"?#{params}\">#{field_display_name[field]}</a></th>"
       end
       html << "</tr></thead><tbody>"
 
