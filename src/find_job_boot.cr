@@ -11,7 +11,7 @@ class Sched
   def on_job_dispatch(job : JobHash, hostreq : HostRequest)
     job.set_tbox_info(hostreq)
     job.settle_job_fields
-    change_job_stage(job, "boot", nil)
+    change_job_stage(job, "dispatch", nil)
     save_job_files(job, Kemal.config.public_folder)
     @hosts_cache.update_job_info(job)
 

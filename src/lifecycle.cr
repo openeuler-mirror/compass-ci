@@ -3,7 +3,7 @@
 # here we only care about jobs actually consuming testbox machine time
 # unit: seconds
 JOB_STAGE_TIMEOUT = {
-  "download"     =>  3600,
+  "dispatch"     =>  3600,
   "boot"         =>  1200,
   "setup"        =>   600,
   "wait_peer"    =>  7200,

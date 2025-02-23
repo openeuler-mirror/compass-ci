@@ -382,7 +382,7 @@ class JobHash
 
     time
     submit_time
-    download_time
+    dispatch_time
     boot_time
     setup_time
     wait_peer_time

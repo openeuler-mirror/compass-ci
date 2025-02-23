@@ -7,7 +7,7 @@
 # eventually settle down at.
 JOB_STAGE_NAME2ID = {
   "submit"       =>  0,
-  "download"     =>  1,
+  "dispatch"     =>  1,
   "boot"         =>  2,
   "setup"        =>  3,
   "wait_peer"    =>  4,
@@ -66,7 +66,7 @@ JOB_HEALTH_NAME2ID = {
   "disturbed"                     =>  45,   # disturbed by user interactive login
 
    # somehow blocked, so rebooted by lifecycle terminate_timeout_jobs()
-  "timeout_download"              =>  50,
+  "timeout_dispatch"              =>  50,
   "timeout_boot"                  =>  51,
   "timeout_setup"                 =>  52,
   "timeout_wait_peer"             =>  53,
