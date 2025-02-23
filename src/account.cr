@@ -39,7 +39,7 @@ class AccountInfo
 end
 
 class Accounts
-  @accounts : Hash(String, AccountInfo)
+  property accounts : Hash(String, AccountInfo)
   @es : Elasticsearch::Client
 
   def initialize(es)

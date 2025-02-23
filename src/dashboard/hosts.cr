@@ -1,11 +1,11 @@
 
 class Sched
 
-  private def generate_plain_text_table(hosts, fields) : String
+  private def generate_plain_text_table(data, fields) : String
     # Calculate column widths
     col_widths = fields.map do |field|
       header_size = field.size
-      max_content_size = hosts.map { |host| (host[field]? || "").size }.max || 0
+      max_content_size = data.map { |item| (item[field]? || "").size }.max || 0
       {header_size, max_content_size}.max
     end
 
@@ -14,9 +14,9 @@ class Sched
     lines = [header]
 
     # Build data rows
-    hosts.each do |host|
+    data.each do |item|
       row = fields.zip(col_widths).map do |field, width|
-        value = host[field]? || ""
+        value = item[field]? || ""
         value.ljust(width)
       end.join("  ")
       lines << row
@@ -26,8 +26,7 @@ class Sched
     lines.join("\n")
   end
 
-  # Helper method to format uptime with days, hours, and minutes
-  def format_uptime(minutes)
+  def ui_format_time(minutes)
     if minutes < 60
       "#{minutes}M"
     else
@@ -35,17 +34,24 @@ class Sched
       remaining_minutes = minutes % 60
 
       if hours < 24
-        "#{hours}H #{remaining_minutes}M"
+        formatted_time = []
+        formatted_time << "#{hours}H" unless hours == 0
+        formatted_time << "#{remaining_minutes}M" unless remaining_minutes == 0
+        formatted_time.join(' ')
       else
         days = hours // 24
         remaining_hours = hours % 24
-        "#{days}D #{remaining_hours}H #{remaining_minutes}M"
+        formatted_time = []
+        formatted_time << "#{days}D" unless days == 0
+        formatted_time << "#{remaining_hours}H" unless remaining_hours == 0
+        formatted_time << "#{remaining_minutes}M" unless remaining_minutes == 0
+        formatted_time.join(' ')
       end
     end
   end
 
   # Helper method to format memory size
-  def format_memory(memory_in_mb)
+  def ui_format_memory(memory_in_mb)
     return "N/A" if memory_in_mb.nil?
 
     if memory_in_mb < 1024
@@ -192,12 +198,12 @@ class Sched
         "boot_time"         => !host.boot_time? ? "N/A" : Time.unix(host.boot_time).to_s("%Y-%m-%d %H:%M"),
         "active_time"       => !host.active_time? ? "N/A" : ((Time.utc.to_unix - host.active_time) / 60).to_s,
         "reboot_time"       => !host.reboot_time? ? "N/A" : Time.unix(host.reboot_time).to_s("%Y-%m-%d %H:%M"),
-        "uptime_minutes"    => !host.uptime_minutes? ? "N/A" : format_uptime(host.uptime_minutes),
+        "uptime_minutes"    => !host.uptime_minutes? ? "N/A" : ui_format_time(host.uptime_minutes),
 
         "active_status"     => !host.active_time? ? "inactive" : (Time.utc.to_unix - host.active_time <= 600 ? "active" : "inactive"),
         "reboot_status"     => !host.reboot_time? ? "unknown" : (Time.utc.to_unix > host.reboot_time ? "needs_reboot" : "ok"),
 
-        "freemem"                 => format_memory(host.freemem),
+        "freemem"                 => ui_format_memory(host.freemem),
         "freemem_percent"         => host.freemem_percent?.to_s,
         "disk_max_used_percent"   => host.disk_max_used_percent?.to_s,
         "disk_max_used_string"    => host.disk_max_used_string? || "",
@@ -323,35 +329,8 @@ class Sched
 
     # Build HTML with modern styling
     response = String.build do |html|
+      html << generate_common_headline("hosts")
       html << <<-HTML
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Host Dashboard</title>
-          <meta http-equiv="refresh" content="600">
-          <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-          <style>
-            :root { font-family: 'Roboto', sans-serif; }
-            code, .mono { font-family: 'Roboto Mono', monospace; }
-            body { margin: 2rem; background: #f0f4f8; }
-            .filter-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
-            .filter-group { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-            table { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-top: 2rem; }
-            th { background: #f7cac9; color: white; padding: 0.3rem; }
-            td { padding: 0.5rem; border-bottom: 1px solid #ecf0f1; }
-            tr:hover { background: #f8f9fa; }
-            .text-critical { color: #e74c3c; }
-            .text-warning { color: #f39c12; }
-            .text-healthy { color: #2ecc71; }
-            .critical-bg { background: #f8d7da; }
-            .warning-bg { background: #fff3cd; }
-            .healthy-bg { background: #d4edda; }
-            a { color: #3498db; text-decoration: none; }
-            a:hover { text-decoration: underline; }
-          </style>
-        </head>
-        <body>
-          <h1>Host Dashboard</h1>
           <form method="get">
             <div class="filter-container">
       HTML
