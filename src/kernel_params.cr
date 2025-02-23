@@ -156,9 +156,6 @@ class JobHash
       return temp_initrds
     end
 
-    # init job.cgz
-    temp_initrds << "#{sched_http_prefix}/srv/scheduler/pending-jobs/#{id}/job.cgz"
-
     # pkg_data:
     #   lkp-tests:
     #     tag: v1.0
@@ -174,6 +171,9 @@ class JobHash
       temp_initrds << "#{initrd_http_prefix}" +
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
     end
+
+    # append job.cgz in the end, when download finish, we'll auto mark job_stage="boot"
+    temp_initrds << "#{sched_http_prefix}/srv/scheduler/pending-jobs/#{id}/job.cgz"
 
     return temp_initrds
   end

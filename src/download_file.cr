@@ -7,9 +7,6 @@ class Sched
     job_package = env.params.url["job_package"]
     file_path = ::File.join [Kemal.config.public_folder, job_id, job_package]
 
-    env.set "job_id", job_id
-    env.set "job_state", "download"
-
     send_file env, file_path
 
     # delete the folder after the download is complete
@@ -74,8 +71,24 @@ class Sched
       return "File not found"
     end
 
+    check_set_boot_stage(requested_path)
+
     # Serve the file
     send_file env, full_path
+  end
+
+  def check_set_boot_stage(requested_path)
+    return unless requested_path =~ /scheduler\/pending-jobs\/(\d+)\/job.cgz$/
+
+    id = $1
+    job = @jobs_cache_in_submit[id.to_i64]?
+    return unless job
+
+    # downloading job.cgz auto marks going into boot stage
+    update_job_from_hash({
+      "job_id" => id,
+      "job_stage" => "boot",
+    })
   end
 
   # job_token is created on dispatched jobs.
@@ -105,7 +118,7 @@ class Sched
       return 403, "Job data already uploaded"
     end
 
-    if job.istage < JOB_STAGE_NAME2ID["download"]
+    if job.istage < JOB_STAGE_NAME2ID["dispatch"]
       return 403, "Job not running"
     end
 
