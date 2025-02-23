@@ -29,6 +29,24 @@ require "./account"
 # - restful API [get "/"] default echo
 #
 
+# Struct to represent a result with success/failure status
+struct Result
+  getter success : Bool
+  getter message : String
+  getter status_code : HTTP::Status
+
+  def self.success(message : String) : Result
+    new(true, message, HTTP::Status::OK)
+  end
+
+  def self.error(status_code : HTTP::Status, message : String) : Result
+    new(false, message, status_code)
+  end
+
+  private def initialize(@success, @message, @status_code)
+  end
+end
+
 module Kemal
   # Custom LogHandler that outputs local time instead of UTC
   class LocalTimeLogHandler < Kemal::BaseLogHandler
@@ -92,10 +110,6 @@ module Scheduler
     Sched.instance.api_hw_find_job_boot(env)
   end
 
-  get "/scheduler/job/request" do |env|
-    Sched.instance.api_hw_find_job_boot(env)
-  end
-
   get "/heart-beat" do |env|
     status = Sched.instance.heart_beat(env)
     {"status_code" => status}.to_json
@@ -107,13 +121,28 @@ module Scheduler
   # enqueue
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
+  # XXX: obsolete
   post "/submit_job" do |env|
-    Sched.instance.api_submit_job(env).to_json
-  end
+    env.response.content_type = "application/json"
 
-  # delete jobs from queue
-  post "/cancel_jobs" do |env|
-    Sched.instance.cancel_jobs(env).to_json
+    # Parse request body as JSON
+    job_content = begin
+                    JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+                  rescue JSON::ParseException
+                    env.response.status_code = HTTP::Status::BAD_REQUEST.code
+                    next {"message" => "Invalid JSON in request body"}.to_json
+                  end
+
+    # Verify account authentication
+    result = Sched.instance.accounts_cache.verify_account(job_content)
+    unless result.success
+      env.response.status_code = result.status_code.code
+      next result.message
+    end
+
+    result = Sched.instance.api_submit_job(job_content)
+    env.response.status_code = result.status_code.code
+    result.message
   end
 
   # for client to report event
@@ -124,6 +153,7 @@ module Scheduler
   end
 
   # file download server
+  # XXX: obsolete
   get "/job_initrd_tmpfs/:job_id/:job_package" do |env|
     Sched.instance.api_download_job_file(env)
   end
@@ -143,6 +173,7 @@ module Scheduler
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=running&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
   #  ?job_file=/lkp/scheduled/job.yaml&loadavg=0.28 0.82 0.49 1/105 3389&start_time=1587725398&end_time=1587725698&job_id=10
+  # XXX: obsolete
   get "/~lkp/cgi-bin/lkp-jobfile-append-var" do |env|
     Sched.instance.api_update_job(env)
   end
@@ -152,6 +183,7 @@ module Scheduler
   #  ?job_step=smoke_basic_os&job_id=10
   #  ?job_step=smoke_baseinfo&job_id=10
   #  ?job_step=smoke_docker&job_id=10
+  # XXX: obsolete
   get "/~lkp/cgi-bin/report-job-step" do |env|
     Sched.instance.api_update_job(env)
   end
@@ -160,6 +192,7 @@ module Scheduler
   # /~lkp/cgi-bin/set-job-stage
   #   ?job_stage=on_fail&job_id=10
   #   ?job_stage=on_fail&job_id=10&timeout=21400
+  # XXX: obsolete
   get "/~lkp/cgi-bin/set-job-stage" do |env|
     Sched.instance.api_update_job(env)
   end
@@ -167,6 +200,7 @@ module Scheduler
   # client(runner) report job post_run finished
   # /~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40
   #  curl "http://localhost:3000/~lkp/cgi-bin/lkp-post-run?job_file=/lkp/scheduled/job.yaml&job_id=40"
+  # XXX: obsolete
   get "/~lkp/cgi-bin/lkp-post-run" do |env|
     # obsolete API
     # job will be closed when client setting job_stage to finish or set_job_state to some error string
@@ -211,138 +245,277 @@ module Scheduler
   # new sched api
   # -----------------------------------------
 
-  # echo alive
-  get "/scheduler/" do |env|
+  # Health check endpoint
+  get "/scheduler/v1/health" do |env|
+    env.response.content_type = "text/plain"
     Sched.instance.alive(VERSION)
   end
 
-  # Handle connections from MultiQEMUDocker instances
-  # Each host machine can run only one single MultiQEMUDocker instance
-  ws "/scheduler/vm-container-provider/:host" do |socket, env|
-    sched = Sched.instance
-    sched.api_provider_websocket(socket, env)
-  end
+  # WebSocket endpoints
 
-  # Client connection handler
-  ws "/scheduler/client" do |socket, env|
+  ws "/scheduler/v1/client" do |socket, env|
     sched = Sched.instance
     sched.api_client_websocket(socket, env)
   end
 
-  # enqueue
-  #  - echo job_id to caller
-  #  -- job_id = "0" ? means failed
-  post "/scheduler/submit-job" do |env|
-    Sched.instance.api_submit_job(env).to_json
+  ws "/scheduler/v1/vm-container-provider/:host" do |socket, env|
+    sched = Sched.instance
+    sched.api_provider_websocket(socket, env)
   end
 
-  # delete jobs from queue
-  post "/scheduler/cancel-jobs" do |env|
-    Sched.instance.cancel_jobs(env).to_json
+  # Job-related endpoints
+
+  post "/scheduler/v1/jobs/submit" do |env|
+    env.response.content_type = "application/json"
+
+    # Parse request body as JSON
+    job_content = begin
+                    JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+                  rescue JSON::ParseException
+                    env.response.status_code = HTTP::Status::BAD_REQUEST.code
+                    next {"message" => "Invalid JSON in request body"}.to_json
+                  end
+
+    # Verify account authentication
+    result = Sched.instance.accounts_cache.verify_account(job_content)
+    unless result.success
+      env.response.status_code = result.status_code.code
+      next result.message
+    end
+
+    result = Sched.instance.api_submit_job(job_content)
+    env.response.status_code = result.status_code.code
+    result.message
   end
 
-  # force stop a running job, reboot/reclaim the hw/vm/container machine running the job immediately
-  get "/scheduler/terminate-job/:job_id" do |env|
+  get "/scheduler/v1/jobs/dispatch" do |env|
+    env.response.content_type = "text/plain"
+    Sched.instance.api_hw_find_job_boot(env)
+  end
+
+  get "/scheduler/v1/jobs/:job_id" do |env|
     job_id = env.params.url["job_id"].to_i64
-    Sched.instance.api_terminate_job(job_id)
-  end
-
-  # wait until any job meets the expected field values
-  # return the remaining unmet jobs/fields
-  # use post instead of ws to enable shell wget/curl clients
-  post "/scheduler/wait-jobs" do |env|
-    env.response.content_type = "application/json"
-    Sched.instance.api_wait_jobs(env).to_s
-  end
-
-  # for client to report event
-  # this event is recorded in the log
-  # curl -H 'Content-Type: application/json' -X POST #{SCHED_HOST}:#{SCHED_PORT}/scheduler/report_event -d '#{data.to_json}'
-  post "/scheduler/report-event" do |env|
-    Sched.instance.report_event(env).to_s
-  end
-
-  # get host machine info
-  # curl "http://localhost:3000/scheduler/host?hostname=xxx
-  get "/scheduler/host" do |env|
-    env.response.content_type = "application/json"
-    hostname = env.params.query["hostname"].to_s
-    Sched.instance.api_get_host(hostname).to_json
-  end
-
-  # register host machine
-  post "/scheduler/host" do |env|
-    Sched.instance.api_register_host(env)
-  end
-
-  # register account, only allowed from LAN IP and admin account
-  post "/scheduler/account" do |env|
-    Sched.instance.api_register_account(env)
-  end
-
-  # client(runner) report job's status
-  # /scheduler/lkp/jobfile-append-var
-  #  ?job_file=/lkp/scheduled/job.yaml&job_state=running&job_id=10
-  #  ?job_file=/lkp/scheduled/job.yaml&job_state=post_run&job_id=10
-  get "/scheduler/job/update" do |env|
-    Sched.instance.api_update_job(env)
-  end
-
-  # returns JSON job, fields are "," separated strings, limited to PLAIN_KEYS
-  get "/scheduler/job/view" do |env|
-    job_id = env.params.query["job_id"]
     fields = env.params.query["fields"]?
+
     env.response.content_type = "application/json"
-    Sched.instance.api_view_job(job_id.to_i64, fields)
+
+    if job = Sched.instance.api_view_job(job_id, fields)
+      job.to_json
+    else
+      env.response.status_code = HTTP::Status::NOT_FOUND.code
+      {error: "Job not found"}.to_json
+    end
   end
 
-  get "/scheduler/dashboard/submit-jobs" do |env|
+  post "/scheduler/v1/jobs/wait" do |env|
+    env.response.content_type = "application/json"
+    Sched.instance.api_wait_jobs(env).to_json
+  end
+
+  # Endpoint to handle job updates via POST (since `busybox wget` only supports GET/POST)
+  post "/scheduler/v1/jobs/:job_id/update" do |env|
+    env.response.content_type = "text/plain"
+    result = Sched.instance.api_update_job(env)
+    if result.success
+      env.response.status_code = HTTP::Status::OK.code
+      result.message
+    else
+      env.response.status_code = result.status_code.code
+      result.message
+    end
+  end
+
+  # Endpoint to cancel a job via POST
+  post "/scheduler/v1/jobs/:job_id/cancel" do |env|
+    env.response.content_type = "text/plain"
+
+    # Parse job ID from URL parameters
+    job_id = env.params.url["job_id"].to_i64
+
+    # Read and parse the request body
+    json = begin
+             JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+           rescue JSON::ParseException
+             env.response.status_code = HTTP::Status::BAD_REQUEST.code
+             next "Invalid JSON in request body"
+           end
+
+    # Verify account authentication
+    result = Sched.instance.accounts_cache.verify_account(json)
+    unless result.success
+      env.response.status_code = result.status_code.code
+      next result.message
+    end
+
+    # Attempt to cancel the job
+    status_code, message = Sched.instance.api_cancel_job(job_id)
+    env.response.status_code = status_code.code
+    message
+  end
+
+  post "/scheduler/v1/jobs/:job_id/terminate" do |env|
+    # Set the response content type
+    env.response.content_type = "text/plain"
+
+    # Extract and validate the job ID from the URL parameters
+    job_id_param = env.params.url["job_id"]?
+    unless job_id_param && (job_id = job_id_param.to_i64?)
+      next HTTP::Status::BAD_REQUEST, "Invalid job ID"
+    end
+
+    # Read and parse the request body
+    json = begin
+             JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+           rescue JSON::ParseException
+             env.response.status_code = HTTP::Status::BAD_REQUEST.code
+             next "Invalid JSON in request body"
+           end
+
+    # Verify account authentication
+    result = Sched.instance.accounts_cache.verify_account(json)
+    unless result.success
+      env.response.status_code = result.status_code.code
+      next result.message
+    end
+
+    # Call the API to terminate the job
+    code, text = Sched.instance.api_terminate_job(job_id)
+
+    env.response.status_code = code.code
+    text
+  end
+
+  # Host-related endpoints
+
+  get "/scheduler/v1/hosts/:hostname" do |env|
+    env.response.content_type = "application/json"
+
+    # Extract hostname from URL parameters
+    hostname = env.params.url["hostname"]?
+
+    # Validate hostname
+    unless hostname
+      env.response.status_code = HTTP::Status::BAD_REQUEST.code
+      next { "error" => "Hostname is required" }.to_json
+    end
+
+    # Fetch host information
+    host_info = Sched.instance.api_get_host(hostname)
+
+    # Handle host not found
+    if host_info.nil?
+      env.response.status_code = HTTP::Status::NOT_FOUND.code
+      next { "error" => "Host not found", "hostname" => hostname }.to_json
+    end
+
+    # Return host information
+    host_info.to_json
+  end
+
+  # Register host
+  post "/scheduler/v1/hosts/:hostname" do |env|
+    env.response.content_type = "text/plain"
+
+    # Extract hostname from URL parameters
+    hostname = env.params.url["hostname"]?
+
+    # Validate hostname
+    unless hostname
+      env.response.status_code = HTTP::Status::BAD_REQUEST.code
+      next "Hostname is required"
+    end
+
+    # Parse and validate request body
+    host_hash = begin
+                  JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+                rescue JSON::ParseException
+                  env.response.status_code = HTTP::Status::BAD_REQUEST.code
+                  next "Invalid JSON in request body"
+                end
+
+    # Check if the hostname in the body matches the URL parameter
+    unless host_hash["hostname"]? == hostname
+      env.response.status_code = HTTP::Status::BAD_REQUEST.code
+      next "Hostname in body does not match URL parameter"
+    end
+
+    # Register or update host information
+    for_metrics = env.params.query.has_key?("report_metrics")
+    result = Sched.instance.api_register_host(hostname, host_hash, for_metrics)
+    env.response.status_code = result.status_code.code
+    result.message
+  end
+
+  # Account-related endpoints
+
+  post "/scheduler/v1/accounts/:my_account" do |env|
+    env.response.content_type = "application/json"
+
+    # Extract account name from URL parameters
+    account_name = env.params.url["my_account"]?
+
+    # Validate account name
+    unless account_name
+      env.response.status_code = HTTP::Status::BAD_REQUEST.code
+      next { "error" => "Account name is required" }.to_json
+    end
+
+    # Check if the client is local
+    unless Sched.instance.detect_local_client(env)
+      env.response.status_code = HTTP::Status::FORBIDDEN.code
+      next { "error" => "Access denied: Only local clients are allowed" }.to_json
+    end
+
+    # Parse and validate request body
+    account_hash = begin
+                     JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
+                   rescue JSON::ParseException
+                     env.response.status_code = HTTP::Status::BAD_REQUEST.code
+                     next { "error" => "Invalid JSON in request body" }.to_json
+                   end
+
+    # Validate admin token
+    admin_token = account_hash.delete("admin_token")
+    unless admin_token && admin_token.as_s == Sched.options.admin_token
+      env.response.status_code = HTTP::Status::UNAUTHORIZED.code
+      next { "error" => "Invalid or missing admin token" }.to_json
+    end
+
+    # Register account
+    result = Sched.instance.api_register_account(account_name, account_hash)
+    env.response.status_code = result.status_code.code
+    result.message
+
+    # Handle registration result
+    if result.success
+      { "status" => "success", "account_name" => account_name }.to_json
+    else
+      { "error" => result.message, "account_name" => account_name }.to_json
+    end
+  end
+
+  # Dashboard endpoints
+
+  get "/scheduler/v1/dashboard/jobs/pending" do |env|
     Sched.instance.api_dashboard_jobs(env)
   end
 
-  get "/scheduler/dashboard/running-jobs" do |env|
+  get "/scheduler/v1/dashboard/jobs/running" do |env|
     Sched.instance.api_dashboard_jobs(env)
   end
 
-  get "/scheduler/dashboard/hosts" do |env|
+  get "/scheduler/v1/dashboard/hosts" do |env|
     Sched.instance.api_dashboard_hosts(env)
   end
 
-  get "/scheduler/dashboard/accounts" do |env|
+  get "/scheduler/v1/dashboard/accounts" do |env|
     Sched.instance.api_dashboard_accounts(env)
   end
 
-  get "/scheduler/debug/dispatch" do |env|
+  # Debug endpoints
+
+  get "/scheduler/v1/debug/dispatch" do |env|
     Sched.instance.api_debug_dispatch(env)
-  end
-
-  get "/scheduler/lkp/report-ssh-port" do |env|
-    Sched.instance.report_ssh_port(env)
-
-    "Done"
-  end
-
-  # content='{"tbox_name": "'$HOSTNAME'", "job_id": "'$id'", "ssh_port": "'$ssh_port'", "message": "'$message'"}'
-  # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/scheduler/lkp/report_ssh_info" -d "$content"
-  post "/scheduler/lkp/report-ssh-info" do |env|
-    Sched.instance.report_ssh_info(env)
-
-    "Done"
-  end
-
-  # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/scheduler/rpmbuild/submit_reverse_depend_jobs" -d "$content"
-  post "/scheduler/rpmbuild/submit-reverse-depend-jobs" do |env|
-    Sched.instance.submit_reverse_depend_jobs(env)
-  end
-
-  post "/scheduler/rpmbuild/submit-install-rpm" do |env|
-    Sched.instance.submit_install_rpm(env)
-  end
-
-  # content='{"type": "create", "job_id": "1", "srpms": [{"os":"centos7", "srpm":"test", "repo_name": "base"}]}'
-  # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/scheduler/repo/set-srpm-info" -d "$content"
-  post "/scheduler/repo/set-srpm-info" do |env|
-    Sched.instance.set_srpm_info(env)
   end
 
 end

@@ -52,6 +52,7 @@ class Sched
   property cluster
   property pkgbuild
   property hosts_cache
+  property accounts_cache
 
   class_property options = SchedOptions.new
 
@@ -82,10 +83,8 @@ class Sched
     @log.info(%({"from": "#{env.request.remote_address}", "response": #{response.to_json}}))
   end
 
-  def alive(version)
-    "LKP Alive! The time is #{Time.local}, version = #{version}"
-  rescue e
-    @log.warn(e)
+  def alive(version : String) : String
+    "Compass CI scheduler is alive. Time: #{Time.local}, Version: #{version}"
   end
 
   def get_time
@@ -140,9 +139,14 @@ class Sched
     testbox.split(".")[1].reverse.split("-", 2)[1].reverse
   end
 
-  def api_get_host(hostname : String)
+  def api_get_host(hostname : String) : HostInfo?
+    # Fetch host information from cache
     host_info = @hosts_cache.get_host(hostname)
-    raise "cant find the testbox in es, hostname: #{hostname}" unless host_info
+
+    # Return nil if host is not found
+    return nil unless host_info
+
+    # Return host information
     host_info
   end
 

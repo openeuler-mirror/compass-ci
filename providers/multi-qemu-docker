@@ -301,9 +301,9 @@ class MultiQemuDocker
 
   def build_scheduler_ws_url
     if @options[:is_remote]
-      "wss://#{DOMAIN_NAME}/scheduler/vm-container-provider/#{@options[:hostname]}"
+      "wss://#{DOMAIN_NAME}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
     else
-      "ws://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/vm-container-provider/#{@options[:hostname]}"
+      "ws://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
     end
   end
 

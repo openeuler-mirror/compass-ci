@@ -51,7 +51,7 @@ class Sched
   @host_request_job_channel = Channel(HostRequest).new
   @hw_machine_channels = {} of String => Channel(JobHash)
 
-  @wait_client_channel = Hash(Int64, Channel(Int64)).new # /scheduler/wait-jobs clientid => Channel(jobid)
+  @wait_client_channel = Hash(Int64, Channel(Int64)).new # /scheduler/v1/jobs/wait clientid => Channel(jobid)
   @wait_client_spec = Hash(Int64, HashHHH).new
   @@last_wait_client_id : Int64 = -1_i64
 
@@ -102,19 +102,22 @@ class Sched
       job.ihealth = JOB_HEALTH_NAME2ID[health_problem] || -1
       job.last_success_stage = job.job_stage
     end
+
     if job_stage == "cancel"
       change_job_data_readiness(job, "norun", false)
     end
 
-    job.job_stage = job_stage
-    job.istage = JOB_STAGE_NAME2ID[job_stage] || -1
-    job.set_time("#{job_stage}_time")
+    if job_stage
+      job.job_stage = job_stage
+      job.istage = JOB_STAGE_NAME2ID[job_stage] || -1
+      job.set_time("#{job_stage}_time")
 
-    on_job_update(job.id64)
+      on_job_update(job.id64)
 
-    # job finished?
-    if job.istage >= JOB_STAGE_NAME2ID["finish"]
-      on_job_finish(job)
+      # job finished?
+      if job.istage >= JOB_STAGE_NAME2ID["finish"]
+        on_job_finish(job)
+      end
     end
   end
 
@@ -128,7 +131,7 @@ class Sched
         # another job is waiting for me
         to_remove << id if handle_job_dependency(id, cjob)
       else
-        # a http post "/scheduler/wait-jobs" client is waiting for me
+        # a http post "/scheduler/v1/jobs/wait" client is waiting for me
         to_remove << id if handle_client_dependency(id, cjob_id)
       end
     end
@@ -183,7 +186,7 @@ class Sched
 
     if progress && !wait_spec.has_key?("wait_on")
       if progress == :fail_fast
-        change_job_stage(dependent_job, "finish", "abort_wait")
+        change_job_stage(dependent_job, nil, "abort_wait")
         change_job_data_readiness(dependent_job, "incomplete")
       else
         add_job_to_cache(dependent_job)
@@ -273,7 +276,7 @@ class Sched
     wait_for_updates(channel, wait_spec) unless job_ids.empty?
   ensure
     cleanup_wait_client(client_id, job_ids) unless job_ids.nil? || job_ids.empty?
-    wait_spec.to_json
+    wait_spec
   end
 
   private def wait_json2hash(json : JSON::Any) : HashHHH
@@ -387,20 +390,40 @@ class Sched
   end
 
   def api_terminate_job(job_id : Int64)
+    # Fetch the job and validate its existence
     job = get_job(job_id)
-    return unless job
-    return unless ["booting", "running"].includes? job.job_stage
+    return HTTP::Status::NOT_FOUND, "Job not found" unless job
+
+    # Validate the job's stage
+    unless job.running?
+      return HTTP::Status::FORBIDDEN, "Job not running"
+    end
+
+    # Attempt to terminate the job and handle errors
     terminate_job(job)
   end
 
-  def terminate_job(job)
+  private def terminate_job(job) : Tuple(HTTP::Status, String)
     host = job.host_machine
+
     if job.tbox_type == "hw"
-      ipmi_reboot(host)
+      return ipmi_reboot(host)
     else
-      provider_ws = @provider_sessions[host]
-      provider_ws.send({ type: "terminate-job", job_id: job.job_id }.to_json)
+      provider_ws = @provider_sessions[host]?
+      unless provider_ws
+        return HTTP::Status::NOT_FOUND, "Provider WebSocket session not found"
+      end
+
+      # Send termination command via WebSocket
+      begin
+        provider_ws.send({type: "terminate-job", job_id: job.job_id}.to_json)
+      rescue ex : Exception
+        return HTTP::Status::INTERNAL_SERVER_ERROR, "WebSocket send error: #{ex.message}"
+      end
     end
+
+    # Return success response
+    return HTTP::Status::OK, ""
   end
 
   def api_provider_websocket(socket, env)

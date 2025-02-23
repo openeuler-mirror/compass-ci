@@ -14,7 +14,7 @@ def create_post_context(hash : Hash)
   response = HTTP::Server::Response.new(io)
   headers = HTTP::Headers{"content" => "application/json"}
   body = hash.to_json
-  request = HTTP::Request.new("POST", "/submit_job", headers, body)
+  request = HTTP::Request.new("POST", "/scheduler/v1/jobs/submit", headers, body)
   context = HTTP::Server::Context.new(request, response)
   return context
 end

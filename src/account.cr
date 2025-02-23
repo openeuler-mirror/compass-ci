@@ -65,27 +65,42 @@ class Accounts
     end
   end
 
-  def verify_account(request : Hash(String, JSON::Any))
-    error_msg = "Failed to verify the account.\n"
-    error_msg += "Please refer to https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md"
+  # Verify account authentication
+  def verify_account(request : Hash(String, JSON::Any)) : Result
+    error_msg = <<-MSG
+      Failed to verify the account.
+      Please refer to https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md
+    MSG
 
-    unless request.has_key? "my_account"
-      error_msg = "Missing required job key: my_account\n"
-      error_msg += "If you applied account, please add my_account/my_token/my_email/my_name info to: "
-      error_msg += "~/.config/compass-ci/defaults/account.yaml\n"
-      raise error_msg
+    # Check for required key "my_account"
+    unless request.has_key?("my_account")
+      missing_key_error = <<-MSG
+        Missing required job key: my_account
+        If you applied for an account, please add my_account/my_token/my_email/my_name info to:
+        ~/.config/compass-ci/defaults/account.yaml
+      MSG
+      return Result.error(HTTP::Status::BAD_REQUEST, missing_key_error)
     end
 
-    return if is_valid_account?(request)
-
-    raise error_msg
+    # Validate account information
+    ok = is_valid_account?(request)
+    if ok
+      Result.success("Account verified successfully")
+    elsif ok == false
+      Result.error(HTTP::Status::UNAUTHORIZED, error_msg)
+    else
+      Result.error(HTTP::Status::NOT_FOUND, "Account #{request["my_account"].as_s} not found")
+    end
   end
 
-  private def is_valid_account?(request)
+  # Validate account information
+  private def is_valid_account?(request : Hash(String, JSON::Any)) : Bool?
     return true if Sched.options.skip_account_verification
 
     account_info = get_account(request["my_account"].as_s)
-    raise "no account for #{request["my_account"].as_s}" unless account_info
+    unless account_info
+      return nil
+    end
 
     request["my_token"].as_s == account_info.my_token
   end
@@ -111,16 +126,24 @@ class Sched
     return true
   end
 
-  def api_register_account(env)
-    return unless detect_local_client(env)
+  def api_register_account(account_name : String, account_hash : Hash(String, JSON::Any)) : Result
+    begin
+      # Parse and validate account information
+      account_info = AccountInfo.from_json(account_hash.to_json)
 
-    account_hash = JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
-    pass = account_hash.delete("admin_token")
-    return unless pass
-    return unless pass.as_s == Sched.options.admin_token
+      # Add the account to the cache and Elasticsearch
+      @accounts_cache.add_account(account_info)
+      @es.replace_doc("accounts", account_info)
 
-    account_info = AccountInfo.from_json(account_hash.to_json)
-    @accounts_cache.add_account(account_info)
-    @es.replace_doc("accounts", account_info)
+      # Return success result
+      Result.success("Account registered successfully: #{account_name}")
+    rescue ex
+      # Log the error for debugging
+      @log.error(exception: ex) { "Failed to register account: #{account_name}" }
+
+      # Return error result
+      Result.error(HTTP::Status::INTERNAL_SERVER_ERROR, ex.message || "Internal server error")
+    end
   end
+
 end

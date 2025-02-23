@@ -239,7 +239,8 @@ class Sched
   private def check_system_health(hostname, line)
     OOPS_PATTERNS.each do |pattern|
       next unless line.includes?(pattern)
-      next unless ipmi_reboot(hostname)
+      code, msg = ipmi_reboot(hostname)
+      next unless code == HTTP::Status::OK
       job_id = @hosts_cache[hostname].job_id
       if job = @jobs_cache[job_id]?
         if JOB_STAGE_NAME2ID[job.job_stage] < JOB_STAGE_NAME2ID["finish"]
@@ -256,14 +257,25 @@ class Sched
     ipmi_run(hostname, %w(power reset))
   end
 
-  private def ipmi_run(hostname, params)
-    return unless ipmi_ip = @hosts_cache[hostname].hash_str["ipmi_ip"]?
+  private def ipmi_run(hostname : String, params : Array(String))
+    # Retrieve IPMI details from the cache
+    ipmi_ip = @hosts_cache[hostname].hash_str["ipmi_ip"]?
+    unless ipmi_ip
+      return HTTP::Status::BAD_REQUEST, "IPMI IP not found for host: #{hostname}"
+    end
+
+    # Prepare IPMI command parameters
     ipmi_user = Sched.options.ipmi_user
     ipmi_password = Sched.options.ipmi_password
-
     common_params = ["-I", "lanplus", "-H", ipmi_ip, "-U", ipmi_user, "-E"]
-    Process.run("ipmitool", common_params.concat(params),
-                env: {"IPMI_PASSWORD" => ipmi_password})
+
+    # Execute the IPMI command
+    status = Process.run("ipmitool", common_params.concat(params), env: {"IPMI_PASSWORD" => ipmi_password})
+    unless status.success?
+      return HTTP::Status::INTERNAL_SERVER_ERROR, "IPMI command failed: #{status.to_s}"
+    end
+
+    return HTTP::Status::OK, "Success"
   end
 
 end

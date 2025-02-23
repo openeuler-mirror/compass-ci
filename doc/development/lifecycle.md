@@ -27,7 +27,7 @@ job_stage详解：
 
   client：用户客户端或服务器内的submit
 
-  调度器端口：/submit_job
+  调度器端口：/scheduler/v1/jobs/submit
 
 - boot: 执行机从调度器取走任务
 

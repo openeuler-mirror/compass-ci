@@ -16,15 +16,15 @@ SCHED_PORT: 3000             # port of the scheduler
 * '[variable]' means this variable is optional
 
 ## submit a job
-- restAPI: POST "/submit_job"
+- restAPI: POST "/scheduler/v1/jobs/submit"
 - request body: {"#!jobs/iperf.yaml":null, "suite":"iperf", ...}
 - response body: "#{job_id}" (job_id is a global unique sequence number, e.g. 6)
 - debug cmd:
-  curl -X POST --data '{"suite": "iperf", "testbox": "myhost", "test-group": "mygroup", "result_root": "/result/ipef"}' http://${SCHED_HOST}:${SCHED_PORT}/submit_job
+  curl -X POST --data '{"suite": "iperf", "testbox": "myhost", "test-group": "mygroup", "result_root": "/result/ipef"}' http://${SCHED_HOST}:${SCHED_PORT}/scheduler/v1/jobs/submit
 
 - v0.1.x inner process:
 ```sequence
-User->Scheduler: POST "/submit_job" with job content
+User->Scheduler: POST "/scheduler/v1/jobs/submit" with job content
 Note left of User: job content\nin json format
 Scheduler->Sched: sched.\nsubmit_job(env)
 Sched->Redis: <job_id> = get_new_job_id
@@ -55,7 +55,7 @@ sched/seqno2jobid  |last_job_id => 64bit number                  |String
 
 - v0.2.x inner process:
 ```sequence
-User->Scheduler: POST "/submit_job" with job content
+User->Scheduler: POST "/scheduler/v1/jobs/submit" with job content
 Note left of User: job content\nin json format
 Scheduler->Sched: sched.submit_job(env)
 Sched->Sched: job_content = JSON.parse(http.body)
@@ -364,7 +364,7 @@ sched/mac2host                  |[{field => mac, value => hostname,]          |H
 ## scenario 1: developer debug, submit a job and consume with quem.sh
 1. use [PUT "/set_host_mac?hostname=:hostname&mac=:mac"] to register a {mac => hostname}
   debug shell md: curl -X PUT "http://${SCHED_HOST}:${SCHED_PORT}/set_host_mac?hostname=wfg-e595&mac=52-54-00-12-34-56"
-2. use [POST "/submit_job"] to submit a job
+2. use [POST "/scheduler/v1/jobs/submit"] to submit a job
   debug shell cmd: ./0_addjob.sh iperf.yaml # at cci/user-client/helper
   or lkp cmd: submit-job iperf.yaml
 3. runs qemu.sh at cci/providers to get a job and run it

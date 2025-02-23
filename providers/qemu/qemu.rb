@@ -129,7 +129,7 @@ class QemuManager
 
   def extract_job_metadata
     `gzip -dc job.cgz | cpio -div`
-    `grep -E "nr_|memory|minimum|group|RESULT_WEBDAV|result_root" lkp/scheduled/job.yaml | sed 's/^ *//' > lkp/scheduled/job_vm.yaml`
+    `grep -E "nr_|memory|minimum|group|result_root" lkp/scheduled/job.yaml | sed 's/^ *//' > lkp/scheduled/job_vm.yaml`
   end
 
   def set_default_resources(job_hash)
@@ -148,7 +148,6 @@ class QemuManager
     env_vars = prepare_env(job_hash, host_config, mac_address)
 
     execute_virtual_machine(env_vars)
-    upload_dmesg(job_hash) if job_hash['id']
   end
 
   def load_host_configuration(config_path)
@@ -175,15 +174,5 @@ class QemuManager
       env_vars,
       "#{ENV['CCI_SRC']}/providers/qemu/kvm.sh"
     )
-  end
-
-  def upload_dmesg(config)
-    upload_url = if @is_remote
-      "#{config["RESULT_WEBDAV_HOST"]}:#{config["RESULT_WEBDAV_PORT"]}#{config["result_root"]}/dmesg"
-    else
-      "http://#{config["RESULT_WEBDAV_HOST"]}:#{config["RESULT_WEBDAV_PORT"]}#{config["result_root"]}/dmesg"
-    end
-
-    %x(curl -sSf -F "file=@#{@log_file}" #{upload_url} --cookie "JOBID=#{config["id"]}")
   end
 end

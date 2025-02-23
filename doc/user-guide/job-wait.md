@@ -43,7 +43,7 @@ sequenceDiagram
     participant Scheduler
     participant JobStore
 
-    Client->>API: POST /scheduler/wait-jobs (wait_spec)
+    Client->>API: POST /scheduler/v1/jobs/wait (wait_spec)
     API->>Scheduler: api_wait_jobs()
     Scheduler->>Scheduler: initial_check()
     alt Immediate completion
@@ -62,11 +62,11 @@ sequenceDiagram
     end
 ```
 
-# API Documentation: POST /scheduler/wait-jobs
+# API Documentation: POST /scheduler/v1/jobs/wait
 
 ## Request
 ```http
-POST /scheduler/wait-jobs
+POST /scheduler/v1/jobs/wait
 Content-Type: application/json
 ```
 

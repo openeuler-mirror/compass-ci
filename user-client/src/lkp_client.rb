@@ -46,7 +46,7 @@ class LkpClient
   end
 
   def http_post_cmd
-    resource = RestClient::Resource.new("http://#{@server.host}:#{@server.port}/submit_job",
+    resource = RestClient::Resource.new("http://#{@server.host}:#{@server.port}/scheduler/v1/jobs/submit",
                                         { headers: { 'Authorization' => @auth } })
     resource.post(trans(@path))
   end

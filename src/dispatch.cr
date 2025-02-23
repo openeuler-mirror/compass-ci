@@ -35,7 +35,7 @@ struct HostRequest
 
   def initialize(@arch, @hostname, @tbox_type, tags, @freemem, @is_remote, sched_host, sched_port)
     set_host_keys
-    @tags = Set(String).new (tags||"").split(",")
+    @tags = Set(String).new tags.split(",")
 
     @disk_max_used_string = ""
     @metrics = Hash(String, UInt32).new

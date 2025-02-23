@@ -1,6 +1,6 @@
 # Host Dashboard API Documentation
 
-Endpoint: `GET /scheduler/dashboard/hosts`
+Endpoint: `GET /scheduler/v1/dashboard/hosts`
 
 ## Overview
 Interactive dashboard for monitoring host machines with real-time filtering, sorting, and multi-format output capabilities.
@@ -63,22 +63,22 @@ network_errors_per_sec
 
 **Basic HTML Request**
 ```bash
-curl http://localhost:3000/scheduler/dashboard/hosts
+curl http://localhost:3000/scheduler/v1/dashboard/hosts
 ```
 
 **Text Output with Custom Columns**
 ```bash
-curl http://localhost:3000/scheduler/dashboard/hosts?output=text&fields=hostname,arch,load
+curl http://localhost:3000/scheduler/v1/dashboard/hosts?output=text&fields=hostname,arch,load
 ```
 
 **Filtered Request**
 ```bash
-curl "http://localhost:3000/scheduler/dashboard/hosts?arch=x86_64&load=heavy&has_job=true"
+curl "http://localhost:3000/scheduler/v1/dashboard/hosts?arch=x86_64&load=heavy&has_job=true"
 ```
 
 **Sorted Results**
 ```bash
-curl "http://localhost:3000/scheduler/dashboard/hosts?sort=freemem_percent&order=desc"
+curl "http://localhost:3000/scheduler/v1/dashboard/hosts?sort=freemem_percent&order=desc"
 ```
 
 ## Client Usage

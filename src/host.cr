@@ -402,23 +402,39 @@ class Hosts
 end
 
 class Sched
-  def update_host_metrics(hostname, hash)
-    return unless @hosts_cache.hosts.has_key? hostname
+  def update_host_metrics(hostname : String, hash : Hash(String, JSON::Any)) : Result
+    unless @hosts_cache.hosts.has_key?(hostname)
+      return Result.error(HTTP::Status::NOT_FOUND, "Host not found: #{hostname}")
+    end
+
     hi = @hosts_cache[hostname]
-    HostInfo::UINT32_METRIC_KEYS.each do |key| hi.load_uint32(hash, key) end
-    ["disk_max_used_string"].each do |key| hi.load_string(hash, key) end
+    HostInfo::UINT32_METRIC_KEYS.each do |key|
+      hi.load_uint32(hash, key)
+    end
+    ["disk_max_used_string"].each do |key|
+      hi.load_string(hash, key)
+    end
+
+    Result.success("Metrics updated for host: #{hostname}")
   end
 
-  def api_register_host(env)
-    host_hash = JSON.parse(env.request.body.not_nil!.gets_to_end).as_h
-    for_metrics = env.params.query.has_key? "report_metrics"
-    if for_metrics
-      update_host_metrics(host_hash["hostname"].as_s, host_hash)
-    else
-			host_info = HostInfo.from_parsed(host_hash)
-      @hosts_cache.add_host(host_info)
-      @es.replace_doc("hosts", host_info)
+  def api_register_host(hostname : String, host_hash : Hash(String, JSON::Any), for_metrics : Bool) : Result
+    begin
+      if for_metrics
+        # Update metrics for an existing host
+        return update_host_metrics(hostname, host_hash)
+      else
+        # Register a new host
+        host_info = HostInfo.from_parsed(host_hash)
+        @hosts_cache.add_host(host_info)
+        @es.replace_doc("hosts", host_info)
+      end
+
+      Result.success("Host registered successfully: #{hostname}")
+    rescue ex
+      # Log the error for debugging
+      Log.error(exception: ex) { "Failed to register host: #{hostname}" }
+      Result.error(HTTP::Status::INTERNAL_SERVER_ERROR, ex.message || "Internal server error")
     end
   end
-
 end

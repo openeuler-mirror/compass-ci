@@ -35,10 +35,10 @@ class Sched
 
       # Define tabs
       tabs = [
-        {name: "Hosts", path: "/scheduler/dashboard/hosts"},
-        {name: "Submit Jobs", path: "/scheduler/dashboard/submit-jobs"},
-        {name: "Running Jobs", path: "/scheduler/dashboard/running-jobs"},
-        {name: "Accounts", path: "/scheduler/dashboard/accounts"},
+        {name: "Hosts",           path: "/scheduler/v1/dashboard/hosts"},
+        {name: "Submit Jobs",     path: "/scheduler/v1/dashboard/jobs/pending"},
+        {name: "Running Jobs",    path: "/scheduler/v1/dashboard/jobs/running"},
+        {name: "Accounts",        path: "/scheduler/v1/dashboard/accounts"},
       ]
 
       # Render tabs

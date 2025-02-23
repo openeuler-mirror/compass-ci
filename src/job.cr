@@ -940,6 +940,12 @@ class JobHash
     self.services = hostreq.services
   end
 
+  # pending jobs are in Sched @jobs_cache_in_submit
+  # running jobs are in Sched @jobs_cache
+  def running? : Bool
+    JOB_STAGE_NAME2ID["submit"] < self.istage && self.istage < JOB_STAGE_NAME2ID["finish"]
+  end
+
   def settle_job_fields
     self.job_token = UUID.random.to_s
     self.update_kernel_params

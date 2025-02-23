@@ -10,7 +10,6 @@
 
 source ${CCI_SRC}/lib/log.sh
 source ${LKP_SRC}/lib/yaml.sh
-source ${LKP_SRC}/lib/upload.sh
 
 oops_patterns=(
 	-e 'Kernel panic - not syncing:'
@@ -441,14 +440,6 @@ write_dmesg_flag()
 	fi
 }
 
-upload_dmesg()
-{
-	local id=$job_id
-	local JOB_RESULT_ROOT=$result_root
-
-	upload_files_curl $log_file
-}
-
 check_logfile
 ipxe_script=ipxe_script
 
@@ -468,5 +459,4 @@ set -m
 watch_oops &
 run_qemu
 write_dmesg_flag 'end'
-upload_dmesg
 kill %1

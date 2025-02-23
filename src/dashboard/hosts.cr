@@ -34,14 +34,14 @@ class Sched
       remaining_minutes = minutes % 60
 
       if hours < 24
-        formatted_time = []
+        formatted_time = [] of String
         formatted_time << "#{hours}H" unless hours == 0
         formatted_time << "#{remaining_minutes}M" unless remaining_minutes == 0
         formatted_time.join(' ')
       else
         days = hours // 24
         remaining_hours = hours % 24
-        formatted_time = []
+        formatted_time = [] of String
         formatted_time << "#{days}D" unless days == 0
         formatted_time << "#{remaining_hours}H" unless remaining_hours == 0
         formatted_time << "#{remaining_minutes}M" unless remaining_minutes == 0
