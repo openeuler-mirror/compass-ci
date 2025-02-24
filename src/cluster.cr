@@ -2,6 +2,10 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 require "./plugins_common"
 
+# These are shell lib functions defined in $LKP_SRC
+WAIT_PEER_JOBS  = "wait_peer_jobs"
+UPDATE_JOB_VARS = "update_job_vars"
+
 class Cluster < PluginsCommon
   def handle_job(job)
     cluster_file = job.cluster?
@@ -131,9 +135,9 @@ class Cluster < PluginsCommon
     # Get all job IDs in the cluster
     cluster_job_ids = jobid2roles.keys
 
-    script = "jobfile_append_var job_stage=wait_peer ip=$ip direct_macs=\"$direct_macs\" direct_ips=\"$direct_ips\"" \
-            "\nwait-jobs.sh #{cluster_job_ids.map { |jid| "#{jid}.job_stage=wait_peer" }.join(' ')}" \
-            "jobfile_append_var job_stage=running"
+    script = "#{UPDATE_JOB_VARS} job_stage=wait_peer ip=$ip direct_macs=\"$direct_macs\" direct_ips=\"$direct_ips\"" \
+            "\n#{WAIT_PEER_JOBS} #{cluster_job_ids.map { |jid| "#{jid}.job_stage=wait_peer" }.join(' ')}" \
+            "#{UPDATE_JOB_VARS} job_stage=running"
 
     jobs.each do |job|
       # Store cluster job info
@@ -245,9 +249,9 @@ class Cluster < PluginsCommon
 
   def self.add_pre_script_waits(config, targets, current_component)
     # Example targets: [{"daemon", "xxx", "job1"}]
-    # Adds: "wait-jobs.sh job1.milestones=xxx-ready"
+    # Adds: "#{WAIT_PEER_JOBS} job1.milestones=xxx-ready"
     waits = targets.map { |t| "#{t[2]}.milestones=#{t[1]}-ready" }
-    Cluster.append_script(config, "pre-script", "wait-jobs.sh #{waits.join(' ')}")
+    Cluster.append_script(config, "pre-script", "#{WAIT_PEER_JOBS} #{waits.join(' ')}")
   end
 
   def self.track_reverse_dependencies(targets, dependent_key, reverse_deps)
@@ -261,8 +265,8 @@ class Cluster < PluginsCommon
   end
 
   def self.add_post_script_report(config, component_name)
-    # Adds: "jobfile_append_var milestones=yyy-done"
-    Cluster.append_script(config, "post-script", "jobfile_append_var milestones=#{component_name}-done")
+    # Adds: "#{UPDATE_JOB_VARS} milestones=yyy-done"
+    Cluster.append_script(config, "post-script", "#{UPDATE_JOB_VARS} milestones=#{component_name}-done")
   end
 
   def self.process_reverse_dependencies(jobs, reverse_deps)
@@ -282,19 +286,19 @@ class Cluster < PluginsCommon
       next unless target_config
 
       # Add state reporting and waits
-      Cluster.append_script(target_config, "post-script", "jobfile_append_var milestones=#{target_name}-ready")
+      Cluster.append_script(target_config, "post-script", "#{UPDATE_JOB_VARS} milestones=#{target_name}-ready")
       Cluster.add_reverse_waits(target_config, dependents)
     end
   end
 
   def self.add_reverse_waits(config, dependents)
     # Example dependents: ["program.yyy@job2", "program.yyy@job3"]
-    # Adds: "wait-jobs.sh job2.milestones=yyy-done job3.milestones=yyy-done"
+    # Adds: "#{WAIT_PEER_JOBS} job2.milestones=yyy-done job3.milestones=yyy-done"
     waits = dependents.map do |dep|
       dep_parts = dep.split('@')
       "#{dep_parts[1]}.milestones=#{dep_parts[0].split('.', 2)[1]}-done"
     end
-    Cluster.append_script(config, "post-script", "wait-jobs.sh #{waits.join(' ')}")
+    Cluster.append_script(config, "post-script", "#{WAIT_PEER_JOBS} #{waits.join(' ')}")
   end
 
   def self.append_script(config, script_type, command)
