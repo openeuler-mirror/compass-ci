@@ -19,8 +19,9 @@ class Sched
     return Result.error(HTTP::Status::NOT_FOUND, "Error: Job not found") unless job
 
     # Prevent updates if the job is already in the "finish" stage
-    if job.istage >= JOB_STAGE_NAME2ID["finish"]
-      return Result.error(HTTP::Status::LOCKED, "Warning: Job finished, cannot update")
+    if job.istage >= JOB_STAGE_NAME2ID["finish"] &&
+       job.idata_readiness >= JOB_DATA_READINESS_NAME2ID["complete"]
+      return Result.error(HTTP::Status::LOCKED, "Warning: Job closed, cannot update")
     end
 
     # Iterate over allowed parameters and update the job accordingly
