@@ -1,4 +1,4 @@
-CREATE TABLE hosts(
+CREATE TABLE accounts(
 	id			bigint,
 	gitee_id                string,
 	my_account              string,
@@ -8,5 +8,5 @@ CREATE TABLE hosts(
 	my_name                 string,
 	my_token                string,
 	weight                  int,
-	my_third_party_accounts	json,
-) charset_table='U+0021..U+007E'
+	my_third_party_accounts	json
+) charset_table='U+0021..U+007E';

@@ -13,6 +13,6 @@ CREATE TABLE hosts(
 
 	job_id			bigint,
 
-	full_text_kv		text
-	j			json,
-) charset_table='U+0021..U+007E'
+	full_text_kv		text,
+	j			json
+) charset_table='U+0021..U+007E';

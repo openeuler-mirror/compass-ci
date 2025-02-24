@@ -24,4 +24,4 @@ CREATE TABLE jobs(
 	errid		text,
 	full_text_kv	text
 
-) engine='columnar' charset_table='U+0021..U+007E'
+) engine='columnar' charset_table='U+0021..U+007E';
