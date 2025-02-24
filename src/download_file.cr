@@ -94,7 +94,7 @@ class Sched
   # job_token is created on dispatched jobs.
   # It won't be stored to ES.
   # If scheduler crash, it can reloaded from job_dir's job.yaml
-  def api_upload_result(env)
+  def api_upload_result(env, to_upload_dirs)
     # Extract query parameters
     job_id = env.params.query["job_id"]?
     job_token = env.params.query["job_token"]?
@@ -128,10 +128,19 @@ class Sched
       return 400, "Empty path"
     end
 
-    requested_path = "/result/" + requested_path
-    unless requested_path.starts_with?(job.result_root) &&
-          !requested_path.includes?("/../")
-      return 400, "Invalid path"
+    if requested_path.includes?("/../")
+        return 400, "Illegal path"
+    end
+
+    if to_upload_dirs
+      unless job.upload_dirs.split(",").includes? requested_path
+        return 400, "Invalid path"
+      end
+    else
+      requested_path = "/result/" + requested_path
+      unless requested_path.starts_with?(job.result_root)
+        return 400, "Invalid path"
+      end
     end
 
     # Ensure target directory exists

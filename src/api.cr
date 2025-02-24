@@ -163,7 +163,13 @@ module Scheduler
   end
 
   post "/result/*path" do |env|
-    code, text = Sched.instance.api_upload_result(env)
+    code, text = Sched.instance.api_upload_result(env, false)
+    env.response.status_code = code
+    text
+  end
+
+  post "/srv/*path" do |env|
+    code, text = Sched.instance.api_upload_result(env, true)
     env.response.status_code = code
     text
   end
