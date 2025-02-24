@@ -1234,13 +1234,14 @@ class Job < JobHash
   end
 
   def get_pkg_common_dir
+    return nil unless @hash_hhh.has_key? "pp"
     tmp_style = nil
     ["cci-makepkg", "cci-depends", "build-pkg", "pkgbuild", "rpmbuild"].each do |item|
-      tmp_style = @hash_any[item]?
+      tmp_style = @hash_hhh["pp"][item] if self.pp.has_key? item
       break if tmp_style
     end
     return nil unless tmp_style
-    pkg_style = JobHash.new(tmp_style.as_h?)
+    pkg_style = tmp_style
 
     tmp_os = pkg_style["os"]? || self.os
     tmp_os_arch = pkg_style["os_arch"]? || self.os_arch
@@ -1275,17 +1276,20 @@ class Job < JobHash
     return package_dir unless common_dir
 
     # XXX
-    if @hash_any["cci-makepkg"]?
-      package_dir = ",/initrd/pkg/#{common_dir}/#{@hash_any["cci-makepkg"]["benchmark"]}"
-    elsif @hash_any["cci-depends"]?
-      package_dir = ",/initrd/deps/#{common_dir}/#{@hash_any["cci-depends"]["benchmark"]}"
-    elsif @hash_any["rpmbuild"]?
+    if self.pp.has_key? "cci-makepkg"
+      package_dir = ",/initrd/pkg/#{common_dir}/#{self.pp("cci-makepkg", "benchmark")}"
+    elsif self.pp.has_key? "cci-depends"
+      package_dir = ",/initrd/deps/#{common_dir}/#{self.pp("cci-depends", "benchmark")}"
+    elsif self.pp.has_key? "rpmbuild"
       package_dir = ",/rpm/upload/#{common_dir}"
-    elsif @hash_any["build-pkg"]? || @hash_any["pkgbuild"]?
-      package_name = self.upstream_repo.split("/")[-1]
+    elsif self.pp.has_key? "build-pkg" || self.pp.has_key? "pkgbuild"
+      upstream_repo = self.upstream_repo? || pp("build-pkg", "upstream_repo") || pp("pkgbuild", "upstream_repo")
+      return package_dir unless upstream_repo
+
+      package_name = upstream_repo.split("/")[-1]
       package_dir = ",/initrd/build-pkg/#{common_dir}/#{package_name}"
       package_dir += ",/cci/build-config" if self.config?
-        if self.upstream_repo =~ /^l\/linux\//
+        if upstream_repo =~ /^l\/linux\//
           package_dir += ",/kernel/#{os_arch}/#{self.config}/#{self.upstream_commit}"
       end
     end
