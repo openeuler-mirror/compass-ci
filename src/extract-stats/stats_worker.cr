@@ -5,7 +5,6 @@ require "yaml"
 
 require "../lib/json_logger"
 require "../elasticsearch_client"
-require "../lib/redis_client"
 require "../constants"
 require "./regression_client"
 require "./constants.cr"

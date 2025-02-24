@@ -12,7 +12,6 @@ require "./lib/remote_git_client.cr"
 require "./lib/constants.cr"
 require "./constants.cr"
 require "./lib/jobfile_operate.cr"
-require "./lib/redis_client.cr"
 require "./elasticsearch_client.cr"
 
 require "./auto_depend_submit_job.cr"
@@ -29,7 +28,6 @@ require "./rpmbuild.cr"
 require "./report_job_step.cr"
 require "./pkgbuild.cr"
 require "./cluster.cr"
-require "./heart_beat.cr"
 require "./dispatch.cr"
 require "./hub.cr"
 require "./lifecycle.cr"
@@ -47,7 +45,6 @@ end
 class Sched
 
   property es
-  property redis
   property block_helper
   property cluster
   property pkgbuild
@@ -66,7 +63,6 @@ class Sched
 
   def initialize()
     @es = Elasticsearch::Client.new
-    @redis = RedisClient.instance
     @rgc = RemoteGitClient.new
     @log = JSONLogger.new
     @cluster = Cluster.new

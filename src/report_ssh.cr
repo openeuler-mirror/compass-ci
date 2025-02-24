@@ -7,10 +7,6 @@ class Sched
     ssh_port = env.params.query["ssh_port"].to_s
     job_id = env.params.query["job_id"].to_s
 
-    if testbox && ssh_port
-      @redis.hash_set("sched/tbox2ssh_port", testbox, ssh_port)
-    end
-
     @log.info({"job_id" => "#{job_id}", "state" => "set ssh port", "ssh_port" => "#{ssh_port}", "tbox_name" => "#{testbox}"})
   rescue e
     @log.warn(e)
@@ -26,8 +22,6 @@ class Sched
       # base on whether the key "ssh_port" exists.
       # Therefore, if the key is empty, delete the key.
       ssh_info.delete("ssh_port")
-    else
-      @redis.hash_set("sched/tbox2ssh_port", ssh_info["tbox_name"]?.to_s, ssh_port.to_s)
     end
 
     ssh_info["state"] = JSON::Any.new("set ssh port")

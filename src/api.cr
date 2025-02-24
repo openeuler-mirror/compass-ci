@@ -110,14 +110,6 @@ module Scheduler
     Sched.instance.api_hw_find_job_boot(env)
   end
 
-  get "/heart-beat" do |env|
-    status = Sched.instance.heart_beat(env)
-    {"status_code" => status}.to_json
-  rescue e
-    env.log.warn(e)
-  end
-
-
   # enqueue
   #  - echo job_id to caller
   #  -- job_id = "0" ? means failed
