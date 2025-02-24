@@ -12,7 +12,8 @@ cmd=(
 	docker run
 	--restart=always
 	-d
-	-e EXTRA=1
+	# -e EXTRA=1 # disable: too slow startup and unstable
+	-e MCL=1 # install Columnar Lib
 	--name manticore
 	-p 9306:9306
 	-p 9308:9308
