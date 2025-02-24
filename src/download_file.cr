@@ -81,14 +81,11 @@ class Sched
     return unless requested_path =~ /scheduler\/pending-jobs\/(\d+)\/job.cgz$/
 
     id = $1
-    job = @jobs_cache_in_submit[id.to_i64]?
+    job = get_job(id.to_i64)
     return unless job
 
     # downloading job.cgz auto marks going into boot stage
-    update_job_from_hash({
-      "job_id" => id,
-      "job_stage" => "boot",
-    })
+    change_job_stage(job, "boot", nil)
   end
 
   # job_token is created on dispatched jobs.

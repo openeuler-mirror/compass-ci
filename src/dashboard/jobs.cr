@@ -49,7 +49,7 @@ class Sched
     output_format = env.params.query["output"]? || "html"
 
     # Filter jobs
-    jobs_cache = env.request.path.ends_with?("submit-jobs") ? @jobs_cache_in_submit : @jobs_cache
+    jobs_cache = env.request.path.ends_with?("pending") ? @jobs_cache_in_submit : @jobs_cache
     filtered_jobs = jobs_cache.select do |_, job|
       (selected_my_accounts.empty? || selected_my_accounts.includes?(job.my_account)) &&
       (selected_suites.empty? || selected_suites.includes?(job.suite? || "N/A")) &&
