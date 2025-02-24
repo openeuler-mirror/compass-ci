@@ -18,7 +18,7 @@ end
 
 require "./constants-job.cr"
 require "./lib/constants.cr"
-require "./jobfile_operate.cr"
+require "./lib/jobfile_operate.cr"
 require "./kernel_params.cr"
 require "./pp_params.cr"
 require "./elasticsearch_client"

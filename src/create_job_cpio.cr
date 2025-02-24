@@ -8,7 +8,7 @@ require "process"
 require "json"
 require "yaml"
 
-require "./jobfile_operate"
+require "./lib/jobfile_operate"
 
 # job2sh Key Features:
 

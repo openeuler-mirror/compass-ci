@@ -11,7 +11,7 @@ require "./lib/block_helper.cr"
 require "./lib/remote_git_client.cr"
 require "./lib/constants.cr"
 require "./constants.cr"
-require "./jobfile_operate.cr"
+require "./lib/jobfile_operate.cr"
 require "./lib/redis_client.cr"
 require "./elasticsearch_client.cr"
 
