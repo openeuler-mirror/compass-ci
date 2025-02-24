@@ -368,9 +368,9 @@ class Elasticsearch::Client
     conditions = query_hash.compact_map do |key, value|
       next if value.nil?
       if quote
-        "#{key}=#{value}"
-      else
         "#{key}='#{value}'"
+      else
+        "#{key}=#{value}"
       end
     end
 
@@ -387,7 +387,17 @@ class Elasticsearch::Client
       host_port = "#{@settings[:manticore_host]}:#{@settings[:manticore_port]}"
       response = perform_one_request(host_port, "sql", nil, "POST", sql_cmd)
       body = response.body
+
+      # Check if the response body contains an error
+      if body.starts_with?("{\"error\":")
+        error_message = JSON.parse(body)["error"].as_s
+        raise "Manticore SQL Error: #{error_message} sql_cmd is #{sql_cmd}"
+      end
+
+      # Filter the SQL result if fields are not '*'
       body = Manticore.filter_sql_result(body) if fields != '*'
+
+      # Parse the JSON response and extract the results
       results = JSON.parse(body)["hits"]["hits"].as_a
       results = Manticore.jobs_from_manticore(results)
       return results
