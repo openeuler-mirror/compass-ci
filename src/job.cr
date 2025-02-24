@@ -423,6 +423,11 @@ class JobHash
     pkgbuild_repo
     pkgbuild_source
 
+    install_os_packages_all
+    install_pip_packages_all
+    install_gem_packages_all
+    install_pkgbuild_packages_all
+
     os_project
     build_type
     build_id
