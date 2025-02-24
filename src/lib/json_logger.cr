@@ -109,6 +109,9 @@ class JSONLogger < Log
 
       # Write the TSV+KV line to the output
       io << tsv_line << "\t" << kv_pairs
+      if e = entry.exception
+        io << "\n" << e.inspect_with_backtrace
+      end
     end
   end
 
