@@ -4,7 +4,7 @@
 require 'json'
 require 'net/http'
 require 'time'
-require_relative './constants-manticore.rb'
+require_relative './constants-job.rb'
 
 module Manticore
   HOST = ENV['MANTICORE_HOST'] || 'localhost'

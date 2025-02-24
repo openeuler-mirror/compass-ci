@@ -179,7 +179,6 @@ class HostInfo
   # please keep top level key assignments in sync with sbin/manti-table-hosts.sql
   def to_manticore
     mjob = @hash_all.dup
-    mjob["id"] = JSON::Any.new(@id)
 
     @hash_uint32.keys.each do |field|
       mjob[field] = JSON::Any.new @hash_uint32[field]

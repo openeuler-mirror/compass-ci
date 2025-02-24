@@ -3,6 +3,7 @@ class AccountInfo
 
   include JSON::Serializable
   # keey in synce with sbin/manti-table-accounts.sql
+  @[JSON::Field(ignore_serialize: true)]
   property id                 :    Int64 = 0
   property gitee_id           :    String
   property my_account         :    String
@@ -33,7 +34,7 @@ class AccountInfo
   end
 
   def to_manticore
-    JSON.parse(self.to_json)
+    JSON.parse(self.to_json).as_h
   end
 
 end

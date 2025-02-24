@@ -86,7 +86,7 @@ JOB_DATA_READINESS_ID2NAME = JOB_DATA_READINESS_NAME2ID.invert
 MANTI_STRING_FIELDS = %w[suite category my_account testbox arch osv]
 
 # these can be in-place updated at low cost
-MANTI_INT64_FIELDS = %w[id submit_time boot_time running_time finish_time]
+MANTI_INT64_FIELDS = %w[submit_time boot_time running_time finish_time]
 MANTI_INT32_FIELDS = %w[boot_seconds run_seconds istage ihealth]
 
 # their k=v will be added to full_text_kv for fast MATCH query

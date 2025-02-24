@@ -676,11 +676,6 @@ class JobHash
   def to_manticore
     mjob = {} of String => JSON::Any
 
-    MANTI_STRING_FIELDS.each do |field|
-      next unless self.has_key?(field)
-      mjob[field] = JSON::Any.new self[field]
-    end
-
     MANTI_INT64_FIELDS.each do |field|
       next unless self.has_key?(field)
 
@@ -692,7 +687,8 @@ class JobHash
     end
 
     MANTI_INT32_FIELDS.each do |field|
-      next unless self.has_key?(field)
+      next unless self.hash_plain.has_key?(field)
+      next unless self.hash_int32.has_key?(field)
 
       if field.ends_with?("_seconds")
         mjob[field] = JSON::Any.new duration_to_seconds(self[field])
@@ -701,8 +697,13 @@ class JobHash
       end
     end
 
+    MANTI_STRING_FIELDS.each do |field|
+      next unless self.has_key?(field)
+      mjob[field] = JSON::Any.new self[field]
+    end
+
     # errid as space-separated string
-    if self.has_key? "errid"
+    if self.hash_array.has_key? "errid"
       mjob["errid"] = JSON::Any.new @hash_array["errid"].join(" ")
     end
 

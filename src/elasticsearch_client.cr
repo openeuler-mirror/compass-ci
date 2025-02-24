@@ -118,6 +118,7 @@ class Elasticsearch::Client
 
     if Sched.options.should_write_manticore
       content = doc.to_manticore
+      content.delete "id"   # avoid manticore 409 "column 'id' specified twice" error
       manticore_response = Manticore::Client.insert_by_id(index, doc.id64, content)
     end
 

@@ -175,7 +175,7 @@ module Manticore
         "doc"   => doc
       }.to_json
       response = client.post(api, headers: headers, body: body)
-      raise "HTTP error: #{response.status_code}" unless response.status.success?
+      raise "HTTP error: #{response.inspect} for request body #{body}" unless response.status.success?
 
       result = JSON.parse(response.body)
       result.as_h.has_key? "errors"
