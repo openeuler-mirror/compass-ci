@@ -36,25 +36,6 @@ pkgs=(
 	expect
 )
 
-wget_rpm()
-{
-	url=$1
-	for i in {1..30}
-	do
-		wget $url && return 0
-		sleep 1
-	done
-	return 1
-}
-
 public_network_ok && {
 	yum install -y --skip-broken "${pkgs[@]}"
-
-	# lib64lockfile1 from http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
-	# lockfile-progs from http://abf-downloads.openmandriva.org/rock/repository/$(arch)/main/release/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
-	wget_rpm https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/lockfile/$(arch)/lib64lockfile1-1.16-1-omv4002.$(arch).rpm
-	wget_rpm https://repo.oepkgs.net/openEuler/compass-ci/cci-deps/lockfile/$(arch)/lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
-
-	rpm -i --force lib64lockfile1-1.16-1-omv4002.$(arch).rpm lockfile-progs-0.1.18-5-omv4002.$(arch).rpm
-	rm -rf *.rpm
 }
