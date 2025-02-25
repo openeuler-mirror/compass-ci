@@ -5,7 +5,6 @@ admin_token: ""
 
 skip_account_verification: true
 
-has_redis: false
 should_read_es: false
 should_write_es: false
 should_read_manticore: true
@@ -13,11 +12,6 @@ should_write_manticore: true
 
 lab_id: ""
 sched_port: 3300
-
-redis_host: "172.17.0.1"
-redis_port: 6379
-redis_passwd: ""
-redis_is_cluster: false
 
 es_host: "172.17.0.1"
 es_port: 9200

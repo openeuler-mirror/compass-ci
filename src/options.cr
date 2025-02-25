@@ -15,7 +15,6 @@ struct SchedOptions
 
   property skip_account_verification : Bool = true
 
-  property has_redis : Bool = false
   property should_read_es : Bool = false
   property should_write_es : Bool = false
   property should_read_manticore : Bool = false
@@ -31,11 +30,6 @@ struct SchedOptions
 
   property sched_port : Int32 = 3000
 
-  property redis_host : String = JOB_REDIS_HOST
-  property redis_port : Int32 = JOB_REDIS_PORT
-  property redis_passwd : String = ""
-  property redis_is_cluster : Bool = false
-
   property es_host : String = JOB_ES_HOST
   property es_port : Int32 = JOB_ES_PORT
   property es_user : String = ""
@@ -49,8 +43,6 @@ struct SchedOptions
 
   STRING_OPTIONS = %w(
       worker_id
-      redis_host
-      redis_passwd
       es_host
       es_user
       es_password
@@ -58,12 +50,10 @@ struct SchedOptions
   )
   NUMBER_OPTIONS = %w(
       sched_port
-      redis_port
       es_port
       manticore_port
   )
   BOOL_OPTIONS = %w(
-      redis_is_cluster
   )
 
   def initialize
