@@ -90,23 +90,28 @@ class Sched
     job.update_id(id)
   end
 
-  # 3digit LAB_ID + 1digit WORKER_ID + datetime
-  # This can barely fit into Int64
-  # Time.now.strftime("3331%y%m%d%H%M%S%3N")
-  # => "333124042909335481"
-  # 1<<63
-  # =>  9223372036854775808
-  def Sched.get_job_id
-    id = Time.local.to_s("#{@@options.lab_id}%y%m%d%H%M%S%3N")
+  # Generates a unique job ID using the current time and the worker ID.
+  # The format is: `yyMMddHHmmssSS` (datetime) + `worker_id_padded`.
+  # This ensures the ID fits into an Int64 and maintains chronological order.
+  #
+  # Example:
+  #   Time.local.to_s("%y%m%d%H%M%S%3N") + "00" => "25022512311472100"
+  #
+  # Returns:
+  #   A unique job ID as a String.
+  def self.get_job_id : String
+    time_part = Time.local.to_s("%y%m%d%H%M%S%3N")
+    id = "#{time_part}#{@@options.worker_id_padded}"
+    id64 = id.to_i64
 
-		# check duplicate with @@last_jobid
-		id64 = id.to_i64
-		if id64 <= @@last_jobid
-			id64 = @@last_jobid + 1
+    # Ensure the generated ID is unique and greater than the last used ID.
+    if id64 <= @@last_jobid
+      # Increment by cluster_size to avoid conflicts with other workers.
+      id64 = @@last_jobid + @@options.cluster_size
       id = id64.to_s
     end
-    @@last_jobid = id64
 
+    @@last_jobid = id64
     id
   end
 

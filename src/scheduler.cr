@@ -44,6 +44,7 @@ module Scheduler
       if File.exists?(config_file)
         Sched.options = SchedOptions.from_yaml(File.read(config_file))
         Sched.options.load_env # ENV vars can override config options
+        Sched.options.validate
         return
       end
     end
