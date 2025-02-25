@@ -89,20 +89,37 @@ class HostInfo
   # Load HostInfo from a YAML file
   def self.from_yaml(file_path : String) : HostInfo
     yaml_data = File.read(file_path)
-    parsed_hosts = YAML.parse(yaml_data).as_h
+
+    begin
+      parsed_hosts = YAML.parse(yaml_data).as_h
+    rescue ex
+      puts "Malformed YAML in file: #{file_path}"
+      puts "YAML data:"
+      puts yaml_data
+      puts ex.inspect_with_backtrace
+      exit(1)
+    end
 
     devices_file = file_path.sub("/hosts/", "/devices/")
     if File.exists?(devices_file)
-      yaml_data = File.read(file_path)
-      parsed_devices = YAML.parse(yaml_data).as_h
+      begin
+        yaml_data = File.read(devices_file)
+        parsed_devices = YAML.parse(yaml_data).as_h
+      rescue ex
+        puts "Malformed YAML in devices file: #{devices_file}"
+        puts ex.inspect_with_backtrace
+        exit(1)
+      end
+
       parsed_devices.delete "id"
       parsed_hosts = parsed_devices.merge(parsed_hosts)
     end
 
-    host_info = from_parsed(JSON.parse(parsed_hosts.to_json).as_h)
-
     hostname = File.basename(file_path)
-    host_info.hostname = hostname
+    data = JSON.parse(parsed_hosts.to_json).as_h
+    data["hostname"] = JSON::Any.new(hostname)
+    host_info = from_parsed(data)
+
     host_info.tbox_type = HostInfo.determine_tbox_type(hostname)
     host_info
   end
