@@ -1,5 +1,5 @@
 name: scheduler
-version: 0.1.0
+version: 0.2.0
 
 authors:
   - Wu Fengguang <wfg@mail.ustc.edu.cn>
@@ -17,25 +17,8 @@ license: Mulan PSL v2
 dependencies:
   kemal:
     github: kemalcr/kemal
-  redis:
-    github: jgaskins/redis
   elasticsearch-crystal:
     github: paktek123/elasticsearch-crystal
   any_merge:
     github: icyleaf/any_merge
     branch: master
-  deep-merge:
-    github: peterhoeg/deep-merge.cr
-  json_on_steroids:
-    github: anykeyh/json_on_steroids
-  rate_limiter:
-    github: wout/rate_limiter
-  singleton:
-    github: waterlink/singleton.cr
-  etcd:
-    github: PythonEngineer007/crystal-etcd
-    branch: master
-  amqp-client:
-    github: cloudamqp/amqp-client.cr
-  shellwords:
-    github: szTheory/shellwords-crystal
