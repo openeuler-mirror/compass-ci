@@ -156,6 +156,12 @@ class JobHash
       return temp_initrds
     end
 
+    if @hash_array.has_key? "need_file_store"
+      @hash_array["need_file_store"].each do |path|
+        next unless path =~ /\.cgz$/
+        temp_initrds << "#{initrd_http_prefix}" + "/srv/file-store/#{path}"
+      end
+    else
     # pkg_data:
     #   lkp-tests:
     #     tag: v1.0
@@ -170,6 +176,7 @@ class JobHash
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{os_arch}/#{program["tag"]}.cgz")
       temp_initrds << "#{initrd_http_prefix}" +
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
+    end
     end
 
     # append job.cgz in the end, when download finish, we'll auto mark job_stage="boot"

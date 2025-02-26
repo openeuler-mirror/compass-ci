@@ -484,6 +484,7 @@ class JobHash
     modules_uri
     initrd_deps
     initrd_pkgs
+    need_file_store
     kernel_params
     kernel_rpms_url
 
@@ -505,6 +506,7 @@ class JobHash
     secrets
     services
     install_os_packages
+    upload_file_store
     boot_params
     on_fail
     ss_wait_jobs
@@ -1159,7 +1161,8 @@ class Job < JobHash
 
     hh.each do |repo, repo_pkg_data|
       next unless repo_pkg_data
-      store_pkg(repo, repo_pkg_data)
+      # obsolete pkg_data contents if the newer need_file_store is present
+      store_pkg(repo, repo_pkg_data) unless @hash_array.has_key? "need_file_store"
       repo_pkg_data.delete("content")
     end
   end

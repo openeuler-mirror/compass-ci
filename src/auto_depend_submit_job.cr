@@ -12,6 +12,12 @@ class Sched
       # Initialize the job
       origin_job = init_job(job_content)
 
+      origin_job.handle_upload_file_store
+      response = origin_job.handle_need_file_store
+      if response
+        return Result.error(HTTP::Status::BAD_REQUEST, [response].to_json)
+      end
+
       # if has upload_field, return it and notify client resubmit
       fields_need_upload = origin_job.process_user_files_upload
       if fields_need_upload

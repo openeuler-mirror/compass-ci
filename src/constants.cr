@@ -45,6 +45,7 @@ SRV_OS     = "#{BASE_DIR}/os"
 SRV_INITRD = "#{BASE_DIR}/initrd"
 SRV_UPLOAD = "#{BASE_DIR}/scheduler/upload-files"
 SRV_USER_FILE_UPLOAD = "#{BASE_DIR}/scheduler/user-files"
+FILE_STORE = "#{BASE_DIR}/file-store"
 
 SCHED_HTTP_PREFIX = "http://#{SCHED_HOST}:#{SCHED_PORT}"
 INITRD_HTTP_PREFIX = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
