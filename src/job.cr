@@ -959,8 +959,9 @@ class JobHash
     self.update_kernel_params
 
     self.set_depends_initrd()
-    self.set_kernel()
     self.set_initrds_uri()
+    self.set_os_kernel()
+    self.set_kernel_params()
     self.set_remote_mount_repo()
     self.set_deadline()
   end

@@ -92,27 +92,28 @@ class JobHash
     return "#{os}/#{os_arch}/#{os_version}"
   end
 
-  private def set_kernel
+  # the OS default kernel
+  private def set_os_kernel
     return if os_mount == "container"
+    return if @hash_plain.has_key?("kernel_uri") # set by ss.linux
 
-    set_kernel_version()
-    set_kernel_uri()
-    set_modules_uri()
-    set_kernel_params()
+    set_os_kernel_version()
+    set_os_kernel_uri()
+    set_os_modules_uri()
   end
 
-  private def set_kernel_version
+  private def set_os_kernel_version
     #self.kernel_version ||= File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
     self.put_if_not_absent("kernel_version",  File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", ""))
   end
 
-  private def set_kernel_uri
+  private def set_os_kernel_uri
     return if @hash_plain.has_key?("kernel_uri")
     vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
     self.kernel_uri = "#{os_http_prefix}" + JobHelper.service_path(vmlinuz_path)
   end
 
-  private def set_modules_uri
+  private def set_os_modules_uri
     return if @hash_array.has_key?("modules_uri")
     return if self.os_mount == "local"
 
@@ -158,8 +159,12 @@ class JobHash
 
     if @hash_array.has_key? "need_file_store"
       @hash_array["need_file_store"].each do |path|
-        next unless path =~ /\.cgz$/
-        temp_initrds << "#{initrd_http_prefix}" + "/srv/file-store/#{path}"
+        case path
+        when /\/vmlinuz$/
+          self.kernel_uri = "#{sched_http_prefix}" + JobHelper.service_path("#{FILE_STORE}/#{path}")
+        when /\.cgz$/
+          temp_initrds << "#{sched_http_prefix}" + JobHelper.service_path("#{FILE_STORE}/#{path}")
+        end
       end
     else
     # pkg_data:
@@ -224,11 +229,6 @@ class JobHash
 
   private def set_initrds_uri
     self.initrds_uri = get_initrds()
-  end
-
-  def append_initrd_uri(initrd_uri)
-    self.initrds_uri << initrd_uri if self.os_mount == "initramfs"
-    self.initrd_deps << initrd_uri
   end
 
   private def set_depends_initrd
