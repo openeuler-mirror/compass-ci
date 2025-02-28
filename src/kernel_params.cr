@@ -22,10 +22,6 @@ class JobHash
     params
   end
 
-  private def kernel_custom_params
-    @hash_plain["kernel_custom_params"]?
-  end
-
   # job:
   #   boot_params:
   #   bp_trace_buf_size: 131072K
@@ -46,19 +42,25 @@ class JobHash
     cmdline.strip
   end
 
+  def os_real_path
+    JobHelper.service_path("#{SRV_OS}/#{os_dir}")
+  end
+
   def kernel_append_root
-    os_real_path = JobHelper.service_path("#{SRV_OS}/#{os_dir}")
-
-    fs2root = {
-      "nfs"  => "root=#{OS_HTTP_HOST}:#{os_real_path}",
-      "cifs" => "root=cifs://#{OS_HTTP_HOST}#{os_real_path}" +
-                ",guest,ro,hard,vers=1.0,noacl,nouser_xattr,noserverino",
-      "initramfs" => "rdinit=/sbin/init prompt_ramdisk=0",
-      "local" => "root=#{OS_HTTP_HOST}:#{os_real_path}", # root is just used to temporarily mount a root in initqueue stage when lvm is not ready
-      "container" => "",
-    }
-
-    fs2root[os_mount]
+    case os_mount
+    when "nfs"
+      "root=#{OS_HTTP_HOST}:#{os_real_path}"
+    when "cifs"
+      "root=cifs://#{OS_HTTP_HOST}#{os_real_path},guest,ro,hard,vers=1.0,noacl,nouser_xattr,noserverino"
+    when "initramfs"
+      "rdinit=/sbin/init prompt_ramdisk=0"
+    when "local"
+      "root=#{OS_HTTP_HOST}:#{os_real_path}" # root is just used to temporarily mount a root in initqueue stage when lvm is not ready
+    when "container"
+      ""
+    else
+      raise "Unsupported mount type: #{os_mount}"
+    end
   end
 
   private def kernel_console
@@ -66,7 +68,7 @@ class JobHash
   end
 
   private def set_kernel_params
-    kernel_params_values = "#{kernel_common_params()} #{job_boot_params()} #{kernel_custom_params()} #{self.kernel_append_root} #{kernel_console()}"
+    kernel_params_values = "#{kernel_common_params()} #{job_boot_params()} #{kernel_custom_params?} #{self.kernel_append_root} #{kernel_console()}"
     kernel_params_values = kernel_params_values.split(" ").map(&.strip()).reject!(&.empty?)
     self.kernel_params = kernel_params_values
   end
@@ -161,19 +163,17 @@ class JobHash
       @hash_array["need_file_store"].each do |path|
         case path
         when /\/vmlinuz$/
-          self.kernel_uri = "#{sched_http_prefix}" + JobHelper.service_path("#{FILE_STORE}/#{path}")
+          self.kernel_uri = "#{sched_http_prefix}/srv/file-store/#{path}"
         when /\.cgz$/
-          temp_initrds << "#{sched_http_prefix}" + JobHelper.service_path("#{FILE_STORE}/#{path}")
+          temp_initrds << "#{sched_http_prefix}/srv/file-store/#{path}"
         end
       end
-    else
+    elsif @hash_hhh["pkg_data"]?
     # pkg_data:
     #   lkp-tests:
     #     tag: v1.0
     #     md5: xxxx
     #     content: yyy (base64)
-    raise "you should update your lkp-tests repo." unless @hash_hhh["pkg_data"]?
-
     @hash_hhh["pkg_data"].each do |key, value|
       next unless value
       program = value
@@ -182,6 +182,8 @@ class JobHash
       temp_initrds << "#{initrd_http_prefix}" +
         JobHelper.service_path("#{SRV_UPLOAD}/#{key}/#{program["md5"].to_s[0,2]}/#{program["md5"]}.cgz")
     end
+    else
+      puts "Error: empty pkg_data in job #{id}"
     end
 
     # append job.cgz in the end, when download finish, we'll auto mark job_stage="boot"

@@ -232,7 +232,7 @@ end
 class Sched
   # Save to job_dir, to be picked up by create_job_cpio() at dispatch time.
   # It assumes there is not other scheduler running on other machine.
-  def save_secrets(job, job_id)
+  def save_secrets(job)
     secrets = job.hash_hh.delete "secrets"
     return nil unless secrets
 

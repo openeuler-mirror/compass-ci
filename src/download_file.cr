@@ -66,7 +66,7 @@ class Sched
 
     # Verify file exists
     unless File.exists?(full_path) && File.file?(full_path)
-      @log.debug "File not found: #{full_path} #{requested_path}"
+      @log.error "File not found: #{full_path}"
       env.response.status_code = 404
       return "File not found"
     end

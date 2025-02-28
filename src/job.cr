@@ -775,13 +775,6 @@ class JobHash
     end
   end
 
-  # if not assign tbox_group, set it to a match result from testbox
-  #  ?if job special testbox, should we just set tbox_group=testbox
-  def update_tbox_group_from_testbox
-    #self.tbox_group ||= JobHelper.match_tbox_group(testbox)
-    self.put_if_not_absent("tbox_group", JobHelper.match_tbox_group(testbox))
-  end
-
   def set_memmb
     mb = 0u32
     mb = [mb, Utils.parse_memory_mb(self.need_memory)].max if self.has_key? "need_memory"
@@ -970,22 +963,17 @@ end
 
 class Job < JobHash
 
-  def initialize(job_content, id : String|Nil)
+  def initialize(job_content)
     super(job_content)
 
-    unless id.nil?
-      @hash_plain["id"] = id
-      @id64 = id.to_i64
-    end
+    id = Sched.get_job_id
+    @hash_plain["id"] = id
+    @id64 = id.to_i64
 
-    @es = Elasticsearch::Client.new
     @upload_pkg_data = Array(String).new
   end
 
-  def submit(id = "-1")
-    # init job with "-1", or use the original job.id
-    self.id = id
-    self.id64 = id.to_i64
+  def init_submit
     self.job_state = "submit"
     self.job_stage = "submit"
     self.istage = JOB_STAGE_NAME2ID["submit"] || 0
@@ -1011,8 +999,6 @@ class Job < JobHash
 
     check_run_time()
     set_defaults()
-    delete_account_info()
-    checkout_max_run()
   end
 
   def set_defaults
@@ -1026,7 +1012,7 @@ class Job < JobHash
     set_submit_date() # need by set_result_root()
     set_timeout_seconds()
     set_rootfs()
-    set_result_root()
+    set_result_root() if id != "-1"
     set_lkp_server()
     set_sshr_info()
     check_queue()
@@ -1039,28 +1025,6 @@ class Job < JobHash
     SENSITIVE_ACCOUNT_KEYS.each do |k|
       @hash_plain.delete(k)
     end
-  end
-
-  private def checkout_max_run
-    return unless self.max_run?
-
-    query = {
-      "index" => "jobs",
-      "size" => 1,
-      "query" => {
-        "term" => {
-          "all_params_md5" => self.all_params_md5
-        }
-      },
-      "sort" =>  [{
-        "submit_time" => { "order" => "desc", "unmapped_type" => "date" }
-      }],
-      "_source" => ["id", "all_params_md5"]
-    }
-    total, latest_job_id = @es.get_hit_total("jobs", query)
-
-    msg = "exceeds the max_run(#{self.max_run}), #{total} jobs exist, the latest job id=#{latest_job_id}"
-    raise msg if total >= self.max_run.to_s.to_i32
   end
 
   def get_md5(data : Hash(String , String))
@@ -1402,19 +1366,6 @@ class Job < JobHash
     # "result_root" is based on "tbox_group"
     #  so when update tbox_group, we need redo set_
     set_result_root()
-  end
-
-  def update_id(id)
-    self.id = id
-    self.id64 = id.to_i64
-
-    # "result_root" => "/result/#{suite}/#{tbox_group}/#{date}/#{id}"
-    # set_initrds_uri -> get_initrds -> common_initrds => ".../#{id}/job.cgz"
-    #
-    # "result_root, common_initrds" is associate with "id"
-    #  so when update id, we need redo set_
-    set_result_root()
-    set_initrds_uri()
   end
 
   def get_uuid_tag

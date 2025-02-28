@@ -75,11 +75,10 @@ class Cluster < PluginsCommon
       this_job_roles = spec["roles"].as_a.map(&.to_s) & roles
       next if this_job_roles.empty?
 
-      job_id = Sched.get_job_id
-      single_job = Job.new(JSON.parse(job.to_json).as_h, job_id)
+      single_job = Job.new(JSON.parse(job.to_json).as_h)
       single_job.delete_host_info
 
-      jobid2roles[job_id] = this_job_roles.join(" ")
+      jobid2roles[single_job.id] = this_job_roles.join(" ")
 
       # add to job content when multi-test
       single_job.testbox = host
@@ -101,9 +100,6 @@ class Cluster < PluginsCommon
 
       # multi-machine test requires two network cards
       single_job.nr_nic = "2"
-
-      single_job.update_id(job_id)
-      single_job.set_defaults
 
       jobs << single_job
     end

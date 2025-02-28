@@ -9,7 +9,8 @@ class Sched
   # API method to handle job submission
   def api_submit_job(job_content : Hash(String, JSON::Any)) : Result
     begin
-      # Initialize the job
+      # In cluster case, origin_job will be copied to node jobs and dropped,
+      # so shall not call on_job_submit() right now.
       origin_job = init_job(job_content)
 
       origin_job.handle_upload_file_store
@@ -32,9 +33,10 @@ class Sched
       response = [] of Hash(String, String)
 
       jobs.each do |job|
-        job.delete_account_info
-        init_job_id(job)
         Sched.instance.pkgbuild.handle_job(job)
+
+        # Now fields changes are done (e.g. wait_on added by pkgbuild),
+        # ready for saving to external fs/db
         on_job_submit(job)
 
         response << {
@@ -85,15 +87,9 @@ class Sched
     stale_fields.each { |field| job_content.delete(field) }
 
     # Create and submit the job
-    job = Job.new(job_content, nil)
-    job.submit
+    job = Job.new(job_content)
+    job.init_submit
     job
-  end
-
-  def init_job_id(job)
-    id = job.id == "-1" ? Sched.get_job_id : job.id
-    save_secrets(job, id)
-    job.update_id(id)
   end
 
   # Generates a unique job ID using the current time and the worker ID.

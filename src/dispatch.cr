@@ -412,6 +412,8 @@ class Sched
   end
 
   def on_job_submit(job : JobHash)
+    job.delete_account_info
+    save_secrets(job)
     @es.insert_doc("jobs", job)
     add_job_to_cache(job)
   end
@@ -455,7 +457,6 @@ class Sched
 
   private def set_job_schedule_properties(job : JobHash)
     job.set_tbox_type
-    job.update_tbox_group_from_testbox
     job.set_memmb
     job.set_hostkeys
     job.set_priority

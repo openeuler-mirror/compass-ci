@@ -20,8 +20,8 @@ class PkgBuild < PluginsCommon
     ss.each do |pkg_name, pkg_params|
       build_job = init_pkgbuild_params(job, pkg_name, pkg_params)
       if build_job
-        id = submit_pkgbuild_job(build_job)
-        wait_jobs[id] = nil
+        submit_pkgbuild_job(build_job)
+        wait_jobs[build_job.id] = nil
       end
     end
 
@@ -38,10 +38,8 @@ class PkgBuild < PluginsCommon
   end
 
   def submit_pkgbuild_job(build_job)
-    id = Sched.get_job_id
-    build_job.update_id(id)
+    build_job.init_submit
     Sched.instance.on_job_submit(build_job)
-    id
   end
 
   def get_ss_pkgbuild_paths(job, upstream_project : String, ss_params : Hash(String, String)) : Array(String)
@@ -69,7 +67,7 @@ class PkgBuild < PluginsCommon
       "ss/pkgbuild/#{upstream_project}/#{dir}/#{config_name}/#{pkgver}/#{pname}"
     end
 
-    if job.has_key? "need_file_store"
+    if job.hash_array.has_key? "need_file_store"
       job.need_file_store.concat need_file_store
     else
       job.need_file_store = need_file_store
@@ -97,19 +95,41 @@ class PkgBuild < PluginsCommon
       File.exists?(full_path)
     end
 
-    build_job = Job.new(Hash(String, JSON::Any).new, nil)
+    build_job = Job.new(Hash(String, JSON::Any).new)
     build_job.suite = "makepkg"
     build_job.category = "functional"
     build_job.my_account = job.my_account
+    build_job.my_email = job.my_email
+    build_job.my_name = job.my_name
+    build_job.my_token = job.my_token
+
+    docker_image = params.delete("docker_image") || job.docker_image?
+    if docker_image
+      build_job.docker_image = job.docker_image
+      tbox = "dc"
+      build_job.os_mount = "container"
+    else
+      tbox = "vm"
+      build_job.os_mount = "initramfs"
+    end
+
+    build_job.testbox = tbox
+    build_job.tbox_group = tbox
+
+    # kernel builds are not tied to a specific OS, so may choose a more convenient OS
     build_job.os = params.delete("os") || job.os
-    build_job.os_mount = params.delete("os_mount") || "container"
     build_job.os_version = params.delete("os_version") || job.os_version
-    build_job.testbox = params.delete("testbox") || "dc"
+
     build_job.os_arch = job.os_arch
     build_job.arch = job.arch
+
     build_job.runtime = "36000"
     build_job.need_memory = "16g"
     build_job.install_os_packages_all = "wget curl git fakeroot coreutils file findutils grep sed gzip bzip2 gcc autoconf automake make patch"
+    build_job.need_file_store = Array(String).new
+    job.need_file_store.each do |path|
+      build_job.need_file_store << path if path =~ /^lkp_src\//
+    end
 
     hh = HashHH.new
     hh["makepkg"] = params
