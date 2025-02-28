@@ -73,6 +73,8 @@ class DockerManager
         'docker_image' => docker_image,
         'nr_cpu' => @message['nr_cpu'],
         'memory' => @message['memory'],
+        'os' => @message['os'],
+        'osv' => @message['osv'],
         'result_root' => @message['result_root'],
         'host_dir' => @host_dir,
         'log_file' => @log_file },

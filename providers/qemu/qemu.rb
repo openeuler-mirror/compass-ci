@@ -129,7 +129,7 @@ class QemuManager
 
   def extract_job_metadata
     `gzip -dc job.cgz | cpio -div`
-    `grep -E "nr_|memory|minimum|group|result_root" lkp/scheduled/job.yaml | sed 's/^ *//' > lkp/scheduled/job_vm.yaml`
+    `grep -E "nr_|memory|minimum|group|result_root|os" lkp/scheduled/job.yaml | sed 's/^ *//' > lkp/scheduled/job_vm.yaml`
   end
 
   def set_default_resources(job_hash)

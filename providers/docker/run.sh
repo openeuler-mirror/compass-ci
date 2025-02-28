@@ -102,8 +102,6 @@ cmd=(
 	--log-driver json-file
 	--log-opt max-size=10m
 	--oom-score-adj="-1000"
-	"$docker_image"
-	/usr/local/bin/entrypoint.sh
 )
 
 # Add --cpus if nr_cpu is provided
@@ -123,6 +121,10 @@ if [[ "$container_runtime" == *"docker"* ]]; then
 	-v /var/run/docker.sock:/var/run/docker.sock
 	-v /usr/bin/docker:/usr/bin/docker:ro
 )
+else
+	cmd+=(
+	--replace
+)
 fi
 
 # Add volumes_from if provided
@@ -130,6 +132,22 @@ if [[ -n "$volumes_from" ]]; then
 	cmd+=(--volumes-from "$volumes_from")
 fi
 
+# package cache
+[ -n "$ENABLE_PACKAGE_CACHE" ] &&
+case "$os" in
+	debian|ubuntu)
+		mkdir -p $CACHE_DIR/$osv/archives
+		mkdir -p $CACHE_DIR/$osv/lists
+		cmd+=(-v "$CACHE_DIR/$osv/archives:/var/cache/apt/archives")
+		cmd+=(-v "$CACHE_DIR/$osv/lists:/var/lib/apt/lists")
+		;;
+	openeuler|centos|rhel|fedora)
+		mkdir -p $CACHE_DIR/$osv
+		cmd+=(-v "$CACHE_DIR/$osv:/var/cache/dnf")
+		;;
+esac
+
 # Execute the command
 echo "less $log_file"
-"${cmd[@]}" 2>&1 | awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_file"
+"${cmd[@]}" "$docker_image" /usr/local/bin/entrypoint.sh 2>&1 |
+	awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_file"

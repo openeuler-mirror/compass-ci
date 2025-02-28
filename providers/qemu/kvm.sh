@@ -339,7 +339,7 @@ public_option()
 		-m $memory
 		-rtc base=localtime
 		-k en-us
-		-virtfs local,path=$host_dir/result_root,mount_tag=9p/result_root,security_model=none,id=$job_id \
+		-virtfs local,path=$host_dir/result_root,mount_tag=9p/result_root,security_model=none,id=$job_id/result_root
 		-no-reboot
 		-nographic
 		-monitor null
@@ -348,7 +348,24 @@ public_option()
 		-pidfile $PIDS_DIR/qemu-$hostname.pid
 	)
 
-	[ -n "$cpu_model" ] && kvm+="-cpu $cpu_model"
+	[ -n "$cpu_model" ] && kvm+=(-cpu "$cpu_model")
+}
+
+cache_option()
+{
+	[ -n "$ENABLE_PACKAGE_CACHE" ] &&
+	case "$os" in
+		debian|ubuntu)
+			mkdir -p $CACHE_DIR/$osv/archives
+			mkdir -p $CACHE_DIR/$osv/list
+			kvm+=(-virtfs local,path=$CACHE_DIR/$osv/archives,mount_tag=9p/package_cache,security_model=none,id=$job_id/package_cache)
+			kvm+=(-virtfs local,path=$CACHE_DIR/$osv/lists,mount_tag=9p/package_cache_index,security_model=none,id=$job_id/package_cache)
+			;;
+		openeuler|centos|rhel|fedora)
+			mkdir -p $CACHE_DIR/$osv
+			kvm+=(-virtfs local,path=$CACHE_DIR/$osv,mount_tag=9p/package_cache,security_model=none,id=$job_id/package_cache)
+			;;
+	esac
 }
 
 individual_option()
@@ -452,6 +469,7 @@ set_options
 print_message
 
 public_option
+cache_option
 add_disk
 individual_option
 
