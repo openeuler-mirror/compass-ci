@@ -298,7 +298,7 @@ module Scheduler
     env.response.content_type = "application/json"
 
     if job = Sched.instance.api_view_job(job_id, fields)
-      job.to_json
+      job
     else
       env.response.status_code = HTTP::Status::NOT_FOUND.code
       {error: "Job not found"}.to_json
