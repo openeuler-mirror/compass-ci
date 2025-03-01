@@ -939,6 +939,37 @@ class JobHash
     self.host_machine = hostreq.hostname
     self.is_remote = hostreq.is_remote
     self.services = hostreq.services
+    self.set_hw_info
+  end
+
+  def set_hw_info
+    hi = self.hw? || Hash(String, String).new
+
+    if host = Sched.instance.hosts_cache.get_host(self.testbox)
+      # Assign number values
+      hi["nr_node"]            = host.nr_node.to_s               if host.hash_uint32.has_key?("nr_node")
+      hi["nr_cpu"]             = host.nr_cpu.to_s                if host.hash_uint32.has_key?("nr_cpu")
+      hi["memory"]             = host.memory.to_s                if host.hash_uint32.has_key?("memory")
+      hi["nr_disks"]           = host.nr_disks.to_s              if host.hash_uint32.has_key?("nr_disks")
+      hi["nr_hdd_partitions"]  = host.nr_hdd_partitions.to_s     if host.hash_uint32.has_key?("nr_hdd_partitions")
+      hi["nr_ssd_partitions"]  = host.nr_ssd_partitions.to_s     if host.hash_uint32.has_key?("nr_ssd_partitions")
+
+      # Assign string values
+      hi["rootfs_disk"]        = host.rootfs_disk.to_s           if host.hash_str.has_key?("rootfs_disk")
+      hi["hdd_partitions"]     = host.hdd_partitions.join(" ")   if host.hash_str_array.has_key?("hdd_partitions")
+      hi["ssd_partitions"]     = host.ssd_partitions.join(" ")   if host.hash_str_array.has_key?("ssd_partitions")
+      hi["mac_addr"]           = host.mac_addr.join(" ")         if host.hash_str_array.has_key?("mac_addr")
+    end
+
+    if self.testbox =~ /-(\d+)p(\d+)g/
+      hi["nr_cpu"] = $1
+      hi["memory"] = ($2.to_i32 * 1024).to_s
+    end
+
+    hi["nr_cpu"] ||= "1"
+    hi["memory"] ||= self.schedule_memmb.to_s
+
+    self.hw = hi unless self.hash_hh.has_key? "hw"
   end
 
   # pending jobs are in Sched @jobs_cache_in_submit
