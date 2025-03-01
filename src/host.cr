@@ -384,17 +384,15 @@ class Hosts
   end
 
   def update_job_info(job)
-    return unless job.tbox_type == "hw"
-
-    host = get_host(job.hostname)
+    host = get_host(job.host_machine)
     return unless host
 
     host.job_id = job.id64
     host.suite = job.suite
     host.my_account = job.my_account
     host.result_root = job.result_root
-    host.boot_time = Time.local.to_unix.to_u32
-    # host.reboot_time = job.deadline
+    host.boot_time = Time.utc.to_unix.to_u32
+    host.reboot_time = job.deadline_utc.to_u32
   end
 
   def pass_info_to_host(host_req, msg)
