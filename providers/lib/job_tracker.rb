@@ -72,6 +72,7 @@ class JobTracker
 
   def remove_job(job_id)
     job_data = @jobs.delete job_id
+    return nil unless job_data
     FileUtils.rm(job_file_path(job_id))
     if job_data[:tbox_type] == "vm"
       @@nr_vm -= 1
@@ -79,18 +80,6 @@ class JobTracker
       @@nr_container -= 1
     end
     job_data
-  end
-
-  def terminate_job(job_id)
-    job = @jobs[job_id]
-    case job[:tbox_type]
-    when "qemu"
-      terminate_qemu(job)
-    when "container"
-      terminate_container(job)
-    end
-    Process.kill(0, job[:fork_pid])
-    remove_job(job_id)
   end
 
   def find_hostname(tbox_group)
@@ -126,16 +115,6 @@ class JobTracker
 
   def load_job_from_disk(job_id)
     YAML.safe_load(File.read(job_file_path(job_id)), permitted_classes: [Symbol]) if job_file_exists?(job_id)
-  end
-
-  def terminate_qemu(job)
-    qemu_pidfile = "#{PIDS_DIR}/qemu-${job[:hostname].pid}"
-    qemu_pid = File.read(qemu_pidfile)
-    Process.kill("INT", qemu_pid)
-  end
-
-  def terminate_container(job)
-    system("docker rm -f #{job[:hostname]}")
   end
 
 end

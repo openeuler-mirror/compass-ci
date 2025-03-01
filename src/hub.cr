@@ -24,13 +24,18 @@ class WebSocketSession
   end
 
   # Safe message sending with error handling
-  def send(message : String) : Nil
-    return if closed?
+  def send(message : String) : Bool
+    if closed?
+      Log.warn { "Cannot send message to closed session #{sid}" }
+      return false
+    end
 
     begin
       @socket.send(message)
+      return true
     rescue ex : IO::Error
       Log.error(exception: ex) { "Failed to send message to session #{sid}" }
+      return false
     end
   end
 end
@@ -458,7 +463,7 @@ class Sched
           params = msg.transform_values(&.to_s)
           update_job_from_hash(params)
 
-        when "console-output"
+        when "console-output", "console-exit", "console-error"
           handle_console_output(msg, raw_message)
 
         when "job-log"
@@ -485,6 +490,16 @@ class Sched
 
     @client_sessions[session.sid] = session
 
+    # Send welcome message on connection
+    welcome_msg = {
+      type:    "welcome",
+      sid:     session.sid,
+      message: "Welcome to Compass CI scheduler #{Scheduler::VERSION}",
+      status:  "connected"
+    }.to_json
+    session.send(welcome_msg)
+    @log.info { "Client #{session.sid} connected" }
+
     socket.on_message do |raw_message|
       handle_client_message(raw_message, session)
     end
@@ -497,46 +512,80 @@ class Sched
   end
 
   private def handle_console_output(msg, raw_message)
-    job_id = msg["job_id"]?.try(&.as_s.to_i64?)
+    job_id = parse_job_id(msg)
     return unless job_id
 
     if client_sid = @console_jobid2client_sid[job_id]?
       if client_session = @client_sessions[client_sid]?
         client_session.send(raw_message)
       else
-        # Cleanup orphaned console session
         @console_jobid2client_sid.delete(job_id)
+        @log.debug { "Cleaned orphaned console session for job #{job_id}" }
       end
     end
   end
 
   def send_job_event(jobid, event : String)
-    return unless @watchjob_jobid2client_sids.has_key? jobid
+    return unless @watchjob_jobid2client_sids.has_key?(jobid)
+
     sids = @watchjob_jobid2client_sids[jobid]
+    invalid_sids = [] of Int64
+
     sids.each do |sid|
-      client_ws = @client_sessions[sid]
-      client_ws.send(event)
+      if client_ws = @client_sessions[sid]?
+        unless client_ws.send(event)
+            invalid_sids << sid
+        end
+      else
+        invalid_sids << sid
+      end
     end
+
+    invalid_sids.each { |sid| sids.delete(sid) }
+    @watchjob_jobid2client_sids.delete(jobid) if sids.empty?
   end
 
   private def handle_job_logs(msg, raw_message)
-    job_id = msg["job_id"]?.try(&.as_s.to_i64?)
+    job_id = parse_job_id(msg)
     return unless job_id
 
-    sids = @watchlog_jobid2client_sids[job_id]
+    sids = @watchlog_jobid2client_sids[job_id]?
+    return unless sids
+
+    invalid_sids = [] of Int64
+
     sids.each do |sid|
-      client_ws = @client_sessions[sid]
-      client_ws.send(raw_message)
+      if client_ws = @client_sessions[sid]?
+        unless client_ws.send(raw_message)
+          invalid_sids << sid
+        end
+      else
+        invalid_sids << sid
+      end
     end
+
+    invalid_sids.each { |sid| sids.delete(sid) }
+    @watchlog_jobid2client_sids.delete(job_id) if sids.empty?
   end
 
   private def handle_client_message(raw_message, session)
     begin
       msg = JSON.parse(raw_message)
-      job_id = msg["job_id"]?.try(&.as_s.to_i64?)
 
+      unless msg.as_h?
+        session.send({type: "error", message: "Invalid message format"}.to_json)
+        return
+      end
+
+      message_type = msg["type"]?.try(&.as_s)
+      unless message_type
+        session.send({type: "error", message: "Missing message type"}.to_json)
+        return
+      end
+
+      job_id = parse_job_id(msg)
       unless job_id
-        session.send({type: "error", message: "Missing job_id"}.to_json)
+        session.send({type: "error", message: "Invalid or missing job_id"}.to_json)
         return
       end
 
@@ -546,45 +595,91 @@ class Sched
         return
       end
 
-      host = job.host_machine
+      # job.host_machine is normally nil before dispatch
+      host = job.host_machine? || ""
       provider_session = @provider_sessions[host]?
 
-      case msg["type"]?.try(&.as_s)
-      when "watch-job-event" # JSON and RabbitMQ messages
-        @watchjob_jobid2client_sids[job_id].delete session.sid
+      case message_type
+      when "watch-job-event"
+        manage_subscription(@watchjob_jobid2client_sids, job_id, session)
+        @log.info { "Client #{session.sid} watching job #{job_id} events" }
+
       when "unwatch-job-event"
-        @watchjob_jobid2client_sids[job_id].delete session.sid
+        manage_unsubscription(@watchjob_jobid2client_sids, job_id, session)
+        @log.info { "Client #{session.sid} unwatched job #{job_id} events" }
 
       when "watch-job-log"  # serial logs
-        @watchlog_jobid2client_sids[job_id] ||= [] of Int64
-        @watchlog_jobid2client_sids[job_id] << session.sid
-        provider_session.send(raw_message) if provider_session
+        manage_subscription(@watchlog_jobid2client_sids, job_id, session)
+        forward_or_buffer_message(provider_session, job, raw_message, "log subscription")
+
       when "unwatch-job-log"
-        provider_session.send(raw_message) if provider_session
-        @watchlog_jobid2client_sids[job_id].delete session.sid
+        manage_unsubscription(@watchlog_jobid2client_sids, job_id, session)
+        forward_or_buffer_message(provider_session, job, raw_message, "log unsubscription")
 
       when "request-console"
-        provider_session.send(raw_message) if provider_session
         @console_jobid2client_sid[job_id] = session.sid
-      when "console-input"
-        if provider_session
-          provider_session.send(raw_message)
-        elsif channel = @hw_serial_login_channels[host]?
-          channel.send(raw_message)
-        end
+        forward_or_buffer_message(provider_session, job, raw_message, "console request")
+
+      when "console-input", "resize-console"
+        handle_console_input(provider_session, job, host, raw_message)
+
       when "close-console"
-        provider_session.send(raw_message) if provider_session
         @console_jobid2client_sid.delete(job_id)
+        forward_or_buffer_message(provider_session, job, raw_message, "console closure")
+
       else
-        session.send({type: "error", message: "Unknown message type"}.to_json)
+        session.send({type: "error", message: "Unknown message type: #{message_type}"}.to_json)
       end
+
+    rescue ex : JSON::ParseException
+      @log.error { "JSON parse error: #{ex.message}" }
+      session.send({type: "error", message: "Invalid JSON format"}.to_json)
     rescue ex
-      @log.error(exception: ex) { "Error processing client message" }
+      @log.error(exception: ex) { "Error processing message" }
       session.send({type: "error", message: "Internal server error"}.to_json)
     end
   end
 
-  private def get_provider_session(jobid : Int64)
+  # Helper methods
+  private def parse_job_id(msg)
+    if msg["job_id"]?
+      msg["job_id"].as_s.to_i64
+    else
+      nil
+    end
+  end
+
+  private def manage_subscription(subscription_hash, job_id, session)
+    subscription_hash[job_id] ||= Array(Int64).new
+    subscription_hash[job_id] << session.sid
+  end
+
+  private def manage_unsubscription(subscription_hash, job_id, session)
+    return unless subscription_hash[job_id]?
+    subscription_hash[job_id].delete(session.sid)
+    subscription_hash.delete(job_id) if subscription_hash[job_id].empty?
+  end
+
+  private def forward_or_buffer_message(provider, job, message, context)
+    if provider
+      provider.send(message)
+    else
+      job.hash_array["pending_messages"] ||= [] of String
+      job.pending_messages << message
+      @log.debug { "Buffered #{context} for job #{job.id}" }
+    end
+  end
+
+  private def handle_console_input(provider, job, host, message)
+    if provider
+      provider.send(message)
+    elsif channel = @hw_serial_login_channels[host]?
+      channel.send(message)
+    else
+      # job.pending_messages ||= [] of String
+      # job.pending_messages << message
+      # @log.warn { "Buffered console input for job #{job.id}" }
+    end
   end
 
   private def cleanup_session(sid : Int64)

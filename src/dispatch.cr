@@ -591,18 +591,27 @@ class Sched
     when "vm", "dc"
       if provider = @provider_sessions[hostreq.hostname]?
         on_job_dispatch(job, hostreq)
-        msg = boot_content(job, job.tbox_type)
         if job.tbox_type == "vm"
           msg = { "type" => "boot-job",
-                  "ipxe_script" => msg,
+                  "ipxe_script" => get_boot_ipxe(job),
                   "job_id" => job.id,
                   "job_token" => job.job_token,
                   "result_root" => job.result_root,
                   "tbox_type" => "vm",
                   "tbox_group" => job.tbox_group,
-          }.to_json
+          }
+        else
+          msg = get_boot_container(job)
         end
-        provider.socket.send(msg)
+
+        provider.socket.send(msg.to_json)
+        if job.hash_array.has_key? "pending_messages"
+            job.pending_messages.each do |msg|
+              provider.socket.send(msg)
+            end
+            job.hash_array.delete "pending_messages"
+        end
+
         true
       else
         @log.error { "Provider not found for #{hostreq.hostname}" }

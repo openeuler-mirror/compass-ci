@@ -87,7 +87,20 @@ end
 logger Kemal::LocalTimeLogHandler.new
 
 module Scheduler
-  VERSION = "0.2.0"
+
+  # Dynamically generate the VERSION constant based on the last commit's date and short hash
+  GIT_COMMIT_DATE = `git log -1 --date=format:'%Y%m%d' --pretty=format:%cd`.strip
+  GIT_SHORT_HASH  = `git log -1 --pretty=format:%h`.strip
+
+  # Fallback in case Git commands fail (e.g., not in a Git repository)
+  VERSION = if GIT_COMMIT_DATE.empty? || GIT_SHORT_HASH.empty?
+              # Use today's date in the format YYYYMMDD if Git information is unavailable
+              `date +%Y%m%d`.chomp
+            else
+              # Combine the commit date and short hash with a dot separator
+              "#{GIT_COMMIT_DATE}.#{GIT_SHORT_HASH}"
+            end
+
   logging true
 
   add_context_storage_type(Time::Span)

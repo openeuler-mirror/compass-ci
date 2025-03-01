@@ -57,7 +57,7 @@ class Sched
       response["memory"] = mem 
     end
 
-    return response.to_json
+    return response
   end
 
   private def get_boot_native(job : JobHash)
@@ -214,16 +214,15 @@ class Sched
     }.to_json
   end
 
+  # Only called from HW machine boot
   def boot_content(job : JobHash | Nil, boot_type : String)
     case boot_type
-    when "ipxe", "vm"
+    when "ipxe"
       return job ? get_boot_ipxe(job) : hw_boot_msg(boot_type, "No job now")
     when "grub"
       return job ? get_boot_grub(job) : hw_boot_msg(boot_type, "No job now")
     when "native"
       return job ? get_boot_native(job) : {"job_id" => "0"}.to_json
-    when "container", "dc"
-      return job ? get_boot_container(job) : {"job_id" => "0"}.to_json
     when "libvirt"
       return job ? get_boot_libvirt(job) : {"job_id" => ""}.to_json
     else

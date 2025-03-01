@@ -8,6 +8,7 @@ require 'fcntl'
 require 'fileutils'
 require 'find'
 require 'open3'
+require 'pty'
 require 'shellwords'
 require 'faye/websocket'
 require 'eventmachine'
@@ -28,7 +29,7 @@ names = Set.new %w[
 
 defaults = relevant_defaults(names)
 SCHED_HOST = ENV['SCHED_HOST'] || defaults['SCHED_HOST'] || '172.17.0.1'
-SCHED_PORT = ENV['SCHED_HOST'] || defaults['SCHED_PORT'] || 3000
+SCHED_PORT = ENV['SCHED_PORT'] || defaults['SCHED_PORT'] || 3000
 
 DOMAIN_NAME = defaults['DOMAIN_NAME']
 
@@ -45,7 +46,8 @@ class MultiQemuDocker
     tbox_type: 'vm,dc',
     max_qemu: 0,
     max_container: 0,
-    is_remote: false
+    is_remote: false,
+    tags: [],
   }.freeze
 
   MIN_QEMU_CPU = 2
@@ -73,6 +75,7 @@ class MultiQemuDocker
     @jobs = JobTracker.new
     @fifo_thread = start_fifo_listener
     @reconnect_attempts = 0
+    @container_runtime = `command -v podman || command -v docker`.chomp
   end
 
   def setup_directories
@@ -275,7 +278,7 @@ class MultiQemuDocker
       opts.on('-t TYPE', '--tbox-type TYPE', 'Testbox type (vm/dc, or both by default)') { |v| options[:tbox_type] = v }
       opts.on('--max-qemu COUNT', 'Number of QEMU instances (0 for auto-computing)') { |v| options[:max_qemu] = v }
       opts.on('--max-container COUNT', 'Number of container instances (0 for auto-computing)') { |v| options[:max_container] = v }
-      opts.on('-t tags', '--tags TAGS', 'separated by ","') { |v| opt['tags'] = v }
+      opts.on('-t tags', '--tags TAGS', 'separated by ","') { |v| options[:tags] = v.split(',') }
       opts.on('-r', '--remote', 'Testbox is remote') { options[:is_remote] = true }
       opts.on('-h', '--help', 'Show this message') { puts opts; exit }
     end.parse!(argv)
@@ -328,7 +331,7 @@ class MultiQemuDocker
       nr_container: JobTracker.nr_container,
       tbox_type: @options[:tbox_type],
       is_remote: @options[:is_remote],
-      tags: [],
+      tags: @options[:tags],
 
       services: { # must be string values
         sched_host: SCHED_HOST,
@@ -380,22 +383,73 @@ class MultiQemuDocker
       boot_job(message)
     when 'terminate-job'
       terminate_job(message)
-
     when 'watch-job-log'
       watch_log(message)
     when 'unwatch-job-log'
       unwatch_log(message)
-
     when 'request-console'
       start_console_session(message)
     when 'console-input'
       write_to_console(message)
     when 'close-console'
       close_console_session(message)
-
+    when 'resize-console'
+      handle_console_resize(message)
     else
       puts "Unknown message type: #{message['type']}"
     end
+  end
+
+  def handle_console_resize(message)
+    job_id = message['job_id']
+    unless job_id
+      puts "Error: Missing job_id in resize console message"
+      return
+    end
+
+    job = @jobs[job_id]
+    unless job
+      puts "Error: Job #{job_id} not found"
+      return
+    end
+
+    unless job[:console_io]
+      puts "Error: No console IO available for job #{job_id}"
+      return
+    end
+
+    rows = message['rows']
+    cols = message['cols']
+
+    unless rows && cols
+      puts "Error: Missing rows or cols in resize message for job #{job_id}"
+      return
+    end
+
+    # Update stored window size
+    job[:winsize] = { rows: rows, cols: cols }
+    # puts "Updated window size for job #{job_id}: #{rows}x#{cols}"
+
+    # Set new window size if we have a PTY
+    if job[:docker_pid]
+      begin
+        set_winsize(job[:console_io], rows, cols)
+        puts "Successfully resized PTY for job #{job_id} to #{rows}x#{cols}"
+      rescue => e
+        puts "Error resizing PTY for job #{job_id}: #{e.message}"
+        puts e.backtrace.join("\n")
+      end
+    else
+      puts "Warning: No Container PID found for job #{job_id}. Cannot resize PTY."
+    end
+  end
+
+  def set_winsize(fd, rows, cols)
+    return unless fd
+    buf = [rows, cols, 0, 0].pack('S!*')
+    fd.ioctl(0x5414, buf)  # TIOCSWINSZ
+  rescue => e
+    puts "Error setting window size: #{e}"
   end
 
   def boot_job(message)
@@ -405,10 +459,16 @@ class MultiQemuDocker
     hostname = @jobs.find_hostname(message['tbox_group'])
     message['hostname'] = hostname
 
+    host_dir = "#{ENV["HOSTS_DIR"]}/#{hostname}"
+    log_file = "#{ENV["LOGS_DIR"]}/#{hostname}"
+    FileUtils.rm_rf(host_dir) if Dir.exist?(host_dir)
+    FileUtils.mkdir_p(host_dir + "/result_root")
+    File.truncate(log_file, 0) # create before possible tail
+
     fork_pid = Process.fork do
       ENV["hostname"] = hostname
-      ENV["host_dir"] = "#{ENV["HOSTS_DIR"]}/#{hostname}"
-      ENV["log_file"] = "#{ENV["LOGS_DIR"]}/#{hostname}"
+      ENV["host_dir"] = host_dir
+      ENV["log_file"] = log_file
       ENV["is_remote"] = @options[:is_remote].to_s
 
       begin
@@ -438,6 +498,10 @@ class MultiQemuDocker
         tbox_type: message['tbox_type'],
         hostname: hostname,
         fork_pid: fork_pid,
+        console_io: nil,
+        console_thread: nil,
+        docker_pid: nil,
+        winsize: { rows: 24, cols: 80 } # Add initial window size
       }
       @jobs.add_job(job)
     end
@@ -445,14 +509,36 @@ class MultiQemuDocker
 
   def terminate_job(message)
     job_id = message['job_id']
-    puts "Canceling job: #{job_id}"
-    @jobs.terminate_job(job_id)
+    puts "Terminating job: #{job_id}"
+    job = @jobs.remove_job(job_id)
+    unless job
+      puts "terminate_job: no job for job_id #{job_id}"
+      return
+    end
+
+    case job[:tbox_type]
+    when "qemu"
+      terminate_qemu(job)
+    when "container"
+      terminate_container(job)
+    end
+    Process.kill(0, job[:fork_pid])
+  end
+
+  def terminate_qemu(job)
+    qemu_pidfile = "#{PIDS_DIR}/qemu-${job[:hostname].pid}"
+    qemu_pid = File.read(qemu_pidfile)
+    Process.kill("INT", qemu_pid)
+  end
+
+  def terminate_container(job)
+    system("#{@container_runtime} rm -f #{job[:hostname]}")
   end
 
   def watch_log(message)
     job_id = message['job_id']
     job = @jobs[job_id]
-    log_file = "#{ENV["LOGS_DIR"]}/#{job[:hostname]}.log"
+    log_file = "#{ENV["LOGS_DIR"]}/#{job[:hostname]}"
 
     # Create a pipe to capture the output of the tail process
     reader, writer = IO.pipe
@@ -506,15 +592,29 @@ class MultiQemuDocker
 
   def start_console_session(message)
     job_id = message['job_id']
-    testbox_type = message['testbox_type']
     job = @jobs[job_id]
+    unless job
+      puts "start_console_session: no job for job_id #{job_id}"
+      return
+    end
+    tbox_type = job[:tbox_type]
 
-    return if job[:console_io]
+    if job[:console_io]
+      puts "job already has console_io"
+      return
+    end
 
-    if testbox_type == 'qemu'
+    rows = message['rows']
+    cols = message['cols']
+    job[:winsize] = { rows: rows, cols: cols }
+
+    case tbox_type
+    when 'vm', 'qemu'
       start_qemu_console(job_id, job)
-    elsif testbox_type == 'docker'
+    when 'dc', 'docker'
       start_docker_console(job_id, job)
+    else
+      puts "Error: unknown tbox_type #{tbox_type}"
     end
   end
 
@@ -538,15 +638,37 @@ class MultiQemuDocker
     end
   end
 
+  # Wait until the container is running
+  def wait_for_container_to_start(container_id)
+    loop do
+      cmd = "#{@container_runtime} inspect -f '{{.State.Status}}"
+      puts cmd
+      status = `#{cmd}' #{container_id}`.chomp
+      break if status == "running"
+      sleep 1 # Wait for 1 second before checking again
+    end
+  end
+
   def start_docker_console(job_id, job)
-    container_id = job_id
+    container_id = job[:hostname]
     job[:console_io] = nil
 
     begin
       job[:console_thread] = Thread.new do
-        PTY.spawn("docker", "exec", "-it", container_id, "/bin/bash") do |output, input, pid|
+        # Wait for the container to start
+        wait_for_container_to_start(container_id)
+
+        PTY.spawn(@container_runtime, "exec", "-it", container_id, "/bin/bash", "-c", "stty raw -echo isig 2>/dev/null; bash") do |output, input, pid|
           job[:console_io] = input
           job[:docker_pid] = pid
+          puts "#{@container_runtime} exec -it #{container_id} /bin/bash"
+
+          # Set initial window size
+          set_winsize(output, job[:winsize][:rows], job[:winsize][:cols])
+
+          # Disable buffering in the PTY
+          output.sync = true
+          input.sync = true
 
           begin
             loop do
@@ -555,8 +677,11 @@ class MultiQemuDocker
             end
           rescue EOFError, Errno::EIO
             # Process exited normally
+            puts "Container console closed"
+            @ws.send({ type: 'console-exit', job_id: job_id }.to_json)
           rescue => e
-            puts "Docker console read error: #{e}"
+            puts "Container console read error: #{e}"
+            @ws.send({ type: 'console-error', job_id: job_id, message: e.message }.to_json)
           ensure
             input.close rescue nil
             output.close rescue nil
@@ -564,9 +689,10 @@ class MultiQemuDocker
             job.delete(:docker_pid)
           end
         end
-      rescue => e
-        puts "Failed to start Docker console: #{e}"
       end
+    rescue => e
+      puts "Failed to start Container console: #{e}"
+      @ws.send({ type: 'console-error', job_id: job_id, message: e.message }.to_json)
     end
   end
 
@@ -574,8 +700,14 @@ class MultiQemuDocker
     job_id = message['job_id']
     data = message['data']
     job = @jobs[job_id]
-    return unless job
-    return unless job[:console_io]
+    unless job
+      puts "write_to_console: no job for job_id #{job_id}"
+      return
+    end
+    unless job[:console_io]
+      puts "write_to_console: no console_io for job_id #{job_id}"
+      return
+    end
 
     begin
       job[:console_io].write(data)
@@ -601,7 +733,7 @@ class MultiQemuDocker
       begin
         Process.kill('TERM', job[:docker_pid])
       rescue => e
-        puts "Error killing Docker process: #{e}"
+        puts "Error killing Container process: #{e}"
       end
     end
 
@@ -632,12 +764,21 @@ class MultiQemuDocker
     EventMachine.stop
   end
 
+  public
+
+  def run
+    loop do
+      start_event_machine
+      sleep 1
+    end
+  end
+
 end
 
 if __FILE__ == $PROGRAM_NAME
-  provider = MultiQemuDocker.new(ARGV)
-  loop do
-    provider.start_event_machine
-    sleep 1
+  begin
+    MultiQemuDocker.new(ARGV).run
+  rescue Interrupt
+    exit(0)
   end
 end

@@ -147,7 +147,32 @@ case "$os" in
 		;;
 esac
 
+record_startup_log() {
+    # Capture the current timestamp in the desired format
+    local start_time=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Write the startup log to the log file
+    echo -e "\n${start_time} starting CONTAINER"
+    echo "job_id ${job_id}"
+    echo "result_root ${result_root}\n"
+}
+
+record_end_log() {
+    # Calculate the current time and duration in minutes
+    local current_time=$(date +%s)
+    local duration=$(( (current_time - startup_time) / 60 ))
+    local duration_rounded=$(echo "scale=2; $duration" | bc)
+
+    # Append the duration to the log file
+    echo -e "\nTotal CONTAINER duration: ${duration_rounded} minutes"
+}
+
+startup_time=$(date +%s)
+record_startup_log >> "$log_file"
+
 # Execute the command
 echo "less $log_file"
 "${cmd[@]}" "$docker_image" /usr/local/bin/entrypoint.sh 2>&1 |
 	awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_file"
+
+record_end_log >> "$log_file"

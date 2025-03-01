@@ -42,6 +42,7 @@ class Sched
         response << {
           "job_id"      => job.id,
           "message"     => "",
+          "version"     => Scheduler::VERSION,
           "job_state"   => "submit",
           "result_root" => "#{BASE_DIR}#{job.result_root}",
         }

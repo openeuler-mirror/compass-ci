@@ -492,6 +492,8 @@ class JobHash
     target_machines
     cache_dirs
 
+    pending_messages
+
     milestones
 
     errid

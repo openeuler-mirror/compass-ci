@@ -33,9 +33,8 @@ class DockerManager
     system(%Q(gzip -dc #{path}/#{name} | cpio -idu --quiet -D #{path} --pattern-file=#{CPIO_PATTERN_FILE}))
   end
 
-  def load_initrds
+  def download_initrds
     initrds = JSON.parse(@message['initrds'])
-    record_log(initrds)
     initrds.each do |initrd|
       return false unless download_extract_cpio(@host_dir, initrd, initrd.to_s.sub(/.*:\/\//, ""))
     end
@@ -58,11 +57,12 @@ class DockerManager
     return cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock
   end
 
-  def start_container
+  def start_container_instance
+    return unless download_initrds
     docker_image = @message['docker_image']
     system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
     cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock = load_package_optimization_strategy
-    system(
+    exec(
       { 'job_id' => @message['job_id'],
         'cpu_minimum' => "#{cpu_minimum}",
         'memory_minimum' => "#{memory_minimum}",
@@ -82,57 +82,4 @@ class DockerManager
     )
   end
 
-  def record_log(list)
-    File.open(@log_file, 'a') do |f|
-      list.each do |line|
-        f.puts line
-      end
-    end
-  end
-
-  def record_startup_log
-    start_time = Time.new
-    File.open(@log_file, 'w') do |f|
-      # fluentd refresh time is 1s
-      # let fluentd to monitor this file first
-      sleep(2)
-
-      f.puts "\n#{start_time.strftime('%Y-%m-%d %H:%M:%S')} starting DOCKER"
-      f.puts "\n#job_id={@message['job_id']}"
-    end
-    return start_time
-  end
-
-  def record_end_log(start_time)
-    duration = ((Time.new - start_time) / 60).round(2)
-    File.open(@log_file, 'a') do |f|
-      f.puts "\nTotal DOCKER duration:  #{duration} minutes"
-    end
-  end
-
-  def get_job_info
-    return {} unless File.exist?("#{@host_dir}/lkp/scheduled/job.yaml")
-    YAML.load_file("#{@host_dir}/lkp/scheduled/job.yaml")
-  end
-
-  def start_container_instance
-    if Dir.exist?(@host_dir)
-      FileUtils.rm_rf(@host_dir)
-    end
-    FileUtils.mkdir_p(@host_dir + "/result_root")
-
-    start_time = record_startup_log
-
-    return unless load_initrds
-    job_info = get_job_info
-
-    start_container
-
-    record_end_log(start_time)
-
-    # Allow fluentd sufficient time to read the contents of the log file
-    sleep(5)
-  ensure
-    record_log(["finished the docker"])
-  end
 end
