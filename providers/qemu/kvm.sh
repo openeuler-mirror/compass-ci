@@ -461,7 +461,6 @@ check_logfile
 ipxe_script=ipxe_script
 
 check_kernel
-write_dmesg_flag 'start'
 check_initrds
 
 set_options
@@ -475,6 +474,11 @@ individual_option
 
 set -m
 watch_oops &
+
+JOB_DONE_FIFO_PATH=/tmp/job_completion_fifo
+echo "boot: $job_id" >> $JOB_DONE_FIFO_PATH
+write_dmesg_flag 'start'
 run_qemu
 write_dmesg_flag 'end'
 kill %1
+echo "done: $job_id" >> $JOB_DONE_FIFO_PATH

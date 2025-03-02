@@ -111,22 +111,33 @@ class MultiQemuDocker
         # close FIFO after writing one line of job_id.
         File.open(JOB_DONE_FIFO_PATH, 'r') do |fifo|
           job_id = fifo.gets
-          if job_id
-            job_id.chomp!
-            job = @jobs.remove_job(job_id)
-
-            upload_log(job)
-            upload_results(job)
-            status = {
-              type: 'job-update',
-              job_id: job_id,
-              job_data_readiness: "uploaded",  # trigger extract-stats
-            }
-            @ws.send(status.to_json)
-
-            puts "Job #{job_id} completed and removed from the job list."
-          else
+          unless job_id
             puts "Unexpected end of input from the FIFO."
+            next
+          end
+          case job_id.chomp
+            when /^boot: (\d+)/
+              job_id = $1
+              status = {
+                type: 'job-update',
+                job_id: job_id,
+                job_stage: "boot",
+              }
+              @ws.send(status.to_json)
+            when /^done: (\d+)/
+              job_id = $1
+              job = @jobs.remove_job(job_id)
+
+              upload_log(job)
+              upload_results(job)
+              status = {
+                type: 'job-update',
+                job_id: job_id,
+                job_data_readiness: "uploaded",  # trigger extract-stats
+              }
+              @ws.send(status.to_json)
+
+              puts "Job #{job_id} completed and removed from the job list."
           end
         end
       end
@@ -481,11 +492,6 @@ class MultiQemuDocker
       rescue => e
         puts "Error starting instance: #{e.message}"
         puts e.backtrace.join("\n")
-      ensure
-        # Ensure the job done event is always informed
-        File.open(JOB_DONE_FIFO_PATH, 'a') do |fifo|
-          fifo.puts job_id
-        end
       end
     end
 

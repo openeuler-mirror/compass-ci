@@ -167,6 +167,8 @@ record_end_log() {
     echo -e "\nTotal CONTAINER duration: ${duration_rounded} minutes"
 }
 
+JOB_DONE_FIFO_PATH=/tmp/job_completion_fifo
+echo "boot: $job_id" >> $JOB_DONE_FIFO_PATH
 startup_time=$(date +%s)
 record_startup_log >> "$log_file"
 
@@ -176,3 +178,4 @@ echo "less $log_file"
 	awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_file"
 
 record_end_log >> "$log_file"
+echo "done: $job_id" >> $JOB_DONE_FIFO_PATH
