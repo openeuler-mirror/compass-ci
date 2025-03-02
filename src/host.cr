@@ -313,9 +313,9 @@ class HostInfo
 
   def self.determine_tbox_type(hostname : String) : String
     case hostname
-    when /^dc-/ then
+    when /^dc/ then
       "dc"
-    when /^vm-/ then
+    when /^vm/ then
       "vm"
     else
       "hw"

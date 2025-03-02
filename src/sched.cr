@@ -129,13 +129,6 @@ class Sched
     end
   end
 
-  def get_host_machine(testbox)
-    return testbox unless testbox =~ /^(vm-|dc-)/
-
-    # dc-16g.taishan200-2280-2s64p-256g--a1001-1252549 => taishan200-2280-2s64p-256g--a1001
-    testbox.split(".")[1].reverse.split("-", 2)[1].reverse
-  end
-
   def api_get_host(hostname : String) : HostInfo?
     # Fetch host information from cache
     host_info = @hosts_cache.get_host(hostname)
@@ -150,9 +143,9 @@ class Sched
   def get_type(testbox)
     return unless testbox
 
-    if testbox.starts_with?("vm-")
+    if testbox.starts_with?("vm")
       type = "vm"
-    elsif testbox.starts_with?("dc-")
+    elsif testbox.starts_with?("dc")
       type = "dc"
     else
       type = "physical"

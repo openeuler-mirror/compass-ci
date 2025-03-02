@@ -13,7 +13,7 @@ module Utils
   end
 
   def get_host_info(testbox)
-    file_name = testbox =~ /^(vm-|dc-)/ ? testbox.split(".")[0] : testbox
+    file_name = testbox =~ /^(vm|dc)/ ? testbox.split(".")[0] : testbox
     host_info_file = "#{CCI_REPOS}/#{LAB_REPO}/hosts/#{file_name}"
     return unless File.exists?(host_info_file)
 
