@@ -75,11 +75,11 @@ class JobHash
     script_lines << "check_set_var()"
     script_lines << "{"
     script_lines << "        local name=\"${1%=*}\""
-    script_lines << "        [ -z \"$vars\" -o \"${vars#*$name}\" != \"$vars\" ] && readonly \"$1\""
+    script_lines << "        [ \"$vars\" = \"  \" -o \"${vars#* $name }\" != \"$vars\" ] && readonly \"$1\""
     script_lines << "}\n"
     script_lines << "read_job_vars()"
     script_lines << "{"
-    script_lines << "\tlocal vars=\"$*\""
+    script_lines << "\tlocal vars=\" $* \""
 
     @hash_plain.each { |key, val| parse_one(script_lines, key, val) }
     if hw = self.hw?

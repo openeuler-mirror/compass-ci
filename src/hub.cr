@@ -191,8 +191,8 @@ class Sched
 
     if progress && !wait_spec.has_key?("wait_on")
       if progress == :fail_fast
-        change_job_stage(dependent_job, nil, "abort_wait")
-        change_job_data_readiness(dependent_job, "incomplete")
+        change_job_stage(dependent_job, "abort_wait", "abort_wait")
+        change_job_data_readiness(dependent_job, "norun")
       else
         add_job_to_cache(dependent_job)
       end
@@ -258,7 +258,9 @@ class Sched
       end
 
       # Process fail_fast
-      if wait_options.has_key?("fail_fast") && cjob.job_stage == "incomplete"
+      if wait_options.has_key?("fail_fast") && (
+          cjob.idata_readiness >= JOB_DATA_READINESS_NAME2ID["incomplete"] ||
+          cjob.ihealth >= JOB_HEALTH_NAME2ID["cancel"])
         wait_spec.delete("wait_on")
         return :fail_fast
       end

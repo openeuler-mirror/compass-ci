@@ -17,6 +17,7 @@ JOB_STAGE_NAME2ID = {
   "renew"        =>  8,   # extended borrow time for interactive user login
   "finish"       =>  9,   # to release testbox resource
   "cancel"       => 10,   # cancel by user before running. No start, so no finish.
+  "abort_wait"   => 11,   # auto cancel by scheduler, due to abort_wait
 }
 
 # DATA-DOMAIN STAGES

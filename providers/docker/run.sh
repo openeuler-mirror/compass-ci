@@ -152,9 +152,10 @@ record_startup_log() {
     local start_time=$(date '+%Y-%m-%d %H:%M:%S')
 
     # Write the startup log to the log file
-    echo -e "\n${start_time} starting CONTAINER"
+    echo "${start_time} starting CONTAINER"
     echo "job_id ${job_id}"
-    echo "result_root ${result_root}\n"
+    echo "result_root ${result_root}"
+    echo
 }
 
 record_end_log() {

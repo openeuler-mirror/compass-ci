@@ -45,13 +45,12 @@ class PkgBuild < PluginsCommon
   def get_ss_pkgbuild_paths(job, upstream_project : String, ss_params : Hash(String, String)) : Array(String)
     pkgname = ss_params["pkgname"]? || upstream_project
     pkgver = ss_params["pkgver"]? || ss_params["commit"]? || ss_params["tag"]? || ss_params["branch"]? || raise "No pkgver/commit/tag/branch in ss.#{upstream_project}"
-    pkgver += "-#{ss_params["pkgrel"]}" if ss_params.has_key?("pkgrel")
 
     # Validate pkgver to prevent directory traversal
     if pkgver.includes?("..")
       raise "Illegal characters .. in pkgver #{pkgver}"
     end
-    pkgver = pkgver.tr("/", ":")
+    pkgver = pkgver.gsub(/[^a-zA-Z0-9._-]/, ':')
 
     config_name = ss_params["config"]? || "defconfig"
 
@@ -124,8 +123,8 @@ class PkgBuild < PluginsCommon
     build_job.arch = job.arch
 
     build_job.runtime = "36000"
-    build_job.need_memory = "16g"
-    build_job.install_os_packages_all = "wget curl git fakeroot coreutils file findutils grep sed gzip bzip2 gcc autoconf automake make patch"
+    build_job.need_memory = "8g"
+    build_job.install_os_packages_all = "ruby cpio gzip wget curl git fakeroot coreutils file findutils grep sed bzip2 gcc autoconf automake make patch"
     build_job.need_file_store = Array(String).new
     job.need_file_store.each do |path|
       build_job.need_file_store << path if path =~ /^lkp_src\//

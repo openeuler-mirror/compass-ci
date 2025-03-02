@@ -474,7 +474,7 @@ class MultiQemuDocker
     log_file = "#{ENV["LOGS_DIR"]}/#{hostname}"
     FileUtils.rm_rf(host_dir) if Dir.exist?(host_dir)
     FileUtils.mkdir_p(host_dir + "/result_root")
-    File.truncate(log_file, 0) # create before possible tail
+    File.open(log_file, "w") {} # create before possible tail
 
     fork_pid = Process.fork do
       ENV["hostname"] = hostname

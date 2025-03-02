@@ -1238,7 +1238,7 @@ class Job < JobHash
   def get_pkg_common_dir
     return nil unless @hash_hhh.has_key? "pp"
     tmp_style = nil
-    ["cci-makepkg", "cci-depends", "build-pkg", "pkgbuild", "rpmbuild"].each do |item|
+    ["makepkg", "cci-makepkg", "cci-depends", "build-pkg", "pkgbuild", "rpmbuild"].each do |item|
       tmp_style = @hash_hhh["pp"][item] if self.pp.has_key? item
       break if tmp_style
     end
@@ -1284,6 +1284,8 @@ class Job < JobHash
       package_dir = ",/initrd/deps/#{common_dir}/#{self.pp("cci-depends", "benchmark")}"
     elsif self.pp.has_key? "rpmbuild"
       package_dir = ",/rpm/upload/#{common_dir}"
+    elsif self.pp.has_key? "makepkg"
+      package_dir += ",/file-store/ss/"
     elsif self.pp.has_key? "build-pkg" || self.pp.has_key? "pkgbuild"
       upstream_repo = self.upstream_repo? || pp("build-pkg", "upstream_repo") || pp("pkgbuild", "upstream_repo")
       return package_dir unless upstream_repo

@@ -26,11 +26,15 @@ class DockerManager
   def download_extract_cpio(path, url, name)
     File.write(CPIO_PATTERN_FILE, "lkp*") unless File.exist? CPIO_PATTERN_FILE
 
-    cmd = %W(curl -sS --create-dirs -o #{path}/#{name} #{url})
+    cmd = %W(curl -sS --fail --create-dirs -o #{path}/#{name} #{url})
     # puts cmd.join(" ")
 
-    system(*cmd) &&
-    system(%Q(gzip -dc #{path}/#{name} | cpio -idu --quiet -D #{path} --pattern-file=#{CPIO_PATTERN_FILE}))
+    if system(*cmd)
+      system(%Q(gzip -dc #{path}/#{name} | cpio -idu --quiet -D #{path} --pattern-file=#{CPIO_PATTERN_FILE}))
+    else
+      puts "Error: cannot download initrd #{url}"
+      return false
+    end
   end
 
   def download_initrds

@@ -6,7 +6,7 @@ class Sched
   # API method to update a job based on query parameters
   def api_update_job(env : HTTP::Server::Context) : Result
     params = env.params.query.to_h
-    params["job_id"] = env.params.url["job_id"]
+    params["job_id"] ||= env.params.url["job_id"]
     update_job_from_hash(params)
   end
 

@@ -112,7 +112,7 @@ class Sched
     # Validate job stage
     if job.hash_int32.has_key? "idata_readiness" &&
        job.idata_readiness >= JOB_DATA_READINESS_NAME2ID["uploaded"]
-      return 403, "Job data already uploaded"
+      return 423, "Job data already uploaded"
     end
 
     if job.istage < JOB_STAGE_NAME2ID["dispatch"]
@@ -122,21 +122,23 @@ class Sched
     # Extract and validate path parameter
     requested_path = env.params.url["path"]?
     unless requested_path
-      return 400, "Empty path"
+      return 402, "Empty path"
     end
 
     if requested_path.includes?("/../")
-        return 400, "Illegal path"
+        return 406, "Illegal path"
     end
 
     if to_upload_dirs
-      unless job.upload_dirs.split(",").includes? requested_path
-        return 400, "Invalid path"
+      # Check if requested_path starts with any directory in job.upload_dirs
+      requested_path = "/" + requested_path
+      unless job.upload_dirs.split(",").any? { |dir| requested_path.starts_with?(dir) }
+        return 403, "Forbidden path"
       end
     else
       requested_path = "/result/" + requested_path
       unless requested_path.starts_with?(job.result_root)
-        return 400, "Invalid path"
+        return 403, "Forbidden path"
       end
     end
 
