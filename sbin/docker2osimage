@@ -2,33 +2,36 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2025 Huawei Technologies Co., Ltd. All rights reserved.
 
+# Detect container runtime
 CONTAINER_RUNTIME=$(command -v podman || command -v docker)
 [ -n "$CONTAINER_RUNTIME" ] || {
-	echo Please install podman or docker
-	exit
+    echo "Please install podman or docker"
+    exit 1
 }
 
+# Check for fakeroot or root privileges
 if which fakeroot >/dev/null 2>&1; then
-       FAKEROOT=fakeroot
+    FAKEROOT=fakeroot
 else
-       FAKEROOT=
-       [ -w /srv ] || {
-		echo "Please install fakeroot or run as root"
-		exit
-       }
+    FAKEROOT=
+    [ -w /srv ] || {
+        echo "Please install fakeroot or run as root"
+        exit 1
+    }
 fi
 
+# Determine base directory
 if [ -w /srv ]; then
-       BASE_DIR="/srv"
+    BASE_DIR="/srv"
 else
-       BASE_DIR="$HOME/.cache/compass-ci"
+    BASE_DIR="$HOME/.cache/compass-ci"
 fi
 
 # Define output directory
 OUTPUT_DIR=$BASE_DIR/file-store/docker2os/
-mkdir -p $OUTPUT_DIR
+mkdir -p "$OUTPUT_DIR"
 
-# Function to log messages
+# Logging function
 log_message() {
     echo "[INFO] $1"
 }
@@ -42,95 +45,138 @@ map_architecture() {
     esac
 }
 
-# List of well-known docker OS images, versions and architectures
+# New OS list format with multiple architectures per image
 OS_LIST=(
-    # "alpine:3.18 arm64"
-    # "alpine:3.18 amd64"
-    # "debian:12 arm64"
-    "debian:12 amd64"
-    # "debian:bullseye-slim arm64"
-    # "debian:bullseye-slim amd64"
-    # "fedora:40 arm64"
-    "fedora:40 amd64"
-    # "centos:7 amd64"
-    # "centos:8 amd64"
-    # "centos:9 amd64"
-    # "archlinux:latest amd64"
-    # "archlinux:latest arm64"
-    # "amazonlinux:2 amd64"
-    # "amazonlinux:2023 amd64"
-    # "oraclelinux:8 amd64"
-    # "oraclelinux:9 amd64"
-    # "opensuse/leap:15.4 amd64"
-    # "opensuse/leap:15.5 amd64"
-    # "opensuse/tumbleweed:latest amd64"
-    # "opensuse/tumbleweed:latest arm64"
-    # "raspbian:latest arm32v7"
-    # "raspbian:latest arm64v8"
-    # "rockylinux:8 amd64"
-    # "rockylinux:9 amd64"
-    # "ubuntu:20.04 arm64"
-    # "ubuntu:20.04 amd64"
-    # "ubuntu:18.04 arm64"
-    # "ubuntu:18.04 amd64"
-    # "ubuntu:24.04 arm64"
-    "ubuntu:24.04 amd64"
+    "openeuler/openeuler:24.09 amd64 arm64"
+    "openeuler/openeuler:24.03 amd64 arm64"
+    "openeuler/openeuler:22.03 amd64 arm64"
+    "openeuler/openeuler:20.03 amd64 arm64"
+
+    "opensuse/leap:15.6 amd64"
+
+    "fedora:42 amd64 arm64"
+    "centos:9 amd64 arm64"
+    "rockylinux:9 amd64 arm64"
+
+    "debian:12 amd64 arm64"
+    "ubuntu:24.04 amd64 arm64"
+
+    "alpine:3.21 amd64 arm64"
+
+    "archlinux:latest amd64 arm64"
 )
 
-# Step 1: Process each OS, version, and architecture
-for entry in "${OS_LIST[@]}"; do
-    # Parse the entry into OS image name and architecture
-    DOCKER_IMAGE=$(echo "$entry" | awk '{print $1}')
-    DOCKER_ARCH=$(echo "$entry" | awk '{print $2}')
-    MAPPED_ARCH=$(map_architecture "$DOCKER_ARCH")
+# Function to display usage
+usage() {
+    echo "Usage: $0 [--os <os_name>] [--help]"
+    echo "  --os <os_name>   Specify the OS to process (e.g., 'alpine:3.21')"
+    echo "  --help           Display this help message"
+    exit 1
+}
 
-    # Extract OS and version from the Docker image name
+# Parse command-line arguments
+SELECTED_OS=""
+for arg in "$@"; do
+    case "$arg" in
+        --os)
+            SELECTED_OS="$2"
+            shift 2
+            ;;
+        --help)
+            usage
+            ;;
+        *)
+            echo "Unknown argument: $arg"
+            usage
+            ;;
+    esac
+done
+
+# Validate selected OS
+if [ -n "$SELECTED_OS" ]; then
+    FOUND=0
+    for entry in "${OS_LIST[@]}"; do
+        IMAGE_NAME=$(echo "$entry" | awk '{print $1}')
+        if [ "$IMAGE_NAME" == "$SELECTED_OS" ]; then
+            FOUND=1
+            break
+        fi
+    done
+    if [ $FOUND -eq 0 ]; then
+        echo "Error: Selected OS '$SELECTED_OS' not found in OS_LIST."
+        exit 1
+    fi
+fi
+
+# Process each OS, version, and architecture
+for entry in "${OS_LIST[@]}"; do
+    DOCKER_IMAGE=$(echo "$entry" | awk '{print $1}')
+    ARCH_LIST=$(echo "$entry" | cut -d' ' -f2-)
+
+    # Skip if a specific OS is selected and it doesn't match
+    if [ -n "$SELECTED_OS" ] && [ "$DOCKER_IMAGE" != "$SELECTED_OS" ]; then
+        continue
+    fi
+
+    # Extract OS name and version
     OS_NAME=$(echo "$DOCKER_IMAGE" | cut -d':' -f1)
     OS_VERSION=$(echo "$DOCKER_IMAGE" | cut -d':' -f2)
 
-    # Define the output file name
-    OUTPUT_FILE="${MAPPED_ARCH}/${OS_NAME}@${OS_VERSION}.cgz"
-    test -e "$OUTPUT_DIR/$OUTPUT_FILE" && continue
-    mkdir -p "$OUTPUT_DIR/$MAPPED_ARCH"
+    OS_NAME=${OS_NAME%/*}
+    log_message "Processing OS: $OS_NAME, Version: $OS_VERSION"
 
-    log_message "Processing: OS=$OS_NAME, Version=$OS_VERSION, Arch=$DOCKER_ARCH (Mapped: $MAPPED_ARCH)"
-    # Step 2: Pull the Docker image for the specified platform
-    if $container_runtime images --format "{{.Repository}}:{{.Tag}}" | grep -q "$DOCKER_IMAGE$"; then
-	    :
-    else
-	    log_message "Pulling Docker image '$DOCKER_IMAGE' for platform '$DOCKER_ARCH'..."
-	    if ! $CONTAINER_RUNTIME pull --platform "linux/$DOCKER_ARCH" "$DOCKER_IMAGE"; then
-		log_message "Failed to pull Docker image '$DOCKER_IMAGE' for platform '$DOCKER_ARCH'. Skipping."
-		continue
-	    fi
-    fi
+    # Process each architecture
+    for DOCKER_ARCH in $ARCH_LIST; do
+        MAPPED_ARCH=$(map_architecture "$DOCKER_ARCH")
+        OUTPUT_FILE="${MAPPED_ARCH}/${OS_NAME}@${OS_VERSION}.cgz"
 
-    # Step 3: Create a temporary container from the image
-    log_message "Creating a temporary container from the image..."
-    CONTAINER_ID=$($CONTAINER_RUNTIME create --platform "linux/$DOCKER_ARCH" "$DOCKER_IMAGE")
-    if [ -z "$CONTAINER_ID" ]; then
-        log_message "Failed to create a container from the image. Skipping."
-        continue
-    fi
+        # Skip if the output file already exists
+        if [ -e "$OUTPUT_DIR/$OUTPUT_FILE" ]; then
+            log_message "Skipping existing file: $OUTPUT_FILE"
+            continue
+        fi
 
-    # Step 4: Export the container's filesystem and package it into a cpio.gz archive
-    mkdir "/tmp/$CONTAINER_ID"
-    log_message "Exporting and packaging the container's filesystem into a cpio.gz archive..."
-    $CONTAINER_RUNTIME export "$CONTAINER_ID" | fakeroot sh -c "tar -C /tmp/$CONTAINER_ID -xf - && cd /tmp/$CONTAINER_ID && find | cpio -o -H newc | gzip > $OUTPUT_DIR/$OUTPUT_FILE"
+        mkdir -p "$OUTPUT_DIR/$MAPPED_ARCH"
 
-    if [ $? -ne 0 ]; then
-        log_message "Failed to export or package the container's filesystem. Skipping."
+        log_message "Processing: Arch=$DOCKER_ARCH (Mapped: $MAPPED_ARCH)"
+
+        # Step 1: Pull the Docker image for the specified platform
+        if ! $CONTAINER_RUNTIME images --format "{{.Repository}}:{{.Tag}}" | grep -q "$DOCKER_IMAGE$"; then
+            log_message "Pulling Docker image '$DOCKER_IMAGE' for platform '$DOCKER_ARCH'..."
+            if ! $CONTAINER_RUNTIME pull --platform "linux/$DOCKER_ARCH" "$DOCKER_IMAGE"; then
+                log_message "Failed to pull Docker image '$DOCKER_IMAGE' for platform '$DOCKER_ARCH'. Skipping."
+                continue
+            fi
+        fi
+
+        # Step 2: Create a temporary container from the image
+        log_message "Creating a temporary container from the image..."
+        CONTAINER_ID=$($CONTAINER_RUNTIME create --platform "linux/$DOCKER_ARCH" "$DOCKER_IMAGE")
+        if [ -z "$CONTAINER_ID" ]; then
+            log_message "Failed to create a container from the image. Skipping."
+            continue
+        fi
+
+        # Step 3: Export the container's filesystem and package it into a cpio.gz archive
+        TEMP_DIR="/tmp/$CONTAINER_ID"
+        mkdir -p "$TEMP_DIR"
+        log_message "Exporting and packaging the container's filesystem into a cpio.gz archive..."
+        $CONTAINER_RUNTIME export "$CONTAINER_ID" | fakeroot sh -c "tar -C $TEMP_DIR -xf - && cd $TEMP_DIR && find | cpio -o -H newc | gzip -9 > $OUTPUT_DIR/$OUTPUT_FILE"
+
+        if [ $? -ne 0 ]; then
+            log_message "Failed to export or package the container's filesystem. Skipping."
+            $CONTAINER_RUNTIME rm -f "$CONTAINER_ID" > /dev/null 2>&1
+            rm -fr "$TEMP_DIR" > /dev/null 2>&1
+            continue
+        fi
+
+        # Step 4: Remove the temporary container
+        log_message "Removing the temporary container..."
         $CONTAINER_RUNTIME rm -f "$CONTAINER_ID" > /dev/null 2>&1
-        rm -fr "/tmp/$CONTAINER_ID" > /dev/null 2>&1
-        continue
-    fi
+        rm -fr "$TEMP_DIR" > /dev/null 2>&1
 
-    # Step 5: Remove the temporary container
-    log_message "Removing the temporary container..."
-    $CONTAINER_RUNTIME rm -f "$CONTAINER_ID" > /dev/null 2>&1
-    rm -fr "/tmp/$CONTAINER_ID" > /dev/null 2>&1
-
-    log_message "Initrd created successfully: '$OUTPUT_DIR/$OUTPUT_FILE'"
+        log_message "Initrd created successfully: '$OUTPUT_DIR/$OUTPUT_FILE'"
+    done
 done
 
 log_message "All tasks completed. Output files are in '$OUTPUT_DIR'."

@@ -1,7 +1,17 @@
 #!/bin/bash
 
 # Define output directory
-OUTPUT_DIR="${1:-$PWD}"
+if [ -n "$1" ]; then
+	OUTPUT_DIR="$1"
+else
+	if [ -w /srv ]; then
+		BASE_DIR="/srv"
+	else
+		BASE_DIR="$HOME/.cache/compass-ci"
+	fi
+
+	OUTPUT_DIR=$BASE_DIR/file-store/busybox
+fi
 mkdir -p "$OUTPUT_DIR"
 
 # Base URL for Debian packages
@@ -61,35 +71,97 @@ fetch_and_package_busybox() {
         return
     fi
 
-    # Step 4: Create a minimal root filesystem with the binary
+    # Step 4: Create output directories
+    local arch_output_dir="${OUTPUT_DIR}/${arch}"
+    mkdir -p "$arch_output_dir"
+
+    # Step 5: Copy the busybox binary to the output directory
+    log_message "Copying busybox binary for $arch..."
+    cp -a "$busybox_binary" "${arch_output_dir}/busybox"
+
+    # Step 6: Create a minimal root filesystem with the binary
     log_message "Creating minimal rootfs for $arch..."
     mkdir -p "${temp_dir}/rootfs/opt/busybox"
     mv "$busybox_binary" "${temp_dir}/rootfs/opt/busybox/busybox"
-    cd "${temp_dir}/rootfs"
-    # $busybox_binary --install -s bin > /dev/null 2>&1
+    cd "${temp_dir}/rootfs" || exit
 
-    # Step 5: Package the rootfs into a cpio.gz archive
+    # Step 7: Package the rootfs into a cpio.gz archive
     log_message "Packaging into cpio.gz for $arch..."
-    find . | cpio -o -H newc | gzip > "${OUTPUT_DIR}/busybox-static-${arch}.cgz"
+    find . | cpio -o -H newc | gzip > "${arch_output_dir}/busybox-static.cgz"
     if [ $? -ne 0 ]; then
         log_message "Failed to create cpio.gz for $arch. Skipping."
         rm -rf "$temp_dir"
         return
     fi
 
-    # Step 6: Create a symlink for x86_64, aarch64
+    # Step 8: Create symlinks for x86_64, aarch64
     if [ "$arch" == "amd64" ]; then
-        log_message "Creating symlink for aarch64 -> arm64..."
-        ln -sf "busybox-static-amd64.cgz" "${OUTPUT_DIR}/busybox-static-x86_64.cgz"
+        log_message "Creating symlink for x86_64 -> amd64..."
+        ln -sf "amd64" "${OUTPUT_DIR}/x86_64"
     fi
     if [ "$arch" == "arm64" ]; then
         log_message "Creating symlink for aarch64 -> arm64..."
-        ln -sf "busybox-static-arm64.cgz" "${OUTPUT_DIR}/busybox-static-aarch64.cgz"
+        ln -sf "arm64" "${OUTPUT_DIR}/aarch64"
     fi
 
     # Cleanup
     log_message "Finished processing $arch."
     rm -rf "$temp_dir"
+}
+
+# Function to install busybox applets and copy symlinks to other archs
+install_busybox_applets() {
+    local current_arch=$(arch)
+    local current_arch_dir="${OUTPUT_DIR}/${current_arch}"
+
+    if [ ! -d "$current_arch_dir" ]; then
+        log_message "Current architecture $current_arch not found in output directory. Skipping applet installation."
+        return
+    fi
+
+    log_message "Installing busybox applets for $current_arch..."
+    cd "$current_arch_dir" || exit
+    ./busybox --install -s .
+    convert_symlinks .
+
+    log_message "Copying applet symlinks to other architectures..."
+    for arch in "${ARCHS[@]}"; do
+	arch_dir="${OUTPUT_DIR}/$arch"
+        if [ "$arch_dir" != "$current_arch_dir" ] && [ -d "$arch_dir" ]; then
+            cp -a --update=none "${current_arch_dir}/"* "$arch_dir/"
+        fi
+    done
+}
+
+# Function to convert absolute symlinks to relative ones
+convert_symlinks() {
+  local symlink_target
+  local symlink_dir
+  local relative_path
+  local target_dir=$1
+
+  # Find all symlinks in the target directory
+  find "$target_dir" -type l | while read -r symlink; do
+    # Get the target of the symlink
+    symlink_target=$(readlink "$symlink")
+
+    # Check if the symlink target is an absolute path
+    if [[ "$symlink_target" == /* ]]; then
+      # Get the directory containing the symlink
+      symlink_dir=$(dirname "$symlink")
+
+      # Convert the absolute path to a relative path
+      relative_path=$(realpath --relative-to="$symlink_dir" "$symlink_target")
+
+      # Remove the old symlink
+      rm "$symlink"
+
+      # Recreate the symlink with the relative path
+      ln -s "$relative_path" "$symlink"
+
+      echo "Converted: $symlink -> $relative_path"
+    fi
+  done
 }
 
 # Main script logic
@@ -101,5 +173,8 @@ ARCHS=("amd64" "arm64" "i386" "ppc64el" "s390x" "armhf" "mips64el" "mipsel" "ris
 for arch in "${ARCHS[@]}"; do
     fetch_and_package_busybox "$arch"
 done
+
+# Install busybox applets and copy symlinks to other archs
+install_busybox_applets
 
 log_message "All tasks completed. Output files are in '$OUTPUT_DIR'."

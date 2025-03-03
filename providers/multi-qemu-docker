@@ -85,6 +85,7 @@ class MultiQemuDocker
     FileUtils.mkdir_p(ENV["PIDS_DIR"] = "#{BASE_DIR}/provider/pids")
     FileUtils.mkdir_p(ENV["LOGS_DIR"] = "#{BASE_DIR}/provider/logs")
     FileUtils.mkdir_p(ENV["CACHE_DIR"] = "#{BASE_DIR}/provider/cache")
+    FileUtils.mkdir_p(ENV["DOWNLOAD_DIR"] = "#{BASE_DIR}/provider/download")
   end
 
   def update_options
@@ -562,6 +563,7 @@ class MultiQemuDocker
       begin
         while line = reader.gets
           # Send log output to WebSocket
+          break unless @ws
           @ws.send({ type: 'job-log', job_id: job_id, data: line }.to_json)
         end
       rescue IOError => e
@@ -624,19 +626,54 @@ class MultiQemuDocker
     end
   end
 
+  def wait_for_qemu_to_start(socket_path)
+    # Maximum wait time in seconds (e.g., 60 seconds)
+    max_wait_time = 60
+    # Interval between checks in seconds (e.g., 1 second)
+    check_interval = 1
+
+    start_time = Time.now
+
+    # Loop until the socket file is created or the max wait time is reached
+    while !File.exist?(socket_path)
+      if Time.now - start_time > max_wait_time
+        puts "Timeout waiting for socket file to be created: #{socket_path}"
+        return false
+      end
+
+      # Log the waiting status (optional)
+      # @logger.info("Waiting for socket file to be created: #{socket_path}")
+
+      # Sleep for the specified interval before checking again
+      sleep(check_interval)
+    end
+
+    return true
+  end
+
   def start_qemu_console(job_id, job)
     socket_path = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/qemu-console.sock"
+    return unless wait_for_qemu_to_start(socket_path)
     begin
       socket = UNIXSocket.new(socket_path)
       job[:console_io] = socket
 
       # Thread to read from QEMU socket and send output
       job[:console_thread] = Thread.new do
-        loop do
-          output = socket.readpartial(1024)
-          @ws.send({ type: 'console-output', job_id: job_id, data: output }.to_json)
+        begin
+          loop do
+            output = socket.readpartial(1024)
+            @ws.send({ type: 'console-output', job_id: job_id, data: output }.to_json)
+          end
+        rescue EOFError, Errno::EIO
+          # Process exited normally
+          puts "QEMU console closed"
+          @ws.send({ type: 'console-exit', job_id: job_id }.to_json)
         rescue => e
-          break
+          puts "QEMU console read error: #{e}"
+          @ws.send({ type: 'console-error', job_id: job_id, message: e.message }.to_json)
+        ensure
+          job.delete(:console_io)
         end
       end
     rescue => e

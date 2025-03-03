@@ -53,7 +53,7 @@ class JobHash
     when "cifs"
       "root=cifs://#{OS_HTTP_HOST}#{os_real_path},guest,ro,hard,vers=1.0,noacl,nouser_xattr,noserverino"
     when "initramfs"
-      "rdinit=/sbin/init prompt_ramdisk=0"
+      ""
     when "local"
       "root=#{OS_HTTP_HOST}:#{os_real_path}" # root is just used to temporarily mount a root in initqueue stage when lvm is not ready
     when "container"
@@ -90,6 +90,10 @@ class JobHash
     return "#{SRV_OS}/#{os_dir}/boot"
   end
 
+  def boot2os_dir
+    return "#{FILE_STORE}/boot2os/#{arch}/#{osv}"
+  end
+
   def os_dir
     return "#{os}/#{os_arch}/#{os_version}"
   end
@@ -101,26 +105,32 @@ class JobHash
 
     set_os_kernel_version()
     set_os_kernel_uri()
-    set_os_modules_uri()
   end
 
   private def set_os_kernel_version
-    #self.kernel_version ||= File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", "")
-    self.put_if_not_absent("kernel_version",  File.basename(File.realpath "#{boot_dir}/vmlinuz").gsub("vmlinuz-", ""))
+    # kernel_version may be specified by user
+    return if @hash_plain.has_key? "kernel_version"
+
+    if File.exists? "#{boot2os_dir}/vmlinuz"
+      vmlinuz_path = "#{boot2os_dir}/vmlinuz"
+    else
+      vmlinuz_path = "#{boot_dir}/vmlinuz"
+    end
+    self.kernel_version = File.basename(File.realpath vmlinuz_path).gsub("vmlinuz-", "")
   end
 
   private def set_os_kernel_uri
     return if @hash_plain.has_key?("kernel_uri")
-    vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
+
+    if File.exists? "#{boot2os_dir}/vmlinuz-#{kernel_version}"
+      vmlinuz_path = File.realpath("#{boot2os_dir}/vmlinuz-#{kernel_version}")
+      modules_path = File.realpath("#{boot2os_dir}/modules-#{kernel_version}.cgz")
+    else
+      vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
+      modules_path = File.realpath("#{boot_dir}/modules-#{kernel_version}.cgz")
+    end
     self.kernel_uri = "#{os_http_prefix}" + JobHelper.service_path(vmlinuz_path)
-  end
-
-  private def set_os_modules_uri
-    return if @hash_array.has_key?("modules_uri")
-    return if self.os_mount == "local"
-
-    modules_path = File.realpath("#{boot_dir}/modules-#{kernel_version}.cgz")
-    self.modules_uri = ["#{os_http_prefix}" + JobHelper.service_path(modules_path)]
+    self.modules_uri = ["#{os_http_prefix}" + JobHelper.service_path(modules_path)] unless self.os_mount == "local"
   end
 
   # http://172.168.131.113:8800/kernel/aarch64/config-4.19.90-2003.4.0.0036.oe1.aarch64/v5.10/vmlinuz
@@ -196,11 +206,18 @@ class JobHash
     temp_initrds = [] of String
 
     osimage_dir = "#{SRV_INITRD}/osimage/#{os_dir}"
-    temp_initrds << "#{initrd_http_prefix}" +
-                    JobHelper.service_path("#{osimage_dir}/current")
+    osimage = "#{SRV_INITRD}/osimage/#{os_dir}/current"
+    if File.exists? osimage
+      temp_initrds << "#{initrd_http_prefix}" + JobHelper.service_path(osimage)
+    end
 
-    if File.exists? "#{FILE_STORE}/busybox/busybox-static-#{self.arch}.cgz"
-      temp_initrds << "#{sched_http_prefix}/srv/file-store/busybox/busybox-static-#{self.arch}.cgz"
+    osimage = "#{FILE_STORE}/docker2os/#{self.arch}/#{self.osv}.cgz"
+    if File.exists? osimage
+      temp_initrds << "#{initrd_http_prefix}" + JobHelper.service_path(osimage)
+    end
+
+    if File.exists? "#{FILE_STORE}/busybox/#{self.arch}/busybox-static.cgz"
+      temp_initrds << "#{sched_http_prefix}/srv/file-store/busybox/#{self.arch}/busybox-static.cgz"
     elsif File.exists? "#{osimage_dir}/run-ipconfig.cgz"
       temp_initrds << "#{initrd_http_prefix}" +
                     JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")

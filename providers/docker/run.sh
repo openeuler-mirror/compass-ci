@@ -23,21 +23,6 @@ host=${tbox_group%.*}
 [ -n "$memory" ] || memory=$(grep '^memory: ' $LKP_SRC/hosts/${host} | cut -f2 -d' ')
 create_yaml_variables "$LKP_SRC/hosts/${host}"
 
-check_busybox()
-{
-	local list
-	list=($(type -a busybox | xargs | awk '{gsub("busybox is ", ""); print $0}'))
-	busybox_path=$(command -v busybox)
-
-	for i in ${list[@]}
-	do
-		if ${i} --list | grep -wq wget; then
-			busybox_path="${i}"
-			break
-		fi
-	done
-}
-
 check_docker_sock()
 {
 	if [ "$need_docker_sock" == "y" ]; then
@@ -46,7 +31,7 @@ check_docker_sock()
 }
 
 check_package_optimization_strategy()
-{	
+{
 	if [ ! -n "${memory_minimum}" ];then
 		memory_minimum="8"
 	fi
@@ -67,9 +52,15 @@ if command -v kubectl >/dev/null; then
 fi
 
 DIR=$(dirname $(realpath $0))
-check_busybox
 check_docker_sock
 check_package_optimization_strategy
+
+if [ -w /srv ]; then
+	BASE_DIR="/srv"
+else
+	BASE_DIR="$HOME/.cache/compass-ci"
+fi
+busybox_path=$BASE_DIR/file-store/busybox/$(arch)
 
 # Determine container runtime (podman or docker)
 container_runtime=$(command -v podman || command -v docker)
@@ -98,7 +89,7 @@ cmd=(
 	-v "$CCI_SRC:/c/compass-ci:ro"
 	-v "/srv/git:/srv/git:ro"
 	-v "$host_dir/result_root:$result_root"
-	-v "${busybox_path}:/usr/local/bin/busybox"
+	-v "${busybox_path}:/opt/busybox"
 	--log-driver json-file
 	--log-opt max-size=10m
 	--oom-score-adj="-1000"

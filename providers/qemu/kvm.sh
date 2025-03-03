@@ -4,12 +4,50 @@
 # - nr_cpu
 # - memory
 
-: ${nr_cpu:=1}
-: ${memory:=1G}
-: ${log_dir:=/srv/provider/logs}
-
 source ${CCI_SRC}/lib/log.sh
 source ${LKP_SRC}/lib/yaml.sh
+
+: ${nr_cpu:=1}
+: ${memory:=1G}
+
+check_env_var() {
+    local var_name=$1
+    if [ -z "${!var_name}" ]; then
+        echo "Warning: environment variable $var_name is not set."
+    fi
+}
+
+# User set env vars
+# check_env_var "ENABLE_PACKAGE_CACHE" # optional
+# check_env_var "DEBUG" # optional
+
+# qemu.rb passed env vars
+check_env_var "append"
+# check_env_var "cpu_model" # optional
+check_env_var "hdd_partitions"
+check_env_var "hostname"
+check_env_var "initrds"
+check_env_var "job_id"
+check_env_var "kernel"
+check_env_var "memory"
+check_env_var "nr_cpu"
+check_env_var "os"
+check_env_var "osv"
+check_env_var "rootfs_disk"
+
+# multi-qemu-docker set env vars
+check_env_var "CACHE_DIR"
+check_env_var "CCI_SRC"
+check_env_var "LKP_SRC"
+check_env_var "PIDS_DIR"
+check_env_var "host_dir"
+check_env_var "log_file"
+
+# env when run as lkp-tests job
+# check_env_var "mount_points" # optional
+
+# not env, but keep same with multi-qemu-docker
+# JOB_DONE_FIFO_PATH
 
 oops_patterns=(
 	-e 'Kernel panic - not syncing:'
@@ -21,17 +59,6 @@ oops_patterns=(
 	# /c/linux/arch/x86/mm/fault.c
 	-e 'BUG: unable to handle page fault'
 )
-
-check_logfile()
-{
-	log_file=${log_dir}/${hostname}
-	[ -f "$log_file" ] || {
-		touch $log_file
-		# fluentd refresh time is 1s
-		# let fluentd to monitor this file first
-		sleep 2
-	}
-}
 
 mem_available()
 {
@@ -86,18 +113,11 @@ check_qemu()
 check_initrds()
 {
 	if [ -n "$initrds" ]; then
-		cat $initrds > concatenated-initrd
+		cat $initrds > concatenated-initrd.cgz
 	else
 		log_error "The current initrds is null." | tee -a $log_file
 		exit 1
 	fi
-}
-
-set_bios()
-{
-    bios=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
-    # when arch='x86_64', use the following file: 
-    [ -f "$bios" ] || bios=/usr/share/ovmf/OVMF.fd
 }
 
 set_helper()
@@ -257,45 +277,31 @@ create_disk()
 	kvm+=(-drive ${drive})
 }
 
-set_mac()
+set_nr_nic()
 {
-	job_id=$(awk -F'/' '/pending-jobs/{print $(NF-1)}' $ipxe_script)
-	nr_nic=$(awk -F'=' '/^# nr_nic=/{print $2}' $ipxe_script)
+	[[ -z "$job_id" ]] && {
+		job_id=$(awk -F'/' '/pending-jobs/{print $(NF-1)}' $ipxe_script)
+		nr_nic=$(awk -F'=' '/^# nr_nic=/{print $2}' $ipxe_script)
+	}
 
-	mac_arr[1]=$mac
 	nr_nic=${nr_nic:-1}
 
 	if [ "$nr_nic" -gt 5 ]; then
 		echo "nr_nic is greater than 5. set nr_nic=5."
 		nr_nic=5
 	fi
-
-	[ "$nr_nic" -ge "2" ] || return
-	for i in $(seq 2 $nr_nic)
-	do
-		mac=$(echo $hostname$i | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/0a-\1-\2-\3-\4-\5/')
-		mac_arr[$i]=$mac
-	done
 }
 
 set_nic()
 {
-    for i in $(seq 1 $nr_nic)
-    do
-		br="br0"
-		[ -f "/sys/class/net/${br}/address" ] || continue
-		nic[$i]="-nic tap,model=virtio-net-pci,helper=${helper},br=${br},mac=${mac_arr[$i]}"
-    done
-}
+	local br="br0"
+	[ -f "/sys/class/net/${br}/address" ] || return
 
-set_device()
-{
-	device="virtio-net-device,netdev=net0,mac=${mac}"
-}
-
-set_netdev()
-{
-	netdev="bridge,br=br0,id=net0,helper=${helper}"
+	netdev="-netdev bridge,br=br0,id=net0,helper=${helper}"
+	for i in $(seq 1 $nr_nic)
+	do
+		nic[$i]="-nic tap,model=virtio-net-pci,helper=${helper},br=${br}"
+	done
 }
 
 set_qemu()
@@ -316,32 +322,33 @@ set_qemu()
 	check_qemu
 }
 
-print_message()
+show_kernel_info()
 {
-	log_info SCHED_PORT: $SCHED_PORT | tee -a $log_file
 	log_info kernel: $kernel | tee -a $log_file
 	log_info initrds: $initrds | tee -a $log_file
 	log_info append: $append | tee -a $log_file
-	[ "$DEBUG" == "true" ] || log_info less $log_file
-
-	sleep 5
+	[ -z "$DEBUG" ] && log_info less $log_file
 }
 
-public_option()
+common_option()
 {
 	kvm=(
 		$qemu_prefix
 		$qemu
+		-enable-kvm
 		-name guest=$hostname,process=$job_id
 		-kernel $kernel
-		-initrd concatenated-initrd
+		-initrd concatenated-initrd.cgz
 		-smp $nr_cpu
 		-m $memory
 		-rtc base=localtime
 		-k en-us
-		-virtfs local,path=$host_dir/result_root,mount_tag=9p/result_root,security_model=none,id=$job_id/result_root
+		-virtfs local,path=$host_dir/result_root,mount_tag=9p/result_root,security_model=none,id=result_root.$job_id
+		-netdev user,id=net0 -device virtio-net,netdev=net0
+		-netdev user,id=net1 -device e1000,netdev=net1
+		${netdev}
+		${nic[@]}
 		-no-reboot
-		-nographic
 		-monitor null
 		-serial stdio
 		-serial unix:$host_dir/qemu-console.sock,server=on,wait=off
@@ -357,51 +364,41 @@ cache_option()
 	case "$os" in
 		debian|ubuntu)
 			mkdir -p $CACHE_DIR/$osv/archives
-			mkdir -p $CACHE_DIR/$osv/list
-			kvm+=(-virtfs local,path=$CACHE_DIR/$osv/archives,mount_tag=9p/package_cache,security_model=none,id=$job_id/package_cache)
-			kvm+=(-virtfs local,path=$CACHE_DIR/$osv/lists,mount_tag=9p/package_cache_index,security_model=none,id=$job_id/package_cache)
+			mkdir -p $CACHE_DIR/$osv/lists
+			kvm+=(-virtfs local,path=$CACHE_DIR/$osv/archives,mount_tag=9p/package_cache,security_model=mapped-xattr,id=package_cache.$job_id)
+			kvm+=(-virtfs local,path=$CACHE_DIR/$osv/lists,mount_tag=9p/package_cache_index,security_model=mapped-xattr,id=package_cache_index.$job_id)
 			;;
 		openeuler|centos|rhel|fedora)
 			mkdir -p $CACHE_DIR/$osv
-			kvm+=(-virtfs local,path=$CACHE_DIR/$osv,mount_tag=9p/package_cache,security_model=none,id=$job_id/package_cache)
+			kvm+=(-virtfs local,path=$CACHE_DIR/$osv,mount_tag=9p/package_cache,security_model=mapped-xattr,id=package_cache.$job_id)
 			;;
 	esac
 }
 
-individual_option()
+arch_option()
 {
 	case "$qemu" in
 		qemu-system-aarch64)
 			arch_option=(
 					-machine virt-4.0,accel=kvm,gic-version=3
 					-cpu Kunpeng-920
-					-bios $bios
-					${nic[@]}
 			)
 			;;
 		qemu-kvm)
 			[ "$(arch)" == "aarch64" ] && arch_option=(
 					-machine virt-4.0,accel=kvm,gic-version=3
 					-cpu Kunpeng-920
-					-bios $bios
-					${nic[@]}
 			)
 			[ "$(arch)" == "x86_64" ] && arch_option=(
-					-bios $bios
-					${nic[@]}
 			)
 			;;
 		qemu-system-x86_64)
 			arch_option=(
-					-bios $bios
-					${nic[@]}
 			)
 			;;
 		qemu-system-riscv64)
 			arch_option=(
 					-machine virt
-					-device $device
-					-netdev $netdev
 			)
 			;;
 		*)
@@ -409,6 +406,22 @@ individual_option()
 			exit
 			;;
 	esac
+
+	case "$(arch)" in
+		aarch64)
+			bios=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
+			;;
+		x86_64)
+			bios=/usr/share/ovmf/OVMF.fd
+			;;
+	esac
+
+	[ -n "$bios" ] && [ -e "$bios" ] && arch_option+=(-bios $bios)
+}
+
+debug_option()
+{
+	[ -z "$DEBUG" ] && kvm+=(-nographic)
 }
 
 watch_oops()
@@ -420,9 +433,64 @@ watch_oops()
 	}
 }
 
+show_qemu_cmd()
+{
+    # Helper function to format arrays
+    format_array() {
+        local array_name="$1"
+        shift
+        local array=("$@")
+        local i=0
+        local output=()
+
+        echo "# Define the $array_name array"
+        echo "$array_name=("
+        while [ $i -lt ${#array[@]} ]; do
+            # Check if the current item starts with a dash (indicating an option)
+            if [[ "${array[$i]}" == -* ]]; then
+                # Start a new line with the option
+                output+=("    ${array[$i]}")
+                ((i++))
+                # Append subsequent items until the next option or end of array
+                while [ $i -lt ${#array[@]} ] && [[ "${array[$i]}" != -* ]]; do
+                    output[-1]+=" ${array[$i]}"
+                    ((i++))
+                done
+            else
+                # If it's not an option, treat it as a standalone item
+                output+=("    ${array[$i]}")
+                ((i++))
+            fi
+        done
+        # Print the formatted array
+        for line in "${output[@]}"; do
+            echo "$line"
+        done
+        echo ")"
+    }
+
+    # Generate kvm array
+    format_array "kvm" "${kvm[@]}"
+
+    echo ""
+
+    # Generate arch_option array
+    format_array "arch_option" "${arch_option[@]}"
+
+    echo ""
+
+    echo "# Define the append variable"
+    echo "append=\"$append\""
+
+    echo ""
+
+    echo "# Reconstruct the full command"
+    echo '"${kvm[@]}" "${arch_option[@]}" --append "${append}"'
+}
+
 run_qemu()
 {
-	if [ "$DEBUG" == "true" ];then
+	if [ -n "$DEBUG" ];then
 		"${kvm[@]}" "${arch_option[@]}" --append "${append}"
 	else
 		# The default value of serial in QEMU is stdio.
@@ -436,41 +504,36 @@ run_qemu()
 
 set_options()
 {
-	set_bios
 	set_helper
-	set_mac
+	set_nr_nic
 	set_nic
-	set_device
-	set_netdev
 	set_qemu
 }
 
 write_dmesg_flag()
 {
 	if [ "$1" == "start" ];then
-		log_info "starting QEMU: $hostname" | tee $log_file
+		log_info "starting QEMU: $hostname" >> $log_file
 		cat $ipxe_script >> ${log_file}
 		vm_start_time=$(date "+%s")
 	else
 		vm_end_time=$(date "+%s")
-		log_info "Total QEMU duration:  $(( ($vm_end_time - $vm_start_time) / 60 )) minutes" | tee -a $log_file
+		log_info "Total QEMU duration:  $(( ($vm_end_time - $vm_start_time) / 60 )) minutes" >> $log_file
 	fi
 }
 
-check_logfile
 ipxe_script=ipxe_script
 
 check_kernel
 check_initrds
+show_kernel_info
 
 set_options
-
-print_message
-
-public_option
+common_option
+arch_option
 cache_option
+debug_option
 add_disk
-individual_option
 
 set -m
 watch_oops &
@@ -478,6 +541,7 @@ watch_oops &
 JOB_DONE_FIFO_PATH=/tmp/job_completion_fifo
 echo "boot: $job_id" >> $JOB_DONE_FIFO_PATH
 write_dmesg_flag 'start'
+show_qemu_cmd >> $log_file
 run_qemu
 write_dmesg_flag 'end'
 kill %1
