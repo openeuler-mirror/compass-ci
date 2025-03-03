@@ -320,7 +320,7 @@ module Scheduler
 
   post "/scheduler/v1/jobs/wait" do |env|
     env.response.content_type = "application/json"
-    Sched.instance.api_wait_jobs(env).to_json
+    Sched.instance.api_wait_jobs(env).to_pretty_json
   end
 
   # Endpoint to handle job updates via POST (since `busybox wget` only supports GET/POST)

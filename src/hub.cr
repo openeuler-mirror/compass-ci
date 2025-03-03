@@ -10,13 +10,30 @@ class WebSocketSession
   property socket : HTTP::WebSocket
   property env : HTTP::Server::Context
   property sid : Int64
+  property key : String
   property created_at : Time = Time.utc
 
   @@last_sid : Int64 = 0
 
-  def initialize(@type, @socket, @env)
+  def initialize(@type, @socket, @env, key = nil)
     @sid = @@last_sid
     @@last_sid += 1
+    if key
+      @key = key
+    else
+      @key = remote_ip_address(@env)
+    end
+  end
+
+  private def remote_ip_address(env : HTTP::Server::Context) : String
+    # Safely extract the remote IP address from the request headers or connection info
+    if forwarded_for = env.request.headers["X-Forwarded-For"]?
+      # Use the first IP in the X-Forwarded-For header (if present)
+      forwarded_for.split(",").first.strip
+    else
+      # Fallback to the direct remote address
+      env.request.remote_address.to_s
+    end
   end
 
   def closed? : Bool
@@ -26,7 +43,7 @@ class WebSocketSession
   # Safe message sending with error handling
   def send(message : String) : Bool
     if closed?
-      Log.warn { "Cannot send message to closed session #{sid}" }
+      Log.warn { "Cannot send message to closed session #{sid} #{key}" }
       return false
     end
 
@@ -34,7 +51,11 @@ class WebSocketSession
       @socket.send(message)
       return true
     rescue ex : IO::Error
-      Log.error(exception: ex) { "Failed to send message to session #{sid}" }
+      Log.error(exception: ex) { "Failed to send message to session #{sid} #{key}" }
+      if type == SessionType::Client
+        Log.info { "Auto closing client session #{sid}" }
+        Sched.instance.client_sessions.delete sid
+      end
       return false
     end
   end
@@ -243,6 +264,8 @@ class Sched
     # Process get_fields
     waited_job = Hash(String, String).new
     waited_job["job_stage"] = cjob.job_stage
+    waited_job["job_health"] = cjob.job_health if cjob.has_key? "job_health"
+    waited_job["job_data_readiness"] = cjob.job_data_readiness if cjob.has_key? "job_data_readiness"
     waited_jobs = wait_spec["waited_jobs"] ||= HashHH.new
     waited_jobs[job_id_str] = waited_job
     if wait_options = wait_spec["wait_options"]?
@@ -262,6 +285,8 @@ class Sched
           cjob.idata_readiness >= JOB_DATA_READINESS_NAME2ID["incomplete"] ||
           cjob.ihealth >= JOB_HEALTH_NAME2ID["cancel"])
         wait_spec.delete("wait_on")
+        wait_options["fail_fast"] = {"failed_job" => job_id_str}
+        wait_spec
         return :fail_fast
       end
     end
@@ -441,7 +466,7 @@ class Sched
       return "Missing host parameter"
     end
 
-    session = WebSocketSession.new(WebSocketSession::SessionType::Provider, socket, env)
+    session = WebSocketSession.new(WebSocketSession::SessionType::Provider, socket, env, host)
 
     # Close existing connection if present
     @provider_sessions[host]?.try(&.socket.close)

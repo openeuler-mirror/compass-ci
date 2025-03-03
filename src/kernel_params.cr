@@ -198,8 +198,13 @@ class JobHash
     osimage_dir = "#{SRV_INITRD}/osimage/#{os_dir}"
     temp_initrds << "#{initrd_http_prefix}" +
                     JobHelper.service_path("#{osimage_dir}/current")
-    temp_initrds << "#{initrd_http_prefix}" +
+
+    if File.exists? "#{FILE_STORE}/busybox/busybox-static-#{self.arch}.cgz"
+      temp_initrds << "#{sched_http_prefix}/srv/file-store/busybox/busybox-static-#{self.arch}.cgz"
+    elsif File.exists? "#{osimage_dir}/run-ipconfig.cgz"
+      temp_initrds << "#{initrd_http_prefix}" +
                     JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
+    end
 
     temp_initrds.concat(self.initrd_deps)
     temp_initrds.concat(self.initrd_pkgs)
