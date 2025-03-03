@@ -37,6 +37,10 @@ class Job
         no_file_store << path if path.is_a?(String)
         next
       end
+
+      # these cgz will be created by jobs auto submit by pkgbuild.cr
+      next if path =~ /^ss\/pkgbuild\//
+
       no_file_store << path
     end
 
