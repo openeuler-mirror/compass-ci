@@ -15,6 +15,7 @@ class QemuManager
 
   def initialize(message)
     validate_environment_variables
+    @message = message
     @hostname = message["hostname"].to_s
     @ipxe_script = message['ipxe_script'].to_s
     @job_id = message['job_id'].to_s
@@ -180,7 +181,7 @@ class QemuManager
   def load_job_metadata
     # Load the original job.yaml file
     job_data = YAML.safe_load(File.read('lkp/scheduled/job.yaml'))
-    
+
     env = job_data.delete('hw') || {}
 
     %w[nr_cpu memory os osv].each do |k|
@@ -203,6 +204,7 @@ class QemuManager
       end
     end
 
+    env_vars["cache_dirs"] = @message["cache_dirs"] if @message.include? "cache_dirs"
     env_vars.merge(
       'job_id' => @job_id,
       'append' => @append,

@@ -39,6 +39,7 @@ NR_CPU = Etc.nprocessors
 NR_DISKS = count_disks_sys_block
 
 BASE_DIR = Process.uid.zero? ? "/var/lib/docker/compass-ci" : "#{ENV['HOME']}/.cache/compass-ci"
+CACHE_LOCK_ROOT = "#{BASE_DIR}/.locks"
 
 class MultiQemuDocker
   DEFAULT_OPTIONS = {
@@ -76,6 +77,7 @@ class MultiQemuDocker
     @fifo_thread = start_fifo_listener
     @reconnect_attempts = 0
     @container_runtime = `command -v podman || command -v docker`.chomp
+    @cache_dirs = []
   end
 
   def setup_directories
@@ -84,8 +86,11 @@ class MultiQemuDocker
     FileUtils.mkdir_p(ENV["JOBS_DIR"] = "#{BASE_DIR}/provider/jobs")
     FileUtils.mkdir_p(ENV["PIDS_DIR"] = "#{BASE_DIR}/provider/pids")
     FileUtils.mkdir_p(ENV["LOGS_DIR"] = "#{BASE_DIR}/provider/logs")
-    FileUtils.mkdir_p(ENV["CACHE_DIR"] = "#{BASE_DIR}/provider/cache")
     FileUtils.mkdir_p(ENV["DOWNLOAD_DIR"] = "#{BASE_DIR}/provider/download")
+    File.umask(0000)
+    FileUtils.mkdir_p(CACHE_LOCK_ROOT)
+    FileUtils.mkdir_p(ENV["CACHE_DIR"] = "#{BASE_DIR}/provider/cache")
+    FileUtils.mkdir_p(ENV["PACKAGE_CACHE_DIR"] = "#{BASE_DIR}/provider/pkgcache")
   end
 
   def update_options
@@ -243,6 +248,7 @@ class MultiQemuDocker
           @reconnect_attempts = 0
           send_status
           start_heartbeat
+          start_cache_reclaim
           start_mem_monitoring
         end
 
@@ -344,6 +350,7 @@ class MultiQemuDocker
       tbox_type: @options[:tbox_type],
       is_remote: @options[:is_remote],
       tags: @options[:tags],
+      cache_dirs: @cache_dirs,
 
       services: { # must be string values
         sched_host: SCHED_HOST,
@@ -374,6 +381,17 @@ class MultiQemuDocker
   # report status every 10 seconds
   def start_heartbeat
     EM.add_periodic_timer(HEARTBEAT_INTERVAL) { send_status }
+  end
+
+  def start_cache_reclaim
+    EM.add_periodic_timer(24*3600) { reclaim_cache_dirs(ENV["CACHE_DIR"], ENV["PACKAGE_CACHE_DIR"]) }
+    EM.add_periodic_timer(3600) {
+      reclaim_stale_locks(CACHE_LOCK_ROOT)
+
+      base_cache_dir = ENV["CACHE_DIR"]
+      full_cache_dirs = collect_cache_dirs(base_cache_dir, false)
+      @cache_dirs = full_cache_dirs.map { |dir| dir.remove_prefix("#{base_cache_dir}/") }
+    }
   end
 
   def start_mem_monitoring

@@ -49,6 +49,7 @@ class Sched
     response["osv"] = "#{job["osv"]}"
     response["result_root"] = "#{job["result_root"]}"
     response["job_token"] = "#{job["job_token"]}"
+    response["cache_dirs"] = job.cache_dirs.join(" ") if job.hash_array.has_key? "cache_dirs"
     if cpu = job.hw.not_nil!.["nr_cpu"]?
       response["nr_cpu"] = cpu
     end

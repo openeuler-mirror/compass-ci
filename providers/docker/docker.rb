@@ -66,8 +66,7 @@ class DockerManager
     docker_image = @message['docker_image']
     system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
     cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock = load_package_optimization_strategy
-    exec(
-      { 'job_id' => @message['job_id'],
+    env =  { 'job_id' => @message['job_id'],
         'cpu_minimum' => "#{cpu_minimum}",
         'memory_minimum' => "#{memory_minimum}",
         'bin_shareable' => "#{bin_shareable}",
@@ -81,9 +80,10 @@ class DockerManager
         'osv' => @message['osv'],
         'result_root' => @message['result_root'],
         'host_dir' => @host_dir,
-        'log_file' => @log_file },
-      ENV['CCI_SRC'] + '/providers/docker/run.sh'
-    )
+        'log_file' => @log_file,
+    }
+    env["cache_dirs"] = @message["cache_dirs"] if @message.include? "cache_dirs"
+    exec(env, ENV['CCI_SRC'] + '/providers/docker/run.sh')
   end
 
 end

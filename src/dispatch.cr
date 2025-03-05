@@ -27,15 +27,19 @@ struct HostRequest
 
   property is_remote : Bool
   property tags : Set(String)
+  property cache_dirs : Set(String)
   property freemem : UInt32 # unit: MB, duplicates metrics.freemem for fast access
 
   property metrics : Hash(String, UInt32)
   property services : Hash(String, String)
   property disk_max_used_string : String
 
+  # HW box will call HostRequest.new
+  # VM/Container providers will send JSON and init members from HostRequest.from_json
   def initialize(@arch, @hostname, @tbox_type, tags, @freemem, @is_remote, sched_host, sched_port)
     set_host_keys
     @tags = Set(String).new tags.split(",")
+    @cache_dirs = Set(String).new
 
     @disk_max_used_string = ""
     @metrics = Hash(String, UInt32).new
@@ -87,6 +91,7 @@ class Sched
 
   # key: hostname
   property hostkey_sequence = Hash(String, Array(String)).new
+  property hostkey_sequence_round : Int32 = 0
 
   # queues enjoy "green channel", where jobs will be dispatched first when present
   GREEN_QUEUES = ["cluster", "vip", "single-build", "bisect"]
@@ -247,8 +252,22 @@ class Sched
   end
 
   private def match_job_to_host(job : JobHash, host_req : HostRequest) : Bool
-    # job.schedule_tags.subset_of?(host_req.tags) &&
-    job.schedule_memmb <= host_req.freemem
+    return false unless job.schedule_memmb <= host_req.freemem
+    return false unless job.schedule_tags.subset_of?(host_req.tags)
+
+    if job.hash_array.has_key? "cache_dirs"
+      return true if job.cache_dirs.any? { |d| host_req.cache_dirs.includes? d }
+      if job.schedule_round != 0
+        job.schedule_round = @hostkey_sequence_round
+      elsif
+        # give up cache affinity after 1 round
+        job.schedule_round != @hostkey_sequence_round
+        job.hash_array.delete "cache_dirs"
+      end
+      return false
+    end
+
+    return true
   end
 
   # Deterministically interleaves users based on their weights to create an
@@ -403,6 +422,7 @@ class Sched
     # If no sequence exists, create one based on host_keys and their weights from @nr_jobs_by_hostkey
     return nil if host_keys.empty? # No host_keys available
 
+    @hostkey_sequence_round += 1
     # Store the sequence for future use
     @hostkey_sequence[host_machine] = Sched.generate_interleaved_sequence(host_keys, @nr_jobs_by_hostkey)
     # @log.debug { "generate_interleaved_sequence #{@hostkey_sequence[host_machine]}" }

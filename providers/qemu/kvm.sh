@@ -36,7 +36,7 @@ check_env_var "osv"
 check_env_var "rootfs_disk"
 
 # multi-qemu-docker set env vars
-check_env_var "CACHE_DIR"
+check_env_var "PACKAGE_CACHE_DIR"
 check_env_var "CCI_SRC"
 check_env_var "LKP_SRC"
 check_env_var "PIDS_DIR"
@@ -363,16 +363,18 @@ cache_option()
 	[ -n "$ENABLE_PACKAGE_CACHE" ] &&
 	case "$os" in
 		debian|ubuntu)
-			mkdir -p $CACHE_DIR/$osv/archives
-			mkdir -p $CACHE_DIR/$osv/lists
-			kvm+=(-virtfs local,path=$CACHE_DIR/$osv/archives,mount_tag=9p/package_cache,security_model=mapped-xattr,id=package_cache.$job_id)
-			kvm+=(-virtfs local,path=$CACHE_DIR/$osv/lists,mount_tag=9p/package_cache_index,security_model=mapped-xattr,id=package_cache_index.$job_id)
+			mkdir -p $PACKAGE_CACHE_DIR/$osv/archives
+			mkdir -p $PACKAGE_CACHE_DIR/$osv/lists
+			kvm+=(-virtfs local,path=$PACKAGE_CACHE_DIR/$osv/archives,mount_tag=9p/package_cache,security_model=mapped-xattr,id=package_cache.$job_id)
+			kvm+=(-virtfs local,path=$PACKAGE_CACHE_DIR/$osv/lists,mount_tag=9p/package_cache_index,security_model=mapped-xattr,id=package_cache_index.$job_id)
 			;;
 		openeuler|centos|rhel|fedora)
-			mkdir -p $CACHE_DIR/$osv
-			kvm+=(-virtfs local,path=$CACHE_DIR/$osv,mount_tag=9p/package_cache,security_model=mapped-xattr,id=package_cache.$job_id)
+			mkdir -p $PACKAGE_CACHE_DIR/$osv
+			kvm+=(-virtfs local,path=$PACKAGE_CACHE_DIR/$osv,mount_tag=9p/package_cache,security_model=mapped-xattr,id=package_cache.$job_id)
 			;;
 	esac
+
+	[ -n "$cache_dirs" ] && kvm+=(-virtfs local,path=$CACHE_DIR,mount_tag=9p/cache,security_model=mapped-xattr,id=cache.$job_id)
 }
 
 arch_option()

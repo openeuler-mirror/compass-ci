@@ -127,16 +127,18 @@ fi
 [ -n "$ENABLE_PACKAGE_CACHE" ] &&
 case "$os" in
 	debian|ubuntu)
-		mkdir -p $CACHE_DIR/$osv/archives
-		mkdir -p $CACHE_DIR/$osv/lists
-		cmd+=(-v "$CACHE_DIR/$osv/archives:/var/cache/apt/archives")
-		cmd+=(-v "$CACHE_DIR/$osv/lists:/var/lib/apt/lists")
+		mkdir -p $PACKAGE_CACHE_DIR/$osv/archives
+		mkdir -p $PACKAGE_CACHE_DIR/$osv/lists
+		cmd+=(-v "$PACKAGE_CACHE_DIR/$osv/archives:/var/cache/apt/archives")
+		cmd+=(-v "$PACKAGE_CACHE_DIR/$osv/lists:/var/lib/apt/lists")
 		;;
 	openeuler|centos|rhel|fedora)
-		mkdir -p $CACHE_DIR/$osv
-		cmd+=(-v "$CACHE_DIR/$osv:/var/cache/dnf")
+		mkdir -p $PACKAGE_CACHE_DIR/$osv
+		cmd+=(-v "$PACKAGE_CACHE_DIR/$osv:/var/cache/dnf")
 		;;
 esac
+
+[ -n "$cache_dirs" ] && cmd+=(-v "$CACHE_DIR:/srv/cache")
 
 record_startup_log() {
     # Capture the current timestamp in the desired format

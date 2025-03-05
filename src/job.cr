@@ -144,6 +144,7 @@ class JobHash
   property schedule_tags = Set(String).new
   property schedule_memmb : UInt32 = 0u32
   property schedule_priority : Int8 = 0
+  property schedule_round : Int32 = 0
 
   # ES uses string id, so add in-memory id64 for convenience
   property id64 : Int64 = 0
@@ -1370,7 +1371,44 @@ class Job < JobHash
   end
 
   private def check_fields_format
-    return
+    validate_cache_dirs
+  end
+
+  private def validate_cache_dirs
+    # Check for incorrect keys and raise appropriate errors
+    if @hash_any.has_key?("cache_dirs")
+      raise "Job Format Error: 'cache_dirs' should be an array"
+    end
+
+    if @hash_any.has_key?("cache_dir")
+      raise "Job Format Error: 'cache_dir' may be a spelling error, use 'cache_dirs' instead"
+    end
+
+    # Exit if 'cache_dirs' key is not present in @hash_array
+    return unless @hash_array.has_key?("cache_dirs")
+
+    # Validate each directory path in 'cache_dirs'
+    self.cache_dirs.each do |dir|
+      # Ensure the directory path starts with the correct prefix
+      unless dir.starts_with?(/^[0-3]-/)
+        raise "Job Format Error: cache_dirs '#{dir}' must begin with a prefix in the format '0-', '1-', '2-', or '3-'"
+      end
+
+      # Ensure the directory path does not end with a slash
+      if dir.ends_with?('/')
+        raise "Job Format Error: cache_dirs '#{dir}' must not end with a '/'"
+      end
+
+      # Ensure the directory path does not contain '..' to prevent directory traversal
+      if dir.includes?("..")
+        raise "Job Format Error: cache_dirs '#{dir}' must not contain '..' to prevent directory traversal"
+      end
+
+      # Ensure the directory path is a valid path name
+      unless dir =~ /^[a-zA-Z0-9\/%@=._-]+$/
+        raise "Job Format Error: cache_dirs '#{dir}' is not a valid path name"
+      end
+    end
   end
 
   private def check_run_time
