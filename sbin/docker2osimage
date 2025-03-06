@@ -2,25 +2,36 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2025 Huawei Technologies Co., Ltd. All rights reserved.
 
+# pull native arch latest, to workaround podman problem
+# that uses the last pull for current machine
+case $(arch) in
+    x86_64)
+        common_archs="arm64 amd64"
+        ;;
+    aarch64)
+        common_archs="amd64 arm64"
+        ;;
+esac
+
 # OS list format: docker-image multiple architectures
 OS_LIST=(
-    "openeuler/openeuler:24.09 amd64 arm64"
-    "openeuler/openeuler:24.03 amd64 arm64"
-    "openeuler/openeuler:22.03 amd64 arm64"
-    "openeuler/openeuler:20.03 amd64 arm64"
+    "openeuler/openeuler:24.09 $common_archs"
+    "openeuler/openeuler:24.03 $common_archs"
+    "openeuler/openeuler:22.03 $common_archs"
+    "openeuler/openeuler:20.03 $common_archs"
 
-    "opensuse/leap:15.6 amd64"
+    "opensuse/leap:15.6 $common_archs"
 
-    "fedora:42 amd64 arm64"
-    "centos:9 amd64 arm64"
-    "rockylinux:9 amd64 arm64"
+    "debian:12 $common_archs"
+    "ubuntu:24.04 $common_archs"
 
-    "debian:12 amd64 arm64"
-    "ubuntu:24.04 amd64 arm64"
+    "fedora:42 $common_archs"
+    "centos:9 $common_archs"
+    "rockylinux:9 $common_archs"
 
-    "alpine:3.21 amd64 arm64"
+    "alpine:3.21 $common_archs"
 
-    "archlinux:latest amd64 arm64"
+    "archlinux:latest $common_archs"
 )
 
 usage() {
@@ -177,6 +188,10 @@ for entry in "${OS_LIST[@]}"; do
         log_message "Initrd created successfully: '$OUTPUT_DIR/$OUTPUT_FILE'"
     done
 done
+
+# remove dangling ones
+# $CONTAINER_RUNTIME images -f "dangling=true"
+$CONTAINER_RUNTIME image prune -f
 
 log_message "All tasks completed. Output files are in '$OUTPUT_DIR'."
 
