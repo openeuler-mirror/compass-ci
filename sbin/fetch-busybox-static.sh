@@ -168,7 +168,8 @@ convert_symlinks() {
 log_message "Starting BusyBox static binary fetch and packaging..."
 
 # List of architectures to fetch
-ARCHS=("amd64" "arm64" "i386" "ppc64el" "s390x" "armhf" "mips64el" "mipsel" "riscv64")
+ARCHS=("i386" "ppc64el" "s390x" "armhf" "mips64el" "mipsel")
+ARCHS=("amd64" "arm64" "riscv64")
 
 for arch in "${ARCHS[@]}"; do
     fetch_and_package_busybox "$arch"

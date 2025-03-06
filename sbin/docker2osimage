@@ -2,6 +2,34 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2025 Huawei Technologies Co., Ltd. All rights reserved.
 
+# OS list format: docker-image multiple architectures
+OS_LIST=(
+    "openeuler/openeuler:24.09 amd64 arm64"
+    "openeuler/openeuler:24.03 amd64 arm64"
+    "openeuler/openeuler:22.03 amd64 arm64"
+    "openeuler/openeuler:20.03 amd64 arm64"
+
+    "opensuse/leap:15.6 amd64"
+
+    "fedora:42 amd64 arm64"
+    "centos:9 amd64 arm64"
+    "rockylinux:9 amd64 arm64"
+
+    "debian:12 amd64 arm64"
+    "ubuntu:24.04 amd64 arm64"
+
+    "alpine:3.21 amd64 arm64"
+
+    "archlinux:latest amd64 arm64"
+)
+
+usage() {
+    echo "Usage: $0 [--os <os_name>] [--help]"
+    echo "  --os <os_name>   Specify the OS to process (e.g., 'alpine:3.21')"
+    echo "  --help           Display this help message"
+    exit 1
+}
+
 # Detect container runtime
 CONTAINER_RUNTIME=$(command -v podman || command -v docker)
 [ -n "$CONTAINER_RUNTIME" ] || {
@@ -43,35 +71,6 @@ map_architecture() {
         amd64) echo "x86_64" ;;
         *) echo "$1" ;; # Default to the input if no mapping exists
     esac
-}
-
-# New OS list format with multiple architectures per image
-OS_LIST=(
-    "openeuler/openeuler:24.09 amd64 arm64"
-    "openeuler/openeuler:24.03 amd64 arm64"
-    "openeuler/openeuler:22.03 amd64 arm64"
-    "openeuler/openeuler:20.03 amd64 arm64"
-
-    "opensuse/leap:15.6 amd64"
-
-    "fedora:42 amd64 arm64"
-    "centos:9 amd64 arm64"
-    "rockylinux:9 amd64 arm64"
-
-    "debian:12 amd64 arm64"
-    "ubuntu:24.04 amd64 arm64"
-
-    "alpine:3.21 amd64 arm64"
-
-    "archlinux:latest amd64 arm64"
-)
-
-# Function to display usage
-usage() {
-    echo "Usage: $0 [--os <os_name>] [--help]"
-    echo "  --os <os_name>   Specify the OS to process (e.g., 'alpine:3.21')"
-    echo "  --help           Display this help message"
-    exit 1
 }
 
 # Parse command-line arguments
@@ -180,3 +179,5 @@ for entry in "${OS_LIST[@]}"; do
 done
 
 log_message "All tasks completed. Output files are in '$OUTPUT_DIR'."
+
+# vim:set ts=4 sw=4 et:

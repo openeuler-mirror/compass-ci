@@ -1,14 +1,9 @@
 scheduler:
-	crystal build -o sbin/scheduler src/scheduler.cr
+	cd src && make
+
+install:
+	sbin/install-dependencies.sh
+	cd src && shards install
+
 ctags:
 	ctags -R --links=no --langmap=ruby:.rb.cr
-
-install-depends:
-	sudo apt-get install crystal shards
-	cd src && shards install
-delimiter:
-	crystal build -o sbin/delimiter src/delimiter.cr
-updaterepo:
-	crystal build -o sbin/updaterepo src/updaterepo.cr
-post-extract:
-	crystal build -o sbin/post-extract src/post-extract.cr
