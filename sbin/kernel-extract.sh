@@ -64,11 +64,13 @@ process_kernel_files() {
     # Package modules
     local modules_dir="$temp_dir/usr/lib/modules/$kernel_version"
     if [[ -d "$modules_dir" ]]; then
+        convert_zstd "$modules_dir"
         (cd "$temp_dir" && { echo usr; find "usr/lib"; } | cpio -o -H newc | gzip -9 > "$target_dir/modules-$kernel_version.cgz")
     else
         # Package modules into cpio.gz
         local modules_dir="$temp_dir/lib/modules/$kernel_version"
         if [[ -d "$modules_dir" ]]; then
+            convert_zstd "$modules_dir"
             (cd "$temp_dir" && { find "lib"; } | cpio -o -H newc | gzip -9 > "$target_dir/modules-$kernel_version.cgz")
         fi
     fi
@@ -85,6 +87,59 @@ process_kernel_files() {
         local usr_dirs=$(show_exist_dirs usr/bin usr/sbin usr/lib usr/lib64 usr/libexec usr/share etc)
         (cd "$temp_dir" && { echo usr; find $usr_dirs; } | cpio -o -H newc | gzip -9 > "$target_dir/tools-$kernel_version.cgz")
     fi
+}
+
+# opensuse has ko.zst, however has no zstd tool in docker userland
+# convert them to ko.xz, which can be handled by busybox xz
+convert_zstd() {
+    local modules_dir="$1"
+
+    # Check if the directory exists
+    if [ ! -d "$modules_dir" ]; then
+        echo "Error: Directory '$modules_dir' does not exist."
+        return 1
+    fi
+
+    # Step 1: Update modules.dep to replace .ko.zst with .ko.xz
+    local modules_dep="$modules_dir/modules.dep"
+    if [ -f "$modules_dep" ]; then
+        grep -q -F '.ko.zst:' "$modules_dep" || return 0
+
+        echo "Updated $modules_dep from .ko.zst to .ko.xz"
+        sed -i 's/\.ko\.zst/.ko.xz/g' "$modules_dep"
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to update $modules_dep."
+            return 1
+        fi
+    else
+        echo "Warning: $modules_dep not found. Skipping update."
+    fi
+
+    # Step 2: Recursively find and process *.ko.zst files
+    find "$modules_dir" -type f -name '*.ko.zst' | while read -r zst_file; do
+        # echo "Processing $zst_file..."
+
+        # Uncompress .zst file
+        zstd -qd "$zst_file" -o "${zst_file%.zst}"
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to uncompress $zst_file."
+            return 1
+        fi
+
+        # Compress to .xz file
+        xz "${zst_file%.zst}"
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to compress ${zst_file%.zst} to .xz."
+            return 1
+        fi
+
+        # Remove the original .zst file
+        rm "$zst_file"
+        # echo "Converted $zst_file to ${zst_file%.zst}.xz"
+    done
+
+    # echo "Conversion completed successfully."
+    return 0
 }
 
 extract_rpm() {
