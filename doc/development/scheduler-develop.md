@@ -103,7 +103,7 @@ rsync -av crystal:/srv/file-store ~/.cache/compass-ci/
 #### Method B: Build Locally
 ```bash
 # Edit OS_LIST first to select desired OS versions
-vim sbin/fetch-kernel-packages.sh
+vim sbin/kernel-boot2os.sh
 vim sbin/docker2osimage
 
 # Build kernel packages
