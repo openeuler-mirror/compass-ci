@@ -82,28 +82,30 @@ class Job
   end
 
   def handle_missing_commit(lkp_src : String, commit : String) : String?
-    puts "Commit #{commit} does not exist. Attempting to pull latest changes..."
-    pull_status = Process.run("git", args: ["-C", lkp_src, "pull"])
+      puts "Commit #{commit} does not exist. Attempting to pull latest changes..."
+      @@git_pull_mutex.synchronize do
+        pull_status = Process.run("git", args: ["-C", lkp_src, "pull"])
 
-    unless pull_status.success?
-      puts "Failed to pull latest changes from the repository."
-      return nil
-    end
-
-    unless commit_exists?(lkp_src, commit)
-      puts "Commit #{commit} still does not exist after pulling."
-      head_commit = get_head_commit(lkp_src)
-      unless head_commit
-        puts "Failed to retrieve the latest head commit."
-        return nil
+        unless pull_status.success?
+          puts "Failed to pull latest changes from the repository."
+          return nil
+        end
       end
 
-      # Inform the client to re-submit base+delta based on the new head_commit
-      commit_date = get_commit_date(lkp_src, head_commit) # Format: YYYY-MM-DD
-      return "lkp_src/base/#{commit_date}/#{head_commit}.cgz"
-    end
+      unless commit_exists?(lkp_src, commit)
+        puts "Commit #{commit} still does not exist after pulling."
+        head_commit = get_head_commit(lkp_src)
+        unless head_commit
+          puts "Failed to retrieve the latest head commit."
+          return nil
+        end
 
-    nil
+        # Inform the client to re-submit base+delta based on the new head_commit
+        commit_date = get_commit_date(lkp_src, head_commit) # Format: YYYY-MM-DD
+        return "lkp_src/base/#{commit_date}/#{head_commit}.cgz"
+      end
+
+      nil
   end
 
   private def commit_exists?(repo_path : String, commit : String) : Bool

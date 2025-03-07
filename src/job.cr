@@ -6,6 +6,7 @@ require "yaml"
 require "uuid"
 require "set"
 require "any_merge"
+require "mutex"
 require "digest"
 require "base64"
 
@@ -132,6 +133,8 @@ def add2hh(hh : HashHH, k : String, v : JSON::Any)
 end
 
 class JobHash
+  # Define a mutex to protect the git pull operation
+  @@git_pull_mutex = Mutex.new
 
   getter hash_int32 : Hash(String, Int32)
   getter hash_plain : Hash(String, String)
