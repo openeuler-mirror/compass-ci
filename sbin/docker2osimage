@@ -84,6 +84,17 @@ map_architecture() {
     esac
 }
 
+map_os_name() {
+    # handle openeuler, opensuse
+    OS_NAME=${OS_NAME%/*}
+
+    case "$OS_NAME" in
+        rockylinux)
+            OS_NAME=rocky
+            ;;
+    esac
+}
+
 # Parse command-line arguments
 SELECTED_OS=""
 for arg in "$@"; do
@@ -132,7 +143,7 @@ for entry in "${OS_LIST[@]}"; do
     OS_NAME=$(echo "$DOCKER_IMAGE" | cut -d':' -f1)
     OS_VERSION=$(echo "$DOCKER_IMAGE" | cut -d':' -f2)
 
-    OS_NAME=${OS_NAME%/*}
+    map_os_name
     log_message "Processing OS: $OS_NAME, Version: $OS_VERSION"
 
     # Process each architecture
