@@ -4,8 +4,11 @@
 require "yaml" # For parsing the config file
 require "./constants"
 
-# configuration options
-SCHEDULER_CONFIG_FILE = "/etc/compass-ci/scheduler/config.yaml" # Default config file
+# Configuration options, the first found file takes effect
+SCHEDULER_CONFIG_FILES = [
+  "#{ENV["HOME"]}/.config/compass-ci/scheduler/config.yaml",
+  "/etc/compass-ci/scheduler/config.yaml",
+]
 
 struct SchedOptions
   include YAML::Serializable

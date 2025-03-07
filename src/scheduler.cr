@@ -15,7 +15,7 @@ module Scheduler
 
   # Parse command-line options
   def self.parse_options
-    config_files = ["./scheduler-config.yaml", SCHEDULER_CONFIG_FILE]
+    config_files = SCHEDULER_CONFIG_FILES
     OptionParser.parse do |parser|
       parser.banner = "Usage: scheduler [arguments]"
 

@@ -125,13 +125,15 @@ Use three terminal sessions:
 
 ### Terminal 1: Scheduler
 ```bash
-cd compass-ci/src
-make && ../sbin/scheduler-debug
+cd compass-ci
 
-# Custom config:
-cp ../container/scheduler/scheduler-config.yaml .
-vim scheduler-config.yaml  # Make adjustments
-../sbin/scheduler-debug
+# Customize config
+mkdir -p ~/.config/compass-ci/scheduler/
+cp container/scheduler/config.yaml ~/.config/compass-ci/scheduler/config.yaml
+vim ~/.config/compass-ci/scheduler/config.yaml  # Make adjustments
+
+cd src
+make && ../sbin/scheduler-debug
 ```
 
 ### Terminal 2: Providers
