@@ -354,8 +354,6 @@ common_option()
 		-serial unix:$host_dir/qemu-console.sock,server=on,wait=off
 		-pidfile $PIDS_DIR/qemu-$hostname.pid
 	)
-
-	[ -n "$cpu_model" ] && kvm+=(-cpu "$cpu_model")
 }
 
 cache_option()
@@ -383,13 +381,11 @@ arch_option()
 		qemu-system-aarch64)
 			arch_option=(
 					-machine virt-4.0,accel=kvm,gic-version=3
-					-cpu Kunpeng-920
 			)
 			;;
 		qemu-kvm)
 			[ "$(arch)" == "aarch64" ] && arch_option=(
 					-machine virt-4.0,accel=kvm,gic-version=3
-					-cpu Kunpeng-920
 			)
 			[ "$(arch)" == "x86_64" ] && arch_option=(
 			)
@@ -412,6 +408,7 @@ arch_option()
 	case "$(arch)" in
 		aarch64)
 			bios=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
+			[ -z "$cpu_model" ] && cpu_model=Kunpeng-920
 			;;
 		x86_64)
 			bios=/usr/share/ovmf/OVMF.fd
@@ -419,6 +416,9 @@ arch_option()
 	esac
 
 	[ -n "$bios" ] && [ -e "$bios" ] && arch_option+=(-bios $bios)
+
+	[ -z "$cpu_model" ] && cpu_model=host
+	arch_option+=(-cpu "$cpu_model")
 }
 
 debug_option()
