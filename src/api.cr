@@ -105,6 +105,17 @@ module Scheduler
 
   add_context_storage_type(Time::Span)
 
+  # Debug Timing
+  # before_all do |env|
+  #   env.response.headers["X-Start-Time"] = Time.utc.to_s
+  # end
+
+  # after_all do |env|
+  #   start_time = Time.parse_utc(env.response.headers["X-Start-Time"], "%Y-%m-%d %H:%M:%S %z")
+  #   elapsed_time = Time.utc - start_time
+  #   puts "Request took #{elapsed_time.total_milliseconds} ms"
+  # end
+
   # ----------------------------------------
   # old scheduler api
   # ----------------------------------------

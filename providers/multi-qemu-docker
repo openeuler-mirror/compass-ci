@@ -174,29 +174,23 @@ class MultiQemuDocker
       loop do
         # Use Open3 to execute curl with stdin_data
         stdout, stderr, status = Open3.capture3(
-          'curl', '-s', '-X', 'POST', '-w', '\ncode=%{http_code}', '--data-binary', '@-', http_url,
+          'curl', '-s', '--fail-with-body', '-X', 'POST', '-w', '\ncode=%{http_code}', '--data-binary', '@-', http_url,
           stdin_data: file_content
         )
 
         # Extract the HTTP status code from the output
-        response = stdout.match(/code=(\d+)/)[1]
+        response_code = stdout.match(/code=(\d+)/)[1].to_i
 
-        case response
-        when "200", "201"
-          # puts "Upload successful: #{local_file} to #{target_path}"
+        case response_code
+        when 200, 201
           break
-        when "409"
-          puts "Error: File already exists on server: #{target_path}"
-          break
-        when "403"
-          puts "Error: Authentication failed or job stage invalid"
-          break
-        when "400"
-          puts "Error: Bad request: check parameters"
+        when 400..600
+          puts "Upload failed: #{local_file} to #{target_path}"
+          puts stdout
           break
         else
           if retry_count < max_retries
-            puts "Upload failed (HTTP #{response}). Retrying in #{retry_delay} seconds..."
+            puts "Upload failed (#{stdout}). Retrying in #{retry_delay} seconds..."
             sleep retry_delay
             retry_count += 1
             retry_delay *= 2
@@ -240,8 +234,13 @@ class MultiQemuDocker
   def start_event_machine
     begin
       EM.run do
+        EM.set_quantum(10)
+        EM.epoll
+        # EM.set_tcp_nodelay(true)
         puts "Initializing new connection..."
         @ws = open_websocket(@scheduler_ws_url)
+        # no such method
+        # @ws.socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
 
         @ws.on(:open) do
           puts "WebSocket connection opened"
@@ -253,8 +252,10 @@ class MultiQemuDocker
         end
 
         @ws.on(:message) do |event|
-          puts "Received: #{event.data}"
+          # start_time = Time.now.utc
           handle_websocket_message(event.data)
+          # elapsed_time = Time.now.utc - start_time
+          # puts "Message processing took #{elapsed_time * 1000} ms"
         rescue => e
           puts "Message handling error: #{e.message}"
           puts e.backtrace.join("\n")
@@ -408,6 +409,7 @@ class MultiQemuDocker
 
   def handle_websocket_message(data)
     message = JSON.parse(data)
+    puts "Received: #{data}" if message['type'] != 'console-input'
     case message['type']
     when 'boot-job'
       boot_job(message)
@@ -557,7 +559,7 @@ class MultiQemuDocker
   end
 
   def terminate_container(job)
-    system("#{@container_runtime} rm -f #{job[:hostname]}")
+    system("#{@container_runtime} kill -s KILL #{job[:hostname]}")
   end
 
   def watch_log(message)
@@ -626,8 +628,7 @@ class MultiQemuDocker
     tbox_type = job[:tbox_type]
 
     if job[:console_io]
-      puts "job already has console_io"
-      return
+      puts "job already has console_io, closing old one"
     end
 
     rows = message['rows']
@@ -680,8 +681,10 @@ class MultiQemuDocker
       job[:console_thread] = Thread.new do
         begin
           loop do
-            output = socket.readpartial(1024)
-            @ws.send({ type: 'console-output', job_id: job_id, data: output }.to_json)
+            data = socket.readpartial(1024)
+            data = data.force_encoding("BINARY")
+            base64_data = Base64.strict_encode64(data)
+            @ws.send({ type: 'console-output', job_id: job_id, data: base64_data }.to_json)
           end
         rescue EOFError, Errno::EIO
           # Process exited normally
@@ -719,7 +722,7 @@ class MultiQemuDocker
         # Wait for the container to start
         wait_for_container_to_start(container_id)
 
-        PTY.spawn(@container_runtime, "exec", "-it", container_id, "/bin/bash", "-c", "stty raw -echo isig 2>/dev/null; bash") do |output, input, pid|
+        PTY.spawn(@container_runtime, "exec", "-it", container_id, "/bin/bash", "-c", "stty raw echo isig 2>/dev/null; bash") do |output, input, pid|
           job[:console_io] = input
           job[:docker_pid] = pid
           puts "#{@container_runtime} exec -it #{container_id} /bin/bash"
@@ -730,11 +733,19 @@ class MultiQemuDocker
           # Disable buffering in the PTY
           output.sync = true
           input.sync = true
+          output.binmode
+          input.binmode
+          puts "console startup"
+
+          @ws.send({ type: 'console-startup', job_id: job_id }.to_json)
 
           begin
             loop do
               data = output.readpartial(1024)
-              @ws.send({ type: 'console-output', job_id: job_id, data: data }.to_json)
+              data = data.force_encoding("BINARY")
+              base64_data = Base64.strict_encode64(data)
+              # puts "#{Time.now.to_f} console-output: #{data.inspect}"
+              @ws.send({ type: 'console-output', job_id: job_id, data: base64_data }.to_json)
             end
           rescue EOFError, Errno::EIO
             # Process exited normally
@@ -760,18 +771,22 @@ class MultiQemuDocker
   def write_to_console(message)
     job_id = message['job_id']
     data = message['data']
+    binary_data = Base64.strict_decode64(data)
+    # puts "console-input: #{binary_data}"
     job = @jobs[job_id]
     unless job
       puts "write_to_console: no job for job_id #{job_id}"
+      @ws.send({ type: 'console-exit', job_id: job_id }.to_json)
       return
     end
     unless job[:console_io]
       puts "write_to_console: no console_io for job_id #{job_id}"
+      @ws.send({ type: 'console-exit', job_id: job_id }.to_json)
       return
     end
 
     begin
-      job[:console_io].write(data)
+      job[:console_io].write(binary_data)
       job[:console_io].flush
     rescue => e
       puts "Error writing to console: #{e}"

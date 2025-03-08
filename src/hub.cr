@@ -1,4 +1,17 @@
 
+# enable TCP NODELAY
+class HTTP::WebSocket
+  def set_tcp_nodelay
+    @ws.set_tcp_nodelay
+  end
+end
+
+class HTTP::WebSocket::Protocol
+  def set_tcp_nodelay
+    @io.as(TCPSocket).tcp_nodelay = true
+  end
+end
+
 # Represents a WebSocket connection session with type safety
 class WebSocketSession
   enum SessionType
@@ -472,7 +485,9 @@ class Sched
     @provider_sessions[host]?.try(&.socket.close)
     @provider_sessions[host] = session
 
+    socket.set_tcp_nodelay
     socket.on_message do |raw_message|
+      # start_time = Time.utc
       begin
         msg = JSON.parse(raw_message).as_h
         case msg["type"]?.try(&.as_s)
@@ -490,7 +505,7 @@ class Sched
           params = msg.transform_values(&.to_s)
           update_job_from_hash(params)
 
-        when "console-output", "console-exit", "console-error"
+        when "console-startup", "console-output", "console-exit", "console-error"
           handle_console_output(msg, raw_message)
 
         when "job-log"
@@ -502,6 +517,8 @@ class Sched
       rescue ex
         @log.error(exception: ex) { "Error processing provider message #{raw_message}" }
       end
+      # elapsed_time = Time.utc - start_time
+      # puts "Provider Message processing took #{elapsed_time.total_milliseconds} ms"
     end
 
     socket.on_close do
@@ -527,8 +544,12 @@ class Sched
     session.send(welcome_msg)
     @log.info { "Client #{session.sid} connected" }
 
+    socket.set_tcp_nodelay
     socket.on_message do |raw_message|
+      # start_time = Time.utc
       handle_client_message(raw_message, session)
+      # elapsed_time = Time.utc - start_time
+      # puts "Client Message processing took #{elapsed_time.total_milliseconds} ms"
     end
 
     socket.on_close do
@@ -544,6 +565,7 @@ class Sched
 
     if client_sid = @console_jobid2client_sid[job_id]?
       if client_session = @client_sessions[client_sid]?
+        # puts "#{Time.local.to_unix_f} #{raw_message}"
         client_session.send(raw_message)
       else
         @console_jobid2client_sid.delete(job_id)
