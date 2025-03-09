@@ -32,20 +32,9 @@ OS_LIST=(
     "openeuler  24.09      aarch64    https://repo.openeuler.org/openEuler-24.09/everything/aarch64/Packages/"
     "openeuler  24.09      riscv64    https://repo.openeuler.org/openEuler-24.09/everything/riscv64/Packages/"
 
-    # CentOS Stream
-    # problem: no kernel image here
-    # "centos     9          x86_64     https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/"
-    # "centos     9          aarch64    https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/"
-
     # Fedora
-    "fedora     41         aarch64    http://mirrors.163.com/fedora/releases/41/Everything/aarch64/os/Packages/k/"
-    "fedora     41         x86_64     http://mirrors.163.com/fedora/releases/41/Everything/x86_64/os/Packages/k/"
     "fedora     41         aarch64    http://mirrors.163.com/fedora/updates/41/Everything/aarch64/Packages/k/"
     "fedora     41         x86_64     http://mirrors.163.com/fedora/updates/41/Everything/x86_64/Packages/k/"
-
-    # Rocky Linux
-    "rocky      9.5        aarch64    http://mirrors.163.com/rocky/9.5/BaseOS/aarch64/os/Packages/k/"
-    "rocky      9.5        x86_64     http://mirrors.163.com/rocky/9.5/BaseOS/x86_64/os/Packages/k/"
 
     # Ubuntu
     "ubuntu     24.04      amd64      http://mirrors.163.com/ubuntu/pool/main/l/linux-signed/"
@@ -59,6 +48,17 @@ OS_LIST=(
     "debian     12         arm64      http://mirrors.163.com/debian/pool/main/l/linux-signed-arm64/"
     "debian     12         riscv64    http://mirrors.163.com/debian/pool/main/l/linux/"
     "debian     12         loongson   http://mirrors.163.com/debian/pool/main/l/linux/"
+
+    # Below are not well supported
+
+    # CentOS Stream
+    # problem: no kernel image here
+    # "centos     9          x86_64     https://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/Packages/"
+    # "centos     9          aarch64    https://mirror.stream.centos.org/9-stream/AppStream/aarch64/os/Packages/"
+
+    # Rocky Linux
+    # "rocky      9.5        aarch64    http://mirrors.163.com/rocky/9.5/BaseOS/aarch64/os/Packages/k/"
+    # "rocky      9.5        x86_64     http://mirrors.163.com/rocky/9.5/BaseOS/x86_64/os/Packages/k/"
 
     # Arch Linux
     "archlinux  latest     x86_64     https://mirror.rackspace.com/archlinux/core/os/x86_64/"

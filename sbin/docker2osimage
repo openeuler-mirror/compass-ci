@@ -25,7 +25,10 @@ OS_LIST=(
     "debian:12 $common_archs"
     "ubuntu:24.04 $common_archs"
 
-    "fedora:42 $common_archs"
+    "fedora:41 $common_archs"
+
+    # Below OS only supports testbox=dc due to missing kernel
+
     "centos:9 $common_archs"
     "rockylinux:9 $common_archs"
 
