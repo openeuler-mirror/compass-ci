@@ -10,11 +10,11 @@ require 'find'
 require 'open3'
 require 'pty'
 require 'shellwords'
-require 'eventmachine'
 require 'websocket/driver'
 
 # Load common libraries
 require_relative 'lib/jwt'
+require_relative 'lib/cache'
 require_relative 'lib/metrics'
 require_relative 'lib/job_tracker'
 require_relative 'docker/docker'
@@ -41,34 +41,72 @@ NR_DISKS = count_disks_sys_block
 BASE_DIR = Process.uid.zero? ? "/var/lib/docker/compass-ci" : "#{ENV['HOME']}/.cache/compass-ci"
 CACHE_LOCK_ROOT = "#{BASE_DIR}/.locks"
 
-module Connection
-  # include EM::Connection
-  attr_accessor :provider, :driver, :url
+class MultiQemuDocker
+  attr_accessor :url, :thread
 
-  def connection_completed
+  def start_io_loop
+    @dead = false
+    @url  = build_scheduler_ws_url
+    uri = URI.parse(@url)
+
+    begin
+    @tcp  = TCPSocket.new(uri.host, uri.port)
+    @tcp.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+
     @driver = WebSocket::Driver.client(self)
-    @driver.on(:open)    { |event| @provider.handle_websocket_open }
-    @driver.on(:message) { |event| @provider.handle_websocket_message(event) }
-    @driver.on(:close)   { |event| @provider.handle_websocket_close(event) }
-    @driver.on(:error)   { |event| @provider.handle_websocket_error(event) }
 
-    set_sock_opt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, true)
+    @driver.on(:open)    { |event| handle_websocket_open }
+    @driver.on(:message) { |event| handle_websocket_message(event) }
+    @driver.on(:close)   { |event| handle_websocket_close(event) }
+    @driver.on(:error)   { |event| handle_websocket_error(event) }
 
-    if @provider.options[:is_remote]
+    if @options[:is_remote]
       jwt = load_jwt?
       @driver.set_header('Authorization', jwt)
     end
 
+    start_tcp_reader
     @driver.start
+    @tcp_read_thread.join
+    rescue => e
+      puts "Connection error: #{e.message}"
+      @tcp.close if @tcp && !@tcp.closed?
+    end
   end
 
-  def receive_data(data)
-    @driver.parse(data)
+  def build_scheduler_ws_url
+    if @options[:is_remote]
+      "wss://#{DOMAIN_NAME}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
+    else
+      "ws://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
+    end
+  end
+
+  def send_json(hash)
+    @driver.text(JSON.generate(hash))
   end
 
   def write(data)
-    send_data(data)
+    @tcp.write(data)
   end
+
+  def start_tcp_reader
+    @threads << @tcp_read_thread = Thread.new do
+      loop do
+        break if @dead
+        data = @tcp.read_nonblock(1 << 16)
+        # data = @tcp.readpartial(102400)
+        @driver.parse(data)
+      rescue IO::WaitReadable
+        IO.select([@tcp])
+        retry
+      rescue => e
+        puts "Socket read error: #{e.message}"
+        break
+      end
+    end
+  end
+
 end
 
 class MultiQemuDocker
@@ -92,7 +130,7 @@ class MultiQemuDocker
 
   JOB_DONE_FIFO_PATH = "/tmp/job_completion_fifo"
 
-  attr_reader :options, :scheduler_url, :scheduler_ws_url
+  attr_reader :options
   attr_accessor :last_free_mem, :last_status_time
 
   def initialize(argv)
@@ -102,12 +140,10 @@ class MultiQemuDocker
     @last_status_time = Time.now
     setup_directories
     update_options
-    @scheduler_ws_url = build_scheduler_ws_url
     @jobs = JobTracker.new
-    @fifo_thread = start_fifo_listener
-    @reconnect_attempts = 0
     @container_runtime = `command -v podman || command -v docker`.chomp
     @cache_dirs = []
+    @threads = []
   end
 
   def setup_directories
@@ -123,38 +159,44 @@ class MultiQemuDocker
     FileUtils.mkdir_p(ENV["PACKAGE_CACHE_DIR"] = "#{BASE_DIR}/provider/pkgcache")
   end
 
-  def connect_websocket
-    uri = URI.parse(@scheduler_ws_url)
-    EM.connect(uri.host, uri.port, Connection) do |conn|
-      conn.url = @scheduler_ws_url
-      conn.provider = self
-      @connection = conn
-    end
-  end
-
   def handle_websocket_open
     puts "WebSocket connection opened"
-    @reconnect_attempts = 0
     send_status
     start_heartbeat
     start_cache_reclaim
+    start_fifo_listener
     start_mem_monitoring
   end
 
   def handle_websocket_close(event)
-    puts "Connection closed with code #{event.code}  #{event.code}"
-    EM.stop_event_loop
+    puts "Connection closed with code #{event.code}"
+    close_all
+  rescue => e
+    puts "Error during connection close: #{e.message}"
   end
 
   def handle_websocket_error(event)
     puts "WebSocket error: #{event.message}"
-    puts "Please check if server is running on #{@scheduler_ws_url}" if event.message == Errno::ECONNREFUSED
-    EM.stop_event_loop
+    puts "Please check if server is running on #{@url}" if event.message == Errno::ECONNREFUSED
+    close_all
+  end
 
-    @reconnect_attempts += 1
-    delay = [2 ** @reconnect_attempts, 30].min
-    puts "Attempting reconnect in #{delay} second..."
-    sleep(delay)
+  def close_all
+    @dead = true
+
+    # Clean up threads
+    @threads.each do |t|
+      t.kill if t.alive?
+      t.join rescue nil
+    end
+    @threads.clear
+
+    # Close network resources
+    @driver.close rescue nil
+    if @tcp && !@tcp.closed?
+      @tcp.close rescue nil
+    end
+    @driver.close
   end
 
   def handle_websocket_message(event)
@@ -187,10 +229,6 @@ class MultiQemuDocker
     end
   end
 
-  def send_json(hash)
-    @connection.driver.text(hash.to_json)
-  end
-
   def update_options
     if @options[:max_qemu] == 0
       @options[:max_qemu] = compute_max_vm
@@ -209,8 +247,9 @@ class MultiQemuDocker
   def start_fifo_listener
     create_fifo
 
-    Thread.new do
+    @threads << Thread.new do
       loop do
+        break if @dead
         # Need re-open FIFO for block reading, since the other side always
         # close FIFO after writing one line of job_id.
         File.open(JOB_DONE_FIFO_PATH, 'r') do |fifo|
@@ -269,7 +308,7 @@ class MultiQemuDocker
       file_content = File.binread(local_file)
 
       # Retry loop
-      loop do
+      until @dead
         # Use Open3 to execute curl with stdin_data
         stdout, stderr, status = Open3.capture3(
           'curl', '-s', '--fail-with-body', '-X', 'POST', '-w', '\ncode=%{http_code}', '--data-binary', '@-', http_url,
@@ -347,22 +386,14 @@ class MultiQemuDocker
     nr_vm_on_cpu = host_cpu / MIN_QEMU_CPU
     nr_vm_on_mem = host_mem / MIN_QEMU_MEMORY
 
-    puts "nr_vm_on_cpu: #{nr_vm_on_cpu}"
-    puts "nr_vm_on_mem: #{nr_vm_on_mem}"
+    # puts "nr_vm_on_cpu: #{nr_vm_on_cpu}"
+    # puts "nr_vm_on_mem: #{nr_vm_on_mem}"
 
     max_vm = [nr_vm_on_cpu, nr_vm_on_mem].min
   end
 
   def compute_max_dc
     Etc.nprocessors / MIN_CONTAINER_CPU
-  end
-
-  def build_scheduler_ws_url
-    if @options[:is_remote]
-      "wss://#{DOMAIN_NAME}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
-    else
-      "ws://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
-    end
   end
 
   def send_status
@@ -416,28 +447,47 @@ class MultiQemuDocker
 
   # report status every 10 seconds
   def start_heartbeat
-    EM.add_periodic_timer(HEARTBEAT_INTERVAL) { send_status }
+    @threads << Thread.new do
+      until @dead
+        sleep(HEARTBEAT_INTERVAL)
+        send_status
+      end
+    end
   end
 
   def start_cache_reclaim
-    EM.add_periodic_timer(24*3600) { reclaim_cache_dirs(ENV["CACHE_DIR"], ENV["PACKAGE_CACHE_DIR"]) }
-    EM.add_periodic_timer(3600) {
-      reclaim_stale_locks(CACHE_LOCK_ROOT)
+    @threads << Thread.new do
+      hours = 0
+      until @dead
+        sleep(3600)
 
-      base_cache_dir = ENV["CACHE_DIR"]
-      full_cache_dirs = collect_cache_dirs(base_cache_dir, false)
-      @cache_dirs = full_cache_dirs.map { |dir| dir.remove_prefix("#{base_cache_dir}/") }
-    }
+        reclaim_stale_locks(CACHE_LOCK_ROOT)
+        base_cache_dir = ENV["CACHE_DIR"]
+        full_cache_dirs = collect_cache_dirs(base_cache_dir, false)
+        @cache_dirs = full_cache_dirs.map { |dir| dir.delete_prefix("#{base_cache_dir}/") }
+
+        hours += 1
+        if hours >= 24
+          reclaim_cache_dirs(ENV["CACHE_DIR"], ENV["PACKAGE_CACHE_DIR"])
+          hours = 0
+        end
+      end
+    rescue => e
+      puts "Cache reclaim error: #{e.message}"
+    end
   end
 
   def start_mem_monitoring
-    EM.add_periodic_timer(MEM_CHECK_INTERVAL) do
-      @last_meminfo = parse_meminfo
-      current_mem = free_memory_mb
-      if (current_mem - @last_free_mem).abs > MEM_DELTA_THRESHOLD || Time.now - @last_status_time > HEARTBEAT_INTERVAL
-        @last_free_mem = current_mem
-        send_status
-        @last_status_time = Time.now
+    @threads << Thread.new do
+      until @dead
+        sleep(MEM_CHECK_INTERVAL)
+        @last_meminfo = parse_meminfo
+        current_mem = free_memory_mb
+        if (current_mem - @last_free_mem).abs > MEM_DELTA_THRESHOLD || Time.now - @last_status_time > HEARTBEAT_INTERVAL
+          @last_free_mem = current_mem
+          send_status
+          @last_status_time = Time.now
+        end
       end
     end
   end
@@ -475,14 +525,16 @@ class MultiQemuDocker
     # Set new window size if we have a PTY
     if job[:docker_pid]
       begin
-        set_winsize(job[:console_io], rows, cols)
-        puts "Successfully resized PTY for job #{job_id} to #{rows}x#{cols}"
+        if set_winsize(job[:console_io], rows, cols)
+          puts "Successfully resized PTY for job #{job_id} to #{rows}x#{cols}"
+        end
       rescue => e
         puts "Error resizing PTY for job #{job_id}: #{e.message}"
         puts e.backtrace.join("\n")
       end
     else
-      puts "Warning: No Container PID found for job #{job_id}. Cannot resize PTY."
+      # no ioctl for QEMU UNIX socket, we only send stty command on initial connect
+      # puts "Warning: No Container PID found for job #{job_id}. Cannot resize PTY."
     end
   end
 
@@ -560,12 +612,18 @@ class MultiQemuDocker
       terminate_container(job)
     end
     Process.kill(0, job[:fork_pid])
+  rescue => e
+    puts "Error terminating job #{job[:id]}: #{e.message}"
   end
 
   def terminate_qemu(job)
-    qemu_pidfile = "#{PIDS_DIR}/qemu-${job[:hostname].pid}"
-    qemu_pid = File.read(qemu_pidfile)
+    qemu_pidfile = "#{ENV['PIDS_DIR']}/qemu-#{job[:hostname]}.pid"
+    return unless File.exist?(qemu_pidfile)
+
+    qemu_pid = File.read(qemu_pidfile).strip.to_i
     Process.kill("INT", qemu_pid)
+  rescue => e
+    puts "Error terminating QEMU: #{e.message}"
   end
 
   def terminate_container(job)
@@ -597,11 +655,13 @@ class MultiQemuDocker
       begin
         while line = reader.gets
           # Send log output to WebSocket
-          break unless @connection.driver
           send_json({ type: 'job-log', job_id: job_id, data: line })
+          break if @dead
         end
+      rescue Errno::ESRCH => e
+        puts "Tail process already exited: #{e.message}"
       rescue IOError => e
-        puts "Error reading from tail process for job #{job_id}: #{e.message}"
+        puts "tail process exit for job #{job_id}: #{e.message}"
       ensure
         reader.close
         writer.close
@@ -616,7 +676,7 @@ class MultiQemuDocker
 
     if job && job[:tail_pid]
       # Terminate the tail process
-      Process.kill("TERM", job[:tail_pid])
+      Process.kill("TERM", job[:tail_pid]) rescue nil
 
       # Close the pipe
       if job[:tail_reader]
@@ -686,40 +746,37 @@ class MultiQemuDocker
   end
 
   def start_qemu_console(job_id, job)
-    socket_path = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/qemu-console.sock"
-    return unless wait_for_qemu_to_start(socket_path)
-    begin
-      socket = UNIXSocket.new(socket_path)
-      job[:console_io] = socket
+    # Thread to read from QEMU socket and send output
+    job[:console_thread] = Thread.new do
+      socket_path = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/qemu-console.sock"
+      return unless wait_for_qemu_to_start(socket_path)
 
-      # Thread to read from QEMU socket and send output
-      job[:console_thread] = Thread.new do
-        begin
-          loop do
-            data = socket.readpartial(1024)
-            data = data.force_encoding("BINARY")
-            base64_data = Base64.strict_encode64(data)
-            send_json({ type: 'console-output', job_id: job_id, data: base64_data })
-          end
-        rescue EOFError, Errno::EIO
-          # Process exited normally
-          puts "QEMU console closed"
-          send_json({ type: 'console-exit', job_id: job_id })
-        rescue => e
-          puts "QEMU console read error: #{e}"
-          send_json({ type: 'console-error', job_id: job_id, message: e.message })
-        ensure
-          job.delete(:console_io)
-        end
+      socket = UNIXSocket.new(socket_path)
+      socket.write("\r\nstty rows #{job[:winsize][:rows]} cols #{job[:winsize][:cols]}\r\n")
+      job[:console_io] = socket
+      send_json({ type: 'console-startup', job_id: job_id })
+
+      until @dead
+        data = socket.readpartial(1024)
+        data = data.force_encoding("BINARY")
+        base64_data = Base64.strict_encode64(data)
+        send_json({ type: 'console-output', job_id: job_id, data: base64_data })
       end
+    rescue EOFError, Errno::EIO
+      # Process exited normally
+      puts "QEMU console closed"
+      send_json({ type: 'console-exit', job_id: job_id })
     rescue => e
-      puts "Failed to attach to QEMU console: #{e.message}"
+      puts "QEMU console read error: #{e}"
+      send_json({ type: 'console-error', job_id: job_id, message: e.message })
+    ensure
+      job.delete(:console_io)
     end
   end
 
   # Wait until the container is running
   def wait_for_container_to_start(container_id)
-    loop do
+    until @dead
       cmd = "#{@container_runtime} inspect -f '{{.State.Status}}"
       puts cmd
       status = `#{cmd}' #{container_id}`.chomp
@@ -755,7 +812,7 @@ class MultiQemuDocker
           send_json({ type: 'console-startup', job_id: job_id })
 
           begin
-            loop do
+            until @dead
               data = output.readpartial(1024)
               data = data.force_encoding("BINARY")
               base64_data = Base64.strict_encode64(data)
@@ -785,9 +842,6 @@ class MultiQemuDocker
 
   def write_to_console(message)
     job_id = message['job_id']
-    data = message['data']
-    binary_data = Base64.strict_decode64(data)
-    # puts "console-input: #{binary_data}"
     job = @jobs[job_id]
     unless job
       puts "write_to_console: no job for job_id #{job_id}"
@@ -800,6 +854,9 @@ class MultiQemuDocker
       return
     end
 
+    data = message['data']
+    binary_data = Base64.strict_decode64(data)
+    # puts "console-input: #{binary_data.inspect}"
     begin
       job[:console_io].write(binary_data)
       job[:console_io].flush
@@ -828,9 +885,12 @@ class MultiQemuDocker
       end
     end
 
-    job[:console_thread].kill if job[:console_thread]
-    job.delete(:console_io)
+    if job[:console_thread]
+      job[:console_thread].kill rescue nil
+      job[:console_thread].join
+    end
     job.delete(:console_thread)
+    job.delete(:console_io)
     job.delete(:docker_pid)
   end
 
@@ -850,31 +910,24 @@ class MultiQemuDocker
     FileUtils.rmdir(dir)
   end
 
-  def safe_stop
-    # Graceful shutdown logic
-    EventMachine.stop
+end
+
+def run
+  tries = 0
+  loop do
+    provider = MultiQemuDocker.new(ARGV)
+    provider.start_io_loop
+
+    tries += 1
+    delay = [2 ** tries, 30].min
+    puts "Attempting reconnect in #{delay} second..."
+    sleep(delay)
   end
-
-  public
-
-  def run
-    loop do
-      EM.run do
-        # EM.set_quantum(10)
-        # EM.epoll
-        connect_websocket
-      rescue => e
-        puts "Connection failed: #{e.to_s}"
-      end
-    end
-    sleep 1
-  end
-
 end
 
 if __FILE__ == $PROGRAM_NAME
   begin
-    MultiQemuDocker.new(ARGV).run
+    run
   rescue Interrupt
     exit(0)
   end
