@@ -809,7 +809,7 @@ class MultiQemuDocker
         # Wait for the container to start
         wait_for_container_to_start(container_id)
 
-        PTY.spawn(@container_runtime, "exec", "-it", container_id, "/bin/bash", "-c", "stty raw echo isig 2>/dev/null; bash") do |output, input, pid|
+        PTY.spawn(@container_runtime, "exec", "-it", container_id, "/bin/bash", "-c", "stty raw echo opost icrnl isig 2>/dev/null; bash") do |output, input, pid|
           job[:console_io] = input
           job[:docker_pid] = pid
           puts "#{@container_runtime} exec -it #{container_id} /bin/bash"
