@@ -10,8 +10,8 @@ require 'find'
 require 'open3'
 require 'pty'
 require 'shellwords'
-require 'faye/websocket'
 require 'eventmachine'
+require 'websocket/driver'
 
 # Load common libraries
 require_relative 'lib/jwt'
@@ -40,6 +40,36 @@ NR_DISKS = count_disks_sys_block
 
 BASE_DIR = Process.uid.zero? ? "/var/lib/docker/compass-ci" : "#{ENV['HOME']}/.cache/compass-ci"
 CACHE_LOCK_ROOT = "#{BASE_DIR}/.locks"
+
+module Connection
+  # include EM::Connection
+  attr_accessor :provider, :driver, :url
+
+  def connection_completed
+    @driver = WebSocket::Driver.client(self)
+    @driver.on(:open)    { |event| @provider.handle_websocket_open }
+    @driver.on(:message) { |event| @provider.handle_websocket_message(event) }
+    @driver.on(:close)   { |event| @provider.handle_websocket_close(event) }
+    @driver.on(:error)   { |event| @provider.handle_websocket_error(event) }
+
+    set_sock_opt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, true)
+
+    if @provider.options[:is_remote]
+      jwt = load_jwt?
+      @driver.set_header('Authorization', jwt)
+    end
+
+    @driver.start
+  end
+
+  def receive_data(data)
+    @driver.parse(data)
+  end
+
+  def write(data)
+    send_data(data)
+  end
+end
 
 class MultiQemuDocker
   DEFAULT_OPTIONS = {
@@ -93,6 +123,74 @@ class MultiQemuDocker
     FileUtils.mkdir_p(ENV["PACKAGE_CACHE_DIR"] = "#{BASE_DIR}/provider/pkgcache")
   end
 
+  def connect_websocket
+    uri = URI.parse(@scheduler_ws_url)
+    EM.connect(uri.host, uri.port, Connection) do |conn|
+      conn.url = @scheduler_ws_url
+      conn.provider = self
+      @connection = conn
+    end
+  end
+
+  def handle_websocket_open
+    puts "WebSocket connection opened"
+    @reconnect_attempts = 0
+    send_status
+    start_heartbeat
+    start_cache_reclaim
+    start_mem_monitoring
+  end
+
+  def handle_websocket_close(event)
+    puts "Connection closed with code #{event.code}  #{event.code}"
+    EM.stop_event_loop
+  end
+
+  def handle_websocket_error(event)
+    puts "WebSocket error: #{event.message}"
+    puts "Please check if server is running on #{@scheduler_ws_url}" if event.message == Errno::ECONNREFUSED
+    EM.stop_event_loop
+
+    @reconnect_attempts += 1
+    delay = [2 ** @reconnect_attempts, 30].min
+    puts "Attempting reconnect in #{delay} second..."
+    sleep(delay)
+  end
+
+  def handle_websocket_message(event)
+    begin
+      message = JSON.parse(event.data)
+      puts "Received: #{event.data}" if message['type'] != 'console-input'
+      case message['type']
+      when 'boot-job'
+        boot_job(message)
+      when 'terminate-job'
+        terminate_job(message)
+      when 'watch-job-log'
+        watch_log(message)
+      when 'unwatch-job-log'
+        unwatch_log(message)
+      when 'request-console'
+        start_console_session(message)
+      when 'console-input'
+        write_to_console(message)
+      when 'close-console'
+        close_console_session(message)
+      when 'resize-console'
+        handle_console_resize(message)
+      else
+        puts "Unknown message type: #{message['type']}"
+      end
+    rescue => e
+      puts "Message handling error: #{e.message}"
+      puts e.backtrace.join("\n")
+    end
+  end
+
+  def send_json(hash)
+    @connection.driver.text(hash.to_json)
+  end
+
   def update_options
     if @options[:max_qemu] == 0
       @options[:max_qemu] = compute_max_vm
@@ -129,7 +227,7 @@ class MultiQemuDocker
                 job_id: job_id,
                 job_stage: "boot",
               }
-              @ws.send(status.to_json)
+              send_json(status)
             when /^done: (\d+)/
               job_id = $1
               job = @jobs.remove_job(job_id)
@@ -141,7 +239,7 @@ class MultiQemuDocker
                 job_id: job_id,
                 job_data_readiness: "uploaded",  # trigger extract-stats
               }
-              @ws.send(status.to_json)
+              send_json(status)
 
               puts "Job #{job_id} completed and removed from the job list."
           end
@@ -221,69 +319,6 @@ class MultiQemuDocker
     end
   end
 
-  def open_websocket(url)
-    if @options[:is_remote]
-      jwt = load_jwt?
-      ws = Faye::WebSocket::Client.new(url, [], :headers => { 'Authorization' => jwt })
-    else
-      ws = Faye::WebSocket::Client.new(url)
-    end
-    ws
-  end
-
-  def start_event_machine
-    begin
-      EM.run do
-        EM.set_quantum(10)
-        EM.epoll
-        # EM.set_tcp_nodelay(true)
-        puts "Initializing new connection..."
-        @ws = open_websocket(@scheduler_ws_url)
-        # no such method
-        # @ws.socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
-
-        @ws.on(:open) do
-          puts "WebSocket connection opened"
-          @reconnect_attempts = 0
-          send_status
-          start_heartbeat
-          start_cache_reclaim
-          start_mem_monitoring
-        end
-
-        @ws.on(:message) do |event|
-          # start_time = Time.now.utc
-          handle_websocket_message(event.data)
-          # elapsed_time = Time.now.utc - start_time
-          # puts "Message processing took #{elapsed_time * 1000} ms"
-        rescue => e
-          puts "Message handling error: #{e.message}"
-          puts e.backtrace.join("\n")
-        end
-
-        @ws.on(:close) do |event|
-          puts "Connection closed with code #{event.code}"
-          EM.stop_event_loop
-        end
-
-        @ws.on(:error) do |event|
-          puts "WebSocket error: #{event.message}"
-          puts "Please check if server is running on #{@scheduler_ws_url}" if event.message == Errno::ECONNREFUSED
-          EM.stop_event_loop
-
-          @reconnect_attempts += 1
-          delay = [2 ** @reconnect_attempts, 30].min
-          puts "Attempting reconnect in #{delay} second..."
-          sleep(delay)
-        end
-      end
-    rescue => e
-      puts "Connection failed: #{e.message}"
-    ensure
-      # Cleanup resources if needed
-      @ws = nil
-    end
-  end
 
   private
 
@@ -376,7 +411,7 @@ class MultiQemuDocker
       }
     }
     # pp status
-    @ws.send(status.to_json)
+    send_json(status)
   end
 
   # report status every 10 seconds
@@ -404,31 +439,6 @@ class MultiQemuDocker
         send_status
         @last_status_time = Time.now
       end
-    end
-  end
-
-  def handle_websocket_message(data)
-    message = JSON.parse(data)
-    puts "Received: #{data}" if message['type'] != 'console-input'
-    case message['type']
-    when 'boot-job'
-      boot_job(message)
-    when 'terminate-job'
-      terminate_job(message)
-    when 'watch-job-log'
-      watch_log(message)
-    when 'unwatch-job-log'
-      unwatch_log(message)
-    when 'request-console'
-      start_console_session(message)
-    when 'console-input'
-      write_to_console(message)
-    when 'close-console'
-      close_console_session(message)
-    when 'resize-console'
-      handle_console_resize(message)
-    else
-      puts "Unknown message type: #{message['type']}"
     end
   end
 
@@ -565,6 +575,10 @@ class MultiQemuDocker
   def watch_log(message)
     job_id = message['job_id']
     job = @jobs[job_id]
+    unless job
+      puts "watch_log: no job for job_id #{job_id}"
+      return
+    end
     log_file = "#{ENV["LOGS_DIR"]}/#{job[:hostname]}"
 
     # Create a pipe to capture the output of the tail process
@@ -583,8 +597,8 @@ class MultiQemuDocker
       begin
         while line = reader.gets
           # Send log output to WebSocket
-          break unless @ws
-          @ws.send({ type: 'job-log', job_id: job_id, data: line }.to_json)
+          break unless @connection.driver
+          send_json({ type: 'job-log', job_id: job_id, data: line })
         end
       rescue IOError => e
         puts "Error reading from tail process for job #{job_id}: #{e.message}"
@@ -623,6 +637,7 @@ class MultiQemuDocker
     job = @jobs[job_id]
     unless job
       puts "start_console_session: no job for job_id #{job_id}"
+      send_json({ type: 'console-exit', job_id: job_id })
       return
     end
     tbox_type = job[:tbox_type]
@@ -684,15 +699,15 @@ class MultiQemuDocker
             data = socket.readpartial(1024)
             data = data.force_encoding("BINARY")
             base64_data = Base64.strict_encode64(data)
-            @ws.send({ type: 'console-output', job_id: job_id, data: base64_data }.to_json)
+            send_json({ type: 'console-output', job_id: job_id, data: base64_data })
           end
         rescue EOFError, Errno::EIO
           # Process exited normally
           puts "QEMU console closed"
-          @ws.send({ type: 'console-exit', job_id: job_id }.to_json)
+          send_json({ type: 'console-exit', job_id: job_id })
         rescue => e
           puts "QEMU console read error: #{e}"
-          @ws.send({ type: 'console-error', job_id: job_id, message: e.message }.to_json)
+          send_json({ type: 'console-error', job_id: job_id, message: e.message })
         ensure
           job.delete(:console_io)
         end
@@ -737,7 +752,7 @@ class MultiQemuDocker
           input.binmode
           puts "console startup"
 
-          @ws.send({ type: 'console-startup', job_id: job_id }.to_json)
+          send_json({ type: 'console-startup', job_id: job_id })
 
           begin
             loop do
@@ -745,15 +760,15 @@ class MultiQemuDocker
               data = data.force_encoding("BINARY")
               base64_data = Base64.strict_encode64(data)
               # puts "#{Time.now.to_f} console-output: #{data.inspect}"
-              @ws.send({ type: 'console-output', job_id: job_id, data: base64_data }.to_json)
+              send_json({ type: 'console-output', job_id: job_id, data: base64_data })
             end
           rescue EOFError, Errno::EIO
             # Process exited normally
             puts "Container console closed"
-            @ws.send({ type: 'console-exit', job_id: job_id }.to_json)
+            send_json({ type: 'console-exit', job_id: job_id })
           rescue => e
             puts "Container console read error: #{e}"
-            @ws.send({ type: 'console-error', job_id: job_id, message: e.message }.to_json)
+            send_json({ type: 'console-error', job_id: job_id, message: e.message })
           ensure
             input.close rescue nil
             output.close rescue nil
@@ -764,7 +779,7 @@ class MultiQemuDocker
       end
     rescue => e
       puts "Failed to start Container console: #{e}"
-      @ws.send({ type: 'console-error', job_id: job_id, message: e.message }.to_json)
+      send_json({ type: 'console-error', job_id: job_id, message: e.message })
     end
   end
 
@@ -776,12 +791,12 @@ class MultiQemuDocker
     job = @jobs[job_id]
     unless job
       puts "write_to_console: no job for job_id #{job_id}"
-      @ws.send({ type: 'console-exit', job_id: job_id }.to_json)
+      send_json({ type: 'console-exit', job_id: job_id })
       return
     end
     unless job[:console_io]
       puts "write_to_console: no console_io for job_id #{job_id}"
-      @ws.send({ type: 'console-exit', job_id: job_id }.to_json)
+      send_json({ type: 'console-exit', job_id: job_id })
       return
     end
 
@@ -844,9 +859,15 @@ class MultiQemuDocker
 
   def run
     loop do
-      start_event_machine
-      sleep 1
+      EM.run do
+        # EM.set_quantum(10)
+        # EM.epoll
+        connect_websocket
+      rescue => e
+        puts "Connection failed: #{e.to_s}"
+      end
     end
+    sleep 1
   end
 
 end
