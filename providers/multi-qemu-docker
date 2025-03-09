@@ -523,7 +523,7 @@ class MultiQemuDocker
     # puts "Updated window size for job #{job_id}: #{rows}x#{cols}"
 
     # Set new window size if we have a PTY
-    if job[:docker_pid]
+    if job[:console_io]
       begin
         if set_winsize(job[:console_io], rows, cols)
           puts "Successfully resized PTY for job #{job_id} to #{rows}x#{cols}"
@@ -533,15 +533,21 @@ class MultiQemuDocker
         puts e.backtrace.join("\n")
       end
     else
-      # no ioctl for QEMU UNIX socket, we only send stty command on initial connect
-      # puts "Warning: No Container PID found for job #{job_id}. Cannot resize PTY."
+      puts "Warning: No console_io for job #{job_id}. Cannot resize PTY."
     end
+  end
+
+  # It looks pty_set_winsize/set_winsize both won't work for QEMU "-serial pty".
+  # Yet another way is to build a busybox-static with "resize" applet and eval it in ~/.bashrc
+  def pty_set_winsize(pty_path, rows, cols)
+    system("stty rows #{rows} cols #{cols} < #{pty_path}")
   end
 
   def set_winsize(fd, rows, cols)
     return unless fd
     buf = [rows, cols, 0, 0].pack('S!*')
-    fd.ioctl(0x5414, buf)  # TIOCSWINSZ
+    result = fd.ioctl(0x5414, buf)  # TIOCSWINSZ
+    # puts "ioctl result: #{result}"
   rescue => e
     puts "Error setting window size: #{e}"
   end
@@ -746,31 +752,40 @@ class MultiQemuDocker
   end
 
   def start_qemu_console(job_id, job)
-    # Thread to read from QEMU socket and send output
+    # Thread to read from QEMU PTY and send output
     job[:console_thread] = Thread.new do
-      socket_path = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/qemu-console.sock"
-      return unless wait_for_qemu_to_start(socket_path)
+      pty_link_path = "#{ENV["HOSTS_DIR"]}/#{job[:hostname]}/qemu-pty-link"
+      return unless wait_for_qemu_to_start(pty_link_path)
 
-      socket = UNIXSocket.new(socket_path)
-      socket.write("\r\nstty rows #{job[:winsize][:rows]} cols #{job[:winsize][:cols]}\r\n")
-      job[:console_io] = socket
-      send_json({ type: 'console-startup', job_id: job_id })
+      # Resolve the PTY device path from the symbolic link
+      pty_path = File.readlink(pty_link_path)
 
-      until @dead
-        data = socket.readpartial(1024)
-        data = data.force_encoding("BINARY")
-        base64_data = Base64.strict_encode64(data)
-        send_json({ type: 'console-output', job_id: job_id, data: base64_data })
+      # Open the existing PTY device
+      File.open(pty_path, 'r+') do |pty|
+        job[:console_io] = pty
+        # puts "PTY file descriptor: #{pty.inspect}"
+        send_json({ type: 'console-startup', job_id: job_id })
+
+        # Set initial window size
+        pty_set_winsize(pty, job[:winsize][:rows], job[:winsize][:cols])
+
+        # Read from the PTY and send output
+        until @dead
+          data = pty.readpartial(1024)
+          data = data.force_encoding("BINARY")
+          base64_data = Base64.strict_encode64(data)
+          send_json({ type: 'console-output', job_id: job_id, data: base64_data })
+        end
+      rescue EOFError, Errno::EIO
+        # Process exited normally
+        puts "QEMU console closed"
+        send_json({ type: 'console-exit', job_id: job_id })
+      rescue => e
+        puts "QEMU console read error: #{e}"
+        send_json({ type: 'console-error', job_id: job_id, message: e.message })
+      ensure
+        job.delete(:console_io)
       end
-    rescue EOFError, Errno::EIO
-      # Process exited normally
-      puts "QEMU console closed"
-      send_json({ type: 'console-exit', job_id: job_id })
-    rescue => e
-      puts "QEMU console read error: #{e}"
-      send_json({ type: 'console-error', job_id: job_id, message: e.message })
-    ensure
-      job.delete(:console_io)
     end
   end
 

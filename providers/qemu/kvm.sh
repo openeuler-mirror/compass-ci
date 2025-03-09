@@ -351,7 +351,7 @@ common_option()
 		-no-reboot
 		-monitor null
 		-serial stdio
-		-serial unix:$host_dir/qemu-console.sock,server=on,wait=off
+		-serial pty:$host_dir/qemu-pty-link
 		-pidfile $PIDS_DIR/qemu-$hostname.pid
 	)
 }
