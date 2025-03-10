@@ -84,11 +84,12 @@ JOB_DATA_READINESS_ID2NAME = JOB_DATA_READINESS_NAME2ID.invert
 # these are suitable as direct fields
 # - read frequently: common/useful in end user query
 # - write once: won't change after initial submit
+# - id cannot be in insert doc body, so not included here
 MANTI_STRING_FIELDS = %w[suite category my_account testbox arch osv]
 
 # these can be in-place updated at low cost
 MANTI_INT64_FIELDS = %w[submit_time boot_time running_time finish_time]
-MANTI_INT32_FIELDS = %w[boot_seconds run_seconds istage ihealth]
+MANTI_INT32_FIELDS = %w[boot_seconds run_seconds istage ihealth idata_readiness]
 
 # their k=v will be added to full_text_kv for fast MATCH query
 # MANTI_STRING_FIELDS will be added too

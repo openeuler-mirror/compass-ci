@@ -14,10 +14,11 @@ class HostInfo
   property id : Int64 = 0
   property job_id : Int64 = 0
   @job_defaults : Hash(String, String) = Hash(String, String).new
+  property hash_bool : Hash(String, Bool) = Hash(String, Bool).new
+  property hash_int64 : Hash(String, Int64) = Hash(String, Int64).new
   property hash_uint32 : Hash(String, UInt32) = Hash(String, UInt32).new
   property hash_str : Hash(String, String) = Hash(String, String).new
   property hash_str_array : Hash(String, Array(String)) = Hash(String, Array(String)).new
-  property hash_bool : Hash(String, Bool) = Hash(String, Bool).new
   property hash_all : Hash(String, JSON::Any) = Hash(String, JSON::Any).new
 
   def id64
@@ -27,6 +28,13 @@ class HostInfo
   def id_es
     @id
   end
+
+  INT64_KEYS = %w(
+    create_time
+    boot_time
+    reboot_time
+    active_time
+  )
 
   # memory unit: MB
   # please keep UINT32_KEYS in sync with sbin/manti-table-hosts.sql
@@ -40,10 +48,6 @@ class HostInfo
 
     nr_vm
     nr_container
-
-    boot_time
-    reboot_time
-    active_time
   )
 
   # freemem unit: MB, dynamic updated, only for qemu/docker host machines
@@ -130,6 +134,7 @@ class HostInfo
     hi = HostInfo.new
 
     BOOL_KEYS.each      do |key| hi.load_bool(parsed_data, key) end
+    INT64_KEYS.each     do |key| hi.load_int64(parsed_data, key) end
     UINT32_KEYS.each    do |key| hi.load_uint32(parsed_data, key) end
     STRING_KEYS.each    do |key| hi.load_string(parsed_data, key) end
     STR_ARRAY_KEYS.each do |key| hi.load_string_array(parsed_data, key) end
@@ -160,6 +165,11 @@ class HostInfo
   def load_job_defaults(parsed_data)
     return unless hash = parsed_data["job_defaults"]?
     hash.as_h.each { |k, v| @job_defaults[k] = v.as_s }
+  end
+
+  def load_int64(parsed_data, key : String)
+    value = parsed_data[key].as_i64 rescue nil
+    @hash_uint32[key] = value.to_u32 if value
   end
 
   def load_uint32(parsed_data, key : String)
@@ -197,6 +207,9 @@ class HostInfo
   def to_manticore
     mjob = @hash_all.dup
 
+    @hash_int64.keys.each do |field|
+      mjob[field] = JSON::Any.new @hash_int64[field]
+    end
     @hash_uint32.keys.each do |field|
       mjob[field] = JSON::Any.new @hash_uint32[field]
     end
@@ -220,6 +233,7 @@ class HostInfo
   def merge2hash_all
     hash_all = @hash_all.dup
     hash_all["id"] = JSON::Any.new(@id)
+    @hash_int64.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_uint32.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_bool.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_str.each { |k, v| hash_all[k] = JSON::Any.new(v) }
@@ -242,29 +256,60 @@ class HostInfo
     JSON.parse(self.to_json)
   end
 
-  # Getter methods for accessing dynamic properties
-  def [](key : String) : Bool? | UInt32? | String? | Array(String)?
-    if @hash_uint32.has_key?(key)
-      @hash_uint32[key]
-    elsif @hash_str.has_key?(key)
-      @hash_str[key]
-    elsif @hash_str_array.has_key?(key)
-      @hash_str_array[key]
+  # Getter method for accessing dynamic properties
+  def [](key : String) : Bool? | Int64? | UInt32? | String? | Array(String)?
+    if BOOL_KEYS.includes?(key)
+      @hash_bool[key]?
+    elsif INT64_KEYS.includes?(key)
+      @hash_int64[key]?
+    elsif UINT32_KEYS.includes?(key)
+      @hash_uint32[key]?
+    elsif STRING_KEYS.includes?(key)
+      @hash_str[key]?
+    elsif STR_ARRAY_KEYS.includes?(key)
+      @hash_str_array[key]?
     else
       nil
     end
   end
 
-  def []=(key : String, value : Bool | UInt32 | String | Array(String))
+  # Setter method for assigning dynamic properties
+  def []=(key : String, value : Bool | Int64 | UInt32 | String | Array(String))
     case value
+    when Bool
+      raise "Invalid key for Bool: #{key}" unless BOOL_KEYS.includes?(key)
+      @hash_bool[key] = value
+    when Int64
+      raise "Invalid key for Int64: #{key}" unless INT64_KEYS.includes?(key)
+      @hash_int64[key] = value
     when UInt32
+      raise "Invalid key for UInt32: #{key}" unless UINT32_KEYS.includes?(key)
       @hash_uint32[key] = value
     when String
+      raise "Invalid key for String: #{key}" unless STRING_KEYS.includes?(key)
       @hash_str[key] = value
     when Array(String)
+      raise "Invalid key for Array(String): #{key}" unless STR_ARRAY_KEYS.includes?(key)
       @hash_str_array[key] = value
+    else
+      raise "Unsupported value type: #{value.class}"
     end
   end
+
+  # Generate methods for UInt32 properties
+  {% for name in INT64_KEYS %}
+    def {{name.id}} : Int64
+      @hash_int64[{{name}}]
+    end
+
+    def {{name.id + "?"}} : Int64?
+      @hash_int64[{{name}}]?
+    end
+
+    def {{(name + "=").id}}(value : Int64)
+      @hash_int64[{{name}}] = value
+    end
+  {% end %}
 
   # Generate methods for UInt32 properties
   {% for name in UINT32_KEYS + UINT32_METRIC_KEYS %}
@@ -391,8 +436,8 @@ class Hosts
     host.suite = job.suite
     host.my_account = job.my_account
     host.result_root = job.result_root
-    host.boot_time = Time.utc.to_unix.to_u32
-    host.reboot_time = job.deadline_utc.to_u32
+    host.boot_time = Time.utc.to_unix.to_i64
+    host.reboot_time = job.deadline_utc.to_i64
   end
 
   def pass_info_to_host(host_req, msg)
@@ -406,8 +451,7 @@ class Hosts
     # HW machine metrics are not reported together in msg, but via api_register_host() "report_metrics" case.
     if host_req.tbox_type != "hw"
       HostInfo::UINT32_METRIC_KEYS.each do |key|
-        hostinfo.hash_uint32[key] =
-        host_req.metrics[key] if host_req.metrics.has_key? key
+        hostinfo.hash_uint32[key] = host_req.metrics[key] if host_req.metrics.has_key? key
       end
       hostinfo.hash_str["disk_max_used_string"] = host_req.disk_max_used_string unless host_req.disk_max_used_string.empty?
       hostinfo.freemem = host_req.freemem

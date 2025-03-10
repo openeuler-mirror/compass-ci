@@ -7,12 +7,18 @@ class AccountInfo
   property id                 :    Int64 = 0
   property gitee_id           :    String
   property my_account         :    String
-  property my_commit_url      :    String
-  property my_email           :    String
-  property my_login_name      :    String
   property my_name            :    String
+  property my_email           :    String
   property my_token           :    String
-  property weight             :    Int32
+  property my_login_name      :    String = ""
+  property my_commit_url      :    String = ""
+  property my_orgs            :    String = ""
+  property my_tags            :    String = ""
+  property my_roles           :    String = ""
+  property my_groups          :    String = ""
+  property my_projects        :    String = ""
+  property weight             :    Int64
+  property create_time        :    Int64
   property my_third_party_accounts : Hash(String, String)
 
   def set_id
@@ -131,6 +137,7 @@ class Sched
     begin
       # Parse and validate account information
       account_info = AccountInfo.from_json(account_hash.to_json)
+      account_info.create_time = Time.utc.to_unix
 
       # Add the account to the cache and Elasticsearch
       @accounts_cache.add_account(account_info)

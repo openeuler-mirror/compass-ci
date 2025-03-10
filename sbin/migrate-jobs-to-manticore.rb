@@ -41,15 +41,12 @@ require 'net/http'
 require 'time'
 require_relative '../container/defconfig.rb'
 require_relative '../lib/constants.rb'
-require_relative '../lib/constants-manticore.rb'
+require_relative '../lib/constants-job.rb'
 
 # Constants
 N = ARGV[0]&.to_i || 100 # Default to 100 records
 MANTICORE_HOST = 'localhost'
 MANTICORE_PORT = 9308
-
-# Field lists
-DURATION_FIELDS = %w[boot_seconds run_seconds].freeze
 
 # Connect to Elasticsearch
 def connect_elasticsearch(host:, user:, password:)
@@ -110,7 +107,7 @@ def transform_job(job)
   # Direct fields
   MANTI_STRING_FIELDS.each do |field|
     next unless job.key?(field)
-    mjob[field.to_sym] = job[field]
+    manti[field.to_sym] = job[field]
   end
 
   MANTI_INT64_FIELDS.each do |field|
@@ -123,11 +120,15 @@ def transform_job(job)
     end
   end
 
-  # Duration fields
-  DURATION_FIELDS.each do |field|
+  MANTI_INT32_FIELDS.each do |field|
     next unless job.key?(field)
 
-    manti[field.to_sym] = duration_to_seconds(job[field])
+    # Duration fields
+    if field.end_with?('_seconds')
+      manti[field.to_sym] = duration_to_seconds(job[field])
+    else
+      manti[field.to_sym] = job[field].to_i
+    end
   end
 
   # errid as space-separated string
@@ -168,13 +169,20 @@ def insert_into_manticore(job)
   id = job.delete :id
   payload = {
     index: 'jobs',
-    id: id,
+    id: id.to_i,
     doc: job
   }
 
   request.body = payload.to_json
   response = http.request(request)
-  puts "Inserted job #{id}: #{response.code}"
+  if response.code.to_i == 200
+    puts "Inserted job #{id}: #{response.code}"
+  else
+    puts "Failed to insert job #{id}: #{response.inspect}"
+    # job.delete :j
+    # puts job.inspect
+    # exit
+  end
 end
 
 # Main script
@@ -187,6 +195,7 @@ es = connect_elasticsearch(host: ES_HOST, user: config['ES_USER'], password: con
 jobs = fetch_last_n_jobs(es: es, n: N)
 
 jobs.each do |job|
+  job.delete :upload_file_store
   manti_job = transform_job(job)
   insert_into_manticore(manti_job)
 end

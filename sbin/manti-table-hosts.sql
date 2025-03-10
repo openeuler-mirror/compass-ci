@@ -7,9 +7,10 @@ CREATE TABLE hosts(
 	nr_hdd_partitions	int,
 	nr_ssd_partitions	int,
 
-	boot_time		int,
-	reboot_time		int,
-	active_time		int,
+	create_time		bigint,
+	boot_time		bigint,
+	reboot_time		bigint,
+	active_time		bigint,
 
 	job_id			bigint,
 
