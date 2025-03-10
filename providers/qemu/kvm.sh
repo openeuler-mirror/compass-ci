@@ -350,8 +350,8 @@ common_option()
 		${nic[@]}
 		-no-reboot
 		-monitor null
-		-serial stdio
-		-serial unix:$host_dir/qemu-console.sock,server=on,wait=off
+		-chardev socket,id=serial$job_id,path=$host_dir/qemu-console.sock,server=on,wait=off,logfile=$log_file,logappend=on
+		-serial chardev:serial$job_id
 		-pidfile $PIDS_DIR/qemu-$hostname.pid
 	)
 }
@@ -492,16 +492,9 @@ show_qemu_cmd()
 
 run_qemu()
 {
-	if [ -n "$DEBUG" ];then
-		"${kvm[@]}" "${arch_option[@]}" --append "${append}"
-	else
-		# The default value of serial in QEMU is stdio.
-		# We use >> and 2>&1 to record serial, stdout, and stderr together to log_file
-		"${kvm[@]}" "${arch_option[@]}" --append "${append}" >> $log_file 2>&1
-	fi
-
-	local return_code=$?
-	[ $return_code -eq 0 ] || echo "[ERROR] qemu start return code is: $return_code" >> $log_file
+    "${kvm[@]}" "${arch_option[@]}" --append "${append}" -D $log_file
+    local return_code=$?
+    [ $return_code -eq 0 ] || echo "[ERROR] qemu start return code is: $return_code" >> $log_file
 }
 
 set_options()
