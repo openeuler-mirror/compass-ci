@@ -71,7 +71,10 @@ process_kernel_files() {
         local modules_dir="$temp_dir/lib/modules/$kernel_version"
         if [[ -d "$modules_dir" ]]; then
             convert_zstd "$modules_dir"
-            (cd "$temp_dir" && { find "lib"; } | cpio -o -H newc | gzip -9 > "$target_dir/modules-$kernel_version.cgz")
+            # skip lib/ dir avoids overwriting /lib symlink in typical distro,
+            # however it also requires the modules cgz be loaded after os cgz,
+            # otherwise all files in the modules cgz cannot be unpacked due to no parent dir.
+            (cd "$temp_dir" && { find "lib/modules"; } | cpio -o -H newc | gzip -9 > "$target_dir/modules-$kernel_version.cgz")
         fi
     fi
 
