@@ -297,7 +297,7 @@ set_nic()
 	local br="br0"
 	[ -f "/sys/class/net/${br}/address" ] || return
 
-	netdev="-netdev bridge,br=br0,id=net0,helper=${helper}"
+	netdev="-netdev bridge,br=br0,id=net2,helper=${helper}"
 	for i in $(seq 1 $nr_nic)
 	do
 		nic[$i]="-nic tap,model=virtio-net-pci,helper=${helper},br=${br}"
