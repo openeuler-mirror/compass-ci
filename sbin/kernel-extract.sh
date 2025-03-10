@@ -63,19 +63,17 @@ process_kernel_files() {
 
     # Package modules
     local modules_dir="$temp_dir/usr/lib/modules/$kernel_version"
+
+    # Moving to /usr/lib/ avoids overwriting /lib symlink in typical distro
+    [[ -d "$modules_dir" ]] || {
+        mkdir -p "$temp_dir/usr/lib/modules"
+        mv "$temp_dir/lib/modules/$kernel_version" "$modules_dir"
+    }
+
     if [[ -d "$modules_dir" ]]; then
         convert_zstd "$modules_dir"
         (cd "$temp_dir" && { echo usr; find "usr/lib"; } | cpio -o -H newc | gzip -9 > "$target_dir/modules-$kernel_version.cgz")
-    else
-        # Package modules into cpio.gz
-        local modules_dir="$temp_dir/lib/modules/$kernel_version"
-        if [[ -d "$modules_dir" ]]; then
-            convert_zstd "$modules_dir"
-            # skip lib/ dir avoids overwriting /lib symlink in typical distro,
-            # however it also requires the modules cgz be loaded after os cgz,
-            # otherwise all files in the modules cgz cannot be unpacked due to no parent dir.
-            (cd "$temp_dir" && { find "lib/modules"; } | cpio -o -H newc | gzip -9 > "$target_dir/modules-$kernel_version.cgz")
-        fi
+        rm -fr "$temp_dir/usr/lib/modules" # Avoid same content being packed into below tools cgz
     fi
 
     # Package headers
