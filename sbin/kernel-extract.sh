@@ -56,8 +56,9 @@ process_kernel_files() {
     # Copy boot dir
     mv $temp_dir/boot/*$kernel_version* "$target_dir" || exit
     [[ ! -L "$target_dir/vmlinuz" ]] && {
-        # opensuse has Image
-        test -f "$target_dir/Image-$kernel_version"   && ln -sf "Image-$kernel_version" "$target_dir/vmlinuz"
+        # opensuse has Image, rename it to standard vmlinuz
+        test -f "$target_dir/Image-$kernel_version"   && mv "$target_dir/Image-$kernel_version" "$target_dir/vmlinuz-$kernel_version"
+        test -f "$target_dir/bzImage-$kernel_version" && mv "$target_dir/bzImage-$kernel_version" "$target_dir/vmlinuz-$kernel_version"
         test -f "$target_dir/vmlinuz-$kernel_version" && ln -sf "vmlinuz-$kernel_version" "$target_dir/vmlinuz"
     }
 
