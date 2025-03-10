@@ -83,7 +83,13 @@ class PkgBuild < PluginsCommon
   private def any_missing_files?(job, pkg_name) : Bool
     job.need_file_store.any? do |path|
       next false unless path.starts_with?("ss/pkgbuild/#{pkg_name}/")
-      !File.exists?(File.join(FILE_STORE, path))
+      if File.exists?(File.join(FILE_STORE, path))
+        next false
+      elsif !IS_ROOT_USER && File.exists?(File.join(GLOBAL_FILE_STORE, path))
+        next false
+      else
+        next true
+      end
     end
   end
 

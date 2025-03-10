@@ -30,6 +30,10 @@ class Job
     # Check required files
     no_file_store = [] of String
     need_file_store.each do |path|
+      unless IS_ROOT_USER
+        full_path = File.join(GLOBAL_FILE_STORE, path)
+        next if File.exists?(full_path)
+      end
       full_path = File.join(FILE_STORE, path)
       next if File.exists?(full_path)
       if path =~ /^lkp_src\/base\/([\w-]+)\/(\w+)\.cgz$/

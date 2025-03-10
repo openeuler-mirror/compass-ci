@@ -27,6 +27,11 @@ class Sched
 
     # return nil unless requested_path.starts_with?("#{BASE_DIR}/scheduler")
 
+    if !IS_ROOT_USER
+      full_path = File.join("/srv", requested_path)
+      return full_path if File.exists?(full_path)
+    end
+
     full_path = File.join(BASE_DIR, requested_path)
     return full_path
   end

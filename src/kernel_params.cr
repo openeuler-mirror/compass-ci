@@ -94,6 +94,10 @@ class JobHash
     return "#{FILE_STORE}/boot2os/#{arch}/#{osv}"
   end
 
+  def global_boot2os_dir
+    return "#{GLOBAL_FILE_STORE}/boot2os/#{arch}/#{osv}"
+  end
+
   def os_dir
     return "#{os}/#{os_arch}/#{os_version}"
   end
@@ -113,6 +117,8 @@ class JobHash
 
     if File.exists? "#{boot2os_dir}/vmlinuz"
       vmlinuz_path = "#{boot2os_dir}/vmlinuz"
+    elsif !IS_ROOT_USER && File.exists? "#{global_boot2os_dir}/vmlinuz"
+      vmlinuz_path = "#{global_boot2os_dir}/vmlinuz"
     else
       vmlinuz_path = "#{boot_dir}/vmlinuz"
     end
@@ -125,6 +131,9 @@ class JobHash
     if File.exists? "#{boot2os_dir}/vmlinuz-#{kernel_version}"
       vmlinuz_path = File.realpath("#{boot2os_dir}/vmlinuz-#{kernel_version}")
       modules_path = File.realpath("#{boot2os_dir}/modules-#{kernel_version}.cgz")
+    elsif !IS_ROOT_USER && File.exists? "#{global_boot2os_dir}/vmlinuz-#{kernel_version}"
+      vmlinuz_path = File.realpath("#{global_boot2os_dir}/vmlinuz-#{kernel_version}")
+      modules_path = File.realpath("#{global_boot2os_dir}/modules-#{kernel_version}.cgz")
     else
       vmlinuz_path = File.realpath("#{boot_dir}/vmlinuz-#{kernel_version}")
       modules_path = File.realpath("#{boot_dir}/modules-#{kernel_version}.cgz")
@@ -214,9 +223,16 @@ class JobHash
     osimage = "#{FILE_STORE}/docker2os/#{self.arch}/#{self.osv}.cgz"
     if File.exists? osimage
       temp_initrds << "#{initrd_http_prefix}" + JobHelper.service_path(osimage)
+    elsif !IS_ROOT_USER
+      osimage = "#{GLOBAL_FILE_STORE}/docker2os/#{self.arch}/#{self.osv}.cgz"
+      if File.exists? osimage
+        temp_initrds << "#{initrd_http_prefix}" + JobHelper.service_path(osimage)
+      end
     end
 
     if File.exists? "#{FILE_STORE}/busybox/#{self.arch}/busybox-static.cgz"
+      temp_initrds << "#{sched_http_prefix}/srv/file-store/busybox/#{self.arch}/busybox-static.cgz"
+    elsif !IS_ROOT_USER && File.exists? "#{GLOBAL_FILE_STORE}/busybox/#{self.arch}/busybox-static.cgz"
       temp_initrds << "#{sched_http_prefix}/srv/file-store/busybox/#{self.arch}/busybox-static.cgz"
     elsif File.exists? "#{osimage_dir}/run-ipconfig.cgz"
       temp_initrds << "#{initrd_http_prefix}" +

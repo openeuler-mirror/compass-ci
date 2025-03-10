@@ -39,13 +39,15 @@ SRV_HTTP_CCI_PORT = (ENV.has_key?("SRV_HTTP_CCI_PORT") ? ENV["SRV_HTTP_CCI_PORT"
 CCI_REPOS = (ENV.has_key?("CCI_REPOS") ? ENV["CCI_REPOS"] : "/c")
 LAB_REPO  = "lab-#{LAB}"
 
-BASE_DIR = ENV["USER"] == "root" ? "/srv" : "#{ENV["HOME"]}/.cache/compass-ci"
+IS_ROOT_USER = (ENV["USER"] == "root")
+BASE_DIR = IS_ROOT_USER ? "/srv" : "#{ENV["HOME"]}/.cache/compass-ci"
 
 SRV_OS     = "#{BASE_DIR}/os"
 SRV_INITRD = "#{BASE_DIR}/initrd"
 SRV_UPLOAD = "#{BASE_DIR}/scheduler/upload-files"
 SRV_USER_FILE_UPLOAD = "#{BASE_DIR}/scheduler/user-files"
 FILE_STORE = "#{BASE_DIR}/file-store"
+GLOBAL_FILE_STORE = "/srv/file-store"
 
 SCHED_HTTP_PREFIX = "http://#{SCHED_HOST}:#{SCHED_PORT}"
 INITRD_HTTP_PREFIX = "http://#{INITRD_HTTP_HOST}:#{INITRD_HTTP_PORT}"
