@@ -21,18 +21,6 @@ require_relative 'docker/docker'
 require_relative 'qemu/qemu'
 require_relative '../container/defconfig'
 
-names = Set.new %w[
-  SCHED_HOST
-  SCHED_PORT
-  DOMAIN_NAME
-]
-
-defaults = relevant_defaults(names)
-SCHED_HOST = ENV['SCHED_HOST'] || defaults['SCHED_HOST'] || '172.17.0.1'
-SCHED_PORT = ENV['SCHED_PORT'] || defaults['SCHED_PORT'] || 3000
-
-DOMAIN_NAME = defaults['DOMAIN_NAME']
-
 ARCH = `arch`.chomp
 NR_NODE = Dir.glob('/sys/devices/system/node/node*').count
 NR_CPU = Etc.nprocessors
@@ -40,6 +28,171 @@ NR_DISKS = count_disks_sys_block
 
 BASE_DIR = Process.uid.zero? ? "/var/lib/docker/compass-ci" : "#{ENV['HOME']}/.cache/compass-ci"
 CACHE_LOCK_ROOT = "#{BASE_DIR}/.locks"
+
+# Configuration options, the first found file takes effect
+PROVIDER_CONFIG_FILES = [
+  "#{ENV["HOME"]}/.config/compass-ci/provider/config.yaml",
+  "/etc/compass-ci/provider/config.yaml",
+]
+
+PROVIDER_DEFAULT_OPTIONS = {
+  hostname: ENV['HOST'] || ENV['HOSTNAME'] || `hostname`.chomp,
+  tbox_type: 'vm,dc', # must be one of 'vm', 'dc', 'vm,dc'
+  max_qemu: 0,
+  max_container: 0,
+  is_remote: false,
+  tags: [],
+  services: { # must be string values
+    sched_host: '172.17.0.1',
+    sched_port: '3000',
+    result_host: '172.17.0.1',
+    result_port: '3000',
+  },
+}.freeze
+
+class MultiQemuDocker
+
+  def sched_host;  @options[:services]['sched_host'] end
+  def sched_port;  @options[:services]['sched_port'] end
+  def result_host; @options[:services]['result_host'] end
+  def result_port; @options[:services]['result_port'] end
+
+  def load_options(argv)
+    # Parse command-line options
+    cli_options = parse_cli_options(argv)
+
+    # Load options from config file
+    config_options = load_config_file(cli_options)
+    config_options = add_env_options(config_options)
+
+    # Merge options in order of precedence:
+    # 1. Command-line options (highest priority)
+    # 2. Environment variables
+    # 3. Configuration file options
+    # 4. Default options (lowest priority)
+    @options = PROVIDER_DEFAULT_OPTIONS
+      .merge(config_options)
+      .merge(cli_options)
+
+    errors = validate_options(@options)
+    unless errors.empty?
+      puts errors.join "\n"
+      exit(1)
+    end
+
+    @options
+  end
+
+  def add_env_options(config)
+    config[:services] ||= {}
+    config[:services]['sched_host'] = ENV['SCHED_HOST'] if ENV['SCHED_HOST']
+    config[:services]['sched_port'] = ENV['SCHED_PORT'] if ENV['SCHED_PORT']
+    config[:services]['result_host'] = ENV['RESULT_HOST'] if ENV['RESULT_HOST']
+    config[:services]['result_port'] = ENV['RESULT_PORT'] if ENV['RESULT_PORT']
+    config
+  end
+
+  # Load configuration from the first available file in PROVIDER_CONFIG_FILES
+  def load_config_file(cli_options)
+    if cli_options[:config_file]
+      config_file = cli_options[:config_file]
+    else
+      config_file = PROVIDER_CONFIG_FILES.find { |file| File.exist?(file) }
+    end
+    return {} unless config_file
+
+    options = YAML.load_file(config_file) || {}
+    options.transform_keys(&:to_sym)
+  rescue => e
+    warn "Failed to load config file: #{e.message}"
+    exit(1)
+  end
+
+  def parse_cli_options(argv)
+    options = {}
+
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: multi-qemu-docker [options]'
+
+      opts.on('-c CONFIGFILE', '--config-file CONFIGFILE', 'config file path') { |v| options[:config_file] = v }
+      opts.on('-n HOSTNAME', '--name HOSTNAME', 'Hostname for reporting') { |v| options[:hostname] = v }
+      opts.on('-t TYPE', '--tbox-type TYPE', 'Testbox Type ("vm" or "dc" or "vm,dc" by default)') { |v| options[:tbox_type] = v }
+      opts.on('-T TAGS', '--tags TAGS', 'tags separated by ","') { |v| options[:tags] = v.split(',') }
+      opts.on('--max-qemu COUNT', 'Number of QEMU instances (0 for auto-computing)') { |v| options[:max_qemu] = v }
+      opts.on('--max-container COUNT', 'Number of container instances (0 for auto-computing)') { |v| options[:max_container] = v }
+      opts.on('-r', '--remote', 'Testbox is remote') { options[:is_remote] = true }
+      opts.on('-h', '--help', 'Show this message') { puts opts; exit }
+    end.parse!(argv)
+
+    options
+  end
+
+  def validate_options(options)
+    errors = []
+
+    # Validate hostname
+    unless options[:hostname].is_a?(String)
+      errors << "hostname must be a String, but got #{options[:hostname].inspect} (#{options[:hostname].class})"
+    end
+
+    # Validate tbox_type
+    valid_tbox_types = ['vm', 'dc', 'vm,dc']
+    unless valid_tbox_types.include?(options[:tbox_type])
+      errors << "tbox_type must be one of #{valid_tbox_types.join(', ')}, but got #{options[:tbox_type].inspect} (#{options[:tbox_type].class})"
+    end
+
+    # Validate max_qemu
+    unless options[:max_qemu].is_a?(Integer)
+      errors << "max_qemu must be an Integer, but got #{options[:max_qemu].inspect} (#{options[:max_qemu].class})"
+    end
+
+    # Validate max_container
+    unless options[:max_container].is_a?(Integer)
+      errors << "max_container must be an Integer, but got #{options[:max_container].inspect} (#{options[:max_container].class})"
+    end
+
+    # Validate is_remote
+    unless options[:is_remote].is_a?(TrueClass) || options[:is_remote].is_a?(FalseClass)
+      errors << "is_remote must be a Boolean, but got #{options[:is_remote].inspect} (#{options[:is_remote].class})"
+    end
+
+    # Validate tags
+    unless options[:tags].is_a?(Array)
+      errors << "tags must be an Array, but got #{options[:tags].inspect} (#{options[:tags].class})"
+    end
+
+    # Validate services
+    unless options[:services].is_a?(Hash)
+      errors << "services must be a Hash, but got #{options[:services].inspect} (#{options[:services].class})"
+    else
+      options[:services].each do |key, value|
+        unless value.is_a?(String)
+          errors << "services[#{key}] must be a String, but got #{value.inspect} (#{value.class})"
+        end
+      end
+    end
+
+    errors
+  end
+
+  def compute_max_vm
+    host_cpu = Etc.nprocessors
+    host_mem = total_memory_mb >> 10
+
+    nr_vm_on_cpu = host_cpu / MIN_QEMU_CPU
+    nr_vm_on_mem = host_mem / MIN_QEMU_MEMORY
+
+    # puts "nr_vm_on_cpu: #{nr_vm_on_cpu}"
+    # puts "nr_vm_on_mem: #{nr_vm_on_mem}"
+
+    max_vm = [nr_vm_on_cpu, nr_vm_on_mem].min
+  end
+
+  def compute_max_dc
+    Etc.nprocessors / MIN_CONTAINER_CPU
+  end
+
+end
 
 class MultiQemuDocker
   attr_accessor :url, :thread
@@ -76,9 +229,9 @@ class MultiQemuDocker
 
   def build_scheduler_ws_url
     if @options[:is_remote]
-      "wss://#{DOMAIN_NAME}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
+      "wss://#{sched_host}:#{sched_port}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
     else
-      "ws://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
+      "ws://#{sched_host}:#{sched_port}/scheduler/v1/vm-container-provider/#{@options[:hostname]}"
     end
   end
 
@@ -110,14 +263,6 @@ class MultiQemuDocker
 end
 
 class MultiQemuDocker
-  DEFAULT_OPTIONS = {
-    hostname: ENV['HOST'] || ENV['HOSTNAME'] || `hostname`.chomp,
-    tbox_type: 'vm,dc',
-    max_qemu: 0,
-    max_container: 0,
-    is_remote: false,
-    tags: [],
-  }.freeze
 
   MIN_QEMU_CPU = 2
   MIN_CONTAINER_CPU = 2
@@ -134,7 +279,7 @@ class MultiQemuDocker
   attr_accessor :last_free_mem, :last_status_time
 
   def initialize(argv)
-    @options = DEFAULT_OPTIONS.merge(parse_cli_options(argv))
+    load_options(argv)
     @last_meminfo = parse_meminfo
     @last_free_mem = free_memory_mb
     @last_status_time = Time.now
@@ -297,7 +442,7 @@ class MultiQemuDocker
       target_path = File.join(job[:result_root], encoded_remote_path)
 
       # Construct the HTTP URL
-      http_url = "http://#{SCHED_HOST}:#{SCHED_PORT}#{target_path}?job_id=#{job[:id]}&job_token=#{job[:job_token]}"
+      http_url = "http://#{result_host}:#{result_port}#{target_path}?job_id=#{job[:id]}&job_token=#{job[:job_token]}"
 
       # Maximum retries and retry delay
       max_retries = 50
@@ -361,41 +506,6 @@ class MultiQemuDocker
 
   private
 
-  def parse_cli_options(argv)
-    options = {}
-
-    OptionParser.new do |opts|
-      opts.banner = 'Usage: multi-qemu-docker [options]'
-
-      opts.on('-n HOSTNAME', '--name HOSTNAME', 'Hostname for reporting') { |v| options[:hostname] = v }
-      opts.on('-t TYPE', '--tbox-type TYPE', 'Testbox type (vm/dc, or both by default)') { |v| options[:tbox_type] = v }
-      opts.on('--max-qemu COUNT', 'Number of QEMU instances (0 for auto-computing)') { |v| options[:max_qemu] = v }
-      opts.on('--max-container COUNT', 'Number of container instances (0 for auto-computing)') { |v| options[:max_container] = v }
-      opts.on('-t tags', '--tags TAGS', 'separated by ","') { |v| options[:tags] = v.split(',') }
-      opts.on('-r', '--remote', 'Testbox is remote') { options[:is_remote] = true }
-      opts.on('-h', '--help', 'Show this message') { puts opts; exit }
-    end.parse!(argv)
-
-    options
-  end
-
-  def compute_max_vm
-    host_cpu = Etc.nprocessors
-    host_mem = total_memory_mb >> 10
-
-    nr_vm_on_cpu = host_cpu / MIN_QEMU_CPU
-    nr_vm_on_mem = host_mem / MIN_QEMU_MEMORY
-
-    # puts "nr_vm_on_cpu: #{nr_vm_on_cpu}"
-    # puts "nr_vm_on_mem: #{nr_vm_on_mem}"
-
-    max_vm = [nr_vm_on_cpu, nr_vm_on_mem].min
-  end
-
-  def compute_max_dc
-    Etc.nprocessors / MIN_CONTAINER_CPU
-  end
-
   def send_status
     now = Time.now
     return if @prev_io_timestamp && now - @prev_io_timestamp < 1
@@ -419,12 +529,7 @@ class MultiQemuDocker
       tags: @options[:tags],
       cache_dirs: @cache_dirs,
 
-      services: { # must be string values
-        sched_host: SCHED_HOST,
-        sched_port: SCHED_PORT.to_s,
-        result_host: SCHED_HOST,
-        result_port: SCHED_PORT.to_s,
-      },
+      services: @options[:services],
 
       freemem: free_memory_mb, # duplicate for fast access in HostRequest
       disk_max_used_string: disk_usage[:string], # "92% /srv/os"
