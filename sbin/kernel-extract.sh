@@ -146,6 +146,7 @@ convert_zstd() {
 
 extract_rpm() {
     for rpm in "$download_dir"/*.rpm; do
+        test -e "$rpm" || continue
         echo "Extracting: $rpm"
         local files=$(rpm -q -l -p $rpm 2>/dev/null)
         if echo "$files" |grep -q -E -e 'lib/modules/[0-9]\.[0-9]+\.[0-9]' -e 'boot/(kernel|vmlinu[xz])-[0-9]\.[0-9]+\.[0-9]'
@@ -162,6 +163,7 @@ extract_rpm() {
 
 extract_deb() {
     for deb in "$download_dir"/*.deb; do
+        test -e "$deb" || continue
         echo "Extracting $deb"
         ar x "$deb" --output="$temp_dir" || exit
         data_tar=$(find "$temp_dir" -maxdepth 1 -name 'data.tar.*' | head -n1)
