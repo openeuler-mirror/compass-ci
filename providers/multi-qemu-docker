@@ -897,13 +897,17 @@ class MultiQemuDocker
   end
 
   # Wait until the container is running
-  def wait_for_container_to_start(container_id)
+  def wait_for_container_to_start(job_id, container_id)
+    secs = 0
     until @dead
       cmd = "#{@container_runtime} inspect -f '{{.State.Status}}"
-      puts cmd
-      status = `#{cmd}' #{container_id}`.chomp
+      # puts cmd
+      status = `#{cmd}' #{container_id} 2>/dev/null`.chomp
       break if status == "running"
+      break unless @jobs[job_id]
+      secs += 1
       sleep 1 # Wait for 1 second before checking again
+      break if secs > 3600
     end
   end
 
@@ -914,7 +918,7 @@ class MultiQemuDocker
     begin
       job[:console_thread] = Thread.new do
         # Wait for the container to start
-        wait_for_container_to_start(container_id)
+        wait_for_container_to_start(job_id, container_id)
 
         PTY.spawn(@container_runtime, "exec", "-it", container_id, "/bin/bash", "-c", "stty raw echo opost icrnl isig 2>/dev/null; bash") do |output, input, pid|
           job[:console_io] = input
