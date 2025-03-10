@@ -145,32 +145,6 @@ class QemuManager
     [kernel, append]
   end
 
-  def download_resource(url)
-    # Extract the path from the URL
-    if url =~ /\/job.cgz$/
-      local_path = "job.cgz" # no need caching
-    else
-      local_path = "#{ENV["DOWNLOAD_DIR"]}#{URI.parse(url).path}"
-    end
-
-    # Skip download if the file already exists
-    if File.exist?(local_path)
-      # @logger.info("File already exists: #{local_path}")
-      return local_path
-    end
-
-    # Create the directory structure if it doesn't exist
-    FileUtils.mkdir_p(File.dirname(local_path))
-
-    # Download the file with wget
-    success = system("wget --timeout=30 --tries=3 -nv -a #{ENV['log_file'].shellescape} -O #{local_path.shellescape} #{url.shellescape}")
-
-    # Raise an error if the download fails
-    raise ResourceError, "Failed to download #{url}" unless success
-
-    return local_path
-  end
-
   def extract_job
     raise ResourceError, "Missing job.cgz" unless File.exist?('job.cgz')
 

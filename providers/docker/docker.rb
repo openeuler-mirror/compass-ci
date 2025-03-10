@@ -23,26 +23,21 @@ class DockerManager
     @is_remote = ENV["is_remote"] == 'true'
   end
 
-  def download_extract_cpio(path, url, name)
+  def extract_cpio(local_files)
     File.write(CPIO_PATTERN_FILE, "lkp*") unless File.exist? CPIO_PATTERN_FILE
 
-    cmd = %W(curl -sS --fail --create-dirs -o #{path}/#{name} #{url})
-    # puts cmd.join(" ")
-
-    if system(*cmd)
-      system(%Q(gzip -dc #{path}/#{name} | cpio -idu --quiet -D #{path} --pattern-file=#{CPIO_PATTERN_FILE}))
-    else
-      puts "Error: cannot download initrd #{url}"
-      return false
+    local_files.each do |file|
+      system(%Q(gzip -dc #{file} | cpio -idu --quiet --directory #{@host_dir} --pattern-file=#{CPIO_PATTERN_FILE}))
     end
   end
 
   def download_initrds
     initrds = JSON.parse(@message['initrds'])
+    local_files = []
     initrds.each do |initrd|
-      return false unless download_extract_cpio(@host_dir, initrd, initrd.to_s.sub(/.*:\/\//, ""))
+      local_files << download_resource(initrd)
     end
-    true
+    local_files
   end
 
   def load_package_optimization_strategy
@@ -62,7 +57,7 @@ class DockerManager
   end
 
   def start_container_instance
-    return unless download_initrds
+    extract_cpio(download_initrds)
     docker_image = @message['docker_image']
     system "#{ENV['CCI_SRC']}/sbin/docker-pull #{docker_image}"
     cpu_minimum, memory_minimum, bin_shareable, ccache_enable, need_docker_sock = load_package_optimization_strategy

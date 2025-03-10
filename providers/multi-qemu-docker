@@ -15,6 +15,7 @@ require 'websocket/driver'
 # Load common libraries
 require_relative 'lib/jwt'
 require_relative 'lib/cache'
+require_relative 'lib/download'
 require_relative 'lib/metrics'
 require_relative 'lib/job_tracker'
 require_relative 'docker/docker'
@@ -26,7 +27,8 @@ NR_NODE = Dir.glob('/sys/devices/system/node/node*').count
 NR_CPU = Etc.nprocessors
 NR_DISKS = count_disks_sys_block
 
-BASE_DIR = Process.uid.zero? ? "/var/lib/docker/compass-ci" : "#{ENV['HOME']}/.cache/compass-ci"
+IS_ROOT_USER = Process.uid.zero?
+BASE_DIR = IS_ROOT_USER ? "/var/lib/docker/compass-ci" : "#{ENV['HOME']}/.cache/compass-ci"
 CACHE_LOCK_ROOT = "#{BASE_DIR}/.locks"
 
 # Configuration options, the first found file takes effect
