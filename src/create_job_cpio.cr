@@ -81,12 +81,20 @@ class JobHash
     script_lines << "{"
     script_lines << "\tlocal vars=\" $* \""
 
-    @hash_plain.each { |key, val| parse_one(script_lines, key, val) }
+    # Merge all hashes into one, to avoid duplication
+    merged_hash = @hash_plain.dup
+
     if hw = self.hw?
-      hw.each { |key, val| parse_one(script_lines, key, val) }
+      merged_hash.merge!(hw)
     end
+
     if sv = self.services?
-      sv.each { |key, val| parse_one(script_lines, key, val) }
+      merged_hash.merge!(sv)
+    end
+
+    # Iterate over the merged hash and call parse_one
+    merged_hash.each do |key, val|
+      parse_one(script_lines, key, val)
     end
 
     script_lines << "}\n\n"
