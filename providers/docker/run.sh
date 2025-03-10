@@ -61,6 +61,7 @@ else
 	BASE_DIR="$HOME/.cache/compass-ci"
 fi
 busybox_path=$BASE_DIR/file-store/busybox/$(arch)
+[ -e $busybox_path ] || busybox_path=/srv/file-store/busybox/$(arch)
 
 # Determine container runtime (podman or docker)
 container_runtime=$(command -v podman || command -v docker)
