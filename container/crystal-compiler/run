@@ -16,8 +16,8 @@ cmd=(
 	--security-opt label=disable
 	-v $v_dir:$v_dir
 	-w $PWD
-	alpine:crystal-compiler
-	crystal
+	crystal-compiler
+	crystal "$@"
 )
 
 "${cmd[@]}"

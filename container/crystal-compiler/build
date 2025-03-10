@@ -4,6 +4,7 @@
 
 . ../defconfig.sh
 
-# docker_skip_rebuild "alpine:crystal-compiler"
+docker_skip_rebuild "alpine:crystal-compiler"
 
-podman build -t alpine:crystal-compiler .
+docker build --tag crystal-compiler .
+podman build --tag crystal-compiler .

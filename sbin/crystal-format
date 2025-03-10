@@ -10,12 +10,11 @@ else
 fi
 
 cmd=(
-	docker run
-	-u $UID
+	podman run
 	--rm
 	-v $v_dir:$v_dir
 	-w $PWD
-	alpine:crystal-compiler
+	crystal-compiler
 	crystal tool format "$@"
 )
 
