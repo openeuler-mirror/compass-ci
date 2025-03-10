@@ -45,10 +45,10 @@ PROVIDER_DEFAULT_OPTIONS = {
   is_remote: false,
   tags: [],
   services: { # must be string values
-    sched_host: '172.17.0.1',
-    sched_port: '3000',
-    result_host: '172.17.0.1',
-    result_port: '3000',
+    "sched_host" => '172.17.0.1',
+    "sched_port" => '3000',
+    "result_host" => '172.17.0.1',
+    "result_port" => '3000',
   },
 }.freeze
 
@@ -65,7 +65,6 @@ class MultiQemuDocker
 
     # Load options from config file
     config_options = load_config_file(cli_options)
-    config_options = add_env_options(config_options)
 
     # Merge options in order of precedence:
     # 1. Command-line options (highest priority)
@@ -76,6 +75,7 @@ class MultiQemuDocker
       .merge(config_options)
       .merge(cli_options)
 
+    @options = add_env_options(@options)
     errors = validate_options(@options)
     unless errors.empty?
       puts errors.join "\n"
