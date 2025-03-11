@@ -242,7 +242,12 @@ class MultiQemuDocker
   end
 
   def write(data)
-    @tcp.write(data)
+    begin
+      @tcp.write(data)
+    rescue Errno::EPIPE => e
+      puts "TCP write: #{e.message}"
+      close_all
+    end
   end
 
   def start_tcp_reader
