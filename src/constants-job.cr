@@ -17,7 +17,8 @@ JOB_STAGE_NAME2ID = {
   "renew"        =>  8,   # extended borrow time for interactive user login
   "finish"       =>  9,   # to release testbox resource
   "cancel"       => 10,   # cancel by user before running. No start, so no finish.
-  "abort_wait"   => 11,   # auto cancel by scheduler, due to abort_wait
+  "abort_invalid" => 11,  # auto cancel by scheduler, due to invalid job content
+  "abort_wait"   => 12,   # auto cancel by scheduler, due to abort_wait
 }
 
 # DATA-DOMAIN STAGES
@@ -54,8 +55,9 @@ JOB_HEALTH_NAME2ID = {
   "error_mount"                   =>  24,
   "microcode_mismatch"            =>  25,
 
-  "abort_wait"                    =>  30,   # abort due to any waited job failure
-  "abort"                         =>  31,   # pre-condition not met, test script cannot continue
+  "abort_invalid"                 =>  30,   # job content invalid, cannot be handled by scheduler
+  "abort_wait"                    =>  31,   # abort due to any waited job failure
+  "abort"                         =>  32,   # pre-condition not met, test script cannot continue
 
   # user-space tests may be incomplete
   "soft_timeout"                  =>  40,

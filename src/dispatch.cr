@@ -160,9 +160,8 @@ class Sched
     # the assignment is necessary to get back the changed host_req
     host_req = record_hostreq(host_req)
     job = choose_job_for(host_req)
-    if job
-      dispatch_job(host_req, job)
-    end
+    return unless job
+    return unless dispatch_job(host_req, job)
     job
   end
 
@@ -470,8 +469,7 @@ class Sched
   # to the next stage @jobs_cache[]
   def move_job_cache(job : JobHash)
     job_id = job.id64
-
-    remove_job_schedule_indices(job, job_id)
+    remove_job_schedule_indices(job)
     @jobs_cache[job_id] = job
   end
 
@@ -490,7 +488,8 @@ class Sched
     end
   end
 
-  private def remove_job_schedule_indices(job, job_id)
+  private def remove_job_schedule_indices(job)
+    job_id = job.id64
     return if !@jobs_cache_in_submit.delete(job_id)
 
     user = job["my_account"]
@@ -639,10 +638,12 @@ class Sched
       end
     else
       @log.error { "Unknown tbox_type: #{job.tbox_type}" }
+      change_job_stage(job, "abort_invalid", "abort_invalid")
       false
     end
   rescue ex
     @log.error(exception: ex) { "Failed to dispatch job #{job.id}" }
+    change_job_stage(job, "abort_invalid", "abort_invalid")
     false
   end
 

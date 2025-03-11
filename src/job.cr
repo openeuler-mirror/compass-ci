@@ -395,6 +395,8 @@ class JobHash
     manual_check_time
     renew_time
     finish_time
+    cancel_time
+    abort_time
 
     uploading_time
     uploaded_time

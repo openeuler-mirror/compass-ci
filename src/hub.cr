@@ -142,14 +142,18 @@ class Sched
       job.last_success_stage = job.job_stage
     end
 
-    if job_stage == "cancel"
-      change_job_data_readiness(job, "norun", false)
-    end
-
     if job_stage
       job.job_stage = job_stage
       job.istage = JOB_STAGE_NAME2ID[job_stage] || -1
-      job.set_time("#{job_stage}_time")
+      if job.istage <= JOB_STAGE_NAME2ID["cancel"]
+        job.set_time("#{job_stage}_time")
+      else
+        job.set_time("abort_time")
+      end
+
+      if job.istage >= JOB_STAGE_NAME2ID["cancel"]
+        change_job_data_readiness(job, "norun", false)
+      end
 
       on_job_update(job.id64)
 
@@ -209,6 +213,7 @@ class Sched
     return if job.idata_readiness < JOB_DATA_READINESS_NAME2ID["complete"]
 
     unsubscribe_all_clients(job.id64)
+    remove_job_schedule_indices(job)
     @jobs_cache.delete job.id64
   end
 
