@@ -754,8 +754,8 @@ class MultiQemuDocker
     # Process.detach(tail_pid) # avoid zombie processes
 
     # Store the tail process PID and pipe reader
-    @jobs[job_id][:tail_pid] = tail_pid
-    @jobs[job_id][:tail_reader] = reader
+    job[:tail_pid] = tail_pid
+    job[:tail_reader] = reader
 
     # Read from the pipe in a separate thread
     Thread.new do
@@ -763,6 +763,10 @@ class MultiQemuDocker
         while line = reader.gets
           # Send log output to WebSocket
           send_json({ type: 'job-log', job_id: job_id, data: line })
+          # When console started, auto stop log to avoid mess up the screen
+          # especially necessary to avoid double output lines when there is 1
+          # single QEMU -serial.
+          break if job[:console_io]
           break if @dead
         end
       rescue Errno::ESRCH => e
@@ -770,9 +774,12 @@ class MultiQemuDocker
       rescue IOError => e
         puts "tail process exit for job #{job_id}: #{e.message}"
       ensure
+        job.delete :tail_pid
+        job.delete :tail_reader
         reader.close
         writer.close
         Process.wait(tail_pid) # avoid zombie processes
+        send_json({ type: 'log-exit', job_id: job_id })
       end
     end
   end
