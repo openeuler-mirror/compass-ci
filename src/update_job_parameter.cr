@@ -25,14 +25,15 @@ class Sched
     end
 
     # Iterate over allowed parameters and update the job accordingly
-    %w(job_state job_stage job_data_readiness job_step milestones renew_seconds).each do |parameter|
+    # job_state/job_health should be handled before job_stage, to record last_success_stage correctly
+    %w(job_state job_health job_stage job_data_readiness job_step milestones renew_seconds).each do |parameter|
       value = params[parameter]?
       next if value.nil? || value.empty?
 
       case parameter
       when "job_step"
         job.job_step = value
-      when "job_state", "job_stage", "job_data_readiness"
+      when "job_state", "job_health", "job_stage", "job_data_readiness"
         result = update_job_state_or_stage(job, parameter, value)
         return result unless result.success
       when "milestones"

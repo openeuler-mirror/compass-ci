@@ -689,6 +689,15 @@ class MultiQemuDocker
       rescue => e
         puts "Error starting instance: #{e.message}"
         puts e.backtrace.join("\n")
+        @jobs.remove_job(job_id)
+        status = {
+          type: 'job-update',
+          job_id: job_id,
+          job_stage: "abort_provider",
+          job_health: "abort_provider",
+          job_data_readiness: "norun",
+        }
+        send_json(status)
       end
     end
 
