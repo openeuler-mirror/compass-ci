@@ -207,7 +207,38 @@ class Sched
   def check_retire_job(job)
     return if job.istage < JOB_STAGE_NAME2ID["finish"]
     return if job.idata_readiness < JOB_DATA_READINESS_NAME2ID["complete"]
+
+    unsubscribe_all_clients(job.id64)
     @jobs_cache.delete job.id64
+  end
+
+  def unsubscribe_all_clients(job_id)
+    close_message = job_message_json("job-close", job_id)
+
+    clients = @watchjob_jobid2client_sids[job_id]?
+    if clients
+      clients.each do |sid|
+        send_job_event(job_id, close_message)
+        manage_unsubscription(@watchjob_jobid2client_sids, job_id, sid)
+      end
+    end
+
+    clients = @watchlog_jobid2client_sids[job_id]?
+    if clients
+      clients.each do |sid|
+        send_job_log(job_id, close_message)
+        manage_unsubscription(@watchlog_jobid2client_sids, job_id, sid)
+      end
+    end
+
+    if @console_jobid2client_sid.has_key? job_id
+      send_console_output(job_id, close_message)
+      @console_jobid2client_sid.delete job_id
+    end
+  end
+
+  def job_message_json(type, job_id)
+    "{\"type\":\"#{type}\",\"job_id\":\"#{job_id}\"}"
   end
 
   # wjob: waiting job (wait_on cjob)
@@ -490,6 +521,7 @@ class Sched
       # start_time = Time.utc
       begin
         msg = JSON.parse(raw_message).as_h
+        job_id = parse_job_id(msg)
         case msg["type"]?.try(&.as_s)
         when "host-job-request"
           begin
@@ -506,10 +538,10 @@ class Sched
           update_job_from_hash(params)
 
         when "console-startup", "console-output", "console-exit", "console-error"
-          handle_console_output(msg, raw_message)
+          send_console_output(job_id, raw_message)
 
-        when "job-log"
-          handle_job_logs(msg, raw_message)
+        when "job-log", "log-exit"
+          send_job_log(job_id, raw_message)
 
         else
           @log.warn { "Unknown provider message type: #{msg["type"]?}" }
@@ -559,8 +591,7 @@ class Sched
     end
   end
 
-  private def handle_console_output(msg, raw_message)
-    job_id = parse_job_id(msg)
+  private def send_console_output(job_id, raw_message)
     return unless job_id
 
     if client_sid = @console_jobid2client_sid[job_id]?
@@ -594,8 +625,7 @@ class Sched
     @watchjob_jobid2client_sids.delete(jobid) if sids.empty?
   end
 
-  private def handle_job_logs(msg, raw_message)
-    job_id = parse_job_id(msg)
+  private def send_job_log(job_id, raw_message)
     return unless job_id
 
     sids = @watchlog_jobid2client_sids[job_id]?
@@ -654,7 +684,7 @@ class Sched
         @log.info { "Client #{session.sid} watching job #{job_id} events" }
 
       when "unwatch-job-event"
-        manage_unsubscription(@watchjob_jobid2client_sids, job_id, session)
+        manage_unsubscription(@watchjob_jobid2client_sids, job_id, session.sid)
         @log.info { "Client #{session.sid} unwatched job #{job_id} events" }
 
       when "watch-job-log"  # serial logs
@@ -662,7 +692,7 @@ class Sched
         forward_or_buffer_message(provider_session, job, raw_message, "log subscription")
 
       when "unwatch-job-log"
-        manage_unsubscription(@watchlog_jobid2client_sids, job_id, session)
+        manage_unsubscription(@watchlog_jobid2client_sids, job_id, session.sid)
         forward_or_buffer_message(provider_session, job, raw_message, "log unsubscription")
 
       when "request-console"
@@ -703,9 +733,9 @@ class Sched
     subscription_hash[job_id] << session.sid
   end
 
-  private def manage_unsubscription(subscription_hash, job_id, session)
+  private def manage_unsubscription(subscription_hash, job_id, sid)
     return unless subscription_hash[job_id]?
-    subscription_hash[job_id].delete(session.sid)
+    subscription_hash[job_id].delete(sid)
     subscription_hash.delete(job_id) if subscription_hash[job_id].empty?
   end
 
