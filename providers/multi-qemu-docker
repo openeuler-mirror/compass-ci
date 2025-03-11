@@ -416,10 +416,12 @@ class MultiQemuDocker
               send_json(status)
             when /^done: (\d+)/
               job_id = $1
-              job = @jobs.remove_job(job_id)
-
-              upload_log(job)
-              upload_results(job)
+              if job = @jobs.remove_job(job_id)
+                upload_log(job)
+                upload_results(job)
+              else
+                puts "Cannot find job #{job_id}"
+              end
               status = {
                 type: 'job-update',
                 job_id: job_id,
