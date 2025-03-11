@@ -130,7 +130,7 @@ class Elasticsearch::Client
     es_response = nil
     manticore_response = nil
 
-    if Sched.options.should_write_es
+    if Sched.options.should_write_es && index != "hosts"
       content = doc.to_json_any
       es_response = es_update_doc(index, doc.id_es, content)
     end
@@ -404,7 +404,7 @@ class Elasticsearch::Client
       return results
     end
 
-    if Sched.options.should_read_es
+    if Sched.options.should_read_es && index != "hosts"
       # `path=_nlpcn/sql` refers to lib/es_client.rb opendistro_sql()
       # can verify with "cci select" command
       match = build_query_string(matches, " AND ", true)
