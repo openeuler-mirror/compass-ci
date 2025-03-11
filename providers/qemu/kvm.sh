@@ -492,7 +492,7 @@ show_qemu_cmd()
 
 run_qemu()
 {
-    "${kvm[@]}" "${arch_option[@]}" --append "${append}" -D $log_file
+    "${kvm[@]}" "${arch_option[@]}" --append "${append}" 2>> $log_file
     local return_code=$?
     [ $return_code -eq 0 ] || echo "[ERROR] qemu start return code is: $return_code" >> $log_file
 }
@@ -501,7 +501,7 @@ set_options()
 {
 	set_helper
 	set_nr_nic
-	set_nic
+	# set_nic # disable for now: this caused ping_check fail
 	set_qemu
 }
 
