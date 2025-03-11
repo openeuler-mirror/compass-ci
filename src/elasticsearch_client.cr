@@ -384,9 +384,9 @@ class Elasticsearch::Client
       fields = Manticore.filter_sql_fields(fields)
       match = Manticore.filter_sql_fields(match)
       others = Manticore.filter_sql_fields(others)
-      sql_cmd  = "SELECT #{fields} FROM #{index} WHERE MATCH('#{match}') #{others}"
+      sql_cmd  = URI.encode_www_form("SELECT #{fields} FROM #{index} WHERE MATCH('#{match}') #{others}")
       host_port = "#{@settings[:manticore_host]}:#{@settings[:manticore_port]}"
-      response = perform_one_request(host_port, "sql", nil, "POST", sql_cmd)
+      response = perform_one_request(host_port, "sql", nil, "POST", "query=" + sql_cmd)
       body = response.body
 
       # Filter the SQL result if fields are not '*'
