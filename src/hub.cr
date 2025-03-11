@@ -333,7 +333,7 @@ class Sched
       # Process fail_fast
       if wait_options.has_key?("fail_fast") && (
           cjob.idata_readiness >= JOB_DATA_READINESS_NAME2ID["incomplete"] ||
-          cjob.ihealth >= JOB_HEALTH_NAME2ID["cancel"])
+          (cjob.ihealth? && cjob.ihealth >= JOB_HEALTH_NAME2ID["cancel"]))
         wait_spec.delete("wait_on")
         wait_options["fail_fast"] = {"failed_job" => job_id_str}
         wait_spec
