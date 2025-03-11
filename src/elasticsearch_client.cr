@@ -389,17 +389,17 @@ class Elasticsearch::Client
       response = perform_one_request(host_port, "sql", nil, "POST", sql_cmd)
       body = response.body
 
-      # Check if the response body contains an error
-      if body.starts_with?("{\"error\":")
-        error_message = JSON.parse(body)["error"].as_s
-        raise "Manticore SQL Error: #{error_message} sql_cmd is #{sql_cmd}"
-      end
-
       # Filter the SQL result if fields are not '*'
       body = Manticore.filter_sql_result(body) if fields != '*'
 
+      json_hash = JSON.parse(body).as_h
+      if json_hash.has_key? "error"
+        error_message = json_hash["error"]
+        raise "Manticore SQL Error: #{error_message} sql_cmd is #{sql_cmd}"
+      end
+
       # Parse the JSON response and extract the results
-      results = JSON.parse(body)["hits"]["hits"].as_a
+      results = json_hash["hits"]["hits"].as_a
       results = Manticore.jobs_from_manticore(results)
       return results
     end
@@ -412,7 +412,14 @@ class Elasticsearch::Client
       host_port = "#{@settings[:host]}:#{@settings[:port]}"
       response = perform_one_request(host_port, "_nlpcn/sql", nil, "POST", sql_cmd)
       body = response.body
-      return results = JSON.parse(body)["hits"]["hits"].as_a
+
+      json_hash = JSON.parse(body).as_h
+      if json_hash.has_key? "error"
+        error_message = json_hash["error"]
+        raise "ElasticSearch SQL Error: #{error_message} sql_cmd is #{sql_cmd}"
+      end
+
+      return results = json_hash["hits"]["hits"].as_a
     end
 
     results = Array(JSON::Any).new
@@ -436,7 +443,7 @@ class Elasticsearch::Client
     if method == "GET"
       response = HTTP::Client.get(endpoint, body: post_data, headers: HTTP::Headers{"Content-Type" => "application/json"})
     elsif method == "POST"
-      response = HTTP::Client.post(url: endpoint, body: post_data)
+      response = HTTP::Client.post(url: endpoint, body: post_data, headers: HTTP::Headers{"Content-Type" => "application/json"})
     elsif method == "PUT"
       response = HTTP::Client.put(url: endpoint, body: post_data)
     elsif method == "DELETE"
