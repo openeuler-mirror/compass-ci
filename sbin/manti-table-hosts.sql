@@ -1,5 +1,9 @@
 CREATE TABLE hosts(
 	id			bigint,
+
+	hostname		string,
+	arch			string,
+
 	nr_node			int,
 	nr_cpu			int,
 	memory			int,

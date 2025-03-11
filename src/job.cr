@@ -440,7 +440,6 @@ class JobHash
     upload_image_dir
     emsx
     nickname
-    hostname
     host_machine
     tbox_type
     branch
@@ -685,29 +684,28 @@ class JobHash
     mjob = {} of String => JSON::Any
 
     MANTI_INT64_FIELDS.each do |field|
-      next unless self.has_key?(field)
+      next unless @hash_plain.has_key?(field)
 
       if field.ends_with?("_time")
-        mjob[field] = JSON::Any.new time_to_unix(self[field])
+        mjob[field] = JSON::Any.new time_to_unix(@hash_plain[field])
       else
-        mjob[field] = JSON::Any.new self[field].to_i64
+        mjob[field] = JSON::Any.new @hash_plain[field].to_i64
       end
     end
 
     MANTI_INT32_FIELDS.each do |field|
-      next unless self.hash_plain.has_key?(field)
-      next unless self.hash_int32.has_key?(field)
-
       if field.ends_with?("_seconds")
-        mjob[field] = JSON::Any.new duration_to_seconds(self[field])
+        next unless self.hash_plain.has_key?(field)
+        mjob[field] = JSON::Any.new duration_to_seconds(@hash_plain[field])
       else
-        mjob[field] = JSON::Any.new self[field].to_i32
+        next unless self.hash_int32.has_key?(field)
+        mjob[field] = JSON::Any.new @hash_int32[field]
       end
     end
 
     MANTI_STRING_FIELDS.each do |field|
-      next unless self.has_key?(field)
-      mjob[field] = JSON::Any.new self[field]
+      next unless @hash_plain.has_key?(field)
+      mjob[field] = JSON::Any.new @hash_plain[field]
     end
 
     # errid as space-separated string
@@ -722,13 +720,14 @@ class JobHash
 
     # Remaining fields
     MANTI_STRING_FIELDS.each do |field|
-      value = self[field]
+      next unless @hash_plain.has_key?(field)
+      value = @hash_plain[field]
       full_text_kv << "#{field}=#{value}"
     end
     MANTI_FULLTEXT_FIELDS.each do |field|
-      next unless self.has_key?(field)
+      next unless @hash_plain.has_key?(field)
 
-      value = self[field]
+      value = @hash_plain[field]
       full_text_kv << "#{field}=#{value}"
     end
 

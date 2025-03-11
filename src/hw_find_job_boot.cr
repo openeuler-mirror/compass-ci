@@ -57,7 +57,6 @@ class Sched
       end
 
       # Update job details and dispatch
-      job.hostname = host
       on_job_dispatch(job, host_req)
 
       # Return the boot content

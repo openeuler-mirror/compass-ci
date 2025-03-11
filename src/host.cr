@@ -201,11 +201,12 @@ class HostInfo
     end
   end
 
-  FULL_TEXT_KEYS = %w[ model_name bios system baseboard cpu memory_info cards network disks ]
-
   # please keep top level key assignments in sync with sbin/manti-table-hosts.sql
   def to_manticore
     mjob = @hash_all.dup
+
+    mjob["arch"] = JSON::Any.new(self.arch)
+    mjob["hostname"] = JSON::Any.new(self.hostname)
 
     @hash_int64.keys.each do |field|
       mjob[field] = JSON::Any.new @hash_int64[field]
@@ -215,11 +216,9 @@ class HostInfo
     end
     mjob["job_id"] = JSON::Any.new(@job_id)
 
-    full_text_kv = Manticore::FullTextWords.create_full_text_kv(mjob, FULL_TEXT_KEYS)
+    full_text_kv = Manticore::FullTextWords.create_full_text_kv(mjob, HOSTS_FULL_TEXT_KEYS)
 
     # Remaining fields
-    full_text_kv << "arch=#{self.arch}" if self.arch
-    full_text_kv << "hostname=#{self.hostname}"
     self.mac_addr.each do |v|
       full_text_kv << "mac_addr=#{v}"
     end
