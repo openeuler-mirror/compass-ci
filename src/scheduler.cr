@@ -70,10 +70,11 @@ module Scheduler
 
   # Start the Kemal server using the configuration
   def self.start_kemal_server
-    Kemal.config.host_binding = "::" # listen on all available network interfaces, including both IPv4 and IPv6.
+    # Kemal.config.host_binding = "::" seems only work for IPv6
+    Kemal.config.host_binding = "0.0.0.0" # listen on all available network interfaces, IPv4 only
     Kemal.config.add_handler HTTP::CompressHandler.new
     Kemal.config.public_folder = "#{BASE_DIR}/scheduler/pending-jobs"
-    Kemal.run((ENV["NODE_PORT"]? || "3000").to_i32)
+    Kemal.run(Sched.options.sched_port)
   end
 
   # Main entry point for the scheduler
