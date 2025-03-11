@@ -215,6 +215,7 @@ class Sched
     unsubscribe_all_clients(job.id64)
     remove_job_schedule_indices(job)
     @jobs_cache.delete job.id64
+    FileUtils.rm_rf "#{BASE_DIR}/scheduler/pending-jobs/#{job.id64}"
   end
 
   def unsubscribe_all_clients(job_id)
