@@ -427,7 +427,7 @@ class Sched
     # @log.debug { "generate_interleaved_sequence #{@hostkey_sequence[host_machine]}" }
 
     # Pop and return the next host_key
-    @hostkey_sequence[host_machine].pop
+    @hostkey_sequence[host_machine].pop?
   end
 
   def on_job_submit(job : JobHash)
