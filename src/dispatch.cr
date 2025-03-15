@@ -619,6 +619,7 @@ class Sched
                   "tbox_type" => "vm",
                   "tbox_group" => job.tbox_group,
           }
+          msg["cache_dirs"] = job.cache_dirs.join(" ") if job.hash_array.has_key? "cache_dirs"
         else
           msg = get_boot_container(job)
         end
