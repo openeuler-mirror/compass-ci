@@ -64,10 +64,10 @@ def reclaim_combined_cache
 end
 ```
 
-## Cache Directory Structure: 1-3 Subdir Prefix
+## Cache Directory Structure: 1-9 Subdir Prefix
 
 ### Overview
-The cache directory structure uses a numeric prefix (1, 2, or 3) in level-1 subdirectory names to indicate the **depth and type of the cache layout**. This prefix helps organize cache directories and enables efficient reclaiming based on the directory hierarchy.
+The cache directory structure uses a numeric prefix (1, 2, .., up to 9) in level-1 subdirectory names to indicate the **depth and type of the cache layout**. This prefix helps organize cache directories and enables efficient reclaiming based on the directory hierarchy.
 
 ### Prefix Meaning
 | Prefix | Depth | Example Layout | Description |
@@ -108,6 +108,9 @@ def collect_cache_dirs(cache_dir)
       cache_items += Dir.glob("#{depth_type_dir}/*/*") # Level-2
     when 3
       cache_items += Dir.glob("#{depth_type_dir}/*/*/*") # Level-3
+    ...
+    when 9
+      # supports up to 9 levels
     end
   end
   cache_items

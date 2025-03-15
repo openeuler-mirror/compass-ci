@@ -1394,8 +1394,8 @@ class Job < JobHash
     # Validate each directory path in 'cache_dirs'
     self.cache_dirs.each do |dir|
       # Ensure the directory path starts with the correct prefix
-      unless dir.starts_with?(/^[0-3]-/)
-        raise "Job Format Error: cache_dirs '#{dir}' must begin with a prefix in the format '0-', '1-', '2-', or '3-'"
+      unless dir.starts_with?(/^[0-9]-/)
+        raise "Job Format Error: cache_dirs '#{dir}' must begin with a prefix in the format '[0-9]-'"
       end
 
       # Ensure the directory path does not end with a slash

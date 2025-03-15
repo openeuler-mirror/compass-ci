@@ -16,12 +16,9 @@ def collect_cache_dirs(cache_dir, find0 = true)
     case depth
     when 0
       cache_items += `find #{depth_type_dir} -type f`.split if find0
-    when 1
-      cache_items += Dir.glob("#{depth_type_dir}/*") # Level-1
-    when 2
-      cache_items += Dir.glob("#{depth_type_dir}/*/*") # Level-2
-    when 3
-      cache_items += Dir.glob("#{depth_type_dir}/*/*/*") # Level-3
+    when 1..9
+      pattern = "#{depth_type_dir}/" + ("*/" * (depth - 1)) + "*"
+      cache_items += Dir.glob(pattern)
     else
       puts "Unknown depth for subdir: #{depth_type_dir}"
     end
