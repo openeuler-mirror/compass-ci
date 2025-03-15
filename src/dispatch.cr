@@ -91,7 +91,7 @@ class Sched
 
   # key: hostname
   property hostkey_sequence = Hash(String, Array(String)).new
-  property hostkey_sequence_round : Int32 = 0
+  property hostkey_sequence_round : UInt32 = 0
 
   # queues enjoy "green channel", where jobs will be dispatched first when present
   GREEN_QUEUES = ["cluster", "vip", "single-build", "bisect"]
@@ -256,12 +256,12 @@ class Sched
 
     if job.hash_array.has_key? "cache_dirs"
       return true if job.cache_dirs.any? { |d| host_req.cache_dirs.includes? d }
-      if job.schedule_round != 0
+
+      if job.schedule_round == 0
         job.schedule_round = @hostkey_sequence_round
-      elsif
-        # give up cache affinity after 1 round
-        job.schedule_round != @hostkey_sequence_round
-        job.hash_array.delete "cache_dirs"
+      elsif job.schedule_round <= @hostkey_sequence_round - 2
+        # give up cache affinity after 2 rounds
+        return true
       end
       return false
     end

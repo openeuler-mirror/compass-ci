@@ -147,7 +147,7 @@ class JobHash
   property schedule_tags = Set(String).new
   property schedule_memmb : UInt32 = 0u32
   property schedule_priority : Int8 = 0
-  property schedule_round : Int32 = 0
+  property schedule_round : UInt32 = 0
 
   # ES uses string id, so add in-memory id64 for convenience
   property id64 : Int64 = 0
