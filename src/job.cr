@@ -102,6 +102,10 @@ def add2array(array : HashArray, k : String,  v : JSON::Any) : Bool
     array[k] ||= Array(String).new
     v.as_a.each { |v| array[k].as(Array) << v.to_s }
     return true
+  elsif v.raw.is_a? String
+    array[k] ||= Array(String).new
+    v.as_s.split(/[, ]+/).each { |v| array[k].as(Array) << v.to_s }
+    return true
   else
     return false
   end
