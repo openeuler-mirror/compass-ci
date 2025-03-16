@@ -223,4 +223,83 @@ module Utils
     # If none of the above, it's a public IP
     false
   end
+
+  # Should keep in sync with the same name shell function in $LKP_SRC/lib/git.sh
+  def url2cache_dir(url : String) : String?
+    return nil unless url.includes?("://") || url.starts_with?("git@") || url.starts_with?("git+")
+
+    # Normalize URL by removing protocol variants and authentication
+    uri = url.sub(/(::.*|.*::)/, "")         # Remove :: prefixes/suffixes
+              .sub(/^(git\+|git:\/\/|ssh:\/\/|https?:\/\/|ftp:\/\/|svn:\/\/|bzr:\/\/|hg:\/\/)/, "")
+              .sub(/^git@/, "")
+              .sub(/(\/\/+)/, "/")
+              .sub("%20", "_")
+              .sub(/:(\d+)\//, "/")           # Remove port numbers
+              .sub(/\?.*$/, "")               # Remove query parameters
+              .sub(/#.*$/, "")                # Remove fragments
+              .sub(/\{.*?\}/, "")             # Remove {.sig,.asc} patterns
+              .sub(/\.git$/, "")
+
+    # Handle SSH-style URLs (git@host:path)
+    uri = uri.sub(':', '/') if uri.count(':') == 1 && !uri.includes?("//")
+
+    # Split into host and path components
+    host, path = uri.split('/', 2).map { |s| s.gsub(/[^A-Za-z0-9_\/\-\.]/, '_') }
+    path ||= ""
+
+    # Known Git services (expanded list)
+    git_services = Set.new([
+      "anongit.kde.org",
+      "bitbucket.org",
+      "cran.r-project.org",
+      "gitee.com",
+      "github.com",
+      "repo.or.cz",
+      "salsa.debian.org",
+      "sourceforge.net",
+      "www.gaia-gis.it"
+    ])
+
+    # File extensions indicating archives
+    archive_exts = [
+      ".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".tar.Z", ".zip",
+      ".c", ".h", ".cpp", ".patch", ".diff",
+      ".gem", ".rpm", ".deb",
+      ".sig", ".asc", ".jar", ".so", ".a"
+    ]
+
+    # Git detection logic
+    is_git = false
+    if host.starts_with?("git") ||
+       host.starts_with?("code.") ||
+       git_services.includes?(host) ||
+       url.matches?(/^(git:\/\/|git\+|git@)/) ||
+       url.matches?(/\.git$/)
+      # Exclude common archive patterns
+      is_git = !path.includes?("/archive/") &&
+               !archive_exts.any? { |ext| path.ends_with?(ext) } &&
+               !path.includes?("/releases/download/") &&
+               !path.includes?("/downloads/") &&
+               !path.includes?("/snapshot/")
+    end
+
+    # Directory level calculation
+    dir_level = uri.count('/') + 1
+    dir_level = Math.min(dir_level, 9) # Cap at 9 levels for practicality
+
+    # Special handling for package registries
+    if host.includes?("pypi") || host.includes?("rubygems") || host.includes?("npmjs") ||
+       path.includes?("/packages/") || path.includes?("/downloads/")
+      is_git = false
+    end
+
+    # Construct cache directory path
+    base_dir = is_git ? "#{dir_level}-git" : "0-http"
+    cache_path = File.join(base_dir, host, path)
+
+    # Normalize path segments
+    cache_path.gsub(/\/+/, '/')
+              .gsub(/\/$/, "")
+  end
+
 end

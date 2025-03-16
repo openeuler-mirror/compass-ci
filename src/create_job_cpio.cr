@@ -92,6 +92,10 @@ class JobHash
       merged_hash.merge!(sv)
     end
 
+    if hash_array.has_key? "cache_dirs"
+      merged_hash["cache_dirs"] = @hash_array["cache_dirs"].join(" ")
+    end
+
     # Iterate over the merged hash and call parse_one
     merged_hash.each do |key, val|
       parse_one(script_lines, key, val)

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 require "./plugins_common"
+require "set"
 
 # case 1: the dep cgz has exists no need submit pkg job
 # case 2: the pkg job has been submitted: XXX
@@ -96,12 +97,26 @@ class PkgBuild < PluginsCommon
   # Create and configure the build job
   private def create_build_job(job, params) : Job
     build_job = Job.new(Hash(String, JSON::Any).new)
+
     build_job.suite = "makepkg"
     build_job.category = "functional"
+
     build_job.my_account = job.my_account
     build_job.my_email = job.my_email
     build_job.my_name = job.my_name
     build_job.my_token = job.my_token
+
+    if (url = params["_url"]?) && (dir = Utils.url2cache_dir(url))
+      build_job.cache_dirs = [ dir ]
+    else
+      # Fall back to a cache-indicator (0--*). It'll work fine (reclaimed
+      # at the same time) as long as we keep its mtime in sync with the
+      # real cache dir/file, which is done in
+      # - $LKP_SRC/lib/job.sh touch_cache_indicator()
+      # - $LKP_SRC/lib/git.sh git_update_cache()
+      build_job.cache_dirs = [ "0--makepkg/" + params["project"] ]
+    end
+
     build_job
   end
 
@@ -150,8 +165,8 @@ class PkgBuild < PluginsCommon
     hh["makepkg"] = params
     build_job.hash_hhh["program"] = hh
     build_job.hash_hhh["pp"] = hh.dup
-    build_job.hash_hhh["pp"].delete("_upstream_url")
-    build_job.hash_hhh["pp"].delete("_upstream_dir")
+    build_job.hash_hhh["pp"].delete("_url")
+    build_job.hash_hhh["pp"].delete("pkgname")
   end
 
 end
