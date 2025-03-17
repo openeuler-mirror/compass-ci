@@ -31,6 +31,7 @@ class WebSocketSession
   def initialize(@type, @socket, @env, key = nil)
     @sid = @@last_sid
     @@last_sid += 1
+    @@last_sid &= (Int64::MAX >> 1)
     if key
       @key = key
     else

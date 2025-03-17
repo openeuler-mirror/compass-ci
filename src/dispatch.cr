@@ -259,7 +259,7 @@ class Sched
 
       if job.schedule_round == 0
         job.schedule_round = @hostkey_sequence_round
-      elsif job.schedule_round <= @hostkey_sequence_round - 2
+      elsif (@hostkey_sequence_round - job.schedule_round) & Int32::MAX  >= 2
         # give up cache affinity after 2 rounds
         return true
       end
@@ -422,12 +422,19 @@ class Sched
     return nil if host_keys.empty? # No host_keys available
 
     @hostkey_sequence_round += 1
+    @hostkey_sequence_round &= Int32::MAX
     # Store the sequence for future use
     @hostkey_sequence[host_machine] = Sched.generate_interleaved_sequence(host_keys, @nr_jobs_by_hostkey)
     # @log.debug { "generate_interleaved_sequence #{@hostkey_sequence[host_machine]}" }
 
+    if @hostkey_sequence[host_machine].empty?
+      # In abnormal condition, take a snap to avoid busy looping.
+      sleep(0.1.seconds)
+      return nil
+    end
+
     # Pop and return the next host_key
-    @hostkey_sequence[host_machine].pop?
+    @hostkey_sequence[host_machine].pop
   end
 
   def on_job_submit(job : JobHash)
