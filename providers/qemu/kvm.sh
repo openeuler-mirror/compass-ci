@@ -18,7 +18,6 @@ check_env_var() {
 }
 
 # User set env vars
-# check_env_var "ENABLE_PACKAGE_CACHE" # optional
 # check_env_var "DEBUG" # optional
 
 # qemu.rb passed env vars
@@ -358,7 +357,7 @@ common_option()
 
 cache_option()
 {
-	[ -n "$ENABLE_PACKAGE_CACHE" ] &&
+	[ -n "$PACKAGE_CACHE_DIR" ] &&
 	case "$os" in
 		debian|ubuntu)
 			mkdir -p $PACKAGE_CACHE_DIR/$osv/archives

@@ -125,7 +125,7 @@ if [[ -n "$volumes_from" ]]; then
 fi
 
 # package cache
-[ -n "$ENABLE_PACKAGE_CACHE" ] &&
+[ -n "$PACKAGE_CACHE_DIR" ] &&
 case "$os" in
 	debian|ubuntu)
 		mkdir -p $PACKAGE_CACHE_DIR/$osv/archives

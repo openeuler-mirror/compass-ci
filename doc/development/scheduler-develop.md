@@ -138,7 +138,6 @@ make && ../sbin/scheduler-debug
 
 ### Terminal 2: Providers
 ```bash
-export ENABLE_PACKAGE_CACHE=1  # Enable package caching
 export DEBUG=1                 # Show QEMU GUI
 cd compass-ci/providers
 ./multi-qemu-docker

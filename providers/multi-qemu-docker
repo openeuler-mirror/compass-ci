@@ -40,6 +40,7 @@ PROVIDER_CONFIG_FILES = [
 PROVIDER_DEFAULT_OPTIONS = {
   hostname: ENV['HOST'] || ENV['HOSTNAME'] || `hostname`.chomp,
   tbox_type: 'vm,dc', # must be one of 'vm', 'dc', 'vm,dc'
+  package_cache: true, # can speedup local develop and small deployment; disable if you have dedicated apt/dnf proxy cache services
   max_qemu: 0,
   max_container: 0,
   is_remote: false,
@@ -308,7 +309,10 @@ class MultiQemuDocker
     File.umask(0000)
     FileUtils.mkdir_p(CACHE_LOCK_ROOT)
     FileUtils.mkdir_p(ENV["CACHE_DIR"] = "#{BASE_DIR}/provider/cache")
-    FileUtils.mkdir_p(ENV["PACKAGE_CACHE_DIR"] = "#{BASE_DIR}/provider/pkgcache")
+
+    if @options[:package_cache]
+      FileUtils.mkdir_p(ENV["PACKAGE_CACHE_DIR"] = "#{BASE_DIR}/provider/pkgcache")
+    end
   end
 
   def handle_websocket_open
@@ -575,16 +579,19 @@ class MultiQemuDocker
       until @dead
         sleep(3600)
 
-        reclaim_stale_locks(CACHE_LOCK_ROOT)
-        base_cache_dir = ENV["CACHE_DIR"]
-        full_cache_dirs = collect_cache_dirs(base_cache_dir, false)
-        @cache_dirs = full_cache_dirs.map { |dir| dir.delete_prefix("#{base_cache_dir}/") }
-
         hours += 1
         if hours >= 24
           reclaim_cache_dirs(ENV["CACHE_DIR"], ENV["PACKAGE_CACHE_DIR"])
           hours = 0
         end
+
+        reclaim_stale_locks(CACHE_LOCK_ROOT)
+
+        # @cache_dirs updated here will be send_status() to scheduler
+        base_cache_dir = ENV["CACHE_DIR"]
+        full_cache_dirs = collect_cache_dirs(base_cache_dir, false)
+        @cache_dirs = full_cache_dirs.map { |dir| dir.delete_prefix("#{base_cache_dir}/") }
+
       end
     rescue => e
       puts "Cache reclaim error: #{e.message}"
