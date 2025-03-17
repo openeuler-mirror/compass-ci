@@ -10,8 +10,10 @@ should_write_es: false
 should_read_manticore: true
 should_write_manticore: true
 
-lab_id: ""
-sched_port: 3300
+worker_id: 0 # set to different values for all scheduler workers to share the same database
+cluster_size: 100 # shall be same for all workers
+
+sched_port: 3300 # set to different values to run in same machine
 
 es_host: "172.17.0.1"
 es_port: 9200
