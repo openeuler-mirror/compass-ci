@@ -167,7 +167,7 @@ case "$os" in
     openeuler|fedora|opensuse|centos|rocky)
         # RPM-based processing
         pkgpattern=$(echo "$rpm_pkgnames" | tr '\n' '|' | sed 's/|$//')
-        list_packages "^($pkgpattern)-[5-9]\.[0-9].*\.rpm" "(debug|obs)"
+        list_packages "^($pkgpattern)-[4-9]\.[0-9].*\.rpm" "(debug|obs)"
         sort_download_rpm_packages
         ;;
     debian|ubuntu)

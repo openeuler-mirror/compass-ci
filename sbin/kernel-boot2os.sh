@@ -20,6 +20,8 @@ SUSE_OS_LIST=(
 OS_LIST=(
 
     # openEuler
+    "openeuler  20.03      x86_64     https://repo.openeuler.org/openEuler-20.03-LTS-SP4/everything/x86_64/Packages/"
+    "openeuler  20.03      aarch64    https://repo.openeuler.org/openEuler-20.03-LTS-SP4/everything/aarch64/Packages/"
     "openeuler  22.03      x86_64     https://repo.openeuler.org/openEuler-22.03-LTS-SP4/everything/x86_64/Packages/"
     "openeuler  22.03      aarch64    https://repo.openeuler.org/openEuler-22.03-LTS-SP4/everything/aarch64/Packages/"
     "openeuler  22.03      riscv64    https://repo.openeuler.org/openEuler-22.03-LTS-SP4/everything/riscv64/Packages/"
