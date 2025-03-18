@@ -47,7 +47,11 @@ determine_host_group() {
 }
 
 check_container_runtime() {
-    container_runtime=$(command -v podman || command -v docker || true)
+    if [[ -n "$OCI_RUNTIME" ]]; then
+        container_runtime=$OCI_RUNTIME
+    else
+        container_runtime=$(command -v podman || command -v docker || true)
+    fi
     [[ -n "${container_runtime}" ]] || {
         echo "Error: No container runtime (podman/docker) found" >&2
         exit 1

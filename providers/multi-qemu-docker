@@ -40,6 +40,7 @@ PROVIDER_CONFIG_FILES = [
 PROVIDER_DEFAULT_OPTIONS = {
   hostname: ENV['HOST'] || ENV['HOSTNAME'] || `hostname`.chomp,
   tbox_type: 'vm,dc', # must be one of 'vm', 'dc', 'vm,dc'
+  oci_runtime: "podman docker", # find use the first available one
   package_cache: true, # can speedup local develop and small deployment; disable if you have dedicated apt/dnf proxy cache services
   max_qemu: 0,
   max_container: 0,
@@ -294,7 +295,7 @@ class MultiQemuDocker
     setup_directories
     update_options
     @jobs = JobTracker.new
-    @container_runtime = `command -v podman || command -v docker`.chomp
+    @container_runtime = @options[:oci_runtime].split.find { |runtime| system("command -v #{runtime} > /dev/null 2>&1") }
     @cache_dirs = []
     @threads = []
   end
@@ -696,6 +697,7 @@ class MultiQemuDocker
         when 'vm', 'qemu'
           QemuManager.new(message).start_qemu_instance
         when 'dc', 'container'
+          ENV["OCI_RUNTIME"] = @container_runtime
           DockerManager.new(message).start_container_instance
         end
       rescue => e
