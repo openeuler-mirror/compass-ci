@@ -92,11 +92,12 @@ def reclaim_stale_locks(dir)
 end
 
 # Main function to combine all steps
-def reclaim_cache_dirs(cache_dir, package_cache_dir)
-  # Collect all items from CACHE_DIR and PACKAGE_CACHE_DIR
-  cache_items = collect_cache_dirs(cache_dir)
-  package_items = collect_package_files(package_cache_dir)
-  all_items = cache_items + package_items
+def reclaim_cache_dirs
+  # Collect all items
+  cache_items = collect_cache_dirs(ENV["CACHE_DIR"])
+  store_items = collect_cache_dirs(ENV["PKG_STORE_DIR"])
+  package_items = collect_package_files(ENV["PACKAGE_CACHE_DIR"])
+  all_items = cache_items + store_items + package_items
 
   # Cache modification times and sort items by age
   items_with_mtime = cache_and_sort_items(all_items)

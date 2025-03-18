@@ -44,12 +44,16 @@ class Sched
     response["tbox_group"] = job.tbox_group
     response["docker_image"] = "#{job.docker_image}"
     response["initrds"] = job.get_common_initrds().to_json
-    response["memory_minimum"] = "#{job["memory_minimum"]}"
     response["os"] = "#{job["os"]}"
     response["osv"] = "#{job["osv"]}"
     response["result_root"] = "#{job["result_root"]}"
     response["job_token"] = "#{job["job_token"]}"
     response["cache_dirs"] = job.cache_dirs.join(" ") if job.hash_array.has_key? "cache_dirs"
+    response["build_mini_docker"] = job.hash_any["build_mini_docker"].as_s if job.hash_any.has_key? "build_mini_docker"
+    response["cpu_minimum"] = job.hash_any["cpu_minimum"].as_i.to_s if job.hash_any.has_key? "cpu_minimum"
+    response["memory_minimum"] = job["memory_minimum"] if job.has_key? "memory_minimum"
+    response["ccache_enable"] = job.hash_any["ccache_enable"].as_s if job.hash_any.has_key? "ccache_enable"
+    response["bin_shareable"] = job.hash_any["bin_shareable"].as_s if job.hash_any.has_key? "bin_shareable"
     if cpu = job.hw.not_nil!.["nr_cpu"]?
       response["nr_cpu"] = cpu
     end

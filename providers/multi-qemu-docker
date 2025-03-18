@@ -300,16 +300,21 @@ class MultiQemuDocker
   end
 
   def setup_directories
-    File.umask(0000) # Ensure directories are created with proper permissions
     FileUtils.mkdir_p(ENV["HOSTS_DIR"] = "#{BASE_DIR}/provider/hosts")
     FileUtils.mkdir_p(ENV["JOBS_DIR"] = "#{BASE_DIR}/provider/jobs")
     FileUtils.mkdir_p(ENV["PIDS_DIR"] = "#{BASE_DIR}/provider/pids")
     FileUtils.mkdir_p(ENV["LOGS_DIR"] = "#{BASE_DIR}/provider/logs")
     FileUtils.mkdir_p(ENV["DOWNLOAD_DIR"] = "#{BASE_DIR}/provider/download")
-    File.umask(0000)
+
+    # for unpacked cpio packages
+    FileUtils.mkdir_p(ENV["PKG_STORE_DIR"] = "#{BASE_DIR}/provider/pkgstore")
+
+    # File.umask(0000) # Ensure directories are created with proper permissions
+
     FileUtils.mkdir_p(CACHE_LOCK_ROOT)
     FileUtils.mkdir_p(ENV["CACHE_DIR"] = "#{BASE_DIR}/provider/cache")
 
+    # for rpm/deb packages
     if @options[:package_cache]
       FileUtils.mkdir_p(ENV["PACKAGE_CACHE_DIR"] = "#{BASE_DIR}/provider/pkgcache")
     end
@@ -581,7 +586,7 @@ class MultiQemuDocker
 
         hours += 1
         if hours >= 24
-          reclaim_cache_dirs(ENV["CACHE_DIR"], ENV["PACKAGE_CACHE_DIR"])
+          reclaim_cache_dirs
           hours = 0
         end
 

@@ -69,6 +69,7 @@ class WebSocketSession
       if type == SessionType::Client
         Log.info { "Auto closing client session #{sid}" }
         Sched.instance.client_sessions.delete sid
+        @socket.close
       end
       return false
     end

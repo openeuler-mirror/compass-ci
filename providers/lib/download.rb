@@ -22,9 +22,11 @@ end
 def download_resource(url)
   # Extract the path from the URL
   if url =~ /\/job.cgz$/
-    local_path = "#{ENV["host_dir"]}/job.cgz" # no need caching
+    local_path = "#{ENV["host_dir"]}/cpio-all/job.cgz" # no need caching
   else
     local_path = "#{ENV["DOWNLOAD_DIR"]}#{URI.parse(url).path}"
+    FileUtils.mkdir_p("#{ENV["host_dir"]}/cpio-all")
+    FileUtils.ln_s(local_path, "#{ENV["host_dir"]}/cpio-all/#{File.basename(local_path)}")
   end
 
   # Skip download if the file already exists

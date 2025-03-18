@@ -146,9 +146,9 @@ class QemuManager
   end
 
   def extract_job
-    raise ResourceError, "Missing job.cgz" unless File.exist?('job.cgz')
+    raise ResourceError, "Missing job.cgz" unless File.exist?('cpio-all/job.cgz')
 
-    output, status = Open3.capture2e('gzip -dc job.cgz | cpio -di --quiet')
+    output, status = Open3.capture2e('gzip -dc cpio-all/job.cgz | cpio -di --quiet')
     raise ResourceError, "Failed to extract job.cgz: #{output}" unless status.success?
   end
 

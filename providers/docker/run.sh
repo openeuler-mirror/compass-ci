@@ -2,175 +2,305 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
-[ "$LKP_SRC" ] || LKP_SRC=/c/lkp-tests
+set -o pipefail
+shopt -s nullglob
 
-. $LKP_SRC/lib/yaml.sh
+# Configuration and environment setup
+init_environment() {
+    : "${LKP_SRC:=/c/lkp-tests}"
+    : "${job_id:=$$}"
+    : "${docker_image:=centos:7}"
+    : "${hostname:=dc-8g-1}"
+    : "${host_dir:=${HOME}/.cache/compass-ci/provider/hosts/${hostname}}"
+    : "${log_file:=${HOME}/.cache/compass-ci/provider/logs/${hostname}}"
 
-: ${job_id:=$$}
-: ${docker_image:="centos:7"}
-: ${hostname:="dc-8g-1"}
-: ${host_dir:="${HOME}/.cache/compass-ci/provider/hosts/$hostname"}
-: ${log_file:="${HOME}/.cache/compass-ci/provider/logs/$hostname"}
+    export LKP_SRC job_id docker_image hostname host_dir log_file
+    SCRIPT_DIR=$(dirname "$(realpath "$0")")
+    export SCRIPT_DIR
 
-if [[ $hostname =~ ^(.*)-[0-9]+$ ]]; then
-	tbox_group=${BASH_REMATCH[1]}
-else
-	tbox_group=$hostname
-fi
-host=${tbox_group%.*}
-
-[ -n "$nr_cpu" ] || nr_cpu=$(grep '^nr_cpu: ' $LKP_SRC/hosts/${host} | cut -f2 -d' ')
-[ -n "$memory" ] || memory=$(grep '^memory: ' $LKP_SRC/hosts/${host} | cut -f2 -d' ')
-create_yaml_variables "$LKP_SRC/hosts/${host}"
-
-check_docker_sock()
-{
-	if [ "$need_docker_sock" == "y" ]; then
-		mount_docker_sock="-v /var/run/docker.sock:/var/run/docker.sock:ro"
-	fi
+    # Source library functions
+    # shellcheck source=/dev/null
+    . "${LKP_SRC}/lib/yaml.sh"
 }
 
-check_package_optimization_strategy()
-{
-	if [ ! -n "${memory_minimum}" ];then
-		memory_minimum="8"
-	fi
-	memory="${memory_minimum}g"
-	[ -z "$ccache_enable" ] && return 0
-	[ -z "$cpu_minimum" ] || nr_cpu=$cpu_minimum
+parse_host_metadata() {
+    local host_file="${LKP_SRC}/hosts/${host}"
 
-	if [ "$ccache_enable" = "True" ]; then
-		ccache_name=$(docker ps | grep k8s_ccache_ccache|grep -v pause|awk '{print $NF}')
-		[ $ccache_name ] || ccache_name=ccache
-		volumes_from="--volumes-from $ccache_name"
-		CCACHE_DIR=/etc/.ccache
-	fi
+    [[ -f "${host_file}" ]] || {
+        echo "Error: Host configuration file ${host_file} not found" >&2
+        return 1
+    }
+
+    # Set host parameters
+    nr_cpu=${nr_cpu:-$(grep '^nr_cpu: ' "${host_file}" | cut -f2 -d' ')}
+    memory=${memory:-$(grep '^memory: ' "${host_file}" | cut -f2 -d' ')}
+    create_yaml_variables "${host_file}"
 }
 
-if command -v kubectl >/dev/null; then
-	squid_host=$(kubectl get svc -n ems1 | grep "^squid-${HOSTNAME} "| awk '{print $3}')
-fi
+determine_host_group() {
+    if [[ "${hostname}" =~ ^(.*)-[0-9]+$ ]]; then
+        tbox_group=${BASH_REMATCH[1]}
+    else
+        tbox_group=${hostname}
+    fi
+    host=${tbox_group%.*}
+}
 
-DIR=$(dirname $(realpath $0))
-check_docker_sock
-check_package_optimization_strategy
+check_container_runtime() {
+    container_runtime=$(command -v podman || command -v docker || true)
+    [[ -n "${container_runtime}" ]] || {
+        echo "Error: No container runtime (podman/docker) found" >&2
+        exit 1
+    }
+    export container_runtime
+}
 
-if [ -w /srv ]; then
-	BASE_DIR="/srv"
-else
-	BASE_DIR="$HOME/.cache/compass-ci"
-fi
-busybox_path=$BASE_DIR/file-store/busybox/$(arch)
-[ -e $busybox_path ] || busybox_path=/srv/file-store/busybox/$(arch)
+configure_ccache() {
+    [[ "${ccache_enable}" != "True" ]] && return 0
 
-# Determine container runtime (podman or docker)
-container_runtime=$(command -v podman || command -v docker)
-if [[ -z "$container_runtime" ]]; then
-	echo "Error: Neither podman nor docker is installed." >&2
-	exit 1
-fi
+    # Set default resource limits
+    memory_minimum=${memory_minimum:-8}
+    memory="${memory_minimum}g"
+    nr_cpu=${cpu_minimum:-${nr_cpu}}
 
-# Base command
-cmd=(
-	"$container_runtime" run
-	--rm
-	--name "$hostname"
-	--hostname "$host.compass-ci.net"
-	-m "$memory"
-	--tmpfs /tmp:rw,exec,nosuid,nodev
-	--net=host
-	-e SQUID_HOST="$squid_host"
-	-e CCI_SRC=/c/compass-ci
-	-e CCACHE_UMASK=002
-	-e CCACHE_DIR="$CCACHE_DIR"
-	-e CCACHE_COMPILERCHECK=content
-	-e CCACHE_ENABLE="$ccache_enable"
-	-v "${host_dir}/lkp:/lkp"
-	-v "${DIR}/bin/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro"
-	-v "$CCI_SRC:/c/compass-ci:ro"
-	-v "/srv/git:/srv/git:ro"
-	-v "$host_dir/result_root:$result_root"
-	-v "${busybox_path}:/opt/busybox"
-	--log-driver json-file
-	--log-opt max-size=10m
-	--oom-score-adj="-1000"
-)
+    local ccache_container
+    ccache_container=$(docker ps --format '{{.Names}}' | grep -m1 'k8s_ccache_ccache' || true)
+    volumes_from=${ccache_container:-ccache}
+    CCACHE_DIR=/etc/.ccache
+    export CCACHE_DIR
+}
 
-# Add --cpus if nr_cpu is provided
-if [[ -n "$nr_cpu" ]]; then
-	cmd+=(--cpus "$nr_cpu")
-fi
+setup_file_paths() {
+    local base_dir
+    if [[ -w /srv ]]; then
+        base_dir="/srv"
+    else
+        base_dir="${HOME}/.cache/compass-ci"
+    fi
 
-# Add --privileged if running as root
-if [[ $(id -u) -eq 0 ]]; then
-	cmd+=(--privileged)
-	cmd+=(-v /sys/kernel/debug:/sys/kernel/debug:ro)
-fi
+    busybox_path="${base_dir}/file-store/busybox/$(arch)"
+    [[ -e "${busybox_path}" ]] || busybox_path="/srv/file-store/busybox/$(arch)"
+    export busybox_path
+}
 
-# Add Docker-specific options if runtime is docker
-if [[ "$container_runtime" == *"docker"* ]]; then
-	cmd+=(
-	-v /var/run/docker.sock:/var/run/docker.sock
-	-v /usr/bin/docker:/usr/bin/docker:ro
-)
-else
-	cmd+=(
-	--replace
-)
-fi
+configure_networking() {
+    if command -v kubectl >/dev/null; then
+        squid_host=$(kubectl get svc -n ems1 -o jsonpath="{.items[?(@.metadata.name=='squid-${HOSTNAME}')].spec.clusterIP}" || true)
+    fi
+    export SQUID_HOST=${squid_host}
+}
 
-# Add volumes_from if provided
-if [[ -n "$volumes_from" ]]; then
-	cmd+=(--volumes-from "$volumes_from")
-fi
+build_base_command() {
+    container_cmd=(
+        "${container_runtime}" run
+        --rm
+        --name "${hostname}"
+        --hostname "${host}.compass-ci.net"
+        -m "${memory}"
+        --net=host
+        --log-driver json-file
+        --log-opt max-size=10m
+        --oom-score-adj="-1000"
+    )
 
-# package cache
-[ -n "$PACKAGE_CACHE_DIR" ] &&
-case "$os" in
-	debian|ubuntu)
-		mkdir -p $PACKAGE_CACHE_DIR/$osv/archives
-		mkdir -p $PACKAGE_CACHE_DIR/$osv/lists
-		cmd+=(-v "$PACKAGE_CACHE_DIR/$osv/archives:/var/cache/apt/archives")
-		cmd+=(-v "$PACKAGE_CACHE_DIR/$osv/lists:/var/lib/apt/lists")
-		;;
-	openeuler|centos|rhel|fedora)
-		mkdir -p $PACKAGE_CACHE_DIR/$osv
-		cmd+=(-v "$PACKAGE_CACHE_DIR/$osv:/var/cache/dnf")
-		;;
-esac
+    [[ -n "${nr_cpu}" ]] && container_cmd+=(--cpus "${nr_cpu}")
+}
 
-[ -n "$cache_dirs" ] && cmd+=(-v "$CACHE_DIR:/srv/cache")
+add_volume_mounts() {
+    container_cmd+=(
+        -v "${SCRIPT_DIR}/bin/entrypoint.sh:/root/bin/entrypoint.sh:ro"
+        -v "${host_dir}/result_root:${result_root}"
+        -v "${busybox_path}:/opt/busybox:ro"
+        -v "${host_dir}/lkp/cpio-for-guest:/lkp/cpio-for-guest"
+    )
 
-record_startup_log() {
-    # Capture the current timestamp in the desired format
+    # Add package directories
+    for dir in "${host_dir}"/opt/*/; do
+        [[ -d "${dir}" ]] || continue
+        container_cmd+=(-v "${dir}:${dir#$host_dir}:ro")
+    done
+}
+
+add_runtime_specific_options() {
+    if [[ "${container_runtime}" == *docker* ]]; then
+        [[ -n "$build_mini_docker" ]] &&
+        container_cmd+=(
+            -v /var/run/docker.sock:/var/run/docker.sock
+            -v /usr/bin/docker:/usr/bin/docker:ro
+        )
+    else
+        container_cmd+=(--replace)
+    fi
+
+    [[ $(id -u) -eq 0 ]] && container_cmd+=(--privileged -v /sys/kernel/debug:/sys/kernel/debug:ro)
+    [[ -n "${volumes_from}" ]] && container_cmd+=(--volumes-from "${volumes_from}")
+}
+
+setup_package_cache() {
+    [[ -z "${PACKAGE_CACHE_DIR}" ]] && return 0
+
+    case "${os}" in
+        debian|ubuntu)
+            mkdir -p "${PACKAGE_CACHE_DIR}/${osv}/archives"
+            mkdir -p "${PACKAGE_CACHE_DIR}/${osv}/lists"
+            container_cmd+=(
+                -v "${PACKAGE_CACHE_DIR}/${osv}/archives:/var/cache/apt/archives"
+                -v "${PACKAGE_CACHE_DIR}/${osv}/lists:/var/lib/apt/lists"
+            )
+            ;;
+        openeuler|centos|rhel|fedora)
+            mkdir -p "${PACKAGE_CACHE_DIR}/${osv}"
+            container_cmd+=(-v "${PACKAGE_CACHE_DIR}/${osv}:/var/cache/dnf")
+            ;;
+    esac
+}
+
+setup_execution_environment() {
+    [[ -n "${CCI_SRC}" ]] && container_cmd+=(
+        -e "CCI_SRC=/c/compass-ci"
+        -v "${CCI_SRC}:/c/compass-ci:ro"
+    )
+
+    [[ -d /srv/git ]] && container_cmd+=(-v "/srv/git:/srv/git:ro")
+    [[ -n "${cache_dirs}" ]] && container_cmd+=(-v "${CACHE_DIR}:/srv/cache")
+}
+
+log_container_start() {
+    mkdir -p "$(dirname "${log_file}")"
     local start_time=$(date '+%Y-%m-%d %H:%M:%S')
+    cat <<-EOF >> "${log_file}"
+		${start_time} starting CONTAINER
+		job_id ${job_id}
+		result_root ${result_root}
 
-    # Write the startup log to the log file
-    echo "${start_time} starting CONTAINER"
-    echo "job_id ${job_id}"
-    echo "result_root ${result_root}"
-    echo
+	EOF
+    export startup_time=$(date +%s)
 }
 
-record_end_log() {
-    # Calculate the current time and duration in minutes
-    local current_time=$(date +%s)
-    local duration=$(( (current_time - startup_time) / 60 ))
-    local duration_rounded=$(echo "scale=2; $duration" | bc)
-
-    # Append the duration to the log file
-    echo -e "\nTotal CONTAINER duration: ${duration_rounded} minutes"
+log_container_completion() {
+    local end_time=$(date +%s)
+    local duration=$(( (end_time - startup_time) / 60 ))
+    printf "\nTotal CONTAINER duration: %d minutes\n" "${duration}" >> "${log_file}"
 }
 
-JOB_DONE_FIFO_PATH=/tmp/job_completion_fifo
-echo "boot: $job_id" >> $JOB_DONE_FIFO_PATH
-startup_time=$(date +%s)
-record_startup_log >> "$log_file"
+execute_container() {
+    echo "${container_cmd[@]}" | sed 's/  *-/\n\t-/g'
+    echo -e "\t$docker_image" /root/bin/entrypoint.sh
 
-# Execute the command
-echo "less $log_file"
-"${cmd[@]}" "$docker_image" /usr/local/bin/entrypoint.sh 2>&1 |
-	awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | tee -a "$log_file"
+    "${container_cmd[@]}" "$docker_image" /root/bin/entrypoint.sh 2>&1 | \
+        awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | \
+        tee -a "${log_file}"
+}
 
-record_end_log >> "$log_file"
-echo "done: $job_id" >> $JOB_DONE_FIFO_PATH
+mount_docker_volume() {
+    local dir="$1"
+    local option="$2"
+
+    for rootdir in lkp opt; do
+        for d in "$dir"/"$rootdir"/*/; do
+            if [ -d "$d" ]; then
+                dest_dir="${d##"$dir/"}"
+                container_cmd+=(-v "$d:/${dest_dir}:$option")
+            fi
+        done
+    done
+}
+
+unpack_cache_cpio() {
+    local file="$1"
+    local dir="$2"
+    local option="$3"
+
+    if [ -e "$dir" ]; then
+        touch "$dir"
+        mount_docker_volume "$dir" "$option"
+        return 0
+    else
+        mkdir -p "$dir"
+        if gzip -dc "$file" | cpio -idu --quiet --directory "$dir"; then
+            mount_docker_volume "$dir" "$option"
+            return 0
+        else
+            return 1
+        fi
+    fi
+}
+
+unpack_cpio_in_host() {
+    local file="$1"
+    local resolved_file
+
+    if [ -L "$file" ]; then
+        resolved_file=$(readlink -f "$file")
+    else
+        resolved_file="$file"
+    fi
+
+    if [[ $(basename "$resolved_file") == "job.cgz" ]]; then
+        return 1
+    fi
+
+    if [[ "$container_runtime" =~ podman$ ]]; then
+        if [[ "$resolved_file" =~ /file-store/lkp_src/base/(.*)\.cgz$ ]]; then
+            local dir="${PKG_STORE_DIR}/2-lkp_commit/${BASH_REMATCH[1]}"
+            unpack_cache_cpio "$resolved_file" "$dir" "O"
+            return $?
+        fi
+    fi
+
+    if [[ "$resolved_file" =~ /file-store/ss/pkgbuild/(.*)\.cgz$ ]]; then
+        local matched="${BASH_REMATCH[1]}"
+        if ! gzip -dc "$resolved_file" | cpio -it | grep -F '/' | grep -m1 -qv -e '^lkp/' -e '^opt/'; then
+            local dir="${PKG_STORE_DIR}/5-pkgbuild/${matched}"
+            unpack_cache_cpio "$resolved_file" "$dir" "ro"
+            return $?
+        fi
+    fi
+
+    return 1
+}
+
+unpack_cpio_in_guest() {
+    local file="$1"
+    local initrd_dir="${host_dir}/lkp/cpio-for-guest"
+
+    mkdir -p "$initrd_dir"
+    cp -L -l "$file" "$initrd_dir/$(basename $file)"
+}
+
+setup_package_store() {
+    for file in "${host_dir}"/cpio-all/*; do
+        if unpack_cpio_in_host "$file"; then
+            continue
+        fi
+        unpack_cpio_in_guest "$file"
+    done
+}
+
+main() {
+    init_environment
+    determine_host_group
+    parse_host_metadata
+    check_container_runtime
+    configure_ccache
+    setup_file_paths
+    configure_networking
+
+    build_base_command
+    add_volume_mounts
+    add_runtime_specific_options
+
+    setup_execution_environment
+    setup_package_cache # rpm/deb
+    setup_package_store # cpio rootfs
+
+    log_container_start
+    execute_container "${full_command}"
+    log_container_completion
+
+    # Signal job completion
+    JOB_DONE_FIFO_PATH=${JOB_DONE_FIFO_PATH:-/tmp/job_completion_fifo}
+    echo "done: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
+}
+
+main "$@"
