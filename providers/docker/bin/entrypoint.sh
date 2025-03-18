@@ -8,7 +8,7 @@
 # cgz files containing /usr/* files have to be unpacked inside container
 (
     cd /
-    for file in /lkp/cpio-for-guest/*.cgz
+    for file in $(ls -1tr /lkp/cpio-for-guest/*.cgz)
     do
         test -e "$file" || continue
         gzip -dc "$file" | cpio -idu >/dev/null 2>&1
