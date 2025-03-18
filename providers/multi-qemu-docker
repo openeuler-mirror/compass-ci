@@ -646,7 +646,8 @@ class MultiQemuDocker
     end
 
     # Update stored window size
-    job[:winsize] = { rows: rows, cols: cols }
+    job[:console_rows] = rows
+    job[:console_cols] = cols
     # puts "Updated window size for job #{job_id}: #{rows}x#{cols}"
 
     # Set new window size if we have a PTY
@@ -727,7 +728,8 @@ class MultiQemuDocker
         console_io: nil,
         console_thread: nil,
         docker_pid: nil,
-        winsize: { rows: 24, cols: 80 } # Add initial window size
+        console_rows: 24,
+        console_cols: 80,
       }
       @jobs.add_job(job)
     end
@@ -850,9 +852,8 @@ class MultiQemuDocker
       puts "job already has console_io, closing old one"
     end
 
-    rows = message['rows']
-    cols = message['cols']
-    job[:winsize] = { rows: rows, cols: cols }
+    job[:console_rows] = message['rows']
+    job[:console_cols] = message['cols']
 
     case tbox_type
     when 'vm', 'qemu'
@@ -896,7 +897,7 @@ class MultiQemuDocker
       return unless wait_for_qemu_to_start(socket_path)
 
       socket = UNIXSocket.new(socket_path)
-      socket.write("\r\nstty rows #{job[:winsize][:rows]} cols #{job[:winsize][:cols]}\r\n")
+      socket.write("\r\nstty rows #{job[:console_rows]} cols #{job[:console_cols]}\r\n")
       job[:console_io] = socket
       send_json({ type: 'console-startup', job_id: job_id })
 
@@ -948,7 +949,7 @@ class MultiQemuDocker
           puts "#{@container_runtime} exec -it #{container_id} /bin/bash"
 
           # Set initial window size
-          set_winsize(output, job[:winsize][:rows], job[:winsize][:cols])
+          set_winsize(output, job[:console_rows], job[:console_cols])
 
           # Disable buffering in the PTY
           output.sync = true

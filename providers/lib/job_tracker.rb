@@ -36,7 +36,8 @@ class JobTracker
 
   def load_jobs
     Dir[File.join(ENV["JOBS_DIR"], '*.yaml')].each do |file|
-      job_data = YAML.safe_load(File.read(file), permitted_classes: [Symbol])
+      job_data = YAML.safe_load(File.read(file))
+      job_data.transform_keys(&:to_sym)
 
       # Check if the process with fork_pid exists
       if job_data[:fork_pid] && !Dir.exist?("/proc/#{job_data[:fork_pid]}")
@@ -109,12 +110,14 @@ class JobTracker
   def create_job_file(job_id, job_data)
     File.write(
       job_file_path(job_id),
-      job_data.to_yaml
+      job_data.transform_keys(&:to_s).to_yaml
     )
   end
 
   def load_job_from_disk(job_id)
-    YAML.safe_load(File.read(job_file_path(job_id)), permitted_classes: [Symbol]) if job_file_exists?(job_id)
+    return nil unless job_file_exists?(job_id)
+    job_data = YAML.safe_load(File.read(job_file_path(job_id)))
+    job_data.transform_keys(&:to_sym)
   end
 
 end
