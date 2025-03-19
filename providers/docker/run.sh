@@ -68,7 +68,7 @@ configure_ccache() {
     nr_cpu=${cpu_minimum:-${nr_cpu}}
 
     local ccache_container
-    ccache_container=$(docker ps --format '{{.Names}}' | grep -m1 'k8s_ccache_ccache' || true)
+    ccache_container=$($container_runtime ps --format '{{.Names}}' | grep -m1 'k8s_ccache_ccache' || true)
     volumes_from=${ccache_container:-ccache}
     CCACHE_DIR=/etc/.ccache
     export CCACHE_DIR
@@ -113,7 +113,6 @@ build_base_command() {
 add_volume_mounts() {
     container_cmd+=(
         -v "${SCRIPT_DIR}/bin/entrypoint.sh:/root/bin/entrypoint.sh:ro"
-        -v "${host_dir}/result_root:${result_root}"
         -v "${busybox_path}:/opt/busybox:ro"
         -v "${host_dir}/lkp/cpio-for-guest:/lkp/cpio-for-guest"
     )
@@ -126,7 +125,7 @@ add_volume_mounts() {
 }
 
 add_runtime_specific_options() {
-    if [[ "${container_runtime}" == *docker* ]]; then
+    if [[ "${container_runtime#*docker}" != "$container_runtime" ]]; then
         [[ -n "$build_mini_docker" ]] &&
         container_cmd+=(
             -v /var/run/docker.sock:/var/run/docker.sock
