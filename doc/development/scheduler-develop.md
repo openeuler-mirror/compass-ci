@@ -30,7 +30,10 @@ sudo apt-get install docker.io
 sudo apt-get install qemu-system qemu-utils
 
 # Utilities
-sudo apt-get install -y jq make cscope git rsync curl wget
+sudo apt-get install -y jq make cscope git rsync curl wget ruby-rubygems mariadb-client-core
+
+# For multi-qemu-docer
+gem install websocket-driver rest-client
 ```
 
 ### 2. Clone & Install Core Components
@@ -107,7 +110,7 @@ vim sbin/kernel-boot2os.sh
 vim sbin/docker2osimage
 
 # Build kernel packages
-./sbin/fetch-kernel-packages.sh
+./sbin/kernel-boot2os.sh
 
 # Build OS images
 ./sbin/docker2osimage
@@ -129,8 +132,11 @@ cd compass-ci
 
 # Customize config
 mkdir -p ~/.config/compass-ci/scheduler/
-cp container/scheduler/config.yaml ~/.config/compass-ci/scheduler/config.yaml
-vim ~/.config/compass-ci/scheduler/config.yaml  # Make adjustments
+cp container/scheduler/scheduler-config.yaml ~/.config/compass-ci/scheduler/config.yaml
+vim ~/.config/compass-ci/scheduler/config.yaml  # Make adjustments, such as ip address, manticore.
+
+# Init database
+sbin/create-manticore-tables.sh
 
 cd src
 make && ../sbin/scheduler-debug

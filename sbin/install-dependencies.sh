@@ -100,4 +100,4 @@ install_dependencies() {
 
 # Main script logic
 DISTRO=$(detect_distro)
-install_dependencies "$DISTRO" crystal shards cscope
+install_dependencies "$DISTRO" crystal shards cscope rpm2cpio
