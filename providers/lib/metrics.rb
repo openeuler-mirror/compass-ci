@@ -84,9 +84,9 @@ class MultiQemuDocker
       total = 1 if total == 0
       time_diff = now - @prev_cpu_timestamp
       @cpu_metrics = {
-        idle: ((current[3] - @prev_cpu[3]) * 100) / total, # Integer division
-        iowait: ((current[4] - @prev_cpu[4]) * 100) / total, # Integer division
-        system: ((current[2] - @prev_cpu[2]) * 100) / total, # Integer division
+        idle: [((current[3] - @prev_cpu[3]) * 100) / total, 0].max, # Integer division
+        iowait: [((current[4] - @prev_cpu[4]) * 100) / total, 0].max, # Integer division
+        system: [((current[2] - @prev_cpu[2]) * 100) / total, 0].max, # Integer division
         timestamp: now
       }
     else
@@ -146,6 +146,7 @@ class MultiQemuDocker
       time_diff = now - @prev_io_timestamp
       utilization = (delta * 100) / (1 + time_diff.to_i * 1000) # Integer division
       utilization = [utilization, 100].min # Clamp to 100
+      utilization = 0 if utilization < 0
     else
       0
     end
