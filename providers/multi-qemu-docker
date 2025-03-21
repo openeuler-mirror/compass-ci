@@ -240,7 +240,7 @@ class MultiQemuDocker
   end
 
   def send_json(hash)
-    @driver.text(JSON.generate(hash))
+    @driver.text(JSON.pretty_generate(hash))
   end
 
   def write(data)
