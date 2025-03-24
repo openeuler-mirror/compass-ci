@@ -1,7 +1,7 @@
 scheduler:
 	cd src && make
 
-install:
+install-depends:
 	sbin/install-dependencies.sh
 	cd src && shards install
 

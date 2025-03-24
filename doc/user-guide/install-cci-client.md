@@ -19,7 +19,7 @@ Run the following command to install/setup lkp-test:
 ```SHELL
     git clone https://gitee.com/compass-ci/lkp-tests.git
     cd lkp-tests
-    make install
+    make install-depends
     source ~/.${SHELL##*/}rc
 ```
 

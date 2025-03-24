@@ -62,7 +62,7 @@ def build_apply_account_email(my_info, account_info, assign_account_vm)
 
          git clone https://gitee.com/compass-ci/lkp-tests.git
          cd lkp-tests
-         make install
+         make install-depends
          source ~/.\${SHELL##*/}rc
 
     3) submit job

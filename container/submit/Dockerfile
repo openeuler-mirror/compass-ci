@@ -24,4 +24,4 @@ RUN gem install git faye-websocket activesupport:6.1.4.4 rest-client
 WORKDIR /srv
 
 RUN git clone https://gitee.com/compass-ci/lkp-tests.git
-RUN cd lkp-tests && make install
+RUN cd lkp-tests && make install-depends

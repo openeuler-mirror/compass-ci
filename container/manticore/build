@@ -7,7 +7,6 @@
 docker_skip_rebuild "manticore"
 
 # docker build --no-cache -t manticore .
-# docker pull manticoresearch/manticore
-docker pull docker.wanpeng.top/manticoresearch/manticore
+docker pull manticoresearch/manticore
 
 push_image_remote "manticore"

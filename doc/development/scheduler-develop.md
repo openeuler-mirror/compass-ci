@@ -42,14 +42,34 @@ gem install websocket-driver rest-client
 # 1. Install lkp-tests
 git clone https://gitee.com/compass-ci/lkp-tests
 cd lkp-tests
-make install
+make install-depends
 # pick up new env vars LKP_SRC, PATH etc.
 source ~/.bashrc  # or source ~/.zshrc for zsh users
 
 # 2. Install compass-ci
 git clone https://gitee.com/openeuler/compass-ci
 cd compass-ci
-make install
+make install-depends
+```
+
+### 3. manticore database (optional for development)
+
+1. pull and run docker
+
+```
+cd compass-ci/container/manticore
+./build
+./start # first check/modify the -v option for database mount
+
+# wait for about 1 minute, until you see completion logs in below command
+docker logs manticore
+```
+
+2. create tables
+
+```
+cd compass-ci/sbin
+./create-manticore-tables.sh
 ```
 
 ---
@@ -127,6 +147,7 @@ ls ~/.cache/compass-ci/file-store/docker2os/*
 Use three terminal sessions:
 
 ### Terminal 1: Scheduler
+
 ```bash
 cd compass-ci
 
@@ -134,9 +155,6 @@ cd compass-ci
 mkdir -p ~/.config/compass-ci/scheduler/
 cp container/scheduler/scheduler-config.yaml ~/.config/compass-ci/scheduler/config.yaml
 vim ~/.config/compass-ci/scheduler/config.yaml  # Make adjustments, such as ip address, manticore.
-
-# Init database
-sbin/create-manticore-tables.sh
 
 cd src
 make && ../sbin/scheduler-debug
