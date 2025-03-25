@@ -147,6 +147,7 @@ class MultiQemuDocker
       utilization = (delta * 100) / (1 + time_diff.to_i * 1000) # Integer division
       utilization = [utilization, 100].min # Clamp to 100
       utilization = 0 if utilization < 0
+      utilization
     else
       0
     end
