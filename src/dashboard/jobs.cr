@@ -20,6 +20,7 @@ class Sched
 
     # Field selection
     selected_fields = env.params.query["fields"]?.try(&.split(',')) || %w[
+      job_id
       my_account
       submit_date
       suite
@@ -34,6 +35,7 @@ class Sched
 
     # Field display names
     field_display_name = {
+      "job_id"              => "Job ID",
       "my_account"          => "Account",
       "submit_date"         => "Submit Date",
       "suite"               => "Suite",
@@ -79,6 +81,7 @@ class Sched
     # Process jobs into uniform hashes
     processed_jobs = sorted_jobs.map do |job|
       {
+        "job_id"                => job.id,
         "my_account"            => job.my_account,
         "submit_date"           => job.submit_date,
         "suite"                 => job.suite? || "",
