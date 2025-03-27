@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: compass-ci-web
+  namespace: ems1
+spec:
+  selector:
+    app: compass-ci-web
+  ports:
+  - name: compass-ci-web
+    port: 30107
+    nodePort: 30107
+  type: NodePort

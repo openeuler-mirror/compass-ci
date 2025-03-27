@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: srv-http-repositories
+  namespace: ems1
+spec:
+  selector:
+    app: srv-http-repositories
+  ports:
+  - name: http
+    port: 80
+    targetPort: 20029
+  - name: srv-http-repositories
+    port: 20029

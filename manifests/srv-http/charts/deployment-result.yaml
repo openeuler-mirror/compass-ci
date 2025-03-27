@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: srv-http-result
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: srv-http-result
+  template:
+    metadata:
+      labels:
+        app: srv-http-result
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      containers:
+      - name: srv-http-result
+        image: nginx:1.25-alpine3.18
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 20007
+        env:
+        - name: LISTEN_PORT
+          value: "20007"
+        - name: SERVER_NAME
+          value: "srv-http-result"
+        - name: "SSL_CONF"
+          value: ""
+        - name: "DEFAULT_TYPE"
+          value: "text/plain"
+        livenessProbe:
+          tcpSocket:
+            port: 20007
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 101
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: etc-nginx
+          mountPath: /etc/nginx/conf.d
+        - name: default-conf
+          mountPath: /etc/nginx/templates
+        - name: var-cache
+          mountPath: /var/cache/nginx
+        - name: var-run
+          mountPath: /var/run
+        - name: result
+          mountPath: /srv/result
+      volumes:
+      - name: default-conf
+        configMap:
+          name: srv-http-nginx-conf
+      - name: etc-nginx
+        emptyDir: {}
+      - name: var-cache
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
+      - name: result
+        hostPath:
+          path: /srv/result

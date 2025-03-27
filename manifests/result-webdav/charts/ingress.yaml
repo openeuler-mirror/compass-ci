@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: result-webdav-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /result/
+            pathType: Prefix
+            backend:
+              service:
+                name: result-webdav
+                port:
+                  number: 80 

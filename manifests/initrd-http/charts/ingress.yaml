@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: initrd-http-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /upload-files/
+            pathType: Prefix
+            backend:
+              service:
+                name: initrd-http
+                port:
+                  number: 8800
+          - path: /initrd/
+            pathType: Prefix
+            backend:
+              service:
+                name: initrd-http
+                port:
+                  number: 8800

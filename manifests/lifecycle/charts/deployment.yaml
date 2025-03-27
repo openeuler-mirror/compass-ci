@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lifecycle
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: lifecycle
+  template:
+    metadata:
+      labels:
+        app: lifecycle
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      initContainers:
+      - name: check-dep
+        image: k8s-start-check:latest
+        imagePullPolicy: IfNotPresent
+        command: 
+        - sh
+        - -c
+        - |
+          python3 k8s_start_check.py es
+        env:
+        - name: ES_HOST
+          value: es
+        - name: ES_PORT
+          value: "9200"
+        - name: ES_USER
+          valueFrom:
+            secretKeyRef:
+              name: secrets-env
+              key: ES_USER
+        - name: ES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secrets-env
+              key: ES_PASSWORD
+      containers:
+      - name: lifecycle
+        image: lifecycle:latest
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'umask 002 && ./lifecycle']
+        ports:
+        - containerPort: 11312
+        livenessProbe:
+          tcpSocket:
+            port: 11312
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        envFrom:
+        - configMapRef:
+            name: pub-env
+        - secretRef:
+            name: secrets-env
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime

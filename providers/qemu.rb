@@ -44,7 +44,7 @@ def get_url(hostname, left_mem, mac)
   if ENV['is_remote'] == 'true'
     "ws://#{DOMAIN_NAME}/ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=true"
   else
-    "ws://#{SCHED_HOST}:#{SCHED_PORT}/ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=false"
+    "ws://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/ws/boot.ipxe?mac=#{mac}&hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=vm&is_remote=false"
   end
 end
 
@@ -73,7 +73,7 @@ def register_host2redis(mem_total)
     check_return_code(response)
     puts JSON.pretty_generate(response)
   else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/register-host2redis?hostname=#{hostname}&type=vm&owner=local&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{arch}'"
+    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/register-host2redis?hostname=#{hostname}&type=vm&owner=local&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{arch}'"
     system cmd
   end
 end
@@ -100,7 +100,7 @@ def del_host2queues(hostname, is_remote)
     check_return_code(response)
     puts JSON.pretty_generate(response)
   else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host2queues?host=#{hostname}'"
+    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/del_host2queues?host=#{hostname}'"
     system cmd
   end
 end
@@ -114,7 +114,7 @@ def heart_beat
     jwt = load_jwt?
     url = "https://#{DOMAIN_NAME}/api/heart-beat?hostname=#{hostname}&type=vm&is_remote=#{is_remote}"
   else
-    url = "http://#{SCHED_HOST}:#{SCHED_PORT}/heart-beat?hostname=#{hostname}&type=vm&is_remote=#{is_remote}"
+    url = "http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/heart-beat?hostname=#{hostname}&type=vm&is_remote=#{is_remote}"
   end
 
   api_client = RemoteClient.new()
@@ -160,13 +160,13 @@ def set_host_info(hostname, mac)
   # use "," replace " "
   api_queues = ENV['queues'].gsub(/ +/, ',')
 
-  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/set_host_mac?hostname=#{hostname}&mac=#{mac}'")
-  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/set_host2queues?host=#{hostname}&queues=#{api_queues}'")
+  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/set_host_mac?hostname=#{hostname}&mac=#{mac}'")
+  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/set_host2queues?host=#{hostname}&queues=#{api_queues}'")
 end
 
 def del_host_info(hostname, mac)
-  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host_mac?mac=#{mac}' > /dev/null 2>&1")
-  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host2queues?host=#{hostname}' > /dev/null 2>&1")
+  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/del_host_mac?mac=#{mac}' > /dev/null 2>&1")
+  system("curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/del_host2queues?host=#{hostname}' > /dev/null 2>&1")
 end
 
 def post_work(hostname, mac, lockfile)

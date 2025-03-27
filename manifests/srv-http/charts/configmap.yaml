@@ -1,0 +1,41 @@
+apiVersion: v1
+data:
+  default.conf.template: |
+    server {
+        listen ${LISTEN_PORT};
+        server_name ${SERVER_NAME};
+
+        ${SSL_CONF}
+
+        server_tokens off;
+
+        root /srv;
+        index index.html;
+
+        charset utf-8,gbk;
+
+        location /favicon.ico {
+            log_not_found off;
+        }
+
+        location /  {
+        default_type ${DEFAULT_TYPE};
+        autoindex  on;
+        autoindex_localtime on;
+        allow all;
+            location ~* /[-_a-z]+$ {
+            add_header Content-Type text/plain;
+            }
+        }
+
+        location ~* ^/result/(([^/]+)?/?|[^/]+/[^/]+/[^/]+/)$ {
+            deny all;
+        }
+
+        access_log off;
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: srv-http-nginx-conf
+  namespace: ems1

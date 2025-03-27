@@ -1,0 +1,27 @@
+#!/bin/bash
+
+CURRENT_PATH=$(cd `dirname $0/`;pwd)
+
+create_es_cert()
+{
+	ES_IMAGE="es-base:latest"
+
+	local cert_dir=$CURRENT_PATH/es-cert
+	mkdir -p $cert_dir
+	[ -e "$cert_dir/elastic-certificates.p12" ] && return
+
+	container_name="es-cert-$(< /dev/urandom tr -dc "a-zA-Z0-9" | head -c 10; echo)"
+
+	docker run --name ${container_name} -v ${cert_dir}:/etc/gpg-key/ \
+		-u root --rm $ES_IMAGE sh -c "\
+		echo -e '\n\n' | ./bin/elasticsearch-certutil ca && \
+		echo -e '\n\n\n' | ./bin/elasticsearch-certutil cert --ca elastic-stack-ca.p12 && \
+		cp /usr/share/elasticsearch/elastic-certificates.p12 /etc/gpg-key/"
+
+	[ -e "$cert_dir/elastic-certificates.p12" ] || {
+		echo "create es cert failed!"
+		exit
+	}
+}
+
+create_es_cert

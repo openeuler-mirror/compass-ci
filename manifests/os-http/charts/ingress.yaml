@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: os-http-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /os/
+            pathType: Prefix
+            backend:
+              service:
+                name: os-http
+                port:
+                  number: 8000

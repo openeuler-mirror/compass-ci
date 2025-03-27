@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: srv-http-repositories
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: srv-http-repositories
+  template:
+    metadata:
+      labels:
+        app: srv-http-repositories
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      containers:
+      - name: srv-http-repositories
+        image: nginx:1.25-alpine3.18
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 20029
+        env:
+        - name: LISTEN_PORT
+          value: "20029"
+        - name: SERVER_NAME
+          value: "srv-http-repositories"
+        - name: "SSL_CONF"
+          value: ""
+        - name: "DEFAULT_TYPE"
+          value: "text/html"
+        livenessProbe:
+          tcpSocket:
+            port: 20029
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 101
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: etc-nginx
+          mountPath: /etc/nginx/conf.d
+        - name: default-conf
+          mountPath: /etc/nginx/templates
+        - name: var-cache
+          mountPath: /var/cache/nginx
+        - name: var-run
+          mountPath: /var/run
+        - name: repositories
+          mountPath: /srv/repositories
+        - name: customization
+          mountPath: /srv/git/customization
+      volumes:
+      - name: default-conf
+        configMap:
+          name: srv-http-nginx-conf
+      - name: etc-nginx
+        emptyDir: {}
+      - name: var-cache
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
+      - name: repositories
+        hostPath:
+          path: /srv/repositories
+      - name: customization
+        hostPath:
+          path: /srv/git/customization
+      restartPolicy: Always

@@ -1,0 +1,188 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-webdav
+  namespace: ems1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: result-webdav
+  template:
+    metadata:
+      labels:
+        app: result-webdav
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      initContainers:
+      - name: init-dir
+        image: result-webdav:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          chown -hR 1090:1090 /srv/log;
+          chown -hR 1090:1090 /srv/repositories;
+          mkdir -p /home/lkp/.gnupg;
+          cp /tmp/.rpmmacros /home/lkp/;
+          cp /tmp/gpg-agent.conf /home/lkp/.gnupg/;
+          chown -R 1090:1090 /home/lkp/.rpmmacros /home/lkp/.gnupg;
+          chmod -R 700 /home/lkp/.rpmmacros /home/lkp/.gnupg
+        volumeMounts:
+        - name: log
+          mountPath: /srv/log
+        - name: repositories 
+          mountPath: /srv/repositories
+        - name: result-webdav-conf
+          mountPath: /tmp/.rpmmacros
+          subPath: .rpmmacros
+        - name: result-webdav-conf
+          mountPath: /tmp/gpg-agent.conf
+          subPath: gpg-agent.conf
+        - name: home-lkp
+          mountPath: /home/lkp
+        securityContext:
+          runAsUser: 0
+      - name: set-redis-ip-list
+        image: result-webdav:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        - |
+          cp -r /usr/local/openresty/nginx/conf/* /usr/local/openresty/nginx/tmp-conf/;
+          for i in {0..5}
+          do
+            domain="redis-${i}.redis.${NAMESPACE}.svc.cluster.local"
+            ip=`nslookup $domain | awk '/^Address: / { print $2 }'`
+            [ -z "$ip" ] && echo "Can not resolv $domain" && exit 1
+            sed -i "s|$domain|$ip|g" /usr/local/openresty/nginx/tmp-conf/nginx.conf
+          done
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: result-webdav-conf
+          mountPath: /usr/local/openresty/nginx/conf/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-conf
+          mountPath: /usr/local/openresty/nginx/tmp-conf
+      containers:
+      - name: result-webdav
+        image: result-webdav:latest
+        imagePullPolicy: IfNotPresent
+        command: ['bash', '/usr/local/bin/openresty.sh']
+        envFrom:
+        - configMapRef:
+            name: pub-env
+        - secretRef:
+            name: secrets-env
+        ports:
+        - containerPort: 3080
+        livenessProbe:
+          tcpSocket:
+            port: 3080
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: nginx-conf
+          mountPath: /usr/local/openresty/nginx/conf
+          readOnly: true
+        - name: home-lkp
+          mountPath: /home/lkp
+        - name: signatrust
+          mountPath: /etc/gpg-key
+        - name: result
+          mountPath: /srv/result
+        - name: initrd
+          mountPath: /srv/initrd
+        - name: kernel
+          mountPath: /srv/kernel
+        - name: rpm
+          mountPath: /srv/rpm
+        - name: tmp-rpm
+          mountPath: /srv/tmp/rpm
+        - name: build-config
+          mountPath: /srv/cci/build-config
+        - name: profile-data
+          mountPath: /srv/cci/profile/data
+        - name: kunpeng
+          mountPath: /srv/kunpeng
+        - name: repositories 
+          mountPath: /srv/repositories
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+        - name: gpg-key
+          mountPath: /gpg-key
+        - name: log
+          mountPath: /srv/log
+        - name: tmp-result-webdav
+          mountPath: /tmp
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: result-webdav-conf
+        configMap:
+          name: result-webdav-conf
+      - name: gpg-key
+        secret:
+          secretName: gpg-key
+      - name: tmp-result-webdav
+        emptyDir: {}
+      - name: nginx-conf
+        emptyDir: {}
+      - name: home-lkp
+        emptyDir: {}
+      - name: tmp-rpm
+        emptyDir: {}
+      - name: signatrust
+        hostPath:
+          path: /etc/gpg-key
+      - name: result
+        hostPath:
+          path: /srv/result
+      - name: initrd
+        hostPath:
+          path: /srv/initrd
+      - name: kernel
+        hostPath:
+          path: /srv/kernel
+      - name: rpm
+        hostPath:
+          path: /srv/rpm
+      - name: build-config
+        hostPath:
+          path: /srv/cci/build-config
+      - name: profile-data
+        hostPath:
+          path: /srv/cci/profile/data
+      - name: kunpeng
+        hostPath:
+          path: /srv/kunpeng
+      - name: repositories
+        hostPath:
+          path: /srv/repositories
+      - name: log
+        hostPath:
+          path: /srv/log/result-webdav

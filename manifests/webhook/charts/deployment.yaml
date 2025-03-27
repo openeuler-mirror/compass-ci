@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: webhook
+  template:
+    metadata:
+      labels:
+        app: webhook
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      initContainers:
+      - name: check-dep
+        image: k8s-start-check:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          python3 k8s_start_check.py rabbitmq
+        env:
+        - name: MQ_HOST
+          value: rabbitmq
+        - name: MQ_PORT
+          value: "5672"
+      containers:
+      - name: webhook
+        image: webhook:latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: pub-env
+        ports:
+        - containerPort: 20005
+        livenessProbe:
+          tcpSocket:
+            port: 20005
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        command: ['sh', '-c', 'node /js/webhook.js']
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+            - ALL

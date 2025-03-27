@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: data-api-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /data_api/
+            pathType: Prefix
+            backend:
+              service:
+                name: data-api 
+                port:
+                  number: 10005

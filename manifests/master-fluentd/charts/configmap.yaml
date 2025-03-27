@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: master-fluentd
+  namespace: ems1
+data:
+  docker-fluentd.conf: |
+    <system>
+      workers 10
+    </system>
+
+    <source>
+      @type forward
+      bind 0.0.0.0
+    </source>
+
+    <filter **>
+      @type record_transformer
+      enable_ruby
+      <record>
+        time ${time.strftime('%Y-%m-%dT%H:%M:%S.%3N+0800')}
+      </record>
+    </filter>
+
+    <match serial.**>
+      @type rabbitmq
+      host "#{ENV['MQ_HOST']}"
+      port "#{ENV['MQ_PORT']}"
+      exchange serial-logging
+      exchange_type fanout
+      exchange_durable false
+      heartbeat 10
+      <format>
+        @type json
+      </format>
+    </match>
+
+    <filter **>
+      @type parser
+      format json
+      emit_invalid_record_to_error false
+      key_name log
+      reserve_data true
+    </filter>
+
+    <match **>
+      @type copy
+
+      <store>
+        @type elasticsearch
+        host "#{ENV['LOGGING_ES_HOST']}"
+        port "#{ENV['LOGGING_ES_PORT']}"
+        user "#{ENV['LOGGING_ES_USER']}"
+        password "#{ENV['LOGGING_ES_PASSWORD']}"
+        suppress_type_name true
+        flush_interval 1s
+        num_threads 10
+        index_name ${tag}
+        ssl_verify false
+        log_es_400_reason true
+        with_transporter_log true
+        reconnect_on_error true
+        reload_on_failure true
+        reload_connections false
+        template_overwrite
+        template_name logging
+        template_file /fluentd/mapping-template
+      </store>
+
+      <store>
+        @type rabbitmq
+        host "#{ENV['MQ_HOST']}"
+        port "#{ENV['MQ_PORT']}"
+        exchange docker-logging
+        exchange_type fanout
+        exchange_durable false
+        heartbeat 10
+        <format>
+          @type json
+        </format>
+      </store>
+    </match>
+
+    <label @FLUENT_LOG>
+      <match fluent.*>
+        @type stdout
+        <format>
+          @type stdout
+          output_type single_value
+          message_key message
+          add_newline true
+        </format>
+      </match>
+    </label>

@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-init
+  namespace: ems1
+spec:
+  backoffLimit: 100
+  template:
+    metadata:
+      labels:
+        app: redis-init
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      containers:
+      - name: redis-init
+        image: redis-base:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          redis-cli --cluster create \
+            redis-0.redis.$NAMESPACE.svc.cluster.local:6379 \
+            redis-1.redis.$NAMESPACE.svc.cluster.local:6379 \
+            redis-2.redis.$NAMESPACE.svc.cluster.local:6379 \
+            redis-3.redis.$NAMESPACE.svc.cluster.local:6379 \
+            redis-4.redis.$NAMESPACE.svc.cluster.local:6379 \
+            redis-5.redis.$NAMESPACE.svc.cluster.local:6379 \
+            --cluster-replicas 1 --cluster-yes
+        envFrom:
+        - secretRef:
+            name: secrets-env
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      restartPolicy: OnFailure

@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: extract-stats
+  namespace: ems1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: extract-stats
+  template:
+    metadata:
+      labels:
+        app: extract-stats
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      initContainers:
+      - name: check-dep
+        image: k8s-start-check:latest
+        imagePullPolicy: IfNotPresent
+        command: 
+        - sh
+        - -c
+        - |
+          python3 k8s_start_check.py redis;
+          python3 k8s_start_check.py etcd;
+          python3 k8s_start_check.py es
+        env:
+          - name: REDIS_HOST
+            value: redis
+          - name: REDIS_PORT
+            value: "6379"
+          - name: ETCD_HOST
+            value: etcd
+          - name: ETCD_PORT
+            value: "2379"
+          - name: ES_HOST
+            value: es
+          - name: ES_PORT
+            value: "9200"
+          - name: ETCD_USER
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: ETCD_USER
+          - name: ETCD_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: ETCD_PASSWORD
+          - name: ES_USER
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: ES_USER
+          - name: ES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: ES_PASSWORD
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: REDIS_PASSWORD
+      - name: init
+        image: extract-stats:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          chown -hR 1090:1090 /srv/result;
+        volumeMounts:
+        - name: result
+          mountPath: /srv/result
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: extract-stats
+        image: extract-stats:latest
+        imagePullPolicy: IfNotPresent
+        command: 
+        - sh
+        - -c
+        - |
+          umask 002 && ./extract-stats
+        envFrom:
+        - configMapRef:
+            name: pub-env
+        - secretRef:
+            name: secrets-env
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 4Gi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: defaults
+          mountPath: /etc/compass-ci/defaults
+        - name: service-env
+          mountPath: /etc/compass-ci/service
+        - name: local-testbox-env
+          mountPath: /etc/compass-ci/scheduler
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+        - name: result
+          mountPath: /result
+        - name: tmp-extract-stats
+          mountPath: /tmp
+      volumes:
+      - name: defaults
+        configMap:
+          name: compass-ci-defaults
+      - name: service-env
+        configMap:
+          name: service-env
+      - name: local-testbox-env
+        configMap:
+          name: local-testbox-env
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: result
+        hostPath:
+          path: /srv/result
+      - name: tmp-extract-stats
+        emptyDir: {}

@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: es-init
+  namespace: ems1
+spec:
+  backoffLimit: 100
+  template:
+    metadata:
+      labels:
+        app: es-init
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      containers:
+      - name: es-init
+        image: es-base:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          [ -z ${ES_SUPER_USER} ] && echo "ES_SUPER_USER is not defined" && exit 1
+          [ -z ${ES_SUPER_PASSWORD} ] && echo "ES_SUPER_PASSWORD is not defined" && exit 1
+
+          sh /etc/es-init/create-es-account.sh;
+          sh /etc/es-init/create-es-mapping.sh;
+        envFrom:
+        - secretRef:
+            name: secrets-env
+        env:
+        - name: ES_HOST
+          value: "es"
+        - name: ES_PORT
+          value: "9200"
+        volumeMounts:
+        - name: scripts
+          mountPath: /etc/es-init
+      volumes:
+      - name: scripts
+        configMap:
+          name: es-init
+      restartPolicy: OnFailure

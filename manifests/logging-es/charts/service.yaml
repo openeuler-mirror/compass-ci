@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: logging-es
+  namespace: ems1
+spec:
+  selector:
+    app: logging-es
+  ports:
+  - name: http
+    port: 80
+    targetPort: 9202
+  - name: db 
+    port: 9202
+    targetPort: 9200
+  - name: transport 
+    port: 9302
+    targetPort: 9300

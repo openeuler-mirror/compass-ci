@@ -1,0 +1,160 @@
+apiVersion: v1
+data:
+  .rpmmacros: |
+    %_signature gpg
+    %_gpg_name RPM_GPG_NAME
+    %_gpg_path /home/lkp/.gnupg
+    %_gpgbin /usr/bin/gpg
+    %_gpg_digest_algo sha256
+  gpg-agent.conf: |
+    allow-preset-passphrase
+    pinentry-program /usr/bin/pinentry-tty
+  nginx.conf: |
+    # For more information on configuration, see:
+    #   * Official English Documentation: http://nginx.org/en/docs/
+
+    user lkp;
+    worker_processes auto;
+    pid /tmp/nginx.pid;
+    env RPM_GPG_PASS_PHRASE;
+    env RPM_GPG_KEYGRIP;
+    env HOSTNAME;
+    env SIGNATURE_MODE;
+    env ENABLE_RPM_SIGN;
+
+    events {}
+
+    http {
+        lua_package_path '$prefix/lua/?.lua;/blah/?.lua;/data/soft/openresty/script/?.lua;/usr/local/openresty/lualib/resty/?.lua;;';
+        server {
+            listen 3080;
+            server_name "result-webdav";
+            server_tokens off;
+            client_max_body_size 25600m;
+            access_log /srv/log/result-webdav/access.log;
+            error_log /srv/log/result-webdav/error.log;
+            client_body_temp_path /tmp/nginx-client-body;
+            proxy_temp_path /tmp/nginx-proxy;
+            fastcgi_temp_path /tmp/nginx-fastcgi;
+            uwsgi_temp_path /tmp/nginx-uwsgi;
+            scgi_temp_path /tmp/nginx-scgi;
+
+            set $run_user "lkp";
+            set $user_home "/home/lkp";
+
+            location / {
+                    allow all;
+                    root /srv/;
+
+                    autoindex on;
+                    create_full_put_path on;
+                    dav_methods PUT MKCOL;
+                    dav_access user:rw group:rw all:rw;
+
+                    set $config_upload_condition "false";
+                    if ( $uri ~ "^/cci/build-config.*" )
+                    {
+                            set $config_upload_condition "true";
+                    }
+
+                    if ( -e $request_filename )
+                    {
+                            set $config_upload_condition "${config_upload_condition}+true";
+                    }
+
+                    if ( $config_upload_condition = "true+true" )
+                    {
+                            return 200;
+                    }
+
+                    access_by_lua_block {
+                            local config = {
+                                    dict_name = "test_locks",
+                                    refresh_lock_key = "refresh_lock",
+                                    name = "redis",
+                                    serv_list = {
+                                            { ip = "redis-0.redis.ems1.svc.cluster.local", port = 6379},
+                                            { ip = "redis-1.redis.ems1.svc.cluster.local", port = 6379},
+                                            { ip = "redis-2.redis.ems1.svc.cluster.local", port = 6379},
+                                            { ip = "redis-3.redis.ems1.svc.cluster.local", port = 6379},
+                                            { ip = "redis-4.redis.ems1.svc.cluster.local", port = 6379},
+                                            { ip = "redis-5.redis.ems1.svc.cluster.local", port = 6379},
+                                    },
+                                    keepalive_timeout = 60000,
+                                    keepalive_cons = 1000,
+                                    connect_timeout = 1000,
+                                    max_redirection = 5,
+                                    max_connection_attempts = 1
+                            }
+                            function split(str, reps)
+                                    local resultstrlist = {}
+                                    string.gsub(str,'[^'..reps..']+',function (w)
+                                            if w ~= nil then
+                                                    table.insert(resultstrlist,w)
+                                            end
+                                    end)
+                                    return resultstrlist
+                            end
+                            function symbolic_link(path, upload_file)
+                                    level_dir = split(path, "/")
+                                    if level_dir[1] ~= "initrd" or upload_file == nil then
+                                            return
+                                    end
+                                    if level_dir[2] == "pkg" or level_dir[2] == "build-pkg" or level_dir[2] == "pkgbuild" then
+                                            link_name = "latest"
+                                    else
+                                            tmp_name = string.match(upload_file, "(.*)_%d+%.cgz")
+                                            if tmp_name then
+                                                    link_name = tmp_name
+                                            else
+                                                    return
+                                            end
+                                    end
+                                    link_name = link_name..".cgz"
+                                    root_path = "/srv/"..path
+                                    io.popen("mkdir -p "..root_path.." && cd "..root_path.."&& ln -sf "..upload_file.." "..link_name)
+                            end
+
+
+
+                            local redis_cluster = require "resty.rediscluster"
+                            local red = redis_cluster:new(config)
+
+                            job_id = ngx.var.cookie_JOBID
+                            uri = ngx.var.request_uri
+                            path = string.match(uri, "%g*/")
+                            upload_file = string.match(uri, "([^/]+)$")
+
+                            local res, err = red:hget("sched/id2upload_dirs", job_id)
+                            if not res or res == ngx.null then
+                                    ngx.log(ngx.ERR, "failed to hget: ", err)
+                                    ngx.exit(ngx.HTTP_FORBIDDEN)
+                            end
+
+                            if string.find(res, ",", 1, true) then
+                                    dirs = split(res, ",")
+                                    for i = 1, #dirs do
+                                            if string.find(path, dirs[i], 1, true) then
+                                                    symbolic_link(path, upload_file)
+                                                    return
+                                            end
+                                    end
+                            else
+                                    if string.find(path, res, 1, true) then
+                                            symbolic_link(path, upload_file)
+                                            return
+                                    end
+                            end
+
+                            ngx.exit(ngx.HTTP_FORBIDDEN)
+                    }
+
+                    content_by_lua_file conf/lua/upload.lua;
+            }
+        }
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: result-webdav-conf
+  namespace: ems1

@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: es
+  namespace: ems1
+spec:
+  serviceName: es
+  replicas: 3
+  selector:
+    matchLabels:
+      app: es
+  template:
+    metadata:
+      labels:
+        app: es
+    spec:
+      initContainers:
+      - name: init
+        image: es-base:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          chown -hR 1090:1090 /usr/share/elasticsearch/logs;
+          /usr/share/elasticsearch/bin/elasticsearch-users useradd ${ES_SUPER_USER} -p {ES_SUPER_PASSWORD} -r superuser || \
+          /usr/share/elasticsearch/bin/elasticsearch-users passwd ${ES_SUPER_USER} -p ${ES_SUPER_PASSWORD};
+          mkdir -p /tmp/es/config && cp -rf /usr/share/elasticsearch/config/* /tmp/es/config/;
+          chown -hR 1090:1090 /tmp/es/config;
+        envFrom:
+        - secretRef:
+            name: secrets-env
+        volumeMounts:
+        - name: es-logs
+          mountPath: /usr/share/elasticsearch/logs
+        - name: es-cert
+          mountPath: /usr/share/elasticsearch/config/certs
+        - name: tmp
+          mountPath: /tmp
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: es
+        image: es-base:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          elasticsearch
+        envFrom:
+        - secretRef:
+            name: secrets-env
+        env:
+        - name: cluster.name
+          value: es
+        - name: ES_PATH_CONF
+          value: /tmp/es/config
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: discovery.zen.minimum_master_nodes
+          value: "2"
+        - name: discovery.seed_hosts
+          value: es
+        - name: cluster.initial_master_nodes
+          value: es-0,es-1,es-2
+        - name: network.host
+          value: 0.0.0.0
+        - name: ES_JAVA_OPTS
+          value: "-Xms10g -Xmx10g"
+        ports:
+        - name: db
+          containerPort: 9200
+          protocol: TCP
+        - name: transport
+          containerPort: 9300
+          protocol: TCP
+        livenessProbe:
+          tcpSocket:
+            port: transport
+          initialDelaySeconds: 5
+          timeoutSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: transport
+          initialDelaySeconds: 5
+          timeoutSeconds: 10
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+        - name: es
+          mountPath: /srv/es
+        - name: tmp
+          mountPath: /tmp
+        - name: es-logs
+          mountPath: /usr/share/elasticsearch/logs
+        - name: es-tmp
+          mountPath: /usr/share/elasticsearch/tmp
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: es-cert
+        secret:
+          secretName: es-cert
+      - name: tmp
+        emptyDir: {}
+      - name: es-tmp
+        emptyDir: {}
+      - name: es-logs
+        hostPath:
+          path: /srv/log/es
+  volumeClaimTemplates:
+  - metadata:
+      name: es
+    spec:
+      accessModes:
+      - "ReadWriteOnce"
+      storageClassName: pub-storageclass
+      resources:
+        requests:
+          storage: 50Gi

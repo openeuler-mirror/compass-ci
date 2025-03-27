@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: compass-ci-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: compass-ci-node
+  template:
+    metadata:
+      labels:
+        app: compass-ci-node
+    spec:
+      nodeSelector:
+        compass-ci.io/control-plane: "true"
+      initContainers:
+      - name: dir-create
+        image: busybox:1.28.3
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /srv/es/es-0 && chown -hR 1090:1090 /srv/es/es-0;
+          mkdir -p /srv/es/es-1 && chown -hR 1090:1090 /srv/es/es-1;
+          mkdir -p /srv/es/es-2 && chown -hR 1090:1090 /srv/es/es-2;
+          mkdir -p /srv/etcd/etcd-0;
+          mkdir -p /srv/etcd/etcd-1;
+          mkdir -p /srv/etcd/etcd-2;
+          mkdir -p /srv/redis/redis-0 && chown -hR 1090:1090 /srv/redis/redis-0;
+          mkdir -p /srv/redis/redis-1 && chown -hR 1090:1090 /srv/redis/redis-1;
+          mkdir -p /srv/redis/redis-2 && chown -hR 1090:1090 /srv/redis/redis-2;
+          mkdir -p /srv/redis/redis-3 && chown -hR 1090:1090 /srv/redis/redis-3;
+          mkdir -p /srv/redis/redis-4 && chown -hR 1090:1090 /srv/redis/redis-4;
+          mkdir -p /srv/redis/redis-5 && chown -hR 1090:1090 /srv/redis/redis-5;
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: srv
+          mountPath: /srv
+      containers:
+      - name: node
+        image: busybox:1.28.3
+        command: ['sh', '-c', 'tail -f /dev/null']
+      volumes:
+      - name: srv
+        hostPath:
+          path: /srv

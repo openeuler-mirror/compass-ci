@@ -1,0 +1,693 @@
+apiVersion: v1
+data:
+  create-es-account.sh: |
+    #!/bin/sh
+    # SPDX-License-Identifier: MulanPSL-2.0+
+    # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+    superuser="${ES_SUPER_USER}":"${ES_SUPER_PASSWORD}"
+
+    [ -z ${ES_ROLE} ] && echo "ES_ROLE is not defined" && exit 1
+    [ -z ${ES_USER} ] && echo "ES_USER is not defined" && exit 1
+    [ -z ${ES_PASSWORD} ] && echo "ES_PASSWORD is not defined" && exit 1
+
+    echo "--------http://${ES_HOST}:${ES_PORT}/_security/role/${ES_ROLE}-----${superuser}"
+    # Create role
+    curl -sSH 'Content-Type: Application/json' -XPOST "http://${ES_HOST}:${ES_PORT}/_security/role/${ES_ROLE}" -o /dev/null -u  ${superuser} -d '
+    {
+        "cluster": ["all"],
+        "indices":[ {
+            "names":        ["*"],
+            "privileges":   ["read", "write"]
+        } ]
+    }'
+
+    status_code=$(curl -sSIL -w "%{http_code}\n" -XGET http://${ES_HOST}:${ES_PORT}/_security/role/${ES_ROLE} -o /dev/null -u ${superuser})
+    [ $status_code -ne 200 ] && echo "Create role ${ES_ROLE} failed status code: ${status_code}." && exit 1
+    echo "Create role ${ES_ROLE} success."
+
+    # Create user
+    curl -sSH 'Content-Type: Application/json' -XPOST "http://${ES_HOST}:${ES_PORT}/_security/user/${ES_USER}" -o /dev/null -u ${superuser} -d '
+    {
+        "password": "'"${ES_PASSWORD}"'",
+        "roles":    ["'"${ES_ROLE}"'"]
+    }'
+
+    status_code=$(curl -sSIL -w "%{http_code}\n" -o /dev/null -XGET http://${ES_HOST}:${ES_PORT}/_security/user/${ES_USER} -u ${superuser})
+    [ $status_code -ne 200 ] && echo "Create user ${ES_USER} failed." && exit 1
+    echo "Create user ${ES_USER} success."
+  create-es-mapping.sh: |
+    #!/bin/sh
+    # SPDX-License-Identifier: MulanPSL-2.0+
+    # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+    _create_mapping() {
+        local mapping_name=$1
+        local mapping_body=$2
+        local superuser=${ES_SUPER_USER}:${ES_SUPER_PASSWORD}
+
+        status_code=$(curl -sSIL -w "%{http_code}\n" http://${ES_HOST}:${ES_PORT}/${mapping_name} -o /dev/null -u $superuser)
+        [ "$status_code" -eq 200 ] && echo "Index ${mapping_name} already existed." && return 0
+
+        curl -sSH 'Content-Type: Application/json' -XPUT "http://${ES_HOST}:${ES_PORT}/${mapping_name}" -o /dev/null -u $superuser -d "${mapping_body}"
+
+        status_code=$(curl -sSIL -w "%{http_code}\n" http://${ES_HOST}:${ES_PORT}/${mapping_name} -o /dev/null -u $superuser)
+        [ "$status_code" -ne 200 ] && echo "Create index ${mapping_name} failed." && exit 1
+
+        echo "Create index ${mapping_name} success."
+    }
+
+    _create_mapping "lkp_jobs" '
+    {
+      "settings": {
+        "index.mapping.total_fields.limit": 10000
+      },
+      "mappings": {
+        "dynamic": "false",
+        "properties": {
+          "name": {
+            "type": "text"
+          },
+          "suite": {
+            "type": "keyword"
+          },
+          "summary": {
+            "type": "text"
+          },
+          "category": {
+            "type": "keyword"
+          },
+          "job_yaml": {
+            "type": "text"
+          },
+          "lkp_src": {
+            "type": "keyword"
+          }
+        }
+      }
+    }'
+
+    _create_mapping "lkp_programs" '
+    {
+      "settings": {
+        "index.mapping.total_fields.limit": 10000
+      },
+      "mappings": {
+        "dynamic": "false",
+        "properties": {
+          "name": {
+            "type": "text"
+          },
+          "meta": {
+            "type": "object",
+            "dynamic": "false",
+            "properties": {
+              "metadata": {
+                "type": "object"
+              },
+              "type": {
+                "type": "text"
+              },
+              "depends": {
+                "type": "object"
+              },
+              "params": {
+                "type": "object"
+              },
+              "results": {
+                "type": "object"
+              }
+            }
+          },
+          "meta_yaml": {
+            "type": "text"
+          },
+          "lkp_src": {
+            "type": "keyword"
+          }
+        }
+      }
+    }'
+
+    _create_mapping "lkp_workflows" '
+    {
+      "settings": {
+        "index.mapping.total_fields.limit": 10000
+      },
+      "mappings": {
+        "dynamic": "false",
+        "properties": {
+          "name": {
+            "type": "text"
+          },
+          "alias": {
+            "type": "text"
+          },
+          "origin": {
+            "type": "text"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "vars": {
+            "type": "object"
+          },
+          "lkp_src": {
+            "type": "keyword"
+          },
+          "on": {
+            "type": "nested",
+            "dynamic": true
+          }
+        }
+      }
+    }'
+
+    _create_mapping "accounts" '
+    {
+        "mappings": {
+            "dynamic": "false",
+            "dynamic_templates": [
+                {
+                    "my_third_party_accounts": {
+                        "path_match":   "my_third_party_accounts.*",
+                        "mapping":      { "enabled": true, "type": "keyword" }
+                    }
+                },
+                {
+                    "default": {
+                        "match":        "*",
+                        "mapping":      { "enabled": false, "type": "object" }
+                    }
+                }
+            ],
+            "properties": {
+                "my_account":                   { "type": "keyword" },
+                "my_commit_url":                { "type": "keyword" },
+                "my_email":                     { "type": "keyword" },
+                "my_login_name":                { "type": "keyword" },
+                "my_name":                      { "type": "keyword" },
+                "my_role":                      { "type": "keyword" },
+                "my_third_party_accounts": {
+                    "dynamic": "true",
+                    "properties": {
+                        "openeuler_username":   { "type": "keyword" }
+                    }
+                },
+                "my_token":                     { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "authorized" '
+    {
+        "mappings": {
+            "dynamic": false,
+            "properties": {
+                "my_account": { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "builds" '
+    {
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "build_id":             { "type": "keyword" },
+                "build_target": {
+                    "properties": {
+                        "architecture": { "type": "keyword" },
+                        "os_variant":   { "type": "keyword" }
+                    }
+                },
+                "build_type":           { "type": "keyword" },
+                "create_time":          { "type": "date"    },
+                "ground_projects":      { "type": "object"  },
+                "os_project":           { "type": "keyword" },
+                "published_status":     { "type": "integer" },
+                "packages":             { "type": "keyword" },
+                "repo_id":              { "type": "keyword" },
+                "repo_es_key_id":       { "type": "keyword" },
+                "repo_name":            { "type": "keyword" },
+                "snapshot_id":          { "type": "keyword" },
+                "spec_depends":         { "type": "object"  },
+                "status":               { "type": "keyword" },
+                "submit_user":          { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "build_spec_time" '
+    {
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "build_id":   { "type": "keyword" },
+                "os_project": { "type": "keyword" },
+                "arch":       { "type": "keyword" },
+                "os_variant": { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "compat-software-info" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 1000
+        },
+        "mappings": {
+            "dynamic": false,
+            "properties": {
+                "os":                   { "type": "keyword" },
+                "arch":                 { "type": "keyword" },
+                "srpm_addr":            { "type": "keyword" },
+                "rpmbuild_result_url":  { "type": "keyword" },
+                "property":             { "type": "keyword" },
+                "result_url":           { "type": "keyword" },
+                "result_root":          { "type": "keyword" },
+                "uninstall":            { "type": "keyword" },
+                "libs":                 { "type": "keyword" },
+                "bin":                  { "type": "keyword" },
+                "type":                 { "type": "keyword" },
+                "softwareName":         { "type": "keyword" },
+                "install":              { "type": "keyword" },
+                "version":              { "type": "keyword" },
+                "downloadLink":         { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "devices1" '
+    {
+        "mappings": {
+            "dynamic": false,
+            "properties": {}
+        }
+    }'
+
+    _create_mapping "hosts1" '
+    {
+        "mappings": {
+            "dynamic": false,
+            "properties": {}
+        }
+    }'
+
+    _create_mapping "image_config" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "pipeline_id": { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "image_task" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "id":           { "type": "keyword" },
+                "pipeline_id":  { "type": "keyword" },
+                "start_time":   { "type": "keyword" },
+                "end_time":     { "type": "keyword" },
+                "operator":     { "type": "keyword" },
+                "duration":     { "type": "keyword" },
+                "status":       { "type": "keyword" },
+                "log_link":     { "type": "keyword" },
+                "image_link":   { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "job_resource" '
+    {
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "cpu": { "type": "keyword" },
+                "mem": { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "testbox" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "arch":           { "type": "text" },
+                "deadline":       { "type": "date" },
+                "hostname":       { "type": "text" },
+                "ip":             { "type": "text" },
+                "job_id":         { "type": "text" },
+                "mac":            { "type": "text" },
+                "my_account":     { "type": "text" },
+                "name":           { "type": "text" },
+                "queues":         { "type": "text" },
+                "result_root":    { "type": "text" },
+                "state":          { "type": "text" },
+                "suite":          { "type": "text" },
+                "tbox_group":     { "type": "text" },
+                "testbox":        { "type": "text" },
+                "time":           { "type": "date" },
+                "timeout_period": { "type": "text" },
+                "type":           { "type": "text" }
+            }
+        }
+    }'
+
+    _create_mapping "subqueue" '
+    {
+        "mappings": {
+                "properties": {
+                "subqueue":   { "type": "keyword" },
+                "priority":   { "type": "keyword" },
+                "weight":     { "type": "keyword" },
+                "soft_quota": { "type": "keyword" },
+                "hard_quota": { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "snapshots" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "build_targets":    { "type": "object"  },
+                "create_time":      { "type": "date"    },
+                "ground_projects":  { "type": "object"  },
+                "is_trunk":         { "type": "boolean" },
+                "os_project":       { "type": "keyword" },
+                "prev_snapshot_id": { "type": "keyword" },
+                "snapshot_id":      { "type": "keyword" },
+                "spec_commits":     { "type": "object"  }
+        }
+      }
+    }'
+
+    _create_mapping "rpms" '
+    {
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "architecture":   { "type": "keyword" },
+                "build_id":       { "type": "keyword" },
+                "checksum":       { "type": "keyword" },
+                "job_id":         { "type": "keyword" },
+                "os_project":     { "type": "keyword" },
+                "os_variant":     { "type": "keyword" },
+                "repo_id":        { "type": "keyword" },
+                "repo_name":      { "type": "keyword" },
+                "rpm_path":       { "type": "keyword" },
+                "rpm_repo":       { "type": "keyword" },
+                "rpms": {
+                    "properties": {
+                    "name":       { "type": "keyword" },
+                    "pkgid":      { "type": "keyword" }
+                    }
+                },
+                "rpms_build_env": {
+                    "properties": {
+                    "name":       { "type": "keyword" },
+                    "pkgid":      { "type": "keyword" }
+                    }
+                },
+                "snapshot_id":    { "type": "keyword" },
+                "spec_commit":    { "type": "keyword" },
+                "spec_name":      { "type": "keyword" },
+                "submit_time":    { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "rpm_repos" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "architecture":   { "type": "keyword" },
+                "create_time":    { "type": "date"    },
+                "os_project":     { "type": "keyword" },
+                "os_variant":     { "type": "keyword" },
+                "repo_id":        { "type": "keyword" },
+                "rpm_depends":    { "type": "object"  },
+                "rpm_repo_path":  { "type": "keyword" },
+                "snapshot_id":    { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "repo" '
+    {
+        "mappings": {
+            "properties": {
+                "git_repo":         { "type": "keyword" },
+                "pkgbuild_repo":    { "type": "keyword" },
+                "url":              { "type": "keyword" },
+                "fetch_time":       { "type": "keyword" },
+                "new_refs_time":    { "type": "keyword" },
+                "offset_fetch":     { "type": "long"    },
+                "offset_new_refs":  { "type": "long"    },
+                "priority":         { "type": "long"    },
+                "queued":           { "type": "boolean" }
+            }
+        }
+    }'
+
+    _create_mapping "regression" '
+    {
+        "mappings": {
+            "dynamic": false,
+            "properties": {
+                "error_id": { "type": "keyword" },
+                "job_id":   { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "projects" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "build_targets":  { "type": "object"  },
+                "build_type":     { "type": "object"  },
+                "create_time":    { "type": "date"    },
+                "creator":        { "type": "keyword" },
+                "description":    { "type": "keyword" },
+                "flags":          { "type": "object"  },
+                "lock":           { "type": "boolean" },
+                "my_specs":       { "type": "object"  },
+                "os_project":     { "type": "keyword" },
+                "owner":          { "type": "keyword" },
+                "project_type":   { "type": "keyword" },
+                "spec_branch":    { "type": "keyword" },
+                "spec_groups":    { "type": "object"  },
+                "to_delete":      { "type": "boolean" },
+                "users":          { "type": "object"  }
+            }
+        }
+    }'
+
+    _create_mapping "project_build_result" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "os_project":           { "type": "keyword" },
+                "build_target": {
+                    "properties": {
+                        "architecture": { "type": "keyword" },
+                        "os_variant":   { "type": "keyword" }
+                    }
+                },
+                "build_package":        { "type": "object"  }
+            }
+        }
+    }'
+
+    _create_mapping "pipeline" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "properties": {
+                "id":                 { "type": "keyword" },
+                "pipeline_name":      { "type": "keyword" },
+                "group":              { "type": "keyword" },
+                "image_format":       { "type": "keyword" },
+                "arch":               { "type": "keyword" },
+                "category":           { "type": "keyword" },
+                "scene":              { "type": "keyword" },
+                "owner":              { "type": "keyword" },
+                "parent_pipeline_id": { "type": "keyword" },
+                "users":              { "type": "object"  },
+                "image_config_id":    { "type": "keyword" }
+            }
+        }
+    }'
+
+    _create_mapping "jobs" '
+    {
+        "settings": {
+            "index.mapping.total_fields.limit": 10000
+        },
+        "mappings": {
+            "dynamic": "false",
+            "dynamic_templates": [
+                {
+                    "pp": {
+                        "path_match": "pp.*.*",
+                        "mapping": { "enabled": true, "type": "keyword" }
+                    }
+                },
+                {
+                    "default": {
+                        "match": "*",
+                        "unmatch": "pp",
+                        "path_unmatch": "pp.*",
+                        "mapping": { "enabled": false, "type": "object" }
+                    }
+                }
+            ],
+            "properties": {
+                "all_params_md5":       { "type": "keyword" },
+                "base_commit":          { "type": "keyword" },
+                "build_id":             { "type": "keyword" },
+                "build_type":           { "type": "keyword" },
+                "category":             { "type": "keyword" },
+                "depend_job_id":        { "type": "keyword" },
+                "dequeue_time":         { "type": "date", "format": "yyyy-MM-dd HH:mm:ss" },
+                "end_time":             { "type": "date"    },
+                "enqueue_time":         { "type": "date", "format": "yyyy-MM-dd HH:mm:ss" },
+                "errid":                { "type": "text"    },
+                "group_id":             { "type": "keyword" },
+                "hw": {
+                    "properties": {
+                        "arch":         { "type": "keyword" },
+                        "memory":       { "type": "keyword" },
+                        "model":        { "type": "keyword" },
+                        "nr_cpu":       { "type": "integer" },
+                        "nr_node":      { "type": "integer" },
+                        "nr_threads":   { "type": "keyword" }
+                    }
+                },
+                "id":                   { "type": "keyword" },
+                "interval_type":        { "type": "keyword" },
+                "job_health":           { "type": "keyword" },
+                "job_stage":            { "type": "keyword" },
+                "job_state":            { "type": "keyword" },
+                "last_success_stage":   { "type": "keyword" },
+                "my_account":           { "type": "keyword" },
+                "my_email":             { "type": "keyword" },
+                "nr_run":               { "type": "integer" },
+                "os":                   { "type": "keyword" },
+                "os_arch":              { "type": "keyword" },
+                "os_project":           { "type": "keyword" },
+                "os_version":           { "type": "keyword" },
+                "package":              { "type": "keyword" },
+                "pp": {
+                    "dynamic": "true",
+                    "properties": {
+                        "multi-docker-0": {
+                            "properties": {
+                                "nr_container":     { "type": "keyword" },
+                                "tbox_group":       { "type": "keyword" }
+                            }
+                        },
+                        "multi-docker-1": {
+                            "properties": {
+                                "nr_container":     { "type": "keyword" },
+                                "tbox_group":       { "type": "keyword" }
+                            }
+                        },
+                        "multi-docker-2": {
+                            "properties": {
+                                "nr_container":     { "type": "keyword" },
+                                "tbox_group":       { "type": "keyword" }
+                            }
+                        },
+                        "multi-docker-3": {
+                            "properties": {
+                                "nr_container":     { "type": "keyword" },
+                                "tbox_group":       { "type": "keyword" }
+                            }
+                        },
+                        "rpmbuild": {
+                            "properties": {
+                                "arch":             { "type": "keyword" },
+                                "upstream_repo":    { "type": "keyword" }
+                            }
+                        },
+                        "sleep":                    { "type": "object", "enabled": false },
+                        "unixbench": {
+                            "properties": {
+                                "nr_task":          { "type": "keyword" },
+                                "runtime":          { "type": "keyword" },
+                                "test":             { "type": "keyword" }
+                            }
+                        }
+                    }
+                },
+                "pp_params_md5":        { "type": "keyword" },
+                "pr_merge_reference_name": { "type": "keyword" },
+                "queue":                { "type": "keyword" },
+                "result_root":          { "type": "keyword" },
+                "snapshot_id":          { "type": "keyword" },
+                "start_time":           { "type": "date"    },
+                "submit_date":          { "type": "date", "format": "yyyy-MM-dd" },
+                "submit_id":            { "type": "keyword" },
+                "submit_time":          { "type": "date"    },
+                "subqueue":             { "type": "keyword" },
+                "suite":                { "type": "keyword" },
+                "tags":                 { "type": "text"    },
+                "tbox_group":           { "type": "keyword" },
+                "testbox":              { "type": "keyword" },
+                "time":                 { "type": "date"    },
+                "upstream_commit":      { "type": "keyword" },
+                "upstream_dir":         { "type": "keyword" },
+                "upstream_repo":        { "type": "keyword" },
+                "os_variant":           { "type": "keyword" },
+                "host_machine":         { "type": "keyword" },
+                "spec_file_name":       { "type": "keyword" },
+                "memory_minimum":       { "type": "keyword" },
+                "cpu_minimum":          { "type": "keyword" },
+                "max_duration":         { "type": "keyword" },
+                "user":                 { "type": "keyword" },
+                "tbox_type":            { "type": "keyword" },
+                "use_remote_tbox":      { "type": "keyword" }
+            }
+        }
+    }'
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: es-init
+  namespace: ems1

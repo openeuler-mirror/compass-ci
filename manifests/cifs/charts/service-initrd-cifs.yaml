@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: initrd-cifs
+  namespace: ems1
+spec:
+  selector:
+    app: initrd-cifs
+  ports:
+  - name: initrd-cifs
+    port: 446
+    targetPort: 445
