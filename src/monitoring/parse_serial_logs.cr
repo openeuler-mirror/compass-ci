@@ -137,6 +137,8 @@ class SerialParser
     delete_host(msg, host, END_PATTERNS)
     return if check_save
 
+    job_id = match_job_id(msg)
+    job = find_job(job_id)
     return if dump_cache(job, msg, host)
 
     cache_dmesg(msg, host)
@@ -153,68 +155,24 @@ class SerialParser
 
   def match_job_id(msg)
     matched = msg["message"].to_s.match(/.*\/job_initrd_tmpfs\/(?<job_id>.*?)\//)
-    if matched
-      return matched.named_captures["job_id"]
-    end
+    return unless matched
 
-    matched = msg["message"].to_s.match(/ipxe will boot job id=(?<job_id>[0-9]+), /)
-    if matched
-      return matched.named_captures["job_id"]
-    end
-
-    # [  422.557639][ T5645] /usr/bin/wget -q --timeout=1800 --tries=1 --local-encoding=UTF-8 http://172.168.131.113:3000/~lkp/cgi-bin/lkp-jobfile-append-var?job_file=/lkp/scheduled/job.yaml&job_id=crystal.5240046&job_state=running -O /dev/null^M
-    matched = msg.to_s.match(/ http:.*&job_id=(?<job_id>[0-9]+)&/)
-    if matched
-      return matched.named_captures["job_id"]
-    end
-
-    return nil
-  end
-
-  def match_result_root(msg)
-    # remove "^M" in serial log:
-    #     result_root=/result/mugen/2024-12-11/taishan200-2280-2s48p-256g--a17/openeuler-2^M
-    #     2.03-LTS-SP4-aarch64/libguestfs/10241211102818490^M
-    line = msg["message"].to_s.delete("\r")
-
-    # [  421.102575][ T5645] RESULT_ROOT=/result/lmbench3/2022-04-01/taishan200-2280-2s48p-256g--a1010/openeuler-22.03-LTS-iso-aarch64/development-1-SELECT-4294967297/crystal.5240046^M
-    matched = line.match(/RESULT_ROOT=(?<rr>.*)$/)
-    if matched
-      return matched.named_captures["rr"]
-    end
-
-    # [  422.515716][ T5645] result_service: raw_upload, RESULT_MNT: /172.168.131.113/result, RESULT_ROOT: /172.168.131.113/result/lmbench3/2022-04-01/taishan200-2280-2s48p-256g--a1010/openeuler-22.03-LTS-iso-aarch64/development-1-SELECT-4294967297/crystal.5240046, TMP_RESULT_ROOT: /tmp/lkp/result^M
-    matched = line.match(/RESULT_ROOT: \/.*(?<rr>\/result\/.*), /)
-    if matched
-      return matched.named_captures["rr"]
-    end
-
-    return nil
+    matched.named_captures["job_id"]
   end
 
   def find_job(job_id)
     return unless job_id
 
-    Elasticsearch::Client.new.get_job(job_id)
+    Elasticsearch::Client.new.get_job_content(job_id)
   end
 
   def dump_cache(job, msg, host)
-    return if @host2rt.has_key?(host)
+    return unless job
 
-    job_id = match_job_id(msg)
-    job = find_job(job_id)
-    if job
-      result_root = File.join("/srv", job.result_root)
-    else
-      # continue to work when ES DB is down
-      result_root = match_result_root(msg)
-    end
-    return unless result_root
-    return unless File.exists? "/srv/#{result_root}/job.yaml"
-
+    result_root = File.join("/srv", job["result_root"].to_s)
     @host2rt[host] = result_root
 
-    f = File.new("/srv/#{result_root}/dmesg", "a")
+    f = File.new("#{result_root}/dmesg", "a")
     f.puts @host2head[host].join("\n")
     f.puts msg["message"]
     f.flush

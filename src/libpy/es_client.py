@@ -12,21 +12,27 @@
 # See the Mulan PSL v2 for more details.
 # Author: He Shoucheng
 # Create: 2022-06-23
-# Update: 2025-01-11
 # ******************************************************************************/
 
 
 import os
 import traceback
-import json
 from elasticsearch import Elasticsearch
 
+from src.libpy.single_class import SingleClass
 
-class EsClient():
+
+class EsClient(metaclass=SingleClass):
     def __init__(self):
         hosts = ["http://{0}:{1}".format(os.getenv("ES_HOST", '172.17.0.1'), os.getenv("ES_PORT", 9200))]
         self.es_handler = Elasticsearch(hosts=hosts,
                                         http_auth=(os.getenv("ES_USER"), os.getenv("ES_PASSWORD")), timeout=3600)
+
+    def get_cluster_health(self) -> dict:
+        """
+        :return: {}
+        """
+        return self.es_handler.cluster.health()
 
     def search_by_id(self, index: str, doc_id: str) -> dict:
         """
@@ -36,72 +42,205 @@ class EsClient():
         """
         return self.es_handler.get(index=index, id=doc_id, ignore=404)
 
-    def update_by_id(self, index: str, doc_id: str, body: dict) -> dict:
-        """
-        Update a document by its ID.
-        :param index: Index name
-        :param doc_id: Document ID
-        :param body: Document content to update (as a dictionary)
-        :return: Response from the update operation
-        """
-        return self.es_handler.index(index=index, id=doc_id, body=body)
-
     def delete_by_id(self, index: str, doc_id: str) -> dict:
         """
-        Delete a document by its ID.
-        :param index: Index name
-        :param doc_id: Document ID
-        :return: Response from the delete operation
+        :param index:
+        :param doc_id:
+        :return: {}
         """
-        return self.es_handler.delete(index=index, id=doc_id, ignore=404)
+        return self.es_handler.delete(index=index, id=doc_id, ignore=409, refresh=True)
 
-    def create_index(self, index: str, body: dict = None) -> dict:
+    def delete_by_query(self, index: str, query: dict = None) -> dict:
         """
-        Create an index.
-        :param index: Index name
-        :param body: Index mappings and settings (optional)
-        :return: Response from the index creation operation
+        :param index:
+        :param doc_id:
+        :return: {}
         """
-        return self.es_handler.indices.create(index=index, body=body, ignore=400)  # ignore=400 to ignore errors if the index already exists
+        return self.es_handler.delete_by_query(index=index, body=query, ignore=409, refresh=True)
 
-    def delete_index(self, index: str) -> dict:
+    def insert_document_with_id(self, index: str, doc_id: str, document: dict):
         """
-        Delete an index.
-        :param index: Index name
-        :return: Response from the delete operation
+        Creates a new document in the index. Returns a 409 response when a document with
+        a same ID already exists in the index. and mast input id
+        :param doc_id:
+        :param index:
+        :param document:
+        :return:
         """
-        return self.es_handler.indices.delete(index=index, ignore=404)  # ignore=404 to ignore errors if the index does not exist
+        return self.es_handler.index(index=index, id=doc_id, body=document, ignore=[400, 409], refresh=True)
 
-    def bulk_index(self, index: str, data: list) -> dict:
+    def insert_document(self, index: str, document: dict):
         """
-        Perform bulk indexing of documents.
-        :param index: Index name
-        :param data: List of documents, formatted as [{"id": "1", "name": "John Doe"}, {"id": "2", "name": "Jane Smith"}]
-        :return: Response from the bulk operation
+        Creates or updates a document in an index, no need input id
+        :param index:
+        :param document:
+        :return:
         """
-        actions = []
-        for item in data:
-            actions.append({"index": {"_index": index, "_id": item.get("id")}})
-            actions.append(item)
-        return self.es_handler.bulk(index=index, body=actions)
+        return self.es_handler.index(index=index, body=document, ignore=[400, 409], refresh=True)
 
-    def search_by_query(self, index: str, query: dict) -> dict:
+    def update_document_by_id(self, index: str, doc_id: str, document: dict):
         """
-        Search for documents based on a query.
-        :param index: Index name
-        :param query: Query conditions (as a dictionary)
-        :return: Query results
+        updates a document in an index, it should input id
+        :param doc_id:
+        :param index:
+        :param document:
+        :return:
         """
-        # Perform the search query
-        response = self.es_handler.search(index=index, body=query)
-        # Extract relevant information from the response
-        total_hits = response['hits']['total']['value']  # Total number of hits
-        hits = response['hits']['hits']  # List of documents
+        doc = {"doc": document}
+        return self.es_handler.update(index=index, id=doc_id, body=doc, refresh=True)
 
-        # Format the results
-        results = {
-            "documents": [hit["_source"] for hit in hits]  # Extract the '_source' field
+    def search_raw(self, index: str, query_body: dict) -> dict:
+        """
+        :param index:
+        :param query_body:
+        :return:
+        """
+        return self.es_handler.search(index=index, body=query_body)
+
+    def search(self, index: str, query_body: dict = None, source: list = None, size: int = None, should: dict = None):
+        """
+        :param index:
+        :param query_body:
+        :param source:
+        :param size:
+        :param should:
+        :return:
+        """
+        if not source:
+            source = []
+
+        if not size:
+            size = 10
+
+        if not query_body:
+            return self.es_handler.search(index=index, _source=source, size=10000).get("hits").get("hits")
+
+        musts = []
+        for key, value in query_body.items():
+            musts.append({
+                "term": {
+                    key: value
+                }
+            })
+        shoulds = []
+        if should:
+            for k, v in should.items():
+                shoulds.append({
+                    "terms": {
+                        k: v
+                    }
+                })
+        final_query_body = {
+            "query":
+                {
+                    "bool": {
+                        "must": musts,
+                        "should": shoulds,
+                        "minimum_should_match": len(shoulds)
+                    }
+                }
         }
-        return results["documents"]
+        return self.es_handler.search(index=index, body=final_query_body, _source=source, size=size
+                                      ).get("hits").get("hits")
 
+    def search_one(self, index: str, query_body: dict, sorted_key: str, order_by: str = "asc",
+                   source: list = None, should: dict = None, exists: list = None, return_matchs: bool = False):
+        """
+        :param index:
+        :param query_body:
+        :param sorted_key:
+        :param order_by:
+        :param source:
+        :param should:
+        :param exists:
+        :param return_matchs:
+        :return:
+            success:
+                {'_id': '58fd230e-0354-11ed-bbb0-0242ac11003e',
+                 '_index': 'builds',
+                 '_score': None,
+                 '_source': {'build_id': '58fd230e-0354-11ed-bbb0-0242ac11003e',
+                             'build_target': {'architecture': 'aarch64',
+                                              'os_variant': 'openeuler:20.03-LTS-SP1'},
+                             ...
+                             'status': 'init'},
+                 '_type': '_doc',
+                 'sort': [1657760832347]}
+            fail:
+                {}
+        """
+        musts = []
+        if query_body:
+            for key, value in query_body.items():
+                musts.append({
+                    "term": {
+                        key: value
+                    }
+                })
+        if exists:
+            for exists_key in exists:
+                musts.append({
+                    "exists": {
+                        "field": exists_key
+                    }
+                })
+        shoulds = []
+        if should:
+            for k, v in should.items():
+                shoulds.append({
+                    "terms": {
+                        k: v
+                    }
+                })
+        final_query_body = {
+            "query": {
+                "bool": {
+                    "must": musts,
+                    "should": shoulds,
+                    "minimum_should_match": len(shoulds)
+                }
+            },
+            "sort": [
+                {
+                    sorted_key: {
+                        "order": order_by
+                    }
+                }
+            ]
+        }
+        if not source:
+            source = []
+        result = self.es_handler.search(
+            index=index, body=final_query_body, _source=source, ignore=400).get("hits", {}).get("hits", [])
+        if result:
+            if return_matchs:
+                return result
+            return result[0]
+        return {}
 
+    def search_count(self, index: str, query_body: dict, should: dict = None):
+        musts = []
+        for key, value in query_body.items():
+            musts.append({
+                "term": {
+                    key: value
+                }
+            })
+        shoulds = []
+        if should:
+            for k, v in should.items():
+                shoulds.append({
+                    "terms": {
+                        k: v
+                    }
+                })
+        final_query_body = {
+            "query": {
+                "bool": {
+                    "must": musts,
+                    "should": shoulds,
+                    "minimum_should_match": len(shoulds)
+                }
+            },
+        }
+        return self.es_handler.count(index=index, body=final_query_body).get("count")

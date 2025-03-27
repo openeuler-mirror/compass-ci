@@ -1,0 +1,22 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+set -e
+
+CURRENT_PATH=$(dirname `readlink -f $0`)
+PROJECT_PATH=$(dirname $(dirname $CURRENT_PATH))
+. $PROJECT_PATH/container/defconfig.sh
+
+load_cci_defaults
+
+[[ $BASE_RESULT_URL ]] || BASE_RESULT_URL='https://api.compass-ci.openeuler.org'
+[[ $BASE_WEB_BACKEND_URL ]] || BASE_WEB_BACKEND_URL='/web_backend'
+
+if [ -d "$CURRENT_PATH/compass-ci-web" ]; then
+	rm -rf $CURRENT_PATH/compass-ci-web
+fi
+
+git clone https://gitee.com/openeuler/compass-ci-web
+sed -i "s#export const BASEURLRESULT = 'https://api.compass-ci.openeuler.org';#export const BASEURLRESULT = '$BASE_RESULT_URL';#g" $CURRENT_PATH/compass-ci-web/src/utils/baseUrl.js
+sed -i "s#const BASEURL = 'https://api.compass-ci.openeuler.org/web_backend';#export const BASEURL = '$BASE_WEB_BACKEND_URL';#g" $CURRENT_PATH/compass-ci-web/src/utils/axios.utils.js

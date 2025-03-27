@@ -253,9 +253,6 @@ def get_compare_body(params)
 end
 
 def compare(params)
-  payload = auth(params)
-  params[:my_account] = payload['my_account'] if payload and payload['my_account']
-
   begin
     body = get_compare_body(params)
   rescue StandardError => e
@@ -411,9 +408,6 @@ def get_jobs_body(params)
 end
 
 def get_jobs(params)
-  payload = auth(params)
-  params[:my_account] = payload['my_account'] if payload and payload['my_account']
-
   begin
     body = get_jobs_body(params)
   rescue StandardError => e
@@ -538,8 +532,6 @@ def get_job_field(params)
 end
 
 def performance_result(data, params)
-  payload = auth(params)
-
   begin
     request_body = JSON.parse(data)
     incorrect_input = check_performance_result(request_body)
@@ -742,9 +734,6 @@ def get_jobs_stats(params)
 end
 
 def group_jobs_stats(params)
-  payload = auth(params)
-  params[:my_account] = payload['my_account'] if payload and payload['my_account']
-
   begin
     body = get_jobs_stats(params)
   rescue StandardError => e
@@ -766,9 +755,6 @@ end
 # -------------------------------------------------------------------------------------------
 
 def get_job_error(params)
-  payload = auth(params)
-  params[:my_account] = payload['my_account'] if payload and payload['my_account']
-
   begin
     body = job_error_body(params)
   rescue StandardError => e

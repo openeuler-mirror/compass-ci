@@ -111,8 +111,6 @@ module Scheduler
     env.create_socket(socket)
     sched = env.sched
 
-    # XXX: port cbs
-    # spawn sched.get_job_boot_content
     spawn sched.find_job_boot
 
     socket.on_message do |msg|
@@ -320,10 +318,10 @@ module Scheduler
   # /boot.xxx/host/${hostname}
   # /boot.yyy/mac/${mac}
   get "/scheduler/boot.:boot_type/:parameter/:value" do |env|
-    env.sched.find_job_boot
+    env.sched.hw_find_job_boot
   end
 
-  ws "/scheduler/ws/boot.:boot_type/:parameter/:value" do |socket, env|
+  ws "/scheduler/ws/boot.:boot_type" do |socket, env|
     env.set "ws", true
     env.set "ws_state", "normal"
     env.create_socket(socket)
@@ -339,7 +337,6 @@ module Scheduler
     socket.on_close do
       env.set "ws_state", "close"
       sched.etcd_close
-      spawn env.watch_channel.send("close") if env.get?("watch_state") == "watching"
       env.log.info({
         "from" => env.request.remote_address.to_s,
         "message" => "socket on closed"
@@ -501,5 +498,20 @@ module Scheduler
   # curl -XPOST "http://$LKP_SERVER:${LKP_CGI_PORT:-3000}/scheduler/repo/set-srpm-info" -d "$content"
   post "/scheduler/repo/set-srpm-info" do |env|
     env.sched.set_srpm_info
+  end
+
+  # curl -X PUT "http://localhost:3000/scheduler/register-host2redis?type=dc&arch=aarch64&...."
+  put "/scheduler/register-host2redis" do |env|
+    env.sched.register_host2redis
+  end
+
+  get "/scheduler/heart-beat" do |env|
+    status = env.sched.heart_beat
+    {"status_code" => status}.to_json
+  rescue e
+    env.log.warn({
+      "message" => e.to_s,
+      "error_message" => e.inspect_with_backtrace.to_s
+    }.to_json)
   end
 end

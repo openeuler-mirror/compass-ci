@@ -1,0 +1,15 @@
+#!/bin/sh
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. ../defconfig.sh
+
+load_cci_defaults
+
+docker_skip_rebuild "k8s-start-check"
+
+download_repo "cbs" "$git_branch_cbs"
+
+docker build -t k8s-start-check .
+
+push_image_remote "k8s-start-check"
