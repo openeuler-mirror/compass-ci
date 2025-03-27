@@ -1,0 +1,22 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+set -e
+
+CURRENT_PATH=$(dirname `readlink -f $0`)
+PROJECT_PATH=$(dirname $(dirname $CURRENT_PATH))
+. $PROJECT_PATH/container/defconfig.sh
+
+load_cci_defaults
+
+if [ -d "$CURRENT_PATH/compass-ci" ]; then
+	rm -rf $CURRENT_PATH/compass-ci
+fi
+
+if [ -d "$CURRENT_PATH/lkp-tests" ]; then
+	rm -rf $CURRENT_PATH/lkp-tests
+fi
+
+git clone https://gitee.com/openeuler/compass-ci
+git clone https://gitee.com/compass-ci/lkp-tests

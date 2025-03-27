@@ -6,13 +6,13 @@ require 'set'
 require_relative '../defconfig.rb'
 
 names = Set.new %w[
-  REDIS_PASSWD
+  REDIS_PASSWORD
 ]
 
 defaults = relevant_service_authentication(names)
 
 
 docker_skip_rebuild "redis507n:alpine311"
-system "docker build -t redis507n:alpine311 --build-arg PASSWD=#{defaults['REDIS_PASSWD']} ."
+system "docker build -t redis507n:alpine311 --build-arg PASSWD=#{defaults['REDIS_PASSWORD']} ."
 
 push_image_remote "redis507n:alpine311"

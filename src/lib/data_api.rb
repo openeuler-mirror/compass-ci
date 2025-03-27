@@ -12,7 +12,6 @@ end
 
 def es_search(index, params)
   begin
-    check_xss(params)
     result = EsDataApi.search(index, params)
   rescue StandardError => e
     error_msg = { 'error_msg' => e.message }

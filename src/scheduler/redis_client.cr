@@ -14,7 +14,7 @@ class RedisClient
   HOST = (ENV.has_key?("REDIS_HOST") ? ENV["REDIS_HOST"] : JOB_REDIS_HOST)
   PORT = (ENV.has_key?("REDIS_PORT") ? ENV["REDIS_PORT"] : JOB_REDIS_PORT).to_i32
   IS_CLUSTER = (ENV.has_key?("IS_CLUSTER") ? ENV["IS_CLUSTER"] : false)
-  PASSWD = ENV["REDIS_PASSWD"]
+  PASSWD = ENV["REDIS_PASSWORD"]
   @@size = 25
 
   def self.instance
@@ -23,7 +23,7 @@ class RedisClient
 
   def initialize(host = HOST, port = PORT, passwd = PASSWD)
     if IS_CLUSTER
-      @client = Redis::Cluster.new(URI.parse("redis://:#{passwd}@#{host}:#{port}"))
+      @client = Redis::Cluster.new(URI.parse("redis://#{host}:#{port}"))
     else
       @client = Redis::Client.new(URI.parse("redis://:#{URI.encode_www_form(passwd)}@#{host}:#{port}"))
     end

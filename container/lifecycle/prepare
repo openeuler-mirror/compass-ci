@@ -1,0 +1,18 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+set -e
+
+CURRENT_PATH=$(dirname `readlink -f $0`)
+PROJECT_PATH=$(dirname $(dirname $CURRENT_PATH))
+
+
+for tmp in lifecycle; do
+
+	if [ -e "$CURRENT_PATH/$tmp" ]; then
+		rm -rf $CURRENT_PATH/$tmp
+	fi
+done
+
+$PROJECT_PATH/container/compile .

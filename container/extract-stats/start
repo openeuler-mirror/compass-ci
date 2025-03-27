@@ -12,7 +12,7 @@ start_pod
 names = Set.new %w[
   REDIS_HOST
   REDIS_PORT
-  REDIS_PASSWD
+  REDIS_PASSWORD
   ES_HOST
   ES_PORT
   ES_USER

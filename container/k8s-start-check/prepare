@@ -1,0 +1,14 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+set -e
+
+CURRENT_PATH=$(dirname `readlink -f $0`)
+PROJECT_PATH=$(dirname $(dirname $(dirname `readlink -f $0`)))
+PROJECT_NAME=$(basename "$PROJECT_PATH")
+
+[ -d "$CURRENT_PATH/$PROJECT_NAME" ] && rm -rf "$CURRENT_PATH/$PROJECT_NAME"
+
+mkdir -p $CURRENT_PATH/$PROJECT_NAME/src
+cp -r $PROJECT_PATH/src/libpy $CURRENT_PATH/$PROJECT_NAME/src

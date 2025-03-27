@@ -7,7 +7,7 @@
 
 : ${REDIS_HOST:=172.17.0.1}
 : ${REDIS_PORT:=6379}
-: ${REDIS_PASSWD:=default}
+: ${REDIS_PASSWORD:=default}
 
 load_cci_defaults
 load_service_authentication
@@ -21,7 +21,7 @@ cmd=(
 	-p 3080:3080
 	-e REDIS_HOST=$REDIS_HOST
 	-e REDIS_PORT=$REDIS_PORT
-	-e REDIS_PASSWD=$REDIS_PASSWD
+	-e REDIS_PASSWORD=$REDIS_PASSWORD
 	-v $PWD/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
 	-v /etc/localtime:/etc/localtime:ro
 	-v /srv/result/:/srv/result/

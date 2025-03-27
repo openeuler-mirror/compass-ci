@@ -14,6 +14,7 @@ BASE_IMAGE_URL=${BASE_IMAGE_URL:-"https://eulermaker.compass-ci.openeuler.openat
 
 CURRENT_PATH=$(dirname `readlink -f $0`)
 PROJECT_PATH=$(dirname $(dirname `readlink -f $0`))
+PROJECT_NAME=$(basename "$PROJECT_PATH")
 IAMGE_PATH=$CURRENT_PATH/_images
 
 . $PROJECT_PATH/container/defconfig.sh
@@ -82,19 +83,16 @@ case "$app_name" in
 		[ "$arch" = "aarch64" ] && arch=arm64
 		[ "$arch" = "x86_64" ] && arch=amd64
 		build_args=(
-			--build-arg ARCH=$arch
 			--build-arg VERSION=$version
 		)
 		;;
 	redis)
 		build_args=(
-			--build-arg ARCH=$arch
 			--build-arg PASSWD=$REDIS_PASSWD
 		)
 		;;
 	kibana|es)
 		build_args=(
-			--build-arg ARCH=$arch
 			--build-arg USER=$ES_SUPER_USER
 			--build-arg PASSWORD=$ES_SUPER_PASSWORD
 			--build-arg MEMORY=$available_memory
@@ -102,29 +100,26 @@ case "$app_name" in
 			;;
 	kibana-logging|logging-es)
 		build_args=(
-			--build-arg ARCH=$arch
 			--build-arg USER=$LOGGING_ES_USER
 			--build-arg PASSWORD=$LOGGING_ES_PASSWORD
 			--build-arg MEMORY=$available_memory
 			)
 			;;
-	*)
-		build_args=(
-			--build-arg ARCH=$arch
-			)
-			;;
 esac
 
 docker build --network=host $build_opt \
-	-t $app_name:$tag \
 	-t $app_name:$tag_latest \
-	"${build_args[@]}" .
+	"${build_args[@]}" \
+	--build-arg ARCH=$arch \
+        --build-arg PROJECT_NAME=$PROJECT_NAME	.
 
 popd
 
 if [ $PACK_FLAG == "true" ]; then
 	echo "Packing image..."
-	docker save -o $image_path/$app_name-$tag-$arch.tar $app_name:$tag
+	[ "$arch" = "arm64" ] && arch=aarch64
+	[ "$arch" = "amd64" ] && arch=x86_64
+	docker save -o $image_path/$app_name-$tag-$arch.tar $app_name:$tag_latest
 	gzip -9f $image_path/$app_name-$tag-$arch.tar
 fi
 }

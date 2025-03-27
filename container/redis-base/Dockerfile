@@ -5,10 +5,15 @@ FROM alpine:3.18
 
 RUN sed -ri.origin 's|^https?://dl-cdn.alpinelinux.org|http://mirrors.huaweicloud.com|g' /etc/apk/repositories
 
-RUN apk add --no-cache 'redis'
+RUN apk update --no-cache && \
+    apk upgrade && \
+    apk add --no-cache 'redis'
 
-RUN sed -i 's:dir /var/lib/redis:dir /srv/redis:' /etc/redis.conf; \
-    sed -i 's:protected-mode yes:protected-mode no:' /etc/redis.conf; \
-    sed -i 's:bind 127.0.0.1:#bind 127.0.0.1:' /etc/redis.conf; \
+COPY redis.conf /etc/
 
-RUN apk del gcc cpp rpcgen gdb || exit 0
+VOLUME  /srv/redis
+WORKDIR /srv/redis
+
+RUN apk del gcc rpcgen gdb
+
+EXPOSE 6379
