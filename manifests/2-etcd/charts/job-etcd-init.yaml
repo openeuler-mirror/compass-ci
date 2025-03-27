@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: etcd-init
+  namespace: ems1
+spec:
+  backoffLimit: 100
+  template:
+    metadata:
+      labels:
+        app: etcd-init
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      containers:
+      - name: etcd-init
+        image: etcd:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          status=$(etcdctl --endpoints=http://etcd:2379 get foo 2>&1);
+          [ -z "${status}" ] || ( echo "Already set auth info" && exit 0)
+          etcdctl --endpoints=http://etcd:2379 user add ${ETCD_USER}:${ETCD_PASSWORD};
+          etcdctl --endpoints=http://etcd:2379 auth enable
+        envFrom:
+        - secretRef:
+            name: secrets-env
+      restartPolicy: OnFailure

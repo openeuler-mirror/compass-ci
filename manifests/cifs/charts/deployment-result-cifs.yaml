@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-cifs
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: result-cifs
+  template:
+    metadata:
+      labels:
+        app: result-cifs
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      containers:
+      - name: result-cifs
+        image: result-cifs:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 445
+        livenessProbe:
+          tcpSocket:
+            port: 445
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: 10Mi
+          limits:
+            memory: 15Gi
+        securityContext:
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: smb-conf
+          mountPath: /etc/samba
+        - name: var-lib
+          mountPath: /var/lib/samba/private
+        - name: var-cache
+          mountPath: /var/cache/samba
+        - name: var-log
+          mountPath: /var/log/samba
+        - name: result
+          mountPath: /srv/result
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+      volumes:
+      - name: smb-conf
+        configMap:
+          name: result-cifs-conf
+      - name: var-lib
+        emptyDir: {}
+      - name: var-cache
+        emptyDir: {}
+      - name: var-log
+        emptyDir: {}
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: result
+        hostPath:
+          path: /srv/result

@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-daemon
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: git-daemon
+  template:
+    metadata:
+      labels:
+        app: git-daemon
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: "master"
+      containers:
+      - name: git-daemon
+        image: git-daemon:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9418
+        livenessProbe:
+          tcpSocket:
+            port: 9418
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+        - name: git
+          mountPath: /git
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: git
+        hostPath:
+          path: /srv/git

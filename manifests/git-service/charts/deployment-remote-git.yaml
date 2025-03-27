@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: remote-git
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: remote-git
+  template:
+    metadata:
+      labels:
+        app: remote-git
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: "master"
+      containers:
+      - name: remote-git
+        image: remote-git:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8100
+        livenessProbe:
+          tcpSocket:
+            port: 8100
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+        - name: git
+          mountPath: /srv/git
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: git
+        hostPath:
+          path: /srv/git

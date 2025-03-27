@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: srv-http-result
+  namespace: ems1
+spec:
+  selector:
+    app: srv-http-result
+  ports:
+  - name: http
+    port: 80
+    targetPort: 20007
+  - name: srv-http-result
+    port: 20007

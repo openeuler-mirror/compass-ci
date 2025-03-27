@@ -1,0 +1,39 @@
+apiVersion: v1
+data:
+  smb.conf: |
+    # refer to https://lkml.org/lkml/2019/7/16/716 and https://lkml.org/lkml/2019/9/19/586
+    [global]
+       workgroup = MYGROUP
+       server string = Samba Server
+       map to guest = Bad User
+       load printers = no
+       printing = bsd
+       printcap name = /dev/null
+       private dir = /tmp
+       disable spoolss = yes
+       disable netbios = yes
+       server role = standalone
+       server services = -dns, -nbt
+       smb ports = 445
+       create mode = 0777
+       directory mode = 0777
+       guest only = yes
+       guest ok = yes
+       server min protocol = NT1
+       unix extensions = yes
+       mangled names = no
+    
+    [result]
+       path = /srv/result/
+       comment = result
+       browseable = yes
+       writable = yes
+       public = yes
+       force user = lkp
+       force group = lkp
+
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: result-cifs-conf
+  namespace: ems1

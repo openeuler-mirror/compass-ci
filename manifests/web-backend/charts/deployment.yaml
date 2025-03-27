@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-backend
+  namespace: ems1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-backend
+  template:
+    metadata:
+      labels:
+        app: web-backend
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      initContainers:
+      - name: check-dep
+        image: k8s-start-check
+        imagePullPolicy: IfNotPresent
+        command: 
+        - sh
+        - -c
+        - |
+          python3 k8s_start_check.py es;
+        env:
+        - name: ES_HOST
+          value: es
+        - name: ES_PORT
+          value: "9200"
+        - name: ES_USER
+          valueFrom:
+            secretKeyRef:
+              name: secrets-env
+              key: ES_USER
+        - name: ES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secrets-env
+              key: ES_PASSWORD
+      containers:
+      - name: web-backend
+        image: web-backend:latest
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'umask 002 && /c/compass-ci/container/web-backend/web-backend'] 
+        ports:
+        - containerPort: 10002
+        envFrom:
+        - configMapRef:
+            name: pub-env
+        - secretRef:
+            name: secrets-env
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+        - name: defaults
+          mountPath: /etc/compass-ci/defaults
+        - name: service-env
+          mountPath: /etc/compass-ci/service
+        livenessProbe:
+          tcpSocket:
+            port: 10002
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - DAC_READ_SEARCH
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: defaults
+        configMap:
+          name: compass-ci-defaults
+      - name: service-env
+        configMap:
+          name: service-env

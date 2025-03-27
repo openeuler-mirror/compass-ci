@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: register
+  namespace: ems1
+data:
+  register.yaml: |
+    delimiter:
+      my_email: delimiter@localhost
+      my_name: delimiter
+      my_account: delimiter
+    auto-submit:
+      my_email: auto-submit@localhost
+      my_name: auto-submit
+      my_account: auto-submit
+    scheduler:
+      my_email: compass-ci@localhost
+      my_name: compass-ci
+      my_account: compass-ci
+    dag:
+      my_email: dag@localhost
+      my_name: dag
+      my_account: dag
+    image_manager:
+      my_email: image_manager@localhost
+      my_name: image_manager
+      my_account: image_manager

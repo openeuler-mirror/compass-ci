@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd
+  namespace: ems1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: etcd
+  serviceName: etcd
+  template:
+    metadata:
+      labels:
+        app: etcd
+    spec:
+      containers:
+      - name: etcd
+        image: etcd:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: peer
+          containerPort: 2380
+          protocol: TCP
+        - name: client
+          containerPort: 2379
+          protocol: TCP
+        env:
+        - name: INITIAL_CLUSTER_SIZE
+          value: "3"
+        - name: MY_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: SET_NAME
+          value: "etcd"
+        - name: ETCD_UNSUPPORTED_ARCH
+          value: "arm64"
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - name: etcd
+            mountPath: /data
+          - name: localtime
+            mountPath: /etc/localtime
+            subPath: localtime
+        command:
+          - /bin/sh
+          - -ec
+          - |
+            HOSTNAME=$(hostname)
+
+            ETCDCTL_API=3
+
+            eps() {
+                EPS=""
+                for i in $(seq 0 $((${INITIAL_CLUSTER_SIZE} - 1))); do
+                    EPS="${EPS}${EPS:+,}http://${SET_NAME}-${i}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local:2379"
+                done
+                echo ${EPS}
+            }
+
+            member_hash() {
+                etcdctl member list | grep -w "$HOSTNAME" | awk '{ print $1}' | awk -F "," '{ print $1}'
+            }
+
+            initial_peers() {
+                PEERS=""
+                for i in $(seq 0 $((${INITIAL_CLUSTER_SIZE} - 1))); do
+                  PEERS="${PEERS}${PEERS:+,}${SET_NAME}-${i}=http://${SET_NAME}-${i}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local:2380"
+                done
+                echo ${PEERS}
+            }
+
+            SET_ID=${HOSTNAME##*-}
+
+            if [ "${SET_ID}" -ge ${INITIAL_CLUSTER_SIZE} ]; then
+
+                MEMBER_HASH=$(member_hash)
+                if [ -n "${MEMBER_HASH}" ]; then
+                    # the member hash exists but for some reason etcd failed
+                    # as the datadir has not be created, we can remove the member
+                    # and retrieve new hash
+                    echo "Remove member ${MEMBER_HASH}"
+                    etcdctl --endpoints=$(eps) member remove ${MEMBER_HASH}
+                fi
+
+                echo "Adding new member"
+
+                echo "etcdctl --endpoints=$(eps) member add ${HOSTNAME} --peer-urls=http://${HOSTNAME}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local:2380"
+                etcdctl member --endpoints=$(eps) add ${HOSTNAME} --peer-urls=http://${HOSTNAME}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local:2380 | grep "^ETCD_" > /var/run/etcd/new_member_envs
+
+                if [ $? -ne 0 ]; then
+                    echo "member add ${HOSTNAME} error."
+                    rm -f /var/run/etcd/new_member_envs
+                    exit 1
+                fi
+
+                echo "==> Loading env vars of existing cluster..."
+                sed -ie "s/^/export /" /var/run/etcd/new_member_envs
+                cat /var/run/etcd/new_member_envs
+                . /var/run/etcd/new_member_envs
+
+                echo "etcd --name ${HOSTNAME} --initial-advertise-peer-urls ${ETCD_INITIAL_ADVERTISE_PEER_URLS} --listen-peer-urls http://${POD_IP}:2380 --listen-client-urls http://${POD_IP}:2379,http://127.0.0.1:2379 --advertise-client-urls http://${HOSTNAME}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local:2379 --data-dir /var/run/etcd/default.etcd --initial-cluster ${ETCD_INITIAL_CLUSTER} --initial-cluster-state ${ETCD_INITIAL_CLUSTER_STATE}"
+
+                exec etcd --listen-peer-urls http://${POD_IP}:2380 \
+                    --listen-client-urls http://${POD_IP}:2379,http://127.0.0.1:2379 \
+                    --advertise-client-urls http://${HOSTNAME}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local:2379 \
+                    --data-dir /var/run/etcd/default.etcd
+            fi
+
+            for i in $(seq 0 $((${INITIAL_CLUSTER_SIZE} - 1))); do
+                while true; do
+                    echo "Waiting for ${SET_NAME}-${i}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local to come up"
+                    ping -W 1 -c 1 ${SET_NAME}-${i}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local > /dev/null && break
+                    sleep 1s
+                done
+            done
+
+            echo "join member ${HOSTNAME}"
+            exec etcd --name ${HOSTNAME} \
+                --initial-advertise-peer-urls http://${HOSTNAME}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local:2380 \
+                --listen-peer-urls http://${POD_IP}:2380 \
+                --listen-client-urls http://${POD_IP}:2379,http://127.0.0.1:2379 \
+                --advertise-client-urls http://${HOSTNAME}.${SET_NAME}.${MY_NAMESPACE}.svc.cluster.local:2379 \
+                --initial-cluster-token etcd-cluster-1 \
+                --data-dir /data \
+                --initial-cluster $(initial_peers) \
+                --initial-cluster-state new \
+                --max-request-bytes 10485760 \
+                --quota-backend-bytes 8589934592 \
+                --auto-compaction-retention 1 \
+                --auth-token-ttl 90000000
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      dnsPolicy: ClusterFirst
+  volumeClaimTemplates:
+  - metadata:
+      name: etcd
+    spec:
+      accessModes:
+      - "ReadWriteOnce"
+      storageClassName: pub-storageclass
+      resources:
+        requests:
+          storage: 50Gi

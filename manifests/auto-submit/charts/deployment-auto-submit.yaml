@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auto-submit
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: auto-submit
+  template:
+    metadata:
+      labels:
+        app: auto-submit
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: "master"
+      initContainers:
+      - name: check-dep
+        image: k8s-start-check:latest
+        imagePullPolicy: IfNotPresent
+        command: 
+        - sh
+        - -c
+        - |
+          python3 k8s_start_check.py es;
+          python3 k8s_start_check.py rabbitmq
+        env:
+          - name: ES_HOST
+            value: es
+          - name: ES_PORT
+            value: "9200"
+          - name: ES_USER
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: ES_USER
+          - name: ES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: ES_PASSWORD
+          - name: MQ_HOST
+            value: rabbitmq
+          - name: MQ_PORT
+            value: "5672"
+      - name: init
+        image: auto-submit:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          chown -hR 1090:1090 /srv/log;
+        volumeMounts:
+        - name: log
+          mountPath: /srv/log
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: auto-submit
+        image: auto-submit:latest
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash", "-c", "./auto_submit"]
+        envFrom:
+        - configMapRef:
+            name: pub-env
+        - secretRef:
+            name: secrets-env
+        env:
+        - name: LKP_SRC
+          value: /c/lkp-tests
+        - name: MQ_HOST
+          value: rabbitmq
+        - name: MQ_PORT
+          value: "5672"
+        - name: GIT_SERVER
+          value: git-daemon
+        - name: CODE_HOSTING_CLIENT_HOST
+          value: code-hosting-client
+        - name: CODE_HOSTING_CLIENT_PORT
+          value: "20038"
+        - name: GITEE_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: secrets-env
+              key: GITEE_ACCESS_TOKEN
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+        - name: defaults
+          mountPath: /etc/compass-ci/defaults
+        - name: service-env
+          mountPath: /etc/compass-ci/service
+        - name: register
+          mountPath: /etc/compass-ci/register
+        - name: tmp
+          mountPath: /tmp
+        - name: git
+          mountPath: /srv/git
+        - name: log
+          mountPath: /srv/log
+        - name: home-lkp
+          mountPath: /home/lkp
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: service-env
+        configMap:
+          name: service-env
+      - name: register
+        configMap:
+          name: register
+      - name: defaults
+        configMap:
+          name: compass-ci-defaults
+      - name: var-log
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+      - name: git
+        hostPath:
+          path: /srv/git
+      - name: log
+        hostPath:
+          path: /srv/log/auto-submit
+      - name: home-lkp
+        hostPath:
+          path: /home/lkp

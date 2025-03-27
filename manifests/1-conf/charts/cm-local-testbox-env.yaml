@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-testbox-env
+  namespace: ems1
+data:
+  local-testbox-env.yaml: |
+    LKP_SERVER:
+    LKP_CGI_PORT:
+    GIT_SERVER:
+    SRV_HTTP_RESULT_HOST:
+    SRV_HTTP_RESULT_PORT:
+    SRV_HTTP_OS_HOST:
+    SRV_HTTP_OS_PORT:
+    SRV_HTTP_GIT_HOST:
+    SRV_HTTP_GIT_PORT:
+    SRV_HTTP_CCI_HOST:
+    SRV_HTTP_CCI_PORT:
+    INITRD_HTTP_HOST:
+    INITRD_HTTP_PORT:
+    OS_HTTP_HOST:
+    OS_HTTP_PORT:
+    RESULT_WEBDAV_HOST:
+    RESULT_WEBDAV_PORT:
+    DOCKER_REGISTRY_HOST:
+    DOCKER_REGISTRY_PORT:
+    GIT_MIRROR_HOST:
+    MONITOR_HOST:
+    MONITOR_PORT:

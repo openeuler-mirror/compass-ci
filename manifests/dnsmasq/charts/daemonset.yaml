@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dnsmasq
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: dnsmasq
+  template:
+    metadata:
+      labels:
+        app: dnsmasq
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      initContainers:
+      - name: init-conf
+        image: dnsmasq:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          cp /tmp/dnsmasq.conf /etc/dnsmasq.d/init-dnsmasq.conf;
+          cat /etc/dnsmasq.d/init-dnsmasq.conf
+          sed -i "s/dhcp-option=tag:enp1,3/dhcp-option=tag:enp1,3,$MASTER_IP/g" /etc/dnsmasq.d/init-dnsmasq.conf;
+          sed -i "s/interface=br0,docker0/interface=$MASTER_IP_INTERFACE,br0,docker0/g" /etc/dnsmasq.d/init-dnsmasq.conf
+        envFrom:
+        - configMapRef:
+            name: pub-env
+        volumeMounts:
+        - name: dnsmasq-conf
+          mountPath: /tmp/dnsmasq.conf
+          subPath: dnsmasq.conf
+        - name: init-dnsmasq-conf
+          mountPath: /etc/dnsmasq.d
+      hostNetwork: true
+      containers:
+      - name: dnsmasq
+        image: dnsmasq:latest
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh 
+          - -c
+          - |
+            cp /tmp/dns-resolv.conf /etc/;
+            cp /tmp/boot.ipxe /tftpboot/;
+            sed -i "s/set scheduler/set scheduler $MASTER_IP/g" /tftpboot/boot.ipxe;
+            sed -i "s/set port/set port $INGRESS_PORT/g" /tftpboot/boot.ipxe;
+            dnsmasq -k
+        envFrom:
+        - configMapRef:
+            name: pub-env
+        ports:
+        - containerPort: 67
+          protocol: UDP
+        - containerPort: 69
+          protocol: UDP
+        resources:
+          requests:
+            memory: 10Mi
+          limits:
+            memory: 15Gi
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: init-dnsmasq-conf
+          mountPath: /etc/dnsmasq.d
+          readOnly: true
+        - name: dnsmasq-conf
+          mountPath: /tmp/dns-resolv.conf
+          subPath: dns-resolv.conf
+        - name: dnsmasq-conf
+          mountPath: /tmp/boot.ipxe
+          subPath: boot.ipxe
+        - name: tftpboot
+          mountPath: /tftpboot
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: init-dnsmasq-conf
+        emptyDir: {}
+      - name: dnsmasq-conf
+        configMap:
+          name: dnsmasq-conf
+      - name: tftpboot
+        hostPath:
+          path: /tftpboot

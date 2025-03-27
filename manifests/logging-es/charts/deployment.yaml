@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logging-es
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: logging-es
+  template:
+    metadata:
+      labels:
+        app: logging-es
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      initContainers:
+      - name: init
+        image: logging-es-base:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          chown -hR 1090:1090 /srv/es/logging-es;
+          chown -hR 1090:1090 /usr/share/elasticsearch/logs;
+        volumeMounts:
+        - name: data
+          mountPath: /srv/es/logging-es
+        - name: log
+          mountPath: /usr/share/elasticsearch/logs
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: logging-es
+        image: logging-es-base:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          /usr/share/elasticsearch/bin/elasticsearch-users useradd ${LOGGING_ES_USER} -p {LOGGING_ES_PASSWORD} -r superuser;
+          /usr/share/elasticsearch/bin/elasticsearch-users passwd ${LOGGING_ES_USER} -p ${LOGGING_ES_PASSWORD};
+          mkdir -p /tmp/logging-es/config && cp -rf /usr/share/elasticsearch/config/* /tmp/logging-es/config/ && elasticsearch
+        env:  
+        - name: ES_PATH_CONF
+          value: /tmp/logging-es/config/
+        - name: LOGGING_ES_USER
+          valueFrom:
+            secretKeyRef:
+              name: secrets-env
+              key: LOGGING_ES_USER
+        - name: LOGGING_ES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secrets-env
+              key: LOGGING_ES_PASSWORD
+        ports:
+        - name: db
+          containerPort: 9200
+          protocol: TCP
+        - name: transport
+          containerPort: 9300
+          protocol: TCP
+        livenessProbe:
+          tcpSocket:
+            port: transport
+          initialDelaySeconds: 10
+          timeoutSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: transport
+          initialDelaySeconds: 10
+          timeoutSeconds: 20
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: data 
+          mountPath: /srv/es/logging-es
+        - name: log
+          mountPath: /usr/share/elasticsearch/logs
+        - name: logging-es-tmp 
+          mountPath: /usr/share/elasticsearch/tmp
+        - name: tmp-logging-es 
+          mountPath: /tmp
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: logging-es-tmp
+        emptyDir: {}
+      - name: tmp-logging-es
+        emptyDir: {}
+      - name: data
+        hostPath:
+          path: /srv/es/logging-es
+      - name: log
+        hostPath:
+          path: /srv/log/logging-es

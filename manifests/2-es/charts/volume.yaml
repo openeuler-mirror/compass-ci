@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: es-es-0
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: es-es-0
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/es/es-0
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/es-0
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: es-es-1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: es-es-1
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/es/es-1
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/es-1
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: es-es-2
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: es-es-2
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/es/es-2
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/es-2
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: es-es-0
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: es-es-1
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: es-es-2
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi

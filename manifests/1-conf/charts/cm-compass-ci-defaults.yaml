@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: compass-ci-defaults
+  namespace: ems1
+data:
+  upstream-config: | 
+    upstreams:
+    - url: https://gitee.com/thesamename/upstream-repos.git
+      location: upstream
+      git_repo: u/upstream-repos/upstream-repos
+  compass-ci.yaml: |
+    SCHED_HOST: scheduler.ems1.svc.cluster.local
+    SCHED_PORT: 3000
+    lab: compass-ci

@@ -1,0 +1,14 @@
+# download from https://gitee.com/openeuler/signatrust/blob/master/config/client.toml
+
+working_dir = "/tmp/signatrust"
+worker_threads = 8
+buffer_size = 20480
+max_concurrency = 100
+
+[server]
+domain_name = "CODE_SIGN_DOMAIN_NAME"
+tls_cert = "/code-sign-cert/server.crt"
+tls_key = "/code-sign-cert/server.key"
+type = "dns"
+server_address = "CODE_SIGN_SERVER_ADDRESS"
+server_port = "8088"

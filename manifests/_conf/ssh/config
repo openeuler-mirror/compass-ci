@@ -1,0 +1,4 @@
+Host git-server.example
+    HostName git-server.example
+    User git
+    IdentityFile /home/lkp/.ssh/key_name

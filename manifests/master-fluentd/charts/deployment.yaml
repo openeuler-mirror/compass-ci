@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: master-fluentd
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: master-fluentd
+  template:
+    metadata:
+      labels:
+        app: master-fluentd
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      initContainers:
+      - name: check-dep
+        image: k8s-start-check:latest
+        imagePullPolicy: IfNotPresent
+        command: 
+        - sh
+        - -c
+        - |
+          python3 k8s_start_check.py es;
+          python3 k8s_start_check.py rabbitmq
+        env:
+          - name: ES_HOST
+            value: logging-es
+          - name: ES_PORT
+            value: "9202"
+          - name: ES_USER
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: LOGGING_ES_USER
+          - name: ES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secrets-env
+                key: LOGGING_ES_PASSWORD
+          - name: MQ_HOST
+            value: rabbitmq
+          - name: MQ_PORT
+            value: "5672"
+      - name: init-dir
+        image: master-fluentd:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          chmod 1777 /tmp;
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: master-fluentd
+        image: master-fluentd:latest
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'umask 002 & fluentd -c /fluentd/etc/docker-fluentd.conf']
+        ports:
+        - name: tcp
+          containerPort: 24224
+          protocol: TCP
+        - name: udp
+          containerPort: 24224
+          protocol: UDP
+        livenessProbe:
+          tcpSocket:
+            port: 24224
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 10
+        envFrom: 
+        - configMapRef:
+            name: pub-env
+        - secretRef:
+            name: secrets-env
+        env:
+        - name: FLUENTD_CONF
+          value: docker-fluentd.conf
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        securityContext:
+          runAsUser: 1090
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+          subPath: localtime
+        - name: master-fluentd
+          mountPath: /fluentd/etc/
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: localtime
+        configMap:
+          name: localtime
+      - name: master-fluentd
+        configMap:
+          name: master-fluentd
+      - name: tmp
+        emptyDir: {}

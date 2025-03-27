@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: result-webdav
+  namespace: ems1
+spec:
+  selector:
+    app: result-webdav
+  ports:
+  - name: http
+    port: 80
+    targetPort:  3080
+  - name: result-webdav
+    port: 3080

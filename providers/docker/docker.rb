@@ -43,7 +43,7 @@ def get_url(hostname, left_mem, is_remote)
   if is_remote == 'true'
     "wss://#{DOMAIN_NAME}/ws/boot.container?hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=dc&is_remote=#{is_remote}"
   else
-    "ws://#{SCHED_HOST}:#{SCHED_PORT}/ws/boot.container?hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=dc&is_remote=#{is_remote}"
+    "ws://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/ws/boot.container?hostname=#{hostname}&left_mem=#{left_mem}&tbox_type=dc&is_remote=#{is_remote}"
   end
 end
 
@@ -69,7 +69,7 @@ def register_host2redis(hostname, mem_total, is_remote)
     check_return_code(response)
     puts JSON.pretty_generate(response)
   else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/register-host2redis?hostname=#{hostname}&type=dc&owner=local&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{arch}'"
+    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/register-host2redis?hostname=#{hostname}&type=dc&owner=local&max_mem=#{mem_total}&is_remote=#{is_remote}&arch=#{arch}'"
     system cmd
   end
 end
@@ -94,7 +94,7 @@ def del_host2queues(hostname, is_remote)
     check_return_code(response)
     puts JSON.pretty_generate(response)
   else
-    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/del_host2queues?host=#{hostname}'"
+    cmd = "curl -X PUT 'http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/del_host2queues?host=#{hostname}'"
     system cmd
   end
 end
@@ -105,7 +105,7 @@ def heart_beat(hostname, is_remote)
     jwt = load_jwt?
     url = "https://#{DOMAIN_NAME}/api/heart-beat?hostname=#{hostname}&type=dc&is_remote=#{is_remote}"
   else
-    url = "http://#{SCHED_HOST}:#{SCHED_PORT}/heart-beat?hostname=#{hostname}&type=dc&is_remote=#{is_remote}"
+    url = "http://#{SCHED_HOST}:#{SCHED_PORT}/scheduler/heart-beat?hostname=#{hostname}&type=dc&is_remote=#{is_remote}"
   end
   api_client = RemoteClient.new()
   response = api_client.heart_beat(url, jwt)

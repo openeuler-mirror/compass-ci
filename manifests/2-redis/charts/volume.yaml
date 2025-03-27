@@ -1,0 +1,263 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-redis-0
+  labels:
+    pv: redis-redis-0
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: redis-redis-0
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/redis/redis-0
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/redis-0
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-redis-1
+  labels:
+    pv: redis-redis-1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: redis-redis-1
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/redis/redis-1
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/redis-1
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-redis-2
+  labels:
+    pv: redis-redis-2
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: redis-redis-2
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/redis/redis-2
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/redis-2
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-redis-3
+  labels:
+    pv: redis-redis-3
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: redis-redis-3
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/redis/redis-3
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/redis-3
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-redis-4
+  labels:
+    pv: redis-redis-4
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: redis-redis-4
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/redis/redis-4
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/redis-4
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-redis-5
+  labels:
+    pv: redis-redis-5
+spec:
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: redis-redis-5
+    namespace: ems1
+  capacity:
+    storage: 50Gi
+  local:
+    path: /srv/redis/redis-5
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: local-storage/redis-5
+          operator: In
+          values:
+          - "true"
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: pub-storageclass
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: redis-redis-0
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi
+  selector:
+    matchLabels:
+      pv: redis-redis-0
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: redis-redis-1
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi
+  selector:
+    matchLabels:
+      pv: redis-redis-1
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: redis-redis-2
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi
+  selector:
+    matchLabels:
+      pv: redis-redis-2
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: redis-redis-3
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi
+  selector:
+    matchLabels:
+      pv: redis-redis-3
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: redis-redis-4
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi
+  selector:
+    matchLabels:
+      pv: redis-redis-4
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: redis-redis-5
+  namespace: ems1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: pub-storageclass
+  resources:
+    requests:
+      storage: 50Gi
+  selector:
+    matchLabels:
+      pv: redis-redis-5

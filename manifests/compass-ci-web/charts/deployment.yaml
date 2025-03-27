@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: compass-ci-web
+  namespace: ems1
+spec:
+  selector:
+    matchLabels:
+      app: compass-ci-web
+  template:
+    metadata:
+      labels:
+        app: compass-ci-web
+    spec:
+      nodeSelector:
+        compass-ci.io/node-role: master
+      containers:
+      - name: compass-ci-web
+        image: compass-ci-web:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 30107
+          protocol: TCP
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          successThreshold: 1
+          tcpSocket:
+            port: 30107
+          timeoutSeconds: 5
+        resources:
+          limits:
+            memory: 15Gi
+          requests:
+            memory: 10Mi
+        volumeMounts:
+        - name: compass-ci-web
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: var-cache
+          mountPath: /var/cache/nginx
+        - name: var-run
+          mountPath: /var/run
+        securityContext:
+          runAsUser: 101
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: compass-ci-web
+        configMap:
+          name: compass-ci-web
+          defaultMode: 420
+      - name: var-cache
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
+      dnsPolicy: ClusterFirst

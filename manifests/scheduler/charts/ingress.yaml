@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scheduler-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-set-header: "Upgrade $http_upgrade; Connection $connection_upgrade"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /scheduler/
+            pathType: Prefix
+            backend:
+              service:
+                name: scheduler
+                port:
+                  number: 80 
+          - path: /~lkp/cgi-bin/
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: scheduler
+                port:
+                  number: 80 
+          - path: /job_initrd_tmpfs/
+            pathType: Prefix
+            backend:
+              service:
+                name: scheduler
+                port:
+                  number: 80 
