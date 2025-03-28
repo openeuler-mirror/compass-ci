@@ -16,7 +16,7 @@ spec:
         compass-ci.io/node-role: master
       containers:
       - name: os-http
-        image: initrd-http:latest
+        image: nginx:1.25-alpine3.18
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80

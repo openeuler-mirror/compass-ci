@@ -14,7 +14,7 @@ spec:
         compass-ci.io/node-role: master
       containers:
       - name: redis-init
-        image: redis-base:latest
+        image: redis:latest
         imagePullPolicy: IfNotPresent
         command:
         - sh

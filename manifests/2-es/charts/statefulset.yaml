@@ -23,7 +23,7 @@ spec:
         - -c
         - |
           chown -hR 1090:1090 /usr/share/elasticsearch/logs;
-          /usr/share/elasticsearch/bin/elasticsearch-users useradd ${ES_SUPER_USER} -p {ES_SUPER_PASSWORD} -r superuser || \
+          /usr/share/elasticsearch/bin/elasticsearch-users useradd ${ES_SUPER_USER} -p ${ES_SUPER_PASSWORD} -r superuser || \
           /usr/share/elasticsearch/bin/elasticsearch-users passwd ${ES_SUPER_USER} -p ${ES_SUPER_PASSWORD};
           mkdir -p /tmp/es/config && cp -rf /usr/share/elasticsearch/config/* /tmp/es/config/;
           chown -hR 1090:1090 /tmp/es/config;

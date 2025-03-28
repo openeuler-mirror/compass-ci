@@ -2,7 +2,7 @@
 # Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
 
 # shellwords require from '/c/lkp-tests/lib/'
-require "shellwords"
+#require "shellwords"
 require "file_utils"
 require "json"
 require "yaml"
@@ -37,6 +37,15 @@ class Sched
     end
   end
 
+  private def shellescape(str)
+    return "''".dup if str.empty?
+    str = str.dup
+    str = str.gsub(/[^A-Za-z0-9_\-.,:+\/@\n]/, "\\\\\\0")
+
+    str = str.gsub(/\n/, "'\n'")
+    str
+  end
+
   private def shell_escape(val)
     val = val.join "\n" if val.is_a?(Array)
 
@@ -49,7 +58,7 @@ class Sched
     elsif !val.includes?('"')
       return "\"#{val}\""
     else
-      return Shellwords.shellescape(val)
+      return shellescape(val)
     end
   end
 

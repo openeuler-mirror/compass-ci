@@ -1,9 +1,47 @@
 #!/bin/bash
+if [ $# -ne 2 ]; then
+    echo "need two params: $0 <MASTER_IP> <MASTER_INTERFACE>"
+    exit 1
+fi
+
+MASTER_IP=${1%%/*}
+MASTER_INTERFACE=$2
+
+if ! ip link show "$MASTER_INTERFACE" &>/dev/null; then
+    echo "error: network interface $MASTER_INTERFACE not exist"
+    exit 1
+fi
+
+interface_ips=$(ip -4 addr show "$MASTER_INTERFACE" 2>/dev/null | grep -oP 'inet\s+\K[\d.]+')
+
+if echo "$interface_ips" | grep -qx "$MASTER_IP"; then
+    echo "success: IP $MASTER_IP config the $MASTER_INTERFACE network interface"
+else
+    echo "error: IP $MASTER_IP don't config the $MASTER_INTERFACE network interface"
+    exit 1
+fi
 
 CURRENT_PATH=$(cd `dirname $0/`;pwd)
 
 CONF_PATH=$CURRENT_PATH/_conf
-CONF_CHARTS_PATH=$CURRENT_PATH/1-conf
+CONF_CHARTS_PATH=$CURRENT_PATH/1-conf/charts
+
+sed -i "s| MASTER_INTERFACE:.*| MASTER_INTERFACE: ${MASTER_INTERFACE}|g" $CONF_CHARTS_PATH/cm-pub-env.yaml
+
+cm_keys=(
+	MASTER_IP
+	LKP_SERVER
+	SCHED_HOST
+	OS_HTTP_HOST
+	INITRD_HTTP_HOST
+	RESULT_WEBDAV_HOST
+	MASTER_FLUENTD_HOST
+	)
+
+for cm_key in "${cm_keys[@]}"; do
+	sed -i "s| $cm_key:.*| $cm_key: ${MASTER_IP}|g" $CONF_CHARTS_PATH/cm-pub-env.yaml
+	sed -i "s| $cm_key:.*| $cm_key: ${MASTER_IP}|g" $CONF_CHARTS_PATH/cm-service-env.yaml
+done
 
 passwd=$(< /dev/urandom tr -dc "a-zA-Z0-9" | head -c 10; echo)
 jwt_secret=$(uuidgen)
@@ -18,10 +56,10 @@ if [ ! -z $check_passwd ]; then
 fi
 
 # update yaml
-kubectl -n ems1 create secret generic secrets-env --from-env-file=$CONF_PATH/secret-service.env --dry-run=client -oyaml > $CONF_CHARTS_PATH/charts/secret-env.yaml
-kubectl -n ems1 create secret generic es-cert --from-file=$CONF_PATH/es-cert/elastic-certificates.p12 --dry-run=client -oyaml > $CONF_CHARTS_PATH/charts/secret-es-cert.yaml
-kubectl -n ems1 create secret generic gpg-key --from-file=$CONF_PATH/gpg-key/ --dry-run=client -oyaml > $CONF_CHARTS_PATH/charts/secret-gpg-key.yaml
-kubectl -n ems1 create secret generic git-ssh-conf --from-file=$CONF_PATH/ssh/ --dry-run=client -oyaml > $CONF_CHARTS_PATH/charts/secret-git-ssh-conf.yaml
-kubectl -n ems1 create secret generic code-sign-cert --from-file=$CONF_PATH/code-sign/cert/ --dry-run=client -oyaml > $CONF_CHARTS_PATH/charts/secret-code-sign-cert.yaml
+kubectl -n ems1 create secret generic secrets-env --from-env-file=$CONF_PATH/secret-service.env --dry-run=client -oyaml > $CONF_CHARTS_PATH/secret-env.yaml
+kubectl -n ems1 create secret generic es-cert --from-file=$CONF_PATH/es-cert/elastic-certificates.p12 --dry-run=client -oyaml > $CONF_CHARTS_PATH/secret-es-cert.yaml
+kubectl -n ems1 create secret generic gpg-key --from-file=$CONF_PATH/gpg-key/ --dry-run=client -oyaml > $CONF_CHARTS_PATH/secret-gpg-key.yaml
+kubectl -n ems1 create secret generic git-ssh-conf --from-file=$CONF_PATH/ssh/ --dry-run=client -oyaml > $CONF_CHARTS_PATH/secret-git-ssh-conf.yaml
+kubectl -n ems1 create secret generic code-sign-cert --from-file=$CONF_PATH/code-sign/cert/ --dry-run=client -oyaml > $CONF_CHARTS_PATH/secret-code-sign-cert.yaml
 
-kubectl -n ems1 create cm publisher-conf --from-file=$CONF_PATH/code-sign/conf/client.toml --dry-run=client -oyaml > $CONF_CHARTS_PATH/charts/cm-publisher-conf.yaml
+kubectl -n ems1 create cm publisher-conf --from-file=$CONF_PATH/code-sign/conf/client.toml --dry-run=client -oyaml > $CONF_CHARTS_PATH/cm-publisher-conf.yaml

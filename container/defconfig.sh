@@ -36,7 +36,7 @@ load_cci_secrets()
 load_service_authentication()
 {
 	shopt -s nullglob
-	file_name='/etc/compass-ci/passwd.yaml'
+	file_name='/etc/compass-ci/*.yaml'
 	[ -f $file_name ] || return
 	create_yaml_variables $file_name
 }

@@ -29,4 +29,4 @@ process_repos() {
   done
 }
 
-#process_repos
+process_repos

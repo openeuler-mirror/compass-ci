@@ -1,21 +1,23 @@
 #!/bin/bash
-# SPDX-License-Identifier: MulanPSL-2.0+
-# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
-
 set -e
 
 CURRENT_PATH=$(dirname `readlink -f $0`)
 PROJECT_PATH=$(dirname $(dirname $CURRENT_PATH))
+PROJECT_NAME=$(basename "$PROJECT_PATH")
 
+if [ -d "$CURRENT_PATH/$PROJECT_NAME" ]; then
+	rm -rf $CURRENT_PATH/$PROJECT_NAME
+fi
 
-for tmp in compass-ci lkp-tests extract-stats; do
+if [ -d "$CURRENT_PATH/lkp-tests" ]; then
+	rm -rf $CURRENT_PATH/lkp-tests
+fi
 
-	if [ -e "$CURRENT_PATH/$tmp" ]; then
-		rm -rf "$CURRENT_PATH/$tmp"
-	fi
-done
+if [ -e "$CURRENT_PATH/extract-stats" ]; then
+	rm -rf $CURRENT_PATH/extract-stats
+fi
 
 $PROJECT_PATH/container/compile .
 
-git clone --depth=1 https://gitee.com/openeuler/compass-ci
+git clone -b $CCI_BRANCH --single-branch --depth=1 https://gitee.com/openeuler/$PROJECT_NAME
 git clone --depth=1 https://gitee.com/compass-ci/lkp-tests

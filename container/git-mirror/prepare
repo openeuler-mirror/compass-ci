@@ -8,4 +8,4 @@ if [ -d "$CURRENT_PATH/compass-ci" ]; then
         rm -rf $CURRENT_PATH/compass-ci
 fi
 
-git clone https://gitee.com/openeuler/compass-ci
+git clone -b $CCI_BRANCH --single-branch --depth=1 https://gitee.com/openeuler/compass-ci
