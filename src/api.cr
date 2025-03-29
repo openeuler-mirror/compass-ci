@@ -88,18 +88,26 @@ logger Kemal::LocalTimeLogHandler.new
 
 module Scheduler
 
-  # Dynamically generate the VERSION constant based on the last commit's date and short hash
-  GIT_COMMIT_DATE = `git log -1 --date=format:'%Y%m%d' --pretty=format:%cd`.strip
-  GIT_SHORT_HASH  = `git log -1 --pretty=format:%h`.strip
+  # Define version as a build-time macro
+  macro define_version
+    # Try to get Git info at compile time
+    {% begin %}
+         # Dynamically generate the VERSION constant based on the last commit's date and short hash
+      {% git_commit_date = `git log -1 --date=format:'%Y%m%d' --pretty=format:%cd 2>/dev/null`.strip %}
+      {% git_short_hash = `git log -1 --pretty=format:%h 2>/dev/null`.strip %}
 
-  # Fallback in case Git commands fail (e.g., not in a Git repository)
-  VERSION = if GIT_COMMIT_DATE.empty? || GIT_SHORT_HASH.empty?
-              # Use today's date in the format YYYYMMDD if Git information is unavailable
-              `date +%Y%m%d`.chomp
-            else
-              # Combine the commit date and short hash with a dot separator
-              "#{GIT_COMMIT_DATE}.#{GIT_SHORT_HASH}"
-            end
+      # Fallback in case Git commands fail (e.g., not in a Git repository)
+      {% if git_commit_date.empty? || git_short_hash.empty? %}
+           # Use today's date in the format YYYYMMDD if Git information is unavailable
+        VERSION = {{ `date +%Y%m%d`.chomp.stringify }}
+      {% else %}
+        VERSION = {{ "#{git_commit_date}.#{git_short_hash}".stringify }}
+      {% end %}
+    {% end %}
+  end
+
+  # Call the macro to define VERSION
+  define_version
 
   logging true
 
