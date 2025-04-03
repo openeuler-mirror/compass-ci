@@ -294,6 +294,7 @@ class MultiQemuDocker
     @last_status_time = Time.now
     setup_directories
     update_options
+    prepare_busybox
     @jobs = JobTracker.new
     @container_runtime = @options[:oci_runtime].split.find { |runtime| system("command -v #{runtime} > /dev/null 2>&1") }
     @cache_dirs = []
@@ -318,6 +319,39 @@ class MultiQemuDocker
     # for rpm/deb packages
     if @options[:package_cache]
       FileUtils.mkdir_p(ENV["PACKAGE_CACHE_DIR"] = "#{BASE_DIR}/provider/pkgcache")
+    end
+  end
+
+  def prepare_busybox
+    return unless @options[:tbox_type].include?('dc')
+
+    # Define possible busybox paths
+    busybox_paths = [
+      "/srv/file-store/busybox/#{ARCH}",
+      "#{BASE_DIR}/file-store/busybox/#{ARCH}"
+    ]
+
+    # Check if busybox exists in any location
+    return if busybox_paths.find { |path| File.exist?(path) }
+
+    busybox_path = busybox_paths.last
+    puts "Preparing #{busybox_path}"
+    FileUtils.mkdir_p(busybox_path)
+
+    # Download and install busybox
+    busybox_url = "http://#{sched_host}:#{sched_port}#{busybox_paths.first}/busybox"
+    busybox_file = "#{busybox_path}/busybox"
+
+    unless system("wget --timeout=30 --tries=3 -nv #{busybox_url} -O #{busybox_file}")
+      raise "Failed to download busybox from #{busybox_url}"
+    end
+
+    FileUtils.chmod('+x', busybox_file)
+
+    Dir.chdir(busybox_path) do
+      unless system("./busybox --install -s .")
+        raise "Failed to install busybox in #{busybox_path}"
+      end
     end
   end
 
