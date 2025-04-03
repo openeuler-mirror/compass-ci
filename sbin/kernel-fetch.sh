@@ -97,10 +97,9 @@ sort_download_deb_packages() {
     declare -A package_map
     declare -A max_versions
 
+    local deb_file
     for deb_file in $packages
     do
-        local deb_file="${BASH_REMATCH[1]}"
-
         # Determine package type
         local pkg_type=""
         if [[ "$deb_file" =~ ^($pkgpattern)-[0-9] ]]; then
