@@ -25,7 +25,7 @@ spec:
           cp /tmp/dnsmasq.conf /etc/dnsmasq.d/init-dnsmasq.conf;
           cat /etc/dnsmasq.d/init-dnsmasq.conf
           sed -i "s/dhcp-option=tag:enp1,3/dhcp-option=tag:enp1,3,$MASTER_IP/g" /etc/dnsmasq.d/init-dnsmasq.conf;
-          sed -i "s/interface=br0,docker0/interface=$MASTER_IP_INTERFACE,br0,docker0/g" /etc/dnsmasq.d/init-dnsmasq.conf
+          sed -i "s/interface=br0,docker0/interface=$MASTER_INTERFACE,br0,docker0/g" /etc/dnsmasq.d/init-dnsmasq.conf
         envFrom:
         - configMapRef:
             name: pub-env

@@ -5,7 +5,7 @@ metadata:
   namespace: ems1
 data:
   MASTER_IP: ""
-  MASTER_IP_INTERFACE: "enp125s0f0"
+  MASTER_INTERFACE: "enp125s0f0"
   INGRESS_PORT: "30080"
   IS_CLUSTER: "true"
   LAB_ID: "1"

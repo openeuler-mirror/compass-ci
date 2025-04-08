@@ -18,5 +18,5 @@ if [ -d "$CURRENT_PATH/lkp-tests" ]; then
 	rm -rf $CURRENT_PATH/lkp-tests
 fi
 
-git clone https://gitee.com/openeuler/compass-ci
+git clone -b $CCI_BRANCH --single-branch https://gitee.com/openeuler/compass-ci
 git clone https://gitee.com/compass-ci/lkp-tests

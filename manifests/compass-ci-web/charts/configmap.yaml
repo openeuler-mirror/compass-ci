@@ -65,6 +65,8 @@ data:
       proxy_set_header REMOTE_ADDR $remote_addr;
       proxy_set_header REMOTE-HOST $remote_addr;
       server {
+        set $web_backend web-backend.ems1.svc.cluster.local:10002;
+
         listen 30107;
         server_name localhost;
         charset utf-8;

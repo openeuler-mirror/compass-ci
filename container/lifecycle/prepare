@@ -7,12 +7,8 @@ set -e
 CURRENT_PATH=$(dirname `readlink -f $0`)
 PROJECT_PATH=$(dirname $(dirname $CURRENT_PATH))
 
-
-for tmp in lifecycle; do
-
-	if [ -e "$CURRENT_PATH/$tmp" ]; then
-		rm -rf $CURRENT_PATH/$tmp
-	fi
-done
+if [ -e "$CURRENT_PATH/lifecycle" ]; then
+	rm -rf $CURRENT_PATH/lifecycle
+fi
 
 $PROJECT_PATH/container/compile .

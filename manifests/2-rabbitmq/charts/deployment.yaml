@@ -16,7 +16,7 @@ spec:
         local-storage/rabbitmq: "true"
       initContainers:
       - name: init
-        image: rabbitmq:latest
+        image: rabbitmq:3-management
         command:
         - sh
         - -c
@@ -32,7 +32,7 @@ spec:
           runAsUser: 0
       containers:
       - name: rabbitmq
-        image: rabbitmq:latest
+        image: rabbitmq:3-management
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5672
