@@ -1,0 +1,71 @@
+- name: Init compass-ci node
+  shell: |
+    kubectl delete -f 0-init/charts/
+    kubectl apply -f 0-init/charts/
+  args:
+    chdir: "{{ manifests_dir }}"
+
+- name: Prepare service conf
+  shell: |
+    kubectl delete -f 1-conf/charts/
+    kubectl apply -f 1-conf/charts/
+  args:
+    chdir: "{{ manifests_dir }}"
+
+- name: Deploy middleware
+  shell: |
+    kubectl delete -f 2-es/charts/
+    kubectl delete -f 2-etcd/charts/
+    kubectl delete -f 2-redis/charts/
+    kubectl delete -f 2-rabbitmq/charts/
+
+    kubectl create -f 2-es/charts/
+    kubectl create -f 2-etcd/charts/
+    kubectl create -f 2-redis/charts/
+    kubectl create -f 2-rabbitmq/charts/
+  args:
+    chdir: "{{ manifests_dir }}"
+
+- name: Deploy compass-ci components
+  shell: |
+    kubectl delete -f compass-ci-web/charts/
+    kubectl delete -f web-backend/charts/
+    kubectl delete -f data-api/charts/
+    kubectl delete -f auto-submit/charts/
+    kubectl delete -f git-service/charts/
+    kubectl delete -f cifs/charts/
+    kubectl delete -f initrd-http/charts/
+    kubectl delete -f master-fluentd/charts/
+    kubectl delete -f dnsmasq/charts/
+    kubectl delete -f scheduler/charts/
+    kubectl delete -f lifecycle/charts/
+    kubectl delete -f extract-stats/charts/
+    kubectl delete -f serial-logging/charts/
+    kubectl delete -f srv-http/charts/
+    kubectl delete -f os-http/charts/
+    kubectl delete -f initrd-http/charts/
+    kubectl delete -f result-webdav/charts/
+    kubectl delete -f logging-es/charts/
+    kubectl delete -f webhook/charts/
+
+    kubectl create -f compass-ci-web/charts/
+    kubectl create -f web-backend/charts/
+    kubectl create -f data-api/charts/
+    kubectl create -f auto-submit/charts/
+    kubectl create -f git-service/charts/
+    kubectl create -f cifs/charts/
+    kubectl create -f initrd-http/charts/
+    kubectl create -f master-fluentd/charts/
+    kubectl create -f dnsmasq/charts/
+    kubectl create -f scheduler/charts/
+    kubectl create -f lifecycle/charts/
+    kubectl create -f extract-stats/charts/
+    kubectl create -f serial-logging/charts/
+    kubectl create -f srv-http/charts/
+    kubectl create -f os-http/charts/
+    kubectl create -f initrd-http/charts/
+    kubectl create -f result-webdav/charts/
+    kubectl create -f logging-es/charts/
+    kubectl create -f webhook/charts/
+  args:
+    chdir: "{{ manifests_dir }}"

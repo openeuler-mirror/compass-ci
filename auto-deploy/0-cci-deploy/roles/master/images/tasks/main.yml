@@ -1,0 +1,64 @@
+- name: Check architecture
+  set_fact:
+    arch: "{{ ansible_architecture }}"
+
+- name: Prepare images directory
+  file: name="{{ images_dir }}/master" state=directory
+
+- name: Copy cci master images to eulerpipeline master nodes
+  synchronize:
+    src: "{{ arch }}/"
+    dest: "{{ images_dir }}/master/"
+  when:
+  - inventory_hostname in cci_master_nodes
+
+- name: Copy es images to es nodes
+  synchronize:
+    src: "{{ item }}"
+    dest: "{{ images_dir }}/master/"
+  with_fileglob:
+  - "{{ arch }}/es*"
+  when:
+  - inventory_hostname in es_nodes
+
+- name: Copy etcd images to etcd nodes
+  synchronize:
+    src: "{{ item }}"
+    dest: "{{ images_dir }}/master/"
+  with_fileglob:
+  - "{{ arch }}/etcd*"
+  when:
+  - inventory_hostname in etcd_nodes
+
+- name: Copy redis images to redis nodes
+  synchronize:
+    src: "{{ item }}"
+    dest: "{{ images_dir }}/master/"
+  with_fileglob:
+  - "{{ arch }}/redis*"
+  when:
+  - inventory_hostname in redis_nodes
+
+- name: Find all tar.gz files in the image directory
+  find:
+    paths: "{{ images_dir }}/master/"
+    patterns: "*.tar.gz"
+    file_type: file
+  register: tar_gz_files
+
+- name: Load Docker images from tar.gz files
+  command: "docker load -i {{ item.path }}"
+  with_items: "{{ tar_gz_files.files }}"
+  when: runtime == "docker"
+
+- name: Unzip tar.gz file when use containerd
+  shell: |
+    [ -e "{{ item.path | regex_replace('.tar.gz$', '.tar') }}" ] && exit 0;
+    gzip -d -k {{ item.path }}
+  with_items: "{{ tar_gz_files.files }}"
+  when: runtime == "containerd"
+
+- name: Load Docker images from tar files
+  command: "ctr -n k8s.io images import {{ item.path | regex_replace('.tar.gz$', '.tar') }}"
+  with_items: "{{ tar_gz_files.files }}"
+  when: runtime == "containerd"

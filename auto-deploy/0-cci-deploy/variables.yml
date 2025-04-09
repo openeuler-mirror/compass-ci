@@ -1,0 +1,7 @@
+images_dir: "/home/compass-ci-deploy/images"
+manifests_dir: "/home/compass-ci-deploy/manifests"
+data_dir:
+  es: "/srv/es"
+  etcd: "/srv/etcd"
+  redis: "/srv/redis"
+  rabbitmq: "/srv/rabbitmq"

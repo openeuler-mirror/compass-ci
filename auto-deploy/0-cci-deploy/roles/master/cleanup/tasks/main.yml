@@ -1,0 +1,50 @@
+- name: Uninstall all components
+  shell: |
+    kubectl delete -f 0-init/charts/compass-ci-node.yaml
+    kubectl delete -f 2-es/charts/
+    kubectl delete -f 2-etcd/charts/
+    kubectl delete -f 2-redis/charts/
+    kubectl delete -f 2-rabbitmq/charts/
+    kubectl delete -f compass-ci-web/charts/
+    kubectl delete -f web-backend/charts/
+    kubectl delete -f data-api/charts/
+    kubectl delete -f auto-submit/charts/
+    kubectl delete -f git-service/charts/
+    kubectl delete -f cifs/charts/
+    kubectl delete -f initrd-http/charts/
+    kubectl delete -f master-fluentd/charts/
+    kubectl delete -f dnsmasq/charts/
+    kubectl delete -f scheduler/charts/
+    kubectl delete -f lifecycle/charts/
+    kubectl delete -f extract-stats/charts/
+    kubectl delete -f serial-logging/charts/
+    kubectl delete -f srv-http/charts/
+    kubectl delete -f os-http/charts/
+    kubectl delete -f initrd-http/charts/
+    kubectl delete -f result-webdav/charts/
+    kubectl delete -f logging-es/charts/
+    kubectl delete -f webhook/charts/
+
+  args:
+    chdir: "{{ manifests_dir }}"
+  ignore_errors: true
+  no_log: true
+  delegate_to: "{{ groups['kubectl'][0] }}"
+  when: inventory_hostname == groups['master'][0]
+
+- name: Clean up data dirs
+  shell: |
+    rm -rf {{ data_dir.es }}/es-0
+    rm -rf {{ data_dir.es }}/es-1
+    rm -rf {{ data_dir.es }}/es-2
+    rm -rf {{ data_dir.etcd }}/etcd-0;
+    rm -rf {{ data_dir.etcd }}/etcd-1;
+    rm -rf {{ data_dir.etcd }}/etcd-2;
+    rm -rf {{ data_dir.redis }}/redis-0;
+    rm -rf {{ data_dir.redis }}/redis-1;
+    rm -rf {{ data_dir.redis }}/redis-2;
+    rm -rf {{ data_dir.redis }}/redis-3;
+    rm -rf {{ data_dir.redis }}/redis-4;
+    rm -rf {{ data_dir.redis }}/redis-5;
+    rm -rf {{ data_dir.rabbitmq }}/.erlang.cookie;
+    rm -rf {{ data_dir.rabbitmq }}/mnesia;
