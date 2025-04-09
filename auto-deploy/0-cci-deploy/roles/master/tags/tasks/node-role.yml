@@ -1,0 +1,34 @@
+- name: Label es node
+  shell: |
+    k8s_node_name=$(kubectl get nodes -o wide | grep "{{ hostvars[item.1]['ansible_ssh_host'] }} " | cut -d' ' -f1)
+    kubectl label node $k8s_node_name local-storage/es-"{{ item.0 }}"="true"
+  with_indexed_items: "{{ es_nodes }}"
+  delegate_to: "{{ groups['kubectl'][0] }}"
+
+- name: Label etcd node
+  shell: |
+    k8s_node_name=$(kubectl get nodes -o wide | grep "{{ hostvars[item.1]['ansible_ssh_host'] }} " | cut -d' ' -f1)
+    kubectl label node $k8s_node_name local-storage/etcd-"{{ item.0 }}"="true"
+  with_indexed_items: "{{ etcd_nodes }}"
+  delegate_to: "{{ groups['kubectl'][0] }}"
+
+- name: Label redis node
+  shell: |
+    k8s_node_name=$(kubectl get nodes -o wide | grep "{{ hostvars[item.1]['ansible_ssh_host'] }} " | cut -d' ' -f1)
+    kubectl label node $k8s_node_name local-storage/redis-"{{ item.0 }}"="true"
+  with_indexed_items: "{{ redis_nodes }}"
+  delegate_to: "{{ groups['kubectl'][0] }}"
+
+- name: Label rabbitmq node
+  shell: |
+    k8s_node_name=$(kubectl get nodes -o wide | grep "{{ hostvars[item]['ansible_ssh_host'] }} " | cut -d' ' -f1)
+    kubectl label node $k8s_node_name local-storage/rabbitmq="true"
+  with_items: "{{ rabbitmq_nodes }}"
+  delegate_to: "{{ groups['kubectl'][0] }}"
+
+- name: Label compass-ci master
+  shell: |
+    k8s_node_name=$(kubectl get nodes -o wide | grep "{{ hostvars[item]['ansible_ssh_host'] }} " | cut -d' ' -f1)
+    kubectl label node $k8s_node_name compass-ci.io/node-role="master"
+  with_items: "{{ cci_master_nodes }}"
+  delegate_to: "{{ groups['kubectl'][0] }}"

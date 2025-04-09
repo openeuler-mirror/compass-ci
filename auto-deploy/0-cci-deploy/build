@@ -1,0 +1,52 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+set -e
+
+CURRENT_ARCH=$(arch)
+SUPPORTED_ARCH=( "x86_64" "aarch64" )
+
+CURRENT_PATH=$(dirname `readlink -f $0`)
+PROJECT_PATH=$(dirname $(dirname $(dirname `readlink -f $0`)))
+
+CCI_IMAGE_URL=${CCI_IMAGE_URL:-"https://eulermaker.compass-ci.openeuler.openatom.cn/api/repositories/compass-ci/latest/"}
+
+prepare_images() {
+    local image_url="$CCI_IMAGE_URL/$CURRENT_ARCH/"
+    echo $image_url
+    curl -s "$image_url" | \
+	    grep -o 'href="[^"]*\.tar\.gz"' | \
+	    sed 's/href="//;s/"$//' | \
+	    sed "s|^|$image_url|" > $CURRENT_PATH/filelist.txt
+
+    local master_dir="$CURRENT_PATH/roles/master/images/files/$CURRENT_ARCH"
+    wget --no-check-certificate -i $CURRENT_PATH/filelist.txt -P $master_dir
+}
+
+prepare_manifests() {
+    local dst_dir="$CURRENT_PATH/roles/kubectl/manifests/files"
+    mkdir -p $dst_dir && cp -rf $PROJECT_PATH/manifests $dst_dir/
+}
+
+
+check_arch() {
+    is_supported="false"
+    for arch in "${SUPPORTED_ARCH[@]}"; do
+        if [[ "$arch" == "$CURRENT_ARCH" ]]; then
+            is_supported="true"
+            break
+        fi
+    done
+
+    if [[ "$is_supported" != "true" ]]; then
+        echo "current arch $CURRENT_ARCH not in $SUPPORTED_ARCH."
+        exit 1
+    fi
+}
+
+pushd $CURRENT_PATH
+check_arch
+#prepare_images
+prepare_manifests
+popd

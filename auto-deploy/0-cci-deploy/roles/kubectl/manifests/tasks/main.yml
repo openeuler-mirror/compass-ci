@@ -1,0 +1,7 @@
+- name: Prepare manifests directory
+  file: name="{{ manifests_dir }}" state=directory
+
+- name: Copy manifests to the node with kubectl
+  synchronize:
+    src: "manifests/"
+    dest: "{{ manifests_dir }}/"

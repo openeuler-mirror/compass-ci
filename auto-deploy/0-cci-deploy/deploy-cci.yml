@@ -1,0 +1,16 @@
+- hosts:
+  - kubectl
+  roles:
+  - kubectl/manifests
+
+- hosts:
+  - masters
+  roles:
+  - master/images
+  - master/tags
+  - master/cleanup
+
+- hosts:
+  - kubectl
+  roles:
+  - kubectl/deploy

@@ -1,0 +1,8 @@
+- name: Label compass-ci control-plane
+  shell: |
+    k8s_node_name=$(kubectl get nodes -o wide | grep "{{ hostvars[inventory_hostname]['ansible_ssh_host'] }} " | cut -d' ' -f1)
+    kubectl label node $k8s_node_name compass-ci.io/control-plane="true"
+  delegate_to: "{{ groups['kubectl'][0] }}"
+
+- include_tasks: node-role.yml
+  when: inventory_hostname == groups['masters'][0]

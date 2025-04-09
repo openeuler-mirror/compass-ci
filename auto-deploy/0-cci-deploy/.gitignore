@@ -1,0 +1,4 @@
+roles/*/files
+roles/*/*/files
+tmp
+filelist.txt
