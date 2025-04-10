@@ -302,6 +302,7 @@ class MultiQemuDocker
   end
 
   def setup_directories
+    ENV["BASE_DIR"] = BASE_DIR
     FileUtils.mkdir_p(ENV["HOSTS_DIR"] = "#{BASE_DIR}/provider/hosts")
     FileUtils.mkdir_p(ENV["JOBS_DIR"] = "#{BASE_DIR}/provider/jobs")
     FileUtils.mkdir_p(ENV["PIDS_DIR"] = "#{BASE_DIR}/provider/pids")
@@ -332,7 +333,7 @@ class MultiQemuDocker
     ]
 
     # Check if busybox exists in any location
-    return if busybox_paths.find { |path| File.exist?(path) }
+    return if busybox_paths.find { |path| File.exist?(path + "/busybox") }
 
     busybox_path = busybox_paths.last
     puts "Preparing #{busybox_path}"
@@ -349,7 +350,7 @@ class MultiQemuDocker
     FileUtils.chmod('+x', busybox_file)
 
     Dir.chdir(busybox_path) do
-      unless system("./busybox --install -s .")
+      unless system("./busybox --install .")
         raise "Failed to install busybox in #{busybox_path}"
       end
     end

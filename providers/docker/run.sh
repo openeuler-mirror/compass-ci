@@ -75,15 +75,8 @@ configure_ccache() {
 }
 
 setup_file_paths() {
-    local base_dir
-    if [[ -w /srv ]]; then
-        base_dir="/srv"
-    else
-        base_dir="${HOME}/.cache/compass-ci"
-    fi
-
-    busybox_path="${base_dir}/file-store/busybox/$(arch)"
-    [[ -e "${busybox_path}" ]] || busybox_path="/srv/file-store/busybox/$(arch)"
+    busybox_path="${BASE_DIR}/file-store/busybox/$(arch)"
+    [[ -e "${busybox_path}/busybox" ]] || busybox_path="/srv/file-store/busybox/$(arch)"
     export busybox_path
 }
 
