@@ -186,7 +186,11 @@ class Sched
     hostkeys = host_req.host_keys
     until hostkeys.empty?
       host_key = next_hostkey_to_try(host_req.hostname, hostkeys)
-      next unless host_key
+      unless host_key
+        # In abnormal condition, take a snap to avoid busy looping.
+        sleep(0.1.seconds)
+        next
+      end
       next unless hostkeys.delete host_key
 
       # Check priority queues first
@@ -427,11 +431,7 @@ class Sched
     @hostkey_sequence[host_machine] = Sched.generate_interleaved_sequence(host_keys, @nr_jobs_by_hostkey)
     # @log.debug { "generate_interleaved_sequence #{@hostkey_sequence[host_machine]}" }
 
-    if @hostkey_sequence[host_machine].empty?
-      # In abnormal condition, take a snap to avoid busy looping.
-      sleep(0.1.seconds)
-      return nil
-    end
+    return nil if @hostkey_sequence[host_machine].empty?
 
     # Pop and return the next host_key
     @hostkey_sequence[host_machine].pop
@@ -608,7 +608,7 @@ class Sched
     case job.tbox_type
     when "hw"
       if channel = @hw_machine_channels[hostreq.hostname]?
-        channel.send(job)
+        #channel.send(job)
         true
       else
         @log.error { "HW channel not found for #{hostreq.hostname}" }

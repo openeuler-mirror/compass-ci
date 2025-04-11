@@ -25,9 +25,10 @@ class Sched
 
       # Normalize MAC address and resolve hostname if necessary
       mac = Utils.normalize_mac(mac)
-      host ||= @hosts_cache.mac2hostname(mac)
+      host = @hosts_cache.mac2hostname[mac]?
 
-      unless host
+      host = host.to_s
+      if host.empty?
         env.response.status_code = HTTP::Status::NOT_FOUND.code
         return boot_content(nil, boot_type)
       end
@@ -48,8 +49,13 @@ class Sched
         sched_port: sched_port
       )
 
+      unless @hw_machine_channels.has_key? host
+        @hw_machine_channels[host] = Channel(JobHash).new
+      end
+
       # Attempt to find a job for the host
-      job = tbox_request_job(host_req) || hw_wait_job(host)
+      #job = tbox_request_job(host_req) || hw_wait_job(host)
+      job = tbox_request_job(host_req)
 
       unless job
         env.response.status_code = HTTP::Status::NOT_FOUND.code

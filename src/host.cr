@@ -393,10 +393,10 @@ class Hosts
   end
 
   def add_host(host_info : HostInfo)
-      @hosts[host_info.hostname] = host_info
-      host_info.mac_addr.each do |mac|
-        @mac2hostname[mac] = host_info.hostname
-      end if host_info.hash_str_array.has_key? "mac_addr"
+    @hosts[host_info.hostname] = host_info
+    host_info.mac_addr.each do |mac|
+      @mac2hostname[mac] = host_info.hostname
+    end if host_info.hash_str_array.has_key? "mac_addr"
   end
 
   def []?(hostname : String) : HostInfo | Nil

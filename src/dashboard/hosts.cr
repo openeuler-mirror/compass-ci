@@ -52,8 +52,9 @@ class Sched
 
   # Helper method to format memory size
   def ui_format_memory(memory_in_mb)
-    return "N/A" if memory_in_mb.nil?
+    return "N/A" if memory_in_mb.to_s.empty?
 
+    memory_in_mb = memory_in_mb.to_i
     if memory_in_mb < 1024
       "#{memory_in_mb} MB"
     elsif memory_in_mb < 1024 * 1024
@@ -203,7 +204,7 @@ class Sched
         "active_status"     => !host.active_time? ? "inactive" : (Time.utc.to_unix - host.active_time <= 600 ? "active" : "inactive"),
         "reboot_status"     => !host.reboot_time? ? "unknown" : (Time.utc.to_unix > host.reboot_time ? "needs_reboot" : "ok"),
 
-        "freemem"                 => ui_format_memory(host.freemem),
+        "freemem"                 => ui_format_memory(host.freemem?.to_s),
         "freemem_percent"         => host.freemem_percent?.to_s,
         "disk_max_used_percent"   => host.disk_max_used_percent?.to_s,
         "disk_max_used_string"    => host.disk_max_used_string? || "",
@@ -229,7 +230,7 @@ class Sched
           else ""
         end,
 
-        "network_errors_class" => (host.network_errors_per_sec || 0) > 0 ? "text-critical" : "",
+        "network_errors_class" => (host.network_errors_per_sec? || 0) > 0 ? "text-critical" : "",
 
       }
 
