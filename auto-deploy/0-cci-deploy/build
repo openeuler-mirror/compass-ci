@@ -4,7 +4,6 @@
 
 set -e
 
-CURRENT_ARCH=$(arch)
 SUPPORTED_ARCH=( "aarch64" )
 
 CURRENT_PATH=$(dirname `readlink -f $0`)
@@ -13,15 +12,16 @@ PROJECT_PATH=$(dirname $(dirname $(dirname `readlink -f $0`)))
 CCI_IMAGE_URL=${CCI_IMAGE_URL:-"https://eulermaker.compass-ci.openeuler.openatom.cn/api/repositories/compass-ci/latest/"}
 
 prepare_images() {
-    local image_url="$CCI_IMAGE_URL/$CURRENT_ARCH/"
-    echo $image_url
+    local arch=$1
+    local image_url="$CCI_IMAGE_URL/$arch/"
+
     curl -s "$image_url" | \
 	    grep -o 'href="[^"]*\.tar\.gz"' | \
 	    sed 's/href="//;s/"$//' | \
 	    sed "s|^|$image_url|" > $CURRENT_PATH/filelist.txt
 
-    local master_dir="$CURRENT_PATH/roles/master/images/files/$CURRENT_ARCH"
-    wget --no-check-certificate -i $CURRENT_PATH/filelist.txt -P $master_dir
+    local master_dir="$CURRENT_PATH/roles/master/images/files/$arch"
+    wget -N --no-check-certificate -i $CURRENT_PATH/filelist.txt -P $master_dir
 }
 
 prepare_manifests() {
@@ -32,7 +32,7 @@ prepare_manifests() {
 pushd $CURRENT_PATH
 
 for arch in "${SUPPORTED_ARCH[@]}"; do
-    prepare_images
+    prepare_images $arch
 done
 
 prepare_manifests
