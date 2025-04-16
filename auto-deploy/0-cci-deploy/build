@@ -5,7 +5,7 @@
 set -e
 
 CURRENT_ARCH=$(arch)
-SUPPORTED_ARCH=( "x86_64" "aarch64" )
+SUPPORTED_ARCH=( "aarch64" )
 
 CURRENT_PATH=$(dirname `readlink -f $0`)
 PROJECT_PATH=$(dirname $(dirname $(dirname `readlink -f $0`)))
@@ -29,24 +29,11 @@ prepare_manifests() {
     mkdir -p $dst_dir && cp -rf $PROJECT_PATH/manifests $dst_dir/
 }
 
-
-check_arch() {
-    is_supported="false"
-    for arch in "${SUPPORTED_ARCH[@]}"; do
-        if [[ "$arch" == "$CURRENT_ARCH" ]]; then
-            is_supported="true"
-            break
-        fi
-    done
-
-    if [[ "$is_supported" != "true" ]]; then
-        echo "current arch $CURRENT_ARCH not in $SUPPORTED_ARCH."
-        exit 1
-    fi
-}
-
 pushd $CURRENT_PATH
-check_arch
-#prepare_images
+
+for arch in "${SUPPORTED_ARCH[@]}"; do
+    prepare_images
+done
+
 prepare_manifests
 popd
