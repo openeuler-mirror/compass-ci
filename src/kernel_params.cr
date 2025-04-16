@@ -65,6 +65,7 @@ class JobHash
 
   private def kernel_console
     return "console=tty0 console=ttyS0,115200" if os_arch == "x86_64"
+    return "console=tty0 console=ttyAMA0,115200" if os_arch == "aarch64"
   end
 
   private def set_kernel_params
