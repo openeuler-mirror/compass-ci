@@ -140,7 +140,6 @@ class QemuManager
     # @logger.info("Processing kernel: #{url}")
     kernel = download_resource(url)
     append = parameters.gsub(/\s+initrd=\S+/, '').strip
-    append += " console=ttyS1,115200"  # 2nd serial for console on unix socket
 
     [kernel, append]
   end
