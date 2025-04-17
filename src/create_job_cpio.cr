@@ -260,6 +260,12 @@ class Sched
   def save_job_files(job : JobHash, base_dir : String)
     # Create the job directory
     job_dir = File.join(base_dir, job.id.to_s)
+    if File.exists?(job_dir + "/job.sh")
+      @log.warn { "Job directory already exists: #{job_dir}" }
+      Dir.children(job_dir).each do |file|
+        @log.warn { "  - #{file}" }
+      end
+    end
     FileUtils.mkdir_p(job_dir)
 
     # Remove "job2sh" from the job hash
