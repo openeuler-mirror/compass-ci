@@ -406,8 +406,6 @@ arch_option()
 
 	case "$(arch)" in
 		aarch64)
-			bios=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
-			[ -z "$cpu_model" ] && cpu_model=Kunpeng-920
 			;;
 		x86_64)
 			bios=/usr/share/ovmf/OVMF.fd
