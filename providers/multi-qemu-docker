@@ -1099,13 +1099,19 @@ end
 def run
   tries = 0
   loop do
-    provider = MultiQemuDocker.new(ARGV)
-    provider.start_io_loop
+    begin
+      provider = MultiQemuDocker.new(ARGV)
+      provider.start_io_loop
+    rescue => e
+      puts e.message
+      puts e.backtrace.join("\n")
 
-    tries += 1
-    delay = [2 ** tries, 30].min
-    puts "Attempting reconnect in #{delay} second..."
-    sleep(delay)
+      tries += 1
+      delay = [2 ** tries, 30].min
+      puts "Attempting reconnect in #{delay} second..."
+      sleep(delay)
+      retry
+    end
   end
 end
 
