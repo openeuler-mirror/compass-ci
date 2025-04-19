@@ -359,7 +359,6 @@ class MultiQemuDocker
   def handle_websocket_open
     puts "WebSocket connection opened"
     send_status
-    start_heartbeat
     start_cache_reclaim
     start_fifo_listener
     start_mem_monitoring
@@ -602,16 +601,6 @@ class MultiQemuDocker
     }
     # pp status
     send_json(status)
-  end
-
-  # report status every 10 seconds
-  def start_heartbeat
-    @threads << Thread.new do
-      until @dead
-        sleep(HEARTBEAT_INTERVAL)
-        send_status
-      end
-    end
   end
 
   def start_cache_reclaim
