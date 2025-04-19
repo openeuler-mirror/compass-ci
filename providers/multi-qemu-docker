@@ -228,6 +228,7 @@ class MultiQemuDocker
     rescue => e
       puts "Connection error: #{e.message}"
       @tcp.close if @tcp && !@tcp.closed?
+      sleep(1)
     end
   end
 
@@ -1092,14 +1093,14 @@ def run
     begin
       provider = MultiQemuDocker.new(ARGV)
       provider.start_io_loop
-    rescue => e
-      puts e.message
-      puts e.backtrace.join("\n")
 
       tries += 1
       delay = [2 ** tries, 30].min
       puts "Attempting reconnect in #{delay} second..."
       sleep(delay)
+    rescue => e
+      puts e.message
+      puts e.backtrace.join("\n")
       retry
     end
   end
