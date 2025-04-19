@@ -15,6 +15,8 @@
 #   qemu --pid-file $PIDS_DIR/$hostname
 #   kill $(<$PIDS_DIR/$hostname)
 
+require 'concurrent'
+
 class JobTracker
   attr_reader :jobs
 
@@ -30,7 +32,7 @@ class JobTracker
   end
 
   def initialize
-    @jobs = {}
+    @jobs = Concurrent::Hash.new
     load_jobs
   end
 

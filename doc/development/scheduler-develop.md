@@ -33,7 +33,7 @@ sudo apt-get install qemu-system qemu-utils
 sudo apt-get install -y jq make cscope git rsync curl wget ruby-rubygems mariadb-client-core
 
 # For multi-qemu-docer
-gem install websocket-driver rest-client
+gem install websocket-driver rest-client concurrent
 ```
 
 ### 2. Clone & Install Core Components
