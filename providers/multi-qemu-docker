@@ -280,6 +280,8 @@ class MultiQemuDocker
 
   HEARTBEAT_INTERVAL = 10   # seconds
   MEM_CHECK_INTERVAL = 1    # second
+  RECLAIM_CACHE_INTERVAL = 24*3600   # second
+  RECLAIM_LOCKS_INTERVAL = 3600   # second
   MEM_DELTA_THRESHOLD = 100 # 100MB
 
   JOB_DONE_FIFO_PATH = "/tmp/job_completion_fifo"
@@ -292,6 +294,8 @@ class MultiQemuDocker
     @last_meminfo = parse_meminfo
     @last_free_mem = free_memory_mb
     @last_status_time = Time.now
+    @last_reclaim_cache_time = Time.now
+    @last_reclaim_locks_time = Time.now
     setup_directories
     update_options
     prepare_busybox
@@ -359,7 +363,6 @@ class MultiQemuDocker
   def handle_websocket_open
     puts "WebSocket connection opened"
     send_status
-    start_cache_reclaim
     start_fifo_listener
     start_mem_monitoring
   end
@@ -603,25 +606,21 @@ class MultiQemuDocker
     send_json(status)
   end
 
-  def start_cache_reclaim
-    @threads << Thread.new do
-      hours = 0
-      until @dead
-        sleep(3600)
+  def check_cache_reclaim
+    begin
+      if Time.now - @last_reclaim_cache_time > RECLAIM_CACHE_INTERVAL
+        reclaim_cache_dirs
+        @last_reclaim_cache_time = Time.now
+      end
 
-        hours += 1
-        if hours >= 24
-          reclaim_cache_dirs
-          hours = 0
-        end
-
+      if Time.now - @last_reclaim_locks_time > RECLAIM_LOCKS_INTERVAL
         reclaim_stale_locks(CACHE_LOCK_ROOT)
 
         # @cache_dirs updated here will be send_status() to scheduler
         base_cache_dir = ENV["CACHE_DIR"]
         full_cache_dirs = collect_cache_dirs(base_cache_dir, false)
         @cache_dirs = full_cache_dirs.map { |dir| dir.delete_prefix("#{base_cache_dir}/") }
-
+        @last_reclaim_locks_time = Time.now
       end
     rescue => e
       puts "Cache reclaim error: #{e.message}"
@@ -639,6 +638,8 @@ class MultiQemuDocker
           send_status
           @last_status_time = Time.now
         end
+
+        check_cache_reclaim
       end
     end
   end
