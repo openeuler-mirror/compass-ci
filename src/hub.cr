@@ -130,6 +130,12 @@ class Sched
     end
 
     if job.idata_readiness >= JOB_DATA_READINESS_NAME2ID["complete"]
+      if job.istage < JOB_STAGE_NAME2ID["finish"]
+        # We may enter here for VM w/o network or crashes, so cannot update job
+        # stage or upload results, so multi-qemu-docker help upload results,
+        # changing data readiness to "uploaded" then "complete".
+        change_job_stage(job, "finish", nil)
+      end
       job.set_time("complete_time")
       on_job_complete(job)
     else
