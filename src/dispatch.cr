@@ -183,9 +183,12 @@ class Sched
   def choose_job_for(host_req : HostRequest) : JobHash?
     return nil if @jobs_cache_in_submit.empty?
 
-    hostkeys = host_req.host_keys
+    round = @hostkey_sequence_round
+    hostkeys = host_req.host_keys.dup
+    # @log.debug { "hostkeys=#{hostkeys}" }
     until hostkeys.empty?
-      host_key = next_hostkey_to_try(host_req.hostname, hostkeys)
+      break if round != @hostkey_sequence_round
+      host_key = next_hostkey_to_try(host_req.hostname, host_req.host_keys)
       unless host_key
         # In abnormal condition, take a snap to avoid busy looping.
         sleep(0.1.seconds)
@@ -255,6 +258,7 @@ class Sched
   end
 
   private def match_job_to_host(job : JobHash, host_req : HostRequest) : Bool
+    # @log.debug { "Checking job=#{job}, host_req=#{host_req}" }
     return false unless job.schedule_memmb <= host_req.freemem
     return false unless job.schedule_tags.subset_of?(host_req.tags)
 
@@ -429,7 +433,7 @@ class Sched
     @hostkey_sequence_round &= Int32::MAX
     # Store the sequence for future use
     @hostkey_sequence[host_machine] = Sched.generate_interleaved_sequence(host_keys, @nr_jobs_by_hostkey)
-    # @log.debug { "generate_interleaved_sequence #{@hostkey_sequence[host_machine]}" }
+    # @log.debug { "generate_interleaved_sequence #{host_keys} #{@nr_jobs_by_hostkey} #{@hostkey_sequence[host_machine]}" }
 
     return nil if @hostkey_sequence[host_machine].empty?
 
