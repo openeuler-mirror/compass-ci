@@ -43,7 +43,10 @@ def download_resource(url)
   success = system("wget --timeout=30 --tries=3 -nv -a #{ENV['log_file'].shellescape} -O #{local_path.shellescape} #{url.shellescape}")
 
   # Raise an error if the download fails
-  raise "Failed to download #{url}" unless success
+  unless success
+    FileUtils.rm_f(local_path)
+    raise "Failed to download #{url}"
+  end
 
   return local_path
 end

@@ -279,7 +279,7 @@ class MultiQemuDocker
   MIN_QEMU_MEMORY = 4       # GB
   MIN_CONTAINER_MEMORY = 8  # GB
 
-  HEARTBEAT_INTERVAL = 10   # seconds
+  HEARTBEAT_INTERVAL = 1    # seconds
   MEM_CHECK_INTERVAL = 1    # second
   RECLAIM_CACHE_INTERVAL = 24*3600   # second
   RECLAIM_LOCKS_INTERVAL = 3600   # second
@@ -349,6 +349,7 @@ class MultiQemuDocker
     busybox_file = "#{busybox_path}/busybox"
 
     unless system("wget --timeout=30 --tries=3 -nv #{busybox_url} -O #{busybox_file}")
+      FileUtils.rm_f(busybox_file)
       raise "Failed to download busybox from #{busybox_url}"
     end
 
