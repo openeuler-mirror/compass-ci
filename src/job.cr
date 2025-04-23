@@ -976,8 +976,8 @@ class JobHash
       hi["nr_cpu"] = $1
       hi["memory"] = ($2.to_i32 * 1024).to_s
     end
-
-    hi["nr_cpu"] ||= "1"
+ 
+    # Don't limit CPU by default
     hi["memory"] ||= self.schedule_memmb.to_s
 
     self.hw = hi unless self.hash_hh.has_key? "hw"
