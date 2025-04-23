@@ -125,7 +125,7 @@ class PkgBuild < PluginsCommon
     docker_image = params.delete("docker_image") || job.docker_image?
     if docker_image
       build_job.docker_image = job.docker_image
-      build_job.testbox = "dc-16g"
+      build_job.testbox = "dc"
       build_job.os_mount = "container"
     else
       build_job.testbox = "vm"
