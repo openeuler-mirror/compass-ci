@@ -626,6 +626,7 @@ class MultiQemuDocker
       end
     rescue => e
       puts "Cache reclaim error: #{e.message}"
+      puts e.backtrace.join("\n")
     end
   end
 

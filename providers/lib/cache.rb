@@ -43,7 +43,7 @@ end
 
 # Function 4: Reclaim items older than 1 year
 def reclaim_old_items(items_with_mtime)
-  items_with_mtime.delete do |item, mtime|
+  items_with_mtime.delete_if do |item, mtime|
     if mtime < ONE_YEAR_OLD
       puts "Reclaiming old item: #{mtime} #{item}"
       FileUtils.rm_rf(item)
@@ -106,5 +106,5 @@ def reclaim_cache_dirs
   reclaim_old_items(items_with_mtime)
 
   # Reclaim items until disk utilization is below 70%
-  reclaim_until_disk_util_below_threshold(items_with_mtime, cache_dir)
+  reclaim_until_disk_util_below_threshold(items_with_mtime, ENV["CACHE_DIR"])
 end
