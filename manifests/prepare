@@ -55,6 +55,13 @@ if [ ! -z $check_passwd ]; then
 	sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|g"                $CONF_PATH/secret-service.env
 fi
 
+# create es cert
+pushd $CONF_PATH
+if [ ! -z $CONF_PATH/es-cert/elastic-certificates.p12 ]; then
+        sh create_es_cert
+fi
+popd
+
 # update yaml
 kubectl -n ems1 create secret generic secrets-env --from-env-file=$CONF_PATH/secret-service.env --dry-run=client -oyaml > $CONF_CHARTS_PATH/secret-env.yaml
 kubectl -n ems1 create secret generic es-cert --from-file=$CONF_PATH/es-cert/elastic-certificates.p12 --dry-run=client -oyaml > $CONF_CHARTS_PATH/secret-es-cert.yaml
