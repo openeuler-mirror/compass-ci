@@ -30,23 +30,20 @@ ETCD_USER=root          # 固定
 ETCD_PASSWORD=""        # 自动生成，无需填写
 ```
 
-### elasticsearch证书配置
-
-自动生成elastic-certificates.p12证书，并放置在`_conf/es-cert`下
-
-> 注意：该脚本需在联网环境下执行
-
-```
-cd _conf/_confgen
-./create_es_cert
-```
-
 ### 配置完所有信息，运行
 
 生成kubernetes配置文件
-
+prepare 需要两个参数 MASTER_IP MASTER_INTERFACE
+MASTER_IP: 是宿主机的ip，和其他执行机相互连通的ip，如172.168.x.x
+MASTER_INTERFACE: 是配置MASTER_IP所在的网卡，如enp125s0f0
+可使用ifconfig命令查询，命令输出结果如下
+...
+enp125s0f0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 172.168.x.x  netmask 255.255.0.0  broadcast 172.168.255.255
+...
+> 注意执行prepare脚本时，需要配置成自己环境的ip和网卡！！！
 ```shell
-./prepare
+./prepare 172.168.x.x enp125s0f0
 ```
 
 ## 二、镜像包准备
@@ -89,5 +86,5 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 ansible all -m ping -i hosts.ini
 
 # 运行deploy-cci playbook，安装compass-ci服务
-ansible-playbook -i hosts.ini -e @variables.yml deploy-cci.yml
+ansible-playbook -i ../hosts-all.ini -i hosts.ini -e @variables.yml deploy-cci.yml
 ```
