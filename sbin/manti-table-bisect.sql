@@ -1,21 +1,17 @@
-CREATE TABLE bisect_tasks(
-    id                      string,
+CREATE TABLE bisect(
+    id                      bigint,
     bad_job_id              string,
     error_id                string,
-    bisect_metrics          string,
     bisect_status           string,
+    bisect_metrics          string,
     project                 string,
-    pkgbuild_repo           string,
     git_url                 string,
-    bisect_suite            string,
     bad_commit              string,
     first_bad_id            string,
     first_result_root       string,
     work_dir                string,
-    start_time              bigint,
-    end_time                bigint,
-    priority_level          integer,
-    commit_history          string,
-    timeout                 integer,
-    job_commit_mappings     json
+    start_time              BIGINT,
+    end_time                BIGINT,
+    priority_level          INT,
+    timeout                 INT
 ) charset_table='U+0021..U+007E';
