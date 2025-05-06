@@ -10,7 +10,7 @@ from mysql.connector import pooling, Error
 
 class GenericSQLClient:
     """Generic SQL client base class providing connection pool and basic operations"""
-    
+ 
     def __init__(
         self,
         host: str,
@@ -97,13 +97,13 @@ class GenericSQLClient:
         try:
             with conn.cursor(dictionary=True) as cursor:
                 cursor.execute(sql, params or ())
-                
+
                 if operation == 'read':
                     return cursor.fetchall()
                 else:
                     conn.commit()
                     return cursor.rowcount
-                    
+
         except Error as e:
             logger.error(f"SQL operation failed: {e}")
             logger.error(f"Failed SQL: {sql}\nParams: {params}")
