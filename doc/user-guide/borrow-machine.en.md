@@ -31,8 +31,10 @@ If you have not completed above works, reference to [apply-account.md](https://g
     Command to submit jobs:
 
     for DCs:
+        for supported container images, please refer to file $LKP_SRC/rootfs/os.yaml
 
-        submit -c -m testbox=dc-2g os_mount=container docker_image=centos:8 borrow-1h.yaml
+        submit -c -m testbox=dc-2g borrow-1h.yaml docker_image=centos:8
+        submit -c -m testbox=dc-2g borrow-1h.yaml docker_image=openeuler/openeuler:20.03-LTS-SP1
 
     for VMs:
 
