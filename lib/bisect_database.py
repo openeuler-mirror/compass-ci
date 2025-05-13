@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any, Tuple, List
 from functools import wraps
 import time
 import threading
+from manticore_simple import ManticoreClient
 
 class BisectDB(GenericSQLClient):
     """Database operations for bisect process with connection pool"""
@@ -184,9 +185,15 @@ class BisectDB(GenericSQLClient):
             return f"'{json_str}'"
 
     def close(self):
-        """Close database connection"""
-        if self._connection and self._connection.is_connected():
-            self._connection.close()
+        """安全关闭连接池"""
+        try:
+            if hasattr(self, 'pool'):
+                self.pool.close()
+                logger.info(f"已关闭 {self.database} 数据库连接池")
+                # 防止重复关闭
+                del self.pool
+        except Exception as e:
+            logger.error(f"关闭数据库连接池失败: {str(e)}")
 
     def check_connection_leaks(self):
         """增强泄漏检查"""

@@ -13,5 +13,10 @@ CREATE TABLE bisect(
     start_time              BIGINT,
     end_time                BIGINT,
     priority_level          INT,
-    timeout                 INT
+    timeout                 INT,
+    retry_count             INT,
+    last_error              string,
+    created_at              BIGINT,
+    updated_at              BIGINT,
+    j                       json
 ) charset_table='U+0021..U+007E';
