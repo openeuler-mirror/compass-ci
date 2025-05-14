@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2024 Huawei Technologies Co., Ltd. All rights reserved.
+# frozen_string_literal: true
+
+require 'set'
+require_relative '../defconfig.rb'
+
+names = Set.new %w[
+  ES_HOST
+  ES_PORT
+  ES_USER
+  ES_PASSWORD
+]
+
+defaults = relevant_defaults(names)
+
+service_authentication = relevant_service_authentication(names)
+defaults.merge!(service_authentication)
+
+env = docker_env(defaults)
+
+DEFAULT_LKP = '/c/lkp-tests'
+DEFAULT_CCI = '/c/compass-ci'
+DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
+DEFAULT_USER_CONFIG_DIR = File.expand_path("~/.config/compass-ci/")
+DEFAULT_BISECT_CONFIG_DIR = '/root/.config/compass-ci/'
+MANTICORE_HOST='172.17.0.1'
+docker_rm 'bisect'
+
+cmd = %w[
+  docker run
+  --name bisect
+  --restart=always
+  -itd
+] + env + %W[
+  -e LKP_SRC=#{DEFAULT_LKP}
+  -e CCI_SRC=#{DEFAULT_CCI}
+  -e MANTICORE_HOST=#{MANTICORE_HOST}
+  -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
+  -v #{DEFAULT_USER_CONFIG_DIR}:#{DEFAULT_BISECT_CONFIG_DIR}:ro
+  -v /etc/localtime:/etc/localtime:ro
+  -v /etc/compass-ci/register:/etc/compass-ci/register:ro
+  -p 10000:9999
+  bisect
+]
+
+cmd += ['sh', '-c', 'umask 002 && python3 bisect-task.py']
+
+system(*cmd)

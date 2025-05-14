@@ -17,3 +17,5 @@ echo
 $CURL "mode=raw&query=desc jobs"
 $CURL "mode=raw&query=desc hosts"
 $CURL "mode=raw&query=desc accounts"
+$CURL "mode=raw&query=desc bisect_task"
+$CURL "mode=raw&query=desc regression"
