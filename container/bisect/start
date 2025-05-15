@@ -24,7 +24,7 @@ DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'
 DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
 DEFAULT_USER_CONFIG_DIR = File.expand_path("~/.config/compass-ci/")
-DEFAULT_BISECT_CONFIG_DIR = '/root/.config/compass-ci/'
+DEFAULT_BISECT_CONFIG_DIR = '/home/bisect/.config/compass-ci/'
 MANTICORE_HOST='172.17.0.1'
 docker_rm 'bisect'
 
@@ -41,7 +41,7 @@ cmd = %w[
   -v #{DEFAULT_USER_CONFIG_DIR}:#{DEFAULT_BISECT_CONFIG_DIR}:ro
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
-  -p 10000:9999
+  -p 9999:9999
   bisect
 ]
 
