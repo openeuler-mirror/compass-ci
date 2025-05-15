@@ -8,12 +8,12 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk update --no-cache && \
     apk upgrade && \
     apk add --no-cache git coreutils util-linux ruby bash python3 python3-dev py3-pip \
-    mariadb-dev build-base mariadb-connector-c \
-    py3-requests py3-yaml py3-httpx py3-flask py3-numpy py3-gitpython
+    py3-requests py3-yaml py3-httpx py3-flask py3-numpy \
+    cpio
 
-
+# mariadb-dev build-base mariadb-connector-c \
 RUN gem install rest-client
-RUN pip3 install mysql-connector-python --break-system-packages
+RUN pip3 install mysql-connector-python --break-system-packages -i https://mirrors.aliyun.com/pypi/simple/
 RUN addgroup -S bisect && adduser -S bisect -G bisect
 
 ENV WORK_DIR /home/bisect
