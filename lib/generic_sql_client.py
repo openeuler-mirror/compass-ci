@@ -64,7 +64,11 @@ class GenericSQLClient:
             raise RuntimeError(f"无法连接数据库 {database}@{host}:{port}")
 
     def get_connection(self):
-        """从连接池获取数据库连接（基类实现）"""
+        """进程安全的连接获取"""
+        current_pid = os.getpid()
+        if not hasattr(self, '_pool') or self.pid != current_pid:
+            self._reinit_pool(current_pid)
+        
         try:
             conn = self.pool.get_connection()
             if not hasattr(self._active_connections, 'count'):

@@ -114,6 +114,49 @@ class BisectTask:
         os.makedirs(abs_path, exist_ok=True, mode=0o755)
         return abs_path
 
+    def _process_single_task(self, task_dict: dict):
+        """子进程内执行的原子操作"""
+        # 重新初始化必要组件
+        from lib.bisect_database import BisectDB
+        from lib.log_config import logger
+        
+        # 每个进程独立数据库连接
+        local_db = BisectDB(
+            host=os.getenv('MANTICORE_HOST'),
+            port=os.getenv('MANTICORE_PORT'),
+            database="bisect",
+            pool_size=1  # 单连接避免冲突
+        )
+        
+        try:
+            # 任务处理逻辑
+            task_id = task_dict['id']
+            logger.info(f"Process {os.getpid()} handling task {task_id}")
+            
+            # 获取完整任务数据
+            task = local_db.execute_query(
+                "SELECT * FROM bisect WHERE id = %s", 
+                (task_id,)
+            )[0]
+            
+            # 执行核心逻辑
+            gb = GitBisect()
+            result = gb.find_first_bad_commit(task)
+            
+            # 更新状态
+            local_db.execute_update(
+                "UPDATE bisect SET status='completed' WHERE id=%s",
+                (task_id,)
+            )
+            
+            return {'id': task_id, 'status': 'success'}
+        except Exception as e:
+            error_msg = f"Task {task_id} failed: {str(e)}"
+            logger.error(error_msg)
+            return {'id': task_id, 'status': 'failed', 'error': error_msg}
+        finally:
+            local_db.close()
+
     def _cleanup_interrupted_tasks(self):
         """清理被中断的任务"""
         try:
@@ -160,7 +203,24 @@ class BisectTask:
             port=int(os.environ.get('MANTICORE_WRITE_PORT', '9308'))
         )
         
+        # 初始化进程池
+        self.process_pool = ProcessPoolExecutor(
+            max_workers=min(4, multiprocessing.cpu_count()),
+            mp_context=multiprocessing.get_context('spawn'),
+            initializer=self._child_process_init
+        )
+        self.task_futures = []
+        
         self._register_signal_handlers()  # 注册信号处理器
+        
+    @staticmethod
+    def _child_process_init():
+        """子进程初始化函数"""
+        # 关闭父进程的连接池
+        if hasattr(BisectDB, 'pool'):
+            BisectDB.pool.disconnect()
+        # 重置日志配置
+        logger.reinit_for_process()
         
         # Initialize read-only jobs database connection
         self.jobs_db = BisectDB(
@@ -337,12 +397,34 @@ class BisectTask:
                 time.sleep(max(10, sleep_time - cycle_time))  # 保证最小间隔
 
     def run_bisect_tasks(self, bisect_tasks):
-        """处理 bisect 任务列表（使用 ManticoreClient 进行写操作）"""
-        for bisect_task in bisect_tasks:
-            task_id = int(bisect_task.get('id', 0))
-            if not task_id:
-                logger.error("无效的任务ID")
-                continue
+        """新版多进程任务处理"""
+        if not bisect_tasks:
+            return
+        
+        # 提交任务到进程池
+        futures = []
+        for task in bisect_tasks:
+            # 只传递必要ID，减少序列化开销
+            future = self.process_pool.submit(
+                self._process_single_task,
+                {'id': task['id']}  # 可序列化的最小数据
+            )
+            futures.append(future)
+            self.task_futures.append(future)
+        
+        # 处理结果
+        for future in as_completed(futures, timeout=7200):  # 2小时超时
+            try:
+                result = future.result()
+                if result['status'] == 'success':
+                    logger.info(f"任务完成: {result['id']}")
+                else:
+                    logger.error(f"任务失败: {result['id']} - {result['error']}")
+            except TimeoutError:
+                logger.error("任务处理超时，可能发生死锁")
+                future.cancel()
+            except Exception as e:
+                logger.error(f"结果处理异常: {str(e)}")
 
             bad_job_id = bisect_task.get('bad_job_id')
             error_id = bisect_task.get('error_id')

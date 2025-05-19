@@ -25,6 +25,7 @@ class BisectDB(GenericSQLClient):
     ):
         """Initialize database connection pool"""
         self._active_connections = threading.local()  # Thread local storage
+        self.pid = os.getpid()  # 记录进程ID
         super().__init__(
             host=host,
             port=port,
@@ -184,6 +185,17 @@ class BisectDB(GenericSQLClient):
             json_str = json.dumps(value).replace("'", "''")
             return f"'{json_str}'"
 
+    def _reinit_pool(self, pid):
+        """进程变化时重新初始化连接池"""
+        self.pid = pid
+        if hasattr(self, 'pool'):
+            self.pool.close()
+        self.pool = mysql.connector.pooling.MySQLConnectionPool(
+            pool_name=f"bisect_pool_{pid}",
+            pool_size=self.pool_size,
+            **self.connect_args
+        )
+        
     def close(self):
         """安全关闭连接池"""
         try:
