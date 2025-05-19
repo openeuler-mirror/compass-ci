@@ -25,11 +25,13 @@ import os
 import sys
 import shutil
 import time
-import threading
 import traceback
 import mysql.connector
 import hashlib
 import signal
+import multiprocessing
+import threading
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from random import randint
 from flask import Flask, jsonify, request
 from flask.views import MethodView
@@ -74,6 +76,55 @@ def generate_task_id(bad_job_id: str, error_id: str) -> int:
     return hash_int & 0x7FFFFFFFFFFFFFFF
 
 class BisectTask:
+    @staticmethod
+    def _init_process_resources(config):
+        """子进程资源初始化"""
+        global process_bisect_db, process_jobs_db, process_regression_db, process_client
+        
+        process_bisect_db = BisectDB(
+            host=config['manticore_host'],
+            port=config['manticore_port'],
+            database=config['bisect_db'],
+            pool_size=5
+        )
+        
+        process_jobs_db = BisectDB(
+            host=config['manticore_host'],
+            port=config['manticore_port'],
+            database=config['jobs_db'],
+            pool_size=3
+        )
+        
+        process_regression_db = BisectDB(
+            host=config['manticore_host'],
+            port=config['manticore_port'],
+            database=config['regression_db'],
+            pool_size=3
+        )
+        
+        process_client = ManticoreClient(
+            host=config['manticore_host'],
+            port=9308
+        )
+
+    @staticmethod
+    def _generate_task_path(config: dict, task: dict) -> str:
+        """进程安全的路径生成"""
+        pid = os.getpid()
+        tid = threading.get_ident()
+        
+        path = os.path.join(
+            'bisect_results',
+            f"proc-{pid}-thread-{tid}",
+            re.sub(r'[^\w\-]', '_', task.get('repo', 'unknown_repo'))[:32],
+            datetime.now().strftime("%Y-%m-%d"),
+            str(task['bad_job_id']),
+            hashlib.md5(task['error_id'].encode()).hexdigest()[:8],
+            str(task['id'])
+        )
+        os.makedirs(path, exist_ok=True, mode=0o755)
+        return os.path.abspath(path)
+
     def _register_signal_handlers(self):
         """注册信号处理"""
         signal.signal(signal.SIGINT, self._handle_exit_signal)
@@ -97,6 +148,7 @@ class BisectTask:
         date_str = datetime.fromtimestamp(create_time).strftime("%Y-%m-%d")
         
         # 压缩错误ID为8位哈希
+        # TODO remove
         error_id_hash = hashlib.md5(task['error_id'].encode()).hexdigest()[:8]
         
         # 构建路径
@@ -114,48 +166,87 @@ class BisectTask:
         os.makedirs(abs_path, exist_ok=True, mode=0o755)
         return abs_path
 
-    def _process_single_task(self, task_dict: dict):
-        """子进程内执行的原子操作"""
-        # 重新初始化必要组件
-        from lib.bisect_database import BisectDB
-        from lib.log_config import logger
-        
-        # 每个进程独立数据库连接
-        local_db = BisectDB(
-            host=os.getenv('MANTICORE_HOST'),
-            port=os.getenv('MANTICORE_PORT'),
-            database="bisect",
-            pool_size=1  # 单连接避免冲突
-        )
-        
+    @staticmethod
+    def _process_single_task(config: dict, task: dict):
+        """静态任务处理方法"""
         try:
-            # 任务处理逻辑
-            task_id = task_dict['id']
-            logger.info(f"Process {os.getpid()} handling task {task_id}")
+            global process_bisect_db, process_client
             
-            # 获取完整任务数据
-            task = local_db.execute_query(
-                "SELECT * FROM bisect WHERE id = %s", 
-                (task_id,)
-            )[0]
-            
-            # 执行核心逻辑
-            gb = GitBisect()
-            result = gb.find_first_bad_commit(task)
-            
-            # 更新状态
-            local_db.execute_update(
-                "UPDATE bisect SET status='completed' WHERE id=%s",
-                (task_id,)
-            )
+            task_id = task['id']
+            task_result_root = BisectTask._generate_task_path(config, task)
+
+            try:
+                # 检查任务状态
+                status_check = process_bisect_db.execute_query(
+                    f"SELECT bisect_status FROM bisect WHERE id = {task_id} AND bisect_status = 'wait'"
+                )
+                if not status_check:
+                    logger.warning(f"跳过无效任务 | ID: {task_id}")
+                    return
+
+                # 更新任务状态为处理中
+                task["bisect_status"] = "processing"
+                # Convert to Manticore SQL update
+
+                if process_client.replace("bisect", task_id, task):
+                    logger.info(f"开始处理任务 | ID: {task_id}")
+
+                # 准备任务数据
+                task['bisect_result_root'] = task_result_root
+                # 执行 bisect
+                logger.info(f"开始处理任务 |  {task}")
+                gb = GitBisect()
+                result = gb.find_first_bad_commit(task)
+
+                if result:
+                    # 构造完整结果文档
+                    complete_doc = {
+                        "bisect_status": "completed",
+                        "project": result.get('repo', ''),
+                        "git_url": result.get('git_url', ''),
+                        "bad_commit": result.get('first_bad_commit', ''),
+                        "first_bad_id": result.get('first_bad_id', ''),
+                        "first_result_root": result.get('bad_result_root', ''),
+                        "work_dir": result.get('work_dir', ''),
+                        "start_time": result.get('start_time', 0),
+                        "end_time": int(time.time()),
+                        "updated_at": int(time.time())
+                    }
+
+                    # 使用重试机制更新结果
+                    if not process_client.replace_with_retry("bisect", task_id, complete_doc):
+                        logger.error(f"结果更新失败 | ID: {task_id}")
+                    else:
+                        # 更新回归数据
+                        BisectTask.update_regression(task, result)
+                        logger.info(f"任务完成 | ID: {task_id}")
+
+                else:
+                    # 处理失败情况
+                    fail_doc = {
+                        "bisect_status": "failed",
+                        "last_error": "Bisect execution failed",
+                        "updated_at": int(time.time())
+                    }
+                    process_client.replace_with_retry("bisect", task_id, fail_doc)
+                    logger.error(f"任务执行失败 | ID: {task_id}")
+
+            except Exception as e:
+                # 异常处理
+                error_doc = {
+                    "bisect_status": "failed",
+                    "last_error": str(e)[:200],  # 限制错误信息长度
+                    "updated_at": int(time.time())
+                }
+                process_client.replace_with_retry("bisect", task_id, error_doc)
+                logger.error(f"任务异常 | ID: {task_id} | 错误: {str(e)}")
+                logger.error(traceback.format_exc())
             
             return {'id': task_id, 'status': 'success'}
         except Exception as e:
             error_msg = f"Task {task_id} failed: {str(e)}"
             logger.error(error_msg)
             return {'id': task_id, 'status': 'failed', 'error': error_msg}
-        finally:
-            local_db.close()
 
     def _cleanup_interrupted_tasks(self):
         """清理被中断的任务"""
@@ -180,7 +271,8 @@ class BisectTask:
 
                 # 3. 删除数据目录
                 for task in tasks:
-                    if os.path.exists(result_root):
+                    result_root = task.get('result_root')
+                    if result_root and os.path.exists(result_root):
                         try:
                             shutil.rmtree(result_root)
                             logger.info(f"成功删除数据目录: {result_root}")
@@ -196,55 +288,53 @@ class BisectTask:
     def __init__(self):
         self.bisect_task = None
         self.running = True  # 运行状态标志
-        
-        # Initialize ManticoreClient for HTTP API operations
         self.client = ManticoreClient(
             host=os.environ.get('MANTICORE_HOST', 'localhost'),
             port=int(os.environ.get('MANTICORE_WRITE_PORT', '9308'))
         )
+        self.jobs_db = BisectDB(
+            host=os.environ.get('MANTICORE_HOST', 'localhost'),
+            port=os.environ.get('MANTICORE_PORT', '9306'),
+            database="jobs",
+            pool_size=3
+        )
+        logger.info(f"主进程 jobs DB 连接 ID: {id(self.jobs_db)}")
+
+        self.bisect_db = BisectDB(
+            host=os.environ.get('MANTICORE_HOST', 'localhost'),
+            port=os.environ.get('MANTICORE_PORT', '9306'),
+            database="bisect",
+            pool_size=3
+        )
+        logger.info(f"主进程 bisect DB 连接 ID: {id(self.bisect_db)}")
+
+        # 主进程数据库连接初始化
+        self.regression_db = BisectDB(
+            host=os.environ.get('MANTICORE_HOST', 'localhost'),
+            port=os.environ.get('MANTICORE_PORT', '9306'),
+            database="regression",
+            pool_size=3
+        )
+        logger.info(f"主进程 RegressionDB 连接 ID: {id(self.regression_db)}")
         
-        # 初始化进程池
+        # 子进程配置
+        self._config = {
+            "manticore_host": os.environ.get('MANTICORE_HOST', 'localhost'),
+            "manticore_port": os.environ.get('MANTICORE_PORT', '9306'),
+            "bisect_db": "bisect",
+            "jobs_db": "jobs",
+            "regression_db": "regression"
+        }
+        
         self.process_pool = ProcessPoolExecutor(
-            max_workers=min(4, multiprocessing.cpu_count()),
-            mp_context=multiprocessing.get_context('spawn'),
-            initializer=self._child_process_init
+            max_workers=os.cpu_count(),
+            initializer=self._init_process_resources,
+            initargs=(self._config,)
         )
         self.task_futures = []
         
         self._register_signal_handlers()  # 注册信号处理器
         
-    @staticmethod
-    def _child_process_init():
-        """子进程初始化函数"""
-        # 关闭父进程的连接池
-        if hasattr(BisectDB, 'pool'):
-            BisectDB.pool.disconnect()
-        # 重置日志配置
-        logger.reinit_for_process()
-        
-        # Initialize read-only jobs database connection
-        self.jobs_db = BisectDB(
-            host=os.environ.get('MANTICORE_HOST', 'localhost'),
-            port=os.environ.get('MANTICORE_PORT', '9306'),
-            database="jobs",
-            readonly=True,
-            pool_size=10
-        )
-        
-        # Initialize read-write bisect database connection
-        self.bisect_db = BisectDB(
-            host=os.environ.get('MANTICORE_HOST', 'localhost'),
-            port=os.environ.get('MANTICORE_PORT', '9306'),
-            database="bisect",
-            pool_size=15
-        )
-
-        self.regression_db = BisectDB(
-            host=os.environ.get('MANTICORE_HOST', 'localhost'),
-            port=os.environ.get('MANTICORE_PORT', '9306'),
-            database="regression",
-            pool_size=5
-        )
         self._start_monitor()
 
 
@@ -395,25 +485,21 @@ class BisectTask:
                 # 动态休眠控制（无任务时延长休眠）
                 sleep_time = 30 if processed > 0 else 60
                 time.sleep(max(10, sleep_time - cycle_time))  # 保证最小间隔
-
     def run_bisect_tasks(self, bisect_tasks):
-        """新版多进程任务处理"""
+        """改造后的任务提交方法"""
         if not bisect_tasks:
             return
-        
-        # 提交任务到进程池
         futures = []
         for task in bisect_tasks:
-            # 只传递必要ID，减少序列化开销
             future = self.process_pool.submit(
                 self._process_single_task,
-                {'id': task['id']}  # 可序列化的最小数据
+                self._config,
+                task
             )
             futures.append(future)
             self.task_futures.append(future)
-        
-        # 处理结果
-        for future in as_completed(futures, timeout=7200):  # 2小时超时
+
+        for future in as_completed(futures, timeout=72000):  # 2小时超时
             try:
                 result = future.result()
                 if result['status'] == 'success':
@@ -425,100 +511,6 @@ class BisectTask:
                 future.cancel()
             except Exception as e:
                 logger.error(f"结果处理异常: {str(e)}")
-
-            bad_job_id = bisect_task.get('bad_job_id')
-            error_id = bisect_task.get('error_id')
-            task_result_root = self.get_task_result_root({
-                'suite': bisect_task.get('suite'),
-                'bad_job_id': bisect_task['bad_job_id'],
-                'error_id': bisect_task['error_id'],
-                'id': task_id,
-                'create_time': bisect_task.get('start_time', time.time())
-            })
-
-            try:
-                # 检查任务状态
-                status_check = self.bisect_db.execute_query(
-                    f"SELECT bisect_status FROM bisect WHERE id = {task_id} AND bisect_status = 'wait'"
-                )
-                if not status_check:
-                    logger.warning(f"跳过无效任务 | ID: {task_id}")
-                    continue
-
-                current_time = int(time.time())
-                # 更新任务状态为处理中
-                bisect_task["bisect_status"] = "processing"
-                # Convert to Manticore SQL update
-                update_sql = f"""
-                    UPDATE bisect
-                    SET bisect_status = 'processing', 
-                    start_time = {current_time},
-                    updated_at = {current_time},
-                    work_dir = {task_result_root}
-                    WHERE id = {task_id}
-                       AND bisect_status = 'wait'
-                """
-                affected_rows = self.bisect_db.execute_update(update_sql)
-                if affected_rows == 0:
-                    logger.warning(f"<E8><B7><B3><E8><BF><87><E5><B7><B2><E8><A2><AB><E5><A4><84><E7><90><86><E7><9A><84><E4><BB><BB><E5><8A><A1> ID: {task_id}")
-                    continue
-
-                logger.info(f"开始处理任务 | ID: {task_id}")
-
-                # 准备任务数据
-                task = {
-                    'bad_job_id': bad_job_id,
-                    'error_id': error_id,
-                    'bisect_result_root': task_result_root
-                }
-
-                # 执行 bisect
-                gb = GitBisect()
-                result = gb.find_first_bad_commit(task)
-
-                if result:
-                    # 构造完整结果文档
-                    complete_doc = {
-                        "bisect_status": "completed",
-                        "project": result.get('repo', ''),
-                        "git_url": result.get('git_url', ''),
-                        "bad_commit": result.get('first_bad_commit', ''),
-                        "first_bad_id": result.get('first_bad_id', ''),
-                        "first_result_root": result.get('bad_result_root', ''),
-                        "work_dir": result.get('work_dir', ''),
-                        "start_time": result.get('start_time', 0),
-                        "end_time": int(time.time()),
-                        "updated_at": int(time.time())
-                    }
-
-                    # 使用重试机制更新结果
-                    if not self.client.replace_with_retry("bisect", task_id, complete_doc):
-                        logger.error(f"结果更新失败 | ID: {task_id}")
-                    else:
-                        # 更新回归数据
-                        self.update_regression(task, result)
-                        logger.info(f"任务完成 | ID: {task_id}")
-
-                else:
-                    # 处理失败情况
-                    fail_doc = {
-                        "bisect_status": "failed",
-                        "last_error": "Bisect execution failed",
-                        "updated_at": int(time.time())
-                    }
-                    self.client.replace_with_retry("bisect", task_id, fail_doc)
-                    logger.error(f"任务执行失败 | ID: {task_id}")
-
-            except Exception as e:
-                # 异常处理
-                error_doc = {
-                    "bisect_status": "failed",
-                    "last_error": str(e)[:200],  # 限制错误信息长度
-                    "updated_at": int(time.time())
-                }
-                self.client.replace_with_retry("bisect", task_id, error_doc)
-                logger.error(f"任务异常 | ID: {task_id} | 错误: {str(e)}")
-                logger.error(traceback.format_exc())
 
     def update_regression(self, task, result):
         """Update regression database with bisect results"""
@@ -534,7 +526,7 @@ class BisectTask:
             error_id = task['error_id'].replace("'", "''")  # 转义单引号
 
             # 检查是否已存在有效记录
-            existing = self.regression_db.execute_query(
+            existing = process_regression_db.execute_query(
                 f"SELECT id, bisect_count, related_jobs "
                 f"FROM regression "
                 f"WHERE record_type = 'errid' "
@@ -547,7 +539,7 @@ class BisectTask:
                 new_id = int(f"{current_time}{randint(1000,9999)}")  # 生成唯一ID
                 category = result.get('category', 'unknown').replace("'", "''")
                 related_jobs_json = json.dumps([bad_job_id])  # 初始化为数组
-                
+                # TODO replace by manticore
                 insert_sql = f"""
                     INSERT INTO regression 
                     (id, record_type, errid, category, 
@@ -581,9 +573,9 @@ class BisectTask:
                             '$', 
                             '{bad_job_id}'
                         )
-                    WHERE id = {record_id}
+                    WHERE id = %s
                 """
-                self.regression_db.execute_update(update_sql)
+                process_regression_db.execute_update(update_sql, (record_id,))
 
             logger.info(f"Regression updated | ErrorID: {error_id}")
 
@@ -639,7 +631,7 @@ class BisectTask:
             SELECT * 
             FROM bisect
             WHERE bisect_status = 'wait'
-            LIMIT 20
+            LIMIT 10
         """
 
         result = self.bisect_db.execute_query(sql)
@@ -705,7 +697,7 @@ class BisectTask:
         # TODO: 增加判断 AND submit_time > NOW() - INTERVAL 7 DAY
         # Perf monitor
         sql_failure = """
-            SELECT id, errid as errid, suite, category
+            SELECT id, errid as errid, j.suite as suite, j.category as category
             FROM jobs 
             WHERE j.job_health = 'abort' 
               AND j.stats IS NOT NULL
@@ -724,7 +716,7 @@ class BisectTask:
         errid_white_list = {item['errid'] for item in errid_white_list_raw} if errid_white_list_raw else set()
 
         # Execute Manticore SQL queries
-        result = self.bisect_db.execute_query(sql_failure)
+        result = self.jobs_db.execute_query(sql_failure)
         # Convert the list of tasks into a dictionary with task IDs as keys
         # 添加详细日志记录原始数据格式 
         # Process the tasks to filter and transform them based on the white list
@@ -795,7 +787,6 @@ class BisectAPI(MethodView):
 
     def post(self):
         task = request.json
-        print(task)
         if not task:
             return jsonify({"error": "No data provided"}), 400
         self.bisect_api.add_bisect_task(task)
@@ -887,20 +878,11 @@ def run_flask():
 
 def main():
     try:
-        # 先启动后台任务
-        #set_log()
+        executor = ThreadPoolExecutor(max_workers=3)
         run = BisectTask()
-        bisect_producer_thread = threading.Thread(target=run.bisect_producer, daemon=True)
-        bisect_producer_thread.start()
-        # 在独立线程运行Flask
-        flask_thread = threading.Thread(target=run_flask, daemon=True)
-        flask_thread.start()
-        time.sleep(5)
-
-        num_consumer_threads = 2
-        for i in range(num_consumer_threads):
-            bisect_consumer_thread = threading.Thread(target=run.bisect_consumer, daemon=True)
-            bisect_consumer_thread.start()
+        executor.submit(run.bisect_producer)
+        executor.submit(run_flask)
+        executor.submit(run.bisect_consumer)
 
         # 主线程保持活跃
         while True:
