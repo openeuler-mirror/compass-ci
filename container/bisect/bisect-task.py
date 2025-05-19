@@ -238,7 +238,7 @@ class BisectTask:
                     if not self.bisect_db.execute_query(f"""SELECT id FROM bisect WHERE error_id='{task['error_id']}' AND bad_job_id='{task['bad_job_id']}'"""):
                         if self.add_bisect_task(task):
                             success_count += 1
-                        logger.info(f"Add {task['error_id']} and {task['bad_job_id']} OK")
+                            logger.info(f"Add {task['error_id']} and {task['bad_job_id']} OK")
                 
                 error_count = max(0, error_count - 1)  # Reduce error count on success
 
@@ -603,7 +603,8 @@ class BisectTask:
             AND valid = 'true'
             ORDER BY id DESC
         """
-        errid_white_list = self.regression_db.execute_query(sql_error_id)
+        errid_white_list_raw = self.regression_db.execute_query(sql_error_id)
+        errid_white_list = {item['errid'] for item in errid_white_list_raw} if errid_white_list_raw else set()
 
         # Execute Manticore SQL queries
         result = self.bisect_db.execute_query(sql_failure)
