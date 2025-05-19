@@ -25,6 +25,8 @@ class GenericSQLClient:
         self.port = port
         self.database = database
         self.readonly = readonly
+        self._connection_counter = 0  # 简单计数
+        self.pool = None  # 显式初始化
 
         connect_args = {
             'host': host,
@@ -71,10 +73,8 @@ class GenericSQLClient:
         
         try:
             conn = self.pool.get_connection()
-            if not hasattr(self._active_connections, 'count'):
-                self._active_connections.count = 0
-            self._active_connections.count += 1
-            logger.debug(f"获取连接 #{self._active_connections.count}")
+            self._connection_counter += 1
+            logger.debug(f"获取连接 #{self._connection_counter}")
             return conn
         except AttributeError as e:
             logger.error("连接池未初始化，请检查以下配置：")
