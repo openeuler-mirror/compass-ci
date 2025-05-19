@@ -18,6 +18,8 @@
 import json
 import re
 import subprocess
+import hashlib
+from datetime import datetime
 import yaml
 import os
 import sys
@@ -85,12 +87,39 @@ class BisectTask:
         self._cleanup_interrupted_tasks()
         sys.exit(1)
 
+    def get_task_result_root(self, task):
+        """生成带日期的扁平化存储路径"""
+        # 安全处理仓库名（替换特殊字符）
+        repo_name = re.sub(r'[^\w\-]', '_', task.get('repo', 'unknown_repo'))[:32]
+        
+        # 获取任务时间（使用当前时间作为默认）
+        create_time = task.get('create_time', time.time())
+        date_str = datetime.fromtimestamp(create_time).strftime("%Y-%m-%d")
+        
+        # 压缩错误ID为8位哈希
+        error_id_hash = hashlib.md5(task['error_id'].encode()).hexdigest()[:8]
+        
+        # 构建路径
+        path = os.path.join(
+            'bisect_results',
+            repo_name,
+            date_str,
+            str(task['bad_job_id']),
+            error_id_hash,
+            str(task['id'])
+        )
+        
+        # 创建目录并返回绝对路径
+        abs_path = os.path.abspath(path)
+        os.makedirs(abs_path, exist_ok=True, mode=0o755)
+        return abs_path
+
     def _cleanup_interrupted_tasks(self):
         """清理被中断的任务"""
         try:
             # 1. 获取所有 processing 状态的任务
             tasks = self.bisect_db.execute_query(
-                "SELECT id  FROM bisect "
+                "SELECT id, work_dir as result_root FROM bisect "
                 "WHERE bisect_status = 'processing'"
             )
             
@@ -108,7 +137,6 @@ class BisectTask:
 
                 # 3. 删除数据目录
                 for task in tasks:
-                    result_root = os.path.abspath(os.path.join('bisect_results', task['id']))
                     if os.path.exists(result_root):
                         try:
                             shutil.rmtree(result_root)
@@ -318,7 +346,13 @@ class BisectTask:
 
             bad_job_id = bisect_task.get('bad_job_id')
             error_id = bisect_task.get('error_id')
-            task_result_root = os.path.abspath(os.path.join('bisect_results', str(task_id)))
+            task_result_root = self.get_task_result_root({
+                'suite': bisect_task.get('suite'),
+                'bad_job_id': bisect_task['bad_job_id'],
+                'error_id': bisect_task['error_id'],
+                'id': task_id,
+                'create_time': bisect_task.get('start_time', time.time())
+            })
 
             try:
                 # 检查任务状态
@@ -337,7 +371,8 @@ class BisectTask:
                     UPDATE bisect
                     SET bisect_status = 'processing', 
                     start_time = {current_time},
-                    updated_at = {current_time}
+                    updated_at = {current_time},
+                    work_dir = {task_result_root}
                     WHERE id = {task_id}
                        AND bisect_status = 'wait'
                 """
@@ -585,10 +620,10 @@ class BisectTask:
         :return: A list of processed tasks that match the white list criteria.
         """
         # Define SQL for PKGBUILD tasks
-        # TODO: AND submit_time > NOW() - INTERVAL 7 DAY
+        # TODO: 增加判断 AND submit_time > NOW() - INTERVAL 7 DAY
         # Perf monitor
         sql_failure = """
-            SELECT id, errid as errid
+            SELECT id, errid as errid, suite, category
             FROM jobs 
             WHERE j.job_health = 'abort' 
               AND j.stats IS NOT NULL
