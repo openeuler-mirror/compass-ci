@@ -37,6 +37,35 @@ def test_insert_success(mock_post, default_client):
     )
 
 @patch('requests.post')
+def test_update_success(mock_post, default_client):
+    """测试部分更新文档成功"""
+    mock_post.return_value.status_code = 200
+    update_fields = {"bisect_status": "completed"}
+    
+    assert default_client.update("bisect", 123456, update_fields) is True
+    
+    mock_post.assert_called_once_with(
+        "http://localhost:9308/update",
+        json={"index": "bisect", "id": 123456, "doc": update_fields},
+        timeout=3
+    )
+
+@patch('requests.post')
+def test_update_partial_fields(mock_post, default_client):
+    """测试仅更新部分字段"""
+    mock_post.return_value.status_code = 200
+    partial_update = {"status": "done", "progress": 100}
+    
+    assert default_client.update("bisect", 789, partial_update) is True
+    assert mock_post.call_args[1]['json']['doc'] == partial_update
+
+@patch('requests.post')
+def test_update_failure(mock_post, default_client):
+    """测试更新失败场景"""
+    mock_post.return_value.status_code = 500
+    assert default_client.update("bisect", 456, {"key": "value"}) is False
+
+@patch('requests.post')
 def test_replace_retry_success(mock_post, default_client, bisect_test_data):
     """测试带重试的替换操作"""
     # 第一次失败，第二次成功
