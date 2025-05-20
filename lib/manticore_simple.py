@@ -15,6 +15,10 @@ class ManticoreClient:
         """替换文档""" 
         return self._request("replace", index, id, document)
 
+    def update(self, index: str, id: int, document: dict) -> bool:
+        """部分更新文档（仅修改指定字段）"""
+        return self._request("update", index, id, document)
+
     def replace_with_retry(self, index: str, id: int, document: dict, retries: int = 3) -> bool:
         """带重试机制的替换操作"""
         for i in range(retries):
