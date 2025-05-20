@@ -118,34 +118,6 @@ class BisectTask:
         self._cleanup_interrupted_tasks()
         sys.exit(1)
 
-    def get_task_result_root(self, task):
-        """生成带日期的扁平化存储路径"""
-        # 安全处理仓库名（替换特殊字符）
-        repo_name = re.sub(r'[^\w\-]', '_', task.get('repo', 'unknown_repo'))[:32]
-        
-        # 获取任务时间（使用当前时间作为默认）
-        create_time = task.get('create_time', time.time())
-        date_str = datetime.fromtimestamp(create_time).strftime("%Y-%m-%d")
-        
-        # 压缩错误ID为8位哈希
-        # TODO remove
-        error_id_hash = hashlib.md5(task['error_id'].encode()).hexdigest()[:8]
-        
-        # 构建路径
-        path = os.path.join(
-            'bisect_results',
-            repo_name,
-            date_str,
-            str(task['bad_job_id']),
-            error_id_hash,
-            str(task['id'])
-        )
-        
-        # 创建目录并返回绝对路径
-        abs_path = os.path.abspath(path)
-        os.makedirs(abs_path, exist_ok=True, mode=0o755)
-        return abs_path
-
     @staticmethod
     def _process_single_task(config: dict, task: dict):
         """静态任务处理方法"""
@@ -168,7 +140,7 @@ class BisectTask:
                 task["bisect_status"] = "processing"
                 # Convert to Manticore SQL update
 
-                if process_client.replace("bisect", task_id, task):
+                if process_client.update("bisect", task_id, task):
                     logger.info(f"开始处理任务 | ID: {task_id}")
 
                 # 准备任务数据
@@ -194,7 +166,7 @@ class BisectTask:
                     }
 
                     # 使用重试机制更新结果
-                    if not process_client.replace_with_retry("bisect", task_id, complete_doc):
+                    if not process_client.update("bisect", task_id, complete_doc):
                         logger.error(f"结果更新失败 | ID: {task_id}")
                     else:
                         # 更新回归数据
@@ -208,7 +180,7 @@ class BisectTask:
                         "last_error": "Bisect execution failed",
                         "updated_at": int(time.time())
                     }
-                    process_client.replace_with_retry("bisect", task_id, fail_doc)
+                    process_client.update("bisect", task_id, fail_doc)
                     logger.error(f"任务执行失败 | ID: {task_id}")
 
             except Exception as e:
@@ -218,7 +190,7 @@ class BisectTask:
                     "last_error": str(e)[:200],  # 限制错误信息长度
                     "updated_at": int(time.time())
                 }
-                process_client.replace_with_retry("bisect", task_id, error_doc)
+                process_client.update("bisect", task_id, error_doc)
                 logger.error(f"任务异常 | ID: {task_id} | 错误: {str(e)}")
                 logger.error(traceback.format_exc())
             
@@ -339,14 +311,6 @@ class BisectTask:
         except Exception as e:
             logger.error(f"Unknown error: {str(e)}")
             return False
-
-    def get_job_info_from_jobs(self, job_id):
-        job_id = int(job_id)
-        job_json = self.jobs_db.execute_query("SELECT j FROM jobs WHERE id = %s", (job_id,))
-        if not job_json:
-            return {}
-        first_row = job_json[0]
-        return json.loads(first_row.get('j', {}))
 
     def set_priority_level(self, job_info: dict) -> int:
         """
@@ -677,10 +641,9 @@ class BisectTask:
         # TODO: 增加判断 AND submit_time > NOW() - INTERVAL 7 DAY
         # Perf monitor
         sql_failure = """
-            SELECT id, errid as errid, j.suite as suite, j.category as category
+            SELECT id, errid as errid, j.suite as suite
             FROM jobs 
-            WHERE j.job_health = 'abort' 
-              AND j.stats IS NOT NULL
+            WHERE j.errid IS NOT NULL
             ORDER BY id DESC
         """
 
