@@ -79,29 +79,13 @@ class BisectTask:
     @staticmethod
     def _init_process_resources(config):
         """子进程资源初始化"""
-        global process_bisect_db, process_jobs_db, process_regression_db, process_client
-        
+        global process_bisect_db,  process_client
         process_bisect_db = BisectDB(
             host=config['manticore_host'],
             port=config['manticore_port'],
             database=config['bisect_db'],
             pool_size=5
-        )
-        
-        process_jobs_db = BisectDB(
-            host=config['manticore_host'],
-            port=config['manticore_port'],
-            database=config['jobs_db'],
-            pool_size=3
-        )
-        
-        process_regression_db = BisectDB(
-            host=config['manticore_host'],
-            port=config['manticore_port'],
-            database=config['regression_db'],
-            pool_size=3
-        )
-        
+        ) 
         process_client = ManticoreClient(
             host=config['manticore_host'],
             port=9308
@@ -109,14 +93,10 @@ class BisectTask:
 
     @staticmethod
     def _generate_task_path(config: dict, task: dict) -> str:
-        """进程安全的路径生成"""
-        pid = os.getpid()
-        tid = threading.get_ident()
-        
+        """进程安全的路径生成""" 
         path = os.path.join(
             'bisect_results',
-            f"proc-{pid}-thread-{tid}",
-            re.sub(r'[^\w\-]', '_', task.get('repo', 'unknown_repo'))[:32],
+            re.sub(r'[^\w\-]', '_', task.get('suite', 'unknown_repo'))[:32],
             datetime.now().strftime("%Y-%m-%d"),
             str(task['bad_job_id']),
             hashlib.md5(task['error_id'].encode()).hexdigest()[:8],
