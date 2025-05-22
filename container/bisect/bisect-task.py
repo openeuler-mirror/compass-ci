@@ -124,7 +124,7 @@ class BisectTask:
         try:
             global process_bisect_db, process_client
             
-            task_id = task['id']
+            task_id = int(task['id'])
             task_result_root = BisectTask._generate_task_path(config, task)
 
             try:
@@ -638,15 +638,19 @@ class BisectTask:
         :return: A list of processed tasks that match the white list criteria.
         """
         # Define SQL for PKGBUILD tasks
-        # TODO: 增加判断 AND submit_time > NOW() - INTERVAL 7 DAY
+        # TODO: 不应该添加重复的 bad_job_id, 避免找不到 _url 的内容被查找
+        # 增加判断 AND submit_time > NOW() - INTERVAL 7 DAY
         # Perf monitor
         sql_failure = """
-            SELECT id, errid as errid, j.suite as suite
-            FROM jobs 
+            SELECT id, errid as errid, j.suite as suite, full_text_kv as text
+            FROM jobs
             WHERE j.errid IS NOT NULL
+            AND j.program IS NOT NULL
+            AND MATCH('job_health=abort job_stage=finish')
             ORDER BY id DESC
+            LIMIT 1000
         """
-
+        # select id, errid, full_text_kv from jobs where match('job_health=abort job_stage=finish') and j.errid is not null and j.program is not null order by id desc limit 1000
         # Define the white list of error IDs
         sql_error_id = """
             SELECT errid
@@ -655,6 +659,7 @@ class BisectTask:
             AND valid = 'true'
             ORDER BY id DESC
         """
+        # TODO: 一个 bad_job_id 应该和白名单判断一次
         errid_white_list_raw = self.regression_db.execute_query(sql_error_id)
         errid_white_list = {item['errid'] for item in errid_white_list_raw} if errid_white_list_raw else set()
 
