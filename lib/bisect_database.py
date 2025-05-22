@@ -4,45 +4,6 @@
 import os
 from log_config import logger, StructuredLogger
 import mysql.connector
-from py_bisect import GitBisect
-
-def _process_task_worker(task_id: int):
-    """独立进程任务处理函数"""
-    logger = StructuredLogger()  # 每个进程独立实例
-    
-    # 每个进程独立数据库连接
-    local_db = BisectDB(
-        host=os.getenv('MANTICORE_HOST'),
-        port=os.getenv('MANTICORE_PORT'),
-        database="bisect",
-        pool_size=1
-    )
-    
-    try:
-        logger.info(f"Process {os.getpid()} handling task {task_id}")
-        
-        # 获取任务数据
-        task = local_db.execute_query(
-            "SELECT * FROM bisect WHERE id = %s", 
-            (task_id,)
-        )[0]
-        
-        # 执行核心逻辑
-        gb = GitBisect()
-        result = gb.find_first_bad_commit(task)
-        
-        # 更新状态
-        local_db.execute_update(
-            "UPDATE bisect SET status='completed' WHERE id=%s",
-            (task_id,)
-        )
-        return {'id': task_id, 'status': 'success'}
-    except Exception as e:
-        error_msg = f"Task {task_id} failed: {str(e)}"
-        logger.error(error_msg)
-        return {'id': task_id, 'status': 'failed', 'error': error_msg}
-    finally:
-        local_db.close()
 from generic_sql_client import GenericSQLClient
 from mysql.connector import Error
 import json
