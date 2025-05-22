@@ -84,7 +84,7 @@ class BisectTask:
             host=config['manticore_host'],
             port=config['manticore_port'],
             database=config['bisect_db'],
-            pool_size=5
+            pool_size=1
         ) 
         process_client = ManticoreClient(
             host=config['manticore_host'],
@@ -248,7 +248,7 @@ class BisectTask:
             host=os.environ.get('MANTICORE_HOST', 'localhost'),
             port=os.environ.get('MANTICORE_PORT', '9306'),
             database="jobs",
-            pool_size=3
+            pool_size=2
         )
         logger.info(f"主进程 jobs DB 连接 ID: {id(self.jobs_db)}")
 
@@ -256,7 +256,7 @@ class BisectTask:
             host=os.environ.get('MANTICORE_HOST', 'localhost'),
             port=os.environ.get('MANTICORE_PORT', '9306'),
             database="bisect",
-            pool_size=3
+            pool_size=2
         )
         logger.info(f"主进程 bisect DB 连接 ID: {id(self.bisect_db)}")
 
@@ -265,7 +265,7 @@ class BisectTask:
             host=os.environ.get('MANTICORE_HOST', 'localhost'),
             port=os.environ.get('MANTICORE_PORT', '9306'),
             database="regression",
-            pool_size=3
+            pool_size=2
         )
         logger.info(f"主进程 RegressionDB 连接 ID: {id(self.regression_db)}")
         
