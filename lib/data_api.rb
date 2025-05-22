@@ -106,7 +106,7 @@ module EsDataApi
     query_sql = join_query_sql(query_index, query_field)
     query_sql = credentials_for_sql(query_sql, request_body)
     query_sql += " #{query_condition}" unless query_condition.nil?
-    query_index, query_sql
+    return query_index, query_sql
   end
 
   def self.opendistro_sql(params)
