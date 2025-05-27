@@ -645,7 +645,7 @@ class BisectTask:
             SELECT id, errid as errid, j.suite as suite, full_text_kv as text
             FROM jobs
             WHERE j.errid IS NOT NULL
-            AND j.program IS NOT NULL
+            AND (j.program.makepkg._url IS NOT NULL OR j.ss IS NOT NULL)
             AND MATCH('job_health=abort job_stage=finish')
             ORDER BY id DESC
             LIMIT 1000
