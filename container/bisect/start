@@ -26,6 +26,8 @@ DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
 DEFAULT_USER_CONFIG_DIR = File.expand_path("~/.config/compass-ci/")
 DEFAULT_BISECT_CONFIG_DIR = '/home/bisect/.config/compass-ci/'
 MANTICORE_HOST='172.17.0.1'
+BISECT_LOG_DIR='/home/bisect'
+HOST_LOG_DIR='/tmp/.bisect'
 docker_rm 'bisect'
 
 cmd = %w[
