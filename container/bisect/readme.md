@@ -4,6 +4,52 @@
 
 `bisect_task` 是一个用于自动化处理 bisect 任务的服务。它通过与 Manticore 数据库交互，管理任务的提交、处理和状态更新。
 
+### bisect-task 流程
+
++---------+  get_new_bisect_task_from_jobs   +-----------------+  add_bisect_task   +-----------------------------+
+| jobs db | -------------------------------> | bisect producer | -----------------> |          bisect db          |
++---------+                                  +-----------------+                    +-----------------------------+
+                                                                                      |
+                                                                                      | get_tasks_from_bisect_task
+                                                                                      v
+                                                                                    +-----------------------------+     +-----------+          +-------------------+
+                                                                                    |       bisect consumer       | --> | run bisct | -+-----> | bisect process .. |
+                                                                                    +-----------------------------+     +-----------+  |       +-------------------+
+                                                                                                                                       |       +-------------------+
+                                                                                                                                       +-----> | bisect process 1  |
+                                                                                                                                       |       +-------------------+
+                                                                                                                                       |       +-------------------+
+                                                                                                                                       +-----> | bisect process n  |
+                                                                                                                                               +-------------------+
+### 在 compass-ci 中
+
++-----------------+          +------------+           +-------------------------+
+| upstream update | -+-----> | benchmark  | ------+-> |         jobs db         |
++-----------------+  |       +------------+       |   +-------------------------+
+                     |                            |     |
+                     |                            |     | bad_job
+                     |                            |     v
+                     |       +------------+       |   +-------------------------+                            valid errid
+                     +-----> |   build    | ------+   |  bisect-task producer   | <---------------------------------------------------+
+                     |       +------------+       |   +-------------------------+                                                     |
+                     |                            |     |                                                                             |
+                     |                            |     |                                                                             |
+                     |                            |     v                                                                             |
+                     |       +------------+       |   +-------------------------+                                                     |
+                     +-----> | functional | ------+   |        bisect db        | <+                                                  |
+                             +------------+           +-------------------------+  |                                                  |
+                                                        |                          |                                                  |
+                                                        | task wait to be bisect   | found first bad commit                           |
+                                                        v                          |                                                  |
+                                                      +----------------------------------------------------+  sucess bisect errid   +---------------+
+                                                      |                bisect-task consumer                | ---------------------> | regression db |
+                                                      +----------------------------------------------------+                        +---------------+
+                                                        |                          ^
+                                                        | task                     | return result
+                                                        v                          |
+                                                      +-------------------------+  |
+                                                      |        bisect-py        | -+
+                                                      +-------------------------+
 ## 功能
 
 - **任务提交**：通过 API 接口提交新的 bisect 任务。
@@ -73,4 +119,78 @@
 
 - Bisect 任务名称
 - 套件，开始时间/运行时间，步骤，组ID
+
+## bisect submit 归档设计部分
+
+### way1:
+	run in special testbox
+
+ensure security:
+- account/token
+- visit services
+
+
+common testbox:
+	submit upload lkp-tests tar ball, run in testbox
+
+secure testbox:
+	submit NO UPLOAD lkp-tests tar ball
+	run only selected list of programs
+	run in a dedicated host machine, FW can visit services
+
+
+### way2:
+submit job1
+	submit job2, reuse same account info
+problem: consumes his credit / machine time
+
+### way3:
+compass ci container/ run as service
+refer to delimiter service
+	system bisect account
+
+	provide API/new-bisect-task
+		add to ES
+	
+	loop:
+		consume one task from ES
+		fork process, start bisect
+			bisect step
+			submit job
+			change bisect-task state=finish
+
+submit-jobs
+
+### regression db
+### bisect task queue
+### bisect tasks management and dashboard
+
+	bisect task name	
+	suite	start_time/run_time  step group_id
+
+## 附录
+
+### 流程图源码
+
+```
+##############################################################
+# compass-ci bisect 流程图 v 0.5
+
+[ upstream update ] -> { start: front, 0; }  [ build ], [ functional ],  [ benchmark ] -> { end: back,0; } [ jobs db ]
+[ jobs db ]  {flow: south;} - bad_job  -> [ bisect-task producer ] -> {flow: south;} [ bisect db ] {flow: south;} - task wait to be bisect -> [ bisect-task consumer ] - task -> [ bisect-py ]
+[ bisect-py ] - return result -> [ bisect-task consumer ] - found first bad commit -> [ bisect db ]
+[ regression db ] - valid errid -> [ bisect-task producer ]
+[ bisect-task consumer ] - sucess bisect errid ->  [ regression db ]
+```
+
+```
+##############################################################
+# bisect-task 流程图 v 0.5
+# {flow: south;} 向下
+# { end: back,0; } 多个聚合为一
+# { start: front, 0; } 一分为多
+[ jobs db ] - get_new_bisect_task_from_jobs -> [ bisect producer ] - add_bisect_task -> [ bisect db ]
+[ bisect db ] - get_tasks_from_bisect_task -> {flow: south;} [ bisect consumer ] -> [ run bisct ]
+[ run bisct ] -> { start: front, 0; } [ bisect process 1 ], [ bisect process .. ], [ bisect process n ]
+```
 
