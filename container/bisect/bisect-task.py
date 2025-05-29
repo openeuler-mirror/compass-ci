@@ -466,7 +466,7 @@ class BisectTask:
                 logger.error(f"结果处理异常: {str(e)}")
 
     def update_regression(self, task, result):
-        """Update regression database with bisect results"""
+        """使用 ManticoreClient 更新回归数据库"""
         try:
             # 参数校验
             if not task.get('error_id') or not task.get('bad_job_id'):
@@ -479,12 +479,18 @@ class BisectTask:
             error_id = task['error_id'].replace("'", "''")  # 转义单引号
 
             # 检查是否已存在有效记录
-            existing = process_regression_db.execute_query(
-                f"SELECT id, bisect_count, related_jobs "
-                f"FROM regression "
-                f"WHERE record_type = 'errid' "
-                f"  AND errid = '{error_id}' "
-                f"  AND valid = 'true'"
+            existing = process_client.search(
+                table="regression",
+                query={
+                    "bool": {
+                        "must": [
+                            {"match": {"record_type": "errid"}},
+                            {"match": {"errid": error_id}},
+                            {"match": {"valid": "true"}}
+                        ]
+                    }
+                },
+                limit=1
             )
 
             if not existing:
@@ -492,43 +498,35 @@ class BisectTask:
                 new_id = int(f"{current_time}{randint(1000,9999)}")  # 生成唯一ID
                 category = result.get('category', 'unknown').replace("'", "''")
                 related_jobs_json = json.dumps([bad_job_id])  # 初始化为数组
-                # TODO replace by manticore
-                insert_sql = f"""
-                    INSERT INTO regression 
-                    (id, record_type, errid, category, 
-                     first_seen, last_seen, bisect_count, 
-                     related_jobs, valid)
-                    VALUES (
-                        {new_id}, 
-                        'errid', 
-                        '{error_id}', 
-                        '{category}', 
-                        {current_time}, 
-                        {current_time}, 
-                        1, 
-                        '{related_jobs_json}', 
-                        'true'
-                    )
-                """
-                self.regression_db.execute_write(insert_sql)
+
+                new_record = {
+                    "id": new_id,
+                    "record_type": "errid",
+                    "errid": error_id,
+                    "category": category,
+                    "first_seen": current_time,
+                    "last_seen": current_time,
+                    "bisect_count": 1,
+                    "related_jobs": related_jobs_json,
+                    "valid": "true"
+                }
+
+                if not process_client.insert("regression", new_id, new_record):
+                    logger.error(f"插入新记录失败 | ErrorID: {error_id}")
             else:
                 # 更新现有记录
                 record = existing[0]
                 new_count = record['bisect_count'] + 1
                 record_id = record['id']
-                
-                update_sql = f"""
-                    UPDATE regression 
-                    SET bisect_count = {new_count},
-                        last_seen = {current_time},
-                        related_jobs = JSON_ARRAY_APPEND(
-                            related_jobs, 
-                            '$', 
-                            '{bad_job_id}'
-                        )
-                    WHERE id = %s
-                """
-                process_regression_db.execute_update(update_sql, (record_id,))
+
+                update_record = {
+                    "bisect_count": new_count,
+                    "last_seen": current_time,
+                    "related_jobs": json.dumps(record['related_jobs'] + [bad_job_id])
+                }
+
+                if not process_client.update("regression", record_id, update_record):
+                    logger.error(f"更新记录失败 | ErrorID: {error_id}")
 
             logger.info(f"Regression updated | ErrorID: {error_id}")
 
