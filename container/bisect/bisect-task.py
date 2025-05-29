@@ -780,6 +780,50 @@ class ListBisectTasksAPI(MethodView):
             return jsonify({"error": "内部服务器错误"}), 500
 
 
+class ListTasksByStatusAPI(MethodView):
+    def __init__(self):
+        self.bisect_db = BisectDB(
+            host=os.environ.get('MANTICORE_HOST', 'localhost'),
+            port=os.environ.get('MANTICORE_PORT', '9306'),
+            database="bisect",
+            pool_size=15
+        )
+
+    def get(self):
+        try:
+            # 获取查询参数，默认为 'completed'
+            status = request.args.get('status', 'completed')
+
+            # 查询指定状态的任务
+            sql = f"""
+                SELECT id, bad_job_id, error_id, bisect_status 
+                FROM bisect 
+                WHERE bisect_status = '{status}'
+                ORDER BY id DESC
+            """
+            tasks = self.bisect_db.execute_query(sql)
+
+            # 格式化输出
+            formatted_tasks = []
+            for task in tasks:
+                formatted_tasks.append({
+                    "TASK ID": task['id'],
+                    "BAD JOB ID": task['bad_job_id'],
+                    "ERROR ID": task['error_id'],
+                    "STATUS": {'wait': 'wait', 'processing': 'processing', 'completed': 'finish', 'failed': 'failed'}.get(task['bisect_status'], 'unknown'),
+                })
+
+            response_data = {
+                "total": len(formatted_tasks),
+                "tasks": formatted_tasks
+            }
+            return json.dumps(response_data, indent=2, ensure_ascii=False), 200, {'Content-Type': 'application/json; charset=utf-8'}
+
+        except Exception as e:
+            logger.error(f"获取任务列表失败: {str(e)}")
+            return jsonify({"error": "内部服务器错误"}), 500
+
+
 class DeleteFailedTasksAPI(MethodView):
     def __init__(self):
         self.bisect_db = BisectDB(
@@ -814,6 +858,7 @@ def run_flask():
     """使用生产级 WSGI 服务器，带开发服务器回退"""
     app.add_url_rule('/new_bisect_task', view_func=BisectAPI.as_view('bisect_api'))
     app.add_url_rule('/list_bisect_tasks', view_func=ListBisectTasksAPI.as_view('list_bisect_tasks'))
+    app.add_url_rule('/list_tasks_by_status', view_func=ListTasksByStatusAPI.as_view('list_tasks_by_status'))
     app.add_url_rule('/delete_failed_tasks', view_func=DeleteFailedTasksAPI.as_view('delete_failed_tasks'))
     port = int(os.environ.get('BISECT_API_PORT', 9999))
     
