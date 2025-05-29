@@ -439,15 +439,29 @@ class BisectTask:
         for future in as_completed(futures, timeout=72000):  # 2小时超时
             try:
                 result = future.result()
+                task_id = result['id']
                 if result['status'] == 'success':
-                    logger.info(f"任务完成: {result['id']}")
+                    logger.info(f"任务完成: {task_id}")
                 else:
-                    logger.error(f"任务失败: {result['id']} - {result['error']}")
+                    logger.error(f"任务失败: {task_id} - {result['error']}")
+
+                # 删除 Git 目录以避免文件越来越大
+                git_dir = self._generate_task_path(self._config, {'id': task_id})
+                if os.path.exists(git_dir):
+                    try:
+                        shutil.rmtree(git_dir)
+                        logger.info(f"成功删除 Git 目录: {git_dir}")
+                    except Exception as e:
+                        logger.error(f"删除 Git 目录失败 {git_dir}: {str(e)}")
+
             except TimeoutError:
                 logger.error("任务处理超时，可能发生死锁")
                 future.cancel()
             except Exception as e:
                 logger.error(f"结果处理异常: {str(e)}")
+
+        # 注释：后续可以考虑对 Git 目录进行复用，以减少重复克隆的开销。
+        # 例如，可以在任务开始时检查是否存在可复用的 Git 目录，并在任务结束后更新其状态。
 
     def update_regression(self, task, result):
         """使用 ManticoreClient 更新回归数据库"""
