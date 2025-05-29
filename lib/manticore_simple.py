@@ -19,6 +19,48 @@ class ManticoreClient:
         """部分更新文档（仅修改指定字段）"""
         return self._request("update", index, id, document)
 
+    def search(self,
+             table: str,
+             query: dict,
+             limit: int = 100,
+             options: Optional[dict] = None) -> Optional[List[Dict]]:
+        """
+        Manticore 官方标准搜索方法
+
+        :param table: 要查询的表名
+        :param query: 查询 DSL (支持 query_string/match/bool 等)
+        :param limit: 返回结果数量 (默认100)
+        :param options: 高级选项 (scroll/列过滤等)
+        :return: 文档内容字典列表
+        """
+        try:
+            request_body = {
+                "table": table,
+                "query": query,
+                "limit": limit
+            }
+
+            if options:
+                request_body["options"] = options
+
+            resp = requests.post(
+                f"{self.base_url}/search",
+                json=request_body,
+                timeout=5
+            )
+
+            if resp.status_code != 200:
+                return None
+
+            result = resp.json()
+            return [
+                hit.get('_source', {})
+                for hit in result.get('hits', {}).get('hits', [])
+            ]
+
+        except requests.exceptions.RequestException:
+            return None
+
     def replace_with_retry(self, index: str, id: int, document: dict, retries: int = 3) -> bool:
         """带重试机制的替换操作"""
         for i in range(retries):
