@@ -79,13 +79,19 @@ class BisectTask:
     @staticmethod
     def _init_process_resources(config):
         """子进程资源初始化"""
-        global process_bisect_db,  process_client
+        global process_bisect_db, process_client, process_regression_db
         process_bisect_db = BisectDB(
             host=config['manticore_host'],
             port=config['manticore_port'],
             database=config['bisect_db'],
             pool_size=1
-        ) 
+        )
+        process_regression_db = BisectDB(
+            host=config['manticore_host'],
+            port=config['manticore_port'],
+            database=config['regression_db'],
+            pool_size=1
+        )
         process_client = ManticoreClient(
             host=config['manticore_host'],
             port=9308
