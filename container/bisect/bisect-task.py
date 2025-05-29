@@ -134,10 +134,13 @@ class BisectTask:
             task_result_root = BisectTask._generate_task_path(config, task)
 
             try:
-                # 检查任务状态
-                status_check = process_bisect_db.execute_query(
-                    f"SELECT bisect_status FROM bisect WHERE id = {task_id} AND bisect_status = 'wait'"
+                # 使用 ManticoreClient 的 search 方法检查任务状态
+                status_check = process_client.search(
+                    table="bisect",
+                    query={"match": {"id": task_id, "bisect_status": "wait"}},
+                    limit=1
                 )
+
                 if not status_check:
                     logger.warning(f"跳过无效任务 | ID: {task_id}")
                     return
