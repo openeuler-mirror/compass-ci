@@ -9,25 +9,48 @@ require "./sched"
 require "./host"
 require "./account"
 
-# -------------------------------------------------------------------------------------------
-# end_user:
-# - restful API [post "/submit_job"] to submit a job to scheduler
-# -- json formated [job] in the request data
+# API Documentation
+# -------------------------------------------------------------------------------
+# 基础接口:
+# GET /                     - 健康检查,返回存活状态和版本号
+# GET /scheduler/v1/health  - 新版健康检查(RESTful风格)
 #
-# -------------------------------------------------------------------------------------------
-# runner:
-# - restful API [get "/boot.ipxe/mac/52-54-00-12-34-56"] to get a job for ipxe qemu-runner
-#  -- when find then return <#!ipxe and job.cgz kernal initrd>
-#  -- when no job return <#!ipxe no job messages>
+# 作业管理接口:
+# POST /submit_job                         - 提交新作业(旧版)
+# POST /scheduler/v1/jobs/submit           - 提交新作业(新版RESTful)
+# GET /boot.:boot_type/:parameter/:value   - 物理机作业分配
+# GET /scheduler/v1/jobs/dispatch          - 新版作业分配
+# GET /scheduler/v1/jobs/:job_id           - 查询作业详情
+# POST /scheduler/v1/jobs/wait             - 批量等待作业
+# POST /scheduler/v1/jobs/:job_id/update   - 更新作业状态
+# POST /scheduler/v1/jobs/:job_id/cancel   - 取消作业
+# POST /scheduler/v1/jobs/:job_id/terminate - 强制终止作业
 #
-# - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
-# - restful API [get "/scheduler/job/update"] report job var that should be append
+# 主机管理接口:
+# GET /scheduler/v1/hosts/:hostname        - 查询主机信息
+# POST /scheduler/v1/hosts/:hostname       - 注册/更新主机
 #
-# -------------------------------------------------------------------------------------------
-# scheduler:
-# - use [redis incr] as job_id, a 64bit int number
-# - restful API [get "/"] default echo
+# 账户管理接口:
+# POST /scheduler/v1/accounts/:my_account  - 注册新账户(仅本地)
 #
+# 事件上报接口:
+# POST /report_event                       - 通用事件上报
+# POST /~lkp/cgi-bin/report_ssh_info      - SSH信息上报
+#
+# 文件操作接口:
+# GET /srv/*path                          - 下载服务器文件
+# POST /result/*path                      - 上传结果文件  
+# POST /srv/*path                         - 上传服务器文件
+#
+# 仪表盘接口:
+# GET /scheduler/v1/dashboard/jobs/pending - 待处理作业列表
+# GET /scheduler/v1/dashboard/jobs/running - 运行中作业列表
+# GET /scheduler/v1/dashboard/hosts        - 主机列表
+# GET /scheduler/v1/dashboard/accounts     - 账户列表
+#
+# WebSocket接口:
+# WS /scheduler/v1/client                 - 客户端实时通信
+# WS /scheduler/v1/vm-container-provider/:host - 资源提供者通信
 
 # Struct to represent a result with success/failure status
 struct Result
