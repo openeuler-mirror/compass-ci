@@ -16,15 +16,41 @@ require "./account"
 # GET /scheduler/v1/health  - 新版健康检查(RESTful风格)
 #
 # 作业管理接口:
-# POST /submit_job                         - 提交新作业(旧版)
-# POST /scheduler/v1/jobs/submit           - 提交新作业(新版RESTful)
-# GET /boot.:boot_type/:parameter/:value   - 物理机作业分配
-# GET /scheduler/v1/jobs/dispatch          - 新版作业分配
+# POST /scheduler/v1/jobs/submit           - 提交新作业
+#   请求体: {"suite": "...", "os": "...", ...}
+#   返回: {"job_id": "...", "status": "..."}
+#
 # GET /scheduler/v1/jobs/:job_id           - 查询作业详情
+#   参数: job_id - 作业ID
+#   可选参数: fields - 指定返回字段,多个用逗号分隔
+#
+# GET /scheduler/v1/jobs/dispatch          - 新版作业分配
+#   用于调度器分配作业给执行节点
+#
 # POST /scheduler/v1/jobs/wait             - 批量等待作业
+#   请求体: {"job_ids": ["id1", "id2"]}
+#   返回: {"finished": ["id1"], "running": ["id2"]}
+#
 # POST /scheduler/v1/jobs/:job_id/update   - 更新作业状态
+#   参数: job_id - 作业ID
+#   请求体: {"state": "...", "result": "..."}
+#
 # POST /scheduler/v1/jobs/:job_id/cancel   - 取消作业
+#   参数: job_id - 作业ID
+#   需要认证
+#
 # POST /scheduler/v1/jobs/:job_id/terminate - 强制终止作业
+#   参数: job_id - 作业ID 
+#   需要认证
+#
+# 仪表盘接口:
+# GET /scheduler/v1/dashboard/jobs/pending - 查询待处理作业列表
+# GET /scheduler/v1/dashboard/jobs/running - 查询运行中作业列表
+#
+# 注意:
+# 1. 所有POST请求需要设置 Content-Type: application/json
+# 2. 涉及修改操作的接口需要进行账户认证
+# 3. 默认服务端口为3000
 #
 # 主机管理接口:
 # GET /scheduler/v1/hosts/:hostname        - 查询主机信息
