@@ -4,6 +4,7 @@
 
 require_relative './es_query.rb'
 require_relative './matrix2.rb'
+require_relative './manticore.rb'
 require_relative './compare_matrixes.rb'
 require_relative './constants.rb'
 require 'yaml'
@@ -30,6 +31,20 @@ def compare_matrices_list(argv, common_conditions, options)
   compare_matrixes(matrices_list, suite_list, nil, titles, options: options)
 end
 
+def safe_multi_field_query(query, **opts)
+  es = ESQuery.new
+  begin
+    result = es.multi_field_query(query, **opts)
+    if result.nil? || result['hits'].nil? || result['hits']['hits'].empty?
+      raise 'No ES result'
+    end
+    result
+  rescue
+    manti = Manticore::Client.new
+    manti.multi_field_query(query, **opts)
+  end
+end
+
 def parse_argv(argv, common_conditions)
   conditions = []
   common_items = common_conditions.split(' ')
@@ -45,9 +60,8 @@ def create_matrices_list(conditions, options)
   matrices_list = []
   suite_list = []
   titles = []
-  es = ESQuery.new
   conditions.each do |condition|
-    query_results = es.multi_field_query(condition[1], desc_keyword: 'start_time')
+    query_results = safe_multi_field_query(condition[1], desc_keyword: 'start_time')
     matrix, suites = Matrix.combine_query_data(query_results, options)
     next unless matrix
 
@@ -82,8 +96,7 @@ def compare_group(argv, dimensions, options)
 end
 
 def create_groups_matrices_list(conditions, dims, options)
-  es = ESQuery.new
-  query_results = es.multi_field_query(conditions, desc_keyword: 'start_time')
+  query_results = safe_multi_field_query(conditions, desc_keyword: 'start_time')
   Matrix.combine_group_query_data(query_results['hits']['hits'], dims, options)
 end
 
