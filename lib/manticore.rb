@@ -38,6 +38,29 @@ module Manticore
       # result_hash = JSON.parse(response.body)
     end
 
+    def self.multi_field_query(query, desc_keyword: nil, size: 10_000, **opts)
+      # 将查询条件转换为SQL
+      sql = build_sql_from_query(query, desc_keyword, size)
+      result = execute_select(sql)
+      
+      # 将结果转换为ES兼容格式
+      hits = JSON.parse(result.body)['data'].map do |row|
+        { '_source' => row }
+      end
+      
+      { 'hits' => { 'hits' => hits } }
+    end
+
+    private
+
+    def self.build_sql_from_query(query, desc_keyword, size)
+      # 简单实现,实际应该根据query参数构建更复杂的SQL
+      sql = "SELECT * FROM #{DEFAULT_INDEX}"
+      sql += " ORDER BY #{desc_keyword} DESC" if desc_keyword
+      sql += " LIMIT #{size}"
+      sql
+    end
+
     # return format is "hits": { "hits": [ { "_source": {job hash}}]}
     def self.search(query)
       uri = URI("http://#{HOST}:#{PORT}/search")
