@@ -9,74 +9,25 @@ require "./sched"
 require "./host"
 require "./account"
 
-# API Documentation
-# -------------------------------------------------------------------------------
-# 基础接口:
-# GET /                     - 健康检查,返回存活状态和版本号
-# GET /scheduler/v1/health  - 新版健康检查(RESTful风格)
+# -------------------------------------------------------------------------------------------
+# end_user:
+# - restful API [post "/submit_job"] to submit a job to scheduler
+# -- json formated [job] in the request data
 #
-# 作业管理接口:
-# POST /scheduler/v1/jobs/submit           - 提交新作业
-#   请求体: {"suite": "...", "os": "...", ...}
-#   返回: {"job_id": "...", "status": "..."}
+# -------------------------------------------------------------------------------------------
+# runner:
+# - restful API [get "/boot.ipxe/mac/52-54-00-12-34-56"] to get a job for ipxe qemu-runner
+#  -- when find then return <#!ipxe and job.cgz kernal initrd>
+#  -- when no job return <#!ipxe no job messages>
 #
-# GET /scheduler/v1/jobs/:job_id           - 查询作业详情
-#   参数: job_id - 作业ID
-#   可选参数: fields - 指定返回字段,多个用逗号分隔
+# - restful API [get "/job_initrd_tmpfs/11/job.cgz"] to download job(11) job.cgz file
+# - restful API [get "/scheduler/job/update"] report job var that should be append
 #
-# GET /scheduler/v1/jobs/dispatch          - 新版作业分配
-#   用于调度器分配作业给执行节点
+# -------------------------------------------------------------------------------------------
+# scheduler:
+# - use [redis incr] as job_id, a 64bit int number
+# - restful API [get "/"] default echo
 #
-# POST /scheduler/v1/jobs/wait             - 批量等待作业
-#   请求体: {"job_ids": ["id1", "id2"]}
-#   返回: {"finished": ["id1"], "running": ["id2"]}
-#
-# POST /scheduler/v1/jobs/:job_id/update   - 更新作业状态
-#   参数: job_id - 作业ID
-#   请求体: {"state": "...", "result": "..."}
-#
-# POST /scheduler/v1/jobs/:job_id/cancel   - 取消作业
-#   参数: job_id - 作业ID
-#   需要认证
-#
-# POST /scheduler/v1/jobs/:job_id/terminate - 强制终止作业
-#   参数: job_id - 作业ID 
-#   需要认证
-#
-# 仪表盘接口:
-# GET /scheduler/v1/dashboard/jobs/pending - 查询待处理作业列表
-# GET /scheduler/v1/dashboard/jobs/running - 查询运行中作业列表
-#
-# 注意:
-# 1. 所有POST请求需要设置 Content-Type: application/json
-# 2. 涉及修改操作的接口需要进行账户认证
-# 3. 默认服务端口为3000
-#
-# 主机管理接口:
-# GET /scheduler/v1/hosts/:hostname        - 查询主机信息
-# POST /scheduler/v1/hosts/:hostname       - 注册/更新主机
-#
-# 账户管理接口:
-# POST /scheduler/v1/accounts/:my_account  - 注册新账户(仅本地)
-#
-# 事件上报接口:
-# POST /report_event                       - 通用事件上报
-# POST /~lkp/cgi-bin/report_ssh_info      - SSH信息上报
-#
-# 文件操作接口:
-# GET /srv/*path                          - 下载服务器文件
-# POST /result/*path                      - 上传结果文件  
-# POST /srv/*path                         - 上传服务器文件
-#
-# 仪表盘接口:
-# GET /scheduler/v1/dashboard/jobs/pending - 待处理作业列表
-# GET /scheduler/v1/dashboard/jobs/running - 运行中作业列表
-# GET /scheduler/v1/dashboard/hosts        - 主机列表
-# GET /scheduler/v1/dashboard/accounts     - 账户列表
-#
-# WebSocket接口:
-# WS /scheduler/v1/client                 - 客户端实时通信
-# WS /scheduler/v1/vm-container-provider/:host - 资源提供者通信
 
 # Struct to represent a result with success/failure status
 struct Result
