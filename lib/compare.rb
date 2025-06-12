@@ -40,28 +40,7 @@ def safe_multi_field_query(query, **opts)
     end
     result
   rescue
-    # 直接使用 QueryBuilder 构建查询
-    builder = Manticore::QueryBuilder.new(index: Manticore::DEFAULT_INDEX, size: opts[:size] || 10_000)
-    
-    # 处理查询条件
-    if query.is_a?(Hash)
-      query.each do |k, v|
-        builder.add_filter(k, Array(v))
-      end
-    elsif query.is_a?(String)
-      # 处理 key=val1,val2 格式的查询字符串
-      field, values = query.split('=', 2)
-      builder.add_filter(field, values.split(',')) if field && values
-    end
-
-    # 添加排序
-    builder.sort(opts[:desc_keyword] || 'submit_time', order: 'desc')
-    
-    # 执行查询并格式化结果
-    response = Manticore::Client.search(builder.build)
-    body = JSON.parse(response.body)
-    hits = (body['hits'] && body['hits']['hits']) || []
-    { 'hits' => { 'hits' => hits } }
+    Manticore::Client.multi_field_query(query, size: opts[:size] || 10_000, desc_keyword: opts[:desc_keyword])
   end
 end
 
