@@ -60,7 +60,21 @@ module Manticore
       response = Manticore::Client.search(builder.build)
       puts "[DEBUG] Manticore raw response: #{response.body}"
       body = JSON.parse(response.body)
-      hits = (body['hits'] && body['hits']['hits']) || []
+      if body['hits'] && body['hits']['hits'].is_a?(Array) && !body['hits']['hits'].empty?
+        hits = body['hits']['hits'].map do |h|
+          if h.key?('_source')
+            h
+          elsif h.key?('j')
+            { '_source' => h['j'] }
+          else
+            { '_source' => h }
+          end
+        end
+      elsif body['data']
+        hits = body['data'].map { |row| { '_source' => row } }
+      else
+        hits = []
+      end
       { 'hits' => { 'hits' => hits } }
     end
 
