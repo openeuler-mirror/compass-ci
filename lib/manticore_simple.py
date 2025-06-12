@@ -1,6 +1,7 @@
 import requests
 import json
 import time
+from log_config import logger, StructuredLogger
 from typing import Dict, List, Union, Optional
 
 class ManticoreClient:
@@ -50,12 +51,14 @@ class ManticoreClient:
             )
 
             if resp.status_code != 200:
+                logger.error(f"Search request failed with status code {resp.status_code}: {resp.text}")
                 return None
 
             result = resp.json()
             return [
                 hit.get('_source', {})
                 for hit in result.get('hits', {}).get('hits', [])
+                if '_source' in hit
             ]
 
         except requests.exceptions.RequestException:

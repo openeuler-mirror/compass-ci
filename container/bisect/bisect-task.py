@@ -123,9 +123,15 @@ class BisectTask:
 
             try:
                 # 使用 ManticoreClient 的 search 方法检查任务状态
+                # { "match": {"id": task_id}},
                 status_check = process_client.search(
                     table="bisect",
-                    query={"match": {"id": task_id, "bisect_status": "wait"}},
+                    query={ "bool": {
+                            "must": [
+                                    { "match": {"bisect_status": "wait"}}
+                                    ]
+                                    }
+                            },
                     limit=1
                 )
 
