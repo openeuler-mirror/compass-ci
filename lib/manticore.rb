@@ -45,6 +45,24 @@ module Manticore
       # result_hash = JSON.parse(response.body)
     end
 
+    # Compatible with ESQuery interface
+    def self.multi_field_query(items, size: 10_000, desc_keyword: nil, **opts)
+      builder = Manticore::QueryBuilder.new(index: Manticore::DEFAULT_INDEX, size: size)
+      if items.is_a?(Hash)
+        items.each do |k, v|
+          builder.add_filter(k, Array(v))
+        end
+      elsif items.is_a?(String)
+        field, values = items.split('=', 2)
+        builder.add_filter(field, values.split(',')) if field && values
+      end
+      builder.sort(desc_keyword || 'submit_time', order: 'desc')
+      response = Manticore::Client.search(builder.build)
+      body = JSON.parse(response.body)
+      hits = (body['hits'] && body['hits']['hits']) || []
+      { 'hits' => { 'hits' => hits } }
+    end
+
   end
 
   class QueryBuilder
