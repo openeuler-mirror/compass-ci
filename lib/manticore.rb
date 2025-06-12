@@ -82,6 +82,9 @@ module Manticore
       elsif field == 'errid'
         @full_text_terms[:errid] ||= []
         @full_text_terms[:errid] += values.map { |v| v.to_s }
+      elsif field == 'id' && values.size > 1
+        @should_clauses ||= []
+        @should_clauses += values.map { |v| { equals: { field => convert_value(v) } } }
       else
         @equals_clauses += values.map do |v|
           v = convert_value(v)
@@ -104,12 +107,17 @@ module Manticore
 
       bool[:must] << { match: @full_text_terms } unless @full_text_terms.empty?
       bool[:must] += @equals_clauses unless @equals_clauses.empty?
+
+      if defined?(@should_clauses) && @should_clauses && !@should_clauses.empty?
+        bool[:should] = @should_clauses
+        bool[:minimum_should_match] = 1
+      end
       
       @ranges.each do |field, range|
         bool[:must] << { range: { field => range } }
       end
 
-      query[:query] = { bool: bool } unless bool[:must].empty?
+      query[:query] = { bool: bool } unless bool[:must].empty? && (!bool[:should] || bool[:should].empty?)
       query[:sort] = [@sort] unless @sort.empty?
 
       query
