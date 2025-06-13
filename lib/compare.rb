@@ -34,19 +34,13 @@ end
 def safe_multi_field_query(query, **opts)
   es = ESQuery.new
   begin
-    puts "[DEBUG] Try ES search with query: #{query.inspect}, opts: #{opts.inspect}"
     result = es.multi_field_query(query, **opts)
-    puts "[DEBUG] ES result: #{result.inspect}"
     if result.nil? || result['hits'].nil? || result['hits']['hits'].empty?
-      puts "[DEBUG] No result from ES, will try Manticore."
       raise 'No ES result'
     end
     result
   rescue => e
-    puts "[DEBUG] Try Manticore search, query: #{query.inspect}, opts: #{opts.inspect}, error: #{e.inspect}"
-    m_result = Manticore::Client.multi_field_query(query, size: opts[:size] || 10_000, desc_keyword: opts[:desc_keyword])
-    puts "[DEBUG] Manticore result: #{m_result.inspect}"
-    m_result
+    Manticore::Client.multi_field_query(query, size: opts[:size] || 10_000, desc_keyword: opts[:desc_keyword])
   end
 end
 
@@ -66,11 +60,8 @@ def create_matrices_list(conditions, options)
   suite_list = []
   titles = []
   conditions.each do |condition|
-    puts "[DEBUG] Condition: #{condition.inspect}"
     query_results = safe_multi_field_query(condition[1], desc_keyword: 'submit_time')
-    puts "[DEBUG] Query results: #{query_results.inspect}"
     matrix, suites = Matrix.combine_query_data(query_results, options)
-    puts "[DEBUG] Matrix: #{matrix.inspect}, Suites: #{suites.inspect}"
     next unless matrix
 
     matrices_list << matrix
@@ -78,7 +69,6 @@ def create_matrices_list(conditions, options)
     suite_list.concat(suites)
   end
 
-  puts "[DEBUG] Matrices list size: #{matrices_list.size}, Suite list: #{suite_list.inspect}, Titles: #{titles.inspect}"
   return matrices_list, suite_list, titles
 end
 

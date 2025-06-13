@@ -58,7 +58,6 @@ module Manticore
       end
       builder.sort(desc_keyword || 'submit_time', order: 'desc')
       response = Manticore::Client.search(builder.build)
-      puts "[DEBUG] Manticore raw response: #{response.body}"
       body = JSON.parse(response.body)
       hits = []
       

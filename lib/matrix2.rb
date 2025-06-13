@@ -121,16 +121,7 @@ module Matrix
   # input: query results from es_query
   # return: matrix
   def self.combine_query_data(query_data, options)
-    puts "[DEBUG] combine_query_data: hits count: #{query_data['hits']['hits'].size rescue 'nil'}"
-    puts "[DEBUG] hits raw: #{query_data['hits']['hits'].inspect}"
     jobs = extract_jobs_list(query_data['hits']['hits'])
-    puts "[DEBUG] extract_jobs_list jobs.size: #{jobs.size}"
-    if jobs.size > 0
-      puts "[DEBUG] jobs[0] keys: #{jobs[0].keys.inspect}"
-      puts "[DEBUG] jobs[0]['stats']: #{jobs[0]['stats'].inspect}"
-    else
-      puts "[DEBUG] job list is empty"
-    end
     return nil if jobs.empty? || jobs.size < options[:min_samples]
     @fields = options[:fields]
     create_matrix(jobs)
