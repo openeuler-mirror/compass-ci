@@ -101,5 +101,5 @@ def manticore_select(params)
     log_error(error_msg)
     return [200, headers.merge('Access-Control-Allow-Origin' => '*'), error_msg.to_json]
   end
-  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result]
 end

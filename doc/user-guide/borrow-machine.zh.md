@@ -31,8 +31,9 @@
     使用以下命令样例提交job：
 
     容器:
-
-        submit -c -m testbox=dc-2g os_mount=container docker_image=centos:8 borrow-1h.yaml
+        支持的容器镜像，请查看文件 $LKP_SRC/rootfs/os.yaml
+        submit -c -m testbox=dc-2g borrow-1h.yaml docker_image=centos:8
+        submit -c -m testbox=dc-2g borrow-1h.yaml docker_image=openeuler/openeuler:20.03-LTS-SP1
 
     虚拟机:
 
