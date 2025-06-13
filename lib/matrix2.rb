@@ -122,6 +122,7 @@ module Matrix
   # return: matrix
   def self.combine_query_data(query_data, options)
     puts "[DEBUG] combine_query_data: hits count: #{query_data['hits']['hits'].size rescue 'nil'}"
+    puts "[DEBUG] hits raw: #{query_data['hits']['hits'].inspect}"
     jobs = extract_jobs_list(query_data['hits']['hits'])
     puts "[DEBUG] extract_jobs_list jobs.size: #{jobs.size}"
     if jobs.size > 0
