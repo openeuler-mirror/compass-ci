@@ -67,7 +67,7 @@ def create_matrices_list(conditions, options)
   titles = []
   conditions.each do |condition|
     puts "[DEBUG] Condition: #{condition.inspect}"
-    query_results = safe_multi_field_query(condition[1], desc_keyword: 'start_time')
+    query_results = safe_multi_field_query(condition[1], desc_keyword: 'submit_time')
     puts "[DEBUG] Query results: #{query_results.inspect}"
     matrix, suites = Matrix.combine_query_data(query_results, options)
     puts "[DEBUG] Matrix: #{matrix.inspect}, Suites: #{suites.inspect}"
@@ -175,9 +175,9 @@ def create_groups_matrices(template_params)
   es = ESQuery.new
   if template_params.key?('max_series_num') && template_params['max_series_num'] > 0
     max_job_num = template_params['max_series_num'] * 200
-    query_results = es.multi_field_query(template_params['filter'], size: max_job_num, desc_keyword: 'start_time')
+    query_results = es.multi_field_query(template_params['filter'], size: max_job_num, desc_keyword: 'submit_time')
   else
-    query_results = es.multi_field_query(template_params['filter'], desc_keyword: 'start_time')
+    query_results = es.multi_field_query(template_params['filter'], desc_keyword: 'submit_time')
   end
   job_list = query_results['hits']['hits']
   groups, cmp_series = create_group_jobs(template_params, job_list)
