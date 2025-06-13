@@ -65,14 +65,14 @@ module Manticore
       if body['hits'] && body['hits']['hits'].is_a?(Array)
         hits = body['hits']['hits'].map do |h|
           if h.key?('_source')
-            h 
-          elsif h.key?('j')
-            # Convert manticore j.xxx fields to ES style
-            source = {}
-            h['j'].each do |k,v|
-              source[k.sub(/^j\./, '')] = v
+            src = h['_source']
+            if src.key?('j') && src['j'].is_a?(Hash)
+              src = src.merge(src['j'])
+              src.delete('j')
             end
-            { '_source' => source }
+            { '_source' => src }
+          elsif h.key?('j')
+            { '_source' => h['j'] }
           else
             { '_source' => h }
           end
