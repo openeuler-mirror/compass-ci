@@ -60,21 +60,34 @@ module Manticore
       response = Manticore::Client.search(builder.build)
       puts "[DEBUG] Manticore raw response: #{response.body}"
       body = JSON.parse(response.body)
-      if body['hits'] && body['hits']['hits'].is_a?(Array) && !body['hits']['hits'].empty?
+      hits = []
+      
+      if body['hits'] && body['hits']['hits'].is_a?(Array)
         hits = body['hits']['hits'].map do |h|
           if h.key?('_source')
-            h
+            h 
           elsif h.key?('j')
-            { '_source' => h['j'] }
+            # Convert manticore j.xxx fields to ES style
+            source = {}
+            h['j'].each do |k,v|
+              source[k.sub(/^j\./, '')] = v
+            end
+            { '_source' => source }
           else
             { '_source' => h }
           end
         end
       elsif body['data']
-        hits = body['data'].map { |row| { '_source' => row } }
-      else
-        hits = []
+        hits = body['data'].map do |row|
+          # Convert manticore fields to ES style
+          source = {}
+          row.each do |k,v|
+            source[k.sub(/^j\./, '')] = v
+          end
+          { '_source' => source }
+        end
       end
+
       { 'hits' => { 'hits' => hits } }
     end
 
@@ -113,6 +126,8 @@ module Manticore
     end
 
     def sort(field, order: 'desc')
+      # Map ES field names to manticore
+      field = 'submit_time' if field == 'start_time'
       @sort[field] = order
     end
 
