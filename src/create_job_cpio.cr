@@ -117,6 +117,7 @@ class JobHash
     return unless entries = @hash_hhh[section]?
     entries.each do |program, config|
       puts "[job2sh][DEBUG] process_section: program=#{program}, config=#{config.inspect}"
+      config = {} of String => String if config.nil?
       next unless config.is_a?(Hash)
 
       # Handle pre-script
