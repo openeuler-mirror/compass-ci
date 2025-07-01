@@ -46,6 +46,8 @@ require "./lib/jobfile_operate"
 
 class JobHash
   def generate_shell_script
+    # 输出 job2sh 输入内容到文件
+    File.write("/tmp/job2sh_input_#{self.id || "unknown"}.yaml", self.to_yaml)
     puts "[job2sh][DEBUG] generate_shell_script start"
     result = generate_shell_vars + generate_shell_run
     puts "[job2sh][DEBUG] generate_shell_script end"
