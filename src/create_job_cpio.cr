@@ -46,8 +46,11 @@ require "./lib/jobfile_operate"
 
 class JobHash
   def generate_shell_script
-    generate_shell_vars +
-    generate_shell_run
+    puts "[job2sh][DEBUG] generate_shell_script start"
+    result = generate_shell_vars + generate_shell_run
+    puts "[job2sh][DEBUG] generate_shell_script end"
+    File.write("/tmp/job2sh_debug_#{self.id || "unknown"}.sh", result)
+    result
   end
 
   def generate_shell_run
@@ -98,6 +101,7 @@ class JobHash
 
     # Iterate over the merged hash and call parse_one
     merged_hash.each do |key, val|
+      puts "[job2sh][DEBUG] generate_shell_vars: key=#{key}, val=#{val.inspect}"
       parse_one(script_lines, key, val)
     end
 
@@ -107,9 +111,10 @@ class JobHash
   end
 
   private def process_section(str, section)
+    puts "[job2sh][DEBUG] process_section: section=#{section}"
     return unless entries = @hash_hhh[section]?
-
     entries.each do |program, config|
+      puts "[job2sh][DEBUG] process_section: program=#{program}, config=#{config.inspect}"
       next unless config.is_a?(Hash)
 
       # Handle pre-script
@@ -152,6 +157,8 @@ class JobHash
     env_str = env_vars.map { |k, v| "#{shell_encode_keyword(k)}=#{shell_escape_expand(v)}" }.join(" ")
 
     # Build command line
+    puts "[job2sh][DEBUG] build_command: section=#{section}, program=#{program}, env_str=#{env_str}, command=#{command}, config=#{config.inspect}"
+
     [env_str, command, program].reject(&.empty?).join(" ")
   end
 
