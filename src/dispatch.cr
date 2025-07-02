@@ -111,7 +111,7 @@ class Sched
     # the first place.
     nr_db_jobs_by_user : Hash(String, Int32) = @es.count_groups("jobs", "my_account", {"job_stage" => "submit"})
 
-    total_jobs = nr_db_jobs_by_user.values.sum
+    total_jobs = nr_db_jobs_by_user.values.sum(0)
     if (total_jobs < THRESH_JOBS_CACHE_IN_SUBMIT)
       # Refresh cache in one big batch
       pull_jobs_from_es({"job_stage" => "submit"}, THRESH_JOBS_CACHE_IN_SUBMIT + (THRESH_JOBS_CACHE_IN_SUBMIT >> 1))
@@ -316,7 +316,7 @@ class Sched
   # and "Fair Sequence Scheduling" patterns for conceptual background
   def self.create_users_sequence(users, weights)
     # Calculate the total weight from all users
-    total_weight = users.sum { |user| weights[user]? || 1 }
+    total_weight = users.sum(0) { |user| weights[user]? || 1 }
 
     # Generate tuples of calculated positions and users
     positioned_users = [] of Tuple(Float64, String)
@@ -392,7 +392,7 @@ class Sched
     end
 
     # Compute total_events as sum of scaled weights
-    total_events = weights.sum
+    total_events = weights.sum(0)
 
     # Generate events with positions
     events = [] of Tuple(Float64, String, Int32)
