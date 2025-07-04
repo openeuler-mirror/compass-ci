@@ -46,8 +46,8 @@ require "./lib/jobfile_operate"
 
 class JobHash
   def generate_shell_script
-    generate_shell_vars +
-    generate_shell_run
+    result = generate_shell_vars + generate_shell_run
+    result
   end
 
   def generate_shell_run
@@ -108,8 +108,8 @@ class JobHash
 
   private def process_section(str, section)
     return unless entries = @hash_hhh[section]?
-
     entries.each do |program, config|
+      config = {} of String => String if config.nil?
       next unless config.is_a?(Hash)
 
       # Handle pre-script
