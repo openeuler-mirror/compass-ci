@@ -13,7 +13,16 @@ from datetime import datetime
 class StructuredLogger:
     """统一的结构化日志记录器"""
 
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self, log_dir: str = None, name: str = 'bisect-py'):
+        if hasattr(self, '_initialized'):
+            return
 
         self.logger = logging.getLogger(name)
         self.logger.propagate = False  # Prevent log propagation

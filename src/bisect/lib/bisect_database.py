@@ -2,15 +2,19 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 import os
-from log_config import logger, StructuredLogger
-import mysql.connector
-from generic_sql_client import GenericSQLClient
-from mysql.connector import Error
+import sys
 import json
-from typing import Optional, Dict, Any, Tuple, List
-from functools import wraps
+import mysql.connector
 import time
 import threading
+
+from mysql.connector import Error
+from typing import Optional, Dict, Any, Tuple, List
+from functools import wraps
+
+sys.path.append((os.environ['CCI_SRC']) + '/src/bisect/lib')
+from log_config import logger, StructuredLogger
+from generic_sql_client import GenericSQLClient
 from manticore_simple import ManticoreClient
 
 class BisectDB(GenericSQLClient):

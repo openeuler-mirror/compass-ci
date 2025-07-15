@@ -1,15 +1,56 @@
-from flask import jsonify, request
-from app.task_processor import bisect_task_instance
-from lib.bisect_database import BisectDB
+import sys
 import os
+import traceback
+from flask import jsonify, request
+
+sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
+from py_bisect import GitBisect
+
+sys.path.append((os.environ['CCI_SRC']) + '/src/bisect/lib')
+from bisect_database import BisectDB
+from log_config import logger
+
+sys.path.append((os.environ['CCI_SRC']) + '/src/bisect/app')
+from task_processor import bisect_task_instance
 
 def new_bisect_task():
-    task_data = request.json
-    if not task_data:
-        return jsonify({"error": "No data provided"}), 400
-    if bisect_task_instance.add_bisect_task(task_data):
-        return jsonify({"message": "Task added successfully"}), 200
-    return jsonify({"error": "Failed to add task"}), 500
+    try:
+        task_data = request.json
+        if not task_data:
+            raise ValueError("No task data provided")
+            
+        logger.debug(f"DEBUG - Controller received request | Data: {task_data}")
+            
+        result = bisect_task_instance.add_bisect_task(task_data)
+            
+        logger.debug(f"DEBUG - Controller operation result: {result}")
+        
+        if result:
+            return jsonify({
+                "code": 200,
+                "data": None,
+                "message": "Task added successfully"
+            }), 200
+        return jsonify({
+            "code": 500,
+            "data": None,
+            "message": "Failed to add task"
+        }), 500
+    except ValueError as e:
+        logger.error(f"参数错误: {str(e)}")
+        return jsonify({
+            "code": 400,
+            "data": None,
+            "message": str(e)
+        }), 400
+    except Exception as e:
+        logger.error(f"控制器异常: {str(e)}")
+        logger.error(f"异常堆栈:\n{traceback.format_exc()}")
+        return jsonify({
+            "code": 500,
+            "data": None,
+            "message": "Internal server error"
+        }), 500
 
 def list_bisect_tasks():
     try:

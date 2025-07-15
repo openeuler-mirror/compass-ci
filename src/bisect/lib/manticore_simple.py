@@ -1,7 +1,8 @@
 import requests
 import json
 import time
-from log_config import logger, StructuredLogger
+import traceback
+from log_config import logger
 from typing import Dict, List, Union, Optional
 
 class ManticoreClient:
@@ -9,8 +10,19 @@ class ManticoreClient:
         self.base_url = f"http://{host}:{port}"
 
     def insert(self, index: str, id: int, document: dict) -> bool:
-        """插入文档"""
-        return self._request("insert", index, id, document)
+        """Insert document"""
+        if "id" in document:
+            logger.warning("Document contains redundant id field, removing")
+            document = {k: v for k, v in document.items() if k != "id"}
+            
+        logger.debug(f"DEBUG - Inserting document | Index={index}, ID={id}")
+        logger.debug(f"DEBUG - Document content: {json.dumps(document, indent=2)}")
+        
+        result = self._request("insert", index, id, document)
+        
+        logger.debug(f"DEBUG - Insert result: {result}")
+        
+        return result
     
     def replace(self, index: str, id: int, document: dict) -> bool:
         """替换文档""" 
@@ -21,28 +33,27 @@ class ManticoreClient:
         return self._request("update", index, id, document)
 
     def search(self,
-             table: str,
-             query: dict,
-             limit: int = 100,
-             options: Optional[dict] = None) -> Optional[List[Dict]]:
+               index: str,
+               query: dict,
+               limit: int = 100,
+               options: Optional[dict] = None,
+               sort: Optional[list] = None) -> Optional[List[Dict]]:
         """
-        Manticore 官方标准搜索方法
-
-        :param table: 要查询的表名
-        :param query: 查询 DSL (支持 query_string/match/bool 等)
-        :param limit: 返回结果数量 (默认100)
-        :param options: 高级选项 (scroll/列过滤等)
-        :return: 文档内容字典列表
+        Manticore 标准 SQL 风格搜索方法
         """
+        # DEBUG: 打印请求详情
+        logger.debug(f"DEBUG - 搜索请求 | 索引={index}, 查询={str(query)}, 限制={limit}")
+        
         try:
             request_body = {
-                "table": table,
-                "query": query,
-                "limit": limit
+                "index": index,
+                "limit": limit,
+                "query": query
             }
-
             if options:
                 request_body["options"] = options
+            if sort:
+                request_body["sort"] = sort
 
             resp = requests.post(
                 f"{self.base_url}/search",
@@ -86,17 +97,37 @@ class ManticoreClient:
                 headers={"Content-Type": "application/x-ndjson"},
                 timeout=10
             )
+            # DEBUG: 打印原始响应
+            logger.debug(f"DEBUG - 原始响应 | 状态码={resp.status_code}, 内容={resp.text[:200]}")
             return resp.status_code == 200
-        except requests.exceptions.RequestException:
+        except requests.exceptions.RequestException as e:
+            # DEBUG: 捕获并打印完整异常
+            logger.debug(f"DEBUG - 搜索异常 | 类型={type(e).__name__}, 错误={str(e)}")
+            logger.debug(f"DEBUG - 异常堆栈:\n{traceback.format_exc()}")
             return False
 
     def _request(self, endpoint: str, index: str, id: int, doc: dict) -> bool:
         try:
+            url = f"{self.base_url}/{endpoint}"
+            payload = {"index": index, "id": id, "doc": doc}
+            
+            logger.debug(f"DEBUG - 请求详情 | 端点: {endpoint}, URL: {url}")
+            logger.debug(f"DEBUG - 请求负载: {json.dumps(payload, indent=2)}")
+            
             resp = requests.post(
-                f"{self.base_url}/{endpoint}",
-                json={"index": index, "id": id, "doc": doc},
+                url,
+                json=payload,
                 timeout=3
             )
+            
+            logger.debug(f"DEBUG - 响应状态: {resp.status_code}")
+            logger.debug(f"DEBUG - 响应内容: {resp.text[:200]}")
+            
+            if resp.status_code != 200:
+                logger.error(f"请求失败 | 状态码: {resp.status_code}, 响应: {resp.text}")
+            
             return resp.status_code == 200
-        except requests.exceptions.RequestException:
+        except requests.exceptions.RequestException as e:
+            logger.error(f"请求异常 | 类型: {type(e).__name__}, 错误: {str(e)}")
+            logger.error(f"异常堆栈:\n{traceback.format_exc()}")
             return False

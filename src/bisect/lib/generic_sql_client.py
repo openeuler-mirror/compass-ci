@@ -2,11 +2,11 @@ import sys
 import os
 import threading
 import mysql.connector
+from mysql.connector import pooling, Error
+from typing import Optional, List, Dict, Any, Tuple
+
 sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
 from log_config import logger
-
-from typing import Optional, List, Dict, Any, Tuple
-from mysql.connector import pooling, Error
 
 class GenericSQLClient:
     """Generic SQL client base class providing connection pool and basic operations"""
