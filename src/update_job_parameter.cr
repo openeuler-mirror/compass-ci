@@ -26,7 +26,7 @@ class Sched
 
     # Iterate over allowed parameters and update the job accordingly
     # job_state/job_health should be handled before job_stage, to record last_success_stage correctly
-    %w(job_state job_health job_stage job_data_readiness job_step milestones renew_seconds).each do |parameter|
+    %w(job_state job_health job_stage job_data_readiness job_step milestones renew_seconds ssh_port).each do |parameter|
       value = params[parameter]?
       next if value.nil? || value.empty?
 
@@ -41,6 +41,8 @@ class Sched
       when "renew_seconds"
         result = renew_job(job, value)
         return result unless result.success
+      when "ssh_port"
+        job.hash_plain[parameter] = value unless value.empty?
       end
     end
 
