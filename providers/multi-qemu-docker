@@ -454,36 +454,39 @@ class MultiQemuDocker
         # Need re-open FIFO for block reading, since the other side always
         # close FIFO after writing one line of job_id.
         File.open(JOB_DONE_FIFO_PATH, 'r') do |fifo|
-          job_id = fifo.gets
-          unless job_id
-            puts "Unexpected end of input from the FIFO."
-            next
-          end
-          case job_id.chomp
-            when /^boot: (\d+)/
-              job_id = $1
-              status = {
-                type: 'job-update',
-                job_id: job_id,
-                job_stage: "boot",
-              }
-              send_json(status)
-            when /^done: (\d+)/
-              job_id = $1
-              if job = @jobs.remove_job(job_id)
-                upload_log(job)
-                upload_results(job)
-              else
-                puts "Cannot find job #{job_id}"
-              end
-              status = {
-                type: 'job-update',
-                job_id: job_id,
-                job_data_readiness: "uploaded",  # trigger extract-stats
-              }
-              send_json(status)
+          loop do
+            job_id = fifo.gets
+            unless job_id
+              puts "Unexpected end of input from the FIFO."
+              sleep 1
+              next
+            end
+            case job_id.chomp
+              when /^boot: (\d+)/
+                job_id = $1
+                status = {
+                  type: 'job-update',
+                  job_id: job_id,
+                  job_stage: "boot",
+                }
+                send_json(status)
+              when /^done: (\d+)/
+                job_id = $1
+                if job = @jobs.remove_job(job_id)
+                  upload_log(job)
+                  upload_results(job)
+                else
+                  puts "Cannot find job #{job_id}"
+                end
+                status = {
+                  type: 'job-update',
+                  job_id: job_id,
+                  job_data_readiness: "uploaded",  # trigger extract-stats
+                }
+                send_json(status)
 
-              puts "Job #{job_id} completed and removed from the job list."
+                puts "Job #{job_id} completed and removed from the job list."
+            end
           end
         end
       end
