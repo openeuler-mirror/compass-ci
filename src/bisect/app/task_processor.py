@@ -10,6 +10,7 @@ import signal
 import sys
 import shutil
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from datetime import datetime
 
 sys.path.append((os.environ['CCI_SRC']) + '/src/bisect/lib')
@@ -54,6 +55,8 @@ class TaskProcessor:
         """信号处理回调"""
         logger.warning(f"收到终止信号 {signum}，开始清理...")
         self.running = False
+        # 关闭进程池
+        self.process_pool.shutdown(wait=False)
         self._cleanup_interrupted_tasks()
         sys.exit(1)
 
@@ -154,6 +157,23 @@ class TaskProcessor:
         self._init_databases()
         self.running = True
         self._register_signal_handlers()
+        
+        # 进程池初始化
+        self._config = {
+            "manticore_host": os.environ.get('MANTICORE_HOST', 'localhost'),
+            "manticore_port": os.environ.get('MANTICORE_PORT', '9306'),
+            "manticore_http_port": os.environ.get('MANTICORE_WRITE_PORT', '9308')
+        }
+        
+        self.process_pool = ProcessPoolExecutor(
+            max_workers=min(4, os.cpu_count() or 1),
+            initializer=self._init_process_resources,
+            initargs=(self._config,)
+        )
+        self.task_futures = []
+        
+        logger.info(f"初始化进程池 | 工作进程数: {self.process_pool._max_workers}")
+        logger.debug(f"进程池配置: {self._config}")
 
     def _validate_task_data(self, task: dict) -> dict:
         """确保关键字段有效并清除空值"""
