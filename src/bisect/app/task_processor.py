@@ -170,21 +170,6 @@ class TaskProcessor:
         
         return task
         
-        # 添加进程池初始化
-        self._config = {
-            "manticore_host": os.environ.get('MANTICORE_HOST', 'localhost'),
-            "manticore_port": os.environ.get('MANTICORE_PORT', '9306'),
-            "manticore_http_port": os.environ.get('MANTICORE_PORT', '9308')
-        }
-        
-        self.process_pool = ProcessPoolExecutor(
-            max_workers=min(4, os.cpu_count() or 1),  # 限制最大进程数
-            initializer=self._init_process_resources(self._config),  # 通过类名引用静态方法
-            initargs=(self._config,)
-        )
-        self.task_futures = []
-        self._start_background_tasks()  # 确保最后调用
-
     def _init_databases(self):
         """Initialize database connections with pooling"""
         config = {
