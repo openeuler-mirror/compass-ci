@@ -175,7 +175,8 @@ log_container_start() {
 
 log_container_completion() {
     local end_time=$(date +%s)
-    local duration=$(( (end_time - startup_time) / 60 ))
+    export dc_run_time=$((end_time - startup_time))
+    local duration=$((dc_run_time / 60))
     printf "\nTotal CONTAINER duration: %d minutes\n" "${duration}" >> "${log_file}"
 }
 
@@ -296,7 +297,12 @@ main() {
 
     # Signal job completion
     JOB_DONE_FIFO_PATH=${JOB_DONE_FIFO_PATH:-/tmp/job_completion_fifo}
-    echo "done: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
+    if [ $dc_run_time -lt 2 ]; then
+      echo "abort: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
+    else
+      echo "done: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
+    fi
+
 }
 
 main "$@"

@@ -492,6 +492,7 @@ run_qemu()
     "${kvm[@]}" "${arch_option[@]}" --append "${append}" 2>> $log_file
     local return_code=$?
     [ $return_code -eq 0 ] || echo "[ERROR] qemu start return code is: $return_code" >> $log_file
+	  return $return_code
 }
 
 set_options()
@@ -510,7 +511,8 @@ write_dmesg_flag()
 		vm_start_time=$(date "+%s")
 	else
 		vm_end_time=$(date "+%s")
-		log_info "Total QEMU duration:  $(( ($vm_end_time - $vm_start_time) / 60 )) minutes" >> $log_file
+		export vm_run_time=$((vm_end_time - vm_start_time))
+		log_info "Total QEMU duration:  $(( vm_run_time / 60 )) minutes" >> $log_file
 	fi
 }
 
@@ -535,6 +537,11 @@ echo "boot: $job_id" >> $JOB_DONE_FIFO_PATH
 write_dmesg_flag 'start'
 show_qemu_cmd >> $log_file
 run_qemu
+qemu_return_code=$?
 write_dmesg_flag 'end'
 kill %1
-echo "done: $job_id" >> $JOB_DONE_FIFO_PATH
+if [ $qemu_return_code -ne 0 ] && [ $vm_run_time -lt 2 ]; then
+    echo "abort: $job_id" >> $JOB_DONE_FIFO_PATH
+else
+    echo "done: $job_id" >> $JOB_DONE_FIFO_PATH
+fi
