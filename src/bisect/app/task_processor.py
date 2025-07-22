@@ -92,10 +92,12 @@ class TaskProcessor:
                     return
 
                 # 更新任务状态为处理中
-                task["bisect_status"] = "processing"
-                # Convert to Manticore SQL update
-
-                if process_client.update("bisect", task_id, task):
+                update_doc = {
+                    "bisect_status": "processing",
+                    "updated_at": int(time.time())
+                }
+                
+                if process_client.update("bisect", task_id, update_doc):
                     logger.info(f"开始处理任务 | ID: {task_id}")
 
                 # 准备任务数据
@@ -120,7 +122,13 @@ class TaskProcessor:
                     }
 
                     # 使用重试机制更新结果
-                    if not process_client.update("bisect", task_id, complete_doc):
+                    # 确保不包含 id 字段
+                    clean_complete_doc = {
+                        k: v for k, v in complete_doc.items() 
+                        if k != "id"
+                    }
+                    
+                    if not process_client.update("bisect", task_id, clean_complete_doc):
                         logger.error(f"结果更新失败 | ID: {task_id}")
                     else:
                         # 暂时移除回归数据更新
@@ -133,7 +141,12 @@ class TaskProcessor:
                         "last_error": "Bisect execution failed",
                         "updated_at": int(time.time())
                     }
-                    process_client.update("bisect", task_id, fail_doc)
+                    # 确保不包含 id 字段
+                    clean_fail_doc = {
+                        k: v for k, v in fail_doc.items() 
+                        if k != "id"
+                    }
+                    process_client.update("bisect", task_id, clean_fail_doc)
                     logger.error(f"任务执行失败 | ID: {task_id}")
 
             except Exception as e:
@@ -143,7 +156,12 @@ class TaskProcessor:
                     "last_error": str(e)[:200],  # 限制错误信息长度
                     "updated_at": int(time.time())
                 }
-                process_client.update("bisect", task_id, error_doc)
+                # 确保不包含 id 字段
+                clean_error_doc = {
+                    k: v for k, v in error_doc.items() 
+                    if k != "id"
+                }
+                process_client.update("bisect", task_id, clean_error_doc)
                 logger.error(f"任务异常 | ID: {task_id} | 错误: {str(e)}")
                 logger.error(traceback.format_exc())
             

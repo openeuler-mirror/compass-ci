@@ -108,6 +108,12 @@ class ManticoreClient:
 
     def _request(self, endpoint: str, index: str, id: int, doc: dict) -> bool:
         try:
+            # 防御性检查：确保不包含 id 字段
+            if "id" in doc:
+                logger.error("⚠️ 非法操作：文档包含 id 字段（主键不可更新）")
+                logger.error(f"文档内容: {json.dumps(doc, indent=2)}")
+                doc = {k: v for k, v in doc.items() if k != "id"}
+                
             # 收集调用栈信息
             from inspect import currentframe, getouterframes
             caller_info = []
