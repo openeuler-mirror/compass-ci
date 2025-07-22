@@ -42,9 +42,34 @@ class BisectDB(GenericSQLClient):
         if not hasattr(self, '_cache'):
             self._cache = {}
 
+    def _filter_null_fields(self, row: dict) -> dict:
+        """递归过滤空值字段"""
+        filtered = {}
+        for key, value in row.items():
+            if value is None:
+                continue
+            if isinstance(value, dict):
+                cleaned_value = self._filter_null_fields(value)
+                if cleaned_value:
+                    filtered[key] = cleaned_value
+            elif isinstance(value, list):
+                cleaned_list = [
+                    self._filter_null_fields(item) 
+                    if isinstance(item, dict) else item
+                    for item in value if item is not None
+                ]
+                if cleaned_list:
+                    filtered[key] = cleaned_list
+            else:
+                filtered[key] = value
+        return filtered
+
     def execute_query(self, sql: str, params: Optional[tuple] = None) -> Optional[List[Dict]]:
         """Execute a SELECT query with connection pool (compatibility method)"""
-        return self.execute(sql, params, operation='read')
+        results = self.execute(sql, params, operation='read')
+        if not results:
+            return results
+        return [self._filter_null_fields(row) for row in results]
 
     def execute_write(self, sql: str, params: Optional[tuple] = None) -> int:
         """Execute write operation with native parameter passing"""

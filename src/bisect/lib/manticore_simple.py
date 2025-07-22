@@ -115,6 +115,11 @@ class ManticoreClient:
             for frame in frames[1:6]:  # 获取最近的5层调用栈
                 caller_info.append(f"{frame.filename}:{frame.lineno} ({frame.function})")
             
+            # 添加防御性检查
+            if 'j' in doc and doc['j'] is None:
+                logger.error("检测到无效的 null j 字段，已自动清理")
+                doc = {k: v for k, v in doc.items() if k != 'j'}
+
             url = f"{self.base_url}/{endpoint}"
             payload = {
                 "index": index,

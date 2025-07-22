@@ -154,6 +154,21 @@ class TaskProcessor:
         self._init_databases()
         self.running = True
         self._register_signal_handlers()
+
+    def _validate_task_data(self, task: dict) -> dict:
+        """确保关键字段有效并清除空值"""
+        # 确保 j 字段不为 null
+        if 'j' in task and task['j'] is None:
+            logger.warning(f"清理无效的 j 字段 | 任务ID={task.get('id')}")
+            task['j'] = {}  # 设置为空字典
+        
+        # 确保必要字段存在
+        required_fields = ['bad_job_id', 'error_id']
+        for field in required_fields:
+            if field not in task:
+                raise ValueError(f"缺少必要字段: {field}")
+        
+        return task
         
         # 添加进程池初始化
         self._config = {
@@ -216,9 +231,11 @@ class TaskProcessor:
             raise ValueError("Missing required fields: bad_job_id, error_id")
         
         try:
+            validated_data = self._validate_task_data(task_data)
+            
             task_id = self._generate_task_id(
-                task_data["bad_job_id"],
-                task_data["error_id"]
+                validated_data["bad_job_id"],
+                validated_data["error_id"]
             )
             
             logger.debug(f"DEBUG - 生成任务ID: {task_id}")

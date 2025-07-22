@@ -19,6 +19,11 @@ def new_bisect_task():
         if not task_data:
             raise ValueError("No task data provided")
             
+        # API层验证 - 确保 j 字段不为 null
+        if 'j' in task_data and task_data['j'] is None:
+            logger.warning("API请求包含无效的 null j 字段，已清理")
+            task_data['j'] = {}
+            
         logger.debug(f"DEBUG - Controller received request | Data: {task_data}")
             
         result = bisect_task_instance.add_bisect_task(task_data)
