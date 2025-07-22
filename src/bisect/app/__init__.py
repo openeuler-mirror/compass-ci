@@ -19,6 +19,10 @@ def create_app():
     bisect_task_instance._start_background_tasks()
     logger.info("后台任务已启动")
     
+    # 注册退出处理
+    import atexit
+    atexit.register(bisect_task_instance.cleanup)
+    
     # 注册蓝图
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     

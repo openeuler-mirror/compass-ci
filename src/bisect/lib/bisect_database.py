@@ -246,6 +246,17 @@ class BisectDB(GenericSQLClient):
         except AttributeError:
             pass
 
+    def close(self):
+        """安全关闭连接池"""
+        try:
+            if hasattr(self, 'pool'):
+                self.pool.close()
+                logger.info(f"已关闭 {self.database} 数据库连接池")
+                # 防止重复关闭
+                del self.pool
+        except Exception as e:
+            logger.error(f"关闭数据库连接池失败: {str(e)}")
+
     def get_pool_status(self) -> dict:
         """获取连接池状态（兼容 Manticore）"""
         try:

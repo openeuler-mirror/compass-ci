@@ -52,13 +52,23 @@ class TaskProcessor:
         logger.info("已注册退出信号处理器")
 
     def _handle_exit_signal(self, signum, frame):
-        """信号处理回调"""
+        """信号处理回调 - 修复递归问题"""
+        if self.exit_requested:
+            return
+            
+        self.exit_requested = True
         logger.warning(f"收到终止信号 {signum}，开始清理...")
         self.running = False
-        # 关闭进程池
-        self.process_pool.shutdown(wait=False)
+        
+        # 关闭进程池（阻塞式）
+        self.process_pool.shutdown(wait=True, cancel_futures=True)
+        logger.info("进程池已关闭")
+        
+        # 清理中断的任务
         self._cleanup_interrupted_tasks()
-        sys.exit(1)
+        
+        # 安全退出
+        logger.info("清理完成，程序将退出")
 
 
     @staticmethod
@@ -174,6 +184,7 @@ class TaskProcessor:
     def __init__(self):
         self._init_databases()
         self.running = True
+        self.exit_requested = False
         self._register_signal_handlers()
         
         # 进程池初始化
@@ -321,7 +332,10 @@ class TaskProcessor:
                 result = self.jobs_db.execute_query(sql_failure)
                 
                 if not result:
-                    time.sleep(300)
+                    if not self.running or self.exit_requested:
+                        logger.info("生产者线程安全退出")
+                        return
+                    time.sleep(0.1)
                     continue
                     
                 # Process tasks
@@ -355,7 +369,10 @@ class TaskProcessor:
                 logger.error(f"Producer error: {str(e)}")
                 logger.error(traceback.format_exc())
                 sleep_time = min(300, 2 ** error_count)
-                time.sleep(sleep_time)
+                if not self.running or self.exit_requested:
+                    logger.info("消费者线程安全退出")
+                    return
+                time.sleep(0.1)
                 error_count += 1
             else:
                 # Control loop frequency
@@ -417,6 +434,29 @@ class TaskProcessor:
                 cycle_time = time.time() - start_time
                 sleep_time = max(10, 30 - cycle_time)
                 time.sleep(sleep_time)
+
+    def cleanup(self):
+        """安全清理资源"""
+        if self.exit_requested:
+            return
+            
+        self.exit_requested = True
+        self.running = False
+        
+        # 关闭进程池
+        if hasattr(self, 'process_pool'):
+            self.process_pool.shutdown(wait=True, cancel_futures=True)
+            logger.info("进程池已关闭")
+        
+        # 关闭数据库连接
+        if hasattr(self, 'bisect_db'):
+            self.bisect_db.close()
+        if hasattr(self, 'jobs_db'):
+            self.jobs_db.close()
+        if hasattr(self, 'regression_db'):
+            self.regression_db.close()
+        
+        logger.info("所有资源已释放")
 
     def _cleanup_interrupted_tasks(self):
         """清理被中断的任务"""
