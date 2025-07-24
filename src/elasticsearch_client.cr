@@ -202,7 +202,7 @@ class Elasticsearch::Client
       begin
         response = Manticore::Client.get_source("jobs", id64)
         return nil if !response.is_a?(JSON::Any)
-        response = Manticore.job_from_manticore(response.as_h)
+        return response = Manticore.job_from_manticore(response.as_h)
       rescue
         return nil
       end
@@ -215,8 +215,8 @@ class Elasticsearch::Client
     response = get_doc(job_id.to_i64)
 
     case response
-    when JSON::Any
-      job = JobHash.new(response.as_h, job_id)
+    when Hash
+      job = JobHash.new(response)
     else
       job = nil
     end
