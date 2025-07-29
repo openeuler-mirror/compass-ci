@@ -297,7 +297,7 @@ main() {
 
     # Signal job completion
     JOB_DONE_FIFO_PATH=${JOB_DONE_FIFO_PATH:-/tmp/job_completion_fifo}
-    if [ $dc_run_time -lt 2 ]; then
+    if [ $dc_run_time -lt 5 ]; then
       echo "abort: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
     else
       echo "done: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
