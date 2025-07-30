@@ -14,7 +14,7 @@ RUN apk update --no-cache && \
 # mariadb-dev build-base mariadb-connector-c \
 RUN gem install rest-client
 RUN pip3 install mysql-connector-python --break-system-packages -i https://mirrors.aliyun.com/pypi/simple/
-RUN addgroup -S bisect && adduser -S bisect -G bisect
+RUN addgroup -S bisect && addgroup -S lkp && adduser -S bisect -G bisect -G lkp
 
 ENV WORK_DIR /home/bisect
 ENV RUNTIME_DIR /c

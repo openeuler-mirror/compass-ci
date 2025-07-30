@@ -22,7 +22,7 @@ env = docker_env(defaults)
 
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'
-FLASK_APP = '/c/compass-ci/src/bisect/app/__init__.py'
+FLASK_APP = '/c/compass-ci/container/bisect/app/__init__.py'
 DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
 DEFAULT_USER_CONFIG_DIR = File.expand_path("~/.config/compass-ci/")
 DEFAULT_BISECT_CONFIG_DIR = '/home/bisect/.config/compass-ci/'
@@ -41,6 +41,7 @@ cmd = %w[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
   -e MANTICORE_HOST=#{MANTICORE_HOST}
+  -e FLASK_APP=#{FLASK_APP}
   -v #{HOST_LOG_DIR}:#{BISECT_LOG_DIR}
   -v #{DEFAULT_CACHE}:#{DEFAULT_CACHE}
   -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
