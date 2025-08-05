@@ -299,7 +299,7 @@ main() {
 
     # Signal job completion
     JOB_DONE_FIFO_PATH=${JOB_DONE_FIFO_PATH:-/tmp/job_completion_fifo}
-    if [ $container_return_code -ne 0 ] && [ $dc_run_time -lt 1 ]; then
+    if [ $container_return_code -ne 0 ] && [ $dc_run_time -le 1 ]; then
       echo "abort: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
     else
       echo "done: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
