@@ -540,7 +540,7 @@ run_qemu
 qemu_return_code=$?
 write_dmesg_flag 'end'
 kill %1
-if [ $qemu_return_code -ne 0 ] || [ $vm_run_time -lt 5 ]; then
+if [ $qemu_return_code -ne 0 ] && [ $vm_run_time -lt 1 ]; then
     echo "abort: $job_id" >> $JOB_DONE_FIFO_PATH
 else
     echo "done: $job_id" >> $JOB_DONE_FIFO_PATH

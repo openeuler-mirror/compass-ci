@@ -187,6 +187,7 @@ execute_container() {
     "${container_cmd[@]}" "$docker_image" /root/bin/entrypoint.sh 2>&1 | \
         awk '{ print strftime("%Y-%m-%d %H:%M:%S"), $0; fflush(); }' | \
         tee -a "${log_file}"
+    return ${PIPESTATUS[0]}
 }
 
 mount_docker_volume() {
@@ -293,11 +294,12 @@ main() {
 
     log_container_start
     execute_container "${full_command}"
+    container_return_code=$?
     log_container_completion
 
     # Signal job completion
     JOB_DONE_FIFO_PATH=${JOB_DONE_FIFO_PATH:-/tmp/job_completion_fifo}
-    if [ $dc_run_time -lt 5 ]; then
+    if [ $container_return_code -ne 0 ] && [ $dc_run_time -lt 1 ]; then
       echo "abort: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
     else
       echo "done: ${job_id}" >> "${JOB_DONE_FIFO_PATH}"
