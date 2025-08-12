@@ -1,0 +1,19 @@
+# 核心数据库依赖
+mysql-connector-python>=8.0.0
+
+# Web框架和HTTP
+Flask>=2.0.0
+requests>=2.25.0
+
+# 数据处理
+elasticsearch>=7.0.0
+simplejson>=3.17.0
+
+# 配置和环境
+python-dotenv>=0.19.0
+
+# 日志系统
+structlog>=21.1.0
+
+# 工具库
+python-dateutil>=2.8.0

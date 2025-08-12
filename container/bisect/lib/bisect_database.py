@@ -2,15 +2,19 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 import os
-from log_config import logger, StructuredLogger
-import mysql.connector
-from generic_sql_client import GenericSQLClient
-from mysql.connector import Error
+import sys
 import json
-from typing import Optional, Dict, Any, Tuple, List
-from functools import wraps
+import mysql.connector
 import time
 import threading
+
+from mysql.connector import Error
+from typing import Optional, Dict, Any, Tuple, List
+from functools import wraps
+
+sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
+from log_config import logger, StructuredLogger
+from generic_sql_client import GenericSQLClient
 from manticore_simple import ManticoreClient
 
 class BisectDB(GenericSQLClient):
@@ -38,9 +42,34 @@ class BisectDB(GenericSQLClient):
         if not hasattr(self, '_cache'):
             self._cache = {}
 
+    def _filter_null_fields(self, row: dict) -> dict:
+        """递归过滤空值字段"""
+        filtered = {}
+        for key, value in row.items():
+            if value is None:
+                continue
+            if isinstance(value, dict):
+                cleaned_value = self._filter_null_fields(value)
+                if cleaned_value:
+                    filtered[key] = cleaned_value
+            elif isinstance(value, list):
+                cleaned_list = [
+                    self._filter_null_fields(item) 
+                    if isinstance(item, dict) else item
+                    for item in value if item is not None
+                ]
+                if cleaned_list:
+                    filtered[key] = cleaned_list
+            else:
+                filtered[key] = value
+        return filtered
+
     def execute_query(self, sql: str, params: Optional[tuple] = None) -> Optional[List[Dict]]:
         """Execute a SELECT query with connection pool (compatibility method)"""
-        return self.execute(sql, params, operation='read')
+        results = self.execute(sql, params, operation='read')
+        if not results:
+            return results
+        return [self._filter_null_fields(row) for row in results]
 
     def execute_write(self, sql: str, params: Optional[tuple] = None) -> int:
         """Execute write operation with native parameter passing"""
@@ -216,6 +245,17 @@ class BisectDB(GenericSQLClient):
                 self._active_connections.count = 0
         except AttributeError:
             pass
+
+    def close(self):
+        """安全关闭连接池"""
+        try:
+            if hasattr(self, 'pool'):
+                self.pool.close()
+                logger.info(f"已关闭 {self.database} 数据库连接池")
+                # 防止重复关闭
+                del self.pool
+        except Exception as e:
+            logger.error(f"关闭数据库连接池失败: {str(e)}")
 
     def get_pool_status(self) -> dict:
         """获取连接池状态（兼容 Manticore）"""

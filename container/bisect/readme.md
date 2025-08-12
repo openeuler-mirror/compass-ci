@@ -194,3 +194,5 @@ submit-jobs
 [ run bisct ] -> { start: front, 0; } [ bisect process 1 ], [ bisect process .. ], [ bisect process n ]
 ```
 
+export FLASK_APP=app/__init__.py
+flask run --host=0.0.0.0 --port=9999
