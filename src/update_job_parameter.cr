@@ -78,16 +78,14 @@ class Sched
     job.milestones += values
   end
 
-  # Helper method to renew job time
+  # API renew_seconds: extend job.renew_to_utc to (NOW+renew_seconds)
+  # job.renew_to_utc: prevent terminate_timeout_jobs() killing job before this time
   def renew_job(job, value) : Result
     if job.job_stage == "submit"
       return Result.error(HTTP::Status::BAD_REQUEST, "Warning: Only running jobs can renew, your job stage is: #{job.job_stage}")
     end
 
-    job.renew_addtime(value.to_i32)
-    borrow_seconds = job.hash_int32["borrow_seconds"]? || 0
-    dispatch_time = Time.parse_iso8601(job.hash_plain["dispatch_time"]?)
-    new_time = dispatch_time + borrow_seconds.seconds
+    new_time = job.renew_addtime(value.to_i32)
     Result.success(new_time.to_s("%Y-%m-%dT%H:%M:%S%:z"))
   end
 

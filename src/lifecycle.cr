@@ -10,7 +10,6 @@ JOB_STAGE_TIMEOUT = {
   "running"      =>  3600,
   "post_run"     =>  1800,
   "manual_check" =>  10 * 3600,     # 10 hours
-  "renew"        =>  3 * 24 * 3600, # 3 days
 }
 
 def get_timeout(job, stage) : Int32
@@ -26,13 +25,6 @@ def get_timeout(job, stage) : Int32
     end
   when "running"
     secs = job.timeout_seconds
-  when "renew"
-    if job.hash_int32.has_key? "borrow_seconds"
-      secs = job.borrow_seconds
-      return secs
-    else
-      JOB_STAGE_TIMEOUT[stage]
-    end
   else
       JOB_STAGE_TIMEOUT[stage]
   end
@@ -53,6 +45,7 @@ class Sched
     now = Time.utc
     @jobs_cache.each do |jobid, job|
       next if job.deadline_utc > now
+      next if job.renew_to_utc? && job.renew_to_utc > now
 
       stage = job.job_stage
       next unless JOB_STAGE_TIMEOUT.has_key? stage

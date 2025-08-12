@@ -323,8 +323,8 @@ class JobHash
     ihealth
     idata_readiness
     priority
-    borrow_seconds
     timeout_seconds
+    renew_to_utc
     deadline_utc
   )
 
@@ -397,7 +397,6 @@ class JobHash
     running_time
     post_run_time
     manual_check_time
-    renew_time
     finish_time
     cancel_time
     abort_time
@@ -875,12 +874,8 @@ class JobHash
   end
 
   def renew_addtime(secs)
-    if self.borrow_seconds?
-      self.borrow_seconds += secs
-    else
-      self.borrow_seconds = self.timeout_seconds
-      self.borrow_seconds += secs
-    end
+    start_time = Time.parse(job["dispatch_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    self.renew_to_utc = start_time + secs;
   end
 
   # deadline_utc is a dynamic value, it will be regularly checked and refreshed
