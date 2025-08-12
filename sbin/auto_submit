@@ -166,6 +166,8 @@ class AutoSubmit
   end
 
   def excute_ccb_command(cmd)
+    return nil if cmd.nil? || cmd.empty?
+    
     out = %x(#{cmd})
     begin
       out_hash = JSON.parse(out[/{[\s\S]*}/])
@@ -184,6 +186,20 @@ class AutoSubmit
     return out_hash
   end
 
+  def make_http_request(url, data, headers = {})
+    begin
+      RestClient.post(url, data.to_json, { content_type: :json, accept: :json }.merge(headers))
+    rescue RestClient::ExceptionWithResponse => e
+      return "{\"status_code\": #{e.response.code}, \"url\": \"#{url}\"}"
+    end
+  end
+
+  def execute_git_cmd(cmd)
+    out = %x(#{cmd} 2>&1)
+    return nil unless $?.success?
+    out
+  end
+
   def excute_pr_build(os_project, pr_repo, prid)
     request_info = {
       "build_type" => "static",
@@ -196,21 +212,13 @@ class AutoSubmit
     end
     config = load_my_config
     url = "http://#{config['GATEWAY_IP']}:#{config['GATEWAY_PORT']}/api/os/#{os_project}/build_dag"
-    begin
-      RestClient.post(url, request_info.to_json, { content_type: :json, accept: :json, 'Authorization' => jwt })
-    rescue RestClient::ExceptionWithResponse => e
-      return "{\"status_code\": #{e.response.code}, \"url\": \"#{url}\"}"
-    end
+    make_http_request(url, request_info, { 'Authorization' => jwt })
   end
 
   def gitee_comment(pr_url, comment)
     request_info = {"pr_url" => pr_url, "token" => ENV['GITEE_ACCESS_TOKEN'], "comment" => comment}
     url = "http://#{ENV['CODE_HOSTING_CLIENT_HOST']}:#{ENV['CODE_HOSTING_CLIENT_PORT']}/api/code_hosting_client/gitee/pr/comment"
-    begin
-      RestClient.post(url, request_info.to_json, { content_type: :json, accept: :json})
-    rescue RestClient::ExceptionWithResponse => e
-      return "{\"status_code\": #{e.response.code}, \"url\": \"#{url}\"}"
-    end
+    make_http_request(url, request_info)
   end
 
   def load_cbs_meta_relm_config_update(url, prid, file_filter=/#.*$/)
@@ -218,9 +226,14 @@ class AutoSubmit
     if File.directory? "#{clone_dir}"
       out = %x(rm -rf #{clone_dir})
     end
-    out = %x(git clone #{url} #{clone_dir})
-    out = %x(cd #{clone_dir}; git fetch origin pull/#{prid}/head; git checkout FETCH_HEAD)
-    out = %x(cd #{clone_dir}; git diff HEAD~1 --name-only;)
+    
+    return nil unless execute_git_cmd("git clone #{url} #{clone_dir}")
+    return nil unless execute_git_cmd("cd #{clone_dir} && git fetch origin pull/#{prid}/head")
+    return nil unless execute_git_cmd("cd #{clone_dir} && git checkout FETCH_HEAD")
+    
+    out = execute_git_cmd("cd #{clone_dir} && git diff HEAD~1 --name-only")
+    return nil unless out
+    
     filelist = out.split(/\n/)
     @log.info("new/update filelist: #{filelist}")
     config_hash = {}
@@ -615,9 +628,13 @@ class AutoSubmit
   def cbs_pr_listen
     @cbs_pr_message_queue.subscribe(block: true) do |_delivery, _properties, message|
       Thread.new do
-	@log.info(message)
-        message_info = JSON.parse(message)
-        deal_local_submit(message_info)
+        begin
+          @log.info(message)
+          message_info = JSON.parse(message)
+          deal_local_submit(message_info)
+        rescue JSON::ParseError => e
+          @log.error("Failed to parse CBS PR message: #{e.message}")
+        end
       end
       sleep(0.1)
     end
@@ -626,8 +643,12 @@ class AutoSubmit
   def listen
     @queue.subscribe(block: true) do |_delivery, _properties, message|
       Thread.new do
-        message_info = JSON.parse(message)
-        submit_job(message_info)
+        begin
+          message_info = JSON.parse(message)
+          submit_job(message_info)
+        rescue JSON::ParseError => e
+          @log.error("Failed to parse message: #{e.message}")
+        end
       end
       sleep(0.1)
     end
