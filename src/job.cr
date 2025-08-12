@@ -323,7 +323,7 @@ class JobHash
     ihealth
     idata_readiness
     priority
-    renew_seconds
+    borrow_seconds
     timeout_seconds
     deadline_utc
   )
@@ -875,10 +875,11 @@ class JobHash
   end
 
   def renew_addtime(secs)
-    if self.renew_seconds?
-      self.renew_seconds += secs
+    if self.borrow_seconds?
+      self.borrow_seconds += secs
     else
-      self.renew_seconds = secs
+      self.borrow_seconds = self.timeout_seconds
+      self.borrow_seconds += secs
     end
   end
 

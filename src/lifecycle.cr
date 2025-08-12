@@ -27,8 +27,8 @@ def get_timeout(job, stage) : Int32
   when "running"
     secs = job.timeout_seconds
   when "renew"
-    if job.hash_int32.has_key? "renew_seconds"
-      secs = job.renew_seconds
+    if job.hash_int32.has_key? "borrow_seconds"
+      secs = job.borrow_seconds
       return secs
     else
       JOB_STAGE_TIMEOUT[stage]
