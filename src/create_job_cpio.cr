@@ -353,12 +353,11 @@ SCRIPT
     out_cgz = File.join(job_dir, "job.cgz")
 
     # Create the .cgz archive
-    Dir.cd(tmp_dir) do
-      Process.run(
-        "find lkp | cpio --quiet -o -H newc | gzip -9 > #{Process.quote(out_cgz)}",
-        shell: true
-      )
-    end
+    Process.run(
+      "find lkp | cpio --quiet -o -H newc | gzip -9 > #{Process.quote(out_cgz)}",
+      shell: true,
+      chdir: tmp_dir
+    )
 
     # Clean up the temporary directory
     FileUtils.rm_rf(tmp_dir)
