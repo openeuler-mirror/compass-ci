@@ -15,8 +15,6 @@ class Sched
     save_job_files(job, Kemal.config.public_folder)
     @hosts_cache.update_job_info(job)
 
-    move_job_cache(job)
-
     @es.replace_doc("jobs", job)
 
     # Log/notify

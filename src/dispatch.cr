@@ -198,15 +198,18 @@ class Sched
 
       # Check priority queues first
       if job = consume_job_by_queues(GREEN_QUEUES, host_req, host_key)
+        move_job_cache(job)
         return job
       end
 
       if job = consume_job_by_users(host_req, host_key)
+        move_job_cache(job)
         return job
       end
 
       # Check idle queue last
       if job = consume_job_by_queues(["idle"], host_req, host_key)
+        move_job_cache(job)
         return job
       end
     end
