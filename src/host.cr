@@ -224,7 +224,11 @@ class HostInfo
     end
 
     mjob["full_text_kv"] = JSON::Any.new full_text_kv.join(" ")
-    mjob["j"] = self.to_json_any
+
+    # Update the j field to ensure full_text_kv consistency
+    j_data = self.to_json_any
+    j_data["full_text_kv"] = full_text_kv.join(" ")
+    mjob["j"] = j_data
 
     mjob
   end

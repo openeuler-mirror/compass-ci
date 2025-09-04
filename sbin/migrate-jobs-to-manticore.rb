@@ -154,7 +154,11 @@ def transform_job(job)
   end
 
   manti[:full_text_kv] = full_text_kv.join(' ')
-  manti[:j] = job
+
+  # Update the j field to ensure full_text_kv consistency
+  job_copy = job.dup
+  job_copy['full_text_kv'] = full_text_kv.join(' ')
+  manti[:j] = job_copy
 
   manti
 end
