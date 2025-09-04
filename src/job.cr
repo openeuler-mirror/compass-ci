@@ -878,8 +878,8 @@ class JobHash
   end
 
   def renew_addtime(secs)
-    start_time = Time.parse(job["dispatch_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    self.renew_to_utc = start_time + secs;
+    start_time = Time.parse(self["dispatch_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    self.renew_to_utc = (start_time + secs.seconds).to_unix.to_i32;
   end
 
   # deadline_utc is a dynamic value, it will be regularly checked and refreshed

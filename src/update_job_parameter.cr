@@ -85,7 +85,8 @@ class Sched
       return Result.error(HTTP::Status::BAD_REQUEST, "Warning: Only running jobs can renew, your job stage is: #{job.job_stage}")
     end
 
-    new_time = job.renew_addtime(value.to_i32)
+    job.renew_addtime(value.to_i32)
+    new_time = Time.unix(job.renew_to_utc)
     Result.success(new_time.to_s("%Y-%m-%dT%H:%M:%S%:z"))
   end
 
