@@ -200,8 +200,13 @@ class JobHash
       if v.is_a? String || v.raw.is_a? String
         if PLAIN_SET.includes? k
           @hash_plain[k] = v.to_s
+        elsif ARRAY_SET.includes? k
+          if v.as_s.empty?
+            add2array(@hash_array, k, v)
+          else
+            raise "invalid type, expect array: Job[#{k}] = #{v}"
+          end
         else
-          raise "invalid type, expect array: Job[#{k}] = #{v}" if ARRAY_SET.includes? k
           raise "invalid type, expect hash: Job[#{k}] = #{v}" if HH_SET.includes? k
           raise "invalid type, expect hash of hash: Job[#{k}] = #{v}" if HHH_SET.includes? k
           @hash_any[k] = v
@@ -754,7 +759,8 @@ class JobHash
   end
 
   def time_to_unix(time : String) : Int64
-    Time.parse(time, "%Y-%m-%dT%H:%M:%S", Time.local.location).to_unix
+    parsed_time = parse_time_with_fallback(time)
+    parsed_time ? parsed_time.to_unix : 0i64
   end
 
   def duration_to_seconds(duration : String) : Int64
@@ -840,12 +846,23 @@ class JobHash
     return unless self.running_time?
     return unless self.finish_time?
 
-    boot_time =     Time.parse(self.boot_time,    "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    running_time =  Time.parse(self.running_time, "%Y-%m-%dT%H:%M:%S", Time.local.location)
-    finish_time =   Time.parse(self.finish_time,  "%Y-%m-%dT%H:%M:%S", Time.local.location)
+    boot_time =     parse_time_with_fallback(self.boot_time)
+    running_time =  parse_time_with_fallback(self.running_time)
+    finish_time =   parse_time_with_fallback(self.finish_time)
+    return unless running_time
 
-    self.boot_seconds = (running_time - boot_time).to_s
-    self.run_seconds = (finish_time - running_time).to_s
+    if boot_time
+      self.boot_seconds = (running_time - boot_time).to_s
+    end
+    if finish_time
+      self.run_seconds = (finish_time - running_time).to_s
+    end
+  end
+
+  private def parse_time_with_fallback(time_str)
+    Time.parse(time_str, "%Y-%m-%dT%H:%M:%S", Time.local.location)
+  rescue e
+    nil
   end
 
   def get_runtime() : Int32 | Nil
