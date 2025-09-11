@@ -380,9 +380,10 @@ class MirrorMain
     end
 
     url = git_info['url'][0]
-    mirror_dir = git_repo
     if belong.start_with?(COMMON_UPSTREAMS) or belong == MY_UPSTREAMS
       mirror_dir = "/srv/git/#{COMMON_UPSTREAMS}/#{url.split('://')[-1]}"
+    else
+      mirror_dir = "/srv/git/upstream/#{git_repo}.git"
     end
 
     url = "https://gh-proxy.test.osinfra.cn/#{url}" if url.include?("github.com")
