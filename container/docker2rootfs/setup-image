@@ -4,14 +4,19 @@
 
 install_packages()
 {
+	packages=$(</tmp/packages-to-install 2>/dev/null || echo "")
+	[ -z "$packages" ] && return 0
+	
+	echo "Installing packages: $packages"
+	
 	if [ $(command -v yum) >/dev/null ]; then
-		yum install -y --skip-broken $(</tmp/packages-to-install)
+		yum install -y --skip-broken $packages
 		yum clean all
 	elif [ $(command -v apt-get) >/dev/null ]; then
 		apt update
-		apt-get install -y --fix-missing $(</tmp/packages-to-install)
+		apt-get install -y --fix-missing $packages
 	elif [ $(command -v pacman) >/dev/null ]; then
-		pacman -Syu --noconfirm $(</tmp/packages-to-install)
+		pacman -Syu --noconfirm $packages
 	fi
 }
 

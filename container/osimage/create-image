@@ -4,7 +4,12 @@
 
 install_packages()
 {
-	yum -y install --skip-broken $(</tmp/packages-to-install)
+	packages=$(</tmp/packages-to-install 2>/dev/null || echo "")
+	[ -z "$packages" ] && return 0
+	
+	echo "Installing packages: $packages"
+	
+	yum -y install --skip-broken $packages
 	yum clean all
 }
 
