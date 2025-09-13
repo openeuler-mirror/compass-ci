@@ -361,6 +361,7 @@ class JobHash
     docker_image
 
     pp_params_md5
+    ss_params_md5
     all_params_md5
 
     nr_run
@@ -1098,7 +1099,15 @@ class Job < JobHash
         self.pp_params_md5 = get_md5(flat_pp_hash)
     end
 
+    flat_ss_hash = Hash(String, String).new
+    if @hash_hhh["ss"]?
+        flat_ss_hash = flat_hh(@hash_hhh["ss"])
+        self.ss_params_md5 = get_md5(flat_ss_hash)
+    end
+
     all_params = flat_pp_hash
+    all_params.merge!(flat_ss_hash)
+
     COMMON_PARAMS.each do |param|
       all_params[param] = @hash_plain[param]
     end

@@ -20,9 +20,44 @@ class PkgBuild < PluginsCommon
     wait_jobs = {} of String => Nil
     ss.each do |pkg_name, pkg_params|
       build_job = create_pkgbuild_job(job, pkg_name, pkg_params)
+
       if build_job
-        submit_pkgbuild_job(build_job)
-        wait_jobs[build_job.id] = nil
+        build_job.init_submit
+        limit = 3
+        skip_submit = false
+
+        submitted_jobs = find_existing_job(build_job, limit)
+
+        submitted_jobs.each do |select_job|
+          select_job_id = select_job["id"].to_s
+          select_job_stage = select_job["job_stage"].to_s
+          select_job_health = select_job["job_health"].to_s
+
+          # build job running or submitted, need add to wait_jobs, then handle next ss build job
+          if select_job_stage != "finish"
+            @log.info { "Found existing submit job #{select_job_id} for #{pkg_name}, adding to wait_jobs" }
+            wait_jobs[select_job_id] = nil
+            skip_submit = true
+            break
+          # build job run success, don't add to wait_jobs, should handle next ss build job
+          elsif select_job_health == "success"
+            @log.info { "Found success job #{select_job_id} for #{pkg_name}, handle next ss build job" }
+            skip_submit = true
+            break
+          end
+        end
+
+        if skip_submit
+          next
+        end
+
+        if submitted_jobs.size < limit
+          Sched.instance.on_job_submit(build_job)
+          @log.info { "submit job #{build_job.id} for #{pkg_name}, adding to wait_jobs" }
+          wait_jobs[build_job.id] = nil
+        else
+          raise "the all_params_md5: #{build_job.all_params_md5} job build failed, build times: #{submitted_jobs.size}"
+        end
       end
     end
 
@@ -38,9 +73,13 @@ class PkgBuild < PluginsCommon
     raise ex.to_s
   end
 
-  def submit_pkgbuild_job(build_job)
-    build_job.init_submit
-    Sched.instance.on_job_submit(build_job)
+  private def find_existing_job(build_job : Job, limit : Int)
+    query_submitted = {
+      "all_params_md5" => "#{build_job.all_params_md5}"
+    }
+    custom_condition = "LIMIT #{limit}"
+
+    Sched.instance.es.select("jobs", query_submitted, "id, job_stage, job_health", custom_condition)
   end
 
   # ss:

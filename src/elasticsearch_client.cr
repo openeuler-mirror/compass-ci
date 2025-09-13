@@ -382,25 +382,28 @@ class Elasticsearch::Client
     if Sched.options.should_read_manticore
       match = build_query_string(matches, " ", false)
       fields = Manticore.filter_sql_fields(fields)
-      match = Manticore.filter_sql_fields(match)
       others = Manticore.filter_sql_fields(others)
       sql_cmd  = URI.encode_www_form("SELECT #{fields} FROM #{index} WHERE MATCH('#{match}') #{others}")
       host_port = "#{@settings[:manticore_host]}:#{@settings[:manticore_port]}"
-      response = perform_one_request(host_port, "sql", nil, "POST", "query=" + sql_cmd)
+      response = perform_one_request(host_port, "sql", nil, "POST", "mode=raw&query=" + sql_cmd)
       body = response.body
 
       # Filter the SQL result if fields are not '*'
       body = Manticore.filter_sql_result(body) if fields != '*'
 
-      json_hash = JSON.parse(body).as_h
-      if json_hash.has_key? "error"
+      parsed_json = JSON.parse(body)
+      json_hash = if parsed_json.is_a?(JSON::Any)
+                    parsed_json[0]?.try &.as_h || {} of String => JSON::Any
+                  else
+                    parsed_json.as_h
+                  end
+      if json_hash.has_key? "error" && !json_hash["error"].to_s.empty?
         error_message = json_hash["error"]
         raise "Manticore SQL Error: #{error_message} sql_cmd is #{sql_cmd}"
       end
 
       # Parse the JSON response and extract the results
-      results = json_hash["hits"]["hits"].as_a
-      results = Manticore.jobs_from_manticore(results)
+      results = json_hash["data"].as_a
       return results
     end
 
