@@ -4,7 +4,10 @@
 
 install_packages()
 {
-	packages=$(</tmp/packages-to-install 2>/dev/null || echo "")
+	local packages
+	if [ -f /tmp/packages-to-install ]; then
+		packages=$(</tmp/packages-to-install)
+	fi
 	[ -z "$packages" ] && return 0
 	
 	echo "Installing packages: $packages"
