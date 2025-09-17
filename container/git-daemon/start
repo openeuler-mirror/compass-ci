@@ -8,10 +8,13 @@ start_pod
 
 docker_rm git-daemon
 
+lkp=$(id -u lkp)
+
 cmd=(
 	docker run
 	--restart=always
 	--name git-daemon
+	-u $lkp
 	-d
 	-p 9418:9418
 	-v /srv/git:/git

@@ -10,11 +10,11 @@ RUN apk update --no-cache && \
     apk add --no-cache git-daemon && \
     mkdir /git
 
-
+RUN adduser -u 1090 -D lkp
 VOLUME /git/
 
 RUN apk del gcc gdb rpcgen
 
 EXPOSE 9418
 
-CMD ["git", "daemon", "--verbose", "--export-all", "--base-path=/git/", "--reuseaddr", "/git/"]
+CMD ["git", "daemon", "--max-connections=256", "--verbose", "--export-all", "--base-path=/git/", "--reuseaddr", "/git/"]
