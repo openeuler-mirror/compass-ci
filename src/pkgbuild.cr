@@ -161,14 +161,25 @@ class PkgBuild < PluginsCommon
 
   # Configure Docker or VM settings
   private def configure_environment(build_job, job, params)
-    docker_image = params.delete("docker_image") || job.docker_image?
-    if docker_image
-      build_job.docker_image = job.docker_image
-      build_job.testbox = "dc"
-      build_job.os_mount = "container"
+    testbox = params.delete("testbox")
+    if testbox
+      build_job.testbox = testbox
+      if testbox.starts_with?("dc")
+        build_job.docker_image = params.delete("docker_image") || "openeuler/openeuler:24.03"
+        build_job.os_mount = "container"
+      else
+        build_job.os_mount = params.delete("os_mount") || "initramfs"
+      end
     else
-      build_job.testbox = "vm"
-      build_job.os_mount = "initramfs"
+      docker_image = params.delete("docker_image") || job.docker_image?
+      if docker_image
+        build_job.docker_image = job.docker_image
+        build_job.testbox = "dc"
+        build_job.os_mount = "container"
+      else
+        build_job.testbox = "vm"
+        build_job.os_mount = "initramfs"
+      end
     end
     build_job.tbox_group = build_job.testbox
   end
