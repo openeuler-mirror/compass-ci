@@ -329,6 +329,15 @@ show_kernel_info()
 	[ -z "$DEBUG" ] && log_info less $log_file
 }
 
+set_nr_cpu()
+{
+	if [[ -n "${nr_cpu}" &&  "$nr_cpu" -ne 0 ]]; then
+		smp="-smp ${nr_cpu}"
+	else
+		smp="-smp $(nproc)"
+	fi
+}
+
 common_option()
 {
 	kvm=(
@@ -338,7 +347,7 @@ common_option()
 		-name guest=$hostname,process=$job_id
 		-kernel $kernel
 		-initrd concatenated-initrd.cgz
-		-smp $nr_cpu
+		$smp
 		-m $memory
 		-rtc base=localtime
 		-k en-us
@@ -501,6 +510,7 @@ set_options()
 	set_nr_nic
 	# set_nic # disable for now: this caused ping_check fail
 	set_qemu
+	set_nr_cpu
 }
 
 write_dmesg_flag()
