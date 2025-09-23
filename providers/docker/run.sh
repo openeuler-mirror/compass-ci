@@ -34,7 +34,6 @@ parse_host_metadata() {
     # Set host parameters
     nr_cpu=${nr_cpu:-$(grep '^nr_cpu: ' "${host_file}" | cut -f2 -d' ')}
     memory=${memory:-$(grep '^memory: ' "${host_file}" | cut -f2 -d' ')}
-    create_yaml_variables "${host_file}"
 }
 
 determine_host_group() {
@@ -59,13 +58,15 @@ check_container_runtime() {
     export container_runtime
 }
 
-configure_ccache() {
-    [[ "${ccache_enable}" != "True" ]] && return 0
-
+set_resource_limits() {
     # Set default resource limits
     memory_minimum=${memory_minimum:-8}
-    memory="${memory_minimum}g"
+    memory="${memory}g"
     nr_cpu=${cpu_minimum:-${nr_cpu}}
+}
+
+configure_ccache() {
+    [[ "${ccache_enable}" != "True" ]] && return 0
 
     local ccache_container
     ccache_container=$($container_runtime ps --format '{{.Names}}' | grep -m1 'k8s_ccache_ccache' || true)
@@ -100,7 +101,7 @@ build_base_command() {
         --oom-score-adj="-1000"
     )
 
-    [[ -n "${nr_cpu}" ]] && container_cmd+=(--cpus "${nr_cpu}")
+    [[ -n "${nr_cpu}" && "$nr_cpu" -ne 0 ]] && container_cmd+=(--cpus "${nr_cpu}")
 }
 
 add_volume_mounts() {
@@ -281,6 +282,7 @@ main() {
     parse_host_metadata
     check_container_runtime
     configure_ccache
+    set_resource_limits
     setup_file_paths
     configure_networking
 

@@ -108,7 +108,7 @@ class PkgBuild < PluginsCommon
     configure_os_and_arch(build_job, job, params)
 
     # Set runtime and resource requirements
-    configure_runtime_and_resources(build_job)
+    configure_runtime_and_resources(build_job, params)
 
     # Copy relevant file store paths
     copy_file_store_paths(build_job, job)
@@ -163,13 +163,21 @@ class PkgBuild < PluginsCommon
   private def configure_environment(build_job, job, params)
     testbox = params.delete("testbox")
     if testbox
+      hw = Hash(String, String).new
       build_job.testbox = testbox
       if testbox.starts_with?("dc")
         build_job.docker_image = params.delete("docker_image") || "openeuler/openeuler:24.03"
         build_job.os_mount = "container"
+        nr_cpu = params.delete("nr_cpu") || "1"
+        memory = params.delete("memory") || "8g"
       else
         build_job.os_mount = params.delete("os_mount") || "initramfs"
+        nr_cpu = params.delete("nr_cpu")
+        memory = params.delete("memory")
       end
+      hw["nr_cpu"] = nr_cpu if nr_cpu
+      hw["memory"] = memory if memory
+      build_job.hash_hh["hw"] = hw unless hw.empty?
     else
       docker_image = params.delete("docker_image") || job.docker_image?
       if docker_image
@@ -195,9 +203,8 @@ class PkgBuild < PluginsCommon
   end
 
   # Set runtime and resource requirements
-  private def configure_runtime_and_resources(build_job)
-    build_job.runtime = "36000"
-    build_job.need_memory = "8g"
+  private def configure_runtime_and_resources(build_job, params)
+    build_job.runtime = params.delete("runtime") || "36000"
     build_job.install_os_packages_all = "ruby cpio gzip wget curl git fakeroot coreutils file findutils grep sed bzip2 gcc autoconf automake make patch"
   end
 

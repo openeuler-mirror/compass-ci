@@ -343,6 +343,7 @@ class JobHash
     category
 
     os
+    arch
     os_arch
     os_version
     os_variant
@@ -452,6 +453,7 @@ class JobHash
     emsx
     nickname
     host_machine
+    nr_cpu
     tbox_type
     branch
     job_origin
@@ -803,6 +805,7 @@ class JobHash
     if self.tbox_group =~ /^(vm|dc)-(\d+)p(\d+)g$/
       mb = [mb, $3.to_u32].max
     end
+
     @schedule_memmb = mb
   end
 
@@ -976,12 +979,12 @@ class JobHash
 
     if host = Sched.instance.hosts_cache.get_host(self.testbox)
       # Assign number values
-      hi["nr_node"]            = host.nr_node.to_s               if host.hash_uint32.has_key?("nr_node")
-      hi["nr_cpu"]             = host.nr_cpu.to_s                if host.hash_uint32.has_key?("nr_cpu")
-      hi["memory"]             = host.memory.to_s                if host.hash_uint32.has_key?("memory")
-      hi["nr_disks"]           = host.nr_disks.to_s              if host.hash_uint32.has_key?("nr_disks")
-      hi["nr_hdd_partitions"]  = host.nr_hdd_partitions.to_s     if host.hash_uint32.has_key?("nr_hdd_partitions")
-      hi["nr_ssd_partitions"]  = host.nr_ssd_partitions.to_s     if host.hash_uint32.has_key?("nr_ssd_partitions")
+      hi["nr_node"]            ||= host.nr_node.to_s               if host.hash_uint32.has_key?("nr_node")
+      hi["nr_cpu"]             ||= host.nr_cpu.to_s                if host.hash_uint32.has_key?("nr_cpu")
+      hi["memory"]             ||= host.memory.to_s                if host.hash_uint32.has_key?("memory")
+      hi["nr_disks"]           ||= host.nr_disks.to_s              if host.hash_uint32.has_key?("nr_disks")
+      hi["nr_hdd_partitions"]  ||= host.nr_hdd_partitions.to_s     if host.hash_uint32.has_key?("nr_hdd_partitions")
+      hi["nr_ssd_partitions"]  ||= host.nr_ssd_partitions.to_s     if host.hash_uint32.has_key?("nr_ssd_partitions")
 
       # Assign string values
       hi["rootfs_disk"]        = host.rootfs_disk.to_s           if host.hash_str.has_key?("rootfs_disk")
@@ -990,15 +993,14 @@ class JobHash
       hi["mac_addr"]           = host.mac_addr.join(" ")         if host.hash_str_array.has_key?("mac_addr")
     end
 
+    hi["memory"] ||= self.schedule_memmb.to_s
+
     if self.testbox =~ /-(\d+)p(\d+)g/
       hi["nr_cpu"] = $1
       hi["memory"] = ($2.to_i32 * 1024).to_s
     end
 
-    # Don't limit CPU by default
-    hi["memory"] ||= self.schedule_memmb.to_s
-
-    self.hw = hi unless self.hash_hh.has_key? "hw"
+    hi["memory"] = ($2.to_i32 * 1024).to_s if testbox =~ /(dc|vm)-(\d+)g/
   end
 
   # pending jobs are in Sched @jobs_cache_in_submit
@@ -1150,6 +1152,8 @@ class Job < JobHash
 
     if @hash_hh.has_key?("hw")
       _hw = @hash_hh["hw"].as(Hash)
+      return unless _hw.has_key?("memory")
+
       _memory = _hw["memory"].to_s.match(/\d+/)
       if _memory
         self.memory_minimum = _memory[0]
