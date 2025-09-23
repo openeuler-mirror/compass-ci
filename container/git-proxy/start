@@ -1,0 +1,37 @@
+#!/bin/bash
+# SPDX-License-Identifier: MulanPSL-2.0+
+# Copyright (c) 2020 Huawei Technologies Co., Ltd. All rights reserved.
+
+. $CCI_SRC/container/defconfig.sh
+
+
+docker_rm git-proxy
+
+DEFAULT_GIT_CACHE='/srv/git/git-proxy'
+DEFAULT_GIT_CONFIG_DIR='/srv/git/git-proxy/config'
+
+# Ensure the host directories exist
+mkdir -p "$DEFAULT_GIT_CACHE"
+mkdir -p "$DEFAULT_GIT_CONFIG_DIR"
+
+# Copy the config file to the expected host location if it's not there.
+# This makes the start script more robust.
+if [ ! -f "$DEFAULT_GIT_CONFIG_DIR/config.toml" ]; then
+    echo "Config file not found in $DEFAULT_GIT_CONFIG_DIR, copying from source..."
+    cp "$(dirname "$0")/config.toml" "$DEFAULT_GIT_CONFIG_DIR/config.toml"
+fi
+
+cmd=(
+	docker run
+	--restart=always
+	-d
+	--name git-proxy
+        -v "$DEFAULT_GIT_CACHE":/git-mirror/data
+        -v "$DEFAULT_GIT_CONFIG_DIR/config.toml":/etc/git-mirror/config.toml
+        -p 8888:8888
+	git-proxy
+	/etc/git-mirror/config.toml
+)
+
+"${cmd[@]}"
+

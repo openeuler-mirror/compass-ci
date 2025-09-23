@@ -1,0 +1,29 @@
+# ListenAddr is the address the web server listens on for serving the mirrors.
+# Defaults to :8080
+ListenAddr = ":8888"
+# Interval is the default interval for updating mirrors, can be overridden per
+# repo.  Defaults to 15 seconds.
+Interval = "12h"
+# Base path for storing mirrors, absolute or relative.  Defaults to "."
+BasePath = "/git-mirror/data"
+
+# An example of a public mirror taking defaults from above.  The Name is
+# generated from the URL by just taking the host and path.
+#
+# Will be mirrored at http://localhost:8080/github.com/espressif/git-mirror-server.git
+[[Repo]]
+Origin = "https://gitee.com/openeuler/kernel.git"
+
+# It is also possible to set custom names for accessing the repos.
+#
+# Will be mirrored at http://localhost:8080/custom-name
+[[Repo]]
+Origin = "https://mirrors.tuna.tsinghua.edu.cn/git/linux-next.git"
+
+[[Repo]]
+Origin = "https://mirrors.tuna.tsinghua.edu.cn/git/linux-stable.git"
+
+[[Repo]]
+Origin = "https://mirrors.tuna.tsinghua.edu.cn/git/linux.git"
+
+
