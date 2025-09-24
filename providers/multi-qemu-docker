@@ -457,7 +457,6 @@ class MultiQemuDocker
           loop do
             job_id = fifo.gets
             unless job_id
-              puts "Unexpected end of input from the FIFO."
               sleep 1
               next
             end
