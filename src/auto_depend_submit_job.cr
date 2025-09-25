@@ -12,6 +12,7 @@ class Sched
       # In cluster case, origin_job will be copied to node jobs and dropped,
       # so shall not call on_job_submit() right now.
       origin_job = init_job(job_content)
+      checkout_max_run(origin_job)
 
       origin_job.handle_upload_file_store
       response = origin_job.handle_need_file_store
@@ -91,6 +92,24 @@ class Sched
     job = Job.new(job_content)
     job.init_submit
     job
+  end
+
+  def checkout_max_run(job)
+    max_run = job.max_run?
+    return unless max_run
+
+    all_params_md5 = job.all_params_md5
+
+    query = {
+      "all_params_md5" => "#{all_params_md5}"
+    }
+
+    query_result = Sched.instance.es.select("jobs", query, "id")
+
+    total = query_result.size
+
+    msg = "the number of jobs with the same all_params_md5=#{all_params_md5} has reached the limit of max_run=#{max_run}, the total number is #{total}"
+    raise msg if total >= max_run.not_nil!.to_i
   end
 
   # Generates a unique job ID using the current time and the worker ID.
