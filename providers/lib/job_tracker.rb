@@ -88,17 +88,50 @@ class JobTracker
   def find_hostname(tbox_group)
     1.upto(100000) do |i|
       hostname = tbox_group + "-#{i}"
-      return hostname unless has_hostname(hostname)
+
+      next if has_hostname(hostname)
+      next if hostname_conflict?(tbox_group, hostname)
+
+      return hostname
     end
     raise "Cannot find non-conflict hostname for #{tbox_group}"
   end
 
   private
 
+  def hostname_conflict?(tbox_group, hostname)
+    if tbox_group.start_with?("dc")
+      docker_container_exists?(hostname)
+    elsif tbox_group.start_with?("vm")
+      vm_pid_file_exists?(hostname)
+    else
+      false
+    end
+  end
+
   def has_hostname(hostname)
     @jobs.any? do |_, v|
       v[:hostname] == hostname
     end
+  end
+
+  def docker_container_exists?(hostname)
+    exists = system("#{ENV['OCI_RUNTIME']} inspect #{hostname} > /dev/null 2>&1")
+    if exists
+      puts "WARNING: Docker container #{hostname} already exists"
+    end
+    exists
+  rescue
+    false
+  end
+
+  def vm_pid_file_exists?(hostname)
+    pid_file_path = "#{ENV['PIDS_DIR']}/qemu-#{hostname}.pid"
+    exists = File.exist?(pid_file_path)
+    if exists
+      puts "WARNING: VM PID file #{pid_file_path} already exists"
+    end
+    exists
   end
 
   def job_file_path(job_id)

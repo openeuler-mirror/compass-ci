@@ -308,6 +308,7 @@ class MultiQemuDocker
 
   def setup_directories
     ENV["BASE_DIR"] = BASE_DIR
+    ENV["OCI_RUNTIME"] = @container_runtime
     FileUtils.mkdir_p(ENV["HOSTS_DIR"] = "#{BASE_DIR}/provider/hosts")
     FileUtils.mkdir_p(ENV["JOBS_DIR"] = "#{BASE_DIR}/provider/jobs")
     FileUtils.mkdir_p(ENV["PIDS_DIR"] = "#{BASE_DIR}/provider/pids")
@@ -743,7 +744,6 @@ class MultiQemuDocker
         when 'vm', 'qemu'
           QemuManager.new(message).start_qemu_instance
         when 'dc', 'container'
-          ENV["OCI_RUNTIME"] = @container_runtime
           DockerManager.new(message).start_container_instance
         end
       rescue => e
