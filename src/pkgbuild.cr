@@ -30,11 +30,11 @@ class PkgBuild < PluginsCommon
 
         submitted_jobs.each do |select_job|
           select_job_id = select_job["id"].to_s
-          select_job_stage = select_job["job_stage"].to_s
+          select_job_istage = select_job["istage"].as_i
           select_job_health = select_job["job_health"].to_s
 
           # build job running or submitted, need add to wait_jobs, then handle next ss build job
-          if select_job_stage != "finish"
+          if select_job_istage < JOB_STAGE_NAME2ID["finish"]
             @log.info { "Found existing submit job #{select_job_id} for #{pkg_name}, adding to wait_jobs" }
             wait_jobs[select_job_id] = nil
             skip_submit = true
@@ -79,7 +79,7 @@ class PkgBuild < PluginsCommon
     }
     custom_condition = "LIMIT #{limit}"
 
-    Sched.instance.es.select("jobs", query_submitted, "id, job_stage, job_health", custom_condition)
+    Sched.instance.es.select("jobs", query_submitted, "id, job_stage, job_health, istage", custom_condition)
   end
 
   # ss:
@@ -182,10 +182,10 @@ class PkgBuild < PluginsCommon
       docker_image = params.delete("docker_image") || job.docker_image?
       if docker_image
         build_job.docker_image = job.docker_image
-        build_job.testbox = "dc"
+        build_job.testbox = "dc-8g"
         build_job.os_mount = "container"
       else
-        build_job.testbox = "vm"
+        build_job.testbox = "vm-8g"
         build_job.os_mount = "initramfs"
       end
     end

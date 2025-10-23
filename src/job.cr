@@ -1001,6 +1001,8 @@ class JobHash
     end
 
     hi["memory"] = ($2.to_i32 * 1024).to_s if testbox =~ /(dc|vm)-(\d+)g/
+    hi["memory"] = ($1.to_i32 * 1024).to_s if hi["memory"] =~ /(\d+)g/
+    self.hw = hi unless self.hash_hh.has_key? "hw"
   end
 
   # pending jobs are in Sched @jobs_cache_in_submit
