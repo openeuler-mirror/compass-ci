@@ -767,7 +767,18 @@ class Sched
     if provider
       provider.send(message)
     elsif channel = @hw_serial_login_channels[host]?
-      channel.send(message)
+      msg = JSON.parse(message)
+      message_type = msg["type"]?.try(&.as_s)
+
+      case message_type
+      when "console-input"
+        data = msg["data"]?.try(&.as_s)
+        if data
+          channel.send(data)
+        end
+      else
+        channel.send(message)
+      end
     else
       # job.pending_messages ||= [] of String
       # job.pending_messages << message

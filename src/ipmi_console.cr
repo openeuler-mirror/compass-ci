@@ -6,7 +6,9 @@ class Sched
   @hw_serial_login_channels = {} of String => Channel(String)
   @hw_jobid = {} of String => Int64
   @hw_jobfile = {} of String => File?
+  @hw_fifofile = {} of String => File?
   @log_rotators = {} of String => String
+  @needs_startup_detection = {} of String => Bool
 
   START_PATTERNS = [
     "BIOS boot completed.",
@@ -53,6 +55,7 @@ class Sched
     if process = @hw_ipmi_processes[hostname]?
       process.signal(:kill) rescue nil
       @hw_ipmi_processes.delete(hostname)
+      @hw_fifofile.delete(hostname)
     end
 
     @hw_serial_log_channels.delete(hostname)
@@ -70,6 +73,9 @@ class Sched
     start_time = Time.utc
     loop do
       begin
+        fifo_path = "/tmp/sol_input_#{Process.pid}"
+        File.delete(fifo_path) if File.exists?(fifo_path)
+        Process.run("mkfifo", [fifo_path])
         # Deactivate first
         Process.run("ipmitool", ["-I", "lanplus", "-H", ipmi_ip, "-U", ipmi_user, "-E", "sol", "deactivate"],
           env: {"IPMI_PASSWORD" => ipmi_password})
@@ -77,20 +83,21 @@ class Sched
 
         # Start SOL session
         start_time = Time.utc
-        process = Process.new("ipmitool", ["-I", "lanplus", "-H", ipmi_ip, "-U", ipmi_user, "-E", "sol", "activate"],
-          input: :pipe, output: :pipe, error: :pipe,
-          env: {"IPMI_PASSWORD" => ipmi_password})
-
-        @hw_ipmi_processes[hostname] = process
+        @hw_ipmi_processes[hostname] = Process.new("sh", ["-c", <<-SHELL],
+          script -q -f -c 'ipmitool -I lanplus -H #{ipmi_ip} -U #{ipmi_user} -P #{ipmi_password} sol activate' /dev/null < #{fifo_path}
+        SHELL
+          output: :pipe,
+          error: :pipe
+        )
+        @hw_fifofile[hostname] = File.open(fifo_path, "w")
 
         # Handle output
-        spawn handle_ipmi_output(process.output, hostname)
-        spawn handle_ipmi_input(process.input, hostname)
+        spawn handle_ipmi_output(hostname)
+        spawn handle_ipmi_input(hostname)
 
-        process.wait
+        @hw_ipmi_processes[hostname].wait
       rescue e
-
-        log "IPMI error for #{hostname}: #{e}"
+        pp "IPMI error for #{hostname}: #{e}"
         sleep 1.minute
       ensure
         # When IPMI fails fast like this, sleep for long time.
@@ -109,6 +116,7 @@ class Sched
         end
 
         @hw_ipmi_processes.delete(hostname)
+        @hw_fifofile.delete(hostname)
       end
     end
   end
@@ -151,16 +159,27 @@ class Sched
     end
   end
 
-  private def handle_ipmi_output(output, hostname)
-    while line = output.gets
-      @hw_serial_log_channels[hostname].send(line)
+  private def handle_ipmi_output(hostname)
+    begin
+      output = @hw_ipmi_processes[hostname].output
+      buffer = Bytes.new(4096)
+      while (bytes_read = output.read(buffer)) > 0
+        @hw_serial_log_channels[hostname].send(String.new(buffer[0, bytes_read]))
+      end
+    rescue e
+      pp e
     end
   end
 
-  private def handle_ipmi_input(input, hostname)
+  private def handle_ipmi_input(hostname)
     while command = @hw_serial_login_channels[hostname].receive
-      input << command
-      input.flush
+      begin
+        fifo = @hw_fifofile[hostname]
+        fifo.not_nil!.write(String.new(Base64.decode(command)).to_slice)
+        fifo.not_nil!.flush
+      rescue e
+        pp e.message
+      end
     end
   end
 
@@ -186,6 +205,7 @@ class Sched
   private def process_job_log(hostname, line)
     jobid = @hosts_cache[hostname].job_id
     return unless job = @jobs_cache[jobid]?
+    @needs_startup_detection ||= {} of String => Bool
 
     if @hw_jobid[hostname]? != jobid
       @hw_jobid[hostname] = jobid
@@ -193,13 +213,21 @@ class Sched
         file.close
         @hw_jobfile.delete hostname
       end
+      @needs_startup_detection[hostname] = true
     end
 
-    unless @hw_jobid[hostname]?
+    if ! @hw_jobid[hostname]? || @needs_startup_detection[hostname]?
       START_PATTERNS.each do |pattern|
         if line.includes?(pattern)
+          client_sid = @console_jobid2client_sid[jobid]?
+          if client_sid
+            startup_message = {type: "console-startup", job_id: jobid}.to_json
+            @client_sessions[client_sid]?.try &.send(startup_message)
+            @needs_startup_detection.delete hostname
+          end
+
           return unless job.result_root
-          log_path = File.join(job.result_root, "console.log")
+          log_path = File.join(BASE_DIR, job.result_root, "console.log")
           @hw_jobfile[hostname] = File.open(log_path, "a")
           break
         end
@@ -213,6 +241,7 @@ class Sched
 
     END_PATTERNS.each do |pattern|
       if line.includes?(pattern)
+        break unless jobfile = @hw_jobfile[hostname]?
         @hw_jobfile[hostname].try(&.close)
         @hw_jobfile.delete hostname
         break
@@ -221,18 +250,12 @@ class Sched
   end
 
   private def notify_clients(hostname, line)
+    return unless host_info = @hosts_cache[hostname]?
+
     job_id = @hosts_cache[hostname].job_id
 
-    # Feature 4: Watchlog clients
-    if sids = @watchlog_jobid2client_sids[job_id]?
-      sids.each do |sid|
-        @client_sessions[sid]?.try &.send(line)
-      end
-    end
-
-    # Feature 5: Console clients
     if sid = @console_jobid2client_sid[job_id]?
-      @client_sessions[sid]?.try &.send(line)
+      @client_sessions[sid]?.try &.send({"type" => "console-output", "data" => Base64.strict_encode(line.to_slice)}.to_json)
     end
   end
 

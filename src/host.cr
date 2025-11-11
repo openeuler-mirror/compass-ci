@@ -77,6 +77,7 @@ class HostInfo
     serial_number
     hostname
     tbox_type
+    ipmi_ip
 
     ip
     suite
