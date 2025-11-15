@@ -61,7 +61,7 @@ check_container_runtime() {
 set_resource_limits() {
     # Set default resource limits
     memory_minimum=${memory_minimum:-8}
-    memory="${memory}g"
+    memory="${memory}m"
     nr_cpu=${cpu_minimum:-${nr_cpu}}
 }
 

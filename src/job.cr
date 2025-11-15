@@ -1001,7 +1001,7 @@ class JobHash
     end
 
     hi["memory"] = ($2.to_i32 * 1024).to_s if testbox =~ /(dc|vm)-(\d+)g/
-    hi["memory"] = ($1.to_i32 * 1024).to_s if hi["memory"] =~ /(\d+)g/
+    hi["memory"] = ($1.to_i32 * 1024).to_s if hi["memory"] =~ /(\d+)g/i
     self.hw = hi unless self.hash_hh.has_key? "hw"
   end
 
