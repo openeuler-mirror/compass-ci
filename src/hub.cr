@@ -130,7 +130,7 @@ class Sched
     end
 
     if job.idata_readiness >= JOB_DATA_READINESS_NAME2ID["complete"]
-      if job.istage < JOB_STAGE_NAME2ID["finish"]
+      if job.istage < JOB_STAGE_NAME2ID["post_run"]
         # We may enter here for VM w/o network or crashes, so cannot update job
         # stage or upload results, so multi-qemu-docker help upload results,
         # changing data readiness to "uploaded" then "complete".
@@ -197,6 +197,7 @@ class Sched
   # job finish or abort
   def on_job_finish(job)
     job.set_boot_seconds
+    @es.replace_doc("jobs", job)
     check_retire_job(job)
   end
 
