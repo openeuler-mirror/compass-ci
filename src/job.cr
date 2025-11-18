@@ -1120,7 +1120,7 @@ class Job < JobHash
   end
 
   # defaults to the 1st value
-  VALID_OS_MOUNTS = ["initramfs", "nfs", "cifs", "container", "local"]
+  VALID_OS_MOUNTS = ["busybox", "initramfs", "nfs", "cifs", "container", "local"]
 
   private def set_os_mount
     if is_docker_job?

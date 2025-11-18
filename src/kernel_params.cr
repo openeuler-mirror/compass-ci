@@ -58,6 +58,8 @@ class JobHash
       "root=#{OS_HTTP_HOST}:#{os_real_path}" # root is just used to temporarily mount a root in initqueue stage when lvm is not ready
     when "container"
       ""
+    when "busybox"
+      ""
     else
       raise "Unsupported mount type: #{os_mount}"
     end
@@ -212,14 +214,9 @@ class JobHash
     return temp_initrds
   end
 
-  private def initramfs_initrds
+  private def busybox_initrds
     temp_initrds = [] of String
-
     osimage_dir = "#{SRV_INITRD}/osimage/#{os_dir}"
-    osimage = "#{SRV_INITRD}/osimage/#{os_dir}/current"
-    if File.exists? osimage
-      temp_initrds << "#{initrd_http_prefix}" + JobHelper.service_path(osimage)
-    end
 
     osimage = "#{FILE_STORE}/docker2os/#{self.arch}/#{self.osv}.cgz"
     if File.exists? osimage
@@ -245,6 +242,25 @@ class JobHash
     return temp_initrds
   end
 
+  private def initramfs_initrds
+    temp_initrds = [] of String
+    osimage_dir = "#{SRV_INITRD}/osimage/#{os_dir}"
+
+    osimage = "#{osimage_dir}/current"
+    if File.exists? osimage
+      temp_initrds << "#{initrd_http_prefix}" + JobHelper.service_path(osimage)
+    end
+
+    if File.exists? "#{osimage_dir}/run-ipconfig.cgz"
+      temp_initrds << "#{initrd_http_prefix}" +
+                    JobHelper.service_path("#{osimage_dir}/run-ipconfig.cgz")
+    end
+
+    temp_initrds.concat(self.initrd_deps)
+    temp_initrds.concat(self.initrd_pkgs)
+    return temp_initrds
+  end
+
   private def nfs_cifs_initrds
     temp_initrds = [] of String
 
@@ -259,6 +275,8 @@ class JobHash
 
     if self.os_mount == "initramfs"
       temp_initrds.concat(initramfs_initrds())
+    elsif ["busybox", "container"].includes? self.os_mount
+      temp_initrds.concat(busybox_initrds())
     elsif ["nfs", "cifs", "local"].includes? self.os_mount
       temp_initrds.concat(nfs_cifs_initrds())
     end
