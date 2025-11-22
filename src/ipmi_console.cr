@@ -62,11 +62,6 @@ class Sched
     @hw_serial_login_channels.delete(hostname)
     @hw_jobid.delete(hostname)
     @hw_jobfile.delete(hostname)
-
-    # Cleanup any existing SOL session
-    if @hosts_cache.hosts.has_key? hostname
-        ipmi_run(hostname, %w(sol deactivate))
-    end
   end
 
   private def start_ipmi_session(hostname, ipmi_ip, ipmi_user, ipmi_password)
@@ -282,7 +277,7 @@ class Sched
 
   private def ipmi_run(hostname : String, params : Array(String))
     # Retrieve IPMI details from the cache
-    ipmi_ip = @hosts_cache[hostname].hash_str["ipmi_ip"]?
+    ipmi_ip = @hosts_cache[hostname].hash_all["ipmi_ip"]?
     unless ipmi_ip
       return HTTP::Status::BAD_REQUEST, "IPMI IP not found for host: #{hostname}"
     end
@@ -290,7 +285,7 @@ class Sched
     # Prepare IPMI command parameters
     ipmi_user = Sched.options.ipmi_user
     ipmi_password = Sched.options.ipmi_password
-    common_params = ["-I", "lanplus", "-H", ipmi_ip, "-U", ipmi_user, "-E"]
+    common_params = ["-I", "lanplus", "-H", "#{ipmi_ip}", "-U", ipmi_user, "-E"]
 
     # Execute the IPMI command
     status = Process.run("ipmitool", common_params.concat(params), env: {"IPMI_PASSWORD" => ipmi_password})

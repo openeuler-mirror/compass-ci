@@ -72,7 +72,6 @@ class Sched
     @hosts_cache = Hosts.new(@es)
     @accounts_cache = Accounts.new(@es)
     refresh_cache_from_es
-    setup_serial_consoles
     @stats_worker = StatsWorker.new
   end
 

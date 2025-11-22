@@ -9,6 +9,9 @@ require "./lib/string_utils"
 class Sched
 
   def on_job_dispatch(job : JobHash, hostreq : HostRequest)
+    unless job.testbox =~ /^(dc|vm)/
+      setup_serial_console_for_host job.testbox
+    end
     job.set_tbox_info(hostreq)
     job.settle_job_fields
     change_job_stage(job, "dispatch", nil)
