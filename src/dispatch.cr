@@ -458,25 +458,24 @@ class Sched
 
     # Waiting on other jobs?
     if job.hash_hhh.has_key?("wait_on")
-      return if @jobs_cache.has_key?(job_id)
-      @jobs_cache[job_id] = job
+      @jobs_cache[job_id] = job unless @jobs_cache.has_key?(job_id)
       register_wait_on_job(job, job_id)
       return # Not ready for scheduling
     end
 
     # Cache running jobs
     if job.job_stage != "submit"
-      return if @jobs_cache.has_key?(job_id)
-      @jobs_cache[job_id] = job
+      @jobs_cache[job_id] = job unless @jobs_cache.has_key?(job_id)
       return
     end
 
     # Create data structures for job scheduling
-    return if @jobs_cache_in_submit.has_key?(job_id)
-    @jobs_cache_in_submit[job_id] = job
+    unless @jobs_cache_in_submit.has_key?(job_id)
+      @jobs_cache_in_submit[job_id] = job
 
-    set_job_schedule_properties(job)
-    create_job_schedule_indices(job, job_id)
+      set_job_schedule_properties(job)
+      create_job_schedule_indices(job, job_id)
+    end
   end
 
   # on job consume, move job from dispatch data structures
@@ -497,7 +496,7 @@ class Sched
   private def register_wait_on_job(job : JobHash, job_id : Int64)
     job.wait_on.each do |id, _|
       id = id.to_i64
-      @jobs_wait_on[id] = Set(Int64).new
+      @jobs_wait_on[id] ||= Set(Int64).new
       @jobs_wait_on[id] << job_id
     end
   end
