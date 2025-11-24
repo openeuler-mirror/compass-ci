@@ -12,8 +12,8 @@ class Sched
     unless job.testbox =~ /^(dc|vm)/
       setup_serial_console_for_host job.testbox
     end
-    job.set_tbox_info(hostreq)
     job.settle_job_fields
+    job.set_tbox_info(hostreq)
     change_job_stage(job, "dispatch", nil)
     save_job_files(job, Kemal.config.public_folder)
     @hosts_cache.update_job_info(job)
