@@ -52,12 +52,6 @@ class Sched
   end
 
   private def remove_serial_console_for_host(hostname)
-    if process = @hw_ipmi_processes[hostname]?
-      process.signal(:kill) rescue nil
-      @hw_ipmi_processes.delete(hostname)
-      @hw_fifofile.delete(hostname)
-    end
-
     @hw_serial_log_channels.delete(hostname)
     @hw_serial_login_channels.delete(hostname)
     @hw_jobid.delete(hostname)
@@ -66,52 +60,40 @@ class Sched
 
   private def start_ipmi_session(hostname, ipmi_ip, ipmi_user, ipmi_password)
     start_time = Time.utc
-    loop do
-      begin
-        fifo_path = "/tmp/sol_input_#{Process.pid}"
+    begin
+      unless @hw_ipmi_processes[hostname]?
+        fifo_path = "/tmp/sol_input_#{Process.pid}_#{hostname}"
         File.delete(fifo_path) if File.exists?(fifo_path)
-        Process.run("mkfifo", [fifo_path])
+        result = Process.run("mkfifo", [fifo_path])
         # Deactivate first
         Process.run("ipmitool", ["-I", "lanplus", "-H", ipmi_ip, "-U", ipmi_user, "-E", "sol", "deactivate"],
           env: {"IPMI_PASSWORD" => ipmi_password})
-        sleep 3.seconds
+        sleep 5.seconds
 
         # Start SOL session
         start_time = Time.utc
         @hw_ipmi_processes[hostname] = Process.new("sh", ["-c", <<-SHELL],
-          script -q -f -c 'ipmitool -I lanplus -H #{ipmi_ip} -U #{ipmi_user} -P #{ipmi_password} sol activate' /dev/null < #{fifo_path}
+          setsid script -q -f -c 'ipmitool -I lanplus -H #{ipmi_ip} -U #{ipmi_user} -P #{ipmi_password} sol activate' /dev/null < #{fifo_path}
         SHELL
           output: :pipe,
           error: :pipe
         )
         @hw_fifofile[hostname] = File.open(fifo_path, "w")
 
-        # Handle output
-        spawn handle_ipmi_output(hostname)
-        spawn handle_ipmi_input(hostname)
+      end
 
-        @hw_ipmi_processes[hostname].wait
-      rescue e
-        pp "IPMI error for #{hostname}: #{e}"
-        sleep 1.minute
-      ensure
-        # When IPMI fails fast like this, sleep for long time.
-        # [-- Console up -- Sun Feb  9 12:31:03 2025]
-        # Error: Unable to establish IPMI v2 / RMCP+ session
-        # Error: Unable to establish IPMI v2 / RMCP+ session
-        # [-- Console down -- Sun Feb  9 12:31:06 2025]
-        # [-- Console up -- Sun Feb  9 12:31:07 2025]
-        # Error: Unable to establish IPMI v2 / RMCP+ session
-        # Error: Unable to establish IPMI v2 / RMCP+ session
-        # [-- Console down -- Sun Feb  9 12:31:10 2025]
-        if (Time.utc - start_time) < 10.seconds
-          sleep 1.hour
-        else
-          sleep 1.seconds
-        end
+      spawn handle_ipmi_output(hostname)
+      spawn handle_ipmi_input(hostname)
 
+      @hw_ipmi_processes[hostname].wait
+    rescue e
+      pp "IPMI error for #{hostname}: #{e}"
+      sleep 1.minute
+    ensure
+      if process = @hw_ipmi_processes[hostname]?
+        %x(pkill -TERM -P #{process.pid})
         @hw_ipmi_processes.delete(hostname)
-        @hw_fifofile.delete(hostname)
+        sleep 10.seconds
       end
     end
   end
