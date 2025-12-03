@@ -1,0 +1,326 @@
+# Error ID 智能筛选规则配置文件
+# 修改此文件后会在下次筛选周期自动生效（支持热重载）
+
+# 配置版本号（用于追踪变更）
+version: "1.0"
+
+# 筛选策略默认参数
+default_parameters:
+  max_count: 6           # 每个job最多选择的错误ID数量
+  min_priority: 40       # 最低优先级阈值（0-100），提高到40以确保任务质量
+  whitelist_boost: 20    # 白名单优先级加成
+
+# 文件路径识别正则表达式
+file_path_patterns:
+  - pattern: '[\./\w-]+\.(?:h|c|cpp|py|rs|go|java|js):\d+:\d+'
+    description: "标准文件路径格式（file.c:123:45）"
+  - pattern: '[\./\w-]+\.(?:h|c|cpp|py|rs|go|java|js):#:#:'
+    description: "规范化文件路径格式（file.c:#:#:）"
+  - pattern: '\/[\w\.-/]+/[\w\.-]+\.\w+:\d+'
+    description: "绝对路径格式"
+
+# 错误级别关键词（按优先级排序）
+error_keywords:
+  critical:
+    - error
+    - Error
+    - ERROR
+    - fatal
+    - FATAL
+    - panic
+    - PANIC
+  high:
+    - warning
+    - Warning
+    - WARNING
+    - fail
+    - failed
+    - FAIL
+    - FAILED
+  medium:
+    - warn
+    - WARN
+    - deprecated
+    - DEPRECATED
+
+# 环境错误黑名单（这些错误不适合 bisect）
+environment_blacklist:
+  # 文件系统错误
+  - pattern: 'No_such_file_or_directory'
+    reason: "文件不存在"
+  - pattern: 'Permission_denied'
+    reason: "权限错误"
+  - pattern: 'File_already_exists_on_server'
+    reason: "文件冲突"
+  - pattern: '/srv/file-store/.*already_exists'
+    reason: "文件存储冲突"
+
+  # 命令/工具错误
+  - pattern: 'command_not_found'
+    reason: "命令未找到"
+  - pattern: '/usr/bin/env.*not.*found'
+    reason: "环境工具未找到"
+  - pattern: 'ruby.*not.*found'
+    reason: "Ruby未安装"
+  - pattern: 'python.*not.*found'
+    reason: "Python未安装"
+  - pattern: 'bash.*not.*found'
+    reason: "Bash未找到"
+
+  # 网络错误
+  - pattern: 'Connection_refused'
+    reason: "网络连接拒绝"
+  - pattern: 'Network_is_unreachable'
+    reason: "网络不可达"
+  - pattern: 'curl.*The.*requested.*URL.*returned.*error'
+    reason: "HTTP请求错误"
+  - pattern: 'The.*requested.*URL.*returned.*error'
+    reason: "URL请求失败"
+  - pattern: 'curl:\(\d+\)'
+    reason: "curl错误码"
+  - pattern: 'network.*timeout'
+    reason: "网络超时"
+
+  # 包管理错误
+  - pattern: '.*\.rpm.*not.*found'
+    reason: "RPM包未找到"
+  - pattern: 'package.*not.*available'
+    reason: "软件包不可用"
+  - pattern: 'repository.*not.*found'
+    reason: "仓库未找到"
+
+  # Git/仓库错误
+  - pattern: 'Failure_while_creating_working_copy_of.*git_repo'
+    reason: "Git仓库克隆失败"
+  - pattern: 'git_update_cache_failed'
+    reason: "Git缓存更新失败"
+
+  # 构建系统错误
+  - pattern: 'ambiguous.*not_found_in_the_build_directory'
+    reason: "构建目录问题"
+  - pattern: 'detect_arch_by_.*gpg-error'
+    reason: "架构检测工具问题"
+
+  # 文件上传/下载错误
+  - pattern: 'upload.*error'
+    reason: "文件上传失败"
+  - pattern: 'download.*error'
+    reason: "文件下载失败"
+
+  # 安装脚本错误
+  - pattern: '^stderr\.eid\.install-'
+    reason: "安装脚本错误，非代码问题"
+  - pattern: 'install-m#'
+    reason: "install 命令错误，环境配置问题"
+
+  # 通用构建失败标记
+  - pattern: '==>ERROR:A_failure_occurred_in_build\(\)'
+    reason: "通用构建失败"
+  - pattern: '^last_state\.eid\.exit_fail$'
+    reason: "退出失败标记"
+  - pattern: '^last_state\.eid\.test\..*exit_code\.\d+$'
+    reason: "测试退出码"
+  - pattern: 'has_stderr$'
+    reason: "单纯的stderr标记"
+
+  # 编译器内部文件（无法定位真实代码位置）
+  - pattern: '\.\./include/linux/compiler\.h:#:#:'
+    reason: "编译器宏展开，非实际代码位置"
+  - pattern: '\.\./include/linux/compiler-.*\.h:#:#:'
+    reason: "编译器特定头文件，非实际代码位置"
+  - pattern: '__compiletime_assert_\d+'
+    reason: "编译时断言宏，无法定位真实位置"
+  - pattern: '\.\./include/asm-generic/.*\.h:#:#:'
+    reason: "通用架构头文件，非实际代码位置"
+  - pattern: '\.\./arch/.*/include/asm/.*\.h:#:#:.*__compiletime_'
+    reason: "架构特定编译时检查，无法定位源码"
+
+  # 配置文件错误（不是代码问题）
+  - pattern: 'makepkg\.eid\.\.config:'
+    reason: ".config 配置文件，不是代码错误"
+  - pattern: '\.config:warning:'
+    reason: "配置文件警告，不适合 bisect"
+  - pattern: '\.config:error:'
+    reason: "配置文件错误，不适合 bisect"
+
+  # 临时文件错误（无法追溯源码）
+  - pattern: '/tmp/lkp/.*\.s:'
+    reason: "临时汇编文件，无法追溯源码位置"
+  - pattern: '/tmp/lkp/.*\.(c|i|o):'
+    reason: "临时编译文件，无法追溯源码位置"
+  - pattern: 'makepkg\.eid\./tmp/'
+    reason: "临时文件路径，无法定位代码"
+  - pattern: '/tmp/.*cc[A-Za-z0-9]+\.(s|c|i):'
+    reason: "gcc 临时文件，无法追溯源码"
+
+  # 其他无法定位的错误
+  - pattern: 'selected-processor-does-not-support'
+    reason: "处理器指令集问题，通常是配置错误"
+  - pattern: 'system-register-name.*not.*support'
+    reason: "系统寄存器不支持，配置或环境问题"
+
+# 高价值错误白名单（这些错误非常适合 bisect）
+value_whitelist:
+  - pattern: 'kernel.*panic'
+    priority_boost: 100
+    reason: "内核崩溃"
+  - pattern: 'segmentation.*fault'
+    priority_boost: 100
+    reason: "段错误"
+  - pattern: 'stack.*overflow'
+    priority_boost: 90
+    reason: "栈溢出"
+  - pattern: 'buffer.*overflow'
+    priority_boost: 90
+    reason: "缓冲区溢出"
+  - pattern: 'memory.*leak'
+    priority_boost: 80
+    reason: "内存泄漏"
+  - pattern: 'null.*pointer'
+    priority_boost: 85
+    reason: "空指针"
+  - pattern: 'division.*by.*zero'
+    priority_boost: 85
+    reason: "除零错误"
+  - pattern: '__.*_overflow.*declared_with_attribute_error'
+    priority_boost: 90
+    reason: "编译器检测到的溢出"
+  - pattern: 'detected_.*_beyond_size'
+    priority_boost: 90
+    reason: "边界检查错误"
+  - pattern: 'ltp\.eid\..*\.fail'
+    priority_boost: 50
+    reason: "LTP测试失败"
+
+# 代码相关的积极信号（表明这是代码问题，适合 bisect）
+code_positive_patterns:
+  - pattern: 'compile.*error'
+    priority_boost: 20
+    reason: "编译错误"
+  - pattern: 'build.*error'
+    priority_boost: 20
+    reason: "构建错误"
+  - pattern: 'link.*error'
+    priority_boost: 20
+    reason: "链接错误"
+  - pattern: 'syntax.*error'
+    priority_boost: 25
+    reason: "语法错误"
+  - pattern: 'parse.*error'
+    priority_boost: 25
+    reason: "解析错误"
+  - pattern: 'type.*error'
+    priority_boost: 20
+    reason: "类型错误"
+  - pattern: 'undefined.*reference'
+    priority_boost: 25
+    reason: "未定义引用"
+  - pattern: 'undeclared.*identifier'
+    priority_boost: 25
+    reason: "未声明标识符"
+  - pattern: 'implicit.*declaration'
+    priority_boost: 20
+    reason: "隐式声明"
+  - pattern: 'conflicting.*types'
+    priority_boost: 20
+    reason: "类型冲突"
+  - pattern: '__.*_overflow'
+    priority_boost: 25
+    reason: "溢出检测"
+  - pattern: 'fortify.*string'
+    priority_boost: 25
+    reason: "Fortify字符串检查"
+
+# 错误分类规则（用于多类别并行 bisect）
+error_categories:
+  memory_safety:
+    patterns:
+      - '__.*overflow'
+      - 'fortify.*string'
+      - 'detected_.*beyond_size'
+    description: "内存安全相关错误"
+
+  memory_management:
+    patterns:
+      - 'mm/memory\.c'
+      - 'mm/.*\.c'
+      - 'hugetlb'
+      - 'memory.*management'
+      - 'page.*fault'
+      - 'oom.*killer'
+    description: "内存管理相关错误"
+
+  function_declaration:
+    patterns:
+      - 'undeclared.*function'
+      - 'implicit_declaration'
+      - 'undefined_reference'
+    description: "函数声明/链接错误"
+
+  type_error:
+    patterns:
+      - 'conflicting.*type'
+      - 'type.*error'
+      - 'incompatible.*type'
+    description: "类型相关错误"
+
+  syntax_error:
+    patterns:
+      - 'syntax.*error'
+      - 'parse.*error'
+      - 'expected.*before'
+    description: "语法/解析错误"
+
+  tty_driver:
+    patterns:
+      - 'drivers/tty/'
+      - 'tty_io\.c'
+      - '__tty_hangup'
+    description: "TTY驱动相关"
+
+  pinctrl_driver:
+    patterns:
+      - 'drivers/pinctrl/'
+      - 'pinctrl.*msm'
+      - 'pinmux_generic'
+    description: "pinctrl驱动相关"
+
+# 优先级评分规则
+priority_scoring:
+  has_file_path: 30          # 包含文件路径加分
+  critical_level: 40         # 严重错误级别加分
+  high_level: 25             # 高错误级别加分
+  medium_level: 15           # 中等错误级别加分
+  code_related: 20           # 代码相关加分
+  appropriate_length: 10     # 适中长度（50-500字符）加分
+  whitelist_match: 20        # 白名单匹配加分
+
+# 长度评估规则
+length_evaluation:
+  min_length: 50             # 最短有效长度
+  max_length: 500            # 最长有效长度
+  optimal_min: 80            # 最佳最短长度
+  optimal_max: 300           # 最佳最长长度
+
+# 构建任务过滤规则
+# 对于 makepkg 类构建任务，只处理指定的内核仓库
+build_task_filters:
+  # 是否启用构建任务过滤
+  enable_build_filtering: true
+
+  # 允许的内核仓库（makepkg 任务只处理这些仓库）
+  # 使用正则表达式匹配，支持各种 URL 格式
+  allowed_kernel_repos:
+    - pattern: 'openeuler-kernel\.git'
+      description: "openEuler 内核仓库"
+    - pattern: 'linux-next\.git'
+      description: "Linux next 仓库"
+    - pattern: 'linux\.git$'
+      description: "Linux 主线仓库（精确匹配，避免匹配 linux-xxx.git）"
+    - pattern: 'linux-stable\.git'
+      description: "Linux 稳定版仓库"
+
+  # 需要过滤的仓库示例（用于日志记录）
+  excluded_repos_examples:
+    - "ltp.git - LTP 测试套件仓库，产生大量任务"
+    - "其他非内核仓库的构建任务"

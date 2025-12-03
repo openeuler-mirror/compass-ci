@@ -3,14 +3,16 @@ CREATE TABLE regression(
 
         record_type 	string,
         errid           string,
-        category        string,
         first_seen	bigint,
         last_seen	bigint,
+        submit_time     bigint,
 
         metric_name 	string,
-        value 		float,
+        direction       string,
 
-        bisect_count 	bigint,
-        valid           string,
-        related_jobs 	json
+        status          string,
+        related_job 	string,
+        related_commit 	string,
+
+        j               json
 )  engine='columnar' charset_table='U+0021..U+007E';

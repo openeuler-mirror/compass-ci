@@ -28,8 +28,13 @@ DEFAULT_USER_CONFIG_DIR = File.expand_path("~/.config/compass-ci/")
 DEFAULT_BISECT_CONFIG_DIR = '/home/bisect/.config/compass-ci/'
 DEFAULT_CACHE = '/srv/cache'
 MANTICORE_HOST='172.17.0.1'
-BISECT_LOG_DIR='/home/bisect'
-HOST_LOG_DIR='/home/bisect/log'
+BISECT_WORK_DIR='/c/bisect'
+HOST_WORK_DIR='/tmp/'
+BISECT_RESULT_DIR='/result/'
+HOST_RESULT_DIR='/srv/result'
+KERNEL_CI_DIR='/srv/log/kernel_ci'
+AUTO_TEST_REPOS_DIR='/srv/git/auto_test_repos'
+SUPERVISORD_CONF = File.join(File.dirname(__FILE__), 'config/supervisord.conf')
 docker_rm 'bisect'
 
 cmd = %w[
@@ -41,17 +46,30 @@ cmd = %w[
   -e LKP_SRC=#{DEFAULT_LKP}
   -e CCI_SRC=#{DEFAULT_CCI}
   -e MANTICORE_HOST=#{MANTICORE_HOST}
+  -e BISECT_PRODUCER_ENABLED=true
   -e FLASK_APP=#{FLASK_APP}
-  -v #{HOST_LOG_DIR}:#{BISECT_LOG_DIR}
+  -e LOG_LEVEL=DEBUG
+  -e USE_HTTP_CLIENT=true
+  -e BISECT_THREADS=32
+  -e COMMIT_TIME_SERVICE_URL=http://localhost:8765
+  -e BISECT_MAX_COMMIT_AGE_DAYS=365
+  -e WORK_DIR=#{BISECT_WORK_DIR}
+  -v #{HOST_WORK_DIR}:#{BISECT_WORK_DIR}
+  -v #{HOST_RESULT_DIR}:#{BISECT_RESULT_DIR}
+  -v #{HOST_RESULT_DIR}:#{HOST_RESULT_DIR}
   -v #{DEFAULT_CACHE}:#{DEFAULT_CACHE}
+  -v #{KERNEL_CI_DIR}:#{KERNEL_CI_DIR}
+  -v #{AUTO_TEST_REPOS_DIR}:#{AUTO_TEST_REPOS_DIR}
   -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
   -v #{DEFAULT_USER_CONFIG_DIR}:#{DEFAULT_BISECT_CONFIG_DIR}:ro
+  -v #{SUPERVISORD_CONF}:/etc/supervisor/supervisord.conf:ro
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
   -p 9999:9999
+  -p 8765:8765
   bisect
 ]
 
-cmd += ['sh', '-c', 'umask 002 && flask run --host=0.0.0.0 --port=9999']
+cmd += ['supervisord', '-c', '/etc/supervisor/supervisord.conf']
 
 system(*cmd)

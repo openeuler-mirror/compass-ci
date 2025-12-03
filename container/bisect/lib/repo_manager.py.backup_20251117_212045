@@ -1,0 +1,1707 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+SharedRepoManager - 共享Git仓库管理器
+
+管理共享Git仓库，使用--reference优化空间占用，提供仓库克隆、更新和清理功能。
+"""
+
+import os
+import threading
+import subprocess
+import shutil
+import time
+import re
+import json
+import traceback
+from collections import defaultdict
+from contextlib import contextmanager
+
+# 导入日志系统
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
+from log_config import logger
+from config import Config
+from bisect_utils import extract_repo_name_from_url
+
+
+class SharedRepoManager:
+    """管理共享Git仓库，使用池化管理和原子mv操作优化HDD性能"""
+    REPO_BASE_DIR = os.path.join(os.environ['WORK_DIR'], "bisect_repos", "workspaces")
+    PRISTINE_BASE_DIR = os.path.join(os.environ['WORK_DIR'], "bisect_repos", "pristine")
+    POOL_BASE_DIR = os.path.join(os.environ['WORK_DIR'], "bisect_repos", "pool")
+    POOL_STATE_FILE = os.path.join(os.environ['WORK_DIR'], "bisect_repos", "pool_state.json")
+    git_sh_path = os.path.join(os.environ.get('LKP_SRC', ''), 'lib/git.sh')
+
+    # Clone concurrency control
+    MAX_CONCURRENT_CLONES = Config.BISECT_MAX_CONCURRENT_CLONES
+
+    # Clone timeout configuration
+    PRISTINE_CLONE_TIMEOUT = Config.GIT_CLONE_PRISTINE_TIMEOUT
+    WORKSPACE_CLONE_TIMEOUT = Config.GIT_CLONE_WORKSPACE_TIMEOUT
+
+    # Repository pool configuration
+    MAX_INSTANCES_PER_REPO = Config.REPO_POOL_MAX_INSTANCES
+    ACQUIRE_TIMEOUT = Config.REPO_POOL_ACQUIRE_TIMEOUT
+    CLEANUP_ON_RETURN = Config.REPO_POOL_CLEANUP_ON_RETURN
+    HEALTH_CHECK_ENABLED = Config.REPO_POOL_HEALTH_CHECK
+    SYNC_ON_RETURN = Config.REPO_POOL_SYNC_ON_RETURN
+
+    def __init__(self):
+        """
+        初始化仓库管理器
+
+        所有消费者（BisectConsumer、SuccessTaskValidator、HeadValidator）共享同一个
+        仓库池和信号量。Validators 只做轻量查询（git rev-parse），不需要独立信号量。
+        """
+        os.makedirs(self.REPO_BASE_DIR, exist_ok=True)
+        os.makedirs(self.PRISTINE_BASE_DIR, exist_ok=True)
+        os.makedirs(self.POOL_BASE_DIR, exist_ok=True)
+        logger.info(f"Shared repository workspace root: {self.REPO_BASE_DIR}")
+        logger.info(f"Shared repository pristine root: {self.PRISTINE_BASE_DIR}")
+        logger.info(f"Repository pool root: {self.POOL_BASE_DIR}")
+
+        self.pristine_locks = {}  # repo_url -> threading.Lock for pristine repo operations
+        self.pristine_locks_lock = threading.Lock()  # Lock for pristine_locks dict access
+        self.pristine_fetch_timestamps = {}  # repo_url -> last_fetch_time (避免重复 fetch)
+        self.PRISTINE_FETCH_INTERVAL = 300  # 5分钟内不重复 fetch
+
+        # Repository pool management
+        # pool_state tracks: {repo_name: {'available': [instance_ids], 'in_use': {instance_id: task_info}, 'total': count, 'next_id': next_instance_id}}
+        self.pool_state = defaultdict(lambda: {'available': [], 'in_use': {}, 'total': 0, 'next_id': 1})
+        self.pool_lock = threading.Lock()  # Global lock for pool state modifications
+        self.pool_conditions = {}  # Per-repo condition for waiting (protected by pool_lock)
+
+        # Clone concurrency control - shared by all consumers
+        self.clone_semaphore = threading.Semaphore(self.MAX_CONCURRENT_CLONES)
+        logger.info(f"Clone semaphore initialized | max_concurrent: {self.MAX_CONCURRENT_CLONES}")
+
+        logger.info(f"Repository pool configuration | max_instances: {self.MAX_INSTANCES_PER_REPO} | "
+                   f"timeout: {self.ACQUIRE_TIMEOUT}s | cleanup: {self.CLEANUP_ON_RETURN} | "
+                   f"health_check: {self.HEALTH_CHECK_ENABLED} | sync: {self.SYNC_ON_RETURN}")
+
+        # Load existing pool state on startup
+        self._load_pool_state()  # Load persisted state first
+        self._discover_pool_instances()  # Then reconcile with actual filesystem
+
+    def get_repo_dir(self, task_id, bad_job_id, repo_url):
+        """
+        获取仓库工作目录 - 使用池化管理，通过原子mv操作复用仓库
+
+        Returns:
+            tuple: (workspace_repo_dir, task_workspace_dir) - 向后兼容旧API
+                   instance_id 存储在 workspace_repo_dir 的元数据中
+        """
+        repo_name = extract_repo_name_from_url(repo_url)
+
+        # Ensure pristine repo exists and is up-to-date
+        pristine_repo_dir = os.path.join(self.PRISTINE_BASE_DIR, repo_name)
+
+        # Thread-safe access to pristine_locks dictionary
+        with self.pristine_locks_lock:
+            if repo_url not in self.pristine_locks:
+                self.pristine_locks[repo_url] = threading.Lock()
+                logger.info(f"Created new pristine lock for repo_url: {repo_url}")
+            pristine_lock = self.pristine_locks[repo_url]
+
+        logger.debug(f"Task {task_id} waiting for pristine lock | repo: {extract_repo_name_from_url(repo_url)}")
+        with pristine_lock:
+            logger.info(f"Task {task_id} acquired pristine lock | repo: {extract_repo_name_from_url(repo_url)}")
+            try:
+                self._ensure_pristine_repo(repo_url, pristine_repo_dir)
+            finally:
+                logger.info(f"Task {task_id} releasing pristine lock | repo: {extract_repo_name_from_url(repo_url)}")
+
+        # Clean up entire task workspace if it exists (from failed previous attempts)
+        task_workspace_dir = os.path.join(self.REPO_BASE_DIR, str(task_id))
+        if os.path.exists(task_workspace_dir):
+            logger.warning(f"Task workspace already exists, cleaning up | task: {task_id} | path: {task_workspace_dir}")
+            try:
+                shutil.rmtree(task_workspace_dir, ignore_errors=True)
+            except Exception as e:
+                logger.error(f"Failed to remove existing task workspace: {str(e)}")
+
+        # Create fresh task workspace directory
+        os.makedirs(task_workspace_dir, exist_ok=True)
+
+        # Acquire a repository instance from pool
+        instance_id = self._acquire_repo_instance(repo_name, repo_url, pristine_repo_dir, task_id)
+
+        # Move instance from pool to workspace using atomic mv
+        pool_instance_dir = os.path.join(self.POOL_BASE_DIR, f"{repo_name}-{instance_id}")
+        workspace_repo_dir = os.path.join(task_workspace_dir, repo_name)
+
+        # Prepare metadata before move for atomicity
+        metadata = {
+            'instance_id': instance_id,
+            'repo_name': repo_name,
+            'task_id': task_id,
+            'acquired_at': time.time()
+        }
+
+        # Atomic move from pool to workspace
+        try:
+            # Double-check pool instance exists before move
+            if not os.path.exists(pool_instance_dir):
+                logger.error(f"Pool instance disappeared before move | expected: {pool_instance_dir} | task: {task_id}")
+                # Release the instance back to pool state and mark for recreation
+                with self.pool_lock:
+                    state = self.pool_state[repo_name]
+                    if instance_id in state['in_use']:
+                        del state['in_use'][instance_id]
+                        if state['total'] > 0:
+                            state['total'] -= 1
+                    logger.info(f"Removed disappeared instance from in_use | repo: {repo_name}-{instance_id}")
+                raise FileNotFoundError(f"Pool instance not found: {pool_instance_dir}")
+
+            # 额外检查：确保目标路径不存在（避免覆盖）
+            if os.path.exists(workspace_repo_dir):
+                logger.error(f"Target workspace already exists before move | path: {workspace_repo_dir} | task: {task_id}")
+                # 这种情况不应该发生，但如果发生了，清理目标后重试
+                shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+                logger.warning(f"Cleaned up conflicting workspace directory | path: {workspace_repo_dir}")
+
+            # Write metadata to pool instance before move for atomicity
+            metadata_file_in_pool = os.path.join(pool_instance_dir, '.repo_pool_metadata')
+            try:
+                with open(metadata_file_in_pool, 'w') as f:
+                    json.dump(metadata, f)
+            except Exception as e:
+                logger.warning(f"Failed to write pool metadata before move: {str(e)}")
+
+            # 原子移动 (includes metadata file)
+            # On some filesystems (especially NFS), os.rename might not be truly atomic
+            # We use a try-except-verify pattern to handle this
+            try:
+                os.rename(pool_instance_dir, workspace_repo_dir)
+            except OSError as rename_error:
+                logger.error(f"os.rename failed | from: {pool_instance_dir} | to: {workspace_repo_dir} | error: {rename_error}")
+                raise
+
+            # 验证移动成功 - 检查目标存在且源不存在
+            move_success = os.path.exists(workspace_repo_dir) and not os.path.exists(pool_instance_dir)
+
+            if not move_success:
+                # This is a critical error - unclear state
+                logger.error(f"Move verification failed | workspace_exists: {os.path.exists(workspace_repo_dir)} | "
+                           f"pool_exists: {os.path.exists(pool_instance_dir)} | task: {task_id}")
+
+                # Try to recover: if both exist, likely a copy happened instead of move
+                if os.path.exists(workspace_repo_dir) and os.path.exists(pool_instance_dir):
+                    logger.warning(f"Both directories exist after move - filesystem issue detected")
+                    # Remove the pool directory as workspace is usable
+                    try:
+                        shutil.rmtree(pool_instance_dir, ignore_errors=True)
+                        logger.info(f"Removed duplicate pool directory | path: {pool_instance_dir}")
+                    except Exception as e:
+                        logger.error(f"Failed to clean up duplicate: {str(e)}")
+
+                elif not os.path.exists(workspace_repo_dir):
+                    # Workspace doesn't exist - this is fatal
+                    raise RuntimeError(f"Repository move verification failed: {workspace_repo_dir}")
+
+            logger.info(f"Moved repo from pool | instance: {repo_name}-{instance_id} | task: {task_id}")
+
+            # Clean up stale lock files after move
+            self._cleanup_stale_locks(workspace_repo_dir)
+
+        except Exception as e:
+            logger.error(f"Failed to move repo from pool: {str(e)}")
+            # Release the instance back to pool state
+            with self.pool_lock:
+                state = self.pool_state[repo_name]
+                if instance_id in state['in_use']:
+                    del state['in_use'][instance_id]
+                    # Only add back if it still exists
+                    if os.path.exists(pool_instance_dir):
+                        state['available'].append(instance_id)
+            raise
+
+        return workspace_repo_dir, task_workspace_dir
+
+    def release_repo_dir(self, workspace_repo_dir, repo_name=None, instance_id=None, task_id=None):
+        """
+        释放仓库回池中 - 执行清理、验证、同步后原子mv回pool
+
+        Args:
+            workspace_repo_dir: 工作区仓库目录（必需）
+            repo_name: 仓库名称（可选，从元数据读取）
+            instance_id: 实例ID（可选，从元数据读取）
+            task_id: 任务ID（可选，从元数据读取）
+        """
+        # Try to read metadata if parameters not provided
+        metadata_file = os.path.join(workspace_repo_dir, '.repo_pool_metadata')
+        metadata = None
+
+        if os.path.exists(metadata_file):
+            try:
+                with open(metadata_file, 'r') as f:
+                    metadata = json.load(f)
+                    if repo_name is None:
+                        repo_name = metadata.get('repo_name')
+                    if instance_id is None:
+                        instance_id = metadata.get('instance_id')
+                    if task_id is None:
+                        task_id = metadata.get('task_id')
+            except Exception as e:
+                logger.warning(f"Failed to read pool metadata: {str(e)}")
+
+        # 如果元数据读取失败，尝试从路径推断
+        if not repo_name or instance_id is None:
+            # 尝试从路径解析：workspace_repo_dir = .../workspaces/<task_id>/<repo_name>
+            try:
+                path_parts = workspace_repo_dir.rstrip('/').split('/')
+                if len(path_parts) >= 2:
+                    potential_repo_name = path_parts[-1]
+                    potential_task_id = path_parts[-2] if path_parts[-2].isdigit() else task_id
+                    logger.info(f"Attempting to infer repo info from path | potential_repo_name: {potential_repo_name} | potential_task_id: {potential_task_id}")
+
+                    # 检查池状态中是否有这个仓库
+                    with self.pool_lock:
+                        if potential_repo_name in self.pool_state:
+                            repo_name = potential_repo_name
+                            # 尝试从 in_use 中找到对应的实例
+                            state = self.pool_state[repo_name]
+
+                            # Strategy 1: Match by task_id
+                            if potential_task_id:
+                                for iid, info in state['in_use'].items():
+                                    if info.get('task_id') == int(potential_task_id):
+                                        instance_id = iid
+                                        logger.info(f"Inferred instance from task_id match | repo: {repo_name}-{instance_id}")
+                                        break
+
+                            # Strategy 2: If only one in_use instance, assume it's ours
+                            if instance_id is None and len(state['in_use']) == 1:
+                                instance_id = list(state['in_use'].keys())[0]
+                                logger.info(f"Inferred instance from single in_use entry | repo: {repo_name}-{instance_id}")
+
+                            # 如果还是没找到，记录错误但继续尝试清理
+                            if instance_id is None:
+                                logger.warning(f"Could not infer instance_id for repo: {repo_name} | in_use_count: {len(state['in_use'])}")
+            except Exception as e:
+                logger.error(f"Failed to infer repo info from path: {str(e)}")
+
+        # Validate required parameters
+        if not repo_name or instance_id is None:
+            logger.error(f"Cannot release repo: missing repo_name or instance_id | path: {workspace_repo_dir}")
+
+            # More aggressive cleanup when metadata is lost
+            cleanup_success = False
+
+            # Try to clean up pool state by task_id or other heuristics
+            if repo_name:
+                with self.pool_lock:
+                    if repo_name in self.pool_state:
+                        state = self.pool_state[repo_name]
+                        cleaned_instances = []
+
+                        # Try to find and remove the instance from in_use based on task_id
+                        if task_id:
+                            for iid, info in list(state['in_use'].items()):
+                                if info.get('task_id') == task_id:
+                                    del state['in_use'][iid]
+                                    cleaned_instances.append(iid)
+                                    logger.info(f"Cleaned up in_use entry by task_id | repo: {repo_name}-{iid} | task: {task_id}")
+                                    cleanup_success = True
+                                    # Decrement total count since instance is being destroyed
+                                    if state['total'] > 0:
+                                        state['total'] -= 1
+                                    break
+
+                        # If task_id matching failed, DON'T use time-based cleanup
+                        # Bisect tasks can run 6-8 hours, so time-based cleanup is dangerous
+                        # Only log the situation for debugging
+                        if not cleanup_success:
+                            logger.warning(f"Could not clean up in_use entry by task_id | repo: {repo_name} | "
+                                         f"in_use_count: {len(state['in_use'])} | "
+                                         f"Consider manual cleanup if instances are truly orphaned")
+
+                        if cleaned_instances:
+                            logger.info(f"Successfully cleaned up {len(cleaned_instances)} instances from pool state | repo: {repo_name}")
+                            # Notify waiting threads (pool_conditions is protected by pool_lock which we hold)
+                            if repo_name in self.pool_conditions:
+                                condition = self.pool_conditions[repo_name]
+                                condition.notify_all()
+
+            # Fallback: just remove the directory
+            if workspace_repo_dir and os.path.exists(workspace_repo_dir):
+                try:
+                    shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+                    logger.info(f"Removed workspace directory | path: {workspace_repo_dir}")
+                except Exception as e:
+                    logger.error(f"Failed to remove workspace directory: {str(e)}")
+
+            return
+
+        pool_instance_dir = os.path.join(self.POOL_BASE_DIR, f"{repo_name}-{instance_id}")
+
+        try:
+            # Step 1: Health check
+            if self.HEALTH_CHECK_ENABLED:
+                if not self._health_check_repo(workspace_repo_dir):
+                    logger.warning(f"Health check failed | instance: {repo_name}-{instance_id} | will recreate")
+                    shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+                    self._mark_instance_for_recreation(repo_name, instance_id)
+                    return
+
+            # Step 2: Cleanup
+            if self.CLEANUP_ON_RETURN:
+                self._cleanup_repo(workspace_repo_dir)
+
+            # Step 3: Sync
+            if self.SYNC_ON_RETURN:
+                self._sync_repo(workspace_repo_dir)
+
+            # Step 4: Remove metadata file before moving back
+            if os.path.exists(metadata_file):
+                try:
+                    os.remove(metadata_file)
+                except Exception as e:
+                    logger.warning(f"Failed to remove metadata file: {str(e)}")
+
+            # Step 5: Atomic move back to pool
+            try:
+                os.rename(workspace_repo_dir, pool_instance_dir)
+            except OSError as rename_error:
+                logger.error(f"os.rename failed during release | from: {workspace_repo_dir} | to: {pool_instance_dir} | error: {rename_error}")
+                raise
+
+            # Verify move success - target exists and source doesn't
+            move_success = os.path.exists(pool_instance_dir) and not os.path.exists(workspace_repo_dir)
+
+            if not move_success:
+                logger.error(f"Release move verification failed | pool_exists: {os.path.exists(pool_instance_dir)} | "
+                           f"workspace_exists: {os.path.exists(workspace_repo_dir)} | task: {task_id}")
+
+                # Try to recover
+                if os.path.exists(pool_instance_dir) and os.path.exists(workspace_repo_dir):
+                    logger.warning(f"Both directories exist after release move - cleaning up workspace")
+                    shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+
+                elif not os.path.exists(pool_instance_dir):
+                    # Pool doesn't exist - this is bad, mark for recreation
+                    logger.error(f"Pool instance missing after move - marking for recreation")
+                    raise RuntimeError(f"Pool instance not created during release: {pool_instance_dir}")
+
+            logger.info(f"Released repo to pool | instance: {repo_name}-{instance_id} | task: {task_id}")
+
+            # Step 6: Mark as available
+            with self.pool_lock:
+                state = self.pool_state[repo_name]
+                if instance_id in state['in_use']:
+                    del state['in_use'][instance_id]
+                state['available'].append(instance_id)
+
+                # Notify waiting threads (pool_conditions is protected by pool_lock which we hold)
+                if repo_name in self.pool_conditions:
+                    condition = self.pool_conditions[repo_name]
+                    condition.notify()
+
+            # Persist state after releasing instance
+            self._save_pool_state()
+
+        except Exception as e:
+            logger.error(f"Failed to release repo | instance: {repo_name}-{instance_id} | error: {str(e)}")
+            # Try to clean up
+            shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+            self._mark_instance_for_recreation(repo_name, instance_id)
+
+    def _acquire_repo_instance(self, repo_name, repo_url, pristine_repo_dir, task_id):
+        """
+        从池中获取一个仓库实例，如果需要则创建新实例
+
+        Returns:
+            int: instance_id
+        """
+        start_time = time.time()
+        deadline = start_time + self.ACQUIRE_TIMEOUT
+        last_warning_time = start_time
+
+        # 清理超时的 creating 实例（超过 30 分钟视为卡住）
+        CREATING_TIMEOUT = 1800  # 30 minutes
+        with self.pool_lock:
+            if repo_name in self.pool_state:
+                state = self.pool_state[repo_name]
+                stuck_instances = []
+
+                for iid, info in list(state['in_use'].items()):
+                    if info.get('creating'):
+                        acquired_time = info.get('acquired_at', start_time)
+                        stuck_duration = start_time - acquired_time
+                        if stuck_duration > CREATING_TIMEOUT:
+                            stuck_instances.append((iid, stuck_duration))
+                            del state['in_use'][iid]
+                            logger.warning(f"Cleaned stuck creating instance | repo: {repo_name}-{iid} | stuck_for: {stuck_duration:.0f}s")
+
+                if stuck_instances:
+                    logger.warning(f"Cleaned {len(stuck_instances)} stuck creating instances | repo: {repo_name}")
+                    # Persist cleanup
+                    self._save_pool_state(hold_lock=True)
+
+        while True:
+            should_create = False
+            instance_id = None
+            semaphore_acquired = False
+
+            # First, try to get an available instance without creating
+            with self.pool_lock:
+                state = self.pool_state[repo_name]
+
+                # Try to get available instance
+                if state['available']:
+                    instance_id = state['available'].pop(0)
+                    state['in_use'][instance_id] = {'task_id': task_id, 'acquired_at': time.time()}
+                    logger.info(f"Acquired existing instance | repo: {repo_name}-{instance_id} | task: {task_id} | "
+                               f"pool_stats: available={len(state['available'])} in_use={len(state['in_use'])}")
+
+                    # Persist state change while holding lock (safe with hold_lock=True)
+                    self._save_pool_state(hold_lock=True)
+                    return instance_id
+
+                # Check if we can create new instance
+                if state['total'] < self.MAX_INSTANCES_PER_REPO:
+                    should_create = True
+
+            # If we need to create, try to acquire semaphore BEFORE taking pool_lock again
+            # This prevents holding pool_lock while waiting for semaphore
+            if should_create:
+                # Try to acquire semaphore with timeout
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    logger.error(f"Timeout waiting for repo instance | repo: {repo_name} | task: {task_id}")
+                    raise TimeoutError(f"Timeout waiting for available repository instance: {repo_name}")
+
+                # Non-blocking semaphore acquire with timeout
+                semaphore_acquired = self.clone_semaphore.acquire(timeout=min(remaining, 30))
+
+                if semaphore_acquired:
+                    # Got semaphore, now allocate instance under lock
+                    with self.pool_lock:
+                        state = self.pool_state[repo_name]
+
+                        # Double-check we can still create (state might have changed)
+                        if state['total'] < self.MAX_INSTANCES_PER_REPO:
+                            instance_id = state['next_id']
+                            state['next_id'] += 1
+                            state['in_use'][instance_id] = {'task_id': task_id, 'acquired_at': time.time(), 'creating': True}
+                            logger.info(f"Creating new instance | repo: {repo_name}-{instance_id} | task: {task_id} | "
+                                       f"total_instances: {state['total']}")
+                        else:
+                            # Can't create anymore, release semaphore and retry
+                            self.clone_semaphore.release()
+                            semaphore_acquired = False
+                            logger.info(f"Instance limit reached while holding semaphore, retrying | repo: {repo_name}")
+                            continue
+
+                    # Create instance (semaphore held, no locks)
+                    try:
+                        self._create_pool_instance_with_semaphore(repo_url, pristine_repo_dir, repo_name, instance_id)
+
+                        # Verify creation
+                        pool_instance_dir = os.path.join(self.POOL_BASE_DIR, f"{repo_name}-{instance_id}")
+                        if not os.path.exists(pool_instance_dir):
+                            raise RuntimeError(f"Instance creation succeeded but directory not found: {pool_instance_dir}")
+
+                        # Mark creation complete and increment total count
+                        with self.pool_lock:
+                            state = self.pool_state[repo_name]
+                            if instance_id in state['in_use']:
+                                state['in_use'][instance_id]['creating'] = False
+                            state['total'] += 1
+                            logger.info(f"Instance creation completed | repo: {repo_name}-{instance_id} | total: {state['total']}")
+
+                        # Persist state after creating new instance
+                        self._save_pool_state()
+
+                        return instance_id
+
+                    except Exception as e:
+                        logger.error(f"Failed to create pool instance | repo: {repo_name}-{instance_id} | error: {str(e)}")
+                        with self.pool_lock:
+                            state = self.pool_state[repo_name]
+                            if instance_id in state['in_use']:
+                                del state['in_use'][instance_id]
+                        logger.info(f"Cleaned up failed instance from pool state | repo: {repo_name}-{instance_id}")
+
+                        # Persist cleanup of failed instance
+                        self._save_pool_state()
+
+                        raise
+                    finally:
+                        # Always release semaphore after creation attempt
+                        if semaphore_acquired:
+                            self.clone_semaphore.release()
+                            semaphore_acquired = False
+
+            # Need to wait for available instance
+            with self.pool_lock:
+                state = self.pool_state[repo_name]
+
+                # Check timeout
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    # Log detailed pool state before timeout
+                    logger.error(
+                        f"Timeout waiting for repo instance | repo: {repo_name} | task: {task_id} | "
+                        f"timeout: {self.ACQUIRE_TIMEOUT}s | "
+                        f"pool_state: available={len(state['available'])} in_use={len(state['in_use'])} total={state['total']} | "
+                        f"max_instances: {self.MAX_INSTANCES_PER_REPO}"
+                    )
+
+                    # Log details of in_use instances for debugging
+                    if state['in_use']:
+                        logger.error(f"In-use instances for {repo_name}:")
+                        current_time = time.time()
+                        for iid, info in list(state['in_use'].items())[:5]:  # Show first 5
+                            held_duration = current_time - info.get('acquired_at', current_time)
+                            logger.error(
+                                f"  Instance {repo_name}-{iid}: task_id={info.get('task_id')} "
+                                f"held_for={held_duration:.0f}s"
+                            )
+
+                    raise TimeoutError(f"Timeout waiting for available repository instance: {repo_name}")
+
+                # Log warning if waiting too long (more than 30 minutes)
+                current_time = time.time()
+                if current_time - start_time > 1800 and current_time - last_warning_time >= 300:
+                    logger.warning(
+                        f"Long wait for repo instance | repo: {repo_name} | task: {task_id} | "
+                        f"waited: {current_time - start_time:.0f}s | "
+                        f"pool_state: available={len(state['available'])} in_use={len(state['in_use'])}"
+                    )
+                    last_warning_time = current_time
+
+                # Wait for notification with timeout
+                logger.info(f"Waiting for available instance | repo: {repo_name} | task: {task_id} | "
+                           f"remaining: {remaining:.1f}s | pool_stats: in_use={len(state['in_use'])}")
+
+                # Get or create condition variable (must be done while holding pool_lock)
+                if repo_name not in self.pool_conditions:
+                    # Note: pool_conditions itself is protected by pool_lock which we already hold
+                    self.pool_conditions[repo_name] = threading.Condition(self.pool_lock)
+                condition = self.pool_conditions[repo_name]
+
+                # Wait on the condition - this will atomically release pool_lock and wait
+                condition.wait(timeout=min(remaining, 30))
+                # When wait returns, pool_lock is automatically reacquired
+
+    def _create_pool_instance_with_semaphore(self, repo_url, pristine_repo_dir, repo_name, instance_id):
+        """
+        创建一个新的池实例 - 调用者已持有 clone_semaphore
+
+        Note: This method does NOT acquire clone_semaphore - caller must hold it
+        """
+        pool_instance_dir = os.path.join(self.POOL_BASE_DIR, f"{repo_name}-{instance_id}")
+
+        # 原子性检查：如果目录已存在，说明其他线程已经创建了该实例
+        if os.path.exists(pool_instance_dir):
+            logger.info(f"Pool instance already exists (created by another thread) | repo: {repo_name}-{instance_id}")
+            # 验证实例是否有效
+            if self._health_check_repo(pool_instance_dir):
+                logger.info(f"Existing instance is healthy, skipping creation | repo: {repo_name}-{instance_id}")
+                return
+            else:
+                logger.warning(f"Existing instance is corrupted, recreating | repo: {repo_name}-{instance_id}")
+                try:
+                    shutil.rmtree(pool_instance_dir, ignore_errors=True)
+                    time.sleep(0.1)
+                except Exception as e:
+                    logger.warning(f"Failed to clean corrupted instance: {str(e)}")
+                    return
+
+        logger.info(f"Creating pool instance | repo: {repo_name}-{instance_id}")
+        self._clone_workspace_repo_internal(repo_url, pristine_repo_dir, pool_instance_dir)
+
+        # 验证实例创建成功
+        if not os.path.exists(pool_instance_dir):
+            raise RuntimeError(f"Instance creation failed: directory not created: {pool_instance_dir}")
+
+        # 对于新创建的实例，使用更宽松的健康检查
+        if not self._health_check_new_repo(pool_instance_dir):
+            raise RuntimeError(f"Instance creation failed: health check failed: {pool_instance_dir}")
+
+        logger.info(f"Pool instance created | repo: {repo_name}-{instance_id}")
+
+    def _mark_instance_for_recreation(self, repo_name, instance_id):
+        """标记实例为需要重建 - 从状态中移除"""
+        with self.pool_lock:
+            state = self.pool_state[repo_name]
+            was_tracked = False
+
+            if instance_id in state['in_use']:
+                del state['in_use'][instance_id]
+                was_tracked = True
+            if instance_id in state['available']:
+                state['available'].remove(instance_id)
+                was_tracked = True
+
+            # 减少 total 计数（修复实例泄漏问题）
+            if was_tracked and state['total'] > 0:
+                state['total'] -= 1
+                logger.info(f"Instance marked for recreation and total decremented | repo: {repo_name}-{instance_id} | new_total: {state['total']}")
+            else:
+                logger.info(f"Instance marked for recreation | repo: {repo_name}-{instance_id}")
+
+            # Persist state change while holding lock (safe with hold_lock=True)
+            self._save_pool_state(hold_lock=True)
+
+    def _save_pool_state(self, hold_lock=False):
+        """
+        原子保存池状态到磁盘
+
+        使用原子写入（write to temp + rename）确保状态文件不会被损坏
+
+        Args:
+            hold_lock: 如果为True，假设调用者已经持有pool_lock，不再获取锁
+                      如果为False，此方法会自己获取锁（默认行为）
+
+        注意：为了减少锁持有时间，此方法会：
+        1. 在锁内快速复制状态数据
+        2. 在锁外进行文件I/O操作
+        """
+        try:
+            # 准备状态数据（转换为可序列化格式）
+            state_data = {
+                'version': 1,
+                'timestamp': time.time(),
+                'repos': {}
+            }
+
+            if hold_lock:
+                # 调用者已持有锁，直接使用（快速复制数据）
+                for repo_name, state in self.pool_state.items():
+                    state_data['repos'][repo_name] = {
+                        'available': list(state['available']),  # 转换为列表
+                        'in_use': dict(state['in_use']),        # 转换为字典
+                        'total': state['total'],
+                        'next_id': state['next_id']
+                    }
+            else:
+                # 需要获取锁（快速复制数据）
+                with self.pool_lock:
+                    for repo_name, state in self.pool_state.items():
+                        state_data['repos'][repo_name] = {
+                            'available': list(state['available']),  # 转换为列表
+                            'in_use': dict(state['in_use']),        # 转换为字典
+                            'total': state['total'],
+                            'next_id': state['next_id']
+                        }
+
+            # 文件I/O操作在锁外进行（无论是否持有锁，此时数据已复制）
+            # 注意：当 hold_lock=True 时，调用者的锁在此处仍然有效，
+            # 但因为我们已经完成了state数据的复制，后续的文件I/O不影响pool状态的一致性
+            temp_file = self.POOL_STATE_FILE + '.tmp'
+            with open(temp_file, 'w') as f:
+                json.dump(state_data, f, indent=2)
+
+            # 原子重命名
+            os.rename(temp_file, self.POOL_STATE_FILE)
+
+            logger.debug(f"Pool state saved | repos: {len(state_data['repos'])}")
+
+        except Exception as e:
+            logger.error(f"Failed to save pool state: {str(e)}")
+            # 清理临时文件
+            try:
+                temp_file = self.POOL_STATE_FILE + '.tmp'
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+            except:
+                pass
+
+    def _load_pool_state(self):
+        """
+        从磁盘加载池状态
+
+        安全策略：
+        1. 如果状态文件超过1小时，清空所有 in_use 记录（假设是僵尸状态）
+        2. 只恢复 available 和 total 计数
+        3. in_use 记录在启动后由新任务重新填充
+        """
+        if not os.path.exists(self.POOL_STATE_FILE):
+            logger.info("No existing pool state file found, will discover from filesystem")
+            return
+
+        try:
+            with open(self.POOL_STATE_FILE, 'r') as f:
+                state_data = json.load(f)
+
+            # 验证版本
+            if state_data.get('version') != 1:
+                logger.warning(f"Unsupported pool state version: {state_data.get('version')}, ignoring")
+                return
+
+            # 检查状态文件年龄
+            saved_time = state_data.get('timestamp', 0)
+            age_seconds = time.time() - saved_time
+            is_stale = age_seconds > 3600  # 超过1小时视为过期
+
+            # 恢复状态
+            with self.pool_lock:
+                for repo_name, repo_state in state_data.get('repos', {}).items():
+                    # 始终恢复 available 和 total
+                    self.pool_state[repo_name] = {
+                        'available': repo_state.get('available', []),
+                        'in_use': {},  # 启动时清空 in_use，避免加载僵尸状态
+                        'total': repo_state.get('total', 0),
+                        'next_id': repo_state.get('next_id', 1)
+                    }
+
+                    # 如果状态不过期，尝试恢复 in_use（但需要验证）
+                    if not is_stale:
+                        loaded_in_use = repo_state.get('in_use', {})
+                        if loaded_in_use:
+                            logger.info(f"状态文件较新（{age_seconds:.0f}s），但仍清空 in_use 以确保安全 | repo: {repo_name} | "
+                                      f"原 in_use: {len(loaded_in_use)} 个")
+                    else:
+                        # 过期状态：将所有实例标记为 available
+                        loaded_in_use = repo_state.get('in_use', {})
+                        if loaded_in_use:
+                            logger.warning(f"状态文件过期（{age_seconds/3600:.1f}h），清空 in_use | repo: {repo_name} | "
+                                         f"cleared: {len(loaded_in_use)} 个僵尸记录")
+
+            logger.info(f"Pool state loaded | repos: {len(state_data.get('repos', {}))} | "
+                       f"age: {age_seconds:.0f}s | stale: {is_stale}")
+
+            if is_stale:
+                logger.warning(f"Pool state file is {age_seconds/3600:.1f} hours old, "
+                             f"all in_use records have been cleared to prevent blocking")
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse pool state file (corrupted): {str(e)}")
+            logger.warning("Pool state file corrupted, will rebuild from filesystem")
+        except Exception as e:
+            logger.error(f"Failed to load pool state: {str(e)}")
+            logger.warning("Pool state load failed, will rebuild from filesystem")
+
+    def _discover_pool_instances(self):
+        """启动时发现已存在的池实例，并校验状态一致性"""
+        if not os.path.exists(self.POOL_BASE_DIR):
+            return
+
+        discovered = {}  # {repo_name: [instance_ids]}
+
+        # Step 1: Scan actual pool directories
+        for entry in os.listdir(self.POOL_BASE_DIR):
+            full_path = os.path.join(self.POOL_BASE_DIR, entry)
+            if not os.path.isdir(full_path):
+                continue
+
+            # Parse repo_name-instance_id
+            match = re.match(r'^(.+)-(\d+)$', entry)
+            if not match:
+                logger.warning(f"Unknown pool directory format: {entry}")
+                continue
+
+            repo_name, instance_id_str = match.groups()
+            instance_id = int(instance_id_str)
+
+            # Verify it's a valid git repo
+            if not os.path.exists(os.path.join(full_path, '.git')):
+                logger.warning(f"Invalid git repo in pool: {entry}, removing")
+                shutil.rmtree(full_path, ignore_errors=True)
+                continue
+
+            # Track discovered instances
+            if repo_name not in discovered:
+                discovered[repo_name] = []
+            discovered[repo_name].append(instance_id)
+
+        # Step 2: Update pool state based on actual filesystem
+        for repo_name, instance_ids in discovered.items():
+            state = self.pool_state[repo_name]
+
+            # Track newly discovered instances
+            newly_discovered = []
+
+            for instance_id in instance_ids:
+                # Add to available list if not already tracked
+                if instance_id not in state['available'] and instance_id not in state['in_use']:
+                    state['available'].append(instance_id)
+                    newly_discovered.append(instance_id)
+                    logger.info(f"Discovered pool instance | repo: {repo_name}-{instance_id}")
+
+                # Update next_id to be one more than the highest discovered ID
+                state['next_id'] = max(state['next_id'], instance_id + 1)
+
+            # Fix total count: should be the actual number of instances, not max(instance_id)
+            # Count: available + in_use
+            state['total'] = len(state['available']) + len(state['in_use'])
+
+            if newly_discovered:
+                logger.info(f"Discovered {len(newly_discovered)} new instances for {repo_name} | total: {state['total']}")
+
+        # Step 3: Clean up stale state entries (instances in state but not on disk)
+        for repo_name, state in list(self.pool_state.items()):
+            actual_instances = set(discovered.get(repo_name, []))
+            tracked_available = set(state['available'])
+            tracked_in_use = set(state['in_use'].keys())
+
+            # Remove stale available entries
+            stale_available = tracked_available - actual_instances
+            if stale_available:
+                logger.warning(f"Removing stale available instances | repo: {repo_name} | instances: {stale_available}")
+                state['available'] = [iid for iid in state['available'] if iid in actual_instances]
+
+            # Mark in_use as stale (don't remove - might be legitimately in use)
+            stale_in_use = tracked_in_use - actual_instances
+            if stale_in_use:
+                logger.error(f"Found stale in_use instances | repo: {repo_name} | instances: {stale_in_use}")
+                # Force remove - they're not on disk so can't be in use
+                for iid in stale_in_use:
+                    del state['in_use'][iid]
+
+            # Recalculate total after cleanup
+            if stale_available or stale_in_use:
+                state['total'] = len(state['available']) + len(state['in_use'])
+                logger.info(f"Recalculated total after cleanup | repo: {repo_name} | total: {state['total']}")
+
+        logger.info(f"Pool discovery complete | repos: {len(self.pool_state)}")
+
+        # Persist state after discovery (important for first startup)
+        self._save_pool_state()
+
+    def _ensure_pristine_repo(self, repo_url, pristine_repo_dir):
+        """确保参考仓库存在且是最新状态"""
+        repo_name = extract_repo_name_from_url(repo_url)
+        current_time = time.time()
+
+        if not os.path.exists(os.path.join(pristine_repo_dir, ".git")):
+            logger.info(f"Pristine repo not found, cloning | repo: {repo_name} | path: {pristine_repo_dir}")
+            # Clean up any partial/corrupted directory before cloning
+            if os.path.exists(pristine_repo_dir):
+                logger.warning(f"Found partial pristine directory without .git, cleaning up | path: {pristine_repo_dir}")
+                shutil.rmtree(pristine_repo_dir, ignore_errors=True)
+            self._clone_repo(repo_url, pristine_repo_dir)
+            logger.info(f"Pristine repo cloned | repo: {repo_name}")
+            # 更新 fetch 时间戳
+            self.pristine_fetch_timestamps[repo_url] = current_time
+        else:
+            # 检查是否需要 fetch（避免短时间内重复 fetch）
+            last_fetch_time = self.pristine_fetch_timestamps.get(repo_url, 0)
+            time_since_last_fetch = current_time - last_fetch_time
+
+            if time_since_last_fetch < self.PRISTINE_FETCH_INTERVAL:
+                logger.info(f"Pristine repo recently fetched, skipping | repo: {repo_name} | "
+                           f"last_fetch: {time_since_last_fetch:.0f}s ago")
+                return
+
+            logger.info(f"Pristine repo found, fetching updates | repo: {repo_name} | path: {pristine_repo_dir} | "
+                       f"last_fetch: {time_since_last_fetch:.0f}s ago")
+            try:
+                self._fetch_repo(pristine_repo_dir)
+                logger.info(f"Pristine repo updated | repo: {repo_name}")
+                # 更新 fetch 时间戳
+                self.pristine_fetch_timestamps[repo_url] = current_time
+            except Exception as e:
+                logger.warning(f"Pristine repo fetch failed, will recreate | repo: {repo_name} | error: {str(e)}")
+                # 如果fetch失败，删除重新克隆
+                shutil.rmtree(pristine_repo_dir, ignore_errors=True)
+                self._clone_repo(repo_url, pristine_repo_dir)
+                logger.info(f"Pristine repo recreated | repo: {repo_name}")
+                # 更新 fetch 时间戳
+                self.pristine_fetch_timestamps[repo_url] = current_time
+
+    def _clone_repo(self, repo_url, repo_dir):
+        """克隆一个完整的仓库（用于参考仓库），并在git.sh失败时回退到原生git"""
+        # Sanitize URL before attempting to clone, handling legacy incorrect URLs
+        if repo_url.startswith("git+http"):
+            repo_url = repo_url.replace("git+", "", 1)
+
+        repo_name = extract_repo_name_from_url(repo_url)
+
+        # 使用信号量限制并发克隆数量
+        logger.info(f"Waiting for clone slot... | repo: {repo_name} | max_concurrent: {self.MAX_CONCURRENT_CLONES}")
+        with self.clone_semaphore:
+            logger.info(f"Clone slot acquired | repo: {repo_name} | starting pristine clone")
+
+            retries = 3
+            for i in range(retries):
+                try:
+                    # Clean up any previous failed attempt before each retry
+                    if i > 0 and os.path.exists(repo_dir):
+                        logger.warning(f"Cleaning up failed clone attempt {i} | path: {repo_dir}")
+                        shutil.rmtree(repo_dir, ignore_errors=True)
+
+                    # First attempt: use the git.sh wrapper
+                    logger.info(f"Attempting to clone with git.sh wrapper (attempt {i+1}/{retries})...")
+                    subprocess.run(
+                        ['bash', '-c', f'source {self.git_sh_path} && git clone {repo_url} {repo_dir}'],
+                        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.PRISTINE_CLONE_TIMEOUT
+                    )
+                    logger.info(f"Pristine repository cloned successfully with git.sh | URL: {repo_url}")
+                    return
+                except subprocess.CalledProcessError as e:
+                    stderr_output = e.stderr.decode()
+                    logger.warning(f"git.sh clone failed (attempt {i+1}/{retries}): {stderr_output}")
+
+                    # Fallback condition: if git.sh fails with a specific error, try native git
+                    if "is not a git command" in stderr_output:
+                        logger.warning("git.sh failed to parse URL. Falling back to native git clone.")
+                        try:
+                            # URL is already sanitized at the top of the function
+
+                            # Clean up potentially failed clone attempt before retrying
+                            if os.path.exists(repo_dir):
+                                shutil.rmtree(repo_dir)
+
+                            subprocess.run(
+                                ['git', 'clone', repo_url, repo_dir],
+                                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.PRISTINE_CLONE_TIMEOUT
+                            )
+                            logger.info(f"Pristine repository cloned successfully with native git | URL: {repo_url}")
+                            return # Success on fallback, exit the loop
+                        except subprocess.CalledProcessError as native_e:
+                            logger.error(f"Native git clone also failed: {native_e.stderr.decode()}")
+                            # Continue to the next retry iteration
+
+                    if i == retries - 1:
+                        logger.error(f"All clone attempts failed for {repo_url}.")
+                        shutil.rmtree(repo_dir, ignore_errors=True)
+                        raise e # Re-raise the original exception from git.sh
+
+                    time.sleep(2 ** i)
+
+    def _fetch_repo(self, repo_dir):
+        """在现有仓库中执行 git fetch"""
+        try:
+            subprocess.run(
+                ['git', '-C', repo_dir, 'fetch', 'origin'],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            logger.info(f"Pristine repository updated successfully | Path: {repo_dir}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to fetch updates for pristine repo {repo_dir}: {e.stderr.decode()}")
+            # Decide if a failed fetch should be a critical error. For now, we just log it.
+
+    def _clone_workspace_repo(self, repo_url, pristine_repo_dir, workspace_repo_dir):
+        """使用 --reference 克隆一个轻量级的工作区 - 带信号量控制"""
+        repo_name = extract_repo_name_from_url(repo_url)
+
+        # 使用信号量限制并发克隆数量
+        logger.info(f"Waiting for clone slot... | repo: {repo_name} | max_concurrent: {self.MAX_CONCURRENT_CLONES}")
+        with self.clone_semaphore:
+            logger.info(f"Clone slot acquired | repo: {repo_name} | starting workspace clone")
+            self._clone_workspace_repo_internal(repo_url, pristine_repo_dir, workspace_repo_dir)
+
+    def _clone_workspace_repo_internal(self, repo_url, pristine_repo_dir, workspace_repo_dir):
+        """使用 --reference 克隆一个轻量级的工作区 - 内部实现（不获取信号量）"""
+        repo_name = extract_repo_name_from_url(repo_url)
+
+        try:
+            logger.info(f"Starting clone: {repo_name} -> {workspace_repo_dir}")
+            start_time = time.time()
+
+            result = subprocess.run(
+                ['git', 'clone', '--reference', pristine_repo_dir, repo_url, workspace_repo_dir],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.WORKSPACE_CLONE_TIMEOUT
+            )
+
+            stderr_output = result.stderr.decode()
+
+            # Check for checkout failure even if clone succeeded
+            if result.returncode != 0 or "checkout failed" in stderr_output:
+                logger.warning(f"Clone/checkout issue detected | repo: {repo_name} | stderr: {stderr_output[:200]}")
+
+                # Try to recover from checkout failure
+                if os.path.exists(os.path.join(workspace_repo_dir, '.git')):
+                    logger.info(f"Attempting checkout recovery | repo: {repo_name}")
+                    recovery_success = self._recover_checkout(workspace_repo_dir)
+
+                    if recovery_success:
+                        clone_time = time.time() - start_time
+                        logger.info(f"Clone recovered successfully | Repository: {repo_name} | Time: {clone_time:.1f}s")
+                        return
+                    else:
+                        logger.warning(f"Checkout recovery failed | repo: {repo_name}")
+
+                # If recovery failed or no .git, fall back to standard clone
+                raise subprocess.CalledProcessError(result.returncode, result.args, stderr=result.stderr)
+
+            clone_time = time.time() - start_time
+            logger.info(f"Clone successful | Repository: {repo_name} | Time: {clone_time:.1f}s")
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Clone failed with --reference: {e.stderr.decode()[:200]}")
+            # 清理失败的尝试
+            shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+
+            # 回退到普通克隆
+            logger.warning(f"Falling back to standard clone: {workspace_repo_dir}")
+            try:
+                subprocess.run(
+                    ['git', 'clone', repo_url, workspace_repo_dir],
+                    check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.WORKSPACE_CLONE_TIMEOUT
+                )
+                logger.info(f"Standard clone successful: {workspace_repo_dir}")
+            except subprocess.CalledProcessError as fallback_e:
+                logger.error(f"Standard clone also failed: {fallback_e.stderr.decode()[:200]}")
+                shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+                raise
+
+        except subprocess.TimeoutExpired:
+            logger.error(f"Clone timed out (30 min): {workspace_repo_dir}")
+            shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+            raise
+
+        except Exception as e:
+            logger.error(f"Unexpected clone error: {str(e)}")
+            shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+            raise
+
+    def _cleanup_stale_locks(self, repo_dir):
+        """
+        清理 Git 仓库中的过期锁文件
+
+        Git 操作被中断时会留下 .lock 文件，阻止后续操作。
+        这个方法清理常见的锁文件，包括：
+        - .git/index.lock
+        - .git/refs/heads/*.lock
+        - .git/refs/tags/*.lock
+        - .git/HEAD.lock
+        - .git/config.lock
+        """
+        git_dir = os.path.join(repo_dir, '.git')
+        if not os.path.exists(git_dir):
+            return
+
+        lock_files = []
+
+        # Common lock files
+        common_locks = [
+            'index.lock',
+            'HEAD.lock',
+            'config.lock',
+            'packed-refs.lock',
+            'FETCH_HEAD.lock',
+            'ORIG_HEAD.lock',
+        ]
+
+        for lock_file in common_locks:
+            lock_path = os.path.join(git_dir, lock_file)
+            if os.path.exists(lock_path):
+                lock_files.append(lock_path)
+
+        # Find all .lock files in refs directory
+        refs_dir = os.path.join(git_dir, 'refs')
+        if os.path.exists(refs_dir):
+            for root, dirs, files in os.walk(refs_dir):
+                for file in files:
+                    if file.endswith('.lock'):
+                        lock_files.append(os.path.join(root, file))
+
+        # Remove lock files
+        if lock_files:
+            logger.warning(f"Found {len(lock_files)} stale lock file(s) in {repo_dir}")
+            for lock_path in lock_files:
+                try:
+                    os.remove(lock_path)
+                    logger.info(f"Removed stale lock: {lock_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove lock file {lock_path}: {str(e)}")
+
+    def _recover_checkout(self, repo_dir):
+        """
+        尝试恢复失败的 checkout 操作
+
+        当 git clone 成功但 checkout 失败时（通常是 IO 压力导致），
+        尝试通过多次 retry 恢复工作树
+
+        Returns:
+            bool: True if recovery successful, False otherwise
+        """
+        max_retries = 3
+        base_delay = 5  # 基础等待时间（秒）
+
+        # First, clean up any stale locks
+        self._cleanup_stale_locks(repo_dir)
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Checkout recovery attempt {attempt + 1}/{max_retries} | path: {repo_dir}")
+
+                # 等待 IO 压力降低
+                if attempt > 0:
+                    delay = base_delay * (2 ** (attempt - 1))  # 指数退避：5s, 10s, 20s
+                    logger.info(f"Waiting {delay}s for IO pressure to decrease...")
+                    time.sleep(delay)
+
+                # 尝试 reset + restore 恢复工作树
+                subprocess.run(
+                    ['git', '-C', repo_dir, 'reset', '--hard', 'HEAD'],
+                    check=True, capture_output=True, timeout=300
+                )
+
+                # 验证 checkout 是否成功
+                result = subprocess.run(
+                    ['git', '-C', repo_dir, 'status'],
+                    check=True, capture_output=True, timeout=30
+                )
+
+                status_output = result.stdout.decode()
+                if "nothing to commit" in status_output or "working tree clean" in status_output:
+                    logger.info(f"Checkout recovery successful on attempt {attempt + 1} | path: {repo_dir}")
+                    return True
+
+            except subprocess.CalledProcessError as e:
+                logger.warning(f"Checkout recovery attempt {attempt + 1} failed | error: {e.stderr.decode()[:100]}")
+            except subprocess.TimeoutExpired:
+                logger.warning(f"Checkout recovery attempt {attempt + 1} timed out")
+            except Exception as e:
+                logger.warning(f"Checkout recovery attempt {attempt + 1} error: {str(e)}")
+
+        logger.error(f"All checkout recovery attempts failed | path: {repo_dir}")
+        return False
+
+    def _validate_repo(self, repo_dir, expected_url):
+        """验证仓库URL匹配"""
+        try:
+            result = subprocess.run(
+                ["git", "-C", repo_dir, "config", "--get", "remote.origin.url"],
+                capture_output=True, text=True, check=True
+            )
+            current_url = result.stdout.strip()
+            return current_url == expected_url
+        except subprocess.CalledProcessError:
+            return False
+
+    def _health_check_repo(self, repo_dir):
+        """
+        健康检查仓库
+
+        Returns:
+            bool: True if healthy, False if corrupted
+        """
+        try:
+            # Check .git directory exists
+            if not os.path.exists(os.path.join(repo_dir, '.git')):
+                logger.warning(f"Health check failed: .git directory missing | path: {repo_dir}")
+                return False
+
+            # Run git fsck to verify repository integrity
+            # Note: For large repos (like openeuler-kernel), fsck can take several minutes
+            # Use adaptive timeout based on repo size
+            fsck_timeout = 600  # Default to 10 minutes
+            result = subprocess.run(
+                ['git', '-C', repo_dir, 'fsck', '--no-progress'],
+                capture_output=True, text=True, timeout=fsck_timeout
+            )
+
+            if result.returncode != 0:
+                logger.warning(f"Health check failed: git fsck error | path: {repo_dir} | error: {result.stderr[:200]}")
+                return False
+
+            logger.debug(f"Health check passed | path: {repo_dir}")
+            return True
+
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Health check failed: git fsck timeout ({fsck_timeout}s) | path: {repo_dir}")
+            return False
+
+    def _health_check_new_repo(self, repo_dir):
+        """
+        对新创建的仓库进行健康检查（更宽松）
+
+        Returns:
+            bool: True if healthy, False if corrupted
+        """
+        try:
+            # 检查 .git 目录是否存在
+            if not os.path.exists(os.path.join(repo_dir, '.git')):
+                logger.warning(f"New repo health check failed: .git directory missing | path: {repo_dir}")
+                return False
+
+            # 检查 HEAD 文件是否存在且可读
+            head_file = os.path.join(repo_dir, '.git', 'HEAD')
+            if not os.path.exists(head_file):
+                logger.warning(f"New repo health check failed: HEAD file missing | path: {repo_dir}")
+                return False
+
+            # 尝试读取 HEAD 文件内容
+            try:
+                with open(head_file, 'r') as f:
+                    head_content = f.read().strip()
+                if not head_content:
+                    logger.warning(f"New repo health check failed: HEAD file empty | path: {repo_dir}")
+                    return False
+            except (IOError, OSError) as e:
+                logger.warning(f"New repo health check failed: cannot read HEAD file | path: {repo_dir} | error: {str(e)}")
+                return False
+
+            # 对于新创建的仓库，不执行 git fsck，因为它可能还没有完全稳定
+            # 只检查基本的文件结构
+            logger.debug(f"New repo health check passed | path: {repo_dir}")
+            return True
+
+        except Exception as e:
+            logger.warning(f"New repo health check failed with exception | path: {repo_dir} | error: {str(e)}")
+            return False
+
+    def _cleanup_repo(self, repo_dir):
+        """
+        清理仓库到干净状态
+
+        Performs:
+        - git reset --hard
+        - git clean -fdx
+        """
+        try:
+            # Reset to clean state
+            subprocess.run(
+                ['git', '-C', repo_dir, 'reset', '--hard', 'HEAD'],
+                check=True, capture_output=True, timeout=60
+            )
+
+            # Remove all untracked files and directories
+            subprocess.run(
+                ['git', '-C', repo_dir, 'clean', '-fdx'],
+                check=True, capture_output=True, timeout=60
+            )
+
+            logger.info(f"Repository cleaned successfully | path: {repo_dir}")
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to clean repository | path: {repo_dir} | error: {e.stderr.decode()}")
+            raise
+        except subprocess.TimeoutExpired:
+            logger.error(f"Repository cleanup timed out | path: {repo_dir}")
+            raise
+
+    def _sync_repo(self, repo_dir):
+        """
+        同步仓库（git fetch）
+
+        Updates all refs from origin to keep pool instances fresh
+        """
+        try:
+            subprocess.run(
+                ['git', '-C', repo_dir, 'fetch', 'origin'],
+                check=True, capture_output=True, timeout=300  # 5 minutes
+            )
+            logger.info(f"Repository synced successfully | path: {repo_dir}")
+
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Failed to sync repository | path: {repo_dir} | error: {e.stderr.decode()}")
+            # Don't raise - sync failure shouldn't prevent repo return
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Repository sync timed out | path: {repo_dir}")
+            # Don't raise - sync failure shouldn't prevent repo return
+
+    def get_pool_stats(self):
+        """
+        获取池的统计信息
+
+        Returns:
+            dict: {repo_name: {'available': int, 'in_use': int, 'total': int}}
+        """
+        stats = {}
+        with self.pool_lock:
+            for repo_name, state in self.pool_state.items():
+                stats[repo_name] = {
+                    'available': len(state['available']),
+                    'in_use': len(state['in_use']),
+                    'total': state['total']
+                }
+        return stats
+
+    @contextmanager
+    def get_repo_context(self, task_id, bad_job_id, repo_url):
+        """
+        Context manager for automatic repository acquisition and release
+
+        Usage:
+            with repo_manager.get_repo_context(task_id, bad_job_id, repo_url) as (repo_dir, task_dir):
+                # Use repo_dir for git operations
+                pass
+            # Repository automatically released back to pool
+        """
+        workspace_repo_dir = None
+        task_workspace_dir = None
+
+        try:
+            # Acquire repository
+            workspace_repo_dir, task_workspace_dir = self.get_repo_dir(task_id, bad_job_id, repo_url)
+
+            yield workspace_repo_dir, task_workspace_dir
+
+        finally:
+            # Always release repository back to pool
+            if workspace_repo_dir and os.path.exists(workspace_repo_dir):
+                try:
+                    self.release_repo_dir(workspace_repo_dir)
+                except Exception as e:
+                    logger.error(f"Failed to release repository in context manager | error: {str(e)}")
+
+    def cleanup_ghost_instances(self, repo_name=None):
+        """
+        主动清理幽灵实例 - 检查所有 in_use 实例的 workspace 是否存在
+
+        Args:
+            repo_name: 指定仓库名，None 表示清理所有仓库
+
+        Returns:
+            dict: {repo_name: [cleaned_instance_ids]}
+        """
+        cleaned = {}
+
+        with self.pool_lock:
+            repos_to_check = [repo_name] if repo_name else list(self.pool_state.keys())
+
+            for rname in repos_to_check:
+                if rname not in self.pool_state:
+                    continue
+
+                state = self.pool_state[rname]
+                ghost_instances = []
+
+                for iid, info in list(state['in_use'].items()):
+                    task_id = info.get('task_id')
+                    if not task_id:
+                        continue
+
+                    # Check if workspace exists
+                    expected_workspace = os.path.join(self.REPO_BASE_DIR, str(task_id), rname)
+
+                    if not os.path.exists(expected_workspace):
+                        # Safety: only clean if held for at least 10 minutes
+                        acquired_at = info.get('acquired_at', 0)
+                        held_duration = time.time() - acquired_at
+
+                        if held_duration > 600:  # 10 minutes
+                            ghost_instances.append(iid)
+                            del state['in_use'][iid]
+                            if state['total'] > 0:
+                                state['total'] -= 1
+                            logger.warning(f"Cleaned up ghost instance | repo: {rname}-{iid} | "
+                                         f"task: {task_id} | held_for: {held_duration:.0f}s")
+
+                if ghost_instances:
+                    cleaned[rname] = ghost_instances
+                    logger.info(f"Ghost cleanup | repo: {rname} | cleaned: {len(ghost_instances)}")
+
+                    # Notify waiting threads
+                    if rname in self.pool_conditions:
+                        condition = self.pool_conditions[rname]
+                        condition.notify_all()
+
+        # Persist state after ghost cleanup (outside lock)
+        if cleaned:
+            self._save_pool_state()
+
+        return cleaned
+
+    def _cleanup_ghost_state_for_path(self, workspace_repo_dir):
+        """
+        清理可能的幽灵状态 - 基于目录存在性检测，而非时间
+
+        真正的幽灵实例：workspace 目录已删除，但 in_use 状态仍然存在
+        这通常发生在进程崩溃或异常终止的情况
+        """
+        try:
+            path_parts = workspace_repo_dir.rstrip('/').split('/')
+            if len(path_parts) >= 2:
+                potential_repo_name = path_parts[-1]
+                potential_task_id_str = path_parts[-2]
+
+                with self.pool_lock:
+                    if potential_repo_name in self.pool_state:
+                        state = self.pool_state[potential_repo_name]
+                        ghost_instances = []
+
+                        # Check each in_use instance to see if its workspace still exists
+                        for iid, info in list(state['in_use'].items()):
+                            task_id = info.get('task_id')
+                            if task_id:
+                                # Construct expected workspace path
+                                expected_workspace = os.path.join(self.REPO_BASE_DIR, str(task_id), potential_repo_name)
+
+                                # If workspace doesn't exist, it's a ghost
+                                if not os.path.exists(expected_workspace):
+                                    # Additional safety check: only clean up if held for at least 10 minutes
+                                    # This prevents race conditions during normal acquire/release
+                                    acquired_at = info.get('acquired_at', 0)
+                                    held_duration = time.time() - acquired_at
+
+                                    if held_duration > 600:  # 10 minutes minimum
+                                        ghost_instances.append(iid)
+                                        del state['in_use'][iid]
+                                        if state['total'] > 0:
+                                            state['total'] -= 1
+                                        logger.warning(f"Cleaned up ghost instance (workspace missing) | "
+                                                     f"repo: {potential_repo_name}-{iid} | task: {task_id} | "
+                                                     f"held_for: {held_duration:.0f}s")
+
+                        if ghost_instances:
+                            logger.info(f"Ghost cleanup complete | repo: {potential_repo_name} | cleaned: {len(ghost_instances)}")
+                            # Notify waiting threads
+                            if potential_repo_name in self.pool_conditions:
+                                condition = self.pool_conditions[potential_repo_name]
+                                condition.notify_all()
+
+                            # Persist state after ghost cleanup while holding lock (safe with hold_lock=True)
+                            self._save_pool_state(hold_lock=True)
+
+        except Exception as e:
+            logger.error(f"Failed to cleanup ghost state | error: {str(e)}")
+
+    def verify_pool_consistency(self):
+        """
+        验证池的状态一致性 - 对比文件系统和内存状态
+
+        Returns:
+            dict: 一致性检查结果
+        """
+        inconsistencies = {
+            'missing_from_disk': [],      # 在状态中但磁盘上不存在
+            'missing_from_state': [],     # 在磁盘上但状态中不存在
+            'ghost_in_use': [],           # in_use 但磁盘上不存在
+            'fixed': []                   # 已修复的问题
+        }
+
+        try:
+            # Scan actual filesystem
+            actual_instances = {}  # {repo_name: [instance_ids]}
+            if os.path.exists(self.POOL_BASE_DIR):
+                for entry in os.listdir(self.POOL_BASE_DIR):
+                    full_path = os.path.join(self.POOL_BASE_DIR, entry)
+                    if not os.path.isdir(full_path):
+                        continue
+
+                    match = re.match(r'^(.+)-(\d+)$', entry)
+                    if match:
+                        repo_name, instance_id_str = match.groups()
+                        instance_id = int(instance_id_str)
+
+                        if repo_name not in actual_instances:
+                            actual_instances[repo_name] = []
+                        actual_instances[repo_name].append(instance_id)
+
+            # Compare with pool state
+            with self.pool_lock:
+                # Check tracked instances against disk
+                for repo_name, state in list(self.pool_state.items()):
+                    actual_ids = set(actual_instances.get(repo_name, []))
+                    available_ids = set(state['available'])
+                    in_use_ids = set(state['in_use'].keys())
+
+                    # Check available instances
+                    for iid in available_ids:
+                        if iid not in actual_ids:
+                            inconsistencies['missing_from_disk'].append(f"{repo_name}-{iid}")
+                            state['available'].remove(iid)
+                            inconsistencies['fixed'].append(f"Removed {repo_name}-{iid} from available (not on disk)")
+
+                    # Check in_use instances
+                    for iid in in_use_ids:
+                        if iid not in actual_ids:
+                            inconsistencies['ghost_in_use'].append(f"{repo_name}-{iid}")
+                            del state['in_use'][iid]
+                            inconsistencies['fixed'].append(f"Removed {repo_name}-{iid} from in_use (not on disk)")
+
+                # Check disk instances against state
+                for repo_name, instance_ids in actual_instances.items():
+                    if repo_name not in self.pool_state:
+                        # Repo on disk but not in state
+                        for iid in instance_ids:
+                            inconsistencies['missing_from_state'].append(f"{repo_name}-{iid}")
+                            # Add to state
+                            state = self.pool_state[repo_name]
+                            state['available'].append(iid)
+                            state['total'] = max(state['total'], iid)
+                            inconsistencies['fixed'].append(f"Added {repo_name}-{iid} to available state")
+                    else:
+                        state = self.pool_state[repo_name]
+                        tracked_ids = set(state['available']) | set(state['in_use'].keys())
+                        actual_ids = set(instance_ids)
+
+                        # Instances on disk but not tracked
+                        untracked = actual_ids - tracked_ids
+                        for iid in untracked:
+                            inconsistencies['missing_from_state'].append(f"{repo_name}-{iid}")
+                            state['available'].append(iid)
+                            state['total'] = max(state['total'], iid)
+                            inconsistencies['fixed'].append(f"Added {repo_name}-{iid} to available state")
+
+            # Log results
+            if any(inconsistencies.values()):
+                logger.warning(f"Pool consistency check found issues | "
+                             f"missing_from_disk: {len(inconsistencies['missing_from_disk'])} | "
+                             f"missing_from_state: {len(inconsistencies['missing_from_state'])} | "
+                             f"ghost_in_use: {len(inconsistencies['ghost_in_use'])} | "
+                             f"fixed: {len(inconsistencies['fixed'])}")
+                for fix in inconsistencies['fixed']:
+                    logger.info(f"  Fixed: {fix}")
+
+                # Persist state after fixing inconsistencies while holding lock (safe with hold_lock=True)
+                self._save_pool_state(hold_lock=True)
+            else:
+                logger.info("Pool consistency check passed - no issues found")
+
+        except Exception as e:
+            logger.error(f"Pool consistency check failed | error: {str(e)}")
+            logger.error(traceback.format_exc())
+
+        return inconsistencies
+
+    def cleanup_old_workspaces(self, max_age_days=7):
+        """清理超过指定天数未使用的工作区仓库
+
+        优先尝试回收仓库到池中，只有无法回收时才删除
+
+        Args:
+            max_age_days: 超过多少天的目录会被清理
+
+        Returns:
+            tuple: (recovered_count, deleted_count, skipped_count)
+        """
+        try:
+            # 工作区目录路径
+            workspaces_dir = os.path.join(self.REPO_BASE_DIR, "workspaces")
+            if not os.path.exists(workspaces_dir):
+                logger.info("Workspaces directory does not exist, skipping cleanup")
+                return 0, 0, 0
+
+            recovered_count = 0
+            deleted_count = 0
+            skipped_count = 0
+            max_age_seconds = max_age_days * 86400
+
+            # 遍历所有任务目录
+            for task_id in os.listdir(workspaces_dir):
+                task_dir = os.path.join(workspaces_dir, task_id)
+
+                if not os.path.isdir(task_dir):
+                    continue
+
+                # 检查目录最后使用时间
+                try:
+                    last_used = os.path.getmtime(task_dir)
+                    age_seconds = time.time() - last_used
+                except OSError:
+                    # 如果无法获取时间，跳过
+                    skipped_count += 1
+                    continue
+
+                if age_seconds <= max_age_seconds:
+                    skipped_count += 1
+                    continue
+
+                age_hours = age_seconds / 3600
+                logger.info(f"Found old task workspace | task: {task_id} | age: {age_hours:.1f} hours")
+
+                # 遍历任务目录下的所有仓库
+                for repo_name in os.listdir(task_dir):
+                    repo_path = os.path.join(task_dir, repo_name)
+
+                    if not os.path.isdir(repo_path):
+                        continue
+
+                    # 尝试回收仓库到池中
+                    recovery_attempted = False
+                    recovery_successful = False
+
+                    try:
+                        # 检查是否是 git 仓库
+                        git_dir = os.path.join(repo_path, '.git')
+                        if os.path.exists(git_dir):
+                            logger.info(f"Found git repository | path: {task_id}/{repo_name}")
+                            recovery_attempted = True
+
+                            # 尝试使用 release_repo_dir 回收
+                            try:
+                                self.release_repo_dir(repo_path)
+                                recovered_count += 1
+                                recovery_successful = True
+                                logger.info(f"✓ Successfully recovered repo to pool | path: {task_id}/{repo_name}")
+                                continue
+                            except Exception as recover_e:
+                                logger.debug(f"release_repo_dir failed | error: {str(recover_e)}")
+
+                            # 如果 release_repo_dir 失败，尝试手动恢复
+                            if not recovery_successful:
+                                try:
+                                    logger.info(f"Attempting manual recovery | repo: {repo_name}")
+
+                                    # 清理仓库状态
+                                    self._cleanup_repo(repo_path)
+
+                                    # 健康检查
+                                    if not self._health_check_repo(repo_path):
+                                        logger.warning(f"Health check failed, skipping recovery | repo: {repo_name}")
+                                        raise Exception("Health check failed")
+
+                                    # 查找下一个可用的实例ID
+                                    pool_dir = os.path.join(self.POOL_BASE_DIR)
+                                    if not os.path.exists(pool_dir):
+                                        os.makedirs(pool_dir, exist_ok=True)
+
+                                    # 获取或创建池状态
+                                    with self.pool_lock:
+                                        if repo_name not in self.pool_state:
+                                            self.pool_state[repo_name] = {
+                                                'total': 0,
+                                                'available': [],
+                                                'in_use': {},
+                                                'next_id': 0
+                                            }
+                                        state = self.pool_state[repo_name]
+                                        instance_id = state['next_id']
+                                        state['next_id'] += 1
+
+                                    # 移动到池中
+                                    pool_instance_path = os.path.join(pool_dir, f"{repo_name}-{instance_id}")
+                                    os.rename(repo_path, pool_instance_path)
+
+                                    # 更新池状态
+                                    with self.pool_lock:
+                                        state = self.pool_state[repo_name]
+                                        state['available'].append(instance_id)
+                                        state['total'] += 1
+
+                                        # 通知等待的线程
+                                        if repo_name in self.pool_conditions:
+                                            self.pool_conditions[repo_name].notify()
+
+                                    recovered_count += 1
+                                    recovery_successful = True
+                                    logger.info(f"✓ Manual recovery successful | instance: {repo_name}-{instance_id}")
+
+                                except Exception as manual_e:
+                                    logger.debug(f"Manual recovery failed | error: {str(manual_e)}")
+
+                        # 如果不是 git 仓库或恢复失败，删除目录
+                        if not recovery_successful:
+                            if recovery_attempted:
+                                logger.info(f"✗ Cannot recover, deleting | path: {task_id}/{repo_name}")
+                            else:
+                                logger.info(f"Deleting non-git directory | path: {task_id}/{repo_name}")
+                            shutil.rmtree(repo_path, ignore_errors=True)
+                            deleted_count += 1
+
+                    except Exception as e:
+                        logger.error(f"Error processing repository | path: {task_id}/{repo_name} | error: {str(e)}")
+                        # 出错时尝试删除
+                        try:
+                            shutil.rmtree(repo_path, ignore_errors=True)
+                            deleted_count += 1
+                        except:
+                            pass
+
+                # 删除空的任务目录
+                try:
+                    if os.path.exists(task_dir) and not os.listdir(task_dir):
+                        os.rmdir(task_dir)
+                        logger.info(f"Removed empty task directory | task: {task_id}")
+                except:
+                    pass
+
+            # 返回统计结果
+            logger.info(f"Workspace cleanup complete | skipped: {skipped_count} | recovered: {recovered_count} | deleted: {deleted_count}")
+            return recovered_count, deleted_count, skipped_count
+
+        except Exception as e:
+            logger.error(f"Workspace cleanup failed | error: {str(e)}")
+            return 0, 0, 0
+

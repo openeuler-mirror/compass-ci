@@ -1,0 +1,154 @@
+# Error ID 智能筛选规则配置文件
+# 修改此文件后会在下次筛选周期自动生效（支持热重载）
+
+# 配置版本号
+version: "1.1"
+
+# 筛选策略默认参数
+default_parameters:
+  max_count: 6           # 每个job最多选择的错误ID数量
+  min_priority: 35       # 最低优先级阈值
+  whitelist_boost: 20    # 白名单优先级加成
+
+# 文件路径识别正则表达式
+file_path_patterns:
+  - pattern: '[\./\w-]+\.(?:h|c|cpp|py|rs|go|java|js):\d+:\d+'
+    description: "标准文件路径格式"
+  - pattern: '\/[\w\.-/]+/[\w\.-]+\.\w+:\d+'
+    description: "绝对路径格式"
+
+# 错误级别关键词
+error_keywords:
+  critical:
+    - error
+    - ERROR
+    - fatal
+    - FATAL
+    - panic
+    - PANIC
+  high:
+    - warning
+    - WARNING
+    - fail
+    - failed
+    - FAIL
+    - FAILED
+  medium:
+    - warn
+    - WARN
+
+# 环境错误黑名单（这些错误不适合 bisect）
+environment_blacklist:
+  # 1. stderr 前缀过滤 (由 generic rules 处理或重复分析，故排除)
+  - pattern: '^stderr\.eid\.'
+    reason: "stderr.eid 前缀错误，避免重复"
+  - pattern: '^stderr\.msg\.'
+    reason: "stderr.msg 前缀错误，避免重复"
+
+  # 2. 常见环境/系统错误
+  - pattern: 'No_such_file_or_directory'
+    reason: "文件不存在"
+  - pattern: 'Permission_denied'
+    reason: "权限错误"
+  - pattern: 'command_not_found'
+    reason: "命令未找到"
+  - pattern: '.*not.*found'
+    reason: "工具/库未找到"
+  - pattern: 'Connection_refused'
+    reason: "网络连接拒绝"
+  - pattern: 'Network_is_unreachable'
+    reason: "网络不可达"
+  - pattern: 'timeout'
+    reason: "超时"
+
+  # 3. 构建流程/工具错误 (非代码逻辑)
+  - pattern: 'git_.*_failed'
+    reason: "Git 操作失败"
+  - pattern: 'download.*error'
+    reason: "下载失败"
+  - pattern: '==>ERROR:.*(build|prepare|package|check)\(\)'
+    reason: "makepkg 流程标记"
+  - pattern: '^last_state\.eid\.'
+    reason: "状态标记"
+  - pattern: 'makepkg\.eid\.\.config:'
+    reason: "配置文件内容"
+
+  # 4. 临时文件/编译器内部
+  - pattern: '/tmp/lkp/'
+    reason: "临时文件路径"
+  - pattern: '<built-in>'
+    reason: "编译器内置"
+
+  # 5. 内核日志错误
+  - pattern: '^dmesg\.eid\.'
+    reason: "dmesg.eid 不能稳定复现"
+
+# 高价值错误白名单
+value_whitelist:
+  # 核心：通用测试套件错误支持
+  # 匹配任何 suite.eid.xxx 格式，除了在黑名单中明确排除的 (如 stderr.eid)
+  - pattern: '^(?!stderr\.)[\w-]+\.eid\.'
+    priority_boost: 50
+    reason: "通用测试套件错误 (ltp, makepkg, xfstest, etc)"
+
+  # 严重内核/系统错误
+  - pattern: 'kernel.*panic'
+    priority_boost: 100
+    reason: "内核崩溃"
+  - pattern: 'segmentation.*fault'
+    priority_boost: 100
+    reason: "段错误"
+  - pattern: 'stack.*overflow'
+    priority_boost: 90
+    reason: "栈溢出"
+  - pattern: 'memory.*leak'
+    priority_boost: 80
+    reason: "内存泄漏"
+  - pattern: 'null.*pointer'
+    priority_boost: 85
+    reason: "空指针"
+  - pattern: 'division.*by.*zero'
+    priority_boost: 85
+    reason: "除零错误"
+  - pattern: 'use.*after.*free'
+    priority_boost: 90
+    reason: "释放后使用"
+
+# 代码相关的积极信号
+code_positive_patterns:
+  - pattern: '(compile|build|link|syntax|parse|type).*error'
+    priority_boost: 25
+    reason: "明确的编译/构建/语法错误"
+  - pattern: 'undefined.*reference'
+    priority_boost: 25
+    reason: "链接错误"
+  - pattern: 'undeclared.*identifier'
+    priority_boost: 25
+    reason: "声明错误"
+
+# 错误分类规则 (保留用于并行 Bisect)
+error_categories:
+  memory_safety:
+    patterns: ['overflow', 'leak', 'free', 'bound']
+    description: "内存安全"
+  build_error:
+    patterns: ['compile', 'link', 'syntax', 'undeclared', 'make']
+    description: "构建失败"
+
+# 优先级评分规则
+priority_scoring:
+  has_file_path: 30
+  critical_level: 40
+  high_level: 25
+  medium_level: 15
+  code_related: 20
+  whitelist_match: 20
+
+# 构建任务过滤规则
+build_task_filters:
+  enable_build_filtering: true
+  allowed_kernel_repos:
+    - pattern: 'linux.*\.git'
+      description: "各种 Linux 内核仓库"
+    - pattern: 'openeuler-kernel\.git'
+      description: "openEuler 内核"

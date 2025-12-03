@@ -1,0 +1,19 @@
+# Commit Time Service Configuration
+
+# HTTP 服务配置
+server:
+  host: 0.0.0.0
+  port: 8765
+
+# 缓存配置
+cache:
+  max_size: 10000       # 最大缓存条目数
+  ttl: 86400            # 缓存过期时间（秒），默认 24 小时
+
+# 默认参数
+defaults:
+  max_age_days: 365     # 默认最大 commit 年龄（天）
+
+# 日志配置
+logging:
+  level: INFO

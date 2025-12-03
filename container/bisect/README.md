@@ -1,0 +1,321 @@
+# Bisect Service User Guide
+
+## 1. Overview
+
+This document provides instructions for deploying, configuring, and using the Bisect Service.
+
+The service is designed to automatically find the first bad commit that introduces a specific error (`error_id`) or performance regression (`bisect_metric`). It consists of the following main components:
+
+-   **Web API**: A Flask-based API for submitting new bisect tasks and querying the system status.
+-   **Producer**: A background worker that automatically discovers new potential bisect tasks from the `jobs` database.
+-   **Consumer**: A background worker that picks up waiting tasks and performs the actual bisecting process.
+-   **Verification Consumer**: An intelligent worker that verifies if a new task is similar to a previously successful one, allowing for result reuse and reducing redundant work.
+
+## 2. Deployment and Running
+
+The service is designed to run as a Docker container.
+
+### Prerequisites
+
+-   Docker installed and running.
+-   Access to the Manticore Search database.
+
+### Build the Docker Image
+
+Navigate to the `compass-ci` root directory and use the provided build script:
+
+```bash
+bash container/bisect/build
+```
+
+This script will build the Docker image with the correct dependencies and configurations.
+
+### Run the Docker Container
+
+Use the provided start script to run the container. This script automatically sets the required environment variables and mounts necessary volumes.
+
+```bash
+ruby container/bisect/start
+```
+
+The service will start in the background. You can view the logs using:
+
+```bash
+docker logs -f bisect
+```
+
+**Note**: The `container/bisect/start` script contains various parameters (like database hosts, ports, etc.). You can modify this file directly to adjust the configuration for your environment.
+
+## 3. Configuration
+
+The service is configured via environment variables, which are set in the `container/bisect/start` script.
+
+### Key Configuration Variables
+
+| Variable | Description | Default Value |
+| :--- | :--- | :--- |
+| `MANTICORE_HOST` | The hostname or IP address of the Manticore Search database. | `manticore` |
+| `MANTICORE_WRITE_PORT` | The HTTP port for the Manticore Search database. | `9308` |
+| `BISECT_PRODUCER_ENABLED` | Set to `true` to enable the automatic task producer. | `true` |
+| `BISECT_THREADS` | The number of concurrent bisect tasks the consumer can run. | `8` |
+| `SIMILARITY_THRESHOLD` | The score (0-100) above which two tasks are considered similar. | `70` |
+| `LOG_LEVEL` | The logging level for the application. | `INFO` |
+
+## 4. API Usage
+
+The service exposes a simple REST API for interaction.
+
+### 4.1. Create a New Bisect Task
+
+-   **Endpoint**: `/new_bisect_task`
+-   **Method**: `POST`
+-   **Content-Type**: `application/json`
+
+**Request Body (for an error bisect):**
+
+```json
+{
+  "j": {
+    "bad_job_id": "YOUR_BAD_JOB_ID",
+    "error_id": "the.exact.error.id.string"
+  }
+}
+```
+
+**Request Body (for a performance bisect):**
+
+```json
+{
+  "j": {
+    "bad_job_id": "YOUR_BAD_JOB_ID",
+    "bisect_metric": "the_performance_metric_name"
+  }
+}
+```
+
+**Example using `curl`:**
+
+```bash
+curl -X POST http://localhost:5000/new_bisect_task \
+  -H "Content-Type: application/json" \
+  -d 
+  {
+    "j": {
+      "bad_job_id": "1234567890",
+      "error_id": "makepkg.eid.fs/ioctl.c:warning:Excess-function-parameter"
+    }
+  }
+```
+
+### 4.2. List All Bisect Tasks
+
+-   **Endpoint**: `/list_bisect_tasks`
+-   **Method**: `GET`
+
+Returns a JSON array of all tasks currently in the system.
+
+### 4.3. Get Producer Status
+
+-   **Endpoint**: `/producer_status`
+-   **Method**: `GET`
+
+Returns the current status of the automatic task producer (enabled or disabled).
+
+## 5. Docker Service Details
+
+### Container Architecture
+
+The Bisect service runs as a single Docker container with multiple internal processes:
+
+- **Flask API Server**: Port 5000 (internal), handles HTTP requests
+- **BisectConsumer Thread**: Processes standard bisect tasks
+- **VerificationConsumer Thread**: Handles intelligent task verification
+- **Producer Thread**: Discovers new tasks (if enabled)
+- **Repository Cleanup Thread**: Maintains disk space
+
+### Volume Mounts
+
+The container requires several volume mounts for proper operation:
+
+```bash
+# Git repository cache
+-v /srv/git:/srv/git:rw
+
+# Result storage
+-v /srv/result:/srv/result:rw
+
+# Log output
+-v /srv/log:/srv/log:rw
+```
+
+### Network Requirements
+
+- Access to Manticore Search database (default port 9308)
+- Access to internal job submission system
+- Git repository access for cloning and fetching
+
+### Resource Recommendations
+
+- **CPU**: Minimum 4 cores, recommended 8+ cores for parallel bisecting
+- **Memory**: Minimum 8GB, recommended 16GB+
+- **Disk**: At least 100GB for repository caching
+- **Network**: Stable connection for Git operations
+
+## 6. Monitoring and Health Checks
+
+### Log Files
+
+All logs are written to `/srv/log/bisect/` with the following structure:
+
+- `bisect.log`: Main application log
+- `error.log`: Error-level messages only
+- `producer.log`: Producer-specific activities
+- `consumer.log`: Consumer processing details
+
+### Health Check Endpoint
+
+- **Endpoint**: `/health`
+- **Method**: `GET`
+- **Healthy Response**: `200 OK` with system status JSON
+
+### Monitoring Metrics
+
+Key metrics to monitor:
+
+1. **Task Queue Depth**: Number of tasks in `wait` status
+2. **Processing Rate**: Tasks completed per hour
+3. **Success Rate**: Percentage of successful bisects
+4. **Verification Hit Rate**: Percentage of tasks resolved by verification
+5. **Repository Cache Size**: Disk usage in `/srv/git`
+
+## 7. Troubleshooting
+
+### Common Issues and Solutions
+
+#### Container Won't Start
+
+**Symptom**: Container exits immediately after starting
+
+**Solution**:
+```bash
+# Check container logs
+docker logs bisect
+
+# Verify environment variables
+docker exec bisect env | grep BISECT
+
+# Check database connectivity
+docker exec bisect python -c "from manticore_simple import ManticoreClient; print('DB OK')"
+```
+
+#### Tasks Stuck in 'processing' State
+
+**Symptom**: Tasks remain in processing state for hours
+
+**Solution**:
+```bash
+# Reset stuck tasks (container will automatically reset on restart)
+docker restart bisect
+
+# Check for Git repository issues
+docker exec bisect ls -la /srv/git/
+```
+
+#### High Memory Usage
+
+**Symptom**: Container consuming excessive memory
+
+**Solution**:
+```bash
+# Reduce concurrent threads
+# Edit container/bisect/start and set:
+export BISECT_THREADS=4
+
+# Restart container
+docker restart bisect
+```
+
+#### Disk Space Issues
+
+**Symptom**: "No space left on device" errors
+
+**Solution**:
+```bash
+# Clean up old repositories
+docker exec bisect rm -rf /srv/git/bisect_repos/workspaces/*
+
+# Remove old log files
+find /srv/log/bisect -name "*.log" -mtime +30 -delete
+```
+
+## 8. Advanced Configuration
+
+### Custom Error Filtering
+
+To customize which errors trigger bisect tasks, modify the error intelligence configuration:
+
+```bash
+# Edit the whitelist in the database
+# Use Manticore SQL to update the regression table
+```
+
+### Performance Tuning
+
+For high-load environments, consider these optimizations:
+
+1. **Increase Thread Pool**:
+   ```bash
+   export BISECT_THREADS=16  # For systems with many cores
+   ```
+
+2. **Enable Repository Caching**:
+   ```bash
+   export GIT_CACHE_ENABLED=true
+   export GIT_CACHE_SIZE_GB=200
+   ```
+
+3. **Adjust Similarity Threshold**:
+   ```bash
+   export SIMILARITY_THRESHOLD=85  # More strict matching
+   ```
+
+### Integration with CI/CD
+
+The service can be integrated with your CI/CD pipeline:
+
+1. **Webhook Integration**: Configure your CI system to POST to `/new_bisect_task`
+2. **Polling Integration**: Use the `/list_bisect_tasks` endpoint to check task status
+3. **Event-Driven**: Future support for message queue integration (see DESIGN.md)
+
+## 9. Maintenance
+
+### Regular Maintenance Tasks
+
+1. **Weekly**: Clean up completed tasks older than 30 days
+2. **Monthly**: Optimize Manticore indexes
+3. **Quarterly**: Review and update error whitelists
+
+### Backup and Recovery
+
+Important data to backup:
+
+- Manticore database (bisect and regression tables)
+- Configuration files in `/compass-ci/container/bisect/`
+- Log files for audit purposes
+
+### Upgrading
+
+To upgrade the service:
+
+1. Build new image: `bash container/bisect/build`
+2. Stop current container: `docker stop bisect`
+3. Start new container: `ruby container/bisect/start`
+
+## 10. Support
+
+For issues or questions:
+
+1. Check logs in `/srv/log/bisect/`
+2. Review DESIGN.md for architecture details
+3. Submit issues to the project repository
+
