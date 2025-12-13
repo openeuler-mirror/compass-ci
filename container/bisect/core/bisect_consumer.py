@@ -16,7 +16,6 @@ from typing import Dict, Any, Optional, List
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from log_config import logger, StructuredLogger
 from bisect_utils import extract_repo_name_from_url
-from errid_intelligence import ErridIntelligence
 from notification_writer import NotificationWriter
 
 sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
@@ -29,11 +28,10 @@ class BisectConsumer:
     def __init__(self, client: ManticoreClient, config: Dict):
         self.client = client
         self.config = config
-        self.errid_intelligence = ErridIntelligence()
         self.notification_writer = NotificationWriter(
             notification_dir=config.get('notification_dir', '/result/bisect/notifications')
         )
-        logger.debug("BisectConsumer initialized with ErridIntelligence and NotificationWriter")
+        logger.debug("BisectConsumer initialized with NotificationWriter")
     
     def process_single_task(self, task: Dict) -> Dict:
         """处理单个bisect任务"""
@@ -66,13 +64,8 @@ class BisectConsumer:
             
             logger.info(f"开始处理任务 | ID: {task_id}")
 
-            # 查找并标记相似任务为pending_verification
-            try:
-                marked_count = self._find_and_mark_similar_tasks(task, task_id)
-                if marked_count > 0:
-                    logger.info(f"Marked {marked_count} similar tasks as pending_verification for task {task_id}")
-            except Exception as e:
-                logger.warning(f"Failed to mark similar tasks for task {task_id}: {str(e)}")
+            # 注意：相似任务的聚类和标记已在 task_processor._cluster_and_select_tasks 中完成
+            # 不再在单个任务处理中操作其他任务，避免并发问题和重复逻辑
 
             # Prepare task data
             logger.debug(f"Step 1: Preparing task data | ID: {task_id}")
@@ -89,17 +82,23 @@ class BisectConsumer:
             # Extract good_commit from j field BEFORE validation
             # This ensures validated_data contains good_commit from the start
             j_field = task.get('j') or {}
+            logger.info(f"j_field raw value | task_id: {task_id} | type: {type(j_field).__name__} | value: {str(j_field)[:200]}")
             if isinstance(j_field, str):
                 try:
                     j_field = json.loads(j_field) if j_field else {}
+                    logger.info(f"j_field parsed from string | task_id: {task_id}")
                 except:
                     j_field = {}
+                    logger.warning(f"j_field parse failed | task_id: {task_id}")
             elif not isinstance(j_field, dict):
+                logger.warning(f"j_field is not dict | task_id: {task_id} | type: {type(j_field).__name__}")
                 j_field = {}
 
             if j_field.get('good_commit'):
                 task['good_commit'] = j_field['good_commit']
-                logger.info(f"Extracted good_commit from j field: {j_field['good_commit']}")
+                logger.warning(f"Extracted good_commit from j field | task_id: {task_id} | good_commit: {j_field['good_commit']}")
+            else:
+                logger.warning(f"No good_commit in j field | task_id: {task_id} | j_field keys: {list(j_field.keys()) if isinstance(j_field, dict) else 'N/A'}")
 
             logger.debug(f"Step 4: Validating task data | ID: {task_id}")
             # Validate task data
@@ -215,215 +214,9 @@ class BisectConsumer:
             logger.error(f"计算置信度失败 | task_id: {task_id} | error: {str(e)}")
             return 'low'
 
-    def _find_and_mark_similar_tasks(self, current_task: Dict, task_id: int) -> int:
-        """
-        查找相似任务并标记为pending_verification
-
-        Args:
-            current_task: 当前正在处理的任务
-            task_id: 当前任务ID
-
-        Returns:
-            标记的任务数量
-        """
-        try:
-            error_id = current_task.get('error_id', '')
-            if not error_id:
-                logger.debug(f"Task {task_id} has no error_id, skipping similar task search")
-                return 0
-
-            # 提取错误签名
-            error_signature = self.errid_intelligence.extract_coarse_signature(error_id)
-            if not error_signature:
-                logger.debug(f"Failed to extract signature from error_id: {error_id}")
-                return 0
-
-            logger.info(f"Finding similar tasks | task_id: {task_id} | signature: {error_signature}")
-
-            # 查询具有相同签名的wait状态任务
-            # 使用SQL查询以提高性能
-            query = f"""
-                SELECT id, error_id, bad_job_id
-                FROM bisect
-                WHERE bisect_status = 'wait'
-                  AND error_id != ''
-                  AND id != {task_id}
-                LIMIT 1000
-            """
-
-            candidates = self.client.sql_select(query)
-            if not candidates:
-                logger.debug(f"No candidate tasks found for clustering")
-                return 0
-
-            # 客户端过滤：匹配相同签名的任务
-            similar_tasks = []
-            for candidate in candidates:
-                candidate_error_id = candidate.get('error_id', '')
-                if not candidate_error_id:
-                    continue
-
-                candidate_signature = self.errid_intelligence.extract_coarse_signature(candidate_error_id)
-                if candidate_signature == error_signature:
-                    similar_tasks.append(candidate)
-
-            if not similar_tasks:
-                logger.debug(f"No similar tasks found with signature: {error_signature}")
-                return 0
-
-            logger.info(f"Found {len(similar_tasks)} similar tasks with signature: {error_signature}")
-
-            # 批量标记为pending_verification
-            marked_count = 0
-            current_time = int(time.time())
-
-            for similar_task in similar_tasks:
-                try:
-                    similar_task_id = similar_task['id']
-
-                    # 再次确认任务状态为 wait（避免竞态条件）
-                    current_status = similar_task.get('bisect_status')
-                    if current_status != 'wait':
-                        logger.debug(f"Skip task {similar_task_id}: status is {current_status}, not 'wait'")
-                        continue
-
-                    # 读取现有j字段并合并（保留现有数据）
-                    existing_j = similar_task.get('j') or {}
-                    if isinstance(existing_j, str):
-                        try:
-                            existing_j = json.loads(existing_j) if existing_j else {}
-                        except:
-                            existing_j = {}
-                    elif not isinstance(existing_j, dict):
-                        existing_j = {}
-
-                    # 合并新数据到现有j字段
-                    updated_j = {
-                        **existing_j,  # 保留现有数据
-                        "related_task_id": str(task_id),
-                        "error_signature": error_signature,
-                        "original_error_id": similar_task.get("error_id", ""),
-                        "clustering_timestamp": current_time,
-                        "clustered_by": "bisect_consumer"
-                    }
-
-                    # 使用 HTTP JSON 接口更新（完全避免 SQL 转义问题）
-                    update_doc = {
-                        "doc": {
-                            "bisect_status": "pending_verification",
-                            "updated_at": current_time,
-                            "j": updated_j  # 直接传递字典对象，ManticoreClient 自动处理 JSON 序列化
-                        }
-                    }
-
-                    result = self.client.update("bisect", similar_task_id, update_doc)
-                    if result:
-                        marked_count += 1
-                        logger.debug(f"Marked task {similar_task_id} as pending_verification, related to {task_id}")
-
-                except Exception as e:
-                    logger.error(f"Failed to mark task {similar_task.get('id')} as pending_verification: {str(e)}")
-                    continue
-
-            if marked_count > 0:
-                logger.info(f"Marked {marked_count} similar tasks as pending_verification | main_task: {task_id}")
-
-            return marked_count
-
-        except Exception as e:
-            logger.error(f"Error finding similar tasks for task {task_id}: {str(e)}")
-            logger.error(traceback.format_exc())
-            return 0
-
-    def _promote_pending_verification_tasks(self, task_id: int) -> int:
-        """
-        将与当前任务关联的pending_verification任务提升为verifying状态
-
-        Args:
-            task_id: 当前成功完成的任务ID
-
-        Returns:
-            提升的任务数量
-        """
-        try:
-            logger.info(f"Promoting pending_verification tasks for successful task {task_id}")
-
-            # 查询所有与当前任务关联的pending_verification任务
-            # 使用SQL查询j字段
-            query = f"""
-                SELECT id, j
-                FROM bisect
-                WHERE bisect_status = 'pending_verification'
-                LIMIT 1000
-            """
-
-            pending_tasks = self.client.sql_select(query)
-            if not pending_tasks:
-                logger.debug(f"No pending_verification tasks found")
-                return 0
-
-            # 客户端过滤：找到related_task_id匹配的任务
-            related_tasks = []
-            for task in pending_tasks:
-                try:
-                    j_field = task.get('j') or '{}'
-                    if isinstance(j_field, str):
-                        j_data = json.loads(j_field) if j_field else {}
-                    elif isinstance(j_field, dict):
-                        j_data = j_field
-                    else:
-                        j_data = {}
-
-                    related_id = j_data.get('related_task_id')
-                    if related_id and str(related_id) == str(task_id):
-                        related_tasks.append(task)
-                except Exception as e:
-                    logger.warning(f"Failed to parse j field for task {task.get('id')}: {str(e)}")
-                    continue
-
-            if not related_tasks:
-                logger.debug(f"No pending_verification tasks related to task {task_id}")
-                return 0
-
-            logger.info(f"Found {len(related_tasks)} pending_verification tasks related to task {task_id}")
-
-            # 收集所有需要提升的任务ID
-            task_ids_to_promote = [task['id'] for task in related_tasks]
-
-            if not task_ids_to_promote:
-                logger.debug(f"No tasks to promote for task {task_id}")
-                return 0
-
-            # 批量提升为verifying（单次UPDATE查询）
-            current_time = int(time.time())
-            ids_str = ','.join(map(str, task_ids_to_promote))
-
-            batch_update_query = f"""
-                UPDATE bisect
-                SET bisect_status = 'verifying',
-                    updated_at = {current_time}
-                WHERE id IN ({ids_str}) AND bisect_status = 'pending_verification'
-            """
-
-            try:
-                result = self.client.sql_raw(batch_update_query)
-                if result and result[0].get('error') == '':
-                    # ManticoreSearch返回更新的行数
-                    promoted_count = len(task_ids_to_promote)
-                    logger.info(f"Batch promoted {promoted_count} tasks from pending_verification to verifying")
-                    return promoted_count
-                else:
-                    error_msg = result[0].get('error', 'Unknown error') if result else 'No result'
-                    logger.error(f"Batch promotion failed: {error_msg}")
-                    return 0
-            except Exception as e:
-                logger.error(f"Failed to batch promote tasks: {str(e)}")
-                return 0
-
-        except Exception as e:
-            logger.error(f"Error promoting pending_verification tasks for task {task_id}: {str(e)}")
-            logger.error(traceback.format_exc())
-            return 0
+    # 注意：_find_and_mark_similar_tasks 和 _promote_pending_verification_tasks 已移除
+    # 相似任务的聚类和标记已统一在 task_processor._cluster_and_select_tasks 中处理
+    # 避免在单个任务处理中操作其他任务导致的并发问题和重复逻辑
 
     def _validate_task_data(self, task: Dict) -> Dict:
         """验证任务数据"""
@@ -560,8 +353,45 @@ class BisectConsumer:
                 git_verification, boundary_verification, task_id
             )
 
+            # 根据 verification_status 决定 bisect_status
+            # - verified: bisect 成功且验证通过 → success
+            # - failed: bisect 找到 commit 但验证失败 → wait（重新执行）
+            # - error: 验证过程出错 → wait（重新执行）
+            # - None/其他: 没有验证信息 → wait（重新执行）
+            if verification_status == 'verified' and verification_passed:
+                final_bisect_status = "success"
+                final_verification_status = "verified"
+                final_verified = True
+            else:
+                # 验证失败或出错，回到 wait 重新执行
+                final_bisect_status = "wait"
+                failed_reason = boundary_verification.get('verification_failed_reason', 'unknown')
+                logger.warning(
+                    f"边界验证未通过，任务回到 wait | task_id: {task_id} | "
+                    f"verification_status: {verification_status} | verification_passed: {verification_passed} | "
+                    f"reason: {failed_reason}"
+                )
+
+                # 更新任务状态为 wait，记录失败原因
+                wait_doc = {
+                    "bisect_status": "wait",
+                    "updated_at": current_time,
+                    "j": {
+                        "last_verification_status": verification_status,
+                        "last_verification_failed_reason": failed_reason,
+                        "last_verification_time": current_time,
+                        "retry_count": (task.get('j', {}).get('retry_count', 0) or 0) + 1
+                    }
+                }
+                self.client.update("bisect", task_id, wait_doc)
+                return {
+                    'status': 'retry',
+                    'id': task_id,
+                    'reason': f'verification_{verification_status}: {failed_reason}'
+                }
+
             success_doc = {
-                "bisect_status": "success",
+                "bisect_status": final_bisect_status,
                 "first_bad_commit": result.get('first_bad_commit', '') or '',  # 纯 SHA
                 "first_bad_id": result.get('first_bad_id', '') or '',
                 "first_result_root": result.get('bad_result_root', '') or '',
@@ -572,10 +402,10 @@ class BisectConsumer:
                 "updated_at": current_time,
                 "j": {
                     # 验证状态
-                    "verification_status": "verified",
+                    "verification_status": final_verification_status,
                     "verification_method": "integrated_bisect",
                     "validation_status": "completed",
-                    "verified": True,
+                    "verified": final_verified,
                     "confidence": confidence,  # 动态计算的置信度
                     "skip_success_validation": True,
 
@@ -682,13 +512,8 @@ class BisectConsumer:
                 # py_bisect 未完成 HEAD 检测，报告生成延迟到 head_validator
                 logger.info(f"py_bisect 未完成 HEAD 检测 | task_id: {task_id} | 报告生成延迟到 head_validator")
 
-            # 提升相关的pending_verification任务为verifying
-            try:
-                promoted_count = self._promote_pending_verification_tasks(task_id)
-                if promoted_count > 0:
-                    logger.info(f"Promoted {promoted_count} pending_verification tasks to verifying for successful task {task_id}")
-            except Exception as e:
-                logger.warning(f"Failed to promote pending_verification tasks for task {task_id}: {str(e)}")
+            # 注意：相似任务的标记和提升已统一在 task_processor._cluster_and_select_tasks 中处理
+            # 不再在此处调用 _promote_pending_verification_tasks
 
             logger.info(f"任务执行成功（含集成验证） | ID: {task_id} | first_bad_commit: {result.get('first_bad_commit')}")
             return {

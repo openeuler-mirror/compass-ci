@@ -114,18 +114,19 @@ class ProducerReporter:
         lines.append(f"  数据库已存在(跳过): {db_duplicate} 个")
         lines.append(f"  缺少 git_url(跳过): {no_git_url} 个")
 
-        # Commit 年龄过滤详细统计
+        # Commit 过滤详细统计
         commit_checked = stats.get('tasks_commit_age_checked', 0)
         commit_not_found = stats.get('tasks_commit_hash_not_found', 0)
+        total_commit_filtered = old_commits + commit_not_found  # 总过滤数
         if old_commits > 0 or commit_checked > 0 or commit_not_found > 0:
             max_age = stats.get('max_commit_age_days', 365)
-            lines.append(f"  Commit 年龄过滤:")
+            lines.append(f"  Commit 过滤 (共过滤 {total_commit_filtered} 个):")
             lines.append(f"    - 实际检查年龄: {commit_checked} 个")
-            lines.append(f"    - 未提取 commit hash: {commit_not_found} 个")
+            lines.append(f"    - 无 commit hash 被过滤: {commit_not_found} 个")
             lines.append(f"    - 过旧被过滤: {old_commits} 个 (超过 {max_age} 天)")
             if commit_checked > 0:
                 filter_rate = (old_commits / commit_checked) * 100
-                lines.append(f"    - 过滤率: {filter_rate:.1f}% ({old_commits}/{commit_checked})")
+                lines.append(f"    - 年龄过滤率: {filter_rate:.1f}% ({old_commits}/{commit_checked})")
 
 
         if total_candidates > 0:

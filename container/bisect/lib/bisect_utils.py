@@ -25,12 +25,35 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
 from log_config import logger
 
 def _generate_task_id(bad_job_id, task_identifier):
-    """Generate deterministic ID based on bad_job_id and task_identifier
-    task_identifier can be error_id or bisect_metric"""
-    unique_str = f"{bad_job_id}|{task_identifier}"
+    """Generate deterministic ID based on task_identifier
+
+    For error_id tasks: ID based only on error_id (same error_id = same task)
+    For bisect_metric tasks: ID based on (bad_job_id, bisect_metric)
+
+    task_identifier format: "error_id='xxx'" or "bisect_metric='xxx'"
+
+    Returns:
+        19位正整数 ID (1000000000000000000 ~ 9223372036854775807)
+    """
+    if task_identifier.startswith("error_id="):
+        # error_id 任务：只用 error_id 生成 ID，确保相同 error_id 只有一个任务
+        unique_str = task_identifier
+    else:
+        # bisect_metric 任务：用 (bad_job_id, bisect_metric) 生成 ID
+        unique_str = f"{bad_job_id}|{task_identifier}"
+
     hash_bytes = hashlib.sha256(unique_str.encode()).digest()
     hash_int = int.from_bytes(hash_bytes[:8], byteorder='big')
-    return hash_int & 0x7FFFFFFFFFFFFFFF
+
+    # 确保 ID 为 19 位数字：
+    # - 最小值: 1000000000000000000 (10^18)
+    # - 最大值: 9223372036854775807 (2^63 - 1, signed int64 max)
+    # 使用模运算将 hash 映射到这个范围
+    min_id = 1000000000000000000  # 10^18
+    max_id = 9223372036854775807  # 2^63 - 1
+    id_range = max_id - min_id + 1
+
+    return min_id + (hash_int % id_range)
 
 def _create_task_document(validated_data: dict) -> dict:
     """Creates the initial task document from validated data."""
@@ -158,34 +181,53 @@ def extract_git_url_from_full_text_kv(full_text_kv: str) -> str:
 
 
 def extract_commit_from_full_text_kv(full_text_kv: str) -> str:
-    """从 full_text_kv 中提取 commit hash
+    """从 full_text_kv 中提取 commit hash 或 tag
 
     Args:
         full_text_kv: jobs 表的 full_text_kv 字段
 
     Returns:
-        Commit hash，未找到返回空字符串
+        Commit hash 或 tag，未找到返回空字符串
+
+    支持的格式：
+        - commit: abc123... (40位完整hash)
+        - commit: abc123 (12+位短hash)
+        - commit: v6.17 (tag格式)
+        - head/HEAD: ...
     """
     if not full_text_kv:
         return ''
 
     try:
-        # 常见的 commit 模式
-        patterns = [
+        # 优先匹配 commit hash（更精确）
+        hash_patterns = [
             r'commit[:=]\s*([a-f0-9]{40})',          # commit: abc123... (完整40位)
             r'commit[:=]\s*([a-f0-9]{12,})',         # commit: abc123 (12+位)
             r'head[:=]\s*([a-f0-9]{40})',            # head: abc123...
             r'HEAD[:=]\s*([a-f0-9]{40})',            # HEAD: abc123...
         ]
 
-        for pattern in patterns:
+        for pattern in hash_patterns:
             match = re.search(pattern, full_text_kv, re.IGNORECASE)
             if match:
                 commit_hash = match.group(1)
-                logger.debug(f"成功提取 commit | hash: {commit_hash[:12]}...")
+                logger.debug(f"成功提取 commit hash | hash: {commit_hash[:12]}...")
                 return commit_hash
 
-        logger.debug("未找到 commit hash")
+        # 匹配 tag 格式（v开头的版本号，如 v6.17, v5.10-rc1）
+        tag_patterns = [
+            r'commit[:=]\s*(v\d+\.\d+(?:\.\d+)?(?:-rc\d+)?(?:-\w+)?)\b',  # v6.17, v5.10-rc1, v6.12-openeuler
+            r'commit[:=]\s*(v\d+\.\d+[^\s,]*)',                            # v6.17-xxx 更宽松匹配
+        ]
+
+        for pattern in tag_patterns:
+            match = re.search(pattern, full_text_kv, re.IGNORECASE)
+            if match:
+                tag = match.group(1)
+                logger.debug(f"成功提取 commit tag | tag: {tag}")
+                return tag
+
+        logger.debug("未找到 commit hash 或 tag")
         return ''
 
     except Exception as e:
@@ -287,13 +329,22 @@ def write_analysis_files(job_data_list: List[Dict],
 
         logger.info(f"已写入筛选结果文件 | 路径: {filtered_file} | 错误ID种类: {len(filtered_grouped_data)}")
 
-        # 2. 记录未被智能过滤的任务，按错误ID归类
+        # 2. 记录未被智能过滤的任务，按原因和错误ID归类
         unfiltered_file = analysis_dir / f'unfiltered_jobs_{timestamp}.json'
         unfiltered_by_errid = defaultdict(list)  # errid -> [bad_job_id, ...]
+        unfiltered_by_reason = defaultdict(list)  # reason -> [{job_info}, ...]
 
         for job_info in unfiltered_jobs:
             bad_job_id = job_info.get('bad_job_id') or job_info.get('id')
+            reason = job_info.get('reason', 'unknown')
             original_errids = job_info.get('errid_list', [])
+
+            # 按原因分组记录（包含详细信息）
+            unfiltered_by_reason[reason].append({
+                'bad_job_id': bad_job_id,
+                'git_url': job_info.get('git_url', ''),
+                'full_text_kv_sample': job_info.get('full_text_kv_sample', '')[:200]
+            })
 
             # 如果没有 errid_list，尝试从 errid 字符串解析
             if not original_errids and job_info.get('errid'):
@@ -307,7 +358,8 @@ def write_analysis_files(job_data_list: List[Dict],
                     'bad_job_id': bad_job_id,
                     'repo_name': repo_info.get('repo_name', 'unknown'),
                     'git_url': repo_info.get('git_url', ''),
-                    'commit_sample': repo_info.get('commit_sample', '')
+                    'commit_sample': repo_info.get('commit_sample', ''),
+                    'reason': reason
                 })
 
         # 按错误ID分组写入
@@ -321,15 +373,23 @@ def write_analysis_files(job_data_list: List[Dict],
 
             unfiltered_grouped_data[errid] = {
                 'total_tasks': len(tasks),
-                'reason': 'no_intelligent_filter_match',
+                'reason': tasks[0].get('reason', 'no_intelligent_filter_match'),
                 'by_repository': dict(by_repo),
                 'timestamp': timestamp
             }
 
-        with open(unfiltered_file, 'w', encoding='utf-8') as f:
-            json.dump(unfiltered_grouped_data, f, ensure_ascii=False, indent=2)
+        # 合并按原因分组的数据
+        unfiltered_output = {
+            'by_errid': unfiltered_grouped_data,
+            'by_reason': {reason: {'count': len(jobs), 'samples': jobs[:20]} for reason, jobs in unfiltered_by_reason.items()}
+        }
 
-        logger.info(f"已写入未筛选结果文件 | 路径: {unfiltered_file} | 错误ID种类: {len(unfiltered_grouped_data)}")
+        with open(unfiltered_file, 'w', encoding='utf-8') as f:
+            json.dump(unfiltered_output, f, ensure_ascii=False, indent=2)
+
+        # 统计各原因的数量
+        reason_stats = {reason: len(jobs) for reason, jobs in unfiltered_by_reason.items()}
+        logger.info(f"已写入未筛选结果文件 | 路径: {unfiltered_file} | 按原因: {reason_stats}")
 
         # 3. 写入可读性更强的文本汇总
         summary_file = analysis_dir / f'summary_{timestamp}.txt'
@@ -343,8 +403,25 @@ def write_analysis_files(job_data_list: List[Dict],
             f.write(f"总处理任务数: {total_jobs}\n")
             f.write(f"成功筛选任务数: {filtered_jobs}\n")
             f.write(f"未筛选任务数: {unfiltered_jobs_count}\n")
-            f.write(f"筛选成功率: {filtered_jobs/total_jobs*100:.1f}%\n")
-            f.write(f"未筛选率: {unfiltered_jobs_count/total_jobs*100:.1f}%\n\n")
+            if total_jobs > 0:
+                f.write(f"筛选成功率: {filtered_jobs/total_jobs*100:.1f}%\n")
+                f.write(f"未筛选率: {unfiltered_jobs_count/total_jobs*100:.1f}%\n\n")
+            else:
+                f.write("筛选成功率: N/A\n")
+                f.write("未筛选率: N/A\n\n")
+
+            # 按过滤原因分类统计
+            if unfiltered_by_reason:
+                f.write("未筛选任务按原因分类:\n")
+                f.write("-" * 30 + "\n")
+                for reason, jobs in sorted(unfiltered_by_reason.items(), key=lambda x: len(x[1]), reverse=True):
+                    f.write(f"  {reason}: {len(jobs)} 个任务\n")
+                    # 显示前3个样例
+                    for sample in jobs[:3]:
+                        f.write(f"    - job_id: {sample.get('bad_job_id')} | git_url: {sample.get('git_url', '')[:50]}...\n")
+                    if len(jobs) > 3:
+                        f.write(f"    ... 还有 {len(jobs)-3} 个\n")
+                f.write("\n")
 
             # 筛选成功的错误分类统计
             f.write("筛选成功的错误类型 (按任务数量排序):\n")
@@ -379,6 +456,7 @@ def write_analysis_files(job_data_list: List[Dict],
                                      key=lambda x: x[1]['total_tasks'], reverse=True)
             for i, (errid, info) in enumerate(sorted_unfiltered, 1):  # 显示所有
                 f.write(f"[{i:2}] {errid[:100]}{'...' if len(errid) > 100 else ''} ({info['total_tasks']} 个任务):\n")
+                f.write(f"    原因: {info.get('reason', 'unknown')}\n")
                 f.write("    按仓库和提交分组:\n")
                 for repo, job_ids in info['by_repository'].items():
                     f.write(f"    {repo}: {len(job_ids)}个任务\n")

@@ -35,6 +35,10 @@ HOST_RESULT_DIR='/srv/result'
 KERNEL_CI_DIR='/srv/log/kernel_ci'
 AUTO_TEST_REPOS_DIR='/srv/git/auto_test_repos'
 SUPERVISORD_CONF = File.join(File.dirname(__FILE__), 'config/supervisord.conf')
+
+# 确保日志目录存在
+FileUtils.mkdir_p("#{HOST_RESULT_DIR}/bisect/logs")
+
 docker_rm 'bisect'
 
 cmd = %w[
@@ -49,10 +53,9 @@ cmd = %w[
   -e BISECT_PRODUCER_ENABLED=true
   -e FLASK_APP=#{FLASK_APP}
   -e LOG_LEVEL=DEBUG
-  -e USE_HTTP_CLIENT=true
-  -e BISECT_THREADS=32
   -e COMMIT_TIME_SERVICE_URL=http://localhost:8765
   -e BISECT_MAX_COMMIT_AGE_DAYS=365
+  -e BISECT_THREADS=64
   -e WORK_DIR=#{BISECT_WORK_DIR}
   -v #{HOST_WORK_DIR}:#{BISECT_WORK_DIR}
   -v #{HOST_RESULT_DIR}:#{BISECT_RESULT_DIR}

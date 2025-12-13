@@ -90,64 +90,56 @@ class TaskProcessor:
 
         重置规则：
         - processing -> wait (容器重启，线程池任务丢失，需要重新执行)
+        - verifying -> wait (容器重启，验证作业状态不可靠，需要重新执行)
 
         注意：
-        - verifying 状态不重置（验证作业仍在运行，SuccessTaskValidator 会继续检查）
-        - pending_verification 已废弃，不再处理
-        - 会同时清理文件系统上的残留 workspace 目录
+        - 使用直接 UPDATE 语句，避免 SELECT 的 LIMIT 限制问题
+        - 会清理文件系统上的残留 workspace 目录
         """
         try:
-            logger.info("容器启动：检查并重置 processing 任务...")
+            logger.info("容器启动：检查并重置卡住的任务...")
 
             current_time = int(time.time())
 
-            # 查询所有 processing 状态的任务
-            query = """
-                SELECT id
-                FROM bisect
+            # 直接 UPDATE 所有 processing 状态的任务为 wait（不修改 j 字段，保留 good_commit 等信息）
+            processing_update_sql = f"""
+                UPDATE bisect
+                SET bisect_status = 'wait', updated_at = {current_time}
                 WHERE bisect_status = 'processing'
             """
+            processing_result = self.client.sql_execute(processing_update_sql)
+            processing_reset = processing_result.get('total', 0) if processing_result else 0
 
-            processing_tasks = self.client.sql_select(query)
+            # 直接 UPDATE 所有 verifying 状态的任务为 wait（不修改 j 字段，保留验证信息）
+            verifying_update_sql = f"""
+                UPDATE bisect
+                SET bisect_status = 'wait', updated_at = {current_time}
+                WHERE bisect_status = 'verifying'
+            """
+            verifying_result = self.client.sql_execute(verifying_update_sql)
+            verifying_reset = verifying_result.get('total', 0) if verifying_result else 0
 
-            if not processing_tasks or len(processing_tasks) == 0:
-                logger.info("容器启动：没有发现 processing 状态的任务")
-                return
-
-            # 批量更新为 wait 状态，清除 j 字段，并清理文件系统
-            reset_count = 0
+            # 清理文件系统上所有以数字开头的 workspace 目录（任务残留）
             cleaned_dirs = 0
-
-            for task in processing_tasks:
-                task_id = task['id']
-
-                # 1. 清理文件系统上的 workspace 目录
+            if hasattr(self, 'repo_manager') and self.repo_manager:
                 try:
-                    task_workspace_dir = os.path.join(
-                        self.repo_manager.REPO_BASE_DIR,
-                        'workspaces',
-                        str(task_id)
-                    )
-                    if os.path.exists(task_workspace_dir):
-                        shutil.rmtree(task_workspace_dir, ignore_errors=True)
-                        cleaned_dirs += 1
-                        logger.debug(f"清理残留目录 | task_id: {task_id} | dir: {task_workspace_dir}")
+                    base_dir = self.repo_manager.REPO_BASE_DIR
+                    if os.path.exists(base_dir):
+                        for entry in os.listdir(base_dir):
+                            # 任务 workspace 目录名是数字（task_id）
+                            if entry.isdigit():
+                                task_dir = os.path.join(base_dir, entry)
+                                if os.path.isdir(task_dir):
+                                    shutil.rmtree(task_dir, ignore_errors=True)
+                                    cleaned_dirs += 1
                 except Exception as e:
-                    logger.warning(f"清理目录失败 | task_id: {task_id} | error: {str(e)}")
-
-                # 2. 更新数据库状态
-                doc = {
-                    "bisect_status": "wait",
-                    "updated_at": current_time,
-                    "j": {}
-                }
-                if self.client.update("bisect", task_id, doc):
-                    reset_count += 1
+                    logger.warning(f"清理残留目录失败: {str(e)}")
 
             logger.warning(
                 f"容器启动重置完成 | "
-                f"共重置 {reset_count} 个任务 (processing → wait) | "
-                f"清理 {cleaned_dirs} 个残留目录"
+                f"processing→wait: {processing_reset} | "
+                f"verifying→wait: {verifying_reset} | "
+                f"清理目录: {cleaned_dirs}"
             )
 
         except Exception as e:
@@ -162,13 +154,13 @@ class TaskProcessor:
         self.exit_requested = False
         self._register_signal_handlers()
 
-        # Reset stuck tasks on container restart
-        self._reset_stuck_tasks_on_startup()
-
-        # New: Initialize repository manager
+        # New: Initialize repository manager (must be before _reset_stuck_tasks_on_startup)
         self.repo_manager = SharedRepoManager()
         logger.info("Shared repository manager initialized")
-        
+
+        # Reset stuck tasks on container restart (after repo_manager init)
+        self._reset_stuck_tasks_on_startup()
+
         # New: Initialize intelligent filter
         self.errid_intelligence = ErridIntelligence()
         logger.info("Intelligent Error ID filter initialized")
@@ -239,8 +231,8 @@ class TaskProcessor:
             thread_name_prefix="BisectWorker"
         )
         # Backpressure: Limit pending tasks to prevent memory explosion
-        # Allow queueing up to 2x worker count to keep pipeline full but not overflowing
-        self.task_semaphore = threading.BoundedSemaphore(worker_count * 2)
+        # Only allow 1.5x worker count to reduce processing queue size
+        self.task_semaphore = threading.BoundedSemaphore(int(worker_count * 1.5))
         self.task_futures = []
         
         # Add producer lock for concurrency control
@@ -534,9 +526,9 @@ class TaskProcessor:
             result = self.client.insert("bisect", task_id, task_doc)
             
             logger.debug(f"DEBUG - 插入结果 | ID: {task_id}, 成功: {result}")
-            
+
             if result:
-                return {'status': 'created', 'message': 'Task created successfully'}
+                return {'status': 'created', 'message': 'Task created successfully', 'task_id': task_id}
             else:
                 return {'status': 'failed', 'message': 'Failed to insert task'}
         except Exception as e:
@@ -1089,16 +1081,17 @@ class TaskProcessor:
 
     def _cleanup_stale_locks(self):
         """
-        清理陈旧的锁（任务已完成或超时未处理）
+        清理陈旧的锁（任务已完成或被外部重置）
 
         陈旧锁的判断标准：
         1. 任务状态是终态（success/failed）
         2. 任务状态是 verifying（已进入验证阶段）
         3. 任务不存在（被删除）
+        4. 任务状态是 wait（被外部 API 重置，需要重新执行）
 
         注意：
-        - wait 状态的任务可能在线程池队列中等待，不应清理
         - processing 状态的任务正在执行，不应清理
+        - wait 状态的任务如果有锁，说明被外部重置了，应该清理锁让其重新执行
         """
         try:
             with self.active_task_locks_lock:
@@ -1139,13 +1132,18 @@ class TaskProcessor:
                             # 1. 任务不存在（None）
                             # 2. 任务已完成（success/failed）
                             # 3. 任务在验证中（verifying）- 不需要锁了
+                            # 4. 任务被重置为 wait（被外部 API 重置，需要清理锁让其重新执行）
                             if status is None:
                                 stale_locks.add(task_id)
                                 logger.debug(f"cleanup stale locks | task not found | task_id: {task_id}")
                             elif status in ('success', 'failed', 'verifying'):
                                 stale_locks.add(task_id)
                                 logger.debug(f"cleanup stale locks | task completed | task_id: {task_id} | status: {status}")
-                            # wait 和 processing 状态不应清理（可能在线程池队列或执行中）
+                            elif status == 'wait':
+                                # 任务被外部 API 重置为 wait，需要清理锁让其重新被消费
+                                stale_locks.add(task_id)
+                                logger.info(f"cleanup stale locks | task reset to wait | task_id: {task_id}")
+                            # processing 状态的任务正在执行，不应清理
 
                 # 移除陈旧的锁
                 if stale_locks:
@@ -1455,6 +1453,12 @@ class TaskProcessor:
             if non_build_tasks:
                 selected_tasks.extend(non_build_tasks)
                 logger.info(f"cluster tasks | non-build tasks | count: {len(non_build_tasks)}")
+
+            # 3.3 重新按优先级排序（确保高优先级任务优先执行）
+            selected_tasks.sort(key=lambda t: (
+                -t.get('priority_level', 0),  # 优先级高的在前
+                -t.get('submit_time', 0)      # 提交时间晚的在前
+            ))
 
             # 限制选中的任务数量
             final_selected = selected_tasks[:max_selection]

@@ -11,6 +11,7 @@ import os
 import sys
 import json
 import time
+import signal
 import argparse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -240,6 +241,14 @@ def run_server(host: str = '0.0.0.0', port: int = 8765,
     # 创建服务器
     server = HTTPServer((host, port), RequestHandler)
 
+    # 设置信号处理器，优雅退出
+    def signal_handler(signum, frame):
+        logger.info(f"Received signal {signum}, shutting down...")
+        server.shutdown()
+
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
     logger.info(f"Commit Time Service started | {host}:{port}")
     logger.info(f"Cache size: {cache_size} | TTL: {cache_ttl}s")
     logger.info("Endpoints:")
@@ -251,8 +260,10 @@ def run_server(host: str = '0.0.0.0', port: int = 8765,
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        logger.info("Server shutting down...")
-        server.shutdown()
+        pass
+    finally:
+        logger.info("Server stopped")
+        server.server_close()
 
 
 def main():

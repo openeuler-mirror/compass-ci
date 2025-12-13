@@ -60,13 +60,13 @@ def new_bisect_task():
             if result['status'] == 'created':
                 return jsonify({
                     "code": 200,
-                    "data": None,
+                    "data": {"task_id": result.get('task_id')},
                     "message": result['message']
                 }), 200
             elif result['status'] == 'pending_verification':
                 return jsonify({
                     "code": 200,
-                    "data": None,
+                    "data": {"task_id": result.get('task_id')},
                     "message": result['message']
                 }), 200
             elif result['status'] == 'duplicate':

@@ -296,10 +296,13 @@ class SuccessTaskValidator(VerificationConsumer):
             return {'submitted': 0, 'failed': failed_count}
 
         # Step 3: 获取共享仓库（只克隆一次）
+        # 使用唯一的 batch_id 防止多个 validator 并行时互相冲突
+        import uuid
+        batch_id = f"batch_{int(time.time())}_{uuid.uuid4().hex[:8]}"
         try:
-            logger.info(f"获取共享仓库 | git_url: {git_url[:60]}... | bad_job_id: {first_bad_job_id}")
+            logger.info(f"获取共享仓库 | batch_id: {batch_id} | git_url: {git_url[:60]}... | bad_job_id: {first_bad_job_id}")
             repo_dir, job_dir = repo_manager.get_repo_dir(
-                "batch_verify",  # 使用固定的 task_id 表示批量验证
+                batch_id,  # 使用唯一的 batch_id 防止并行冲突
                 first_bad_job_id,
                 git_url
             )
@@ -317,6 +320,12 @@ class SuccessTaskValidator(VerificationConsumer):
             first_bad_commit = task_info['first_bad_commit']
             error_id = task_info['error_id']
             bad_job_id = task_info['bad_job_id']
+
+            # 在每次循环开始时检查仓库目录是否仍然存在
+            if not os.path.exists(repo_dir):
+                logger.error(f"共享仓库已被删除，终止批量提交 | repo_dir: {repo_dir}")
+                failed_count += len(tasks_to_submit) - submitted_count - failed_count
+                break
 
             try:
                 # 使用共享仓库提交验证作业
@@ -338,7 +347,14 @@ class SuccessTaskValidator(VerificationConsumer):
                     )
                 else:
                     failed_count += 1
-                    logger.error(f"✗ 提交验证作业失败 | task_id: {task_id} | error: {result.get('error')}")
+                    error = result.get('error', '')
+                    logger.error(f"✗ 提交验证作业失败 | task_id: {task_id} | error: {error}")
+
+                    # 如果是共享仓库不存在的错误，终止整个批次
+                    if 'shared_repo_not_found' in error:
+                        logger.error(f"共享仓库不存在，终止批量提交")
+                        failed_count += len(tasks_to_submit) - submitted_count - failed_count
+                        break
 
             except Exception as e:
                 failed_count += 1
@@ -377,6 +393,15 @@ class SuccessTaskValidator(VerificationConsumer):
         Returns:
             {'status': 'success', 'parent_job_id': xxx, 'candidate_job_id': xxx}
         """
+        # 检查共享仓库目录是否存在
+        if not os.path.exists(repo_dir):
+            error_msg = f"shared_repo_not_found: {repo_dir}"
+            logger.error(f"共享仓库目录不存在 | task_id: {task_id} | repo_dir: {repo_dir}")
+            return {
+                'status': 'failed',
+                'task_id': task_id,
+                'error': error_msg
+            }
         try:
             current_time = int(time.time())
 
@@ -431,14 +456,8 @@ class SuccessTaskValidator(VerificationConsumer):
                     error_msg = f"get_parent_failed_after_fetch: {str(fetch_err)}"
                     logger.error(f"Fetch 重试后仍然失败 | error: {error_msg}")
 
-                    # 策略2: 清理有问题的仓库目录，下次会重新克隆
-                    try:
-                        if os.path.exists(repo_dir):
-                            logger.warning(f"清理损坏的共享仓库 | repo_dir: {repo_dir}")
-                            import shutil
-                            shutil.rmtree(repo_dir, ignore_errors=True)
-                    except Exception as cleanup_err:
-                        logger.error(f"清理仓库目录失败: {cleanup_err}")
+                    # 注意：不要清理共享仓库目录，因为其他任务还在使用它
+                    # 只返回当前任务失败，让外层循环继续处理其他任务
 
                     return {
                         'status': 'failed',
@@ -595,14 +614,14 @@ class SuccessTaskValidator(VerificationConsumer):
                         skipped_count += 1
                         continue
 
-                    # 检查是否超时（使用 submitted_at，如果不存在则使用 updated_at 作为兜底）
-                    submitted_time = verification_jobs.get('submitted_at')
+                    # 检查是否超时（使用 submit_time，如果不存在则使用 updated_at 作为兜底）
+                    submitted_time = verification_jobs.get('submit_time')
                     if not submitted_time:
                         submitted_time = job.get('updated_at', 0)
 
                     if submitted_time and (current_time - submitted_time) > timeout_seconds:
                         logger.warning(f"验证作业超时 | task_id: {task_id} | 已等待: {(current_time - submitted_time)/3600:.1f} 小时")
-                        self.mark_verification_timeout(task_id)
+                        self.mark_verification_timeout(task_id, reason="timeout_exceeded")
                         timeout_count += 1
                         continue
 
@@ -638,6 +657,9 @@ class SuccessTaskValidator(VerificationConsumer):
                     parent_completed = isinstance(parent_stats, dict) and parent_stats
                     candidate_completed = isinstance(candidate_stats, dict) and candidate_stats
                     verification_passed = None
+                    parent_status = None
+                    candidate_status = None
+
                     # 两个作业都已完成，分析结果
                     if (parent_completed and candidate_completed):
                         logger.info(f"验证作业已完成 | task_id: {task_id} | 开始分析结果")
@@ -645,8 +667,9 @@ class SuccessTaskValidator(VerificationConsumer):
                         # 检查父提交和候选提交的错误状态
                         parent_bad_job = self.bisect_instance.init_job_content(parent_job_id)
                         self.bisect_instance.is_build_task = self.bisect_instance._detect_build_task(parent_bad_job)
-                        parent_status = self.bisect_instance._check_error_id(parent_stats, error_id, parent_health, parent_result_root)
-                        candidate_status = self.bisect_instance._check_error_id(candidate_stats, error_id, candidate_health, candidate_result_root)
+                        # _check_error_id 返回 (status, certainty, reason) 元组
+                        parent_status, _, _ = self.bisect_instance._check_error_id(parent_stats, error_id, parent_health, parent_result_root)
+                        candidate_status, _, _ = self.bisect_instance._check_error_id(candidate_stats, error_id, candidate_health, candidate_result_root)
 
                         verification_passed = (parent_status == 'good' and candidate_status == 'bad')
                         logger.info(
@@ -654,6 +677,32 @@ class SuccessTaskValidator(VerificationConsumer):
                             f"parent: {parent_status} | candidate: {candidate_status} | "
                             f"passed: {verification_passed}"
                         )
+                    elif not parent_completed or not candidate_completed:
+                        # 作业未完成，检查是否作业丢失（health 为 'job_not_found' 或 None 超过一定时间）
+                        # 如果已经超过 6 小时且作业仍未找到，认为作业丢失
+                        job_lost = False
+                        lost_reason = ""
+
+                        if parent_health == 'job_not_found' or candidate_health == 'job_not_found':
+                            # 检查提交时间，如果超过 6 小时还是 job_not_found，认为丢失
+                            submit_time = verification_jobs.get('submit_time', 0)
+                            if submit_time and (current_time - submit_time) > 6 * 3600:
+                                job_lost = True
+                                lost_reason = f"job_not_found_after_6h (parent: {parent_health}, candidate: {candidate_health})"
+
+                        if job_lost:
+                            logger.warning(f"验证作业丢失 | task_id: {task_id} | reason: {lost_reason}")
+                            self.mark_verification_timeout(task_id, reason=lost_reason)
+                            timeout_count += 1
+                            continue
+
+                        # 正常等待
+                        waiting_count += 1
+                        logger.debug(
+                            f"验证作业未完成 | task_id: {task_id} | "
+                            f"parent_completed: {parent_completed} | candidate_completed: {candidate_completed}"
+                        )
+                        continue
 
                     if verification_passed:
                         # 验证成功：计算 errid diff 并标记为已验证
@@ -839,24 +888,48 @@ class SuccessTaskValidator(VerificationConsumer):
             logger.error(traceback.format_exc())
             return {'checked': 0, 'completed': 0, 'failed': 0, 'timeout': 0, 'waiting': 0, 'skipped': 0}
 
-    def mark_verification_timeout(self, task_id: int):
-        """标记验证作业超时"""
+    def mark_verification_timeout(self, task_id: int, reason: str = "timeout"):
+        """标记验证作业超时，重置为 wait 状态重新走 bisect 流程
+
+        Args:
+            task_id: 任务 ID
+            reason: 超时原因（默认 'timeout'，也可能是 'job_not_found_after_6h' 等）
+        """
         try:
             current_time = int(time.time())
 
+            # 先查询当前的超时次数
+            current_timeout_count = 0
+            try:
+                query = f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1"
+                results = self.client.sql_select(query)
+                if results:
+                    j_field = results[0].get('j', {})
+                    if isinstance(j_field, str):
+                        j_field = json.loads(j_field)
+                    current_timeout_count = j_field.get('verification_timeout_count', 0)
+            except Exception as e:
+                logger.warning(f"查询超时次数失败 | task_id: {task_id} | error: {str(e)}")
+
+            new_timeout_count = current_timeout_count + 1
+
             update_doc = {
+                "bisect_status": "wait",  # 重置为 wait，让任务重新进入 bisect 流程
                 "updated_at": current_time,
                 "j": {
                     "verification_jobs": {
                         "status": "timeout",
-                        "timeout_time": current_time
+                        "timeout_time": current_time,
+                        "timeout_reason": reason
                     },
-                    "verification_status": "timeout"
+                    "verification_status": "timeout",
+                    "verification_timeout_count": new_timeout_count,  # 累加超时次数
+                    "last_timeout_reason": reason
                 }
             }
 
             self.client.update("bisect", task_id, update_doc)
-            logger.info(f"验证作业已标记为超时 | task_id: {task_id}")
+            logger.info(f"验证作业超时，已重置为 wait | task_id: {task_id} | reason: {reason} | timeout_count: {new_timeout_count}")
 
         except Exception as e:
             logger.error(f"标记验证超时失败 | task_id: {task_id} | error: {str(e)}")

@@ -66,7 +66,7 @@ class SharedRepoManager:
         self.pristine_locks = {}  # repo_url -> threading.Lock
         self.pristine_locks_lock = threading.Lock()  # Lock for pristine_locks dict
         self.pristine_fetch_timestamps = {}  # repo_url -> last_fetch_time
-        self.PRISTINE_FETCH_INTERVAL = 300  # 5分钟内不重复fetch
+        self.PRISTINE_FETCH_INTERVAL = Config.GIT_PRISTINE_FETCH_INTERVAL  # 从配置读取（默认1小时）
 
         # Clone concurrency control - shared semaphore
         self.clone_semaphore = threading.Semaphore(self.MAX_CONCURRENT_CLONES)
@@ -75,7 +75,7 @@ class SharedRepoManager:
         logger.info("SharedRepoManager initialized (simplified architecture)")
 
     def _cleanup_stale_verify_repos(self):
-        """启动时清理旧的验证仓库 (verify_xxx 和 batch_verify 目录)"""
+        """启动时清理旧的验证仓库 (verify_xxx 和 batch_xxx 目录)"""
         try:
             if not os.path.exists(self.REPO_BASE_DIR):
                 return
@@ -86,8 +86,8 @@ class SharedRepoManager:
                 if not os.path.isdir(item_path):
                     continue
 
-                # 清理 verify_ 前缀和 batch_verify 目录
-                if item.startswith('verify_') or item == 'batch_verify':
+                # 清理 verify_ 前缀和 batch_ 前缀的目录
+                if item.startswith('verify_') or item.startswith('batch_'):
                     try:
                         shutil.rmtree(item_path, ignore_errors=True)
                         cleaned_count += 1
@@ -108,7 +108,7 @@ class SharedRepoManager:
         流程：
         1. 确保pristine repo存在且最新
         2. 为任务创建独立的workspace目录
-        3. 使用--reference从pristine克隆到workspace
+        3. 使用--reference从pristine克隆到workspace（在pristine锁保护下）
 
         Returns:
             tuple: (workspace_repo_dir, task_workspace_dir)
@@ -125,16 +125,7 @@ class SharedRepoManager:
                 logger.info(f"Created new pristine lock for repo_url: {repo_url}")
             pristine_lock = self.pristine_locks[repo_url]
 
-        # Update pristine repo (with per-repo lock)
-        logger.debug(f"Task {task_id} waiting for pristine lock | repo: {repo_name}")
-        with pristine_lock:
-            logger.info(f"Task {task_id} acquired pristine lock | repo: {repo_name}")
-            try:
-                self._ensure_pristine_repo(repo_url, pristine_repo_dir)
-            finally:
-                logger.info(f"Task {task_id} releasing pristine lock | repo: {repo_name}")
-
-        # Create task workspace directory
+        # Create task workspace directory (outside lock to reduce lock time)
         task_workspace_dir = os.path.join(self.REPO_BASE_DIR, str(task_id))
 
         # Clean up if exists (from failed previous attempts)
@@ -150,8 +141,19 @@ class SharedRepoManager:
         # Clone workspace repo with --reference
         workspace_repo_dir = os.path.join(task_workspace_dir, repo_name)
 
-        logger.info(f"Cloning workspace repo | task: {task_id} | repo: {repo_name}")
-        self._clone_workspace_repo(repo_url, pristine_repo_dir, workspace_repo_dir)
+        # Update pristine repo AND clone workspace (both under pristine lock)
+        # This prevents pristine from being fetched while we're cloning with --reference
+        logger.debug(f"Task {task_id} waiting for pristine lock | repo: {repo_name}")
+        with pristine_lock:
+            logger.info(f"Task {task_id} acquired pristine lock | repo: {repo_name}")
+            try:
+                self._ensure_pristine_repo(repo_url, pristine_repo_dir)
+
+                # Clone workspace while holding pristine lock (prevents race with fetch)
+                logger.info(f"Cloning workspace repo | task: {task_id} | repo: {repo_name}")
+                self._clone_workspace_repo(repo_url, pristine_repo_dir, workspace_repo_dir)
+            finally:
+                logger.info(f"Task {task_id} releasing pristine lock | repo: {repo_name}")
 
         # Clean up stale lock files after clone
         self._cleanup_stale_locks(workspace_repo_dir)
@@ -217,7 +219,7 @@ class SharedRepoManager:
         return False
 
     def _ensure_pristine_repo(self, repo_url, pristine_repo_dir):
-        """确保参考仓库存在且是最新状态"""
+        """确保参考仓库存在且是最新状态（原子化操作）"""
         repo_name = extract_repo_name_from_url(repo_url)
         current_time = time.time()
 
@@ -227,7 +229,7 @@ class SharedRepoManager:
             if os.path.exists(pristine_repo_dir):
                 logger.warning(f"Found partial pristine directory, cleaning up | path: {pristine_repo_dir}")
                 shutil.rmtree(pristine_repo_dir, ignore_errors=True)
-            self._clone_repo(repo_url, pristine_repo_dir)
+            self._clone_repo_atomic(repo_url, pristine_repo_dir)
             logger.info(f"Pristine repo cloned | repo: {repo_name}")
             # 更新 fetch 时间戳
             self.pristine_fetch_timestamps[repo_url] = current_time
@@ -250,148 +252,227 @@ class SharedRepoManager:
                 self.pristine_fetch_timestamps[repo_url] = current_time
             except Exception as e:
                 logger.warning(f"Pristine repo fetch failed, will recreate | repo: {repo_name} | error: {str(e)}")
-                # 如果fetch失败，删除重新克隆
-                shutil.rmtree(pristine_repo_dir, ignore_errors=True)
-                self._clone_repo(repo_url, pristine_repo_dir)
+                # 如果fetch失败，使用原子化方式重建
+                self._recreate_pristine_repo_atomic(repo_url, pristine_repo_dir)
                 logger.info(f"Pristine repo recreated | repo: {repo_name}")
                 # 更新 fetch 时间戳
                 self.pristine_fetch_timestamps[repo_url] = current_time
 
-    def _clone_repo(self, repo_url, repo_dir):
-        """克隆一个完整的仓库（用于参考仓库），直接使用原生 git clone (测试模式)"""
+    def _clone_repo_atomic(self, repo_url, repo_dir):
+        """原子化克隆 pristine bare 仓库
+
+        先克隆到临时目录，成功后再原子重命名到目标目录。
+        这确保 repo_dir 要么不存在，要么是完整可用的仓库。
+        """
         # Sanitize URL before attempting to clone
         if repo_url.startswith("git+http"):
             repo_url = repo_url.replace("git+", "", 1)
 
         repo_name = extract_repo_name_from_url(repo_url)
+        temp_dir = f"{repo_dir}.tmp.{int(time.time())}"
 
         # 使用信号量限制并发克隆数量
         logger.info(f"Waiting for clone slot... | repo: {repo_name} | max_concurrent: {self.MAX_CONCURRENT_CLONES}")
         with self.clone_semaphore:
-            logger.info(f"Clone slot acquired | repo: {repo_name} | starting pristine clone")
+            logger.info(f"Clone slot acquired | repo: {repo_name} | starting atomic pristine clone")
 
             retries = 3
             for i in range(retries):
                 try:
-                    # Clean up any previous failed attempt before each retry
-                    if i > 0 and os.path.exists(repo_dir):
-                        logger.warning(f"Cleaning up failed clone attempt {i} | path: {repo_dir}")
-                        shutil.rmtree(repo_dir, ignore_errors=True)
+                    # Clean up temp directory before each attempt
+                    if os.path.exists(temp_dir):
+                        shutil.rmtree(temp_dir, ignore_errors=True)
 
-                    # Directly use native git clone
-                    logger.info(f"Attempting to clone with native git (attempt {i+1}/{retries})...")
+                    # Clone to temp directory
+                    logger.info(f"Cloning to temp directory (attempt {i+1}/{retries}) | temp: {temp_dir}")
                     subprocess.run(
-                        ['git', 'clone', repo_url, repo_dir],
+                        ['git', 'clone', '--bare', repo_url, temp_dir],
                         check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.PRISTINE_CLONE_TIMEOUT
                     )
-                    logger.info(f"Pristine repository cloned successfully with native git | URL: {repo_url}")
+
+                    # Verify the clone is valid
+                    if not self._is_git_repo(temp_dir):
+                        raise RuntimeError(f"Cloned repo is invalid: {temp_dir}")
+
+                    # Atomic rename: remove old and rename temp to target
+                    if os.path.exists(repo_dir):
+                        shutil.rmtree(repo_dir, ignore_errors=True)
+                    os.rename(temp_dir, repo_dir)
+
+                    logger.info(f"Pristine bare repository cloned atomically | repo: {repo_name}")
                     return
 
                 except subprocess.CalledProcessError as e:
-                    stderr_output = e.stderr.decode()
-                    logger.warning(f"Native git clone failed (attempt {i+1}/{retries}): {stderr_output}")
+                    stderr_output = e.stderr.decode() if e.stderr else "No stderr"
+                    logger.warning(f"Clone attempt {i+1}/{retries} failed | repo: {repo_name} | stderr: {stderr_output[:200]}")
 
                     if i == retries - 1:
-                        logger.error(f"All clone attempts failed for {repo_url}.")
-                        shutil.rmtree(repo_dir, ignore_errors=True)
-                        raise e
+                        logger.error(f"All clone attempts failed for {repo_url}")
+                        # Clean up temp dir
+                        if os.path.exists(temp_dir):
+                            shutil.rmtree(temp_dir, ignore_errors=True)
+                        raise
 
-                    time.sleep(2 ** i)
+                    time.sleep(2 ** i)  # 指数退避：1s, 2s, 4s
+
+                except Exception as e:
+                    logger.error(f"Unexpected error during atomic clone | repo: {repo_name} | error: {str(e)}")
+                    # Clean up temp dir
+                    if os.path.exists(temp_dir):
+                        shutil.rmtree(temp_dir, ignore_errors=True)
+                    raise
+
+    def _recreate_pristine_repo_atomic(self, repo_url, repo_dir):
+        """原子化重建 pristine 仓库
+
+        先克隆到新目录，成功后再替换旧目录。
+        这确保在重建过程中，旧仓库仍然可用。
+        """
+        repo_name = extract_repo_name_from_url(repo_url)
+        temp_dir = f"{repo_dir}.new.{int(time.time())}"
+        old_dir = f"{repo_dir}.old.{int(time.time())}"
+
+        try:
+            # 克隆到临时目录
+            self._clone_repo_atomic(repo_url, temp_dir)
+
+            # 原子替换：旧目录改名 -> 临时目录改名到目标 -> 删除旧目录
+            if os.path.exists(repo_dir):
+                os.rename(repo_dir, old_dir)
+
+            os.rename(temp_dir, repo_dir)
+
+            # 异步清理旧目录
+            if os.path.exists(old_dir):
+                shutil.rmtree(old_dir, ignore_errors=True)
+
+            logger.info(f"Pristine repo recreated atomically | repo: {repo_name}")
+
+        except Exception as e:
+            # 恢复旧目录（如果存在）
+            if os.path.exists(old_dir) and not os.path.exists(repo_dir):
+                try:
+                    os.rename(old_dir, repo_dir)
+                    logger.info(f"Restored old pristine repo after failure | repo: {repo_name}")
+                except:
+                    pass
+
+            # 清理临时目录
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+            raise
+
+    def _clone_repo(self, repo_url, repo_dir):
+        """克隆一个 bare 仓库（向后兼容，调用原子化版本）"""
+        self._clone_repo_atomic(repo_url, repo_dir)
 
     def _fetch_repo(self, repo_dir):
-        """在现有仓库中执行 git fetch"""
+        """在 bare 仓库中执行 git fetch"""
         try:
             subprocess.run(
                 ['git', '-C', repo_dir, 'fetch', 'origin'],
                 check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
-            logger.info(f"Pristine repository updated successfully | Path: {repo_dir}")
+            logger.info(f"Pristine bare repository updated successfully | Path: {repo_dir}")
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to fetch updates for pristine repo {repo_dir}: {e.stderr.decode()}")
             raise
 
     def _clone_workspace_repo(self, repo_url, pristine_repo_dir, workspace_repo_dir):
-        """使用 --reference 克隆一个轻量级的工作区 - 带信号量控制"""
+        """使用 --bare --reference 克隆一个 bare 工作区 - 带信号量控制和重试"""
         repo_name = extract_repo_name_from_url(repo_url)
 
         # 使用信号量限制并发克隆数量
         logger.info(f"Waiting for clone slot... | repo: {repo_name} | max_concurrent: {self.MAX_CONCURRENT_CLONES}")
         with self.clone_semaphore:
-            logger.info(f"Clone slot acquired | repo: {repo_name} | starting workspace clone")
-            self._clone_workspace_repo_internal(repo_url, pristine_repo_dir, workspace_repo_dir)
+            logger.info(f"Clone slot acquired | repo: {repo_name} | starting bare workspace clone")
+
+            # 重试机制：最多尝试 3 次
+            max_retries = 3
+            last_error = None
+
+            for attempt in range(1, max_retries + 1):
+                try:
+                    self._clone_workspace_repo_internal(repo_url, pristine_repo_dir, workspace_repo_dir)
+                    return  # 成功则直接返回
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"Clone attempt {attempt}/{max_retries} failed | repo: {repo_name} | error: {str(e)}")
+
+                    # 清理失败的目录
+                    if os.path.exists(workspace_repo_dir):
+                        shutil.rmtree(workspace_repo_dir, ignore_errors=True)
+
+                    if attempt < max_retries:
+                        wait_time = attempt * 2  # 递增等待：2s, 4s
+                        logger.info(f"Waiting {wait_time}s before retry...")
+                        time.sleep(wait_time)
+
+            # 所有重试都失败
+            logger.error(f"All {max_retries} clone attempts failed | repo: {repo_name}")
+            raise last_error
 
     def _clone_workspace_repo_internal(self, repo_url, pristine_repo_dir, workspace_repo_dir):
-        """使用 --reference 克隆轻量级工作区 - 内部实现（不获取信号量）
+        """使用 --bare --reference 克隆 bare 工作区 - 内部实现（单次尝试）
 
-        使用 --reference 优势:
-        - 对象引用 pristine repo,减少磁盘占用
-        - 克隆速度快 (仅复制差异对象)
-        - 支持完整的 git 操作 (包括 bisect)
+        使用 --bare --reference 引用 bare pristine repo 的优势:
+        - 对象引用 pristine bare repo，减少磁盘占用
+        - 克隆速度快（仅复制差异对象）
+        - 无工作树，大幅减少磁盘 IO
+        - bare 仓库支持 git bisect 操作
         """
         repo_name = extract_repo_name_from_url(repo_url)
 
-        try:
-            logger.info(f"Starting clone: {repo_name} -> {workspace_repo_dir}")
-            start_time = time.time()
+        # 克隆前先清理目标目录（防止残留目录导致失败）
+        if os.path.exists(workspace_repo_dir):
+            logger.warning(f"Target directory exists before clone, cleaning up | path: {workspace_repo_dir}")
+            shutil.rmtree(workspace_repo_dir)
+            logger.info(f"Pre-clone cleanup successful | path: {workspace_repo_dir}")
 
-            result = subprocess.run(
-                ['git', 'clone', '--reference', pristine_repo_dir, repo_url, workspace_repo_dir],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.WORKSPACE_CLONE_TIMEOUT
-            )
+        logger.info(f"Starting bare clone with --reference: {repo_name} -> {workspace_repo_dir}")
+        start_time = time.time()
 
-            if result.returncode != 0:
-                stderr_output = result.stderr.decode()
-                logger.warning(f"Clone with --reference failed | repo: {repo_name} | stderr: {stderr_output[:200]}")
-                raise subprocess.CalledProcessError(result.returncode, result.args, stderr=result.stderr)
+        # 尝试使用 --reference 克隆
+        result = subprocess.run(
+            ['git', 'clone', '--bare', '--reference', pristine_repo_dir, repo_url, workspace_repo_dir],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.WORKSPACE_CLONE_TIMEOUT
+        )
 
+        if result.returncode == 0:
             clone_time = time.time() - start_time
-            logger.info(f"Clone successful | Repository: {repo_name} | Time: {clone_time:.1f}s")
+            logger.info(f"Bare clone with --reference successful | repo: {repo_name} | time: {clone_time:.1f}s")
+            return
 
-        except subprocess.CalledProcessError as e:
-            stderr_output = e.stderr.decode() if e.stderr else "No stderr"
-            logger.error(f"Clone failed with --reference | repo: {repo_name}")
-            logger.error(f"Reference dir: {pristine_repo_dir}")
-            logger.error(f"Target dir: {workspace_repo_dir}")
-            logger.error(f"Full stderr:\n{stderr_output}")
+        # --reference 克隆失败，尝试普通克隆
+        stderr_output = result.stderr.decode() if result.stderr else "No stderr"
+        logger.warning(f"Bare clone with --reference failed | repo: {repo_name} | stderr: {stderr_output[:300]}")
 
-            # 清理失败的尝试（确保删除成功）
-            try:
-                if os.path.exists(workspace_repo_dir):
-                    shutil.rmtree(workspace_repo_dir)
-                    logger.debug(f"Cleaned failed clone directory: {workspace_repo_dir}")
-            except Exception as cleanup_e:
-                logger.error(f"Failed to cleanup directory {workspace_repo_dir}: {str(cleanup_e)}")
-                # 如果删除失败，不要继续 clone
-                raise RuntimeError(f"Cannot cleanup failed clone directory: {workspace_repo_dir}") from cleanup_e
-
-            # 回退到普通克隆 (不使用 reference)
-            logger.warning(f"Falling back to standard clone: {workspace_repo_dir}")
-            try:
-                subprocess.run(
-                    ['git', 'clone', repo_url, workspace_repo_dir],
-                    check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.WORKSPACE_CLONE_TIMEOUT
-                )
-                logger.info(f"Standard clone successful: {workspace_repo_dir}")
-            except subprocess.CalledProcessError as fallback_e:
-                fallback_stderr = fallback_e.stderr.decode() if fallback_e.stderr else "No stderr"
-                logger.error(f"Standard clone also failed | Full error:\n{fallback_stderr}")
-                # 清理失败的普通克隆
-                try:
-                    if os.path.exists(workspace_repo_dir):
-                        shutil.rmtree(workspace_repo_dir)
-                except:
-                    pass  # 最后的清理可以忽略错误
-                raise
-
-        except subprocess.TimeoutExpired:
-            logger.error(f"Clone timed out: {workspace_repo_dir}")
+        # 清理失败的目录
+        if os.path.exists(workspace_repo_dir):
             shutil.rmtree(workspace_repo_dir, ignore_errors=True)
-            raise
 
-        except Exception as e:
-            logger.error(f"Unexpected clone error: {str(e)}")
+        # 回退到普通 bare 克隆 (不使用 reference)
+        logger.info(f"Falling back to standard bare clone: {repo_name}")
+        result = subprocess.run(
+            ['git', 'clone', '--bare', repo_url, workspace_repo_dir],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.WORKSPACE_CLONE_TIMEOUT
+        )
+
+        if result.returncode == 0:
+            clone_time = time.time() - start_time
+            logger.info(f"Standard bare clone successful | repo: {repo_name} | time: {clone_time:.1f}s")
+            return
+
+        # 普通克隆也失败
+        fallback_stderr = result.stderr.decode() if result.stderr else "No stderr"
+        logger.error(f"Standard bare clone also failed | repo: {repo_name} | stderr: {fallback_stderr[:300]}")
+
+        # 清理
+        if os.path.exists(workspace_repo_dir):
             shutil.rmtree(workspace_repo_dir, ignore_errors=True)
-            raise
+
+        raise RuntimeError(f"All clone methods failed for {repo_name}: {fallback_stderr[:200]}")
 
     def _cleanup_stale_locks(self, repo_dir):
         """

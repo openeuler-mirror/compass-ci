@@ -52,8 +52,8 @@ class CommitTimeQuery:
         repo_name = extract_repo_name_from_url(git_url)
         pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
 
-        # 确保 pristine 仓库存在
-        if not os.path.exists(os.path.join(pristine_repo_dir, ".git")):
+        # 确保 pristine 仓库存在（支持 bare 仓库）
+        if not SharedRepoManager._is_git_repo(pristine_repo_dir):
             logger.info(f"Pristine repo not found, need to clone | repo: {repo_name}")
             # 使用 repo_manager 的方法确保仓库存在
             try:
@@ -123,8 +123,8 @@ class CommitTimeQuery:
         repo_name = extract_repo_name_from_url(git_url)
         pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
 
-        # 确保 pristine 仓库存在
-        if not os.path.exists(os.path.join(pristine_repo_dir, ".git")):
+        # 确保 pristine 仓库存在（支持 bare 仓库）
+        if not SharedRepoManager._is_git_repo(pristine_repo_dir):
             try:
                 self._ensure_pristine_repo(git_url, pristine_repo_dir)
             except Exception as e:

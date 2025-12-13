@@ -299,10 +299,11 @@ class HeadValidator(VerificationConsumer):
                 job_stats, job_health = self.bisect_instance._poll_job_stats(head_job_id, head_result_root)
 
                 # 使用 py_bisect 的综合构建日志分析方法检查原始 errid
-                error_present = self.bisect_instance._check_error_id(job_stats, original_error_id, job_health, head_result_root)
+                # _check_error_id 返回 (status, certainty, reason) 元组
+                error_status, _, _ = self.bisect_instance._check_error_id(job_stats, original_error_id, job_health, head_result_root)
 
                 # 检查回归：原始 errid 是否仍然存在
-                regressed = (error_present == 'bad')
+                regressed = (error_status == 'bad')
                 new_status = 'regressed' if regressed else 'fixed'
                 regressed_errids = [original_error_id] if regressed else []
 
@@ -343,9 +344,10 @@ class HeadValidator(VerificationConsumer):
 
                             # 等待 parent 测试完成
                             parent_job_stats, parent_job_health = self.bisect_instance._poll_job_stats(parent_job_id, parent_result_root)
-                            parent_error_present = self.bisect_instance._check_error_id(parent_job_stats, original_error_id, parent_job_health, parent_result_root)
+                            # _check_error_id 返回 (status, certainty, reason) 元组
+                            parent_error_status, _, _ = self.bisect_instance._check_error_id(parent_job_stats, original_error_id, parent_job_health, parent_result_root)
 
-                            parent_status = 'bad' if parent_error_present == 'bad' else 'good'
+                            parent_status = 'bad' if parent_error_status == 'bad' else 'good'
 
                             logger.info(
                                 f"边界验证完成 | HEAD: {new_status} | parent: {parent_status} | "
@@ -797,7 +799,7 @@ class HeadValidator(VerificationConsumer):
 
                     # 检查作业是否完成（按照原版 py_bisect 逻辑）
                     try:
-                        head_stats, head_health = self.bisect_instance._poll_job_stats(head_job_id)
+                        head_stats, head_health = self.bisect_instance._poll_job_stats(head_job_id, head_result_root)
 
                         # 检查作业是否已完成
                         if not (isinstance(head_stats, dict) and head_stats):

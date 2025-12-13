@@ -9,8 +9,10 @@ class Config:
     CCI_SRC = os.environ.get('CCI_SRC', '/c/compass-ci')
 
     # Thread pool configuration
+    # Default: 32 threads, can be increased since workspace overhead is low (~90MB per thread)
+    # Workspace usage: 32 threads * 90MB ≈ 2.8GB, pristine repos dominate disk usage
     BISECT_THREADS = int(os.environ.get('BISECT_THREADS', 32))
-    MAX_THREADS = min(64, os.cpu_count() * 4)  # No more than 64 threads
+    MAX_THREADS = 64  # Safety limit to prevent resource exhaustion
 
     # Producer switch configuration
     BISECT_PRODUCER_ENABLED = os.environ.get('BISECT_PRODUCER_ENABLED', 'true').lower() == 'true'
@@ -58,21 +60,27 @@ class Config:
     # For workspace clone (with --reference, should be faster but may still timeout on HDD)
     GIT_CLONE_WORKSPACE_TIMEOUT = int(os.environ.get('GIT_CLONE_WORKSPACE_TIMEOUT', 3600))  # 60 minutes
 
+    # Pristine repository fetch interval (in seconds)
+    # How often to fetch updates for pristine repos
+    # Default: 3600 (1 hour) - pristine doesn't need to be real-time latest
+    # Set to 86400 (24 hours) for daily updates if desired
+    GIT_PRISTINE_FETCH_INTERVAL = int(os.environ.get('GIT_PRISTINE_FETCH_INTERVAL', 3600))
+
     # Repository pool configuration (for HDD optimization)
     # Maximum number of instances per repository name (e.g., linux-1, linux-2, ...)
     # CRITICAL: Must accommodate worst-case scenario where all concurrent tasks use same repo
     #
     # Calculation:
-    #   - BISECT_THREADS: 32 concurrent bisect tasks
+    #   - BISECT_THREADS: 32-128 concurrent bisect tasks
     #   - VERIFICATION_BATCH_SIZE: 200 tasks processed in parallel
     #   - Worst case: all tasks target same repo (e.g., openeuler-kernel)
     #   - Recommendation: Set to max(BISECT_THREADS, VERIFICATION_BATCH_SIZE) + buffer
     #
-    # Current setting: 64 instances/repo
-    #   - Covers BISECT_THREADS (32) + VERIFICATION concurrent (20-30) + buffer
+    # Current setting: 150 instances/repo (increased from 64)
+    #   - Covers BISECT_THREADS (up to 128) + VERIFICATION concurrent (20-30) + buffer
     #   - Per-repo limit, so multiple repos don't compete
-    #   - Disk usage: ~64 * 5GB = 320GB per active repository
-    REPO_POOL_MAX_INSTANCES = int(os.environ.get('REPO_POOL_MAX_INSTANCES', 64))
+    #   - Disk usage: ~150 * 90MB = 13.5GB per active repository (workspace only)
+    REPO_POOL_MAX_INSTANCES = int(os.environ.get('REPO_POOL_MAX_INSTANCES', 150))
     # Timeout in seconds when waiting for available repository instance
     # Increased from 3600s (1h) to 28800s (8h) to accommodate slower bisect tasks
     REPO_POOL_ACQUIRE_TIMEOUT = int(os.environ.get('REPO_POOL_ACQUIRE_TIMEOUT', 28800))

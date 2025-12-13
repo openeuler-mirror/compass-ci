@@ -324,19 +324,27 @@ class ErrorBisectProducer:
                             )
 
                             # 调试日志：记录每次检查结果
-                            logger.debug(f"Commit 年龄检查 | job_id: {bad_job_id} | commit: {commit_hash[:12]}... | is_too_old: {is_too_old}")
+                            logger.debug(f"Commit 年龄检查 | job_id: {bad_job_id} | commit: {commit_hash[:12] if len(commit_hash) > 12 else commit_hash}... | is_too_old: {is_too_old}")
 
                             if is_too_old:
                                 stats['tasks_filtered_old_commits'] += 1
-                                logger.info(f"过滤旧 commit | job_id: {bad_job_id} | commit: {commit_hash[:12]}... | 超过 {self.max_commit_age_days} 天")
+                                logger.info(f"过滤旧 commit | job_id: {bad_job_id} | commit: {commit_hash[:12] if len(commit_hash) > 12 else commit_hash}... | 超过 {self.max_commit_age_days} 天")
                                 continue
 
                         except Exception as e:
                             logger.warning(f"Commit 年龄检查失败 | job_id: {bad_job_id} | 错误: {str(e)} | 继续处理")
                     else:
                         stats['tasks_commit_hash_not_found'] += 1  # 统计：未能提取 commit
-                        # 调试日志：记录未能提取 commit 的情况
-                        logger.debug(f"未能提取 commit hash | job_id: {bad_job_id}")
+                        # 记录被过滤任务的详细信息，便于分析
+                        unfiltered_jobs.append({
+                            'bad_job_id': bad_job_id,
+                            'errid_list': [],
+                            'reason': 'no_commit_hash',
+                            'git_url': git_url,
+                            'full_text_kv_sample': full_text_kv[:500] if full_text_kv else ''
+                        })
+                        logger.debug(f"过滤无 commit hash 任务 | job_id: {bad_job_id} | git_url: {git_url[:60]}...")
+                        continue
 
                     stats.setdefault('commit_age_check_time_ms', 0)
                     stats['commit_age_check_time_ms'] += (time.time() - commit_age_start) * 1000
