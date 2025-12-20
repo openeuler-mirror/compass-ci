@@ -246,33 +246,34 @@ class ErrorBisectProducer:
             self._log_producer_stats(stats, start_time)
             return 0
 
-        # ===== 核心优化：先收集所有候选任务，再统一去重 =====
+        # ===== 核心优化：先批量检查 commit 年龄，再处理 error_ids =====
         all_tasks_to_create = []  # 收集所有待创建的任务
         unfiltered_jobs = []  # 未能筛选的任务列表
         job_data_list = []  # 所有处理的任务
         filtered_results = {}  # 成功筛选的结果 {bad_job_id: [(errid, analysis), ...]}
 
-        # Phase 1: 收集所有候选任务
-        logger.info("Phase 1: 收集所有候选任务...")
+        # Phase 0: 收集所有 job 的基本信息（用于批量 commit 检查）
+        logger.info("Phase 0: 收集 job 基本信息...")
+        job_info_map = {}  # {job_id: {'full_text_kv': ..., 'git_url': ..., 'commit': ..., 'errids': ...}}
+        commit_check_items = []  # 用于批量检查的列表
+
         for item in result:
             try:
-                # 性能监控：记录每个阶段的耗时
-                stage_start = time.time()
-
-                # 1. 基础验证（最快）
                 if not item.get("id"):
                     continue
 
                 bad_job_id = str(int(item["id"]))
+                full_text_kv = item.get("full_text_kv", "")
+                errids = item.get("j.errid", [])
 
                 # 收集所有处理的 job 数据
                 job_data_list.append({
                     'bad_job_id': bad_job_id,
-                    'full_text_kv': item.get("full_text_kv", ""),
-                    'errid_list': item.get("j.errid", [])
+                    'full_text_kv': full_text_kv,
+                    'errid_list': errids
                 })
 
-                # 2. 缓存检查（O(1) 操作）
+                # 缓存检查
                 cache_check_start = time.time()
                 if bad_job_id in self.processed_jobs_cache:
                     stats['jobs_cache_hit'] += 1
@@ -284,10 +285,7 @@ class ErrorBisectProducer:
                 stats.setdefault('cache_check_time_ms', 0)
                 stats['cache_check_time_ms'] += (time.time() - cache_check_start) * 1000
 
-                # 3. 提取 full_text_kv（轻量操作）
-                full_text_kv = item.get("full_text_kv", "")
-
-                # 4. 提取 git_url（提前到构建任务过滤之前）
+                # 提取 git_url
                 git_url_start = time.time()
                 git_url = extract_git_url_from_full_text_kv(full_text_kv)
                 stats.setdefault('git_url_extract_time_ms', 0)
@@ -295,9 +293,9 @@ class ErrorBisectProducer:
 
                 if not git_url:
                     stats['tasks_no_git_url'] += 1
-                    continue  # 没有 git_url 直接跳过，避免后续无用计算
+                    continue
 
-                # 5. 构建任务过滤（有 git_url 后再过滤）
+                # 构建任务过滤
                 filter_start = time.time()
                 should_filter, filter_reason = self.errid_intelligence.should_filter_build_task(full_text_kv, git_url)
                 stats.setdefault('filter_time_ms', 0)
@@ -309,50 +307,94 @@ class ErrorBisectProducer:
                     logger.debug(f"过滤构建任务 | job_id: {bad_job_id} | 原因: {filter_reason}")
                     continue
 
-                # 6. Commit 年龄过滤（有 commit time client 时执行）
-                if self.commit_client:
-                    commit_age_start = time.time()
-                    commit_hash = extract_commit_from_full_text_kv(full_text_kv)
+                # 提取 commit hash
+                commit_hash = extract_commit_from_full_text_kv(full_text_kv)
 
-                    if commit_hash:
-                        stats['tasks_commit_age_checked'] += 1  # 统计：实际检查了年龄
-                        try:
-                            is_too_old = self.commit_client.is_commit_too_old(
-                                git_url,
-                                commit_hash,
-                                self.max_commit_age_days
-                            )
+                # 保存 job 信息
+                job_info_map[bad_job_id] = {
+                    'full_text_kv': full_text_kv,
+                    'git_url': git_url,
+                    'commit': commit_hash,
+                    'errids': errids,
+                    'item': item
+                }
 
-                            # 调试日志：记录每次检查结果
-                            logger.debug(f"Commit 年龄检查 | job_id: {bad_job_id} | commit: {commit_hash[:12] if len(commit_hash) > 12 else commit_hash}... | is_too_old: {is_too_old}")
+                # 如果有 commit，添加到批量检查列表
+                if commit_hash and self.commit_client:
+                    commit_check_items.append({
+                        'job_id': bad_job_id,
+                        'git_url': git_url,
+                        'commit': commit_hash
+                    })
+                elif not commit_hash:
+                    stats['tasks_commit_hash_not_found'] += 1
+                    unfiltered_jobs.append({
+                        'bad_job_id': bad_job_id,
+                        'errid_list': [],
+                        'reason': 'no_commit_hash',
+                        'git_url': git_url,
+                        'full_text_kv_sample': full_text_kv[:500] if full_text_kv else ''
+                    })
+                    # 没有 commit hash 的 job 不处理
+                    del job_info_map[bad_job_id]
 
-                            if is_too_old:
-                                stats['tasks_filtered_old_commits'] += 1
-                                logger.info(f"过滤旧 commit | job_id: {bad_job_id} | commit: {commit_hash[:12] if len(commit_hash) > 12 else commit_hash}... | 超过 {self.max_commit_age_days} 天")
-                                continue
+            except Exception as e:
+                logger.error(f"Phase 0 处理 job 时出错: {str(e)}")
+                continue
 
-                        except Exception as e:
-                            logger.warning(f"Commit 年龄检查失败 | job_id: {bad_job_id} | 错误: {str(e)} | 继续处理")
-                    else:
-                        stats['tasks_commit_hash_not_found'] += 1  # 统计：未能提取 commit
-                        # 记录被过滤任务的详细信息，便于分析
-                        unfiltered_jobs.append({
-                            'bad_job_id': bad_job_id,
-                            'errid_list': [],
-                            'reason': 'no_commit_hash',
-                            'git_url': git_url,
-                            'full_text_kv_sample': full_text_kv[:500] if full_text_kv else ''
-                        })
-                        logger.debug(f"过滤无 commit hash 任务 | job_id: {bad_job_id} | git_url: {git_url[:60]}...")
-                        continue
+        logger.info(f"Phase 0 完成: 收集 {len(job_info_map)} 个有效 job, {len(commit_check_items)} 个需要检查 commit")
 
-                    stats.setdefault('commit_age_check_time_ms', 0)
-                    stats['commit_age_check_time_ms'] += (time.time() - commit_age_start) * 1000
+        # Phase 1: 批量检查 commit 年龄（关键优化：一次网络调用）
+        valid_job_ids = set(job_info_map.keys())  # 默认全部有效
 
-                # 7. 提取和筛选 error IDs（最重的操作，放在最后）
-                errids = item.get("j.errid", [])
+        if self.commit_client and commit_check_items:
+            logger.info(f"Phase 1: 批量检查 {len(commit_check_items)} 个 commit 年龄...")
+            commit_age_start = time.time()
+
+            try:
+                too_old_job_ids, checked_valid_ids = self.commit_client.batch_check_commits(
+                    commit_check_items,
+                    self.max_commit_age_days
+                )
+
+                stats['tasks_commit_age_checked'] = len(commit_check_items)
+                stats['tasks_filtered_old_commits'] = len(too_old_job_ids)
+
+                # 从有效列表中移除旧 commit 的 job
+                valid_job_ids -= too_old_job_ids
+
+                # 记录过滤掉的 job
+                for job_id in too_old_job_ids:
+                    if job_id in job_info_map:
+                        info = job_info_map[job_id]
+                        commit = info.get('commit', '')
+                        logger.info(f"过滤旧 commit | job_id: {job_id} | commit: {commit[:12] if len(commit) > 12 else commit}... | 超过 {self.max_commit_age_days} 天")
+                        del job_info_map[job_id]
+
+            except Exception as e:
+                logger.warning(f"批量 commit 检查失败: {str(e)} | 继续处理所有 job")
+
+            stats.setdefault('commit_age_check_time_ms', 0)
+            stats['commit_age_check_time_ms'] = (time.time() - commit_age_start) * 1000
+            logger.info(f"Phase 1 完成: 过滤 {stats['tasks_filtered_old_commits']} 个旧 commit, 剩余 {len(valid_job_ids)} 个有效 job")
+        else:
+            logger.info("Phase 1: 跳过 commit 检查 (无 commit client 或无需检查)")
+
+        # Phase 2: 处理通过 commit 检查的 job 的 error_ids
+        logger.info(f"Phase 2: 处理 {len(valid_job_ids)} 个有效 job 的 error_ids...")
+
+        for bad_job_id in valid_job_ids:
+            if bad_job_id not in job_info_map:
+                continue
+
+            try:
+                info = job_info_map[bad_job_id]
+                full_text_kv = info['full_text_kv']
+                git_url = info['git_url']
+                errids = info['errids']
+
+                # 提取和筛选 error IDs
                 if not isinstance(errids, list):
-                    # 收集没有 error_id 的任务
                     unfiltered_jobs.append({
                         'bad_job_id': bad_job_id,
                         'errid_list': [],
@@ -360,7 +402,7 @@ class ErrorBisectProducer:
                     })
                     continue
 
-                if not errids:  # 空列表
+                if not errids:
                     unfiltered_jobs.append({
                         'bad_job_id': bad_job_id,
                         'errid_list': [],
@@ -383,7 +425,6 @@ class ErrorBisectProducer:
 
                 if not smart_candidates:
                     stats['jobs_filtered_out'] += 1
-                    # 收集未能筛选的任务
                     unfiltered_jobs.append({
                         'bad_job_id': bad_job_id,
                         'errid_list': errids,
@@ -408,14 +449,14 @@ class ErrorBisectProducer:
                 stats['total_errids_after_smart_filter'] += len(smart_candidates)
 
             except Exception as e:
-                logger.error(f"处理job时出错: {str(e)}")
+                logger.error(f"Phase 2 处理 job 时出错: {str(e)}")
                 continue
 
-        logger.info(f"收集完成: {len(all_tasks_to_create)} 个候选任务")
+        logger.info(f"Phase 2 完成: 收集 {len(all_tasks_to_create)} 个候选任务")
 
-        # Phase 2: 一次性批量去重（这是关键优化）
+        # Phase 3: 一次性批量去重（这是关键优化）
         if all_tasks_to_create:
-            logger.info(f"Phase 2: 批量去重检查 {len(all_tasks_to_create)} 个任务...")
+            logger.info(f"Phase 3: 批量去重检查 {len(all_tasks_to_create)} 个任务...")
 
             # 提取所有error_ids
             all_error_ids = [task['error_id'] for task in all_tasks_to_create]
@@ -447,7 +488,7 @@ class ErrorBisectProducer:
             stats['tasks_db_duplicate'] = len(existing_error_ids)
             logger.info(f"去重完成: {len(existing_error_ids)} 个任务已存在")
 
-            # Phase 3: 准备创建新任务
+            # Phase 4: 准备创建新任务
             tasks_to_create = []
             for task_data in all_tasks_to_create:
                 if task_data['error_id'] in existing_error_ids:
@@ -467,9 +508,9 @@ class ErrorBisectProducer:
 
                 tasks_to_create.append(task)
 
-            # Phase 3: 使用批量插入器创建任务
+            # Phase 4: 使用批量插入器创建任务
             if tasks_to_create:
-                logger.info(f"Phase 3: 批量创建 {len(tasks_to_create)} 个新任务...")
+                logger.info(f"Phase 4: 批量创建 {len(tasks_to_create)} 个新任务...")
                 success_count, failed_count = self.batch_inserter.batch_create_tasks(tasks_to_create)
 
                 stats['tasks_created_success'] = success_count

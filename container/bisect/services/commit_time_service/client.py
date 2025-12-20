@@ -8,7 +8,7 @@ Commit Time Service Client
 """
 
 import requests
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List, Set
 
 
 class CommitTimeClient:
@@ -112,6 +112,48 @@ class CommitTimeClient:
             return False
 
         return is_old
+
+    def batch_check_commits(self, items: List[Dict], max_age_days: int = 365) -> Tuple[Set[str], Set[str]]:
+        """
+        批量检查多个 commit 是否过旧
+
+        Args:
+            items: 列表，每项为 {'job_id': ..., 'git_url': ..., 'commit': ...}
+            max_age_days: 最大天数阈值
+
+        Returns:
+            (too_old_job_ids, valid_job_ids) 两个集合
+            - too_old_job_ids: 需要过滤的 job_id 集合
+            - valid_job_ids: 有效的 job_id 集合
+        """
+        if not items:
+            return set(), set()
+
+        try:
+            response = requests.post(
+                f"{self.service_url}/api/v1/commit/batch_check",
+                json={
+                    'items': items,
+                    'max_age_days': max_age_days
+                },
+                timeout=self.timeout * 2  # 批量请求给更长超时
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    data = result['data']
+                    return (
+                        set(data.get('too_old_job_ids', [])),
+                        set(data.get('valid_job_ids', []))
+                    )
+
+            # 请求失败，降级策略：全部视为有效
+            return set(), set(item['job_id'] for item in items if item.get('job_id'))
+
+        except Exception as e:
+            # 异常时降级：全部视为有效
+            return set(), set(item['job_id'] for item in items if item.get('job_id'))
 
     def ping(self) -> bool:
         """

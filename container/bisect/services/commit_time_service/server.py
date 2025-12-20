@@ -120,6 +120,68 @@ class CommitTimeService:
             }
         }
 
+    def batch_check_commits(self, items: list, max_age_days: int = 365) -> Dict[str, Any]:
+        """
+        批量检查多个 commit 是否超过指定天数
+
+        Args:
+            items: 列表，每项为 {'git_url': ..., 'commit': ..., 'job_id': ...}
+            max_age_days: 最大天数
+
+        Returns:
+            批量检查结果
+        """
+        results = []
+        too_old_job_ids = set()
+        valid_job_ids = set()
+        errors = []
+
+        for item in items:
+            git_url = item.get('git_url')
+            commit_hash = item.get('commit')
+            job_id = item.get('job_id')
+
+            if not git_url or not commit_hash or not job_id:
+                errors.append({'job_id': job_id, 'error': 'missing required fields'})
+                continue
+
+            result = self.get_commit_time(git_url, commit_hash)
+
+            if result['status'] != 'success':
+                # 查询失败时不过滤（降级策略）
+                valid_job_ids.add(job_id)
+                continue
+
+            age_days = result['data']['age_days']
+            is_too_old = age_days > max_age_days
+
+            if is_too_old:
+                too_old_job_ids.add(job_id)
+            else:
+                valid_job_ids.add(job_id)
+
+            results.append({
+                'job_id': job_id,
+                'commit': commit_hash[:12] if len(commit_hash) > 12 else commit_hash,
+                'age_days': age_days,
+                'is_too_old': is_too_old
+            })
+
+        return {
+            'status': 'success',
+            'data': {
+                'total': len(items),
+                'checked': len(results),
+                'too_old_count': len(too_old_job_ids),
+                'valid_count': len(valid_job_ids),
+                'too_old_job_ids': list(too_old_job_ids),
+                'valid_job_ids': list(valid_job_ids),
+                'max_age_days': max_age_days,
+                'details': results,
+                'errors': errors
+            }
+        }
+
     def get_stats(self) -> Dict[str, Any]:
         """获取服务统计信息"""
         uptime = time.time() - self.start_time
@@ -162,6 +224,21 @@ class RequestHandler(BaseHTTPRequestHandler):
             logger.error(f"Request error: {str(e)}")
             self.send_error_response(500, str(e))
 
+    def do_POST(self):
+        """处理 POST 请求"""
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        try:
+            if path == '/api/v1/commit/batch_check':
+                self.handle_batch_check()
+            else:
+                self.send_error_response(404, 'Not Found')
+
+        except Exception as e:
+            logger.error(f"POST request error: {str(e)}")
+            self.send_error_response(500, str(e))
+
     def handle_commit_time(self, params: Dict):
         """处理 commit 时间查询"""
         git_url = params.get('repo', [None])[0]
@@ -191,6 +268,34 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
 
         result = self.service.check_commit_age(git_url, commit, max_age_days)
+        self.send_json_response(result)
+
+    def handle_batch_check(self):
+        """处理批量 commit 年龄检查"""
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length == 0:
+            self.send_error_response(400, 'Missing request body')
+            return
+
+        body = self.rfile.read(content_length)
+        try:
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError as e:
+            self.send_error_response(400, f'Invalid JSON: {str(e)}')
+            return
+
+        items = data.get('items', [])
+        max_age_days = data.get('max_age_days', 365)
+
+        if not items:
+            self.send_error_response(400, 'Missing items in request body')
+            return
+
+        if not isinstance(items, list):
+            self.send_error_response(400, 'items must be a list')
+            return
+
+        result = self.service.batch_check_commits(items, max_age_days)
         self.send_json_response(result)
 
     def handle_stats(self):
@@ -252,10 +357,11 @@ def run_server(host: str = '0.0.0.0', port: int = 8765,
     logger.info(f"Commit Time Service started | {host}:{port}")
     logger.info(f"Cache size: {cache_size} | TTL: {cache_ttl}s")
     logger.info("Endpoints:")
-    logger.info(f"  GET /api/v1/commit/time?repo=<url>&commit=<hash>")
-    logger.info(f"  GET /api/v1/commit/check?repo=<url>&commit=<hash>&max_age_days=365")
-    logger.info(f"  GET /api/v1/stats")
-    logger.info(f"  GET /health")
+    logger.info(f"  GET  /api/v1/commit/time?repo=<url>&commit=<hash>")
+    logger.info(f"  GET  /api/v1/commit/check?repo=<url>&commit=<hash>&max_age_days=365")
+    logger.info(f"  POST /api/v1/commit/batch_check  (body: {{items: [...], max_age_days: 365}})")
+    logger.info(f"  GET  /api/v1/stats")
+    logger.info(f"  GET  /health")
 
     try:
         server.serve_forever()

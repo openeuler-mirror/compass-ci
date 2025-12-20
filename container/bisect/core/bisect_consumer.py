@@ -355,7 +355,7 @@ class BisectConsumer:
 
             # 根据 verification_status 决定 bisect_status
             # - verified: bisect 成功且验证通过 → success
-            # - failed: bisect 找到 commit 但验证失败 → wait（重新执行）
+            # - failed: bisect 找到 commit 但验证失败 → 根据原因决定
             # - error: 验证过程出错 → wait（重新执行）
             # - None/其他: 没有验证信息 → wait（重新执行）
             if verification_status == 'verified' and verification_passed:
@@ -363,32 +363,73 @@ class BisectConsumer:
                 final_verification_status = "verified"
                 final_verified = True
             else:
-                # 验证失败或出错，回到 wait 重新执行
-                final_bisect_status = "wait"
+                # 验证失败或出错
                 failed_reason = boundary_verification.get('verification_failed_reason', 'unknown')
-                logger.warning(
-                    f"边界验证未通过，任务回到 wait | task_id: {task_id} | "
-                    f"verification_status: {verification_status} | verification_passed: {verification_passed} | "
-                    f"reason: {failed_reason}"
-                )
+                retry_count = (task.get('j', {}).get('retry_count', 0) or 0) + 1
 
-                # 更新任务状态为 wait，记录失败原因
-                wait_doc = {
-                    "bisect_status": "wait",
-                    "updated_at": current_time,
-                    "j": {
-                        "last_verification_status": verification_status,
-                        "last_verification_failed_reason": failed_reason,
-                        "last_verification_time": current_time,
-                        "retry_count": (task.get('j', {}).get('retry_count', 0) or 0) + 1
+                # 判断是否应该标记为 failed（不再重试）
+                # 1. target_error_id_not_in_introduced: 目标 error_id 不在引入的错误列表中，可能是 flaky error
+                # 2. 重试次数超过 3 次
+                should_mark_failed = False
+                if 'target_error_id_not_in_introduced' in failed_reason:
+                    should_mark_failed = True
+                    logger.warning(
+                        f"边界验证失败: 目标 error_id 未在引入列表中 | task_id: {task_id} | "
+                        f"可能是 flaky error，标记为 failed"
+                    )
+                elif retry_count >= 3:
+                    should_mark_failed = True
+                    logger.warning(
+                        f"边界验证重试次数达到上限 | task_id: {task_id} | "
+                        f"retry_count: {retry_count} | 标记为 failed"
+                    )
+
+                if should_mark_failed:
+                    # 标记为 failed，不再重试
+                    bisect_failed_reason = f"boundary_verification_failed:{failed_reason}"
+                    failed_doc = {
+                        "bisect_status": "failed",
+                        "bisect_failed_reason": bisect_failed_reason,
+                        "updated_at": current_time,
+                        "j": {
+                            "verification_status": verification_status,
+                            "verification_failed_reason": failed_reason,
+                            "verification_time": current_time,
+                            "retry_count": retry_count,
+                            "first_bad_commit": result.get('first_bad_commit', ''),
+                            "boundary_verification": boundary_verification
+                        }
                     }
-                }
-                self.client.update("bisect", task_id, wait_doc)
-                return {
-                    'status': 'retry',
-                    'id': task_id,
-                    'reason': f'verification_{verification_status}: {failed_reason}'
-                }
+                    self.client.update("bisect", task_id, failed_doc)
+                    return {
+                        'status': 'failed',
+                        'id': task_id,
+                        'reason': bisect_failed_reason
+                    }
+                else:
+                    # 回到 wait 重新执行
+                    logger.warning(
+                        f"边界验证未通过，任务回到 wait | task_id: {task_id} | "
+                        f"verification_status: {verification_status} | verification_passed: {verification_passed} | "
+                        f"reason: {failed_reason} | retry_count: {retry_count}"
+                    )
+
+                    wait_doc = {
+                        "bisect_status": "wait",
+                        "updated_at": current_time,
+                        "j": {
+                            "last_verification_status": verification_status,
+                            "last_verification_failed_reason": failed_reason,
+                            "last_verification_time": current_time,
+                            "retry_count": retry_count
+                        }
+                    }
+                    self.client.update("bisect", task_id, wait_doc)
+                    return {
+                        'status': 'retry',
+                        'id': task_id,
+                        'reason': f'verification_{verification_status}: {failed_reason}'
+                    }
 
             success_doc = {
                 "bisect_status": final_bisect_status,

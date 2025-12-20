@@ -327,8 +327,8 @@ def add_common_filter_args(parser, include_limit=False):
     parser.add_argument('--error_id', help='错误ID')
     parser.add_argument('--bad_job_id', help='Bad job ID')
     parser.add_argument('--git_url', help='Git URL')
-    parser.add_argument('--category', help='任务类型 (build/boot)')
-    parser.add_argument('--status', help='任务状态 (wait/processing/success/failed)')
+    parser.add_argument('--category', help='任务类型 (build/function/performance)')
+    parser.add_argument('--status', help='任务状态 (wait/processing/success/failed/verifying)')
     parser.add_argument('--commit', help='按first_bad_commit筛选（支持完整或短SHA）')
 
     if include_limit:
