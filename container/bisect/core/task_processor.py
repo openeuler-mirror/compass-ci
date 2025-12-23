@@ -978,16 +978,25 @@ class TaskProcessor:
                 submitted_count = 0
                 failed_count = 0
 
-                for git_url, repo_tasks in tasks_by_repo.items():
+                logger.info(f"开始遍历 {len(tasks_by_repo)} 个仓库提交验证作业...")
+
+                for idx, (git_url, repo_tasks) in enumerate(tasks_by_repo.items()):
                     if not self.running:
                         logger.info("SuccessTaskValidator 收到停止信号，退出循环")
                         break
 
+                    logger.info(
+                        f"处理仓库 [{idx+1}/{len(tasks_by_repo)}] | "
+                        f"repo: {git_url[:60]}... | tasks: {len(repo_tasks)}"
+                    )
+
                     try:
                         # 批量提交该仓库的所有任务（调用 validator 的方法）
+                        logger.debug(f"调用 batch_submit_verification_jobs...")
                         result = validator.batch_submit_verification_jobs(
                             repo_tasks, git_url, self.repo_manager
                         )
+                        logger.debug(f"batch_submit_verification_jobs 返回: {result}")
 
                         submitted_count += result.get('submitted', 0)
                         failed_count += result.get('failed', 0)
