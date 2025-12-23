@@ -365,7 +365,8 @@ class BisectConsumer:
             else:
                 # 验证失败或出错
                 failed_reason = boundary_verification.get('verification_failed_reason', 'unknown')
-                retry_count = (task.get('j', {}).get('retry_count', 0) or 0) + 1
+                # 直接从数据库字段读取 retry_count
+                retry_count = (task.get('retry_count', 0) or 0) + 1
 
                 # 判断是否应该标记为 failed（不再重试）
                 # 1. target_error_id_not_in_introduced: 目标 error_id 不在引入的错误列表中，可能是 flaky error
@@ -390,12 +391,12 @@ class BisectConsumer:
                     failed_doc = {
                         "bisect_status": "failed",
                         "bisect_failed_reason": bisect_failed_reason,
+                        "retry_count": retry_count,
                         "updated_at": current_time,
                         "j": {
                             "verification_status": verification_status,
                             "verification_failed_reason": failed_reason,
                             "verification_time": current_time,
-                            "retry_count": retry_count,
                             "first_bad_commit": result.get('first_bad_commit', ''),
                             "boundary_verification": boundary_verification
                         }
@@ -416,12 +417,12 @@ class BisectConsumer:
 
                     wait_doc = {
                         "bisect_status": "wait",
+                        "retry_count": retry_count,
                         "updated_at": current_time,
                         "j": {
                             "last_verification_status": verification_status,
                             "last_verification_failed_reason": failed_reason,
-                            "last_verification_time": current_time,
-                            "retry_count": retry_count
+                            "last_verification_time": current_time
                         }
                     }
                     self.client.update("bisect", task_id, wait_doc)

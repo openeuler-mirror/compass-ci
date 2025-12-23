@@ -363,12 +363,22 @@ class ErrorBisectProducer:
                 # 从有效列表中移除旧 commit 的 job
                 valid_job_ids -= too_old_job_ids
 
-                # 记录过滤掉的 job
+                # 记录过滤掉的 job（同时添加到 unfiltered_jobs 以便溯源）
                 for job_id in too_old_job_ids:
                     if job_id in job_info_map:
                         info = job_info_map[job_id]
                         commit = info.get('commit', '')
+                        git_url = info.get('git_url', '')
                         logger.info(f"过滤旧 commit | job_id: {job_id} | commit: {commit[:12] if len(commit) > 12 else commit}... | 超过 {self.max_commit_age_days} 天")
+                        # 记录到 unfiltered_jobs 以便在 analysis 目录中溯源
+                        unfiltered_jobs.append({
+                            'bad_job_id': job_id,
+                            'errid_list': info.get('errids', []),
+                            'reason': f'commit_too_old (>{self.max_commit_age_days} days)',
+                            'git_url': git_url,
+                            'commit': commit,
+                            'full_text_kv_sample': info.get('full_text_kv', '')[:500] if info.get('full_text_kv') else ''
+                        })
                         del job_info_map[job_id]
 
             except Exception as e:

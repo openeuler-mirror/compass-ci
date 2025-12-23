@@ -102,6 +102,21 @@ class LRUCache:
         """清空缓存"""
         self.cache.clear()
 
+    def evict(self, key: str) -> bool:
+        """
+        移除指定键的缓存项
+
+        Args:
+            key: 缓存键
+
+        Returns:
+            是否成功移除（键存在则返回 True）
+        """
+        if key in self.cache:
+            del self.cache[key]
+            return True
+        return False
+
     def size(self) -> int:
         """获取当前缓存大小"""
         return len(self.cache)
