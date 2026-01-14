@@ -65,9 +65,10 @@ class StructuredLogger:
 
     def _get_default_log_dir(self) -> str:
         """获取默认日志目录"""
-        # 优先使用 RESULT_DIR/bisect/logs（持久化目录）
+        # 优先使用 RESULT_DIR/logs（持久化目录）
+        # 注意：RESULT_DIR 通常已经是 /result/bisect，不需要再追加 bisect
         if os.getenv('RESULT_DIR'):
-            base_dir = os.path.join(os.getenv('RESULT_DIR'), 'bisect')
+            base_dir = os.getenv('RESULT_DIR')
         elif os.getenv('WORK_DIR'):
             base_dir = os.getenv('WORK_DIR')
         else:

@@ -12,7 +12,7 @@ import shutil
 import traceback
 import re
 import subprocess
-from typing import Dict, Any, List, Set, Tuple
+from typing import Dict, Any, List, Set, Tuple, Optional
 from pathlib import Path
 from collections import defaultdict
 
@@ -86,10 +86,16 @@ class ErrorBisectProducer:
                 'max_commit_age_days',
                 int(os.environ.get('BISECT_MAX_COMMIT_AGE_DAYS', '365'))
             )
-            logger.info(f"Commit 年龄过滤已启用 | 服务: {commit_service_url} | 最大年龄: {self.max_commit_age_days} 天")
+            # 新增：最小内核版本过滤
+            self.min_kernel_version = Config.BISECT_MIN_KERNEL_VERSION
+            if self.min_kernel_version:
+                logger.info(f"Commit 过滤已启用 | 服务: {commit_service_url} | 最大年龄: {self.max_commit_age_days} 天 | 最小版本: v{self.min_kernel_version}")
+            else:
+                logger.info(f"Commit 年龄过滤已启用 | 服务: {commit_service_url} | 最大年龄: {self.max_commit_age_days} 天 | 版本过滤: 禁用")
         else:
             self.commit_client = None
-            logger.warning("Commit 年龄过滤未启用 (服务不可用)")
+            self.min_kernel_version = None
+            logger.warning("Commit 过滤未启用 (服务不可用)")
 
     def _run_script(self, script_path, args=None, description="script"):
         """通用脚本执行方法 - 实时流式输出日志"""
@@ -344,17 +350,21 @@ class ErrorBisectProducer:
 
         logger.info(f"Phase 0 完成: 收集 {len(job_info_map)} 个有效 job, {len(commit_check_items)} 个需要检查 commit")
 
-        # Phase 1: 批量检查 commit 年龄（关键优化：一次网络调用）
+        # Phase 1: 批量检查 commit 年龄和分支版本（关键优化：一次网络调用）
         valid_job_ids = set(job_info_map.keys())  # 默认全部有效
 
         if self.commit_client and commit_check_items:
-            logger.info(f"Phase 1: 批量检查 {len(commit_check_items)} 个 commit 年龄...")
+            filter_desc = f"年龄>{self.max_commit_age_days}天"
+            if self.min_kernel_version:
+                filter_desc += f" 或 版本<v{self.min_kernel_version}"
+            logger.info(f"Phase 1: 批量检查 {len(commit_check_items)} 个 commit ({filter_desc})...")
             commit_age_start = time.time()
 
             try:
                 too_old_job_ids, checked_valid_ids = self.commit_client.batch_check_commits(
                     commit_check_items,
-                    self.max_commit_age_days
+                    self.max_commit_age_days,
+                    self.min_kernel_version  # 新增：传入最小内核版本
                 )
 
                 stats['tasks_commit_age_checked'] = len(commit_check_items)
@@ -369,12 +379,12 @@ class ErrorBisectProducer:
                         info = job_info_map[job_id]
                         commit = info.get('commit', '')
                         git_url = info.get('git_url', '')
-                        logger.info(f"过滤旧 commit | job_id: {job_id} | commit: {commit[:12] if len(commit) > 12 else commit}... | 超过 {self.max_commit_age_days} 天")
+                        logger.info(f"过滤 commit | job_id: {job_id} | commit: {commit[:12] if len(commit) > 12 else commit}...")
                         # 记录到 unfiltered_jobs 以便在 analysis 目录中溯源
                         unfiltered_jobs.append({
                             'bad_job_id': job_id,
                             'errid_list': info.get('errids', []),
-                            'reason': f'commit_too_old (>{self.max_commit_age_days} days)',
+                            'reason': f'commit_filtered (age>{self.max_commit_age_days}d or version<v{self.min_kernel_version})',
                             'git_url': git_url,
                             'commit': commit,
                             'full_text_kv_sample': info.get('full_text_kv', '')[:500] if info.get('full_text_kv') else ''
@@ -386,7 +396,7 @@ class ErrorBisectProducer:
 
             stats.setdefault('commit_age_check_time_ms', 0)
             stats['commit_age_check_time_ms'] = (time.time() - commit_age_start) * 1000
-            logger.info(f"Phase 1 完成: 过滤 {stats['tasks_filtered_old_commits']} 个旧 commit, 剩余 {len(valid_job_ids)} 个有效 job")
+            logger.info(f"Phase 1 完成: 过滤 {stats['tasks_filtered_old_commits']} 个 commit, 剩余 {len(valid_job_ids)} 个有效 job")
         else:
             logger.info("Phase 1: 跳过 commit 检查 (无 commit client 或无需检查)")
 
@@ -597,16 +607,786 @@ class ErrorBisectProducer:
 
 
 class PerformanceBisectProducer:
-    """性能类型bisect任务生产者"""
-    
+    """性能类型 bisect 任务生产者
+
+    基于 midpoint 算法对 kernel CI 性能测试结果进行比对，
+    识别可 bisect 的性能回归并创建任务。
+
+    Phase 1: 基于 kernel CI 的性能监控
+    Phase 2: 基于 KPI 的智能监控（未来扩展）
+    """
+
     def __init__(self, client: ManticoreClient, config: Dict):
         self.client = client
         self.config = config
         self.last_run_time = 0
-        self.producer_interval = 7 * 86400  # 7天
-    
-    def execute_producer_cycle(self):
-        """执行一个完整的性能类型producer周期 - 目前为占位实现"""
-        # 目前返回0，等待实际的性能回归检测逻辑
-        logger.info("性能类型生产者：暂未实现具体逻辑，跳过执行")
-        return 0
+
+        # 使用配置
+        self.producer_interval = Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS * 86400
+        self.query_hours = Config.PERFORMANCE_PRODUCER_QUERY_HOURS
+        self.min_change_percent = Config.PERFORMANCE_MIN_CHANGE_PERCENT
+        self.min_samples = Config.PERFORMANCE_MIN_SAMPLES
+        self.default_samples = Config.PERFORMANCE_DEFAULT_SAMPLES
+
+        # 性能测试套件
+        self.performance_suites = [s.strip() for s in Config.PERFORMANCE_SUITES.split(',')]
+
+        # Baseline 配置 - 与 kernel-ci 的 KERNEL_TEST_CONFIG 对齐
+        # 格式: {commit: True} 表示这是一个 baseline commit
+        self.baseline_commits = {
+            # openEuler OLK-5.10 baseline
+            '5.10.0-216.0.0': True,
+            # openEuler OLK-6.6 baseline
+            '6.6.0-98.0.0': True,
+            # linux/linux-next baseline
+            'v6.17': True,
+        }
+
+        # 加载指标配置
+        self.metrics_config = self._load_metrics_config()
+
+        # 初始化批量插入器
+        self.batch_inserter = BatchInserter(client, batch_size=50)
+
+        # LRU 缓存用于去重
+        self.processed_pairs_cache = LRUCache(max_size=1000)
+
+        # 初始化报告器
+        self.reporter = ProducerReporter(stats_dir='performance_producer_stats')
+
+        logger.info(f"PerformanceBisectProducer 初始化 | "
+                   f"查询时间范围: {self.query_hours} 小时 | "
+                   f"最小变化: {self.min_change_percent}% | "
+                   f"监控套件: {self.performance_suites}")
+
+    def _load_metrics_config(self) -> Dict:
+        """从 lkp-tests 的 meta.yaml 加载性能指标配置
+
+        读取每个 suite 的 meta.yaml，提取 results 中 kpi: 1 的指标
+        """
+        import yaml
+
+        lkp_src = os.environ.get('LKP_SRC', '/lkp')
+        monitored_metrics = {}
+
+        for suite in self.performance_suites:
+            meta_path = os.path.join(lkp_src, 'programs', suite, 'meta.yaml')
+            try:
+                if os.path.exists(meta_path):
+                    with open(meta_path, 'r') as f:
+                        meta = yaml.safe_load(f)
+
+                    results = meta.get('results', {})
+                    # 提取 kpi: 1 的指标，格式: {suite}.{metric_name}
+                    kpi_metrics = []
+                    for metric_name, metric_info in results.items():
+                        if isinstance(metric_info, dict) and metric_info.get('kpi') == 1:
+                            # 使用 {suite}.{metric_name} 格式
+                            full_metric = f"{suite}.{metric_name}"
+                            kpi_metrics.append(full_metric)
+
+                    if kpi_metrics:
+                        monitored_metrics[suite] = kpi_metrics
+                        logger.info(f"加载 {suite} 指标: {len(kpi_metrics)} 个 KPI")
+                else:
+                    logger.warning(f"未找到 meta.yaml: {meta_path}")
+
+            except Exception as e:
+                logger.warning(f"加载 {suite} meta.yaml 失败: {str(e)}")
+
+        return {
+            'monitored_metrics': monitored_metrics,
+            'thresholds': {
+                'default': {
+                    'min_samples': 1
+                }
+            }
+        }
+
+    def execute_producer_cycle(self) -> int:
+        """执行一个完整的性能类型 producer 周期
+
+        Returns:
+            创建的任务数
+        """
+        start_time = time.time()
+        stats = self._init_stats()
+
+        logger.info("=" * 80)
+        logger.info(f"性能 Bisect 生产者循环开始 | 时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info("=" * 80)
+
+        try:
+            # Phase 1: 查询性能测试 jobs
+            performance_jobs = self._query_performance_jobs()
+            stats['jobs_queried'] = len(performance_jobs)
+
+            if not performance_jobs:
+                logger.info("未找到性能测试 jobs")
+                self._log_stats(stats, start_time)
+                return 0
+
+            logger.info(f"Phase 1 完成: 查询到 {len(performance_jobs)} 个性能测试 jobs")
+
+            # Phase 2: 按 (repo, suite, testbox) 分组
+            grouped_jobs = self._group_performance_jobs(performance_jobs)
+            stats['groups_found'] = len(grouped_jobs)
+            logger.info(f"Phase 2 完成: 分组为 {len(grouped_jobs)} 个组")
+
+            # Phase 3: 识别 baseline/current 配对
+            comparison_pairs = self._identify_comparison_pairs(grouped_jobs)
+            stats['pairs_found'] = len(comparison_pairs)
+            logger.info(f"Phase 3 完成: 识别 {len(comparison_pairs)} 个比较配对")
+
+            # Phase 4: 应用 midpoint 算法筛选可 bisect 的配对
+            bisectable_pairs = self._filter_bisectable_pairs(comparison_pairs, stats)
+            stats['bisectable_pairs'] = len(bisectable_pairs)
+            logger.info(f"Phase 4 完成: {len(bisectable_pairs)} 个配对满足 bisect 条件")
+
+            # Phase 5: 创建 bisect 任务
+            tasks_created = self._create_bisect_tasks(bisectable_pairs, stats)
+            stats['tasks_created'] = tasks_created
+            logger.info(f"Phase 5 完成: 创建 {tasks_created} 个性能 bisect 任务")
+
+            return tasks_created
+
+        except Exception as e:
+            logger.error(f"性能生产者循环失败: {str(e)}")
+            logger.error(traceback.format_exc())
+            return 0
+        finally:
+            self._log_stats(stats, start_time)
+
+    def _init_stats(self) -> Dict:
+        """初始化统计数据"""
+        return {
+            'cycle_start_time': int(time.time()),
+            'time_range_hours': self.query_hours,
+            'jobs_queried': 0,
+            'groups_found': 0,
+            'pairs_found': 0,
+            'pairs_cache_hit': 0,
+            'pairs_insufficient_samples': 0,
+            'pairs_no_gap': 0,
+            'pairs_below_threshold': 0,
+            'bisectable_pairs': 0,
+            'tasks_db_duplicate': 0,
+            'tasks_created': 0,
+            'tasks_failed': 0
+        }
+
+    def _query_performance_jobs(self) -> List[Dict]:
+        """查询性能测试 jobs
+
+        查询条件:
+        - suite 在监控列表中
+        - job_stage = 'finish', job_health = 'success'
+        - submit_time 在查询时间范围内
+        """
+        time_threshold = int(time.time() - self.query_hours * 3600)
+        suites_sql = "', '".join(self.performance_suites)
+
+        # 构建查询 - 直接获取 j.ss.linux.commit 字段
+        sql_query = f"""
+            SELECT id, suite, testbox, submit_time, full_text_kv, j, j.ss.linux.commit as linux_commit
+            FROM jobs
+            WHERE suite IN ('{suites_sql}')
+            AND j.job_stage = 'finish'
+            AND j.job_health = 'success'
+            AND j.job_data_readiness = 'complete'
+            AND submit_time >= {time_threshold}
+            ORDER BY submit_time DESC
+            LIMIT 5000
+        """
+
+        try:
+            result = self.client.sql_select(sql_query)
+            if not result:
+                logger.info(f"SQL 查询返回空结果 | 套件: {self.performance_suites}")
+                return []
+
+            logger.info(f"SQL 查询返回 {len(result)} 条原始记录")
+
+            # 解析并提取有效 job 数据
+            processed_jobs = []
+            parse_failures = {'no_commit': 0, 'no_git_url': 0, 'no_stats': 0, 'other': 0}
+            suite_counts = defaultdict(int)
+
+            for item in result:
+                job_data = self._parse_job_data(item)
+                if job_data:
+                    processed_jobs.append(job_data)
+                    suite_counts[job_data['suite']] += 1
+
+            # 输出套件分布
+            if suite_counts:
+                logger.info(f"有效 jobs 按套件分布: {dict(suite_counts)}")
+            else:
+                logger.warning("未解析到有效的性能测试 jobs")
+
+            return processed_jobs
+
+        except Exception as e:
+            logger.error(f"查询性能 jobs 失败: {str(e)}")
+            return []
+
+    def _parse_job_data(self, item: Dict) -> Optional[Dict]:
+        """解析 job 数据
+
+        提取: commit, git_url, stats, testbox, suite, repo/branch 信息
+        """
+        try:
+            j_field = item.get('j', {})
+            if isinstance(j_field, str):
+                import json
+                j_field = json.loads(j_field)
+
+            full_text_kv = item.get('full_text_kv', '')
+
+            # 提取 commit - 优先使用 SQL 直接返回的 linux_commit
+            commit = item.get('linux_commit') or self._extract_commit(j_field, full_text_kv)
+            if not commit:
+                return None
+
+            # 提取 git_url
+            git_url = extract_git_url_from_full_text_kv(full_text_kv)
+            if not git_url:
+                return None
+
+            # 提取 stats
+            stats = j_field.get('stats', {})
+            if not stats:
+                return None
+
+            # 提取 repo/branch 信息
+            repo_name = extract_repo_name_from_url(git_url)
+            branch = self._extract_branch(j_field, full_text_kv)
+
+            return {
+                'job_id': str(item.get('id')),
+                'suite': item.get('suite'),
+                'testbox': item.get('testbox', ''),
+                'commit': commit,
+                'git_url': git_url,
+                'repo_name': repo_name,
+                'branch': branch or 'master',
+                'stats': stats,
+                'submit_time': item.get('submit_time'),
+                'full_text_kv': full_text_kv,
+                'j': j_field
+            }
+
+        except Exception as e:
+            logger.debug(f"解析 job 数据失败: {str(e)}")
+            return None
+
+    def _extract_commit(self, j_field: Dict, full_text_kv: str) -> Optional[str]:
+        """提取 commit hash"""
+        # 尝试从 j 字段提取
+        if j_field:
+            # ss.linux.commit
+            commit = j_field.get('ss', {}).get('linux', {}).get('commit')
+            if commit:
+                return commit
+
+            # program.makepkg.commit
+            commit = j_field.get('program', {}).get('makepkg', {}).get('commit')
+            if commit:
+                return commit
+
+        # 尝试从 full_text_kv 提取
+        return extract_commit_from_full_text_kv(full_text_kv)
+
+    def _extract_branch(self, j_field: Dict, full_text_kv: str) -> Optional[str]:
+        """提取分支信息"""
+        if j_field:
+            # program.makepkg.branch
+            branch = j_field.get('program', {}).get('makepkg', {}).get('branch')
+            if branch:
+                return branch
+
+        # 从 full_text_kv 提取
+        for line in full_text_kv.split('\n'):
+            if 'branch' in line.lower():
+                parts = line.split(':')
+                if len(parts) >= 2:
+                    return parts[-1].strip()
+
+        return None
+
+    def _group_performance_jobs(self, jobs: List[Dict]) -> Dict[Tuple, List[Dict]]:
+        """按 (repo, suite, testbox) 分组
+
+        分组策略：
+        - 保留 repo 区分不同内核仓库 (openeuler-kernel vs linux vs linux-next)
+        - 去掉 branch 避免解析错误导致分组过细
+        - 性能比较需要在相同硬件(testbox)上才有意义
+        """
+        groups = defaultdict(list)
+
+        for job in jobs:
+            group_key = (
+                job['repo_name'],
+                job['suite'],
+                job['testbox']
+            )
+            groups[group_key].append(job)
+
+        # 输出分组统计
+        if groups:
+            # 按 suite 统计组数
+            suite_group_counts = defaultdict(int)
+            for (repo, suite, testbox), job_list in groups.items():
+                suite_group_counts[suite] += 1
+            logger.info(f"分组统计 | 按套件: {dict(suite_group_counts)}")
+
+        return dict(groups)
+
+    def _identify_comparison_pairs(self, grouped_jobs: Dict[Tuple, List[Dict]]) -> List[Dict]:
+        """识别 baseline/current 比较配对
+
+        策略:
+        1. baseline: 稳定版本 tag (v6.17, 5.10.0-216.0.0)
+        2. current: RC/HEAD 或动态 tag
+        3. baseline 和 current 各需要至少 3 个 jobs 才能进行线性可分验证
+        """
+        comparison_pairs = []
+        skip_reasons = {'no_baseline': 0, 'no_current': 0, 'insufficient_baseline': 0,
+                       'insufficient_current': 0, 'no_metrics': 0}
+        MIN_JOBS_REQUIRED = 3
+
+        for group_key, jobs in grouped_jobs.items():
+            repo_name, suite, testbox = group_key
+
+            # 分离 baseline 和 current jobs
+            baseline_jobs = []
+            current_jobs = []
+
+            for job in jobs:
+                commit = job['commit']
+                if self._is_baseline_commit(commit):
+                    baseline_jobs.append(job)
+                else:
+                    current_jobs.append(job)
+
+            if not baseline_jobs:
+                skip_reasons['no_baseline'] += 1
+                commits = list(set(j['commit'][:16] for j in jobs[:5]))
+                logger.info(f"跳过组 {repo_name}/{suite}/{testbox}: 无baseline | commits: {commits}")
+                continue
+
+            if not current_jobs:
+                skip_reasons['no_current'] += 1
+                commits = list(set(j['commit'][:16] for j in jobs[:5]))
+                logger.info(f"跳过组 {repo_name}/{suite}/{testbox}: 无current | commits: {commits}")
+                continue
+
+            # 检查是否有足够的 baseline jobs
+            if len(baseline_jobs) < MIN_JOBS_REQUIRED:
+                skip_reasons['insufficient_baseline'] += 1
+                logger.info(f"跳过组 {repo_name}/{suite}/{testbox}: baseline jobs 不足 "
+                           f"({len(baseline_jobs)}<{MIN_JOBS_REQUIRED})")
+                continue
+
+            # 检查是否有足够的 current jobs
+            if len(current_jobs) < MIN_JOBS_REQUIRED:
+                skip_reasons['insufficient_current'] += 1
+                logger.info(f"跳过组 {repo_name}/{suite}/{testbox}: current jobs 不足 "
+                           f"({len(current_jobs)}<{MIN_JOBS_REQUIRED})")
+                continue
+
+            # 找出所有 jobs 共有的数字指标
+            all_jobs = baseline_jobs + current_jobs
+            common_metrics = set(all_jobs[0]['stats'].keys())
+            for job in all_jobs[1:]:
+                common_metrics &= set(job['stats'].keys())
+
+            # 过滤只保留数字类型且以 suite 开头的指标
+            valid_metrics = []
+            sample_stats = baseline_jobs[0]['stats']
+            for metric in common_metrics:
+                if not metric.startswith(f"{suite}."):
+                    continue
+                try:
+                    float(sample_stats[metric])
+                    valid_metrics.append(metric)
+                except (TypeError, ValueError):
+                    pass
+
+            if not valid_metrics:
+                skip_reasons['no_metrics'] += 1
+                logger.info(f"组 {repo_name}/{suite}/{testbox}: 无共有数字指标")
+                continue
+
+            # 创建配对：包含所有 baseline jobs 和 current jobs
+            baseline_commit = baseline_jobs[0]['commit']
+            current_commit = current_jobs[0]['commit']
+
+            comparison_pairs.append({
+                'group_key': group_key,
+                'metrics': valid_metrics,
+                'suite': suite,
+                'baseline_jobs': baseline_jobs,  # 多个 baseline jobs
+                'current_jobs': current_jobs,    # 多个 current jobs
+                'git_url': baseline_jobs[0]['git_url'],
+                'baseline_commit': baseline_commit,
+                'current_commit': current_commit
+            })
+
+            logger.info(f"组 {repo_name}/{suite}/{testbox}: 创建配对 | "
+                       f"{len(valid_metrics)} 个指标 | "
+                       f"baseline: {baseline_commit[:12]} ({len(baseline_jobs)} jobs) | "
+                       f"current: {current_commit[:12]} ({len(current_jobs)} jobs)")
+
+        # 输出跳过原因统计
+        if any(skip_reasons.values()):
+            logger.info(f"配对跳过统计 | 无baseline: {skip_reasons['no_baseline']} | "
+                       f"无current: {skip_reasons['no_current']} | "
+                       f"baseline不足: {skip_reasons['insufficient_baseline']} | "
+                       f"current不足: {skip_reasons['insufficient_current']} | "
+                       f"无共有指标: {skip_reasons['no_metrics']}")
+
+        return comparison_pairs
+
+    def _is_baseline_commit(self, commit: str) -> bool:
+        """判断是否为 baseline commit
+
+        使用配置定义的 baseline commits，与 kernel-ci 的 KERNEL_TEST_CONFIG 对齐：
+        - baseline: 固定的稳定版本 (5.10.0-216.0.0, 6.6.0-98.0.0, v6.17)
+        - current: 动态获取的最新版本 (5.10.0-295.0.0, 6.6.0-132.0.0, v6.18-rc7, next-*)
+        """
+        # 直接查找配置的 baseline commits
+        return commit in self.baseline_commits
+
+    def _get_suite_metrics(self, suite: str) -> List[str]:
+        """获取套件的监控指标列表"""
+        monitored = self.metrics_config.get('monitored_metrics', {})
+        return monitored.get(suite, [])
+
+    def _filter_bisectable_pairs(self, pairs: List[Dict], stats: Dict) -> List[Dict]:
+        """应用 midpoint 算法筛选可 bisect 的配对
+
+        对每个配对中的所有指标进行检查，保留有性能差距的指标
+        """
+        bisectable = []
+
+        for pair in pairs:
+            try:
+                # 检查缓存
+                pair_key = self._generate_pair_key(pair)
+                if pair_key in self.processed_pairs_cache:
+                    stats['pairs_cache_hit'] += 1
+                    continue
+
+                # 遍历所有指标，找出有性能差距的
+                metrics_with_gap = []
+                for metric in pair['metrics']:
+                    # 从多个 baseline jobs 收集样本
+                    v1_samples = self._collect_samples_from_list(pair['baseline_jobs'], metric)
+                    # 从多个 current jobs 收集样本
+                    v2_samples = self._collect_samples_from_list(pair['current_jobs'], metric)
+
+                    # 验证样本数量 (至少需要 3 个样本才能进行线性可分验证)
+                    if len(v1_samples) < 3 or len(v2_samples) < 3:
+                        stats['pairs_insufficient_samples'] += 1
+                        continue
+
+                    # 检查性能差距 (midpoint 算法: v1_max < v2_min)
+                    has_gap, gap_info = self._check_performance_gap(v1_samples, v2_samples)
+
+                    if has_gap:
+                        metrics_with_gap.append({
+                            'metric': metric,
+                            'gap_info': gap_info,
+                            'v1_samples': v1_samples,
+                            'v2_samples': v2_samples
+                        })
+
+                if not metrics_with_gap:
+                    stats['pairs_no_gap'] += 1
+                    continue
+
+                # 保留有差距的指标信息
+                pair['metrics_with_gap'] = metrics_with_gap
+                bisectable.append(pair)
+
+                # 添加到缓存
+                self.processed_pairs_cache.add(pair_key)
+
+                # 日志：显示有差距的指标
+                for m in metrics_with_gap[:3]:  # 最多显示 3 个
+                    logger.info(f"发现可 bisect | {pair['suite']}/{pair['baseline_commit'][:8]}..{pair['current_commit'][:8]} | "
+                               f"{m['metric'].split('.')[-1]}: {m['gap_info']['change_percent']:.1f}%")
+
+            except Exception as e:
+                logger.warning(f"处理配对时出错: {str(e)}")
+                continue
+
+        # 输出筛选统计
+        if pairs:
+            logger.info(f"Midpoint 筛选统计 | 总配对: {len(pairs)} | "
+                       f"缓存命中: {stats['pairs_cache_hit']} | "
+                       f"无性能差距: {stats['pairs_no_gap']} | "
+                       f"可bisect: {len(bisectable)}")
+
+        return bisectable
+
+    def _generate_pair_key(self, pair: Dict) -> str:
+        """生成配对的唯一标识"""
+        return f"{pair['baseline_commit']}_{pair['current_commit']}_{pair['suite']}"
+
+    def _collect_samples(self, job: Dict, metric: str) -> List[float]:
+        """从单个 job 收集指标样本"""
+        samples = []
+        stats = job.get('stats', {})
+
+        if metric in stats:
+            try:
+                value = float(stats[metric])
+                samples.append(value)
+            except (ValueError, TypeError):
+                pass
+
+        return samples
+
+    def _collect_samples_from_list(self, jobs: List[Dict], metric: str) -> List[float]:
+        """从多个 jobs 收集指标样本"""
+        samples = []
+
+        for job in jobs:
+            job_samples = self._collect_samples(job, metric)
+            samples.extend(job_samples)
+
+        return samples
+
+    def _check_performance_gap(self, v1_samples: List[float], v2_samples: List[float]) -> Tuple[bool, Dict]:
+        """检查性能样本是否有明确的差距用于 bisect
+
+        Midpoint 算法逻辑:
+        - v1_max < v2_min OR v2_max < v1_min
+        - 计算 midpoint 作为 bisect 判断阈值
+        """
+        v1_min, v1_max = min(v1_samples), max(v1_samples)
+        v2_min, v2_max = min(v2_samples), max(v2_samples)
+
+        # 检查不重叠的范围
+        has_gap = (v1_max < v2_min) or (v2_max < v1_min)
+
+        if not has_gap:
+            return False, {}
+
+        # 确定方向并计算 midpoint
+        if v1_max < v2_min:
+            # 回归: v1 更好 (更小) → v2 更差 (更大)
+            mid_point = (v1_max + v2_min) / 2
+            direction = 'worse'
+            change_percent = ((v2_min - v1_max) / v1_max) * 100 if v1_max != 0 else 0
+        else:
+            # 改进: v2 更好 (更小) → v1 更差 (更大)
+            mid_point = (v2_max + v1_min) / 2
+            direction = 'better'
+            change_percent = ((v1_min - v2_max) / v2_max) * 100 if v2_max != 0 else 0
+
+        return True, {
+            'mid_point': mid_point,
+            'direction': direction,
+            'v1_range': (v1_min, v1_max),
+            'v2_range': (v2_min, v2_max),
+            'change_percent': change_percent
+        }
+
+    def _get_threshold(self, suite: str, key: str) -> float:
+        """获取阈值配置"""
+        thresholds = self.metrics_config.get('thresholds', {})
+
+        # 先检查 suite 特定配置
+        suite_config = thresholds.get('suites', {}).get(suite, {})
+        if key in suite_config:
+            return suite_config[key]
+
+        # 使用默认配置
+        default_config = thresholds.get('default', {})
+        return default_config.get(key, self.min_change_percent)
+
+    def _create_bisect_tasks(self, bisectable_pairs: List[Dict], stats: Dict) -> int:
+        """为可 bisect 的配对创建任务
+
+        每个可 bisect 的指标创建一个独立任务
+        """
+        if not bisectable_pairs:
+            return 0
+
+        tasks_to_create = []
+
+        for pair in bisectable_pairs:
+            # 遍历每个有性能差距的指标，为每个指标创建独立任务
+            for metric_info in pair.get('metrics_with_gap', []):
+                try:
+                    metric = metric_info['metric']
+
+                    # 检查该指标的任务是否已存在
+                    if self._task_exists_for_metric(pair, metric):
+                        stats['tasks_db_duplicate'] += 1
+                        continue
+
+                    # 构建任务文档
+                    task = self._build_task_document(pair, metric_info)
+                    if task:
+                        tasks_to_create.append(task)
+
+                except Exception as e:
+                    logger.warning(f"创建任务时出错: {str(e)}")
+                    stats['tasks_failed'] += 1
+                    continue
+
+        if not tasks_to_create:
+            return 0
+
+        # 批量插入
+        success_count, failed_count = self.batch_inserter.batch_create_tasks(tasks_to_create)
+
+        stats['tasks_failed'] += failed_count
+        return success_count
+
+    def _task_exists_for_metric(self, pair: Dict, metric: str) -> bool:
+        """检查特定指标的任务是否已存在于数据库"""
+        try:
+            query = {
+                "bool": {
+                    "must": [
+                        {"equals": {"bisect_metric": metric}},
+                        {"equals": {"category": "benchmark"}}
+                    ]
+                }
+            }
+
+            # 检查 baseline 和 current commit
+            existing = self.client.search(index="bisect", query=query, limit=10)
+
+            if existing:
+                for item in existing:
+                    j_field = item.get('j', {})
+                    if isinstance(j_field, str):
+                        import json
+                        j_field = json.loads(j_field)
+
+                    if (j_field.get('baseline_commit') == pair['baseline_commit'] and
+                        j_field.get('current_commit') == pair['current_commit']):
+                        return True
+
+            return False
+
+        except Exception as e:
+            logger.debug(f"检查任务存在性失败: {str(e)}")
+            return False
+
+    def _build_task_document(self, pair: Dict, metric_info: Dict) -> Dict:
+        """构建 bisect 任务文档
+
+        Args:
+            pair: 配对信息 (baseline_job, current_jobs, git_url, suite, commits)
+            metric_info: 指标信息 (metric, gap_info, v1_samples, v2_samples)
+        """
+        metric = metric_info['metric']
+        gap_info = metric_info['gap_info']
+        v1_samples = metric_info['v1_samples']
+        v2_samples = metric_info['v2_samples']
+
+        # 根据方向确定 good/bad commit
+        if gap_info['direction'] == 'worse':
+            good_commit = pair['baseline_commit']  # v1 是好的
+            bad_job_id = pair['current_jobs'][0]['job_id']
+        else:
+            good_commit = pair['current_commit']  # v2 是好的
+            bad_job_id = pair['baseline_jobs'][0]['job_id']
+
+        # 获取指标方向
+        metric_direction = self._get_metric_direction(pair['suite'], metric)
+
+        task = {
+            'bad_job_id': bad_job_id,
+            'bisect_metric': metric,
+            'direction': gap_info['direction'],
+            'category': 'benchmark',
+            'git_url': pair['git_url'],
+            'bisect_status': 'wait',
+            'submit_time': int(time.time()),
+            'j': {
+                'good_commit': good_commit,
+                'mid_point': gap_info['mid_point'],
+                'metric_direction': metric_direction,
+                'v1_samples': v1_samples,
+                'v2_samples': v2_samples,
+                'v1_range': list(gap_info['v1_range']),
+                'v2_range': list(gap_info['v2_range']),
+                'change_percent': gap_info['change_percent'],
+                'performance_change_type': gap_info['direction'],
+                'baseline_commit': pair['baseline_commit'],
+                'current_commit': pair['current_commit'],
+                'suite': pair['suite'],
+                'source': 'performance_producer',
+                'created_at': int(time.time())
+            }
+        }
+
+        return task
+
+    def _get_metric_direction(self, suite: str, metric: str) -> int:
+        """获取指标的优化方向
+
+        +1 = 越大越好 (throughput, IOPS)
+        -1 = 越小越好 (latency, time)
+        """
+        directions = self.metrics_config.get('directions', {})
+
+        # 检查显式覆盖
+        overrides = directions.get('overrides', {})
+        key = f"{suite}.{metric}"
+        if key in overrides:
+            return overrides[key]
+
+        # 检查模式匹配
+        patterns = directions.get('patterns', [])
+        for pattern_config in patterns:
+            pattern = pattern_config.get('pattern', '')
+            flags = re.IGNORECASE if pattern_config.get('case_insensitive') else 0
+            if re.match(pattern, metric, flags):
+                return pattern_config.get('direction', 0)
+
+        # 默认根据指标名称猜测
+        metric_lower = metric.lower()
+        if any(kw in metric_lower for kw in ['lat', 'time', 'latency']):
+            return -1
+        if any(kw in metric_lower for kw in ['throughput', 'iops', 'bw', 'score']):
+            return 1
+
+        return 0  # 未知
+
+    def _log_stats(self, stats: Dict, start_time: float):
+        """输出统计报告"""
+        duration = time.time() - start_time
+
+        logger.info("=" * 80)
+        logger.info("性能 Bisect 生产者统计报告")
+        logger.info("=" * 80)
+        logger.info(f"总耗时: {duration:.2f}s")
+        logger.info(f"查询时间范围: {stats['time_range_hours']} 小时")
+        logger.info(f"查询 jobs 数: {stats['jobs_queried']}")
+        logger.info(f"分组数: {stats['groups_found']}")
+        logger.info(f"比较配对数: {stats['pairs_found']}")
+        logger.info(f"  - 缓存命中: {stats['pairs_cache_hit']}")
+        logger.info(f"  - 样本不足: {stats['pairs_insufficient_samples']}")
+        logger.info(f"  - 无性能差距: {stats['pairs_no_gap']}")
+        logger.info(f"  - 低于阈值: {stats['pairs_below_threshold']}")
+        logger.info(f"可 bisect 配对: {stats['bisectable_pairs']}")
+        logger.info(f"任务创建: {stats['tasks_created']}")
+        logger.info(f"  - 数据库重复: {stats['tasks_db_duplicate']}")
+        logger.info(f"  - 创建失败: {stats['tasks_failed']}")
+        logger.info("=" * 80)
+
+        # 使用报告器保存详细统计
+        try:
+            self.reporter.write_report(stats, duration)
+        except Exception as e:
+            logger.debug(f"保存统计报告失败: {str(e)}")
+

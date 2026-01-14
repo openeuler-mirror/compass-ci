@@ -177,12 +177,13 @@ class ErridIntelligence:
         }
 
         # 环境错误黑名单（应该被过滤掉的）
+        # 注意：错误ID中可能使用 - 或 _ 作为分隔符，模式需要同时支持
         self.environment_blacklist = [
-            r'No_such_file_or_directory',
-            r'command_not_found',
-            r'Permission_denied',
-            r'Connection_refused',
-            r'Network_is_unreachable',
+            r'No.such.file.or.directory',
+            r'command.not.found',
+            r'Permission.denied',
+            r'Connection.refused',
+            r'Network.is.unreachable',
             r'/usr/bin/env.*not.*found',
             r'ruby.*not.*found',
             r'python.*not.*found',
@@ -190,15 +191,15 @@ class ErridIntelligence:
             r'.*\.rpm.*not.*found',
             r'package.*not.*available',
             r'repository.*not.*found',
-            r'Failure_while_creating_working_copy_of.*git_repo',
-            r'ambiguous.*not_found_in_the_build_directory',
-            r'detect_arch_by_readelf.*gpg-error',
-            r'git_update_cache_failed',
+            r'Failure.while.creating.working.copy.of.*git.repo',
+            r'ambiguous.*not.found.in.the.build.directory',
+            r'detect.arch.by.readelf.*gpg.error',
+            r'git.update.cache.failed',
             r'curl.*The.*requested.*URL.*returned.*error',
             r'The.*requested.*URL.*returned.*error',
-            r'curl:\(\d+\)',
-            r'File_already_exists_on_server',
-            r'/srv/file-store/.*already_exists',
+            r'curl:\(#?\d*\)',
+            r'File.already.exists.on.server',
+            r'/srv/file-store/.*already.exists',
             r'has_stderr$',
             r'upload.*error',
             r'download.*error',
@@ -206,7 +207,7 @@ class ErridIntelligence:
             r'^stderr\.eid\.install-',  # 安装脚本错误
             r'install-m#',              # install 命令错误
             r'==>ERROR:A.failure.occurred.in.(build|prepare|package|check)\(\)',  # makepkg 构建流程错误
-            r'==>WARNING:Skipping-',    # makepkg 流程警告
+            r'==>WARNING:Skipping',     # makepkg 流程警告
             r'^last_state\.eid\.exit_fail$',
             r'^last_state\.eid\.test\..*exit_code\.\d+$',
         ]
@@ -464,13 +465,24 @@ class ErridIntelligence:
         示例：
         - nbl_service.c 的所有 function_declaration 错误 -> "nbl_core/nbl_service.c::function_declaration"
         - 这些错误很可能是同一个 commit 引入的（比如缺少某个头文件）
+        - makepkg 的 unmet-direct-dependencies-detected-for-CAN_DEV -> "makepkg::unmet-deps::CAN_DEV"
 
         Args:
             errid: 原始错误ID字符串
 
         Returns:
-            粗粒度签名字符串，格式为 "file_path::error_type"
+            粗粒度签名字符串，格式为 "file_path::error_type" 或特殊格式
         """
+        # 特殊处理：makepkg 配置依赖错误
+        # 不同的 CONFIG 名称应该独立测试，因为它们通常由不同的 commit 引入
+        # 例如: makepkg.eid.WARNING:unmet-direct-dependencies-detected-for-CAN_DEV
+        #   和: makepkg.eid.WARNING:unmet-direct-dependencies-detected-for-ARCH_SUPPORTS_SCHED_SOFT_QUOTA
+        # 这两个错误应该有不同的签名
+        unmet_deps_match = re.search(r'unmet-direct-dependencies-detected-for-([A-Z0-9_]+)', errid)
+        if unmet_deps_match:
+            config_name = unmet_deps_match.group(1)
+            return f"makepkg::unmet-deps::{config_name}"
+
         # 1. 提取文件路径（去除行号）
         # 支持的文件扩展名
         file_pattern = r'([/\w._-]+\.(c|h|cpp|hpp|cc|cxx|py|rs|go|java|js|ts|sh)):'

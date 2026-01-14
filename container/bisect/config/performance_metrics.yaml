@@ -1,0 +1,219 @@
+# Performance Metrics Configuration for Bisect Producer
+#
+# This configuration defines which performance metrics to monitor for bisect.
+# Design follows KPI pattern from lkp-tests for future extensibility.
+#
+# Phase 1: Basic metric monitoring (current implementation)
+# Phase 2: KPI-based intelligent monitoring (future extension)
+
+# ==============================================================================
+# Monitored Metrics by Suite
+# ==============================================================================
+# Format: suite_name -> list of metrics to monitor
+# These metrics will be extracted from job stats and compared
+
+monitored_metrics:
+  # UnixBench - CPU and system performance
+  unixbench:
+    - System_Call_Overhead
+    - Process_Creation
+    - Execl_Throughput
+    - File_Copy_256_bufsize_500_maxblocks
+    - File_Copy_1024_bufsize_2000_maxblocks
+    - File_Copy_4096_bufsize_8000_maxblocks
+    - Shell_Scripts_1_concurrent
+    - Shell_Scripts_8_concurrent
+    - Dhrystone_2_using_register_variables
+    - Whetstone
+    - score  # Overall score
+
+  # LMbench - Latency and bandwidth microbenchmarks
+  lmbench:
+    - lat_ctx  # Context switch latency
+    - lat_syscall
+    - lat_pipe
+    - lat_unix
+    - lat_tcp
+    - lat_udp
+    - lat_mmap
+    - bw_mem_rd
+    - bw_mem_wr
+    - bw_pipe
+
+  # IOzone - File I/O performance
+  iozone:
+    - sequential_read
+    - sequential_write
+    - random_read
+    - random_write
+    - read_re_read
+    - write_re_write
+    - stride_read
+    - reverse_read
+
+  # FIO - Flexible I/O tester
+  fio:
+    - read_iops
+    - write_iops
+    - read_bw
+    - write_bw
+    - read_lat_mean
+    - write_lat_mean
+
+  # Stream - Memory bandwidth
+  stream:
+    - copy
+    - scale
+    - add
+    - triad
+
+  # Hackbench - Scheduler performance
+  hackbench:
+    - throughput
+    - time
+
+  # Netperf - Network performance
+  netperf:
+    - Throughput_Mbps
+    - Transaction_Rate
+
+# ==============================================================================
+# Metric Direction Configuration
+# ==============================================================================
+# Defines optimization direction for metrics
+# +1 = higher is better (throughput, IOPS, bandwidth)
+# -1 = lower is better (latency, time, resource usage)
+#
+# Note: This follows KPI design pattern for Phase 2 extensibility
+
+directions:
+  # Global patterns (regex-based)
+  patterns:
+    # Throughput patterns (+1 = higher is better)
+    - pattern: '.*_bw.*'
+      direction: 1
+    - pattern: '.*_iops.*'
+      direction: 1
+    - pattern: '.*throughput.*'
+      direction: 1
+      case_insensitive: true
+    - pattern: '.*score.*'
+      direction: 1
+      case_insensitive: true
+    - pattern: '.*Throughput.*'
+      direction: 1
+
+    # Latency patterns (-1 = lower is better)
+    - pattern: '.*lat.*'
+      direction: -1
+    - pattern: '.*time.*'
+      direction: -1
+    - pattern: '.*_time$'
+      direction: -1
+
+  # Explicit overrides (takes precedence over patterns)
+  overrides:
+    # UnixBench (all +1, higher scores are better)
+    unixbench.score: 1
+    unixbench.System_Call_Overhead: 1
+    unixbench.Process_Creation: 1
+    unixbench.Execl_Throughput: 1
+
+    # LMbench latencies (-1, lower is better)
+    lmbench.lat_ctx: -1
+    lmbench.lat_syscall: -1
+    lmbench.lat_pipe: -1
+    lmbench.lat_unix: -1
+    lmbench.lat_tcp: -1
+    lmbench.lat_udp: -1
+    lmbench.lat_mmap: -1
+    # LMbench bandwidth (+1, higher is better)
+    lmbench.bw_mem_rd: 1
+    lmbench.bw_mem_wr: 1
+    lmbench.bw_pipe: 1
+
+    # IOzone (+1, higher is better for all)
+    iozone.sequential_read: 1
+    iozone.sequential_write: 1
+    iozone.random_read: 1
+    iozone.random_write: 1
+
+    # FIO
+    fio.read_iops: 1
+    fio.write_iops: 1
+    fio.read_bw: 1
+    fio.write_bw: 1
+    fio.read_lat_mean: -1
+    fio.write_lat_mean: -1
+
+    # Stream (+1, higher bandwidth is better)
+    stream.copy: 1
+    stream.scale: 1
+    stream.add: 1
+    stream.triad: 1
+
+    # Hackbench
+    hackbench.throughput: 1
+    hackbench.time: -1
+
+    # Netperf
+    netperf.Throughput_Mbps: 1
+    netperf.Transaction_Rate: 1
+
+# ==============================================================================
+# Threshold Configuration
+# ==============================================================================
+# Defines thresholds for triggering bisect
+
+thresholds:
+  # Default threshold for all metrics
+  default:
+    min_change_percent: 5.0    # Minimum change to trigger bisect
+    min_samples: 2             # Minimum samples per version
+    default_samples: 3         # Target samples per version
+
+  # Suite-specific thresholds (override default)
+  suites:
+    # Latency metrics are more sensitive
+    lmbench:
+      min_change_percent: 3.0
+
+    # IO benchmarks may have higher variance
+    fio:
+      min_change_percent: 10.0
+      min_samples: 3
+
+    iozone:
+      min_change_percent: 10.0
+      min_samples: 3
+
+# ==============================================================================
+# Baseline Tag Patterns
+# ==============================================================================
+# Patterns to identify baseline (stable) versions
+
+baseline_patterns:
+  # Standard kernel version tags
+  - '^v\d+\.\d+(\.\d+)?$'              # v6.17, v5.10, v5.10.1
+  # OpenEuler format
+  - '^\d+\.\d+\.\d+-\d+\.\d+\.\d+$'    # 5.10.0-216.0.0
+  # LTS tags
+  - '^v\d+\.\d+-lts$'
+
+# Patterns to identify current (RC/next) versions
+current_patterns:
+  - '.*-rc\d+$'                         # v6.17-rc1
+  - '.*-next.*'                         # next-20250101
+  - '^[0-9a-f]{40}$'                    # Full commit hash
+
+# ==============================================================================
+# Denylist - Metrics to Exclude
+# ==============================================================================
+# These metrics will be ignored even if they match other rules
+
+denylist:
+  - '*.stddev'           # Standard deviation is not a KPI
+  - '*.incomplete_result'
+  - '*.time.elapsed_time'
+  - '*.time.user_time'
+  - '*.time.system_time'

@@ -96,3 +96,45 @@ class Config:
     # Valid values: 'high', 'medium', 'low'
     # Default: 'high' (only reuse high-confidence tasks)
     TASK_REUSE_MIN_CONFIDENCE = os.environ.get('TASK_REUSE_MIN_CONFIDENCE', 'high').lower()
+
+    # Kernel version filtering configuration
+    # Minimum kernel version for bisect (filter out commits on older branches)
+    # Format: "major.minor" (e.g., "5.10", "6.1")
+    # Commits based on older kernel versions (e.g., v4.9.x) will be filtered out
+    # Set to empty string "" to disable version filtering
+    BISECT_MIN_KERNEL_VERSION = os.environ.get('BISECT_MIN_KERNEL_VERSION', '5.10')
+
+    # Maximum commit age in days for bisect
+    BISECT_MAX_COMMIT_AGE_DAYS = int(os.environ.get('BISECT_MAX_COMMIT_AGE_DAYS', 365))
+
+    # ====== Performance Producer Configuration ======
+    # Enable/disable performance bisect producer
+    PERFORMANCE_PRODUCER_ENABLED = os.environ.get('PERFORMANCE_PRODUCER_ENABLED', 'true').lower() == 'true'
+
+    # Query time range in hours for performance jobs
+    PERFORMANCE_PRODUCER_QUERY_HOURS = int(os.environ.get('PERFORMANCE_PRODUCER_QUERY_HOURS', 168))  # 7 days
+
+    # Producer interval in days
+    PERFORMANCE_PRODUCER_INTERVAL_DAYS = int(os.environ.get('PERFORMANCE_PRODUCER_INTERVAL_DAYS', 7))
+
+    # Minimum performance change percent to trigger bisect
+    PERFORMANCE_MIN_CHANGE_PERCENT = float(os.environ.get('PERFORMANCE_MIN_CHANGE_PERCENT', 5.0))
+
+    # Minimum samples required per version for valid comparison
+    PERFORMANCE_MIN_SAMPLES = int(os.environ.get('PERFORMANCE_MIN_SAMPLES', 2))
+
+    # Default sample count target per version
+    PERFORMANCE_DEFAULT_SAMPLES = int(os.environ.get('PERFORMANCE_DEFAULT_SAMPLES', 3))
+
+    # Performance test suites to monitor (comma-separated)
+    PERFORMANCE_SUITES = os.environ.get(
+        'PERFORMANCE_SUITES',
+        'unixbench,lmbench,iozone,fio,stream,hackbench,netperf'
+    )
+
+    # Path to performance metrics configuration file
+    PERFORMANCE_METRICS_CONFIG = os.environ.get(
+        'PERFORMANCE_METRICS_CONFIG',
+        os.path.join(os.environ.get('CCI_SRC', '/c/compass-ci'),
+                     'container/bisect/config/performance_metrics.yaml')
+    )
