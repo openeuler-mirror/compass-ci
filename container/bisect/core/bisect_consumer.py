@@ -125,8 +125,12 @@ class BisectConsumer:
                 gb = GitBisect()
                 result = gb.find_first_bad_commit(validated_data, repo_dir=repo_dir)
 
-                # Handle results (不需要手动释放仓库)
-                return self._handle_bisect_result_no_release(result, task, task_id)
+                # Handle results based on task type (不需要手动释放仓库)
+                task_type = task_type_result.get('task_type', 'error')
+                if task_type == 'performance':
+                    return self._handle_performance_bisect_result(result, task, task_id)
+                else:
+                    return self._handle_bisect_result_no_release(result, task, task_id)
             
         except Exception as e:
             error_msg = f"Task {task.get('id', 'unknown_id')} failed: {str(e)}"
@@ -586,6 +590,145 @@ class BisectConsumer:
 
             self.client.update("bisect", task_id, fail_doc)
             logger.error(f"任务执行失败 | ID: {task_id} | 原因: {error_msg}")
+            return {'status': 'failed', 'error': error_msg, 'id': task_id}
+
+    def _handle_performance_bisect_result(self, result: Any, task: Dict, task_id: int) -> Dict:
+        """处理性能 bisect 结果
+
+        性能 bisect 使用 midpoint 算法，验证结果格式：
+        - verified: 是否验证通过
+        - bad_commit_verification: 坏 commit 的样本验证
+        - parent_commit_verification: 父 commit 的样本验证
+        - confidence: 总体置信度
+        """
+        current_time = int(time.time())
+
+        if result and isinstance(result, dict) and result.get('first_bad_commit'):
+            # 成功：记录性能 bisect 结果
+            first_bad_commit = result.get('first_bad_commit', '')
+            bisect_metric = task.get('bisect_metric', '')
+
+            # 提取验证信息
+            verified = result.get('verified', False)
+            confidence = result.get('confidence', 0.0)
+            parent_commit = result.get('parent_commit', '')
+            verification_reason = result.get('reason', '')
+
+            # 提取 bad_commit 验证详情
+            bad_commit_verification = result.get('bad_commit_verification') or {}
+            parent_commit_verification = result.get('parent_commit_verification') or {}
+
+            # 提取 bisect_range 信息
+            bisect_range = result.get('bisect_range') or {}
+
+            # 根据 confidence 计算置信度级别
+            if confidence >= 0.9:
+                confidence_level = 'high'
+            elif confidence >= 0.5:
+                confidence_level = 'medium'
+            else:
+                confidence_level = 'low'
+
+            # 确定最终状态
+            if verified and confidence >= 0.5:
+                final_status = "success"
+            else:
+                final_status = "success"  # 仍然标记成功，但置信度可能较低
+
+            success_doc = {
+                "bisect_status": final_status,
+                "first_bad_commit": first_bad_commit,
+                "first_bad_id": result.get('first_bad_id', '') or '',
+                "first_result_root": result.get('bad_result_root', '') or '',
+                "bisect_result_root": task.get('bisect_result_root', '') or '',
+                "start_time": result.get('start_time', 0) or 0,
+                "end_time": result.get('end_time', 0) or 0,
+                "last_error": "",
+                "updated_at": current_time,
+                "j": {
+                    # 性能 bisect 类型标识
+                    "bisect_type": "performance",
+
+                    # commit 信息
+                    "first_bad_commit_subject": result.get('first_bad_commit_subject', ''),
+                    "change_point": result.get('change_point', ''),
+                    "change_description": result.get('change_description', ''),
+                    "parent_commit": parent_commit,
+
+                    # 验证状态
+                    "verified": verified,
+                    "confidence": confidence,
+                    "confidence_level": confidence_level,
+                    "verification_reason": verification_reason,
+                    "verification_status": "completed",
+                    "verification_method": "performance_midpoint",
+
+                    # bad commit 验证详情
+                    "bad_commit_verification": bad_commit_verification,
+
+                    # parent commit 验证详情
+                    "parent_commit_verification": parent_commit_verification,
+
+                    # bisect_range 信息
+                    "bisect_range": bisect_range,
+                    "start_commit": bisect_range.get('start_commit'),
+                    "end_commit": bisect_range.get('end_commit'),
+
+                    # job reuse 统计
+                    "job_request_count": result.get('job_request_count', 0),
+                    "job_reused_count": result.get('job_reused_count', 0),
+                    "job_reused_rate": result.get('job_reused_rate', 0.0)
+                }
+            }
+
+            self.client.update("bisect", task_id, success_doc)
+
+            # 生成通知和记录
+            try:
+                from bisect_utils import write_regression_record
+                write_regression_record(
+                    task_id=task_id,
+                    bad_job_id=task.get('bad_job_id'),
+                    first_bad_commit=first_bad_commit,
+                    git_url=task.get('git_url'),
+                    error_id=None,
+                    bisect_metric=bisect_metric
+                )
+            except Exception as e:
+                logger.warning(f"写入 performance regression 记录失败: {str(e)}")
+
+            logger.info(f"性能 Bisect 成功 | task_id: {task_id} | metric: {bisect_metric} | "
+                       f"first_bad_commit: {first_bad_commit[:12] if first_bad_commit else 'N/A'} | "
+                       f"verified: {verified} | confidence: {confidence:.2f}")
+
+            return {
+                'status': 'success',
+                'id': task_id,
+                'first_bad_commit': first_bad_commit,
+                'bisect_metric': bisect_metric,
+                'verified': verified,
+                'confidence': confidence
+            }
+
+        else:
+            # 失败处理
+            error_msg = "Performance bisect execution failed"
+            if isinstance(result, dict) and result.get('error'):
+                error_msg = result.get('error')
+
+            bisect_result_root = task.get('bisect_result_root', '')
+            if not bisect_result_root:
+                bisect_result_root = self._generate_task_path(self.config, task)
+
+            fail_doc = {
+                "bisect_status": "failed",
+                "last_error": error_msg,
+                "bisect_result_root": bisect_result_root,
+                "updated_at": current_time
+            }
+
+            self.client.update("bisect", task_id, fail_doc)
+            logger.error(f"性能 Bisect 失败 | task_id: {task_id} | 原因: {error_msg}")
             return {'status': 'failed', 'error': error_msg, 'id': task_id}
 
     def _handle_bisect_result(self, result: Any, task: Dict, task_id: int, repo_dir: str, job_dir: str) -> Dict:
