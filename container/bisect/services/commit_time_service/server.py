@@ -120,19 +120,22 @@ class CommitTimeService:
             }
         }
 
-    def batch_check_commits(self, items: list, max_age_days: int = 365) -> Dict[str, Any]:
+    def batch_check_commits(self, items: list, max_age_days: int = 365,
+                             min_kernel_version: str = None) -> Dict[str, Any]:
         """
-        批量检查多个 commit 是否超过指定天数
+        批量检查多个 commit 是否超过指定天数，以及是否在旧版本分支上
 
         Args:
             items: 列表，每项为 {'git_url': ..., 'commit': ..., 'job_id': ...}
             max_age_days: 最大天数
+            min_kernel_version: 最小内核版本（如 "5.10"），为 None 时不检查版本
 
         Returns:
             批量检查结果
         """
         results = []
         too_old_job_ids = set()
+        old_branch_job_ids = set()
         valid_job_ids = set()
         errors = []
 
@@ -146,7 +149,10 @@ class CommitTimeService:
                 continue
 
             result = self.get_commit_time(git_url, commit_hash)
+            filter_reason = None
+            base_tag = None
 
+            # 检查 commit 时间
             if result['status'] != 'success':
                 # 查询失败时不过滤（降级策略）
                 valid_job_ids.add(job_id)
@@ -157,6 +163,17 @@ class CommitTimeService:
 
             if is_too_old:
                 too_old_job_ids.add(job_id)
+                filter_reason = f'commit_too_old (>{max_age_days} days)'
+            elif min_kernel_version:
+                # 检查是否在旧版本分支上
+                is_old_branch, base_tag, _ = self.query.is_commit_on_old_branch(
+                    git_url, commit_hash, min_kernel_version
+                )
+                if is_old_branch:
+                    old_branch_job_ids.add(job_id)
+                    filter_reason = f'old_branch ({base_tag} < v{min_kernel_version})'
+                else:
+                    valid_job_ids.add(job_id)
             else:
                 valid_job_ids.add(job_id)
 
@@ -164,8 +181,13 @@ class CommitTimeService:
                 'job_id': job_id,
                 'commit': commit_hash[:12] if len(commit_hash) > 12 else commit_hash,
                 'age_days': age_days,
-                'is_too_old': is_too_old
+                'is_too_old': is_too_old,
+                'base_tag': base_tag,
+                'filter_reason': filter_reason
             })
+
+        # 合并过滤的 job_ids
+        filtered_job_ids = too_old_job_ids | old_branch_job_ids
 
         return {
             'status': 'success',
@@ -173,14 +195,107 @@ class CommitTimeService:
                 'total': len(items),
                 'checked': len(results),
                 'too_old_count': len(too_old_job_ids),
+                'old_branch_count': len(old_branch_job_ids),
                 'valid_count': len(valid_job_ids),
-                'too_old_job_ids': list(too_old_job_ids),
+                'too_old_job_ids': list(filtered_job_ids),  # 兼容旧接口
+                'old_branch_job_ids': list(old_branch_job_ids),
                 'valid_job_ids': list(valid_job_ids),
                 'max_age_days': max_age_days,
+                'min_kernel_version': min_kernel_version,
                 'details': results,
                 'errors': errors
             }
         }
+
+    def check_branch_version(self, git_url: str, commit_hash: str,
+                              min_version: str = "5.10") -> Dict[str, Any]:
+        """
+        检查 commit 是否在旧版本分支上
+
+        Args:
+            git_url: Git 仓库 URL
+            commit_hash: Commit hash
+            min_version: 最小支持版本
+
+        Returns:
+            检查结果字典
+        """
+        is_old, base_tag, version = self.query.is_commit_on_old_branch(
+            git_url, commit_hash, min_version
+        )
+
+        if is_old is None:
+            return {
+                'status': 'error',
+                'error': 'Cannot determine branch version',
+                'base_tag': base_tag
+            }
+
+        return {
+            'status': 'success',
+            'data': {
+                'commit': commit_hash,
+                'base_tag': base_tag,
+                'version': list(version) if version else None,
+                'min_version': min_version,
+                'is_old_branch': is_old
+            }
+        }
+
+    def get_parent_commit(self, git_url: str, commit_hash: str) -> Dict[str, Any]:
+        """
+        获取 commit 的父提交信息
+
+        Args:
+            git_url: Git 仓库 URL
+            commit_hash: Commit hash
+
+        Returns:
+            查询结果字典，格式：
+            {
+                'status': 'success' | 'error',
+                'cached': bool,
+                'data': {
+                    'commit': str,
+                    'parent': str | None,
+                    'parent_count': int,
+                    'reason': str  # 仅在特殊情况下返回
+                }
+            }
+        """
+        self.request_count += 1
+
+        # 生成缓存键：parent commit 关系是不变的，可以永久缓存
+        cache_key = f"parent:{git_url}:{commit_hash}"
+
+        # 先查缓存
+        cached_data = self.cache.get(cache_key)
+        if cached_data:
+            self.cache_hit_count += 1
+            return {
+                'status': 'success',
+                'cached': True,
+                'data': cached_data
+            }
+
+        # 缓存未命中，查询 git
+        result = self.query.get_parent_commit(git_url, commit_hash)
+
+        if result:
+            # 存入缓存（parent commit 关系不变，可以长期缓存）
+            self.cache.set(cache_key, result)
+            return {
+                'status': 'success',
+                'cached': False,
+                'data': result
+            }
+        else:
+            return {
+                'status': 'error',
+                'error': 'Failed to get parent commit',
+                'git_url': git_url,
+                'commit': commit_hash
+            }
 
     def get_stats(self) -> Dict[str, Any]:
         """获取服务统计信息"""
@@ -213,6 +328,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.handle_commit_time(params)
             elif path == '/api/v1/commit/check':
                 self.handle_commit_check(params)
+            elif path == '/api/v1/commit/branch_check':
+                self.handle_branch_check(params)
+            elif path == '/api/v1/commit/parent':
+                self.handle_parent_commit(params)
             elif path == '/api/v1/stats':
                 self.handle_stats()
             elif path == '/health':
@@ -270,6 +389,31 @@ class RequestHandler(BaseHTTPRequestHandler):
         result = self.service.check_commit_age(git_url, commit, max_age_days)
         self.send_json_response(result)
 
+    def handle_branch_check(self, params: Dict):
+        """处理分支版本检查"""
+        git_url = params.get('repo', [None])[0]
+        commit = params.get('commit', [None])[0]
+        min_version = params.get('min_version', ['5.10'])[0]
+
+        if not git_url or not commit:
+            self.send_error_response(400, 'Missing required parameters: repo, commit')
+            return
+
+        result = self.service.check_branch_version(git_url, commit, min_version)
+        self.send_json_response(result)
+
+    def handle_parent_commit(self, params: Dict):
+        """处理 parent commit 查询"""
+        git_url = params.get('repo', [None])[0]
+        commit = params.get('commit', [None])[0]
+
+        if not git_url or not commit:
+            self.send_error_response(400, 'Missing required parameters: repo, commit')
+            return
+
+        result = self.service.get_parent_commit(git_url, commit)
+        self.send_json_response(result)
+
     def handle_batch_check(self):
         """处理批量 commit 年龄检查"""
         content_length = int(self.headers.get('Content-Length', 0))
@@ -286,6 +430,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         items = data.get('items', [])
         max_age_days = data.get('max_age_days', 365)
+        min_kernel_version = data.get('min_kernel_version')  # 新增参数
 
         if not items:
             self.send_error_response(400, 'Missing items in request body')
@@ -295,7 +440,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_error_response(400, 'items must be a list')
             return
 
-        result = self.service.batch_check_commits(items, max_age_days)
+        result = self.service.batch_check_commits(items, max_age_days, min_kernel_version)
         self.send_json_response(result)
 
     def handle_stats(self):
@@ -359,6 +504,7 @@ def run_server(host: str = '0.0.0.0', port: int = 8765,
     logger.info("Endpoints:")
     logger.info(f"  GET  /api/v1/commit/time?repo=<url>&commit=<hash>")
     logger.info(f"  GET  /api/v1/commit/check?repo=<url>&commit=<hash>&max_age_days=365")
+    logger.info(f"  GET  /api/v1/commit/parent?repo=<url>&commit=<hash>")
     logger.info(f"  POST /api/v1/commit/batch_check  (body: {{items: [...], max_age_days: 365}})")
     logger.info(f"  GET  /api/v1/stats")
     logger.info(f"  GET  /health")
