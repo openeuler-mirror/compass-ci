@@ -132,9 +132,7 @@ class Config:
         'unixbench,lmbench,iozone,fio,stream,hackbench,netperf'
     )
 
-    # Path to performance metrics configuration file
-    PERFORMANCE_METRICS_CONFIG = os.environ.get(
-        'PERFORMANCE_METRICS_CONFIG',
-        os.path.join(os.environ.get('CCI_SRC', '/c/compass-ci'),
-                     'container/bisect/config/performance_metrics.yaml')
-    )
+    # 已废弃: performance_metrics.yaml 配置文件
+    # 现在使用基于 lkp-stats-type.md 规范的前缀判断 KPI 和方向
+    # KPI 指标: 大写前缀 (LAT, RATE, JIT, POW, COST, MEM)
+    # 方向: lat/jit/pow/cost/mem = -1 (SmallerBetter), rate = +1 (BiggerBetter)

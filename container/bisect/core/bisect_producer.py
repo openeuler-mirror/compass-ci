@@ -614,7 +614,16 @@ class PerformanceBisectProducer:
 
     Phase 1: 基于 kernel CI 的性能监控
     Phase 2: 基于 KPI 的智能监控（未来扩展）
+
+    指标前缀规范 (参考 lkp-stats-type.md):
+    - SmallerBetter: lat, jit, pow, cost, mem
+    - BiggerBetter: rate
+    - KPI 指标使用大写前缀: LAT, JIT, POW, COST, MEM, RATE
     """
+
+    # 前缀常量 (基于 lkp-stats-type.md 规范)
+    SMALLER_BETTER_PREFIXES = {'lat', 'jit', 'pow', 'cost', 'mem'}
+    BIGGER_BETTER_PREFIXES = {'rate'}
 
     def __init__(self, client: ManticoreClient, config: Dict):
         self.client = client
@@ -651,6 +660,14 @@ class PerformanceBisectProducer:
         # LRU 缓存用于去重
         self.processed_pairs_cache = LRUCache(max_size=1000)
 
+        # 物理机 testbox 列表（优先使用）
+        self.physical_testboxes = {
+            "taishan200-2280-2s48p-512g--a1322",
+            "taishan200-2280-2s64p-128g--a1003",
+            "taishan200-2280-2s48p-512g--a1320",
+            "taishan200-2280-2s48p-256g--a14",
+        }
+
         # 初始化报告器
         self.reporter = ProducerReporter(stats_dir='performance_producer_stats')
 
@@ -660,48 +677,16 @@ class PerformanceBisectProducer:
                    f"监控套件: {self.performance_suites}")
 
     def _load_metrics_config(self) -> Dict:
-        """从 lkp-tests 的 meta.yaml 加载性能指标配置
+        """加载指标配置（已简化）
 
-        读取每个 suite 的 meta.yaml，提取 results 中 kpi: 1 的指标
+        KPI 判断和方向推断现在基于 lkp-stats-type.md 规范的前缀：
+        - KPI 指标: 大写前缀 (LAT, RATE, JIT, POW, COST, MEM)
+        - 方向: lat/jit/pow/cost/mem = -1, rate = +1
+
+        不再需要从 meta.yaml 或 performance_metrics.yaml 加载配置
         """
-        import yaml
-
-        lkp_src = os.environ.get('LKP_SRC', '/lkp')
-        monitored_metrics = {}
-
-        for suite in self.performance_suites:
-            meta_path = os.path.join(lkp_src, 'programs', suite, 'meta.yaml')
-            try:
-                if os.path.exists(meta_path):
-                    with open(meta_path, 'r') as f:
-                        meta = yaml.safe_load(f)
-
-                    results = meta.get('results', {})
-                    # 提取 kpi: 1 的指标，格式: {suite}.{metric_name}
-                    kpi_metrics = []
-                    for metric_name, metric_info in results.items():
-                        if isinstance(metric_info, dict) and metric_info.get('kpi') == 1:
-                            # 使用 {suite}.{metric_name} 格式
-                            full_metric = f"{suite}.{metric_name}"
-                            kpi_metrics.append(full_metric)
-
-                    if kpi_metrics:
-                        monitored_metrics[suite] = kpi_metrics
-                        logger.info(f"加载 {suite} 指标: {len(kpi_metrics)} 个 KPI")
-                else:
-                    logger.warning(f"未找到 meta.yaml: {meta_path}")
-
-            except Exception as e:
-                logger.warning(f"加载 {suite} meta.yaml 失败: {str(e)}")
-
-        return {
-            'monitored_metrics': monitored_metrics,
-            'thresholds': {
-                'default': {
-                    'min_samples': 1
-                }
-            }
-        }
+        logger.info("使用基于前缀的 KPI 判断 (参考 lkp-stats-type.md)")
+        return {}
 
     def execute_producer_cycle(self) -> int:
         """执行一个完整的性能类型 producer 周期
@@ -1058,33 +1043,51 @@ class PerformanceBisectProducer:
         # 直接查找配置的 baseline commits
         return commit in self.baseline_commits
 
-    def _get_suite_metrics(self, suite: str) -> List[str]:
-        """获取套件的监控指标列表"""
-        monitored = self.metrics_config.get('monitored_metrics', {})
-        return monitored.get(suite, [])
-
     def _filter_bisectable_pairs(self, pairs: List[Dict], stats: Dict) -> List[Dict]:
         """应用 midpoint 算法筛选可 bisect 的配对
 
         对每个配对中的所有指标进行检查，保留有性能差距的指标
+
+        改进：
+        1. 优先使用物理机 testbox，过滤掉 VM
+        2. 使用数据库查询获取所有可用样本，而不是仅当前周期的 jobs
         """
         bisectable = []
 
+        # 统计计数器
+        if 'pairs_vm_skipped' not in stats:
+            stats['pairs_vm_skipped'] = 0
+
         for pair in pairs:
             try:
+                # 获取 testbox (从 group_key 中提取)
+                testbox = pair['group_key'][2]
+
+                # 优先使用物理机，跳过虚拟机
+                if not self._is_physical_testbox(testbox):
+                    stats['pairs_vm_skipped'] += 1
+                    continue
+
                 # 检查缓存
                 pair_key = self._generate_pair_key(pair)
                 if pair_key in self.processed_pairs_cache:
                     stats['pairs_cache_hit'] += 1
                     continue
 
+                suite = pair['suite']
+                baseline_commit = pair['baseline_commit']
+                current_commit = pair['current_commit']
+
                 # 遍历所有指标，找出有性能差距的
                 metrics_with_gap = []
                 for metric in pair['metrics']:
-                    # 从多个 baseline jobs 收集样本
-                    v1_samples = self._collect_samples_from_list(pair['baseline_jobs'], metric)
-                    # 从多个 current jobs 收集样本
-                    v2_samples = self._collect_samples_from_list(pair['current_jobs'], metric)
+                    # 只处理 KPI 指标（大写前缀）
+                    if not self._is_kpi_metric(metric):
+                        continue
+
+                    # 从数据库查询所有可用样本（而不是仅当前周期的 jobs）
+                    v1_samples = self._query_all_samples_from_db(baseline_commit, suite, testbox, metric)
+                    v2_samples = self._query_all_samples_from_db(current_commit, suite, testbox, metric)
 
                     # 验证样本数量 (至少需要 3 个样本才能进行线性可分验证)
                     if len(v1_samples) < 3 or len(v2_samples) < 3:
@@ -1115,8 +1118,9 @@ class PerformanceBisectProducer:
 
                 # 日志：显示有差距的指标
                 for m in metrics_with_gap[:3]:  # 最多显示 3 个
-                    logger.info(f"发现可 bisect | {pair['suite']}/{pair['baseline_commit'][:8]}..{pair['current_commit'][:8]} | "
-                               f"{m['metric'].split('.')[-1]}: {m['gap_info']['change_percent']:.1f}%")
+                    logger.info(f"发现可 bisect | {pair['suite']}/{testbox}/{pair['baseline_commit'][:8]}..{pair['current_commit'][:8]} | "
+                               f"{m['metric'].split('.')[-1]}: {m['gap_info']['change_percent']:.1f}% | "
+                               f"样本数: v1={len(m['v1_samples'])}, v2={len(m['v2_samples'])}")
 
             except Exception as e:
                 logger.warning(f"处理配对时出错: {str(e)}")
@@ -1125,6 +1129,7 @@ class PerformanceBisectProducer:
         # 输出筛选统计
         if pairs:
             logger.info(f"Midpoint 筛选统计 | 总配对: {len(pairs)} | "
+                       f"VM跳过: {stats['pairs_vm_skipped']} | "
                        f"缓存命中: {stats['pairs_cache_hit']} | "
                        f"无性能差距: {stats['pairs_no_gap']} | "
                        f"可bisect: {len(bisectable)}")
@@ -1158,6 +1163,77 @@ class PerformanceBisectProducer:
             samples.extend(job_samples)
 
         return samples
+
+    def _query_all_samples_from_db(self, commit: str, suite: str, testbox: str, metric: str) -> List[float]:
+        """从数据库查询指定 commit/suite/testbox/metric 的所有样本
+
+        使用所有可用样本来计算 range，确保 midpoint 判断的准确性
+        """
+        sql = f"""
+            SELECT j
+            FROM jobs
+            WHERE j.ss.linux.commit = '{commit}'
+            AND suite = '{suite}'
+            AND testbox = '{testbox}'
+            AND j.job_stage = 'finish'
+            AND j.job_health = 'success'
+            AND j.job_data_readiness = 'complete'
+            ORDER BY submit_time DESC
+            LIMIT 100
+        """
+
+        try:
+            result = self.client.sql_select(sql)
+            if not result:
+                return []
+
+            samples = []
+            for item in result:
+                j = item.get('j', {})
+                if isinstance(j, str):
+                    try:
+                        j = json.loads(j)
+                    except:
+                        continue
+
+                stats = j.get('stats', {})
+                if metric in stats:
+                    try:
+                        value = float(stats[metric])
+                        samples.append(value)
+                    except (ValueError, TypeError):
+                        pass
+
+            return samples
+        except Exception as e:
+            logger.warning(f"查询样本失败: {commit[:8]}/{suite}/{testbox}/{metric} - {e}")
+            return []
+
+    def _is_physical_testbox(self, testbox: str) -> bool:
+        """判断是否为物理机 testbox"""
+        return testbox in self.physical_testboxes
+
+    def _is_kpi_metric(self, metric: str) -> bool:
+        """判断是否为 KPI 指标（大写前缀）
+
+        根据 lkp-stats-type.md 规范:
+        - 小写前缀 (lat, rate) = 普通指标
+        - 大写前缀 (LAT, RATE) = KPI 指标
+
+        metric 格式: {suite}.{PREFIX}.{name}...
+        例如: lmbench.LAT.CTX.8P.64K.latency.us (KPI)
+              lmbench.lat.ctx.latency.us (非 KPI)
+        """
+        parts = metric.split('.')
+
+        # 遍历找到前缀部分
+        all_prefixes = self.SMALLER_BETTER_PREFIXES | self.BIGGER_BETTER_PREFIXES
+        for part in parts:
+            if part.lower() in all_prefixes:
+                # 大写 = KPI
+                return part.isupper()
+
+        return False
 
     def _check_performance_gap(self, v1_samples: List[float], v2_samples: List[float]) -> Tuple[bool, Dict]:
         """检查性能样本是否有明确的差距用于 bisect
@@ -1194,19 +1270,6 @@ class PerformanceBisectProducer:
             'v2_range': (v2_min, v2_max),
             'change_percent': change_percent
         }
-
-    def _get_threshold(self, suite: str, key: str) -> float:
-        """获取阈值配置"""
-        thresholds = self.metrics_config.get('thresholds', {})
-
-        # 先检查 suite 特定配置
-        suite_config = thresholds.get('suites', {}).get(suite, {})
-        if key in suite_config:
-            return suite_config[key]
-
-        # 使用默认配置
-        default_config = thresholds.get('default', {})
-        return default_config.get(key, self.min_change_percent)
 
     def _create_bisect_tasks(self, bisectable_pairs: List[Dict], stats: Dict) -> int:
         """为可 bisect 的配对创建任务
@@ -1324,6 +1387,7 @@ class PerformanceBisectProducer:
                 'baseline_commit': pair['baseline_commit'],
                 'current_commit': pair['current_commit'],
                 'suite': pair['suite'],
+                'testbox': pair['group_key'][2],  # group_key = (repo_name, suite, testbox)
                 'source': 'performance_producer',
                 'created_at': int(time.time())
             }
@@ -1332,32 +1396,41 @@ class PerformanceBisectProducer:
         return task
 
     def _get_metric_direction(self, suite: str, metric: str) -> int:
-        """获取指标的优化方向
+        """获取指标的优化方向（基于前缀规范）
 
-        +1 = 越大越好 (throughput, IOPS)
-        -1 = 越小越好 (latency, time)
+        根据 lkp-stats-type.md 规范，从 metric 前缀推断方向：
+        - lat/jit/pow/cost/mem 前缀: -1 (SmallerBetter)
+        - rate 前缀: +1 (BiggerBetter)
+
+        +1 = 越大越好 (throughput, IOPS, bandwidth)
+        -1 = 越小越好 (latency, jitter, power)
+
+        metric 格式: {suite}.{PREFIX}.{name}...
+        例如: lmbench.LAT.CTX.8P.64K.latency.us
         """
-        directions = self.metrics_config.get('directions', {})
+        # 提取前缀：跳过 suite 部分
+        # metric 可能是 "LAT.CTX.8P.64K.latency.us" 或 "lmbench.LAT.CTX.8P.64K.latency.us"
+        parts = metric.split('.')
 
-        # 检查显式覆盖
-        overrides = directions.get('overrides', {})
-        key = f"{suite}.{metric}"
-        if key in overrides:
-            return overrides[key]
+        # 找到前缀位置
+        prefix = None
+        for part in parts:
+            part_lower = part.lower()
+            if part_lower in self.SMALLER_BETTER_PREFIXES or part_lower in self.BIGGER_BETTER_PREFIXES:
+                prefix = part_lower
+                break
 
-        # 检查模式匹配
-        patterns = directions.get('patterns', [])
-        for pattern_config in patterns:
-            pattern = pattern_config.get('pattern', '')
-            flags = re.IGNORECASE if pattern_config.get('case_insensitive') else 0
-            if re.match(pattern, metric, flags):
-                return pattern_config.get('direction', 0)
+        if prefix:
+            if prefix in self.SMALLER_BETTER_PREFIXES:
+                return -1
+            if prefix in self.BIGGER_BETTER_PREFIXES:
+                return 1
 
-        # 默认根据指标名称猜测
+        # 回退：根据指标名称关键词猜测
         metric_lower = metric.lower()
-        if any(kw in metric_lower for kw in ['lat', 'time', 'latency']):
+        if any(kw in metric_lower for kw in ['lat', 'time', 'latency', 'jit', 'cost']):
             return -1
-        if any(kw in metric_lower for kw in ['throughput', 'iops', 'bw', 'score']):
+        if any(kw in metric_lower for kw in ['throughput', 'iops', 'bw', 'bandwidth', 'rate', 'score']):
             return 1
 
         return 0  # 未知
