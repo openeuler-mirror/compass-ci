@@ -660,14 +660,6 @@ class PerformanceBisectProducer:
         # LRU 缓存用于去重
         self.processed_pairs_cache = LRUCache(max_size=1000)
 
-        # 物理机 testbox 列表（优先使用）
-        self.physical_testboxes = {
-            "taishan200-2280-2s48p-512g--a1322",
-            "taishan200-2280-2s64p-128g--a1003",
-            "taishan200-2280-2s48p-512g--a1320",
-            "taishan200-2280-2s48p-256g--a14",
-        }
-
         # 初始化报告器
         self.reporter = ProducerReporter(stats_dir='performance_producer_stats')
 
@@ -1049,24 +1041,15 @@ class PerformanceBisectProducer:
         对每个配对中的所有指标进行检查，保留有性能差距的指标
 
         改进：
-        1. 优先使用物理机 testbox，过滤掉 VM
-        2. 使用数据库查询获取所有可用样本，而不是仅当前周期的 jobs
+        1. 使用数据库查询获取所有可用样本，而不是仅当前周期的 jobs
+        2. 波动太大的情况下 midpoint 检查会自然失败，无法 bisect
         """
         bisectable = []
-
-        # 统计计数器
-        if 'pairs_vm_skipped' not in stats:
-            stats['pairs_vm_skipped'] = 0
 
         for pair in pairs:
             try:
                 # 获取 testbox (从 group_key 中提取)
                 testbox = pair['group_key'][2]
-
-                # 优先使用物理机，跳过虚拟机
-                if not self._is_physical_testbox(testbox):
-                    stats['pairs_vm_skipped'] += 1
-                    continue
 
                 # 检查缓存
                 pair_key = self._generate_pair_key(pair)
@@ -1129,7 +1112,6 @@ class PerformanceBisectProducer:
         # 输出筛选统计
         if pairs:
             logger.info(f"Midpoint 筛选统计 | 总配对: {len(pairs)} | "
-                       f"VM跳过: {stats['pairs_vm_skipped']} | "
                        f"缓存命中: {stats['pairs_cache_hit']} | "
                        f"无性能差距: {stats['pairs_no_gap']} | "
                        f"可bisect: {len(bisectable)}")
@@ -1208,10 +1190,6 @@ class PerformanceBisectProducer:
         except Exception as e:
             logger.warning(f"查询样本失败: {commit[:8]}/{suite}/{testbox}/{metric} - {e}")
             return []
-
-    def _is_physical_testbox(self, testbox: str) -> bool:
-        """判断是否为物理机 testbox"""
-        return testbox in self.physical_testboxes
 
     def _is_kpi_metric(self, metric: str) -> bool:
         """判断是否为 KPI 指标（大写前缀）
