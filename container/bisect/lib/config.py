@@ -129,7 +129,7 @@ class Config:
     # Performance test suites to monitor (comma-separated)
     PERFORMANCE_SUITES = os.environ.get(
         'PERFORMANCE_SUITES',
-        'unixbench,lmbench,iozone,fio,stream,hackbench,netperf'
+        'unixbench,lmbench,iozone,fio,stream,hackbench,netperf,sysbench,sysbench-cpu,sysbench-memory,sysbench-mutex,sysbench-threads,stress-ng'
     )
 
     # 已废弃: performance_metrics.yaml 配置文件

@@ -1333,13 +1333,12 @@ class PerformanceBisectProducer:
         v1_samples = metric_info['v1_samples']
         v2_samples = metric_info['v2_samples']
 
-        # 根据方向确定 good/bad commit
-        if gap_info['direction'] == 'worse':
-            good_commit = pair['baseline_commit']  # v1 是好的
-            bad_job_id = pair['current_jobs'][0]['job_id']
-        else:
-            good_commit = pair['current_commit']  # v2 是好的
-            bad_job_id = pair['baseline_jobs'][0]['job_id']
+        # good/bad 基于时间顺序，而非性能方向
+        # - good_commit: 较旧的 commit (baseline, 祖先)
+        # - bad_commit: 较新的 commit (current, 后代)
+        # 性能方向 (worse/better) 存储在 performance_change_type 中
+        good_commit = pair['baseline_commit']
+        bad_job_id = pair['current_jobs'][0]['job_id']
 
         # 获取指标方向
         metric_direction = self._get_metric_direction(pair['suite'], metric)
@@ -1354,6 +1353,7 @@ class PerformanceBisectProducer:
             'submit_time': int(time.time()),
             'j': {
                 'good_commit': good_commit,
+                'bad_commit': pair['current_commit'],  # 较新的 commit
                 'mid_point': gap_info['mid_point'],
                 'metric_direction': metric_direction,
                 'v1_samples': v1_samples,
