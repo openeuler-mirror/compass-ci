@@ -87,7 +87,7 @@ class BisectConsumer:
                 try:
                     j_field = json.loads(j_field) if j_field else {}
                     logger.info(f"j_field parsed from string | task_id: {task_id}")
-                except:
+                except json.JSONDecodeError:
                     j_field = {}
                     logger.warning(f"j_field parse failed | task_id: {task_id}")
             elif not isinstance(j_field, dict):
@@ -732,11 +732,42 @@ class BisectConsumer:
             return {'status': 'failed', 'error': error_msg, 'id': task_id}
 
     def _handle_bisect_result(self, result: Any, task: Dict, task_id: int, repo_dir: str, job_dir: str) -> Dict:
-        """处理bisect结果"""
+        """处理bisect结果
+
+        注意：性能/功能任务不支持 verifying 状态，只要有 first_bad_commit 就标记为 success
+        但需要保存置信度信息供外部分析使用
+        """
         if result and isinstance(result, dict) and result.get('first_bad_commit'):
-            # Success handling logic
+            # 提取验证信息
+            verified = result.get('verified', False)
+            confidence = result.get('confidence', 0)
+            confidence_level = result.get('confidence_level', 'unknown')
+            verification_reason = result.get('verification_reason', '')
+            verification_status = result.get('verification_status', '')
+
+            # 性能/功能任务：只要找到 first_bad_commit 就标记为 success
+            # 不管置信度高低，都保存完整的验证信息供外部分析
+            bisect_status = "success"
+
+            # 根据置信度打印不同级别的日志
+            if verified or confidence >= 0.8 or confidence_level in ['high', 'medium']:
+                logger.info(
+                    f"Bisect 完成（高置信度）| task_id: {task_id} | "
+                    f"commit: {result.get('first_bad_commit', '')[:12]} | "
+                    f"verified: {verified} | confidence: {confidence} | level: {confidence_level}"
+                )
+            else:
+                logger.warning(
+                    f"Bisect 完成（低置信度）| task_id: {task_id} | "
+                    f"commit: {result.get('first_bad_commit', '')[:12]} | "
+                    f"verified: {verified} | confidence: {confidence} | level: {confidence_level} | "
+                    f"reason: {verification_reason} | "
+                    f"建议人工审核结果"
+                )
+
+            # 构建更新文档，保存完整的验证信息
             success_doc = {
-                "bisect_status": "success",
+                "bisect_status": bisect_status,
                 "first_bad_commit": result.get('first_bad_commit', '') or '',
                 "first_bad_id": result.get('first_bad_id', '') or '',
                 "first_result_root": result.get('bad_result_root', '') or '',
@@ -744,28 +775,41 @@ class BisectConsumer:
                 "start_time": result.get('start_time', 0) or 0,
                 "end_time": result.get('end_time', 0) or 0,
                 "last_error": "",  # 清空之前的错误信息
-                "updated_at": int(time.time())
+                "updated_at": int(time.time()),
+                "j": {
+                    "verified": verified,
+                    "confidence": confidence,
+                    "confidence_level": confidence_level,
+                    "verification_reason": verification_reason,
+                    "verification_status": verification_status or "completed"
+                }
             }
-            
+
             # Release repository back to pool
             try:
                 if os.path.exists(repo_dir):
                     self.repo_manager.release_repo_dir(repo_dir)
-                    logger.info(f"成功任务仓库已释放回池 | repo_dir: {repo_dir}")
+                    logger.info(f"任务仓库已释放回池 | task_id: {task_id} | repo_dir: {repo_dir}")
             except Exception as e:
-                logger.error(f"释放成功任务仓库时出错，回退到删除: {str(e)}")
+                logger.error(f"释放任务仓库时出错，回退到删除: {str(e)}")
                 try:
                     if os.path.exists(job_dir):
                         shutil.rmtree(job_dir)
-                except:
+                except OSError:
                     pass
-            
+
             self.client.update("bisect", task_id, success_doc)
-            logger.info(f"任务执行成功 | ID: {task_id}")
+            logger.info(
+                f"任务执行完成 | ID: {task_id} | status: {bisect_status} | "
+                f"commit: {result.get('first_bad_commit', '')[:12]} | "
+                f"confidence: {confidence}"
+            )
             return {
-                'status': 'success',
+                'status': bisect_status,
                 'id': task_id,
-                'first_bad_commit': result.get('first_bad_commit', '')
+                'first_bad_commit': result.get('first_bad_commit', ''),
+                'verified': verified,
+                'confidence': confidence
             }
             
         else:
@@ -798,7 +842,7 @@ class BisectConsumer:
                 try:
                     if os.path.exists(job_dir):
                         shutil.rmtree(job_dir)
-                except:
+                except OSError:
                     pass
             
             self.client.update("bisect", task_id, fail_doc)

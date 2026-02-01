@@ -1313,7 +1313,7 @@ class TaskProcessor:
                 if isinstance(j_field, str):
                     try:
                         j_field = json.loads(j_field) if j_field else {}
-                    except:
+                    except json.JSONDecodeError:
                         j_field = {}
 
                 if j_field.get('related_task_id') or j_field.get('clustered_by'):
@@ -1358,7 +1358,7 @@ class TaskProcessor:
                 if isinstance(j_field, str):
                     try:
                         j_field = json.loads(j_field) if j_field else {}
-                    except:
+                    except json.JSONDecodeError:
                         j_field = {}
 
                 if j_field.get('skip_clustering'):
@@ -1411,7 +1411,7 @@ class TaskProcessor:
                             if isinstance(j_field, str):
                                 try:
                                     j_field = json.loads(j_field) if j_field else {}
-                                except:
+                                except json.JSONDecodeError:
                                     j_field = {}
 
                             marking_attempts = j_field.get('marking_attempts', 0)

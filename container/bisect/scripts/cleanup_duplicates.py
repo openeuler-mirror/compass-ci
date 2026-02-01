@@ -27,6 +27,9 @@ from collections import defaultdict
 sys.path.append(os.environ.get('LKP_SRC', '/lkp') + '/programs/bisect-py/')
 from manticore_simple import ManticoreClient
 
+sys.path.append(os.environ.get('CCI_SRC', '/c/compass-ci') + '/container/bisect/lib')
+from config import Config
+
 
 # 状态优先级（数字越大越优先保留）
 STATUS_PRIORITY = {
@@ -158,7 +161,7 @@ def cleanup_duplicates(client, duplicates, dry_run=True):
         return 0
 
     # 实际删除（分批执行）
-    batch_size = 500
+    batch_size = Config.BATCH_DELETE_SIZE
     deleted = 0
 
     for i in range(0, len(ids_to_delete), batch_size):

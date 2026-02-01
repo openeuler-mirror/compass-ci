@@ -633,7 +633,6 @@ class PerformanceBisectProducer:
         # 使用配置
         self.producer_interval = Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS * 86400
         self.query_hours = Config.PERFORMANCE_PRODUCER_QUERY_HOURS
-        self.min_change_percent = Config.PERFORMANCE_MIN_CHANGE_PERCENT
         self.min_samples = Config.PERFORMANCE_MIN_SAMPLES
         self.default_samples = Config.PERFORMANCE_DEFAULT_SAMPLES
 
@@ -665,7 +664,7 @@ class PerformanceBisectProducer:
 
         logger.info(f"PerformanceBisectProducer 初始化 | "
                    f"查询时间范围: {self.query_hours} 小时 | "
-                   f"最小变化: {self.min_change_percent}% | "
+                   f"运行间隔: {Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS} 天 | "
                    f"监控套件: {self.performance_suites}")
 
     def _load_metrics_config(self) -> Dict:
@@ -1175,7 +1174,7 @@ class PerformanceBisectProducer:
                 if isinstance(j, str):
                     try:
                         j = json.loads(j)
-                    except:
+                    except json.JSONDecodeError:
                         continue
 
                 stats = j.get('stats', {})

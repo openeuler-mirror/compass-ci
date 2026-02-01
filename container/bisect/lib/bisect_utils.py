@@ -974,24 +974,32 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
     """
     当任务成功时，批量标记相同签名的 wait 任务为 verifying
 
+    重要：只匹配同一个 git 仓库的任务，避免跨仓库错误匹配
+
     Args:
         client: ManticoreClient 实例
         errid_intelligence: ErridIntelligence 实例
-        successful_task: 已成功的任务信息（包含 id, error_id, category 等字段）
+        successful_task: 已成功的任务信息（包含 id, error_id, category, git_url 等字段）
     """
     try:
         task_id = successful_task.get('id')
         error_id = successful_task.get('error_id', '')
         category = successful_task.get('category', 'function')
+        success_git_url = successful_task.get('git_url', '')
 
         # 只处理构建任务（其他类型不使用签名聚类）
         if category != 'build' or not error_id:
             logger.debug(f"任务 {task_id} 不需要处理相似任务 | category: {category} | has_error_id: {bool(error_id)}")
             return
 
+        # 必须有 git_url 才能匹配
+        if not success_git_url:
+            logger.warning(f"任务 {task_id} 缺少 git_url，无法匹配相似任务")
+            return
+
         # 提取错误签名
         signature = errid_intelligence.extract_coarse_signature(error_id)
-        logger.info(f"任务 {task_id} 成功，开始查找相同签名的 wait 任务 | signature: {signature}")
+        logger.info(f"任务 {task_id} 成功，开始查找相同签名的 wait 任务 | signature: {signature} | git_url: {success_git_url[:60]}...")
 
         # 查询所有相同签名的 wait 任务
         # 策略：查询 wait 状态的构建任务，在客户端过滤签名
@@ -1008,26 +1016,49 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
             logger.info(f"没有找到 wait 状态的构建任务")
             return
 
-        # 客户端过滤：找到相同签名的任务
+        # 客户端过滤：找到相同签名且相同仓库的任务
         similar_tasks = []
+        skipped_cross_repo = 0
+
         for wait_task in wait_tasks:
             wait_error_id = wait_task.get('error_id', '')
+            wait_git_url = wait_task.get('git_url', '')
+
             if not wait_error_id:
                 continue
 
             try:
                 wait_signature = errid_intelligence.extract_coarse_signature(wait_error_id)
+
+                # 关键修复：必须同时满足签名相同和 git_url 相同
                 if wait_signature == signature:
-                    similar_tasks.append(wait_task)
+                    if wait_git_url == success_git_url:
+                        similar_tasks.append(wait_task)
+                    else:
+                        skipped_cross_repo += 1
+                        logger.debug(
+                            f"跳过跨仓库任务 | wait_task: {wait_task.get('id')} | "
+                            f"wait_repo: {wait_git_url[:50]}... | "
+                            f"success_repo: {success_git_url[:50]}..."
+                        )
             except Exception as e:
                 logger.warning(f"提取签名失败 | task_id: {wait_task.get('id')} | error: {str(e)}")
                 continue
 
         if not similar_tasks:
-            logger.info(f"没有找到相同签名的 wait 任务 | signature: {signature}")
+            if skipped_cross_repo > 0:
+                logger.warning(
+                    f"没有找到同仓库的相似任务 | signature: {signature} | "
+                    f"跳过了 {skipped_cross_repo} 个跨仓库任务"
+                )
+            else:
+                logger.info(f"没有找到相同签名的 wait 任务 | signature: {signature}")
             return
 
-        logger.info(f"找到 {len(similar_tasks)} 个相同签名的 wait 任务，开始批量标记为 verifying")
+        logger.info(
+            f"找到 {len(similar_tasks)} 个相同仓库的相似任务，开始批量标记为 verifying | "
+            f"跨仓库跳过: {skipped_cross_repo}"
+        )
 
         # 批量标记为 verifying
         current_time = int(time.time())
@@ -1074,19 +1105,27 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
     """
     当任务成功时，批量标记 introduced_errids 中的 wait 任务为 verifying
 
+    重要：只匹配同一个 git 仓库的任务，避免跨仓库错误匹配
+
     仅处理构建任务（只有构建任务有 introduced_errids）
 
     Args:
         client: ManticoreClient 实例
-        successful_task: 已成功的任务信息（包含 id, category, j.introduced_errids 等字段）
+        successful_task: 已成功的任务信息（包含 id, category, git_url, j.introduced_errids 等字段）
     """
     try:
         task_id = successful_task.get('id')
         category = successful_task.get('category', 'function')
+        success_git_url = successful_task.get('git_url', '')
 
         # 只处理构建任务
         if category != 'build':
             logger.debug(f"任务 {task_id} 不是构建任务，跳过 introduced_errids 处理 | category: {category}")
+            return
+
+        # 必须有 git_url 才能匹配
+        if not success_git_url:
+            logger.warning(f"任务 {task_id} 缺少 git_url，无法匹配 introduced_errids 任务")
             return
 
         # 从 j 字段读取 introduced_errids
@@ -1094,7 +1133,7 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
         if isinstance(j_field, str):
             try:
                 j_field = json.loads(j_field) if j_field else {}
-            except:
+            except json.JSONDecodeError:
                 j_field = {}
 
         introduced_errids = j_field.get('introduced_errids', [])
@@ -1107,7 +1146,10 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
             logger.warning(f"任务 {task_id} 的 introduced_errids 不是列表: {type(introduced_errids)}")
             return
 
-        logger.info(f"任务 {task_id} 成功，开始查找 introduced_errids 匹配的 wait 任务 | errids: {len(introduced_errids)}")
+        logger.info(
+            f"任务 {task_id} 成功，开始查找 introduced_errids 匹配的 wait 任务 | "
+            f"errids: {len(introduced_errids)} | git_url: {success_git_url[:60]}..."
+        )
 
         # 查询所有 wait 状态的构建任务
         query = """
@@ -1123,21 +1165,44 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
             logger.info(f"没有找到 wait 状态的构建任务")
             return
 
-        # 客户端过滤：找到 error_id 在 introduced_errids 列表中的任务
+        # 客户端过滤：找到 error_id 在 introduced_errids 列表中且同仓库的任务
         matched_tasks = []
+        skipped_cross_repo = 0
+
         for wait_task in wait_tasks:
             wait_error_id = wait_task.get('error_id', '')
+            wait_git_url = wait_task.get('git_url', '')
+
             if not wait_error_id:
                 continue
 
             if wait_error_id in introduced_errids:
-                matched_tasks.append(wait_task)
+                # 关键修复：必须是同一个仓库
+                if wait_git_url == success_git_url:
+                    matched_tasks.append(wait_task)
+                else:
+                    skipped_cross_repo += 1
+                    logger.debug(
+                        f"跳过跨仓库任务 | wait_task: {wait_task.get('id')} | "
+                        f"error_id: {wait_error_id[:60]}... | "
+                        f"wait_repo: {wait_git_url[:50]}... | "
+                        f"success_repo: {success_git_url[:50]}..."
+                    )
 
         if not matched_tasks:
-            logger.info(f"没有找到匹配 introduced_errids 的 wait 任务 | errids: {len(introduced_errids)}")
+            if skipped_cross_repo > 0:
+                logger.warning(
+                    f"没有找到同仓库的匹配任务 | errids: {len(introduced_errids)} | "
+                    f"跳过了 {skipped_cross_repo} 个跨仓库任务"
+                )
+            else:
+                logger.info(f"没有找到匹配 introduced_errids 的 wait 任务 | errids: {len(introduced_errids)}")
             return
 
-        logger.info(f"找到 {len(matched_tasks)} 个匹配 introduced_errids 的 wait 任务，开始批量标记为 verifying")
+        logger.info(
+            f"找到 {len(matched_tasks)} 个同仓库的匹配任务，开始批量标记为 verifying | "
+            f"跨仓库跳过: {skipped_cross_repo}"
+        )
 
         # 批量标记为 verifying
         current_time = int(time.time())

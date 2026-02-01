@@ -128,7 +128,7 @@ class FirstBadCommitMigrator:
         if isinstance(j_field, str):
             try:
                 j_field = json.loads(j_field) if j_field else {}
-            except:
+            except json.JSONDecodeError:
                 j_field = {}
 
         # 检查是否已经迁移（有 change_point 字段）
@@ -184,7 +184,7 @@ class FirstBadCommitMigrator:
             if isinstance(j_field, str):
                 try:
                     j_field = json.loads(j_field) if j_field else {}
-                except:
+                except json.JSONDecodeError:
                     j_field = {}
             elif not isinstance(j_field, dict):
                 j_field = {}

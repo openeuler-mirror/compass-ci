@@ -280,7 +280,7 @@ class CommitTimeClient:
                 timeout=self.timeout
             )
             return response.status_code == 200
-        except:
+        except requests.RequestException:
             return False
 
 

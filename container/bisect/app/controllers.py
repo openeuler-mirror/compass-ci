@@ -8,7 +8,7 @@ import threading
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from config import Config
 from log_config import logger
-from query_builder import build_task_query_conditions, build_condition_summary
+from query_builder import build_task_query_conditions, build_condition_summary, _escape_sql_string
 
 sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
 from py_bisect import GitBisect
@@ -21,15 +21,6 @@ from task_processor import bisect_task_instance
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect')
 from services.pool_monitor_service import PoolMonitorService
 
-def _escape_sql_string(value: str) -> str:
-    """
-    Escape string for ManticoreSearch SQL queries
-    ManticoreSearch uses backslash escaping, not double quotes
-    """
-    if value is None:
-        return ""
-    # First escape backslashes, then single quotes
-    return value.replace("\\", "\\\\").replace("'", "\\'")
 
 def _get_manticore_client():
     """获取ManticoreSearch HTTP客户端"""
@@ -125,7 +116,7 @@ def list_bisect_tasks():
     - task_id: 单个任务ID
     - task_ids: 多个任务ID (逗号分隔)
     - first_bad_commit: 按first_bad_commit筛选 (精确匹配)
-    - limit: 限制返回结果数量 (默认100000)
+    - limit: 限制返回结果数量 (默认 Config.DEFAULT_QUERY_LIMIT)
     """
     try:
         client = _get_manticore_client()
@@ -134,13 +125,12 @@ def list_bisect_tasks():
         where_clause, filters = build_task_query_conditions()
 
         # 获取 limit 参数
-        limit = request.args.get('limit', '100000')
+        limit = request.args.get('limit', str(Config.DEFAULT_QUERY_LIMIT))
         try:
             limit = int(limit)
-            # 限制范围 (1 到 1,000,000)
-            limit = max(1, min(limit, 1000000))
+            limit = max(1, min(limit, Config.MAX_QUERY_LIMIT))
         except ValueError:
-            limit = 100000
+            limit = Config.DEFAULT_QUERY_LIMIT
 
         # 构建 SQL 查询
         sql_query = f"""
@@ -720,8 +710,8 @@ def reset_task_by_id():
 
         try:
             task_id_int = int(task_id)
-            # ManticoreSearch使用64位整数，验证范围
-            if task_id_int <= 0 or task_id_int > 2**63 - 1:
+            # ManticoreSearch uses 64-bit integers
+            if task_id_int <= 0 or task_id_int > Config.MAX_INT64:
                 return jsonify({
                     "status": "error",
                     "error": "Task ID out of valid range"

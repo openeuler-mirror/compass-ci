@@ -264,7 +264,7 @@ class HeadValidator(VerificationConsumer):
                 import json
                 try:
                     j_field = json.loads(j_field) if j_field else {}
-                except:
+                except json.JSONDecodeError:
                     j_field = {}
             previous_head_status = j_field.get('head_check_status')
 
@@ -440,7 +440,7 @@ class HeadValidator(VerificationConsumer):
                                 import json
                                 try:
                                     j_field = json.loads(j_field) if j_field else {}
-                                except:
+                                except json.JSONDecodeError:
                                     j_field = {}
                             introduced_errids = j_field.get('introduced_errids', []) or []
 

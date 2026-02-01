@@ -850,7 +850,7 @@ class VerificationConsumer:
                             try:
                                 import json
                                 j_field = json.loads(j_field) if j_field else {}
-                            except:
+                            except json.JSONDecodeError:
                                 j_field = {}
 
                         # 优先使用 change_point，否则组合 first_bad_commit + subject

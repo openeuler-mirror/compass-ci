@@ -78,7 +78,7 @@ class MidpointDiagnoser:
             if isinstance(j, str):
                 try:
                     j = json.loads(j)
-                except:
+                except json.JSONDecodeError:
                     j = {}
 
             stats = j.get('stats', {})
@@ -130,7 +130,7 @@ class MidpointDiagnoser:
             if isinstance(j, str):
                 try:
                     j = json.loads(j)
-                except:
+                except json.JSONDecodeError:
                     j = {}
 
             baseline_commit = j.get('baseline_commit') or j.get('good_commit')

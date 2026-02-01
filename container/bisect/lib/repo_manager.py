@@ -182,7 +182,7 @@ class SharedRepoManager:
                         path_parts = workspace_repo_dir.rstrip('/').split('/')
                         if len(path_parts) >= 2 and path_parts[-2].isdigit():
                             task_id = path_parts[-2]
-                    except:
+                    except (IndexError, AttributeError):
                         pass
 
                 logger.info(f"Releasing workspace | task: {task_id or 'unknown'} | path: {workspace_repo_dir}")
@@ -354,7 +354,7 @@ class SharedRepoManager:
                 try:
                     os.rename(old_dir, repo_dir)
                     logger.info(f"Restored old pristine repo after failure | repo: {repo_name}")
-                except:
+                except OSError:
                     pass
 
             # 清理临时目录
@@ -683,7 +683,7 @@ class SharedRepoManager:
                 active_workspaces = len([d for d in os.listdir(self.REPO_BASE_DIR)
                                         if os.path.isdir(os.path.join(self.REPO_BASE_DIR, d))])
                 stats['active_workspaces'] = active_workspaces
-        except:
+        except OSError:
             stats['active_workspaces'] = 0
 
         return stats

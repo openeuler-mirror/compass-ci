@@ -112,13 +112,11 @@ class Config:
     PERFORMANCE_PRODUCER_ENABLED = os.environ.get('PERFORMANCE_PRODUCER_ENABLED', 'true').lower() == 'true'
 
     # Query time range in hours for performance jobs
-    PERFORMANCE_PRODUCER_QUERY_HOURS = int(os.environ.get('PERFORMANCE_PRODUCER_QUERY_HOURS', 168))  # 7 days
+    # 25 hours = daily run + 1 hour overlap for fault tolerance
+    PERFORMANCE_PRODUCER_QUERY_HOURS = int(os.environ.get('PERFORMANCE_PRODUCER_QUERY_HOURS', 25))
 
-    # Producer interval in days
-    PERFORMANCE_PRODUCER_INTERVAL_DAYS = int(os.environ.get('PERFORMANCE_PRODUCER_INTERVAL_DAYS', 7))
-
-    # Minimum performance change percent to trigger bisect
-    PERFORMANCE_MIN_CHANGE_PERCENT = float(os.environ.get('PERFORMANCE_MIN_CHANGE_PERCENT', 5.0))
+    # Producer interval in days (run once per day)
+    PERFORMANCE_PRODUCER_INTERVAL_DAYS = int(os.environ.get('PERFORMANCE_PRODUCER_INTERVAL_DAYS', 1))
 
     # Minimum samples required per version for valid comparison
     PERFORMANCE_MIN_SAMPLES = int(os.environ.get('PERFORMANCE_MIN_SAMPLES', 2))
@@ -136,3 +134,13 @@ class Config:
     # 现在使用基于 lkp-stats-type.md 规范的前缀判断 KPI 和方向
     # KPI 指标: 大写前缀 (LAT, RATE, JIT, POW, COST, MEM)
     # 方向: lat/jit/pow/cost/mem = -1 (SmallerBetter), rate = +1 (BiggerBetter)
+
+    # ====== SQL Query Configuration ======
+    # Default limit for list queries
+    DEFAULT_QUERY_LIMIT = int(os.environ.get('DEFAULT_QUERY_LIMIT', 100000))
+    # Maximum allowed query limit
+    MAX_QUERY_LIMIT = int(os.environ.get('MAX_QUERY_LIMIT', 1000000))
+    # Batch size for delete operations
+    BATCH_DELETE_SIZE = int(os.environ.get('BATCH_DELETE_SIZE', 500))
+    # Maximum valid 64-bit signed integer (for task ID validation)
+    MAX_INT64 = 2**63 - 1
