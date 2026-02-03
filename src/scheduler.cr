@@ -66,6 +66,7 @@ module Scheduler
   # Start background tasks
   def self.start_background_tasks
     spawn Sched.instance.dispatch_worker
+    spawn Sched.instance.start_lifecycle_worker
   end
 
   # Start the Kemal server using the configuration

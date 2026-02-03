@@ -141,6 +141,7 @@ class JobHash
   @@git_pull_mutex = Mutex.new
 
   getter hash_int32 : Hash(String, Int32)
+  getter hash_int64 : Hash(String, Int64)
   getter hash_plain : Hash(String, String)
   getter hash_array : HashArray
   getter hash_hh : HashHH
@@ -162,6 +163,7 @@ class JobHash
   end
 
   INT32_SET = Set(String).new INT32_KEYS
+  INT64_SET = Set(String).new INT64_KEYS
   PLAIN_SET = Set(String).new PLAIN_KEYS
   ARRAY_SET = Set(String).new ARRAY_KEYS
   HH_SET    = Set(String).new HH_KEYS
@@ -170,6 +172,7 @@ class JobHash
   def initialize(job_content = nil)
     @hash_any   = Str2AnyHash.new
     @hash_int32 = Hash(String, Int32).new
+    @hash_int64 = Hash(String, Int64).new
     @hash_plain = Hash(String, String).new
     @hash_array = HashArray.new
     @hash_hh    = HashHH.new
@@ -185,6 +188,7 @@ class JobHash
   def initialize(ajob : JobHash)
     @hash_any   = ajob.hash_any.dup
     @hash_int32 = ajob.hash_int32.dup
+    @hash_int64 = ajob.hash_int64.dup
     @hash_plain = ajob.hash_plain.dup
     @hash_array = ajob.hash_array.dup
     @hash_hh    = ajob.hash_hh.dup
@@ -213,6 +217,8 @@ class JobHash
         end
       elsif INT32_SET.includes? k
         @hash_int32[k] = v.as_i
+      elsif INT64_SET.includes? k
+        @hash_int64[k] = v.as_i
       elsif PLAIN_SET.includes? k
         @hash_plain[k] = v.to_s
       elsif ARRAY_SET.includes? k
@@ -249,6 +255,7 @@ class JobHash
 
   def merge!(other_job : JobHash)
     @hash_int32.merge!(other_job.hash_int32)
+    @hash_int64.merge!(other_job.hash_int64)
     @hash_plain.merge!(other_job.hash_plain)
     @hash_any.any_merge!(other_job.hash_any)
 
@@ -284,6 +291,7 @@ class JobHash
     hash_all["schedule_memmb"] = JSON::Any.new(@schedule_memmb)
     hash_all["is_remote"] = JSON::Any.new(@is_remote)
     @hash_int32.each { |k, v| hash_all[k] = JSON::Any.new(v) }
+    @hash_int64.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_plain.each { |k, v| hash_all[k] = JSON::Any.new(v) }
     @hash_array.each do |k, v|
       hash_all[k] ||= JSON::Any.new([] of JSON::Any)
@@ -330,7 +338,10 @@ class JobHash
     priority
     timeout_seconds
     renew_to_utc
-    deadline_utc
+  )
+
+  INT64_KEYS = %w(
+   deadline_utc
   )
 
   PLAIN_KEYS = %w(
@@ -576,6 +587,12 @@ class JobHash
     def {{(name + "=").id}}(v);   @hash_int32[{{name}}] = v;  end
   {% end %}
 
+  {% for name in INT64_KEYS %}
+    def {{name.id}};              @hash_int64[{{name}}];      end
+    def {{(name + "?").id}};      @hash_int64[{{name}}]?;     end
+    def {{(name + "=").id}}(v);   @hash_int64[{{name}}] = v;  end
+  {% end %}
+
   {% for name in PLAIN_KEYS %}
     def {{name.id}};              @hash_plain[{{name}}];      end
     def {{(name + "?").id}};      @hash_plain[{{name}}]?;     end
@@ -625,6 +642,8 @@ class JobHash
           h[k] = @hash_plain[k]
         elsif @hash_int32.has_key? k
           h[k] = @hash_int32[k].to_s
+        elsif @hash_int64.has_key? k
+          h[k] = @hash_int64[k].to_s
         end
       end
       h.to_pretty_json

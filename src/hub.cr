@@ -218,9 +218,17 @@ class Sched
   end
 
   def check_retire_job(job)
+    if JOB_HEALTH_NAME2ID["#{job.job_health}"] >= JOB_HEALTH_NAME2ID["timeout_dispatch"]
+      clear_job(job)
+      return
+    end
     return if job.istage < JOB_STAGE_NAME2ID["finish"]
     return if job.idata_readiness < JOB_DATA_READINESS_NAME2ID["complete"]
 
+    clear_job(job)
+  end
+
+  def clear_job(job)
     unsubscribe_all_clients(job.id64)
     remove_job_schedule_indices(job)
     @jobs_cache.delete job.id64

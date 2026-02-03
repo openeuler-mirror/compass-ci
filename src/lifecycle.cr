@@ -33,18 +33,15 @@ end
 class Sched
 
   def start_lifecycle_worker
-    spawn {
-      loop do
-        terminate_timeout_jobs
-        sleep 1.minute
-      end
-    }
+    loop do
+      terminate_timeout_jobs
+      sleep 1.minute
+    end
   end
 
   def terminate_timeout_jobs
-    now = Time.utc
+    now = Time.utc.to_unix
     @jobs_cache.each do |jobid, job|
-      next if job.deadline_utc > now
       next if job.renew_to_utc? && job.renew_to_utc > now
 
       stage = job.job_stage
@@ -52,8 +49,10 @@ class Sched
 
       timeout = get_timeout(job, stage)
       start_time = Time.parse(job["#{stage}_time"], "%Y-%m-%dT%H:%M:%S", Time.local.location)
+      job.deadline_utc = start_time.to_utc.to_unix + timeout
 
-      job.deadline_utc = start_time.to_utc + timeout
+      next if job.deadline_utc > now
+
       if job.deadline_utc < now
         if terminate_job(job)
           change_job_stage(job, "finish", "timeout_#{stage}")
