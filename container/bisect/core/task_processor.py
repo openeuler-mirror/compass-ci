@@ -107,8 +107,8 @@ class TaskProcessor:
                 SET bisect_status = 'wait', updated_at = {current_time}
                 WHERE bisect_status = 'processing'
             """
-            processing_result = self.client.sql_execute(processing_update_sql)
-            processing_reset = processing_result.get('total', 0) if processing_result else 0
+            processing_result = self.client.sql_raw(processing_update_sql)
+            processing_reset = processing_result[0].get('total', 0) if processing_result and len(processing_result) > 0 else 0
 
             # 直接 UPDATE 所有 verifying 状态的任务为 wait（不修改 j 字段，保留验证信息）
             verifying_update_sql = f"""
@@ -116,8 +116,8 @@ class TaskProcessor:
                 SET bisect_status = 'wait', updated_at = {current_time}
                 WHERE bisect_status = 'verifying'
             """
-            verifying_result = self.client.sql_execute(verifying_update_sql)
-            verifying_reset = verifying_result.get('total', 0) if verifying_result else 0
+            verifying_result = self.client.sql_raw(verifying_update_sql)
+            verifying_reset = verifying_result[0].get('total', 0) if verifying_result and len(verifying_result) > 0 else 0
 
             # 清理文件系统上所有以数字开头的 workspace 目录（任务残留）
             cleaned_dirs = 0
@@ -537,39 +537,40 @@ class TaskProcessor:
             return {'status': 'error', 'message': f'Exception: {str(e)}'}
 
     def _run_producer_once(self, force: bool = False):
-        """执行一次完整的生产者任务发现"""
-        logger.info(f"Single producer run STARTED (force={force})")
-        logger.info(f"Starting a single producer run (force={force})...")
-        # Execute error bisect producer logic
+        """执行一次完整的生产者任务发现（Error + Performance）"""
+        logger.info(f"========== BisectProducer cycle STARTED (force={force}) ==========")
+
+        # 1. 执行错误类型生产者
+        error_success_count = 0
         try:
             error_producer = ErrorBisectProducer(self.client, self._config)
             error_producer.add_bisect_task_func = self.add_bisect_task
             error_success_count = error_producer.execute_producer_cycle(force_run_scripts=force)
-            logger.info(f"Error Producer sub-cycle complete | New tasks: {error_success_count}")
+            logger.info(f"[Error Producer] 完成 | 新任务: {error_success_count}")
         except Exception as e:
-            logger.error(f"Error Producer sub-cycle failed: {e}")
+            logger.error(f"[Error Producer] 失败: {e}")
             logger.error(traceback.format_exc())
 
-        # Execute performance bisect producer logic
+        # 2. 执行性能类型生产者
+        perf_success_count = 0
         try:
             perf_producer = PerformanceBisectProducer(self.client, self._config)
             perf_success_count = perf_producer.execute_producer_cycle()
-            logger.info(f"Performance Producer sub-cycle complete | New tasks: {perf_success_count}")
+            logger.info(f"[Performance Producer] 完成 | 新任务: {perf_success_count}")
         except Exception as e:
-            logger.error(f"Performance Producer sub-cycle failed: {e}")
+            logger.error(f"[Performance Producer] 失败: {e}")
             logger.error(traceback.format_exc())
-        
-        # Clean up cache after a full run - 改进内存管理
+
+        # 清理缓存
         if len(self.processed_jobs_cache) > 5000:
-            # 保留最近的2500条记录，避免内存无限增长
             logger.info(f"Cache size ({len(self.processed_jobs_cache)}) exceeds limit, cleaning...")
-            # 转换为列表并保留最近的一半
             cache_list = list(self.processed_jobs_cache)
             keep_size = min(2500, len(cache_list) // 2)
             self.processed_jobs_cache = set(cache_list[-keep_size:])
             logger.info(f"Cache cleaned, kept {len(self.processed_jobs_cache)} recent entries")
-        
-        logger.info(f"Single producer run COMPLETED (force={force})")
+
+        total_tasks = error_success_count + perf_success_count
+        logger.info(f"========== BisectProducer cycle COMPLETED | 总任务: {total_tasks} (Error: {error_success_count}, Perf: {perf_success_count}) ==========")
 
     def trigger_producer_run(self, force: bool = False):
         """API endpoint to manually trigger a producer run."""
@@ -632,18 +633,16 @@ class TaskProcessor:
         background_threads.append(("RepoCleanupWorker", repo_cleanup_thread))
 
         # 4. 生产者线程（根据配置启动）
+        # 统一的 BisectProducer 线程，包含 Error 和 Performance 两种类型
         if Config.BISECT_PRODUCER_ENABLED:
-            # 只启动错误类型生产者（性能生产者已集成）
-            error_producer_thread = threading.Thread(
-                target=self.error_bisect_producer,
+            producer_thread = threading.Thread(
+                target=self.bisect_producer,
                 daemon=True,
-                name="ErrorBisectProducer"
+                name="BisectProducer"
             )
-            error_producer_thread.start()
-            background_threads.append(("ErrorBisectProducer", error_producer_thread))
-
-            # 性能生产者已经集成到错误生产者中，不再单独启动
-            logger.info("Performance producer integrated into error producer cycle")
+            producer_thread.start()
+            background_threads.append(("BisectProducer", producer_thread))
+            logger.info("BisectProducer started (Error + Performance)")
         else:
             logger.info("Producer background tasks disabled (by config)")
 
@@ -693,10 +692,10 @@ class TaskProcessor:
             time.sleep(6 * 3600)
 
 
-    def error_bisect_producer(self):
-        """错误类型bisect任务生产者 - 已集成性能生产者逻辑"""
+    def bisect_producer(self):
+        """统一的 Bisect 任务生产者 - 包含 Error 和 Performance 两种类型"""
         if not Config.BISECT_PRODUCER_ENABLED:
-            logger.info("Error type producer is disabled by config, exiting.")
+            logger.info("BisectProducer is disabled by config, exiting.")
             return
 
         if Config.BISECT_PRODUCER_SCHEDULED_ENABLED:
@@ -978,16 +977,25 @@ class TaskProcessor:
                 submitted_count = 0
                 failed_count = 0
 
-                for git_url, repo_tasks in tasks_by_repo.items():
+                logger.info(f"开始遍历 {len(tasks_by_repo)} 个仓库提交验证作业...")
+
+                for idx, (git_url, repo_tasks) in enumerate(tasks_by_repo.items()):
                     if not self.running:
                         logger.info("SuccessTaskValidator 收到停止信号，退出循环")
                         break
 
+                    logger.info(
+                        f"处理仓库 [{idx+1}/{len(tasks_by_repo)}] | "
+                        f"repo: {git_url[:60]}... | tasks: {len(repo_tasks)}"
+                    )
+
                     try:
                         # 批量提交该仓库的所有任务（调用 validator 的方法）
+                        logger.debug(f"调用 batch_submit_verification_jobs...")
                         result = validator.batch_submit_verification_jobs(
                             repo_tasks, git_url, self.repo_manager
                         )
+                        logger.debug(f"batch_submit_verification_jobs 返回: {result}")
 
                         submitted_count += result.get('submitted', 0)
                         failed_count += result.get('failed', 0)
@@ -1315,10 +1323,16 @@ class TaskProcessor:
             if dirty_task_ids:
                 logger.warning(f"发现 {len(dirty_task_ids)} 个 wait 任务有聚类脏数据，开始批量清除")
                 cleaned_count = 0
+                dirty_task_ids_set = set(dirty_task_ids)
                 for task_id in dirty_task_ids:
                     if self.client.update("bisect", task_id, {"j": {}}):
                         cleaned_count += 1
                 logger.warning(f"清除完成 | 成功: {cleaned_count}/{len(dirty_task_ids)}")
+
+                # 关键：同步更新内存中 task 对象的 j 字段，避免后续判断使用旧数据
+                for task in candidates:
+                    if task.get('id') in dirty_task_ids_set:
+                        task['j'] = {}
 
             # 步骤 1: 按任务类型分组（只对构建任务使用签名聚类）
             build_tasks = []
@@ -1336,8 +1350,22 @@ class TaskProcessor:
 
             # 步骤 2: 只对构建任务按错误签名聚类
             signature_groups = {}  # {signature: [task1, task2, ...]}
+            skip_clustering_tasks = []  # 跳过聚类的任务，直接走独立 bisect
 
             for task in build_tasks:
+                # 检查是否已标记跳过聚类
+                j_field = task.get('j') or {}
+                if isinstance(j_field, str):
+                    try:
+                        j_field = json.loads(j_field) if j_field else {}
+                    except:
+                        j_field = {}
+
+                if j_field.get('skip_clustering'):
+                    # 已标记跳过聚类，直接作为独立任务
+                    skip_clustering_tasks.append(task)
+                    continue
+
                 error_id = task.get('error_id', '')
                 if not error_id:
                     # 没有 error_id 的任务单独处理
@@ -1350,7 +1378,10 @@ class TaskProcessor:
 
                 signature_groups[signature].append(task)
 
-            logger.info(f"构建任务聚类结果: {len(build_tasks)} 个任务 → {len(signature_groups)} 个聚类")
+            if skip_clustering_tasks:
+                logger.info(f"跳过聚类的任务: {len(skip_clustering_tasks)} 个（将走独立 bisect）")
+
+            logger.info(f"构建任务聚类结果: {len(build_tasks) - len(skip_clustering_tasks)} 个任务 → {len(signature_groups)} 个聚类")
 
             # 步骤 3: 从每个聚类选择一个代表任务（不建立关系，仅作为去重选择）
             selected_tasks = []
@@ -1385,20 +1416,20 @@ class TaskProcessor:
 
                             marking_attempts = j_field.get('marking_attempts', 0)
                             if marking_attempts >= 3:
-                                # 达到重试上限，标记为 failed 避免永久卡住
-                                logger.warning(f"聚类标记达到重试上限 | task_id: {task_id} | 已尝试 {marking_attempts} 次 | 标记为 failed")
-                                failed_doc = {
-                                    "bisect_status": "failed",
+                                # 达到重试上限，跳过聚类标记，让任务走独立 bisect 流程
+                                logger.warning(f"聚类标记达到重试上限 | task_id: {task_id} | 已尝试 {marking_attempts} 次 | 跳过聚类，走独立 bisect")
+                                # 清除聚类相关字段，添加 skip_clustering 标记，保持 wait 状态
+                                skip_doc = {
                                     "updated_at": current_time,
                                     "j": {
-                                        "error": "marking_attempts_exceeded",
-                                        "marking_attempts": marking_attempts,
-                                        "related_task_id": str(successful_task_id),
+                                        "skip_clustering": True,
+                                        "skip_reason": "marking_attempts_exceeded",
                                         "error_signature": signature
                                     }
                                 }
-                                self.client.update("bisect", task_id, failed_doc)
-                                failed_count += 1
+                                self.client.update("bisect", task_id, skip_doc)
+                                skipped_count = stats.get('skipped_clustering', 0) + 1
+                                stats['skipped_clustering'] = skipped_count
                                 continue
 
                             doc = {
@@ -1454,7 +1485,12 @@ class TaskProcessor:
                 selected_tasks.extend(non_build_tasks)
                 logger.info(f"cluster tasks | non-build tasks | count: {len(non_build_tasks)}")
 
-            # 3.3 重新按优先级排序（确保高优先级任务优先执行）
+            # 3.3 处理跳过聚类的任务：直接添加到 selected_tasks（走独立 bisect）
+            if skip_clustering_tasks:
+                selected_tasks.extend(skip_clustering_tasks)
+                logger.info(f"cluster tasks | skip-clustering tasks | count: {len(skip_clustering_tasks)}")
+
+            # 3.4 重新按优先级排序（确保高优先级任务优先执行）
             selected_tasks.sort(key=lambda t: (
                 -t.get('priority_level', 0),  # 优先级高的在前
                 -t.get('submit_time', 0)      # 提交时间晚的在前

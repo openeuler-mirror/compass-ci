@@ -122,6 +122,38 @@ class CommitTimeCache:
         key = self._make_key(git_url, commit_hash)
         self.cache.add(key, (info, time.time()))
 
+    def get(self, key: str) -> Optional[Dict]:
+        """
+        通用缓存获取方法（用于 parent commit 等任意数据）
+
+        Args:
+            key: 缓存键
+
+        Returns:
+            缓存的数据，如果缓存未命中或已过期返回 None
+        """
+        if key in self.cache:
+            data, cached_time = self.cache.get(key)
+
+            # 检查是否过期
+            if time.time() - cached_time < self.ttl:
+                return data
+            else:
+                self.cache.evict(key)
+                return None
+
+        return None
+
+    def set(self, key: str, data: Dict):
+        """
+        通用缓存设置方法（用于 parent commit 等任意数据）
+
+        Args:
+            key: 缓存键
+            data: 要缓存的数据
+        """
+        self.cache.add(key, (data, time.time()))
+
     def _cleanup_old_entries(self):
         """清理过期条目"""
         now = time.time()

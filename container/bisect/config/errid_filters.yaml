@@ -46,23 +46,21 @@ environment_blacklist:
     reason: "stderr.msg 前缀错误，避免重复"
 
   # 2. 常见环境/系统错误
-  - pattern: 'No_such_file_or_directory'
+  - pattern: 'No.such.file.or.directory'
     reason: "文件不存在"
-  - pattern: 'Permission_denied'
+  - pattern: 'Permission.denied'
     reason: "权限错误"
-  - pattern: 'command_not_found'
+  - pattern: 'command.not.found'
     reason: "命令未找到"
-  - pattern: '.*not.*found'
-    reason: "工具/库未找到"
-  - pattern: 'Connection_refused'
+  - pattern: 'Connection.refused'
     reason: "网络连接拒绝"
-  - pattern: 'Network_is_unreachable'
+  - pattern: 'Network.is.unreachable'
     reason: "网络不可达"
   - pattern: 'timeout'
     reason: "超时"
 
   # 3. 构建流程/工具错误 (非代码逻辑)
-  - pattern: 'git_.*_failed'
+  - pattern: 'git..*_failed'
     reason: "Git 操作失败"
   - pattern: 'download.*error'
     reason: "下载失败"
@@ -73,13 +71,23 @@ environment_blacklist:
   - pattern: 'makepkg\.eid\.\.config:'
     reason: "配置文件内容"
 
-  # 4. 临时文件/编译器内部
+  # 4. makepkg 环境/流程错误（非代码问题）
+  - pattern: '==>WARNING:Skipping'
+    reason: "makepkg 跳过警告"
+  - pattern: 'File.already.exists.on.server'
+    reason: "文件已存在于服务器"
+  - pattern: 'curl:\(#?\d*\)'
+    reason: "curl 请求错误"
+  - pattern: 'The.requested.URL.returned.error'
+    reason: "URL 请求失败"
+
+  # 5. 临时文件/编译器内部
   - pattern: '/tmp/lkp/'
     reason: "临时文件路径"
   - pattern: '<built-in>'
     reason: "编译器内置"
 
-  # 5. 内核日志错误
+  # 6. 内核日志错误
   - pattern: '^dmesg\.eid\.'
     reason: "dmesg.eid 不能稳定复现"
 

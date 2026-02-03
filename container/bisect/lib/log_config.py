@@ -65,9 +65,10 @@ class StructuredLogger:
 
     def _get_default_log_dir(self) -> str:
         """获取默认日志目录"""
-        # 优先使用 RESULT_DIR/bisect/logs（持久化目录）
+        # 优先使用 RESULT_DIR/logs（持久化目录）
+        # 注意：RESULT_DIR 通常已经是 /result/bisect，不需要再追加 bisect
         if os.getenv('RESULT_DIR'):
-            base_dir = os.path.join(os.getenv('RESULT_DIR'), 'bisect')
+            base_dir = os.getenv('RESULT_DIR')
         elif os.getenv('WORK_DIR'):
             base_dir = os.getenv('WORK_DIR')
         else:
@@ -84,19 +85,13 @@ class StructuredLogger:
         # 清理旧的文件处理器
         self.logger.handlers = []
 
-        # 通用格式化器 - 包含文件位置信息
-        formatter = logging.Formatter(
-            '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d:%(funcName)s] %(message)s',
-            '%Y-%m-%d %H:%M:%S'
-        )
-
-        # 错误日志专用格式化器 - 更详细的信息
-        error_formatter = logging.Formatter(
+        # 统一详细格式化器 - 包含完整文件路径、行号和函数名
+        detailed_formatter = logging.Formatter(
             '%(asctime)s.%(msecs)03d [%(pathname)s:%(lineno)d] %(funcName)s() - %(message)s',
             '%Y-%m-%d %H:%M:%S'
         )
 
-        # 1. 综合日志 (INFO及以上)
+        # 1. 综合日志 (INFO及以上) - 使用详细格式
         all_handler = TimedRotatingFileHandler(
             filename=log_path / 'bisect_all.log',
             when='D',
@@ -105,11 +100,11 @@ class StructuredLogger:
             encoding='utf-8'
         )
         all_handler.suffix = '%Y-%m-%d'
-        all_handler.setFormatter(formatter)
+        all_handler.setFormatter(detailed_formatter)
         all_handler.setLevel(logging.INFO)
         self.logger.addHandler(all_handler)
 
-        # 2. 错误日志 (ERROR及以上) - 使用更详细的格式化器
+        # 2. 错误日志 (ERROR及以上) - 使用详细格式
         error_handler = TimedRotatingFileHandler(
             filename=log_path / 'bisect_error.log',
             when='D',
@@ -119,16 +114,16 @@ class StructuredLogger:
         )
         error_handler.suffix = '%Y-%m-%d'
         error_handler.setLevel(logging.ERROR)
-        error_handler.setFormatter(error_formatter)
+        error_handler.setFormatter(detailed_formatter)
         self.logger.addHandler(error_handler)
 
     def _setup_console_handler(self):
-        """配置控制台处理器 - 仅显示重要信息，包含位置"""
+        """配置控制台处理器 - 使用与文件相同的详细格式"""
         console = logging.StreamHandler()
-        # 包含Flask标识和位置信息的格式
+        # 与文件日志相同的详细格式，便于 supervisor 捕获后溯源
         console_formatter = logging.Formatter(
-            '[flask] %(asctime)s [%(filename)s:%(lineno)d] %(message)s',
-            '%H:%M:%S'
+            '%(asctime)s.%(msecs)03d [%(pathname)s:%(lineno)d] %(funcName)s() - %(message)s',
+            '%Y-%m-%d %H:%M:%S'
         )
         console.setFormatter(console_formatter)
         # 控制台显示WARNING及以上级别（重要信息）

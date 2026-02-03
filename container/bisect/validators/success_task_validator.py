@@ -81,41 +81,78 @@ class SuccessTaskValidator(VerificationConsumer):
         try:
             batch_size = limit or self.validation_batch_size
 
-            # 只查询两种状态的任务：
-            # 1. verifying: 已提升，等待验证
-            # 2. pending_verification: 等待代表任务完成
+            # 简化查询：只查询 verifying 状态的任务
+            # 复杂的 JSON 字段过滤在 Python 中进行，避免 Manticore JSON 语法问题
             sql_query = f"""
                 SELECT id, bad_job_id, error_id, bisect_status, git_url,
                        updated_at, submit_time, j
                 FROM bisect
-                WHERE (
-                     bisect_status = 'verifying'
-                     AND j.related_task_id IS NOT NULL
-                     AND (j.verification_status IS NULL OR j.verification_status != 'verified')
-                     AND (j.verified_by_py_bisect IS NULL OR j.verified_by_py_bisect != true))
-                ORDER BY
-                    updated_at DESC
+                WHERE bisect_status = 'verifying'
+                ORDER BY updated_at DESC
                 LIMIT {batch_size}
             """
 
-            logger.info(f"扫描未验证任务（verifying 和 pending_verification）| batch_size: {batch_size}")
-            logger.debug(f"SQL查询: {sql_query[:200]}...")
+            logger.info(f"扫描 verifying 任务 | batch_size: {batch_size}")
             results = self.client.sql_select(sql_query)
-            logger.info(f"SQL查询返回: {len(results) if results else 0} 条记录")
 
-            if results:
-                # 统计不同状态的任务数量
-                verifying_count = sum(1 for t in results if t.get('bisect_status') == 'verifying')
-                pending_count = sum(1 for t in results if t.get('bisect_status') == 'pending_verification')
+            if not results:
+                logger.info("未发现 verifying 任务")
+                return []
 
-                logger.info(
-                    f"发现 {len(results)} 个待验证任务 | "
-                    f"verifying: {verifying_count} | pending_verification: {pending_count}"
-                )
-            else:
-                logger.info("未发现待验证任务")
+            logger.info(f"SQL 查询返回 {len(results)} 个 verifying 任务")
 
-            return results or []
+            # Python 端过滤：只保留有 related_task_id 且未验证完成的任务
+            filtered_tasks = []
+            tasks_without_related_id = []  # 收集没有 related_task_id 的任务
+
+            for task in results:
+                task_id = task.get('id')
+                j_field = task.get('j', {})
+
+                # 解析 j 字段
+                if isinstance(j_field, str):
+                    try:
+                        j_field = json.loads(j_field) if j_field else {}
+                    except Exception:
+                        j_field = {}
+
+                # 检查必要条件
+                related_task_id = j_field.get('related_task_id')
+                if not related_task_id:
+                    logger.warning(f"verifying 任务无 related_task_id，将重置为 wait | task_id: {task_id}")
+                    tasks_without_related_id.append(task_id)
+                    continue
+
+                # 跳过已验证完成的
+                verification_status = j_field.get('verification_status')
+                if verification_status == 'verified':
+                    logger.debug(f"跳过任务 {task_id}：已验证 (verification_status=verified)")
+                    continue
+
+                # 跳过 py_bisect 已验证的
+                if j_field.get('verified_by_py_bisect') is True:
+                    logger.debug(f"跳过任务 {task_id}：py_bisect 已验证")
+                    continue
+
+                # 跳过已提交验证作业且正在等待的
+                verification_jobs = j_field.get('verification_jobs', {})
+                if verification_jobs and verification_jobs.get('status') == 'submitted':
+                    logger.debug(f"跳过任务 {task_id}：验证作业已提交")
+                    continue
+
+                filtered_tasks.append(task)
+
+            # 重置没有 related_task_id 的任务为 wait（它们不应该在 verifying 状态）
+            if tasks_without_related_id:
+                self._reset_tasks_to_wait(tasks_without_related_id, "no_related_task_id")
+
+            logger.info(
+                f"过滤后剩余 {len(filtered_tasks)} 个待处理任务 | "
+                f"原始: {len(results)} | 过滤掉: {len(results) - len(filtered_tasks)} | "
+                f"重置为wait: {len(tasks_without_related_id)}"
+            )
+
+            return filtered_tasks
 
         except Exception as e:
             logger.error(f"扫描未验证任务失败: {str(e)}")
@@ -537,6 +574,38 @@ class SuccessTaskValidator(VerificationConsumer):
             logger.error(f"提交验证作业异常 | task_id: {task_id} | error: {str(e)}")
             logger.error(traceback.format_exc())
             return {'status': 'failed', 'error': str(e)}
+
+    def _reset_tasks_to_wait(self, task_ids: List[int], reason: str):
+        """
+        批量将任务重置为 wait 状态
+
+        Args:
+            task_ids: 任务ID列表
+            reason: 重置原因
+        """
+        if not task_ids:
+            return
+
+        current_time = int(time.time())
+        reset_count = 0
+
+        for task_id in task_ids:
+            try:
+                reset_doc = {
+                    "bisect_status": "wait",
+                    "updated_at": current_time,
+                    "j": {
+                        "reset_from_verifying": True,
+                        "reset_reason": reason,
+                        "reset_timestamp": current_time
+                    }
+                }
+                self.client.update("bisect", task_id, reset_doc)
+                reset_count += 1
+            except Exception as e:
+                logger.error(f"重置任务为 wait 失败 | task_id: {task_id} | error: {str(e)}")
+
+        logger.info(f"已重置 {reset_count}/{len(task_ids)} 个任务为 wait | reason: {reason}")
 
     def _mark_task_failed(self, task_id: int, related_task_id: str, reason: str):
         """标记任务失败（辅助方法）"""
