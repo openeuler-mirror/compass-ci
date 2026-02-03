@@ -178,7 +178,7 @@ class ErrorBisectProducer:
         # === 2. 每日内核测试脚本 ===
         # 每天运行一次，或者强制运行时运行
         if force_run_scripts or self.last_kernel_test_date != current_date:
-            kernel_test_script = os.path.join(lkp_src, 'programs/bisect-py/kernel-ci/daily_kernel_test.sh')
+            kernel_test_script = os.path.join(lkp_src, 'sbin/bisect/kernel_ci/daily_kernel_test.sh')
             if self._run_script(kernel_test_script, None, "daily kernel test script"):
                 self.last_kernel_test_date = current_date
 
