@@ -81,6 +81,9 @@ class BisectConsumer:
             logger.debug(f"Step 3: Extracting good_commit from j field | ID: {task_id}")
             # Extract good_commit from j field BEFORE validation
             # This ensures validated_data contains good_commit from the start
+            # 兼容两种字段命名：
+            #   - 新任务使用 good_commit/bad_commit
+            #   - 恢复的任务可能只有 start_commit/end_commit（bisect 执行后覆盖）
             j_field = task.get('j') or {}
             logger.info(f"j_field raw value | task_id: {task_id} | type: {type(j_field).__name__} | value: {str(j_field)[:200]}")
             if isinstance(j_field, str):
@@ -94,11 +97,21 @@ class BisectConsumer:
                 logger.warning(f"j_field is not dict | task_id: {task_id} | type: {type(j_field).__name__}")
                 j_field = {}
 
-            if j_field.get('good_commit'):
-                task['good_commit'] = j_field['good_commit']
-                logger.warning(f"Extracted good_commit from j field | task_id: {task_id} | good_commit: {j_field['good_commit']}")
+            # 优先使用 good_commit，fallback 到 start_commit（兼容恢复场景）
+            good_commit = j_field.get('good_commit') or j_field.get('start_commit')
+            if good_commit:
+                task['good_commit'] = good_commit
+                source = 'good_commit' if j_field.get('good_commit') else 'start_commit'
+                logger.info(f"Extracted good_commit from j.{source} | task_id: {task_id} | good_commit: {good_commit}")
             else:
-                logger.warning(f"No good_commit in j field | task_id: {task_id} | j_field keys: {list(j_field.keys()) if isinstance(j_field, dict) else 'N/A'}")
+                logger.warning(f"No good_commit/start_commit in j field | task_id: {task_id} | j_field keys: {list(j_field.keys()) if isinstance(j_field, dict) else 'N/A'}")
+
+            # 同样兼容 bad_commit 和 end_commit
+            bad_commit = j_field.get('bad_commit') or j_field.get('end_commit')
+            if bad_commit:
+                task['bad_commit'] = bad_commit
+                source = 'bad_commit' if j_field.get('bad_commit') else 'end_commit'
+                logger.debug(f"Extracted bad_commit from j.{source} | task_id: {task_id} | bad_commit: {bad_commit}")
 
             logger.debug(f"Step 4: Validating task data | ID: {task_id}")
             # Validate task data
