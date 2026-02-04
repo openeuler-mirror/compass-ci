@@ -346,6 +346,7 @@ class SuccessTaskValidator(VerificationConsumer):
             first_bad_commit = task_info['first_bad_commit']
             error_id = task_info['error_id']
             bad_job_id = task_info['bad_job_id']
+            related_task_id = task_info.get('related_task_id', '')
 
             try:
                 # 提交验证作业（通过 API 获取父提交）
@@ -369,11 +370,15 @@ class SuccessTaskValidator(VerificationConsumer):
                     failed_count += 1
                     error = result.get('error', '')
                     logger.error(f"✗ 提交验证作业失败 | task_id: {task_id} | error: {error}")
+                    # 标记任务失败，避免重复尝试
+                    self._mark_task_failed(task_id, related_task_id, f"verification_submit_failed: {error}")
 
             except Exception as e:
                 failed_count += 1
                 logger.error(f"✗ 提交验证作业异常 | task_id: {task_id} | error: {str(e)}")
                 logger.error(traceback.format_exc())
+                # 标记任务失败，避免重复尝试
+                self._mark_task_failed(task_id, related_task_id, f"verification_submit_exception: {str(e)}")
 
         logger.info(
             f"批量提交完成 | repo: {git_url[:60]}... | "

@@ -224,11 +224,20 @@ class CommitTimeClient:
                     data = result['data']
                     # 返回 parent hash（root commit 时为 None）
                     return data.get('parent')
+                else:
+                    # 服务端返回了 error 状态
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"get_parent_commit API error | commit: {commit[:12]} | "
+                                  f"error: {result.get('error', 'unknown')}")
 
             return None
 
-        except Exception:
+        except Exception as e:
             # 服务不可用时返回 None
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"get_parent_commit request failed | commit: {commit[:12]} | error: {str(e)}")
             return None
 
     def get_parent_commit_info(self, git_url: str, commit: str) -> Optional[Dict]:

@@ -1045,6 +1045,18 @@ class PerformanceBisectProducer:
         """
         bisectable = []
 
+        # 按 suite 统计诊断信息
+        suite_stats = defaultdict(lambda: {
+            'pairs': 0,
+            'total_metrics': 0,
+            'kpi_metrics': 0,
+            'non_kpi_metrics': 0,
+            'insufficient_samples': 0,
+            'no_gap': 0,
+            'has_gap': 0,
+            'bisectable': 0
+        })
+
         for pair in pairs:
             try:
                 # 获取 testbox (从 group_key 中提取)
@@ -1060,12 +1072,18 @@ class PerformanceBisectProducer:
                 baseline_commit = pair['baseline_commit']
                 current_commit = pair['current_commit']
 
+                suite_stats[suite]['pairs'] += 1
+                suite_stats[suite]['total_metrics'] += len(pair['metrics'])
+
                 # 遍历所有指标，找出有性能差距的
                 metrics_with_gap = []
                 for metric in pair['metrics']:
                     # 只处理 KPI 指标（大写前缀）
                     if not self._is_kpi_metric(metric):
+                        suite_stats[suite]['non_kpi_metrics'] += 1
                         continue
+
+                    suite_stats[suite]['kpi_metrics'] += 1
 
                     # 从数据库查询所有可用样本（而不是仅当前周期的 jobs）
                     v1_samples = self._query_all_samples_from_db(baseline_commit, suite, testbox, metric)
@@ -1074,22 +1092,35 @@ class PerformanceBisectProducer:
                     # 验证样本数量 (至少需要 3 个样本才能进行线性可分验证)
                     if len(v1_samples) < 3 or len(v2_samples) < 3:
                         stats['pairs_insufficient_samples'] += 1
+                        suite_stats[suite]['insufficient_samples'] += 1
+                        logger.debug(f"样本不足 | {suite}/{testbox}/{metric} | "
+                                    f"v1={len(v1_samples)}, v2={len(v2_samples)} (需要>=3)")
                         continue
 
                     # 检查性能差距 (midpoint 算法: v1_max < v2_min)
                     has_gap, gap_info = self._check_performance_gap(v1_samples, v2_samples)
 
                     if has_gap:
+                        suite_stats[suite]['has_gap'] += 1
                         metrics_with_gap.append({
                             'metric': metric,
                             'gap_info': gap_info,
                             'v1_samples': v1_samples,
                             'v2_samples': v2_samples
                         })
+                    else:
+                        suite_stats[suite]['no_gap'] += 1
+                        # 诊断：显示为什么没有差距
+                        v1_min, v1_max = min(v1_samples), max(v1_samples)
+                        v2_min, v2_max = min(v2_samples), max(v2_samples)
+                        logger.debug(f"范围重叠无差距 | {suite}/{testbox}/{metric} | "
+                                    f"v1=[{v1_min:.2f}, {v1_max:.2f}], v2=[{v2_min:.2f}, {v2_max:.2f}]")
 
                 if not metrics_with_gap:
                     stats['pairs_no_gap'] += 1
                     continue
+
+                suite_stats[suite]['bisectable'] += 1
 
                 # 保留有差距的指标信息
                 pair['metrics_with_gap'] = metrics_with_gap
@@ -1114,6 +1145,18 @@ class PerformanceBisectProducer:
                        f"缓存命中: {stats['pairs_cache_hit']} | "
                        f"无性能差距: {stats['pairs_no_gap']} | "
                        f"可bisect: {len(bisectable)}")
+
+        # 输出按 suite 的诊断统计
+        logger.info("=" * 60)
+        logger.info("按 Suite 诊断统计:")
+        logger.info("=" * 60)
+        for suite, ss in sorted(suite_stats.items()):
+            logger.info(f"  {suite}:")
+            logger.info(f"    配对数: {ss['pairs']}, 总指标: {ss['total_metrics']}")
+            logger.info(f"    KPI指标: {ss['kpi_metrics']}, 非KPI跳过: {ss['non_kpi_metrics']}")
+            logger.info(f"    样本不足: {ss['insufficient_samples']}, 范围重叠: {ss['no_gap']}")
+            logger.info(f"    有差距: {ss['has_gap']}, 可bisect配对: {ss['bisectable']}")
+        logger.info("=" * 60)
 
         return bisectable
 

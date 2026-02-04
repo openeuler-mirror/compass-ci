@@ -1109,7 +1109,7 @@ class TaskProcessor:
                 locked_task_ids = list(self.active_task_locks)
                 initial_count = len(locked_task_ids)
 
-            logger.info(f"cleanup stale locks | start | current_locks: {initial_count}")
+            logger.debug(f"cleanup stale locks | start | current_locks: {initial_count}")
 
             # 批量查询这些任务的状态
             if locked_task_ids:
@@ -1163,7 +1163,7 @@ class TaskProcessor:
 
                     logger.warning(f"cleanup stale locks | cleaned | count: {len(stale_locks)} | before: {initial_count} | after: {final_count}")
                 else:
-                    logger.info(f"cleanup stale locks | no stale | all {initial_count} locks are valid")
+                    logger.debug(f"cleanup stale locks | no stale | all {initial_count} locks are valid")
 
         except Exception as e:
             logger.error(f"cleanup stale locks | failed | error: {str(e)}")
