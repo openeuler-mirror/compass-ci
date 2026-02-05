@@ -32,20 +32,20 @@ class BisectConsumer:
             notification_dir=config.get('notification_dir', '/result/bisect/notifications')
         )
         logger.debug("BisectConsumer initialized with NotificationWriter")
-    
+
     def process_single_task(self, task: Dict) -> Dict:
         """处理单个bisect任务"""
         try:
             task_id = int(task['id'])
             task_result_root = self._generate_task_path(self.config, task)
-            
+
             # Debug log for result_root
             logger.debug(f"Generated task_result_root: {task_result_root} | task_id: {task_id}")
-            
+
             if not task_result_root:
                 logger.error(f"Failed to generate task_result_root | task_id: {task_id}")
                 return {'status': 'failed', 'error': 'Failed to generate result_root', 'id': task_id, 'bad_job_id': task.get('bad_job_id', 'N/A')}
-            
+
             # Use atomic operation to update task status, avoid race conditions
             current_time = int(time.time())
             update_query = f"""
@@ -53,15 +53,15 @@ class BisectConsumer:
                 SET bisect_status = 'processing', updated_at = {current_time}
                 WHERE id = {task_id} AND bisect_status = 'wait'
             """
-            
+
             # Execute atomic update
             update_result = self.client.sql_raw(update_query)
-            
+
             # Check if update succeeded (returns affected rows)
             if not update_result or update_result[0]['error'] != '':
                 logger.warning(f"跳过任务 | ID: {task_id} | 状态已变更或不存在")
                 return {'status': 'skipped', 'id': task_id, 'error': 'Task status changed or not exists'}
-            
+
             logger.info(f"开始处理任务 | ID: {task_id}")
 
             # 注意：相似任务的聚类和标记已在 task_processor._cluster_and_select_tasks 中完成
@@ -113,6 +113,17 @@ class BisectConsumer:
                 source = 'bad_commit' if j_field.get('bad_commit') else 'end_commit'
                 logger.debug(f"Extracted bad_commit from j.{source} | task_id: {task_id} | bad_commit: {bad_commit}")
 
+            # 提取 producer 计算的中点范围信息（用于性能 bisect）
+            v1_range = j_field.get('v1_range')
+            v2_range = j_field.get('v2_range')
+            mid_point = j_field.get('mid_point')
+            if v1_range is not None and v2_range is not None:
+                task['v1_range'] = v1_range
+                task['v2_range'] = v2_range
+                if mid_point is not None:
+                    task['mid_point'] = mid_point
+                logger.debug(f"Extracted range from j | task_id: {task_id} | v1_range: {v1_range} | v2_range: {v2_range} | mid_point: {mid_point}")
+
             logger.debug(f"Step 4: Validating task data | ID: {task_id}")
             # Validate task data
             validated_data = self._validate_task_data(task)
@@ -144,7 +155,7 @@ class BisectConsumer:
                     return self._handle_performance_bisect_result(result, task, task_id)
                 else:
                     return self._handle_bisect_result_no_release(result, task, task_id)
-            
+
         except Exception as e:
             error_msg = f"Task {task.get('id', 'unknown_id')} failed: {str(e)}"
             logger.error(error_msg)
@@ -238,57 +249,57 @@ class BisectConsumer:
     def _validate_task_data(self, task: Dict) -> Dict:
         """验证任务数据"""
         validated = task.copy()
-        
+
         # Ensure j field is not null
         if 'j' in validated and validated['j'] is None:
             logger.warning(f"清理无效的 j 字段 | 任务ID={validated.get('id')}")
             validated['j'] = {}
-        
+
         # Ensure basic required fields exist
         if 'bad_job_id' not in validated:
             return {'error': 'Missing bad_job_id', 'id': validated.get('id', 'unknown_id')}
-        
+
         if not validated['bad_job_id'] or not str(validated['bad_job_id']).strip():
             return {'error': 'Invalid bad_job_id', 'id': validated.get('id', 'unknown_id')}
-        
+
         # Check task type: must have either error_id or bisect_metric
         has_error_id = validated.get("error_id") and str(validated["error_id"]).strip()
         has_metrics = validated.get("bisect_metric") is not None and str(validated["bisect_metric"]).strip() != ""
-        
+
         # Truncate long strings for logging to avoid spam
         log_error_id = (validated.get('error_id', 'None')[:100] + '...') if len(validated.get('error_id', '')) > 100 else validated.get('error_id', 'None')
         log_bisect_metric = (str(validated.get('bisect_metric', 'None'))[:100] + '...') if len(str(validated.get('bisect_metric', ''))) > 100 else validated.get('bisect_metric', 'None')
 
         logger.debug(f"任务类型检查 | Task ID: {validated.get('id')} | error_id: '{log_error_id}' | bisect_metric: '{log_bisect_metric}' | has_error_id: {has_error_id} | has_metrics: {has_metrics}")
-        
+
         if not has_error_id and not has_metrics:
             return {'error': 'Missing task type: must specify either error_id or bisect_metric', 'id': validated.get('id', 'unknown_id')}
-            
+
         if has_error_id and has_metrics:
             return {'error': 'Task type conflict: cannot specify both error_id and bisect_metric', 'id': validated.get('id', 'unknown_id')}
-        
+
         # 清理空字符串字段
         cleaned_data = {}
         for key, value in validated.items():
             if isinstance(value, str) and value.strip() == '':
                 continue  # 跳过空字符串字段
             cleaned_data[key] = value
-        
+
         return cleaned_data
-    
+
     def _check_task_type(self, task: Dict) -> Dict:
         """检查任务类型"""
         has_error_id = task.get("error_id") and str(task["error_id"]).strip()
         has_metrics = task.get("bisect_metric") is not None and str(task["bisect_metric"]).strip() != ""
-        
+
         if not has_error_id and not has_metrics:
             return {'error': 'Missing task type: must specify either error_id or bisect_metric'}
-        
+
         if has_error_id and has_metrics:
             return {'error': 'Task type conflict: cannot specify both error_id and bisect_metric'}
-        
+
         return {'task_type': 'error' if has_error_id else 'performance'}
-    
+
     def _get_repo_dir(self, task_id: str, bad_job_id: str, repo_url: str):
         """获取仓库目录"""
         # Need to inject repo_manager from external
@@ -298,7 +309,7 @@ class BisectConsumer:
             self.repo_manager = SharedRepoManager()
 
         return self.repo_manager.get_repo_dir(task_id, bad_job_id, repo_url)
-    
+
     def _handle_bisect_result_no_release(self, result: Any, task: Dict, task_id: int) -> Dict:
         """处理bisect结果（不释放仓库，因为使用context manager）"""
         if result and isinstance(result, dict) and result.get('first_bad_commit'):
@@ -824,13 +835,13 @@ class BisectConsumer:
                 'verified': verified,
                 'confidence': confidence
             }
-            
+
         else:
             # Failure handling logic
             error_msg = "Bisect execution failed"
             if isinstance(result, dict) and result.get('error'):
                 error_msg = result.get('error')
-            
+
             # 确保失败任务也有正确的 bisect_result_root
             bisect_result_root = task.get('bisect_result_root', '')
             if not bisect_result_root:
@@ -844,7 +855,7 @@ class BisectConsumer:
                 "bisect_result_root": bisect_result_root,
                 "updated_at": int(time.time())
             }
-            
+
             # Release repository back to pool on failure
             try:
                 if os.path.exists(repo_dir):
@@ -857,11 +868,11 @@ class BisectConsumer:
                         shutil.rmtree(job_dir)
                 except OSError:
                     pass
-            
+
             self.client.update("bisect", task_id, fail_doc)
             logger.error(f"任务执行失败 | ID: {task_id} | 原因: {error_msg}")
             return {'status': 'failed', 'error': error_msg, 'id': task_id}
-    
+
     @staticmethod
     def _generate_task_path(config: Dict, task: Dict) -> str:
         """生成任务路径"""
