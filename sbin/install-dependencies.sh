@@ -1,103 +1,52 @@
 #!/usr/bin/env bash
 
-# Function to check if the user is root
-is_root() {
-    [ "$(id -u)" -eq 0 ]
-}
+# Converted to use epkg with Alpine environment
+# Original script detected distribution and used native package manager
+# Now uses epkg environment at .eenv for consistent dependency installation
 
-# Detect the Linux distribution
-detect_distro() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        echo "$ID"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="${SCRIPT_DIR%/sbin}"
+
+cd "$PROJECT_ROOT" || exit
+
+# Function to check if epkg environment exists
+ensure_epkg_env() {
+    local env_dir=".eenv"
+    if [ ! -d "$env_dir" ]; then
+        echo "Creating epkg Alpine environment in $env_dir"
+        epkg env create --root "$env_dir" -c alpine
+        if [ $? -ne 0 ]; then
+            echo "Failed to create epkg environment"
+            exit 1
+        fi
     else
-        echo "unknown"
+        echo "Using existing epkg environment in $env_dir"
     fi
 }
 
-# Detect the available package manager
-detect_pkg_manager() {
-    if command -v apt-get > /dev/null 2>&1; then
-        echo "apt-get"
-    elif command -v dnf > /dev/null 2>&1; then
-        echo "dnf"
-    elif command -v yum > /dev/null 2>&1; then
-        echo "yum"
-    elif command -v pacman > /dev/null 2>&1; then
-        echo "pacman"
-    elif command -v zypper > /dev/null 2>&1; then
-        echo "zypper"
-    else
-        echo "unknown"
-    fi
-}
-
-# Install dependencies based on the distribution or detected package manager
+# Install dependencies using epkg
 install_dependencies() {
-    local distro=$1
-    local pkg_manager=""
-    local install_cmd=""
+    ensure_epkg_env
 
-    shift
-    local packages="$@"
-
-    case $distro in
-        debian|ubuntu)
-            pkg_manager="apt-get"
-            install_cmd="install -y"
-            ;;
-        openEuler|fedora)
-            pkg_manager="dnf"
-            install_cmd="install -y"
-            ;;
-        arch)
-            pkg_manager="pacman"
-            install_cmd="-S --noconfirm"
-            ;;
-        opensuse-leap|opensuse-tumbleweed|sles)
-            pkg_manager="zypper"
-            install_cmd="install -y"
-            ;;
-        *)
-            echo "Unsupported Linux distribution: $distro"
-            echo "Attempting to auto-detect package manager..."
-            pkg_manager=$(detect_pkg_manager)
-            if [ "$pkg_manager" = "unknown" ]; then
-                echo "No known package manager found. Please install dependencies manually."
-                exit 1
-            else
-                echo "Detected package manager: $pkg_manager"
-                case $pkg_manager in
-                    apt-get|dnf|yum|zypper)
-                        install_cmd="install -y"
-                        ;;
-                    pacman)
-                        install_cmd="-S --noconfirm"
-                        ;;
-                esac
-            fi
-            ;;
-    esac
-
-    # Use sudo if the user is not root
-    if ! is_root; then
-        SUDO="sudo"
-    else
-        SUDO=""
-    fi
-
-    # Install packages
-    echo "Installing $packages using $pkg_manager $install_cmd"
-    $SUDO $pkg_manager $install_cmd $packages
+    echo "Installing crystal, shards, rpm2cpio via epkg"
+    # epkg will auto-find and use the environment at .eenv
+    epkg install crystal shards \
+        rpm2cpio bash \
+        openssl-dev openssl-libs-static \
+        yaml-dev yaml-static \
+        zlib-dev zlib-static \
+        gc-static pcre2-static \
+        ruby-dev
 
     if [ $? -eq 0 ]; then
-        echo "Successfully installed $packages"
+        echo "Successfully installed dependencies"
+        test -h .eenv/bin/sh ||
+        ln -s bash .eenv/bin/sh
     else
-        echo "Failed to install $packages"
+        echo "Failed to install dependencies"
         exit 1
     fi
 }
 
 # Main script logic
-DISTRO=$(detect_distro)
-install_dependencies "$DISTRO" crystal shards cscope rpm2cpio
+install_dependencies

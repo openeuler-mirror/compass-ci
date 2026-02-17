@@ -7,7 +7,7 @@ STATIC ?= false
 STATIC_FLAG := $(if $(filter true 1,$(STATIC)),--static,)
 
 # Phony targets
-.PHONY: all debug debug-trace release clean cscope
+.PHONY: all debug debug-trace release clean cscope deps
 
 all: debug
 
@@ -15,20 +15,24 @@ release: $(TARGET)
 debug: $(TARGET)-debug
 debug-trace: $(TARGET)-debug-trace
 
+# Install shards dependencies using epkg
+deps:
+	epkg run shards install
+
 # Rule for building the release target
 $(TARGET): $(SOURCES)
 	@mkdir -p $(TARGET_DIR)
-	crystal build -o $@ scheduler.cr --release $(STATIC_FLAG)
+	epkg run crystal build -o $@ scheduler.cr --release $(STATIC_FLAG)
 
 # Rule for building the debug target
 $(TARGET)-debug: $(SOURCES)
 	@mkdir -p $(TARGET_DIR)
-	crystal build -o $@ scheduler.cr $(STATIC_FLAG)
+	epkg run crystal build -o $@ scheduler.cr $(STATIC_FLAG)
 
 # Rule for building the debug-trace target
 $(TARGET)-debug-trace: $(SOURCES)
 	@mkdir -p $(TARGET_DIR)
-	crystal build -o $@ scheduler.cr --error-trace $(STATIC_FLAG)
+	epkg run crystal build -o $@ scheduler.cr --error-trace $(STATIC_FLAG)
 
 # Rule for generating cscope files
 cscope:
