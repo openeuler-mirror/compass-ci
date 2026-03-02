@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MulanPSL-2.0+
 # Copyright (c) 2024 Huawei Technologies Co., Ltd. All rights reserved.
 """
-Bisect 共享工具函数模块
-提取 task_processor.py 和 bisect_producer.py 中的重复代码
+Bisect shared utility functions module
+Extracted shared code from task_processor.py and bisect_producer.py
 """
 
 import os
@@ -19,7 +19,7 @@ from pathlib import Path
 from collections import defaultdict
 from datetime import datetime
 
-# 导入日志系统
+# Import logging system
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
 from log_config import logger
@@ -33,22 +33,22 @@ def _generate_task_id(bad_job_id, task_identifier):
     task_identifier format: "error_id='xxx'" or "bisect_metric='xxx'"
 
     Returns:
-        19位正整数 ID (1000000000000000000 ~ 9223372036854775807)
+        19-digit positive integer ID (1000000000000000000 ~ 9223372036854775807)
     """
     if task_identifier.startswith("error_id="):
-        # error_id 任务：只用 error_id 生成 ID，确保相同 error_id 只有一个任务
+        # error_id task: use only error_id to generate ID, ensure one task per error_id
         unique_str = task_identifier
     else:
-        # bisect_metric 任务：用 (bad_job_id, bisect_metric) 生成 ID
+        # bisect_metric task: use (bad_job_id, bisect_metric) to generate ID
         unique_str = f"{bad_job_id}|{task_identifier}"
 
     hash_bytes = hashlib.sha256(unique_str.encode()).digest()
     hash_int = int.from_bytes(hash_bytes[:8], byteorder='big')
 
-    # 确保 ID 为 19 位数字：
-    # - 最小值: 1000000000000000000 (10^18)
-    # - 最大值: 9223372036854775807 (2^63 - 1, signed int64 max)
-    # 使用模运算将 hash 映射到这个范围
+    # Ensure ID is 19 digits:
+    # - min: 1000000000000000000 (10^18)
+    # - max: 9223372036854775807 (2^63 - 1, signed int64 max)
+    # Use modulo to map hash to this range
     min_id = 1000000000000000000  # 10^18
     max_id = 9223372036854775807  # 2^63 - 1
     id_range = max_id - min_id + 1
@@ -64,7 +64,7 @@ def _create_task_document(validated_data: dict) -> dict:
             "bisect_status": "wait",
             "submit_time": int(time.time())
         }
-        # 将 good_commit 保存到 j 字段中（因为表结构没有 good_commit 字段）
+        # Save good_commit to j field (table schema has no good_commit column)
         if validated_data.get("good_commit"):
             task_doc["j"] = {"good_commit": validated_data["good_commit"]}
     else:
@@ -74,7 +74,7 @@ def _create_task_document(validated_data: dict) -> dict:
             "bisect_status": "wait",
             "submit_time": int(time.time())
         }
-        # 将 good_commit 保存到 j 字段中（因为表结构没有 good_commit 字段）
+        # Save good_commit to j field (table schema has no good_commit column)
         if validated_data.get("good_commit"):
             task_doc["j"] = {"good_commit": validated_data["good_commit"]}
 
@@ -82,8 +82,8 @@ def _create_task_document(validated_data: dict) -> dict:
 
 def smart_split_error_ids(errid_string: str) -> List[str]:
     """
-    智能分割error_id字符串，保持引号内容完整
-    处理类似这样的字符串：
+    Smart split error_id string, keeping quoted content intact
+    Handles strings like:
     "error1 error2:'quoted_content'has_member error3"
     """
     if not errid_string or not isinstance(errid_string, str):
@@ -125,7 +125,7 @@ def smart_split_error_ids(errid_string: str) -> List[str]:
 
     # Debug logging
     if len(result) > 1:
-        logger.debug(f"智能分割结果: {len(result)}个部分")
+        logger.debug(f"Smart split result: {len(result)} parts")
         for idx, part in enumerate(result[:3]):  # Only show first 3
             logger.debug(f"  {idx+1}: {part[:100]}...")
 
@@ -133,13 +133,13 @@ def smart_split_error_ids(errid_string: str) -> List[str]:
 
 
 def extract_git_url_from_full_text_kv(full_text_kv: str) -> str:
-    """从 full_text_kv 中提取完整的 Git 仓库 URL"""
+    """Extract complete Git repository URL from full_text_kv"""
     if not full_text_kv:
-        logger.warning("full_text_kv 为空")
+        logger.warning("full_text_kv is empty")
         return None
 
     try:
-        logger.debug(f"尝试从 full_text_kv 提取 git_url | 长度: {len(full_text_kv)} | 内容前100字符: {full_text_kv[:100]}...")
+        logger.debug(f"Trying to extract git_url from full_text_kv | length: {len(full_text_kv)} | first_100_chars: {full_text_kv[:100]}...")
 
         # Find ss.linux._url= or pp.makepkg._url= patterns
         url_pattern = r'(?:ss\.linux\._url|pp\.makepkg\._url)=([^\s]+)'
@@ -147,7 +147,7 @@ def extract_git_url_from_full_text_kv(full_text_kv: str) -> str:
 
         if url_match:
             url = url_match.group(1)
-            logger.debug(f"成功匹配到 git_url | 原始URL: {url}")
+            logger.debug(f"Successfully matched git_url | raw_url: {url}")
 
             # Standardize URL format
             original_url = url
@@ -155,7 +155,7 @@ def extract_git_url_from_full_text_kv(full_text_kv: str) -> str:
                 url = url.replace("git+", "", 1)
 
             if url != original_url:
-                logger.debug(f"URL标准化 | 原始: {original_url} | 标准化: {url}")
+                logger.debug(f"URL normalized | original: {original_url} | normalized: {url}")
 
             return url
         else:
@@ -171,38 +171,38 @@ def extract_git_url_from_full_text_kv(full_text_kv: str) -> str:
                 if matches:
                     logger.debug(f"Alternate pattern {i+1} found matches: {matches[:3]}")  # Only show first 3
 
-            logger.debug(f"未找到匹配的git_url模式 | full_text_kv样例: {full_text_kv[:200]}...")
+            logger.debug(f"No matching git_url pattern found | full_text_kv_sample: {full_text_kv[:200]}...")
             return None
 
     except Exception as e:
-        logger.error(f"提取git_url时出错: {e}")
-        logger.debug(f"异常详情: {traceback.format_exc()}")
+        logger.error(f"Error extracting git_url: {e}")
+        logger.debug(f"Exception details: {traceback.format_exc()}")
         return None
 
 
 def extract_commit_from_full_text_kv(full_text_kv: str) -> str:
-    """从 full_text_kv 中提取 commit hash 或 tag
+    """Extract commit hash or tag from full_text_kv
 
     Args:
-        full_text_kv: jobs 表的 full_text_kv 字段
+        full_text_kv: full_text_kv field from jobs table
 
     Returns:
-        Commit hash 或 tag，未找到返回空字符串
+        Commit hash or tag, empty string if not found
 
-    支持的格式：
-        - commit: abc123... (40位完整hash)
-        - commit: abc123 (12+位短hash)
-        - commit: v6.17 (tag格式)
+    Supported formats:
+        - commit: abc123... (40-char full hash)
+        - commit: abc123 (12+ char short hash)
+        - commit: v6.17 (tag format)
         - head/HEAD: ...
     """
     if not full_text_kv:
         return ''
 
     try:
-        # 优先匹配 commit hash（更精确）
+        # Match commit hash first (more precise)
         hash_patterns = [
-            r'commit[:=]\s*([a-f0-9]{40})',          # commit: abc123... (完整40位)
-            r'commit[:=]\s*([a-f0-9]{12,})',         # commit: abc123 (12+位)
+            r'commit[:=]\s*([a-f0-9]{40})',          # commit: abc123... (full 40-char)
+            r'commit[:=]\s*([a-f0-9]{12,})',         # commit: abc123 (12+ chars)
             r'head[:=]\s*([a-f0-9]{40})',            # head: abc123...
             r'HEAD[:=]\s*([a-f0-9]{40})',            # HEAD: abc123...
         ]
@@ -211,34 +211,34 @@ def extract_commit_from_full_text_kv(full_text_kv: str) -> str:
             match = re.search(pattern, full_text_kv, re.IGNORECASE)
             if match:
                 commit_hash = match.group(1)
-                logger.debug(f"成功提取 commit hash | hash: {commit_hash[:12]}...")
+                logger.debug(f"Successfully extracted commit hash | hash: {commit_hash[:12]}...")
                 return commit_hash
 
-        # 匹配 tag 格式（v开头的版本号，如 v6.17, v5.10-rc1）
+        # Match tag format (version starting with v, e.g. v6.17, v5.10-rc1)
         tag_patterns = [
             r'commit[:=]\s*(v\d+\.\d+(?:\.\d+)?(?:-rc\d+)?(?:-\w+)?)\b',  # v6.17, v5.10-rc1, v6.12-openeuler
-            r'commit[:=]\s*(v\d+\.\d+[^\s,]*)',                            # v6.17-xxx 更宽松匹配
+            r'commit[:=]\s*(v\d+\.\d+[^\s,]*)',                            # v6.17-xxx looser match
         ]
 
         for pattern in tag_patterns:
             match = re.search(pattern, full_text_kv, re.IGNORECASE)
             if match:
                 tag = match.group(1)
-                logger.debug(f"成功提取 commit tag | tag: {tag}")
+                logger.debug(f"Successfully extracted commit tag | tag: {tag}")
                 return tag
 
-        logger.debug("未找到 commit hash 或 tag")
+        logger.debug("Commit hash or tag not found")
         return ''
 
     except Exception as e:
-        logger.error(f"提取 commit 时出错: {e}")
+        logger.error(f"Error extracting commit: {e}")
         return ''
 
 
 def get_repo_info_from_job_data(bad_job_id: str, job_data_list: List[Dict]) -> Dict[str, str]:
-    """从job_data_list中获取仓库信息"""
+    """Get repository info from job_data_list"""
     try:
-        # 查找对应的job数据
+        # Find corresponding job data
         job_data = None
         for item in job_data_list:
             if str(item.get('id')) == str(bad_job_id):
@@ -248,13 +248,13 @@ def get_repo_info_from_job_data(bad_job_id: str, job_data_list: List[Dict]) -> D
         if not job_data:
             return {'repo_name': 'unknown', 'git_url': '', 'commit_sample': ''}
 
-        # 提取git_url
+        # Extract git_url
         git_url = extract_git_url_from_full_text_kv(job_data.get('full_text_kv', ''))
 
-        # 使用本模块中的 extract_repo_name_from_url 函数
+        # Use extract_repo_name_from_url from this module
         repo_name = extract_repo_name_from_url(git_url) if git_url else 'unknown'
 
-        # 尝试提取commit信息（简化版本，取前8位）
+        # Try to extract commit info (simplified, first 8 chars)
         full_text_kv = job_data.get('full_text_kv', '')
         commit_sample = ''
         commit_match = re.search(r'commit=([a-f0-9]{8,})', full_text_kv)
@@ -268,27 +268,27 @@ def get_repo_info_from_job_data(bad_job_id: str, job_data_list: List[Dict]) -> D
         }
 
     except Exception as e:
-        logger.debug(f"获取仓库信息失败: {str(e)}")
+        logger.debug(f"Failed to get repo info: {str(e)}")
         return {'repo_name': 'unknown', 'git_url': '', 'commit_sample': ''}
 
 
 def write_analysis_files(job_data_list: List[Dict],
                          filtered_results: Dict,
                          unfiltered_jobs: List[Dict]) -> None:
-    """将分析结果写入文件供人工确认，按错误ID归类显示"""
+    """Write analysis results to files for manual review, grouped by error ID"""
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # 创建分析文件目录
+        # Create analysis file directory
         analysis_dir = Path(os.environ.get('RESULT_DIR', '/result/bisect')) / 'logs' / 'analysis'
         analysis_dir.mkdir(exist_ok=True, parents=True)
 
-        # 1. 记录被筛选的任务（成功筛选出的），按错误ID归类
+        # 1. Record filtered tasks (successfully filtered), grouped by error ID
         filtered_file = analysis_dir / f'filtered_jobs_{timestamp}.json'
         filtered_by_errid = defaultdict(list)  # errid -> [task_info, ...]
 
         for bad_job_id, selected_errids in filtered_results.items():
-            # 获取仓库信息
+            # Get repository info
             repo_info = get_repo_info_from_job_data(bad_job_id, job_data_list)
 
             for errid, analysis in selected_errids:
@@ -304,10 +304,10 @@ def write_analysis_files(job_data_list: List[Dict],
                     'commit_sample': repo_info.get('commit_sample', '')
                 })
 
-        # 按错误ID分组写入
+        # Write grouped by error ID
         filtered_grouped_data = {}
         for errid, tasks in filtered_by_errid.items():
-            # 按仓库分组
+            # Group by repository
             by_repo = defaultdict(list)
             for task in tasks:
                 repo_key = f"{task['repo_name']} @ {task['commit_sample']}" if task['commit_sample'] else task['repo_name']
@@ -315,7 +315,7 @@ def write_analysis_files(job_data_list: List[Dict],
 
             filtered_grouped_data[errid] = {
                 'total_tasks': len(tasks),
-                'priority': tasks[0]['priority'],  # 同一个errid优先级相同
+                'priority': tasks[0]['priority'],  # Same errid shares priority
                 'error_type': tasks[0]['error_type'],
                 'reasons': tasks[0]['reasons'],
                 'file_paths': tasks[0]['file_paths'],
@@ -327,9 +327,9 @@ def write_analysis_files(job_data_list: List[Dict],
         with open(filtered_file, 'w', encoding='utf-8') as f:
             json.dump(filtered_grouped_data, f, ensure_ascii=False, indent=2)
 
-        logger.info(f"已写入筛选结果文件 | 路径: {filtered_file} | 错误ID种类: {len(filtered_grouped_data)}")
+        logger.info(f"Filtered results file written | path: {filtered_file} | error_id_types: {len(filtered_grouped_data)}")
 
-        # 2. 记录未被智能过滤的任务，按原因和错误ID归类
+        # 2. Record tasks not smart-filtered, grouped by reason and error ID
         unfiltered_file = analysis_dir / f'unfiltered_jobs_{timestamp}.json'
         unfiltered_by_errid = defaultdict(list)  # errid -> [bad_job_id, ...]
         unfiltered_by_reason = defaultdict(list)  # reason -> [{job_info}, ...]
@@ -339,20 +339,20 @@ def write_analysis_files(job_data_list: List[Dict],
             reason = job_info.get('reason', 'unknown')
             original_errids = job_info.get('errid_list', [])
 
-            # 按原因分组记录（包含详细信息）
+            # Record grouped by reason (with details)
             unfiltered_by_reason[reason].append({
                 'bad_job_id': bad_job_id,
                 'git_url': job_info.get('git_url', ''),
                 'full_text_kv_sample': job_info.get('full_text_kv_sample', '')[:200]
             })
 
-            # 如果没有 errid_list，尝试从 errid 字符串解析
+            # If no errid_list, try to parse from errid string
             if not original_errids and job_info.get('errid'):
                 original_errids = smart_split_error_ids(job_info.get('errid', ''))
 
             repo_info = get_repo_info_from_job_data(bad_job_id, job_data_list)
 
-            # 将每个错误ID都记录
+            # Record each error ID
             for errid in original_errids:
                 unfiltered_by_errid[errid].append({
                     'bad_job_id': bad_job_id,
@@ -362,10 +362,10 @@ def write_analysis_files(job_data_list: List[Dict],
                     'reason': reason
                 })
 
-        # 按错误ID分组写入
+        # Write grouped by error ID
         unfiltered_grouped_data = {}
         for errid, tasks in unfiltered_by_errid.items():
-            # 按仓库分组
+            # Group by repository
             by_repo = defaultdict(list)
             for task in tasks:
                 repo_key = f"{task['repo_name']} @ {task['commit_sample']}" if task['commit_sample'] else task['repo_name']
@@ -378,7 +378,7 @@ def write_analysis_files(job_data_list: List[Dict],
                 'timestamp': timestamp
             }
 
-        # 合并按原因分组的数据
+        # Merge data grouped by reason
         unfiltered_output = {
             'by_errid': unfiltered_grouped_data,
             'by_reason': {reason: {'count': len(jobs), 'samples': jobs[:20]} for reason, jobs in unfiltered_by_reason.items()}
@@ -387,94 +387,94 @@ def write_analysis_files(job_data_list: List[Dict],
         with open(unfiltered_file, 'w', encoding='utf-8') as f:
             json.dump(unfiltered_output, f, ensure_ascii=False, indent=2)
 
-        # 统计各原因的数量
+        # Count per reason
         reason_stats = {reason: len(jobs) for reason, jobs in unfiltered_by_reason.items()}
-        logger.info(f"已写入未筛选结果文件 | 路径: {unfiltered_file} | 按原因: {reason_stats}")
+        logger.info(f"Unfiltered results file written | path: {unfiltered_file} | by_reason: {reason_stats}")
 
-        # 3. 写入可读性更强的文本汇总
+        # 3. Write human-readable text summary
         summary_file = analysis_dir / f'summary_{timestamp}.txt'
         total_jobs = len(job_data_list)
         filtered_jobs = len(filtered_results)
         unfiltered_jobs_count = len(unfiltered_jobs)
 
         with open(summary_file, 'w', encoding='utf-8') as f:
-            f.write(f"Bisect任务分析汇总 - {timestamp}\n")
+            f.write(f"Bisect Task Analysis Summary - {timestamp}\n")
             f.write("=" * 50 + "\n")
-            f.write(f"总处理任务数: {total_jobs}\n")
-            f.write(f"成功筛选任务数: {filtered_jobs}\n")
-            f.write(f"未筛选任务数: {unfiltered_jobs_count}\n")
+            f.write(f"Total processed jobs: {total_jobs}\n")
+            f.write(f"Successfully filtered: {filtered_jobs}\n")
+            f.write(f"Unfiltered jobs: {unfiltered_jobs_count}\n")
             if total_jobs > 0:
-                f.write(f"筛选成功率: {filtered_jobs/total_jobs*100:.1f}%\n")
-                f.write(f"未筛选率: {unfiltered_jobs_count/total_jobs*100:.1f}%\n\n")
+                f.write(f"Filter success rate: {filtered_jobs/total_jobs*100:.1f}%\n")
+                f.write(f"Unfiltered rate: {unfiltered_jobs_count/total_jobs*100:.1f}%\n\n")
             else:
-                f.write("筛选成功率: N/A\n")
-                f.write("未筛选率: N/A\n\n")
+                f.write("Filter success rate: N/A\n")
+                f.write("Unfiltered rate: N/A\n\n")
 
-            # 按过滤原因分类统计
+            # Statistics by filter reason
             if unfiltered_by_reason:
-                f.write("未筛选任务按原因分类:\n")
+                f.write("Unfiltered tasks by reason:\n")
                 f.write("-" * 30 + "\n")
                 for reason, jobs in sorted(unfiltered_by_reason.items(), key=lambda x: len(x[1]), reverse=True):
-                    f.write(f"  {reason}: {len(jobs)} 个任务\n")
-                    # 显示前3个样例
+                    f.write(f"  {reason}: {len(jobs)} tasks\n")
+                    # Show first 3 examples
                     for sample in jobs[:3]:
                         f.write(f"    - job_id: {sample.get('bad_job_id')} | git_url: {sample.get('git_url', '')[:50]}...\n")
                     if len(jobs) > 3:
-                        f.write(f"    ... 还有 {len(jobs)-3} 个\n")
+                        f.write(f"    ... and {len(jobs)-3} more\n")
                 f.write("\n")
 
-            # 筛选成功的错误分类统计
-            f.write("筛选成功的错误类型 (按任务数量排序):\n")
+            # Filtered error type statistics
+            f.write("Filtered error types (sorted by task count):\n")
             f.write("-" * 30 + "\n")
             sorted_filtered = sorted(filtered_grouped_data.items(),
                                    key=lambda x: x[1]['total_tasks'], reverse=True)
-            for i, (errid, info) in enumerate(sorted_filtered, 1):  # 显示所有
-                f.write(f"[{i:2}] {errid[:100]}{'...' if len(errid) > 100 else ''} ({info['total_tasks']} 个任务):\n")
-                f.write(f"    优先级: {info['priority']}, 错误类型: {info['error_type']}\n")
-                f.write(f"    评分原因: {', '.join(info['reasons'])}\n")
+            for i, (errid, info) in enumerate(sorted_filtered, 1):  # Show all
+                f.write(f"[{i:2}] {errid[:100]}{'...' if len(errid) > 100 else ''} ({info['total_tasks']} tasks):\n")
+                f.write(f"    priority: {info['priority']}, error_type: {info['error_type']}\n")
+                f.write(f"    scoring_reasons: {', '.join(info['reasons'])}\n")
                 if info.get('file_paths'):
-                    f.write(f"    文件路径: {', '.join(info['file_paths'][:3])}\n")
+                    f.write(f"    file_paths: {', '.join(info['file_paths'][:3])}\n")
                 if info.get('flags'):
                     flag_str = ', '.join([k for k, v in info['flags'].items() if v])
                     if flag_str:
-                        f.write(f"    标志: {flag_str}\n")
-                f.write("    按仓库和提交分组:\n")
+                        f.write(f"    flags: {flag_str}\n")
+                f.write("    Grouped by repo and commit:\n")
                 for repo, job_ids in info['by_repository'].items():
-                    f.write(f"    {repo}: {len(job_ids)}个任务\n")
-                    # 显示部分job_id作为样例
+                    f.write(f"    {repo}: {len(job_ids)} tasks\n")
+                    # Show some job_ids as examples
                     sample_ids = job_ids[:3]
                     if len(job_ids) > 3:
-                        f.write(f"      {', '.join(sample_ids)} ... (还有{len(job_ids)-3}个)\n")
+                        f.write(f"      {', '.join(sample_ids)} ... (and {len(job_ids)-3} more)\n")
                     else:
                         f.write(f"      {', '.join(job_ids)}\n")
                 f.write("\n")
 
-            # 未筛选的错误分类统计
-            f.write("\n未筛选的错误类型 (按任务数量排序):\n")
+            # Unfiltered error type statistics
+            f.write("\nUnfiltered error types (sorted by task count):\n")
             f.write("-" * 30 + "\n")
             sorted_unfiltered = sorted(unfiltered_grouped_data.items(),
                                      key=lambda x: x[1]['total_tasks'], reverse=True)
-            for i, (errid, info) in enumerate(sorted_unfiltered, 1):  # 显示所有
-                f.write(f"[{i:2}] {errid[:100]}{'...' if len(errid) > 100 else ''} ({info['total_tasks']} 个任务):\n")
-                f.write(f"    原因: {info.get('reason', 'unknown')}\n")
-                f.write("    按仓库和提交分组:\n")
+            for i, (errid, info) in enumerate(sorted_unfiltered, 1):  # Show all
+                f.write(f"[{i:2}] {errid[:100]}{'...' if len(errid) > 100 else ''} ({info['total_tasks']} tasks):\n")
+                f.write(f"    reason: {info.get('reason', 'unknown')}\n")
+                f.write("    Grouped by repo and commit:\n")
                 for repo, job_ids in info['by_repository'].items():
-                    f.write(f"    {repo}: {len(job_ids)}个任务\n")
+                    f.write(f"    {repo}: {len(job_ids)} tasks\n")
                 f.write("\n")
 
-            f.write("\n详细数据文件:\n")
-            f.write(f"- 筛选结果: {filtered_file.name}\n")
-            f.write(f"- 未筛选结果: {unfiltered_file.name}\n")
+            f.write("\nDetailed data files:\n")
+            f.write(f"- Filtered results: {filtered_file.name}\n")
+            f.write(f"- Unfiltered results: {unfiltered_file.name}\n")
 
-        logger.info(f"已写入汇总文件 | 路径: {summary_file}")
+        logger.info(f"Summary file written | path: {summary_file}")
 
     except Exception as e:
-        logger.error(f"写入分析文件失败: {str(e)}")
-        logger.error(f"异常详情: {traceback.format_exc()}")
+        logger.error(f"Failed to write analysis files: {str(e)}")
+        logger.error(f"Exception details: {traceback.format_exc()}")
 
 
 def extract_repo_name_from_url(git_url: str) -> str:
-    """从git_url提取仓库名（从task_processor.py中移动）"""
+    """Extract repository name from git_url"""
     if not git_url:
         return 'unknown_repo'
 
@@ -490,11 +490,10 @@ def extract_repo_name_from_url(git_url: str) -> str:
 
 def categorize_bisect_task(task_data: dict, full_text_kv: str = '') -> str:
     """
-    根据任务特征自动分类bisect任务为 build/function/benchmark
-    - 有 bisect_metric → benchmark
-    - suite 为 makepkg/pkgbuild 或包含构建相关模式 → build
-    - 其余 → function
-    （从task_processor.py中移动）
+    Auto-categorize bisect tasks as build/function/benchmark
+    - Has bisect_metric -> benchmark
+    - Suite is makepkg/pkgbuild or contains build patterns -> build
+    - Otherwise -> function
     """
     # If has bisect_metric, it's a performance test
     if task_data.get('bisect_metric'):
@@ -523,7 +522,7 @@ def categorize_bisect_task(task_data: dict, full_text_kv: str = '') -> str:
 
 
 def format_error_ids(error_ids: list) -> str:
-    """格式化错误ID列表为易读的多行字符串（从task_processor.py中移动）"""
+    """Format error ID list as readable multi-line string"""
     if not error_ids:
         return "[]"
 
@@ -555,14 +554,14 @@ def format_error_ids(error_ids: list) -> str:
 
 def get_parent_commit(repo_dir: str, commit: str) -> Optional[str]:
     """
-    获取指定提交的父提交（从verification_consumer.py中移动）
+    Get parent commit of specified commit
 
     Args:
-        repo_dir: 仓库目录
-        commit: 提交哈希
+        repo_dir: repository directory
+        commit: commit hash
 
     Returns:
-        父提交哈希或None
+        Parent commit hash or None
     """
     try:
         result = subprocess.run(
@@ -573,44 +572,44 @@ def get_parent_commit(repo_dir: str, commit: str) -> Optional[str]:
             timeout=60
         )
         parent_commit = result.stdout.strip()
-        logger.info(f"获取父提交成功 | commit: {commit[:8]} -> parent: {parent_commit[:8]}")
+        logger.info(f"Got parent commit | commit: {commit[:8]} -> parent: {parent_commit[:8]}")
         return parent_commit
     except subprocess.CalledProcessError as e:
-        logger.error(f"获取父提交失败 | commit: {commit[:8]} | error: {e.stderr}")
+        logger.error(f"Failed to get parent commit | commit: {commit[:8]} | error: {e.stderr}")
         return None
     except subprocess.TimeoutExpired:
-        logger.error("获取父提交超时")
+        logger.error("Get parent commit timed out")
         return None
     except Exception as e:
-        logger.error(f"获取父提交异常: {str(e)}")
+        logger.error(f"Get parent commit error: {str(e)}")
         return None
 
 
 def cleanup_repo_dir(job_dir: str):
     """
-    清理仓库目录（从verification_consumer.py和head_validator.py中统一）
+    Clean up repository directory
 
     Args:
-        job_dir: 作业目录
+        job_dir: job directory
     """
     try:
         if os.path.exists(job_dir):
             shutil.rmtree(job_dir, ignore_errors=True)
-            logger.debug(f"仓库目录清理完成: {job_dir}")
+            logger.debug(f"Repository directory cleaned up: {job_dir}")
     except Exception as e:
-        logger.error(f"清理仓库目录失败: {str(e)} | path: {job_dir}")
+        logger.error(f"Failed to clean up repository directory: {str(e)} | path: {job_dir}")
 
 
 def generate_task_path(config: dict, task: dict) -> str:
     """
-    生成任务路径（从 task_processor.py 迁移）
+    Generate task path
 
     Args:
-        config: 配置字典
-        task: 任务数据
+        config: config dictionary
+        task: task data
 
     Returns:
-        任务路径字符串
+        Task path string
     """
     repo_name = extract_repo_name_from_url(task.get('git_url'))
     result_base = os.environ.get('RESULT_DIR', '/result/bisect')
@@ -629,16 +628,16 @@ def generate_task_path(config: dict, task: dict) -> str:
 
 def validate_task_data(task: dict) -> dict:
     """
-    验证任务数据（从 task_processor.py 迁移）
+    Validate task data
 
     Args:
-        task: 任务数据字典
+        task: task data dictionary
 
     Returns:
-        验证后的任务数据
+        Validated task data
 
     Raises:
-        ValueError: 当任务数据无效时
+        ValueError: when task data is invalid
     """
     # Ensure j field is not null
     if 'j' in task and task['j'] is None:
@@ -664,38 +663,38 @@ def validate_task_data(task: dict) -> dict:
 
 def batch_check_existing_tasks(client, job_id: int, task_identifiers: list, task_type: str = "error_id") -> set:
     """
-    批量检查哪些任务已经存在（从 task_processor.py 迁移）
+    Batch check which tasks already exist
 
     Args:
-        client: ManticoreClient 实例
-        job_id: 作业ID
-        task_identifiers: 任务标识符列表
-        task_type: 任务类型（"error_id" 或 "bisect_metric"）
+        client: ManticoreClient instance
+        job_id: job ID
+        task_identifiers: task identifier list
+        task_type: task type ("error_id" or "bisect_metric")
 
     Returns:
-        已存在的任务标识符集合
+        Set of existing task identifiers
     """
     if not task_identifiers:
         return set()
 
     try:
-        # 根据任务类型构造不同的查询
+        # Build different queries based on task type
         if task_type == "error_id":
-            # 构造批量查询 - 错误ID类型
+            # Build batch query - error ID type
             must_conditions = [
                 {"equals": {"bad_job_id": str(job_id)}},
                 {"in": {"error_id": task_identifiers}}
             ]
             select_field = "error_id"
         else:
-            # bisect_metric类型
+            # bisect_metric type
             must_conditions = [
                 {"equals": {"bad_job_id": str(job_id)}},
                 {"in": {"bisect_metric": task_identifiers}}
             ]
             select_field = "bisect_metric"
 
-        # 使用ManticoreSearch查询
+        # Query using ManticoreSearch
         query = {
             "bool": {
                 "must": must_conditions
@@ -710,25 +709,25 @@ def batch_check_existing_tasks(client, job_id: int, task_identifiers: list, task
         return existing_ids
 
     except Exception as e:
-        logger.error(f"批量检查失败: {str(e)}")
+        logger.error(f"Batch check failed: {str(e)}")
         return set()
 
 
 def get_bisect_statistics(client) -> Dict[str, float]:
     """
-    获取bisect统计信息（从 task_processor.py 迁移）
+    Get bisect statistics
 
     Args:
-        client: ManticoreClient 实例
+        client: ManticoreClient instance
 
     Returns:
-        统计信息字典
+        Statistics dictionary
     """
     try:
-        # 获取最近30天的bisect统计
+        # Get bisect stats for last 30 days
         time_threshold = int(time.time()) - 86400 * 30
 
-        # 查询总任务数 - 最近30天更新的任务
+        # Query total tasks - updated in last 30 days
         total_query = {
             "bool": {
                 "must": [
@@ -740,12 +739,12 @@ def get_bisect_statistics(client) -> Dict[str, float]:
         total_result = client.search(
             index="bisect",
             query=total_query,
-            limit=10000  # 设置足够大的限制
+            limit=10000  # Set large enough limit
         )
 
         total_tasks = len(total_result) if total_result else 0
 
-        # 查询成功任务数
+        # Query successful task count
         success_query = {
             "bool": {
                 "must": [
@@ -763,13 +762,13 @@ def get_bisect_statistics(client) -> Dict[str, float]:
 
         success_count = len(success_result) if success_result else 0
 
-        # 计算唯一错误ID数量（简化版本，使用集合去重）
+        # Count unique error IDs (simplified, using set dedup)
         unique_errors = len(set(item.get('error_id', '') for item in total_result if item.get('error_id'))) if total_result else 0
 
         success_rate = success_count / total_tasks if total_tasks > 0 else 0
 
-        # 估算覆盖率（需要和jobs表对比）
-        # 这里简化为基于白名单大小的估算
+        # Estimate coverage (needs comparison with jobs table)
+        # Simplified to estimate based on whitelist size
 
         return {
             'success_rate': success_rate,
@@ -779,17 +778,17 @@ def get_bisect_statistics(client) -> Dict[str, float]:
         }
 
     except Exception as e:
-        logger.error(f"获取bisect统计信息失败: {str(e)}")
+        logger.error(f"Failed to get bisect stats: {str(e)}")
         return {'success_rate': 0.0, 'coverage_rate': 0.0, 'total_tasks': 0, 'success_count': 0, 'unique_error_count': 0}
 
 
 def cleanup_task_workspace(task_id: str, repo_base_dir: str):
     """
-    清理任务工作目录（从 task_processor.py 迁移）
+    Clean up task workspace
 
     Args:
-        task_id: 任务ID
-        repo_base_dir: 仓库基础目录
+        task_id: task ID
+        repo_base_dir: repository base directory
     """
     try:
         task_workspace_dir = os.path.join(repo_base_dir, str(task_id))
@@ -804,19 +803,19 @@ def cleanup_task_workspace(task_id: str, repo_base_dir: str):
 
 def wait_for_status(bisect_instance, job_ids: List[str], check_completed: bool = True) -> bool:
     """
-    等待作业达到指定状态（通用工具函数）
+    Wait for jobs to reach specified status (generic utility function)
 
     Args:
-        bisect_instance: GitBisect 实例，用于调用 _poll_job_stats
-        job_ids: 作业ID列表，元素可以是字符串或元组(job_id, result_root)
-        check_completed: 是否检查作业已完成（True）还是仍在运行（False）
+        bisect_instance: GitBisect instance, used to call _poll_job_stats
+        job_ids: job ID list, elements can be strings or tuples (job_id, result_root)
+        check_completed: whether to check job completed (True) or still running (False)
 
     Returns:
-        bool: 所有作业都达到指定状态返回 True，否则返回 False
+        bool: True if all jobs reached specified status, False otherwise
     """
     try:
         for job_id_entry in job_ids:
-            # 处理两种格式：字符串或元组(job_id, result_root)
+            # Handle two formats: string or tuple (job_id, result_root)
             if isinstance(job_id_entry, tuple):
                 job_id, result_root = job_id_entry
                 job_stats, job_health = bisect_instance._poll_job_stats(job_id, result_root)
@@ -825,53 +824,53 @@ def wait_for_status(bisect_instance, job_ids: List[str], check_completed: bool =
                 job_stats, job_health = bisect_instance._poll_job_stats(job_id)
 
             if check_completed:
-                # 检查作业是否已完成：job_stats 是字典且非空表示完成
+                # Check if job completed: job_stats is dict and non-empty means completed
                 if isinstance(job_stats, dict) and not job_stats:
-                    logger.debug(f"作业仍在运行 | job_id: {job_id}")
+                    logger.debug(f"Job still running | job_id: {job_id}")
                     return False
             else:
-                # 检查作业是否仍在运行
+                # Check if job still running
                 if not isinstance(job_stats, dict) or job_stats:
-                    logger.debug(f"作业已完成或有结果 | job_id: {job_id}")
+                    logger.debug(f"Job completed or has results | job_id: {job_id}")
                     return False
 
         return True
 
     except Exception as e:
-        logger.error(f"检查作业状态异常: {str(e)}")
+        logger.error(f"Error checking job status: {str(e)}")
         return False
 
 
 def write_regression_record(client, task_data: dict, bad_commit: str) -> bool:
     """
-    写入回归记录到regression表
+    Write regression record to regression table
 
-    这个函数应该在 success validation 完成后调用，
-    确保只有验证通过的 bisect 结果才会写入 regression 表。
+    This function should be called after success validation,
+    ensuring only verified bisect results are written to regression table.
 
     Args:
-        client: ManticoreClient 实例
-        task_data: 任务数据字典，必须包含 error_id, bad_job_id
-        bad_commit: first_bad_commit 哈希值
+        client: ManticoreClient instance
+        task_data: task data dict, must contain error_id, bad_job_id
+        bad_commit: first_bad_commit hash
 
     Returns:
-        bool: 写入成功返回 True，失败返回 False
+        bool: True on success, False on failure
     """
     try:
         error_id = task_data.get('error_id', '')
         bad_job_id = task_data.get('bad_job_id', '')
 
         if not error_id or not bad_commit:
-            logger.warning(f"跳过regression写入 | error_id或bad_commit为空")
+            logger.warning(f"Skipping regression write | error_id or bad_commit is empty")
             return False
 
-        # 生成记录ID
+        # Generate record ID
         record_id = hashlib.sha256(f"errid|{error_id}|{int(time.time())}".encode()).hexdigest()
-        record_id_int = int(record_id[:15], 16)  # 转换为bigint
+        record_id_int = int(record_id[:15], 16)  # Convert to bigint
 
         current_time = int(time.time())
 
-        # 检查是否已存在相同error_id的记录
+        # Check if record with same error_id already exists
         existing_query = {
             "bool": {
                 "must": [
@@ -884,11 +883,11 @@ def write_regression_record(client, task_data: dict, bad_commit: str) -> bool:
         existing = client.search(index="regression", query=existing_query, limit=1)
 
         if existing and len(existing) > 0:
-            # 更新现有记录
+            # Update existing record
             existing_record = existing[0]
             existing_id = existing_record.get('id')
 
-            # 读取并保留现有的 j 字段
+            # Read and preserve existing j field
             existing_j = existing_record.get('j', {})
             if isinstance(existing_j, str):
                 import json
@@ -896,17 +895,17 @@ def write_regression_record(client, task_data: dict, bad_commit: str) -> bool:
             if not existing_j or not isinstance(existing_j, dict):
                 existing_j = {}
 
-            # 基本字段更新
+            # Basic field update
             update_doc = {
                 "last_seen": current_time,
                 "submit_time": current_time,
-                "status": "active",  # 使用 status 字段（不是 valid）
-                # related_job 和 related_commit 是字符串字段，存储最新值
-                "related_job": bad_job_id,      # 最新的 job_id
-                "related_commit": bad_commit    # 最新的 commit
+                "status": "active",
+                # related_job and related_commit are string fields, store latest values
+                "related_job": bad_job_id,
+                "related_commit": bad_commit
             }
 
-            # 在 j 字段中维护完整历史
+            # Maintain complete history in j field
             jobs_history = existing_j.get('related_jobs_history', [])
             if not isinstance(jobs_history, list):
                 jobs_history = []
@@ -919,9 +918,9 @@ def write_regression_record(client, task_data: dict, bad_commit: str) -> bool:
             if bad_commit and bad_commit not in commits_history:
                 commits_history.append(bad_commit)
 
-            # 更新 j 字段（保留 HEAD 检查数据，添加历史）
+            # Update j field (preserve HEAD check data, add history)
             updated_j = {
-                **existing_j,  # 保留现有数据（如 HEAD 检查）
+                **existing_j,  # Preserve existing data (e.g. HEAD check)
                 "related_jobs_history": jobs_history,
                 "related_commits_history": commits_history
             }
@@ -930,13 +929,13 @@ def write_regression_record(client, task_data: dict, bad_commit: str) -> bool:
 
             success = client.update("regression", existing_id, update_doc)
             if success:
-                logger.info(f"更新regression记录 | error_id: {error_id} | job: {bad_job_id}")
+                logger.info(f"Updated regression record | error_id: {error_id} | job: {bad_job_id}")
             else:
-                logger.error(f"更新regression记录失败 | error_id: {error_id}")
+                logger.error(f"Failed to update regression record | error_id: {error_id}")
             return success
 
         else:
-            # 创建新记录
+            # Create new record
             regression_doc = {
                 "id": record_id_int,
                 "record_type": "errid",
@@ -946,11 +945,11 @@ def write_regression_record(client, task_data: dict, bad_commit: str) -> bool:
                 "submit_time": current_time,
                 "metric_name": "",
                 "direction": "",
-                "status": "active",  # 使用 status 字段
-                # related_job 和 related_commit 是字符串，存储最新值
+                "status": "active",
+                # related_job and related_commit are strings, store latest values
                 "related_job": bad_job_id,
                 "related_commit": bad_commit if bad_commit else "",
-                # 初始化 j 字段，包含历史记录
+                # Initialize j field with history
                 "j": {
                     "related_jobs_history": [bad_job_id] if bad_job_id else [],
                     "related_commits_history": [bad_commit] if bad_commit else []
@@ -959,27 +958,27 @@ def write_regression_record(client, task_data: dict, bad_commit: str) -> bool:
 
             success = client.insert("regression", record_id_int, regression_doc)
             if success:
-                logger.info(f"创建regression记录 | error_id: {error_id} | record_id: {record_id_int}")
+                logger.info(f"Created regression record | error_id: {error_id} | record_id: {record_id_int}")
             else:
-                logger.error(f"创建regression记录失败 | error_id: {error_id}")
+                logger.error(f"Failed to create regression record | error_id: {error_id}")
             return success
 
     except Exception as e:
-        logger.error(f"regression写入异常 | error_id: {task_data.get('error_id')} | 错误: {str(e)}")
+        logger.error(f"Regression write error | error_id: {task_data.get('error_id')} | error: {str(e)}")
         logger.error(traceback.format_exc())
         return False
 
 
 def mark_similar_wait_tasks_for_verification(client, errid_intelligence, successful_task: Dict):
     """
-    当任务成功时，批量标记相同签名的 wait 任务为 verifying
+    On task success, batch mark wait tasks with same signature as verifying
 
-    重要：只匹配同一个 git 仓库的任务，避免跨仓库错误匹配
+    Important: only match tasks in same git repo, avoid cross-repo false matches
 
     Args:
-        client: ManticoreClient 实例
-        errid_intelligence: ErridIntelligence 实例
-        successful_task: 已成功的任务信息（包含 id, error_id, category, git_url 等字段）
+        client: ManticoreClient instance
+        errid_intelligence: ErridIntelligence instance
+        successful_task: successful task info (contains id, error_id, category, git_url fields)
     """
     try:
         task_id = successful_task.get('id')
@@ -987,22 +986,22 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
         category = successful_task.get('category', 'function')
         success_git_url = successful_task.get('git_url', '')
 
-        # 只处理构建任务（其他类型不使用签名聚类）
+        # Only process build tasks (other types do not use signature clustering)
         if category != 'build' or not error_id:
-            logger.debug(f"任务 {task_id} 不需要处理相似任务 | category: {category} | has_error_id: {bool(error_id)}")
+            logger.debug(f"Task {task_id} does not need similar task processing | category: {category} | has_error_id: {bool(error_id)}")
             return
 
-        # 必须有 git_url 才能匹配
+        # Must have git_url to match
         if not success_git_url:
-            logger.warning(f"任务 {task_id} 缺少 git_url，无法匹配相似任务")
+            logger.warning(f"Task {task_id} missing git_url, cannot match similar tasks")
             return
 
-        # 提取错误签名
+        # Extract error signature
         signature = errid_intelligence.extract_coarse_signature(error_id)
-        logger.info(f"任务 {task_id} 成功，开始查找相同签名的 wait 任务 | signature: {signature} | git_url: {success_git_url[:60]}...")
+        logger.info(f"Task {task_id} succeeded, searching for wait tasks with same signature | signature: {signature} | git_url: {success_git_url[:60]}...")
 
-        # 查询所有相同签名的 wait 任务
-        # 策略：查询 wait 状态的构建任务，在客户端过滤签名
+        # Query all wait tasks with same signature
+        # Strategy: query build tasks in wait status, filter by signature on client side
         query = """
             SELECT id, error_id, bad_job_id, git_url, submit_time, priority_level
             FROM bisect
@@ -1013,10 +1012,10 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
         wait_tasks = client.sql_select(query)
 
         if not wait_tasks:
-            logger.info(f"没有找到 wait 状态的构建任务")
+            logger.info(f"No build tasks found in wait status")
             return
 
-        # 客户端过滤：找到相同签名且相同仓库的任务
+        # Client-side filter: find tasks with same signature and same repo
         similar_tasks = []
         skipped_cross_repo = 0
 
@@ -1030,37 +1029,37 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
             try:
                 wait_signature = errid_intelligence.extract_coarse_signature(wait_error_id)
 
-                # 关键修复：必须同时满足签名相同和 git_url 相同
+                # Key fix: must match both signature and git_url
                 if wait_signature == signature:
                     if wait_git_url == success_git_url:
                         similar_tasks.append(wait_task)
                     else:
                         skipped_cross_repo += 1
                         logger.debug(
-                            f"跳过跨仓库任务 | wait_task: {wait_task.get('id')} | "
+                            f"Skipping cross-repo task | wait_task: {wait_task.get('id')} | "
                             f"wait_repo: {wait_git_url[:50]}... | "
                             f"success_repo: {success_git_url[:50]}..."
                         )
             except Exception as e:
-                logger.warning(f"提取签名失败 | task_id: {wait_task.get('id')} | error: {str(e)}")
+                logger.warning(f"Failed to extract signature | task_id: {wait_task.get('id')} | error: {str(e)}")
                 continue
 
         if not similar_tasks:
             if skipped_cross_repo > 0:
                 logger.warning(
-                    f"没有找到同仓库的相似任务 | signature: {signature} | "
-                    f"跳过了 {skipped_cross_repo} 个跨仓库任务"
+                    f"No same-repo similar tasks found | signature: {signature} | "
+                    f"skipped {skipped_cross_repo} cross-repo tasks"
                 )
             else:
-                logger.info(f"没有找到相同签名的 wait 任务 | signature: {signature}")
+                logger.info(f"No wait tasks found with same signature | signature: {signature}")
             return
 
         logger.info(
-            f"找到 {len(similar_tasks)} 个相同仓库的相似任务，开始批量标记为 verifying | "
-            f"跨仓库跳过: {skipped_cross_repo}"
+            f"Found {len(similar_tasks)} same-repo similar tasks, starting batch mark as verifying | "
+            f"cross_repo_skipped: {skipped_cross_repo}"
         )
 
-        # 批量标记为 verifying
+        # Batch mark as verifying
         current_time = int(time.time())
         success_count = 0
         failed_count = 0
@@ -1085,50 +1084,50 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
 
                 if update_result:
                     success_count += 1
-                    logger.debug(f"任务 {similar_task_id} 标记为 verifying，关联成功任务 {task_id}")
+                    logger.debug(f"Task {similar_task_id} marked as verifying, linked to successful task {task_id}")
                 else:
                     failed_count += 1
-                    logger.warning(f"任务 {similar_task_id} 标记失败")
+                    logger.warning(f"Task {similar_task_id} marking failed")
 
             except Exception as e:
                 failed_count += 1
-                logger.error(f"标记任务 {similar_task.get('id', 'unknown')} 失败: {str(e)}")
+                logger.error(f"Failed to mark task {similar_task.get('id', 'unknown')}: {str(e)}")
 
-        logger.info(f"批量标记完成 | 成功: {success_count} | 失败: {failed_count} | 关联成功任务: {task_id}")
+        logger.info(f"Batch marking completed | success: {success_count} | failed: {failed_count} | linked_task: {task_id}")
 
     except Exception as e:
-        logger.error(f"处理相似任务失败: {str(e)}")
+        logger.error(f"Failed to process similar tasks: {str(e)}")
         logger.error(traceback.format_exc())
 
 
 def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
     """
-    当任务成功时，批量标记 introduced_errids 中的 wait 任务为 verifying
+    On task success, batch mark wait tasks matching introduced_errids as verifying
 
-    重要：只匹配同一个 git 仓库的任务，避免跨仓库错误匹配
+    Important: only match tasks in same git repo, avoid cross-repo false matches
 
-    仅处理构建任务（只有构建任务有 introduced_errids）
+    Only process build tasks (only build tasks have introduced_errids)
 
     Args:
-        client: ManticoreClient 实例
-        successful_task: 已成功的任务信息（包含 id, category, git_url, j.introduced_errids 等字段）
+        client: ManticoreClient instance
+        successful_task: successful task info (contains id, category, git_url, j.introduced_errids fields)
     """
     try:
         task_id = successful_task.get('id')
         category = successful_task.get('category', 'function')
         success_git_url = successful_task.get('git_url', '')
 
-        # 只处理构建任务
+        # Only process build tasks
         if category != 'build':
-            logger.debug(f"任务 {task_id} 不是构建任务，跳过 introduced_errids 处理 | category: {category}")
+            logger.debug(f"Task {task_id} is not a build task, skipping introduced_errids processing | category: {category}")
             return
 
-        # 必须有 git_url 才能匹配
+        # Must have git_url to match
         if not success_git_url:
-            logger.warning(f"任务 {task_id} 缺少 git_url，无法匹配 introduced_errids 任务")
+            logger.warning(f"Task {task_id} missing git_url, cannot match introduced_errids tasks")
             return
 
-        # 从 j 字段读取 introduced_errids
+        # Read introduced_errids from j field
         j_field = successful_task.get('j') or {}
         if isinstance(j_field, str):
             try:
@@ -1139,19 +1138,19 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
         introduced_errids = j_field.get('introduced_errids', [])
 
         if not introduced_errids:
-            logger.debug(f"任务 {task_id} 没有 introduced_errids，跳过")
+            logger.debug(f"Task {task_id} has no introduced_errids, skipping")
             return
 
         if not isinstance(introduced_errids, list):
-            logger.warning(f"任务 {task_id} 的 introduced_errids 不是列表: {type(introduced_errids)}")
+            logger.warning(f"Task {task_id} introduced_errids is not a list: {type(introduced_errids)}")
             return
 
         logger.info(
-            f"任务 {task_id} 成功，开始查找 introduced_errids 匹配的 wait 任务 | "
+            f"Task {task_id} succeeded, searching for wait tasks matching introduced_errids | "
             f"errids: {len(introduced_errids)} | git_url: {success_git_url[:60]}..."
         )
 
-        # 查询所有 wait 状态的构建任务
+        # Query all build tasks in wait status
         query = """
             SELECT id, error_id, bad_job_id, git_url, submit_time, priority_level
             FROM bisect
@@ -1162,10 +1161,10 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
         wait_tasks = client.sql_select(query)
 
         if not wait_tasks:
-            logger.info(f"没有找到 wait 状态的构建任务")
+            logger.info(f"No build tasks found in wait status")
             return
 
-        # 客户端过滤：找到 error_id 在 introduced_errids 列表中且同仓库的任务
+        # Client-side filter: find tasks with error_id in introduced_errids list and same repo
         matched_tasks = []
         skipped_cross_repo = 0
 
@@ -1177,13 +1176,13 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
                 continue
 
             if wait_error_id in introduced_errids:
-                # 关键修复：必须是同一个仓库
+                # Key fix: must be same repo
                 if wait_git_url == success_git_url:
                     matched_tasks.append(wait_task)
                 else:
                     skipped_cross_repo += 1
                     logger.debug(
-                        f"跳过跨仓库任务 | wait_task: {wait_task.get('id')} | "
+                        f"Skipping cross-repo task | wait_task: {wait_task.get('id')} | "
                         f"error_id: {wait_error_id[:60]}... | "
                         f"wait_repo: {wait_git_url[:50]}... | "
                         f"success_repo: {success_git_url[:50]}..."
@@ -1192,19 +1191,19 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
         if not matched_tasks:
             if skipped_cross_repo > 0:
                 logger.warning(
-                    f"没有找到同仓库的匹配任务 | errids: {len(introduced_errids)} | "
-                    f"跳过了 {skipped_cross_repo} 个跨仓库任务"
+                    f"No same-repo matching tasks found | errids: {len(introduced_errids)} | "
+                    f"skipped {skipped_cross_repo} cross-repo tasks"
                 )
             else:
-                logger.info(f"没有找到匹配 introduced_errids 的 wait 任务 | errids: {len(introduced_errids)}")
+                logger.info(f"No wait tasks found matching introduced_errids | errids: {len(introduced_errids)}")
             return
 
         logger.info(
-            f"找到 {len(matched_tasks)} 个同仓库的匹配任务，开始批量标记为 verifying | "
-            f"跨仓库跳过: {skipped_cross_repo}"
+            f"Found {len(matched_tasks)} same-repo matching tasks, starting batch mark as verifying | "
+            f"cross_repo_skipped: {skipped_cross_repo}"
         )
 
-        # 批量标记为 verifying
+        # Batch mark as verifying
         current_time = int(time.time())
         success_count = 0
         failed_count = 0
@@ -1228,17 +1227,17 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
 
                 if update_result:
                     success_count += 1
-                    logger.debug(f"任务 {matched_task_id} 标记为 verifying，关联成功任务 {task_id}")
+                    logger.debug(f"Task {matched_task_id} marked as verifying, linked to successful task {task_id}")
                 else:
                     failed_count += 1
-                    logger.warning(f"任务 {matched_task_id} 标记失败")
+                    logger.warning(f"Task {matched_task_id} marking failed")
 
             except Exception as e:
                 failed_count += 1
-                logger.error(f"标记任务 {matched_task.get('id', 'unknown')} 失败: {str(e)}")
+                logger.error(f"Failed to mark task {matched_task.get('id', 'unknown')}: {str(e)}")
 
-        logger.info(f"批量标记完成（introduced_errids）| 成功: {success_count} | 失败: {failed_count} | 关联成功任务: {task_id}")
+        logger.info(f"Batch marking completed (introduced_errids) | success: {success_count} | failed: {failed_count} | linked_task: {task_id}")
 
     except Exception as e:
-        logger.error(f"处理 introduced_errids 任务失败: {str(e)}")
+        logger.error(f"Failed to process introduced_errids tasks: {str(e)}")
         logger.error(traceback.format_exc())

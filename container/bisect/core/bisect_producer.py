@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Bisect Producer - 处理bisect任务的生产者组件
-将原TaskProcessor中的生产者相关方法拆分出来
+Bisect Producer - producer component for bisect tasks
+Extracted producer-related methods from TaskProcessor
 """
 
 import os
@@ -22,7 +22,7 @@ from manticore_simple import ManticoreClient
 import sys
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from log_config import logger
-from config import Config  # 导入配置类
+from config import Config
 from bisect_utils import (
     smart_split_error_ids,
     extract_git_url_from_full_text_kv,
@@ -35,8 +35,8 @@ from bisect_utils import (
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from bisect_utils import extract_repo_name_from_url, categorize_bisect_task, format_error_ids
 from producer_reporter import ProducerReporter
-from lru_cache import LRUCache  # 使用新的 LRU 缓存
-from batch_inserter import BatchInserter  # 导入批量插入器
+from lru_cache import LRUCache
+from batch_inserter import BatchInserter
 
 # Import Commit Time Service Client
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/services/commit_time_service')
@@ -48,12 +48,12 @@ except ImportError:
     COMMIT_TIME_CLIENT_AVAILABLE = False
 
 class ErrorBisectProducer:
-    """错误类型bisect任务生产者"""
+    """Error type bisect task producer"""
 
     def __init__(self, client: ManticoreClient, config: Dict):
         self.client = client
         self.config = config
-        # 使用 LRU 缓存替代简单的 Set
+        # Use LRU cache instead of simple Set
         self.processed_jobs_cache = LRUCache(max_size=5000)
         self.processed_jobs_cache = LRUCache(max_size=5000)
         self.last_run_time = 0
@@ -64,18 +64,18 @@ class ErrorBisectProducer:
         from errid_intelligence import ErridIntelligence
         self.errid_intelligence = ErridIntelligence()
 
-        # Initialize reporter (使用默认的 producer_stats 目录)
+        # Initialize reporter (using default producer_stats directory)
         self.reporter = ProducerReporter()
 
-        # 初始化批量插入器，使用配置的批次大小
+        # Initialize batch inserter with configured batch size
         batch_size = Config.BISECT_PRODUCER_BATCH_SIZE
         self.batch_inserter = BatchInserter(client, batch_size=batch_size)
 
-        # 使用配置的查询时间范围
+        # Use configured query time range
         self.query_hours = Config.BISECT_PRODUCER_QUERY_HOURS
-        logger.info(f"ErrorBisectProducer 初始化 | 查询时间范围: {self.query_hours} 小时 | 批次大小: {batch_size}")
+        logger.info(f"ErrorBisectProducer initialized | query_hours: {self.query_hours}h | batch_size: {batch_size}")
 
-        # 初始化 commit time 过滤客户端
+        # Initialize commit time filter client
         if COMMIT_TIME_CLIENT_AVAILABLE:
             commit_service_url = config.get(
                 'commit_time_service_url',
@@ -86,58 +86,58 @@ class ErrorBisectProducer:
                 'max_commit_age_days',
                 int(os.environ.get('BISECT_MAX_COMMIT_AGE_DAYS', '365'))
             )
-            # 新增：最小内核版本过滤
+            # Minimum kernel version filter
             self.min_kernel_version = Config.BISECT_MIN_KERNEL_VERSION
             if self.min_kernel_version:
-                logger.info(f"Commit 过滤已启用 | 服务: {commit_service_url} | 最大年龄: {self.max_commit_age_days} 天 | 最小版本: v{self.min_kernel_version}")
+                logger.info(f"Commit filtering enabled | service: {commit_service_url} | max_age: {self.max_commit_age_days} days | min_version: v{self.min_kernel_version}")
             else:
-                logger.info(f"Commit 年龄过滤已启用 | 服务: {commit_service_url} | 最大年龄: {self.max_commit_age_days} 天 | 版本过滤: 禁用")
+                logger.info(f"Commit age filtering enabled | service: {commit_service_url} | max_age: {self.max_commit_age_days} days | version_filter: disabled")
         else:
             self.commit_client = None
             self.min_kernel_version = None
-            logger.warning("Commit 过滤未启用 (服务不可用)")
+            logger.warning("Commit filtering not enabled (service unavailable)")
 
     def _run_script(self, script_path, args=None, description="script"):
-        """通用脚本执行方法 - 实时流式输出日志"""
+        """Generic script execution method - real-time streaming log output"""
         if not os.path.exists(script_path):
             logger.warning(f"{description} not found at: {script_path}")
             return False
             
         logger.info(f"Running {description}: {script_path}")
 
-        # 根据脚本类型构建命令
+        # Build command based on script type
         if script_path.endswith('.py'):
-            # Python 脚本：使用 sys.executable
+            # Python script: use sys.executable
             cmd = [sys.executable, "-u", script_path]  # -u for unbuffered output
         elif script_path.endswith('.sh'):
-            # Shell 脚本：使用 bash 执行避免权限问题
+            # Shell script: use bash to avoid permission issues
             cmd = ['bash', script_path]
         else:
-            # 其他类型：尝试直接执行
+            # Other types: try direct execution
             cmd = [script_path]
 
-        # 添加参数
+        # Add arguments
         if args is not None:
             cmd.extend(args)
 
         try:
-            # 使用 Popen 实时获取输出
+            # Use Popen for real-time output
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,  # 合并 stderr 到 stdout
+                stderr=subprocess.STDOUT,  # Merge stderr into stdout
                 text=True,
-                bufsize=1,  # 行缓冲
+                bufsize=1,  # Line buffered
                 universal_newlines=True
             )
             
-            # 实时读取输出
+            # Read output in real-time
             for line in process.stdout:
                 line = line.strip()
                 if line:
                     logger.info(f"[{description}] {line}")
             
-            # 等待进程结束
+            # Wait for process to finish
             process.wait(timeout=3600)
             
             if process.returncode == 0:
@@ -157,26 +157,26 @@ class ErrorBisectProducer:
 
     def execute_producer_cycle(self, force_run_scripts=False):
         """
-        优化的生产者循环 - 简化版本，主要优化查询
+        Optimized producer cycle - simplified version, mainly optimized queries
         
         Args:
-            force_run_scripts: 是否强制运行维护脚本（忽略每日一次的限制）
+            force_run_scripts: whether to force run maintenance scripts (ignore daily limit)
         """
         current_date = time.strftime('%Y-%m-%d')
         lkp_src = os.environ.get('LKP_SRC', '/lkp')
 
-        # === 1. 指标收集脚本 ===
-        # 每天运行一次，或者强制运行时运行
+        # === 1. Metrics collection script ===
+        # Run once daily, or when forced
         if force_run_scripts or self.last_metrics_date != current_date:
             tracker_script = os.path.join(lkp_src, 'programs/bisect-py/utils/bisect_metrics_tracker.py')
             if self._run_script(tracker_script, ['--collect', '--plot'], "metrics collection"):
-                # 只有在非强制模式下成功运行才更新日期标记，防止强制运行影响自动调度
-                # 或者：无论何时成功都更新？通常强制运行也算作今天的运行。
-                # 策略：如果成功运行，就更新日期标记
+                # Only update date marker on successful run in non-force mode to prevent forced runs from affecting auto scheduling
+                # Or: update whenever successful? Typically forced run counts as today's run.
+                # Strategy: update date marker if run successfully
                 self.last_metrics_date = current_date
 
-        # === 2. 每日内核测试脚本 ===
-        # 每天运行一次，或者强制运行时运行
+        # === 2. Daily kernel test script ===
+        # Run once daily, or when forced
         if force_run_scripts or self.last_kernel_test_date != current_date:
             kernel_test_script = os.path.join(lkp_src, 'sbin/bisect/kernel_ci/daily_kernel_test.sh')
             if self._run_script(kernel_test_script, None, "daily kernel test script"):
@@ -185,12 +185,12 @@ class ErrorBisectProducer:
         start_time = time.time()
         cycle_timestamp = int(start_time)
 
-        # 初始化统计数据（使用配置的查询时间）
+        # Initialize statistics (using configured query time)
         stats = {
             'cycle_start_time': cycle_timestamp,
-            'time_range_hours': self.query_hours,  # 使用配置的查询时间
-            'max_count': 150,     # 提高限制：每个 job 最多 150 个 error_id
-            'min_priority': 35,   # 调整到35以包含有价值的代码警告
+            'time_range_hours': self.query_hours,
+            'max_count': 150,     # Limit: max 150 error_ids per job
+            'min_priority': 35,   # Set to 35 to include valuable code warnings
             'jobs_queried': 0,
             'jobs_cache_hit': 0,
             'jobs_processed': 0,
@@ -199,9 +199,9 @@ class ErrorBisectProducer:
             'total_errids_after_smart_filter': 0,
             'tasks_db_duplicate': 0,
             'tasks_no_git_url': 0,
-            'tasks_filtered_old_commits': 0,  # 被 commit 年龄过滤的任务数
-            'tasks_commit_age_checked': 0,    # 实际检查年龄的任务数（新增）
-            'tasks_commit_hash_not_found': 0,  # 未能提取 commit hash 的任务数（新增）
+            'tasks_filtered_old_commits': 0,  # Tasks filtered by commit age
+            'tasks_commit_age_checked': 0,    # Tasks checked for commit age
+            'tasks_commit_hash_not_found': 0,  # Tasks where commit hash not found
             'tasks_created_success': 0,
             'tasks_created_failed': 0,
             'filter_method_smart': 0,
@@ -212,19 +212,19 @@ class ErrorBisectProducer:
         }
 
         logger.info(f"==" * 40)
-        logger.info(f"错误类型生产者循环开始 | 时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}")
+        logger.info(f"Error producer cycle started | time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}")
         logger.info(f"==" * 40)
 
-        # 查询最近的jobs（使用配置的时间范围）
-        time_range_hours = self.query_hours  # 使用实例配置
+        # Query recent jobs (using configured time range)
+        time_range_hours = self.query_hours
         time_threshold = int(time.time() - time_range_hours * 3600)
         from_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_threshold))
         to_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
         stats['query_time_from'] = from_time
         stats['query_time_to'] = to_time
 
-        logger.info(f"开始查询jobs表 | 时间范围: {from_time} 至 {to_time}")
-        logger.info(f"查询条件: 排除 bisect 中间过程任务 (j.bad_job_id IS NULL)")
+        logger.info(f"Querying jobs table | time_range: {from_time} to {to_time}")
+        logger.info(f"Query filter: exclude bisect intermediate tasks (j.bad_job_id IS NULL)")
 
         sql_query = f"""
             SELECT id, j.errid, full_text_kv, submit_time
@@ -241,27 +241,27 @@ class ErrorBisectProducer:
         try:
             result = self.client.sql_select(sql_query)
             stats['jobs_queried'] = len(result) if result else 0
-            logger.info(f"查询完成 | 返回 {stats['jobs_queried']} 行结果")
+            logger.info(f"Query completed | returned {stats['jobs_queried']} rows")
         except Exception as e:
-            logger.error(f"查询jobs表失败: {str(e)}")
+            logger.error(f"Failed to query jobs table: {str(e)}")
             self._log_producer_stats(stats, start_time)
             return 0
 
         if not result:
-            logger.warning(f"未找到符合条件的错误类型jobs数据")
+            logger.warning(f"No matching error type jobs data found")
             self._log_producer_stats(stats, start_time)
             return 0
 
-        # ===== 核心优化：先批量检查 commit 年龄，再处理 error_ids =====
-        all_tasks_to_create = []  # 收集所有待创建的任务
-        unfiltered_jobs = []  # 未能筛选的任务列表
-        job_data_list = []  # 所有处理的任务
-        filtered_results = {}  # 成功筛选的结果 {bad_job_id: [(errid, analysis), ...]}
+        # ===== Core optimization: batch check commit age first, then process error_ids =====
+        all_tasks_to_create = []  # Collect all tasks to create
+        unfiltered_jobs = []  # List of unfiltered jobs
+        job_data_list = []  # All processed jobs
+        filtered_results = {}  # Successfully filtered results {bad_job_id: [(errid, analysis), ...]}
 
-        # Phase 0: 收集所有 job 的基本信息（用于批量 commit 检查）
-        logger.info("Phase 0: 收集 job 基本信息...")
+        # Phase 0: collect basic info of all jobs (for batch commit check)
+        logger.info("Phase 0: Collecting job basic info...")
         job_info_map = {}  # {job_id: {'full_text_kv': ..., 'git_url': ..., 'commit': ..., 'errids': ...}}
-        commit_check_items = []  # 用于批量检查的列表
+        commit_check_items = []  # List for batch checking
 
         for item in result:
             try:
@@ -272,14 +272,14 @@ class ErrorBisectProducer:
                 full_text_kv = item.get("full_text_kv", "")
                 errids = item.get("j.errid", [])
 
-                # 收集所有处理的 job 数据
+                # Collect all processed job data
                 job_data_list.append({
                     'bad_job_id': bad_job_id,
                     'full_text_kv': full_text_kv,
                     'errid_list': errids
                 })
 
-                # 缓存检查
+                # Cache check
                 cache_check_start = time.time()
                 if bad_job_id in self.processed_jobs_cache:
                     stats['jobs_cache_hit'] += 1
@@ -291,7 +291,7 @@ class ErrorBisectProducer:
                 stats.setdefault('cache_check_time_ms', 0)
                 stats['cache_check_time_ms'] += (time.time() - cache_check_start) * 1000
 
-                # 提取 git_url
+                # Extract git_url
                 git_url_start = time.time()
                 git_url = extract_git_url_from_full_text_kv(full_text_kv)
                 stats.setdefault('git_url_extract_time_ms', 0)
@@ -301,7 +301,7 @@ class ErrorBisectProducer:
                     stats['tasks_no_git_url'] += 1
                     continue
 
-                # 构建任务过滤
+                # Build task filter
                 filter_start = time.time()
                 should_filter, filter_reason = self.errid_intelligence.should_filter_build_task(full_text_kv, git_url)
                 stats.setdefault('filter_time_ms', 0)
@@ -310,13 +310,13 @@ class ErrorBisectProducer:
                 if should_filter:
                     stats.setdefault('build_tasks_filtered', 0)
                     stats['build_tasks_filtered'] += 1
-                    logger.debug(f"过滤构建任务 | job_id: {bad_job_id} | 原因: {filter_reason}")
+                    logger.debug(f"Filtered build task | job_id: {bad_job_id} | reason: {filter_reason}")
                     continue
 
-                # 提取 commit hash
+                # Extract commit hash
                 commit_hash = extract_commit_from_full_text_kv(full_text_kv)
 
-                # 保存 job 信息
+                # Save job info
                 job_info_map[bad_job_id] = {
                     'full_text_kv': full_text_kv,
                     'git_url': git_url,
@@ -325,7 +325,7 @@ class ErrorBisectProducer:
                     'item': item
                 }
 
-                # 如果有 commit，添加到批量检查列表
+                # If has commit, add to batch check list
                 if commit_hash and self.commit_client:
                     commit_check_items.append({
                         'job_id': bad_job_id,
@@ -341,46 +341,46 @@ class ErrorBisectProducer:
                         'git_url': git_url,
                         'full_text_kv_sample': full_text_kv[:500] if full_text_kv else ''
                     })
-                    # 没有 commit hash 的 job 不处理
+                    # Skip jobs without commit hash
                     del job_info_map[bad_job_id]
 
             except Exception as e:
-                logger.error(f"Phase 0 处理 job 时出错: {str(e)}")
+                logger.error(f"Phase 0 error processing job: {str(e)}")
                 continue
 
-        logger.info(f"Phase 0 完成: 收集 {len(job_info_map)} 个有效 job, {len(commit_check_items)} 个需要检查 commit")
+        logger.info(f"Phase 0 completed: collected {len(job_info_map)} valid jobs, {len(commit_check_items)} need commit check")
 
-        # Phase 1: 批量检查 commit 年龄和分支版本（关键优化：一次网络调用）
-        valid_job_ids = set(job_info_map.keys())  # 默认全部有效
+        # Phase 1: batch check commit age and branch version (key optimization: single network call)
+        valid_job_ids = set(job_info_map.keys())  # All valid by default
 
         if self.commit_client and commit_check_items:
-            filter_desc = f"年龄>{self.max_commit_age_days}天"
+            filter_desc = f"age>{self.max_commit_age_days}days"
             if self.min_kernel_version:
-                filter_desc += f" 或 版本<v{self.min_kernel_version}"
-            logger.info(f"Phase 1: 批量检查 {len(commit_check_items)} 个 commit ({filter_desc})...")
+                filter_desc += f" or version<v{self.min_kernel_version}"
+            logger.info(f"Phase 1: Batch checking {len(commit_check_items)} commits ({filter_desc})...")
             commit_age_start = time.time()
 
             try:
                 too_old_job_ids, checked_valid_ids = self.commit_client.batch_check_commits(
                     commit_check_items,
                     self.max_commit_age_days,
-                    self.min_kernel_version  # 新增：传入最小内核版本
+                    self.min_kernel_version  # Pass minimum kernel version
                 )
 
                 stats['tasks_commit_age_checked'] = len(commit_check_items)
                 stats['tasks_filtered_old_commits'] = len(too_old_job_ids)
 
-                # 从有效列表中移除旧 commit 的 job
+                # Remove old commit jobs from valid list
                 valid_job_ids -= too_old_job_ids
 
-                # 记录过滤掉的 job（同时添加到 unfiltered_jobs 以便溯源）
+                # Record filtered jobs (also add to unfiltered_jobs for tracing)
                 for job_id in too_old_job_ids:
                     if job_id in job_info_map:
                         info = job_info_map[job_id]
                         commit = info.get('commit', '')
                         git_url = info.get('git_url', '')
-                        logger.info(f"过滤 commit | job_id: {job_id} | commit: {commit[:12] if len(commit) > 12 else commit}...")
-                        # 记录到 unfiltered_jobs 以便在 analysis 目录中溯源
+                        logger.info(f"Filtered commit | job_id: {job_id} | commit: {commit[:12] if len(commit) > 12 else commit}...")
+                        # Record to unfiltered_jobs for tracing in analysis directory
                         unfiltered_jobs.append({
                             'bad_job_id': job_id,
                             'errid_list': info.get('errids', []),
@@ -392,16 +392,16 @@ class ErrorBisectProducer:
                         del job_info_map[job_id]
 
             except Exception as e:
-                logger.warning(f"批量 commit 检查失败: {str(e)} | 继续处理所有 job")
+                logger.warning(f"Batch commit check failed: {str(e)} | continuing with all jobs")
 
             stats.setdefault('commit_age_check_time_ms', 0)
             stats['commit_age_check_time_ms'] = (time.time() - commit_age_start) * 1000
-            logger.info(f"Phase 1 完成: 过滤 {stats['tasks_filtered_old_commits']} 个 commit, 剩余 {len(valid_job_ids)} 个有效 job")
+            logger.info(f"Phase 1 completed: filtered {stats['tasks_filtered_old_commits']} commits, {len(valid_job_ids)} valid jobs remaining")
         else:
-            logger.info("Phase 1: 跳过 commit 检查 (无 commit client 或无需检查)")
+            logger.info("Phase 1: Skipping commit check (no commit client or no check needed)")
 
-        # Phase 2: 处理通过 commit 检查的 job 的 error_ids
-        logger.info(f"Phase 2: 处理 {len(valid_job_ids)} 个有效 job 的 error_ids...")
+        # Phase 2: process error_ids for jobs that passed commit check
+        logger.info(f"Phase 2: Processing error_ids for {len(valid_job_ids)} valid jobs...")
 
         for bad_job_id in valid_job_ids:
             if bad_job_id not in job_info_map:
@@ -413,7 +413,7 @@ class ErrorBisectProducer:
                 git_url = info['git_url']
                 errids = info['errids']
 
-                # 提取和筛选 error IDs
+                # Extract and filter error IDs
                 if not isinstance(errids, list):
                     unfiltered_jobs.append({
                         'bad_job_id': bad_job_id,
@@ -433,7 +433,7 @@ class ErrorBisectProducer:
                 stats['jobs_processed'] += 1
                 stats['total_errids_before_filter'] += len(errids)
 
-                # 智能筛选
+                # Smart filtering
                 errid_filter_start = time.time()
                 smart_candidates = self.errid_intelligence.filter_errids(
                     errids,
@@ -452,10 +452,10 @@ class ErrorBisectProducer:
                     })
                     continue
 
-                # 收集成功筛选的任务
+                # Collect successfully filtered tasks
                 filtered_results[bad_job_id] = smart_candidates
 
-                # 收集任务
+                # Collect tasks
                 for errid, analysis in smart_candidates:
                     all_tasks_to_create.append({
                         'bad_job_id': bad_job_id,
@@ -469,21 +469,21 @@ class ErrorBisectProducer:
                 stats['total_errids_after_smart_filter'] += len(smart_candidates)
 
             except Exception as e:
-                logger.error(f"Phase 2 处理 job 时出错: {str(e)}")
+                logger.error(f"Phase 2 error processing job: {str(e)}")
                 continue
 
-        logger.info(f"Phase 2 完成: 收集 {len(all_tasks_to_create)} 个候选任务")
+        logger.info(f"Phase 2 completed: collected {len(all_tasks_to_create)} candidate tasks")
 
-        # Phase 3: 一次性批量去重（这是关键优化）
+        # Phase 3: one-time batch deduplication (key optimization)
         if all_tasks_to_create:
-            logger.info(f"Phase 3: 批量去重检查 {len(all_tasks_to_create)} 个任务...")
+            logger.info(f"Phase 3: Batch deduplication check for {len(all_tasks_to_create)} tasks...")
 
-            # 提取所有error_ids
+            # Extract all error_ids
             all_error_ids = [task['error_id'] for task in all_tasks_to_create]
 
-            # 一次查询检查所有error_ids（可能需要分批如果太多）
+            # Check all error_ids in one query (may need batching if too many)
             existing_error_ids = set()
-            batch_size = 500  # 每批查询500个
+            batch_size = 500  # 500 per batch
 
             for i in range(0, len(all_error_ids), batch_size):
                 batch = all_error_ids[i:i + batch_size]
@@ -495,26 +495,26 @@ class ErrorBisectProducer:
                             ]
                         }
                     }
-                    # 🔧 提高 limit，确保能获取所有匹配的 error_id
-                    # 即使同一个 error_id 有多条记录，我们只需要知道它存在
+                    # Increase limit to ensure all matching error_ids are found
+                    # Even if an error_id has multiple records, we just need to know it exists
                     existing = self.client.search(index="bisect", query=query, limit=10000)
                     if existing:
                         for item in existing:
                             if item.get('error_id'):
                                 existing_error_ids.add(item['error_id'])
                 except Exception as e:
-                    logger.error(f"批量检查失败: {str(e)}")
+                    logger.error(f"Batch check failed: {str(e)}")
 
             stats['tasks_db_duplicate'] = len(existing_error_ids)
-            logger.info(f"去重完成: {len(existing_error_ids)} 个任务已存在")
+            logger.info(f"Deduplication completed: {len(existing_error_ids)} tasks already exist")
 
-            # Phase 4: 准备创建新任务
+            # Phase 4: prepare to create new tasks
             tasks_to_create = []
             for task_data in all_tasks_to_create:
                 if task_data['error_id'] in existing_error_ids:
-                    continue  # 跳过已存在的
+                    continue  # Skip existing
 
-                # 准备任务数据
+                # Prepare task data
                 task = {
                     "bad_job_id": task_data['bad_job_id'],
                     "error_id": task_data['error_id'],
@@ -522,57 +522,57 @@ class ErrorBisectProducer:
                     "git_url": task_data['git_url']
                 }
 
-                # 添加分类
+                # Add classification
                 category = categorize_bisect_task(task, task_data['full_text_kv'])
                 task["category"] = category
 
                 tasks_to_create.append(task)
 
-            # Phase 4: 使用批量插入器创建任务
+            # Phase 4: create tasks using batch inserter
             if tasks_to_create:
-                logger.info(f"Phase 4: 批量创建 {len(tasks_to_create)} 个新任务...")
+                logger.info(f"Phase 4: Batch creating {len(tasks_to_create)} new tasks...")
                 success_count, failed_count = self.batch_inserter.batch_create_tasks(tasks_to_create)
 
                 stats['tasks_created_success'] = success_count
                 stats['tasks_created_failed'] = failed_count
 
-                # 获取批量插入器的统计信息
+                # Get batch inserter statistics
                 batch_stats = self.batch_inserter.get_stats()
                 stats['batch_insert_stats'] = batch_stats
-                logger.info(f"批量创建完成 | 成功: {success_count} | 失败: {failed_count}")
+                logger.info(f"Batch creation completed | success: {success_count} | failed: {failed_count}")
 
-        # 生成分析文件（summary 和 filtered/unfiltered JSON）
+        # Generate analysis files (summary and filtered/unfiltered JSON)
         if job_data_list:
             try:
-                logger.info("生成分析文件...")
+                logger.info("Generating analysis files...")
                 write_analysis_files(job_data_list, filtered_results, unfiltered_jobs)
-                logger.info("分析文件生成完成")
+                logger.info("Analysis files generated")
             except Exception as e:
-                logger.error(f"生成分析文件失败: {str(e)}")
+                logger.error(f"Failed to generate analysis files: {str(e)}")
 
-        # 内存管理优化 - LRU 缓存会自动处理驱逐
-        # 不需要手动清理，LRU 已设置了 max_size=5000
+        # Memory management - LRU cache handles eviction automatically
+        # No manual cleanup needed, LRU has max_size=5000
         if len(self.processed_jobs_cache) > 4500:
             logger.debug(f"Producer cache size: {len(self.processed_jobs_cache)}, "
                         f"evictions: {self.processed_jobs_cache.evictions}")
-            # LRU 缓存会自动驱逐最久未使用的项，无需手动干预
+            # LRU cache automatically evicts least recently used items
 
-        # 输出统计
+        # Output statistics
         self._log_producer_stats(stats, start_time)
         return stats['tasks_created_success']
 
     def _log_producer_stats(self, stats: dict, start_time: float):
-        """输出详细的生产者统计报告并保存到 notification 目录"""
+        """Output detailed producer statistics report and save to notification directory"""
         duration = time.time() - start_time
 
-        # 添加缓存统计
+        # Add cache statistics
         cache_stats = self.processed_jobs_cache.get_stats()
         stats['cache_hit_rate'] = cache_stats['hit_rate']
         stats['cache_size'] = cache_stats['size']
         stats['cache_max_size'] = cache_stats['max_size']
         stats['cache_evictions'] = cache_stats['evictions']
 
-        # 计算平均耗时
+        # Calculate average duration
         if stats.get('jobs_processed', 0) > 0:
             stats['avg_filter_time_ms'] = stats.get('filter_time_ms', 0) / stats['jobs_processed']
             stats['avg_git_url_time_ms'] = stats.get('git_url_extract_time_ms', 0) / stats['jobs_processed']
@@ -580,48 +580,48 @@ class ErrorBisectProducer:
             if stats.get('commit_age_check_time_ms', 0) > 0:
                 stats['avg_commit_age_check_ms'] = stats.get('commit_age_check_time_ms', 0) / stats['jobs_processed']
 
-        # 添加 commit 过滤配置到统计
+        # Add commit filter config to statistics
         if self.commit_client:
             stats['max_commit_age_days'] = self.max_commit_age_days
 
-        # 使用新的报告生成器
+        # Use new report generator
         self.reporter.write_report(stats, duration)
 
-        # 写入最新状态摘要
+        # Write latest status summary
         self.reporter.write_simple_summary(stats)
 
-        # 输出性能日志
-        logger.info(f"生产者性能统计 | 总耗时: {duration:.2f}s")
-        logger.info(f"  缓存命中率: {stats['cache_hit_rate']:.2%} | 缓存大小: {stats['cache_size']}/{cache_stats['max_size']}")
+        # Output performance log
+        logger.info(f"Producer performance stats | total_duration: {duration:.2f}s")
+        logger.info(f"  cache_hit_rate: {stats['cache_hit_rate']:.2%} | cache_size: {stats['cache_size']}/{cache_stats['max_size']}")
         if stats.get('jobs_processed', 0) > 0:
-            logger.info(f"  平均处理时间 | 过滤: {stats.get('avg_filter_time_ms', 0):.2f}ms | "
-                       f"URL提取: {stats.get('avg_git_url_time_ms', 0):.2f}ms | "
-                       f"ErridID筛选: {stats.get('avg_errid_time_ms', 0):.2f}ms")
+            logger.info(f"  avg_time | filter: {stats.get('avg_filter_time_ms', 0):.2f}ms | "
+                       f"url_extract: {stats.get('avg_git_url_time_ms', 0):.2f}ms | "
+                       f"errid_filter: {stats.get('avg_errid_time_ms', 0):.2f}ms")
             if stats.get('avg_commit_age_check_ms', 0) > 0:
-                logger.info(f"  Commit年龄检查: {stats.get('avg_commit_age_check_ms', 0):.2f}ms")
+                logger.info(f"  commit_age_check: {stats.get('avg_commit_age_check_ms', 0):.2f}ms")
 
-        # 输出过滤统计
+        # Output filter statistics
         if stats.get('tasks_filtered_old_commits', 0) > 0:
-            logger.info(f"Commit 年龄过滤统计 | 过滤数: {stats['tasks_filtered_old_commits']} | "
-                       f"阈值: {self.max_commit_age_days} 天")
+            logger.info(f"Commit age filter stats | filtered: {stats['tasks_filtered_old_commits']} | "
+                       f"threshold: {self.max_commit_age_days} days")
 
 
 class PerformanceBisectProducer:
-    """性能类型 bisect 任务生产者
+    """Performance type bisect task producer
 
-    基于 midpoint 算法对 kernel CI 性能测试结果进行比对，
-    识别可 bisect 的性能回归并创建任务。
+    Uses midpoint algorithm to compare kernel CI performance test results,
+    identify bisectable performance regressions and create tasks.
 
-    Phase 1: 基于 kernel CI 的性能监控
-    Phase 2: 基于 KPI 的智能监控（未来扩展）
+    Phase 1: Performance monitoring based on kernel CI
+    Phase 2: Smart monitoring based on KPI (future expansion)
 
-    指标前缀规范 (参考 lkp-stats-type.md):
+    Metric prefix convention (ref lkp-stats-type.md):
     - SmallerBetter: lat, jit, pow, cost, mem
     - BiggerBetter: rate
-    - KPI 指标使用大写前缀: LAT, JIT, POW, COST, MEM, RATE
+    - KPI metrics use uppercase prefix: LAT, JIT, POW, COST, MEM, RATE
     """
 
-    # 前缀常量 (基于 lkp-stats-type.md 规范)
+    # Prefix constants (based on lkp-stats-type.md convention)
     SMALLER_BETTER_PREFIXES = {'lat', 'jit', 'pow', 'cost', 'mem'}
     BIGGER_BETTER_PREFIXES = {'rate'}
 
@@ -630,17 +630,17 @@ class PerformanceBisectProducer:
         self.config = config
         self.last_run_time = 0
 
-        # 使用配置
+        # Use config
         self.producer_interval = Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS * 86400
         self.query_hours = Config.PERFORMANCE_PRODUCER_QUERY_HOURS
         self.min_samples = Config.PERFORMANCE_MIN_SAMPLES
         self.default_samples = Config.PERFORMANCE_DEFAULT_SAMPLES
 
-        # 性能测试套件
+        # Performance test suites
         self.performance_suites = [s.strip() for s in Config.PERFORMANCE_SUITES.split(',')]
 
-        # Baseline 配置 - 与 kernel-ci 的 KERNEL_TEST_CONFIG 对齐
-        # 格式: {commit: True} 表示这是一个 baseline commit
+        # Baseline config - aligned with kernel-ci KERNEL_TEST_CONFIG
+        # Format: {commit: True} means this is a baseline commit
         self.baseline_commits = {
             # openEuler OLK-5.10 baseline
             '5.10.0-216.0.0': True,
@@ -650,91 +650,91 @@ class PerformanceBisectProducer:
             'v6.17': True,
         }
 
-        # 加载指标配置
+        # Load metric config
         self.metrics_config = self._load_metrics_config()
 
-        # 初始化批量插入器
+        # Initialize batch inserter
         self.batch_inserter = BatchInserter(client, batch_size=50)
 
-        # LRU 缓存用于去重
+        # LRU cache for deduplication
         self.processed_pairs_cache = LRUCache(max_size=1000)
 
-        # 初始化报告器
+        # Initialize reporter
         self.reporter = ProducerReporter(stats_dir='performance_producer_stats')
 
-        logger.info(f"PerformanceBisectProducer 初始化 | "
-                   f"查询时间范围: {self.query_hours} 小时 | "
-                   f"运行间隔: {Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS} 天 | "
-                   f"监控套件: {self.performance_suites}")
+        logger.info(f"PerformanceBisectProducer initialized | "
+                   f"query_hours: {self.query_hours}h | "
+                   f"interval: {Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS} days | "
+                   f"monitored_suites: {self.performance_suites}")
 
     def _load_metrics_config(self) -> Dict:
-        """加载指标配置（已简化）
+        """Load metric config (simplified)
 
-        KPI 判断和方向推断现在基于 lkp-stats-type.md 规范的前缀：
-        - KPI 指标: 大写前缀 (LAT, RATE, JIT, POW, COST, MEM)
-        - 方向: lat/jit/pow/cost/mem = -1, rate = +1
+        KPI determination and direction inference now based on lkp-stats-type.md prefix convention:
+        - KPI metrics: uppercase prefix (LAT, RATE, JIT, POW, COST, MEM)
+        - Direction: lat/jit/pow/cost/mem = -1, rate = +1
 
-        不再需要从 meta.yaml 或 performance_metrics.yaml 加载配置
+        No longer need to load config from meta.yaml or performance_metrics.yaml
         """
-        logger.info("使用基于前缀的 KPI 判断 (参考 lkp-stats-type.md)")
+        logger.info("Using prefix-based KPI determination (ref lkp-stats-type.md)")
         return {}
 
     def execute_producer_cycle(self) -> int:
-        """执行一个完整的性能类型 producer 周期
+        """Execute a complete performance producer cycle
 
         Returns:
-            创建的任务数
+            Number of tasks created
         """
         start_time = time.time()
         stats = self._init_stats()
 
         logger.info("=" * 80)
-        logger.info(f"性能 Bisect 生产者循环开始 | 时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info(f"Performance bisect producer cycle started | time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
         logger.info("=" * 80)
 
         try:
-            # Phase 1: 查询性能测试 jobs
+            # Phase 1: query performance test jobs
             performance_jobs = self._query_performance_jobs()
             stats['jobs_queried'] = len(performance_jobs)
 
             if not performance_jobs:
-                logger.info("未找到性能测试 jobs")
+                logger.info("No performance test jobs found")
                 self._log_stats(stats, start_time)
                 return 0
 
-            logger.info(f"Phase 1 完成: 查询到 {len(performance_jobs)} 个性能测试 jobs")
+            logger.info(f"Phase 1 completed: found {len(performance_jobs)} performance test jobs")
 
-            # Phase 2: 按 (repo, suite, testbox) 分组
+            # Phase 2: group by (repo, suite, testbox)
             grouped_jobs = self._group_performance_jobs(performance_jobs)
             stats['groups_found'] = len(grouped_jobs)
-            logger.info(f"Phase 2 完成: 分组为 {len(grouped_jobs)} 个组")
+            logger.info(f"Phase 2 completed: grouped into {len(grouped_jobs)} groups")
 
-            # Phase 3: 识别 baseline/current 配对
+            # Phase 3: identify baseline/current pairs
             comparison_pairs = self._identify_comparison_pairs(grouped_jobs)
             stats['pairs_found'] = len(comparison_pairs)
-            logger.info(f"Phase 3 完成: 识别 {len(comparison_pairs)} 个比较配对")
+            logger.info(f"Phase 3 completed: identified {len(comparison_pairs)} comparison pairs")
 
-            # Phase 4: 应用 midpoint 算法筛选可 bisect 的配对
+            # Phase 4: apply midpoint algorithm to filter bisectable pairs
             bisectable_pairs = self._filter_bisectable_pairs(comparison_pairs, stats)
             stats['bisectable_pairs'] = len(bisectable_pairs)
-            logger.info(f"Phase 4 完成: {len(bisectable_pairs)} 个配对满足 bisect 条件")
+            logger.info(f"Phase 4 completed: {len(bisectable_pairs)} pairs meet bisect criteria")
 
-            # Phase 5: 创建 bisect 任务
+            # Phase 5: create bisect tasks
             tasks_created = self._create_bisect_tasks(bisectable_pairs, stats)
             stats['tasks_created'] = tasks_created
-            logger.info(f"Phase 5 完成: 创建 {tasks_created} 个性能 bisect 任务")
+            logger.info(f"Phase 5 completed: created {tasks_created} performance bisect tasks")
 
             return tasks_created
 
         except Exception as e:
-            logger.error(f"性能生产者循环失败: {str(e)}")
+            logger.error(f"Performance producer cycle failed: {str(e)}")
             logger.error(traceback.format_exc())
             return 0
         finally:
             self._log_stats(stats, start_time)
 
     def _init_stats(self) -> Dict:
-        """初始化统计数据"""
+        """Initialize statistics"""
         return {
             'cycle_start_time': int(time.time()),
             'time_range_hours': self.query_hours,
@@ -752,17 +752,17 @@ class PerformanceBisectProducer:
         }
 
     def _query_performance_jobs(self) -> List[Dict]:
-        """查询性能测试 jobs
+        """Query performance test jobs
 
-        查询条件:
-        - suite 在监控列表中
+        Query conditions:
+        - suite in monitored list
         - job_stage = 'finish', job_health = 'success'
-        - submit_time 在查询时间范围内
+        - submit_time within query time range
         """
         time_threshold = int(time.time() - self.query_hours * 3600)
         suites_sql = "', '".join(self.performance_suites)
 
-        # 构建查询 - 直接获取 j.ss.linux.commit 字段
+        # Build query - directly get j.ss.linux.commit field
         sql_query = f"""
             SELECT id, suite, testbox, submit_time, full_text_kv, j, j.ss.linux.commit as linux_commit
             FROM jobs
@@ -778,12 +778,12 @@ class PerformanceBisectProducer:
         try:
             result = self.client.sql_select(sql_query)
             if not result:
-                logger.info(f"SQL 查询返回空结果 | 套件: {self.performance_suites}")
+                logger.info(f"SQL query returned empty result | suites: {self.performance_suites}")
                 return []
 
-            logger.info(f"SQL 查询返回 {len(result)} 条原始记录")
+            logger.info(f"SQL query returned {len(result)} raw records")
 
-            # 解析并提取有效 job 数据
+            # Parse and extract valid job data
             processed_jobs = []
             parse_failures = {'no_commit': 0, 'no_git_url': 0, 'no_stats': 0, 'other': 0}
             suite_counts = defaultdict(int)
@@ -794,22 +794,22 @@ class PerformanceBisectProducer:
                     processed_jobs.append(job_data)
                     suite_counts[job_data['suite']] += 1
 
-            # 输出套件分布
+            # Output suite distribution
             if suite_counts:
-                logger.info(f"有效 jobs 按套件分布: {dict(suite_counts)}")
+                logger.info(f"Valid jobs by suite distribution: {dict(suite_counts)}")
             else:
-                logger.warning("未解析到有效的性能测试 jobs")
+                logger.warning("No valid performance test jobs parsed")
 
             return processed_jobs
 
         except Exception as e:
-            logger.error(f"查询性能 jobs 失败: {str(e)}")
+            logger.error(f"Failed to query performance jobs: {str(e)}")
             return []
 
     def _parse_job_data(self, item: Dict) -> Optional[Dict]:
-        """解析 job 数据
+        """Parse job data
 
-        提取: commit, git_url, stats, testbox, suite, repo/branch 信息
+        Extract: commit, git_url, stats, testbox, suite, repo/branch info
         """
         try:
             j_field = item.get('j', {})
@@ -819,22 +819,22 @@ class PerformanceBisectProducer:
 
             full_text_kv = item.get('full_text_kv', '')
 
-            # 提取 commit - 优先使用 SQL 直接返回的 linux_commit
+            # Extract commit - prefer linux_commit directly from SQL
             commit = item.get('linux_commit') or self._extract_commit(j_field, full_text_kv)
             if not commit:
                 return None
 
-            # 提取 git_url
+            # Extract git_url
             git_url = extract_git_url_from_full_text_kv(full_text_kv)
             if not git_url:
                 return None
 
-            # 提取 stats
+            # Extract stats
             stats = j_field.get('stats', {})
             if not stats:
                 return None
 
-            # 提取 repo/branch 信息
+            # Extract repo/branch info
             repo_name = extract_repo_name_from_url(git_url)
             branch = self._extract_branch(j_field, full_text_kv)
 
@@ -853,12 +853,12 @@ class PerformanceBisectProducer:
             }
 
         except Exception as e:
-            logger.debug(f"解析 job 数据失败: {str(e)}")
+            logger.debug(f"Failed to parse job data: {str(e)}")
             return None
 
     def _extract_commit(self, j_field: Dict, full_text_kv: str) -> Optional[str]:
-        """提取 commit hash"""
-        # 尝试从 j 字段提取
+        """Extract commit hash"""
+        # Try to extract from j field
         if j_field:
             # ss.linux.commit
             commit = j_field.get('ss', {}).get('linux', {}).get('commit')
@@ -870,18 +870,18 @@ class PerformanceBisectProducer:
             if commit:
                 return commit
 
-        # 尝试从 full_text_kv 提取
+        # Try to extract from full_text_kv
         return extract_commit_from_full_text_kv(full_text_kv)
 
     def _extract_branch(self, j_field: Dict, full_text_kv: str) -> Optional[str]:
-        """提取分支信息"""
+        """Extract branch info"""
         if j_field:
             # program.makepkg.branch
             branch = j_field.get('program', {}).get('makepkg', {}).get('branch')
             if branch:
                 return branch
 
-        # 从 full_text_kv 提取
+        # Extract from full_text_kv
         for line in full_text_kv.split('\n'):
             if 'branch' in line.lower():
                 parts = line.split(':')
@@ -891,12 +891,12 @@ class PerformanceBisectProducer:
         return None
 
     def _group_performance_jobs(self, jobs: List[Dict]) -> Dict[Tuple, List[Dict]]:
-        """按 (repo, suite, testbox) 分组
+        """Group by (repo, suite, testbox)
 
-        分组策略：
-        - 保留 repo 区分不同内核仓库 (openeuler-kernel vs linux vs linux-next)
-        - 去掉 branch 避免解析错误导致分组过细
-        - 性能比较需要在相同硬件(testbox)上才有意义
+        Grouping strategy:
+        - Keep repo to distinguish different kernel repos (openeuler-kernel vs linux vs linux-next)
+        - Remove branch to avoid over-grouping from parse errors
+        - Performance comparison is only meaningful on same hardware (testbox)
         """
         groups = defaultdict(list)
 
@@ -908,23 +908,23 @@ class PerformanceBisectProducer:
             )
             groups[group_key].append(job)
 
-        # 输出分组统计
+        # Output grouping statistics
         if groups:
-            # 按 suite 统计组数
+            # Count groups per suite
             suite_group_counts = defaultdict(int)
             for (repo, suite, testbox), job_list in groups.items():
                 suite_group_counts[suite] += 1
-            logger.info(f"分组统计 | 按套件: {dict(suite_group_counts)}")
+            logger.info(f"Grouping stats | by_suite: {dict(suite_group_counts)}")
 
         return dict(groups)
 
     def _identify_comparison_pairs(self, grouped_jobs: Dict[Tuple, List[Dict]]) -> List[Dict]:
-        """识别 baseline/current 比较配对
+        """Identify baseline/current comparison pairs
 
-        策略:
-        1. baseline: 稳定版本 tag (v6.17, 5.10.0-216.0.0)
-        2. current: RC/HEAD 或动态 tag
-        3. baseline 和 current 各需要至少 3 个 jobs 才能进行线性可分验证
+        Strategy:
+        1. baseline: stable version tag (v6.17, 5.10.0-216.0.0)
+        2. current: RC/HEAD or dynamic tag
+        3. Both baseline and current need at least 3 jobs for linear separability verification
         """
         comparison_pairs = []
         skip_reasons = {'no_baseline': 0, 'no_current': 0, 'insufficient_baseline': 0,
@@ -934,7 +934,7 @@ class PerformanceBisectProducer:
         for group_key, jobs in grouped_jobs.items():
             repo_name, suite, testbox = group_key
 
-            # 分离 baseline 和 current jobs
+            # Separate baseline and current jobs
             baseline_jobs = []
             current_jobs = []
 
@@ -948,36 +948,36 @@ class PerformanceBisectProducer:
             if not baseline_jobs:
                 skip_reasons['no_baseline'] += 1
                 commits = list(set(j['commit'][:16] for j in jobs[:5]))
-                logger.info(f"跳过组 {repo_name}/{suite}/{testbox}: 无baseline | commits: {commits}")
+                logger.info(f"Skipping group {repo_name}/{suite}/{testbox}: no baseline | commits: {commits}")
                 continue
 
             if not current_jobs:
                 skip_reasons['no_current'] += 1
                 commits = list(set(j['commit'][:16] for j in jobs[:5]))
-                logger.info(f"跳过组 {repo_name}/{suite}/{testbox}: 无current | commits: {commits}")
+                logger.info(f"Skipping group {repo_name}/{suite}/{testbox}: no current | commits: {commits}")
                 continue
 
-            # 检查是否有足够的 baseline jobs
+            # Check if enough baseline jobs
             if len(baseline_jobs) < MIN_JOBS_REQUIRED:
                 skip_reasons['insufficient_baseline'] += 1
-                logger.info(f"跳过组 {repo_name}/{suite}/{testbox}: baseline jobs 不足 "
+                logger.info(f"Skipping group {repo_name}/{suite}/{testbox}: insufficient baseline jobs "
                            f"({len(baseline_jobs)}<{MIN_JOBS_REQUIRED})")
                 continue
 
-            # 检查是否有足够的 current jobs
+            # Check if enough current jobs
             if len(current_jobs) < MIN_JOBS_REQUIRED:
                 skip_reasons['insufficient_current'] += 1
-                logger.info(f"跳过组 {repo_name}/{suite}/{testbox}: current jobs 不足 "
+                logger.info(f"Skipping group {repo_name}/{suite}/{testbox}: insufficient current jobs "
                            f"({len(current_jobs)}<{MIN_JOBS_REQUIRED})")
                 continue
 
-            # 找出所有 jobs 共有的数字指标
+            # Find numeric metrics common to all jobs
             all_jobs = baseline_jobs + current_jobs
             common_metrics = set(all_jobs[0]['stats'].keys())
             for job in all_jobs[1:]:
                 common_metrics &= set(job['stats'].keys())
 
-            # 过滤只保留数字类型且以 suite 开头的指标
+            # Filter to keep only numeric metrics starting with suite
             valid_metrics = []
             sample_stats = baseline_jobs[0]['stats']
             for metric in common_metrics:
@@ -991,10 +991,10 @@ class PerformanceBisectProducer:
 
             if not valid_metrics:
                 skip_reasons['no_metrics'] += 1
-                logger.info(f"组 {repo_name}/{suite}/{testbox}: 无共有数字指标")
+                logger.info(f"Group {repo_name}/{suite}/{testbox}: no common numeric metrics")
                 continue
 
-            # 创建配对：包含所有 baseline jobs 和 current jobs
+            # Create pair: include all baseline and current jobs
             baseline_commit = baseline_jobs[0]['commit']
             current_commit = current_jobs[0]['commit']
 
@@ -1002,50 +1002,50 @@ class PerformanceBisectProducer:
                 'group_key': group_key,
                 'metrics': valid_metrics,
                 'suite': suite,
-                'baseline_jobs': baseline_jobs,  # 多个 baseline jobs
-                'current_jobs': current_jobs,    # 多个 current jobs
+                'baseline_jobs': baseline_jobs,
+                'current_jobs': current_jobs,
                 'git_url': baseline_jobs[0]['git_url'],
                 'baseline_commit': baseline_commit,
                 'current_commit': current_commit
             })
 
-            logger.info(f"组 {repo_name}/{suite}/{testbox}: 创建配对 | "
-                       f"{len(valid_metrics)} 个指标 | "
+            logger.info(f"Group {repo_name}/{suite}/{testbox}: pair created | "
+                       f"{len(valid_metrics)} metrics | "
                        f"baseline: {baseline_commit[:12]} ({len(baseline_jobs)} jobs) | "
                        f"current: {current_commit[:12]} ({len(current_jobs)} jobs)")
 
-        # 输出跳过原因统计
+        # Output skip reason statistics
         if any(skip_reasons.values()):
-            logger.info(f"配对跳过统计 | 无baseline: {skip_reasons['no_baseline']} | "
-                       f"无current: {skip_reasons['no_current']} | "
-                       f"baseline不足: {skip_reasons['insufficient_baseline']} | "
-                       f"current不足: {skip_reasons['insufficient_current']} | "
-                       f"无共有指标: {skip_reasons['no_metrics']}")
+            logger.info(f"Pair skip stats | no_baseline: {skip_reasons['no_baseline']} | "
+                       f"no_current: {skip_reasons['no_current']} | "
+                       f"insufficient_baseline: {skip_reasons['insufficient_baseline']} | "
+                       f"insufficient_current: {skip_reasons['insufficient_current']} | "
+                       f"no_metrics: {skip_reasons['no_metrics']}")
 
         return comparison_pairs
 
     def _is_baseline_commit(self, commit: str) -> bool:
-        """判断是否为 baseline commit
+        """Determine if commit is a baseline commit
 
-        使用配置定义的 baseline commits，与 kernel-ci 的 KERNEL_TEST_CONFIG 对齐：
-        - baseline: 固定的稳定版本 (5.10.0-216.0.0, 6.6.0-98.0.0, v6.17)
-        - current: 动态获取的最新版本 (5.10.0-295.0.0, 6.6.0-132.0.0, v6.18-rc7, next-*)
+        Uses configured baseline commits, aligned with kernel-ci KERNEL_TEST_CONFIG:
+        - baseline: fixed stable versions (5.10.0-216.0.0, 6.6.0-98.0.0, v6.17)
+        - current: dynamically obtained latest versions (5.10.0-295.0.0, 6.6.0-132.0.0, v6.18-rc7, next-*)
         """
-        # 直接查找配置的 baseline commits
+        # Directly look up configured baseline commits
         return commit in self.baseline_commits
 
     def _filter_bisectable_pairs(self, pairs: List[Dict], stats: Dict) -> List[Dict]:
-        """应用 midpoint 算法筛选可 bisect 的配对
+        """Apply midpoint algorithm to filter bisectable pairs
 
-        对每个配对中的所有指标进行检查，保留有性能差距的指标
+        Check all metrics in each pair, keep metrics with performance gap
 
-        改进：
-        1. 使用数据库查询获取所有可用样本，而不是仅当前周期的 jobs
-        2. 波动太大的情况下 midpoint 检查会自然失败，无法 bisect
+        Improvements:
+        1. Use database query to get all available samples, not just current cycle jobs
+        2. With too much variance, midpoint check naturally fails, cannot bisect
         """
         bisectable = []
 
-        # 按 suite 统计诊断信息
+        # Per-suite diagnostic stats
         suite_stats = defaultdict(lambda: {
             'pairs': 0,
             'total_metrics': 0,
@@ -1059,10 +1059,10 @@ class PerformanceBisectProducer:
 
         for pair in pairs:
             try:
-                # 获取 testbox (从 group_key 中提取)
+                # Get testbox (extract from group_key)
                 testbox = pair['group_key'][2]
 
-                # 检查缓存
+                # Check cache
                 pair_key = self._generate_pair_key(pair)
                 if pair_key in self.processed_pairs_cache:
                     stats['pairs_cache_hit'] += 1
@@ -1075,29 +1075,29 @@ class PerformanceBisectProducer:
                 suite_stats[suite]['pairs'] += 1
                 suite_stats[suite]['total_metrics'] += len(pair['metrics'])
 
-                # 遍历所有指标，找出有性能差距的
+                # Iterate all metrics, find ones with performance gap
                 metrics_with_gap = []
                 for metric in pair['metrics']:
-                    # 只处理 KPI 指标（大写前缀）
+                    # Only process KPI metrics (uppercase prefix)
                     if not self._is_kpi_metric(metric):
                         suite_stats[suite]['non_kpi_metrics'] += 1
                         continue
 
                     suite_stats[suite]['kpi_metrics'] += 1
 
-                    # 从数据库查询所有可用样本（而不是仅当前周期的 jobs）
+                    # Query all available samples from database (not just current cycle jobs)
                     v1_samples = self._query_all_samples_from_db(baseline_commit, suite, testbox, metric)
                     v2_samples = self._query_all_samples_from_db(current_commit, suite, testbox, metric)
 
-                    # 验证样本数量 (至少需要 3 个样本才能进行线性可分验证)
+                    # Verify sample count (need at least 3 samples for linear separability verification)
                     if len(v1_samples) < 3 or len(v2_samples) < 3:
                         stats['pairs_insufficient_samples'] += 1
                         suite_stats[suite]['insufficient_samples'] += 1
-                        logger.debug(f"样本不足 | {suite}/{testbox}/{metric} | "
-                                    f"v1={len(v1_samples)}, v2={len(v2_samples)} (需要>=3)")
+                        logger.debug(f"Insufficient samples | {suite}/{testbox}/{metric} | "
+                                    f"v1={len(v1_samples)}, v2={len(v2_samples)} (need>=3)")
                         continue
 
-                    # 检查性能差距 (midpoint 算法: v1_max < v2_min)
+                    # Check performance gap (midpoint algorithm: v1_max < v2_min)
                     has_gap, gap_info = self._check_performance_gap(v1_samples, v2_samples)
 
                     if has_gap:
@@ -1110,10 +1110,10 @@ class PerformanceBisectProducer:
                         })
                     else:
                         suite_stats[suite]['no_gap'] += 1
-                        # 诊断：显示为什么没有差距
+                        # Diagnostic: show why there is no gap
                         v1_min, v1_max = min(v1_samples), max(v1_samples)
                         v2_min, v2_max = min(v2_samples), max(v2_samples)
-                        logger.debug(f"范围重叠无差距 | {suite}/{testbox}/{metric} | "
+                        logger.debug(f"Range overlap no gap | {suite}/{testbox}/{metric} | "
                                     f"v1=[{v1_min:.2f}, {v1_max:.2f}], v2=[{v2_min:.2f}, {v2_max:.2f}]")
 
                 if not metrics_with_gap:
@@ -1122,50 +1122,50 @@ class PerformanceBisectProducer:
 
                 suite_stats[suite]['bisectable'] += 1
 
-                # 保留有差距的指标信息
+                # Keep metrics with gap info
                 pair['metrics_with_gap'] = metrics_with_gap
                 bisectable.append(pair)
 
-                # 添加到缓存
+                # Add to cache
                 self.processed_pairs_cache.add(pair_key)
 
-                # 日志：显示有差距的指标
-                for m in metrics_with_gap[:3]:  # 最多显示 3 个
-                    logger.info(f"发现可 bisect | {pair['suite']}/{testbox}/{pair['baseline_commit'][:8]}..{pair['current_commit'][:8]} | "
+                # Log: show metrics with gap
+                for m in metrics_with_gap[:3]:  # Show up to 3
+                    logger.info(f"Found bisectable | {pair['suite']}/{testbox}/{pair['baseline_commit'][:8]}..{pair['current_commit'][:8]} | "
                                f"{m['metric'].split('.')[-1]}: {m['gap_info']['change_percent']:.1f}% | "
-                               f"样本数: v1={len(m['v1_samples'])}, v2={len(m['v2_samples'])}")
+                               f"samples: v1={len(m['v1_samples'])}, v2={len(m['v2_samples'])}")
 
             except Exception as e:
-                logger.warning(f"处理配对时出错: {str(e)}")
+                logger.warning(f"Error processing pair: {str(e)}")
                 continue
 
-        # 输出筛选统计
+        # Output filter statistics
         if pairs:
-            logger.info(f"Midpoint 筛选统计 | 总配对: {len(pairs)} | "
-                       f"缓存命中: {stats['pairs_cache_hit']} | "
-                       f"无性能差距: {stats['pairs_no_gap']} | "
-                       f"可bisect: {len(bisectable)}")
+            logger.info(f"Midpoint filter stats | total_pairs: {len(pairs)} | "
+                       f"cache_hit: {stats['pairs_cache_hit']} | "
+                       f"no_gap: {stats['pairs_no_gap']} | "
+                       f"bisectable: {len(bisectable)}")
 
-        # 输出按 suite 的诊断统计
+        # Output per-suite diagnostic stats
         logger.info("=" * 60)
-        logger.info("按 Suite 诊断统计:")
+        logger.info("Per-suite diagnostic stats:")
         logger.info("=" * 60)
         for suite, ss in sorted(suite_stats.items()):
             logger.info(f"  {suite}:")
-            logger.info(f"    配对数: {ss['pairs']}, 总指标: {ss['total_metrics']}")
-            logger.info(f"    KPI指标: {ss['kpi_metrics']}, 非KPI跳过: {ss['non_kpi_metrics']}")
-            logger.info(f"    样本不足: {ss['insufficient_samples']}, 范围重叠: {ss['no_gap']}")
-            logger.info(f"    有差距: {ss['has_gap']}, 可bisect配对: {ss['bisectable']}")
+            logger.info(f"    pairs: {ss['pairs']}, total_metrics: {ss['total_metrics']}")
+            logger.info(f"    kpi_metrics: {ss['kpi_metrics']}, non_kpi_skipped: {ss['non_kpi_metrics']}")
+            logger.info(f"    insufficient_samples: {ss['insufficient_samples']}, range_overlap: {ss['no_gap']}")
+            logger.info(f"    has_gap: {ss['has_gap']}, bisectable_pairs: {ss['bisectable']}")
         logger.info("=" * 60)
 
         return bisectable
 
     def _generate_pair_key(self, pair: Dict) -> str:
-        """生成配对的唯一标识"""
+        """Generate unique identifier for pair"""
         return f"{pair['baseline_commit']}_{pair['current_commit']}_{pair['suite']}"
 
     def _collect_samples(self, job: Dict, metric: str) -> List[float]:
-        """从单个 job 收集指标样本"""
+        """Collect metric samples from a single job"""
         samples = []
         stats = job.get('stats', {})
 
@@ -1179,7 +1179,7 @@ class PerformanceBisectProducer:
         return samples
 
     def _collect_samples_from_list(self, jobs: List[Dict], metric: str) -> List[float]:
-        """从多个 jobs 收集指标样本"""
+        """Collect metric samples from multiple jobs"""
         samples = []
 
         for job in jobs:
@@ -1189,9 +1189,9 @@ class PerformanceBisectProducer:
         return samples
 
     def _query_all_samples_from_db(self, commit: str, suite: str, testbox: str, metric: str) -> List[float]:
-        """从数据库查询指定 commit/suite/testbox/metric 的所有样本
+        """Query all samples for specified commit/suite/testbox/metric from database
 
-        使用所有可用样本来计算 range，确保 midpoint 判断的准确性
+        Use all available samples to calculate range, ensuring midpoint accuracy
         """
         sql = f"""
             SELECT j
@@ -1230,55 +1230,55 @@ class PerformanceBisectProducer:
 
             return samples
         except Exception as e:
-            logger.warning(f"查询样本失败: {commit[:8]}/{suite}/{testbox}/{metric} - {e}")
+            logger.warning(f"Failed to query samples: {commit[:8]}/{suite}/{testbox}/{metric} - {e}")
             return []
 
     def _is_kpi_metric(self, metric: str) -> bool:
-        """判断是否为 KPI 指标（大写前缀）
+        """Determine if metric is a KPI metric (uppercase prefix)
 
-        根据 lkp-stats-type.md 规范:
-        - 小写前缀 (lat, rate) = 普通指标
-        - 大写前缀 (LAT, RATE) = KPI 指标
+        Based on lkp-stats-type.md convention:
+        - Lowercase prefix (lat, rate) = regular metric
+        - Uppercase prefix (LAT, RATE) = KPI metric
 
-        metric 格式: {suite}.{PREFIX}.{name}...
-        例如: lmbench.LAT.CTX.8P.64K.latency.us (KPI)
-              lmbench.lat.ctx.latency.us (非 KPI)
+        Metric format: {suite}.{PREFIX}.{name}...
+        Example: lmbench.LAT.CTX.8P.64K.latency.us (KPI)
+                 lmbench.lat.ctx.latency.us (not KPI)
         """
         parts = metric.split('.')
 
-        # 遍历找到前缀部分
+        # Find the prefix part
         all_prefixes = self.SMALLER_BETTER_PREFIXES | self.BIGGER_BETTER_PREFIXES
         for part in parts:
             if part.lower() in all_prefixes:
-                # 大写 = KPI
+                # Uppercase = KPI
                 return part.isupper()
 
         return False
 
     def _check_performance_gap(self, v1_samples: List[float], v2_samples: List[float]) -> Tuple[bool, Dict]:
-        """检查性能样本是否有明确的差距用于 bisect
+        """Check if performance samples have a clear gap for bisect
 
-        Midpoint 算法逻辑:
+        Midpoint algorithm logic:
         - v1_max < v2_min OR v2_max < v1_min
-        - 计算 midpoint 作为 bisect 判断阈值
+        - Calculate midpoint as bisect decision threshold
         """
         v1_min, v1_max = min(v1_samples), max(v1_samples)
         v2_min, v2_max = min(v2_samples), max(v2_samples)
 
-        # 检查不重叠的范围
+        # Check non-overlapping ranges
         has_gap = (v1_max < v2_min) or (v2_max < v1_min)
 
         if not has_gap:
             return False, {}
 
-        # 确定方向并计算 midpoint
+        # Determine direction and calculate midpoint
         if v1_max < v2_min:
-            # 回归: v1 更好 (更小) → v2 更差 (更大)
+            # Regression: v1 better (smaller) -> v2 worse (larger)
             mid_point = (v1_max + v2_min) / 2
             direction = 'worse'
             change_percent = ((v2_min - v1_max) / v1_max) * 100 if v1_max != 0 else 0
         else:
-            # 改进: v2 更好 (更小) → v1 更差 (更大)
+            # Improvement: v2 better (smaller) -> v1 worse (larger)
             mid_point = (v2_max + v1_min) / 2
             direction = 'better'
             change_percent = ((v1_min - v2_max) / v2_max) * 100 if v2_max != 0 else 0
@@ -1292,9 +1292,9 @@ class PerformanceBisectProducer:
         }
 
     def _create_bisect_tasks(self, bisectable_pairs: List[Dict], stats: Dict) -> int:
-        """为可 bisect 的配对创建任务
+        """Create tasks for bisectable pairs
 
-        每个可 bisect 的指标创建一个独立任务
+        Create an independent task for each bisectable metric
         """
         if not bisectable_pairs:
             return 0
@@ -1302,37 +1302,37 @@ class PerformanceBisectProducer:
         tasks_to_create = []
 
         for pair in bisectable_pairs:
-            # 遍历每个有性能差距的指标，为每个指标创建独立任务
+            # Iterate each metric with performance gap, create independent task for each
             for metric_info in pair.get('metrics_with_gap', []):
                 try:
                     metric = metric_info['metric']
 
-                    # 检查该指标的任务是否已存在
+                    # Check if task for this metric already exists
                     if self._task_exists_for_metric(pair, metric):
                         stats['tasks_db_duplicate'] += 1
                         continue
 
-                    # 构建任务文档
+                    # Build task document
                     task = self._build_task_document(pair, metric_info)
                     if task:
                         tasks_to_create.append(task)
 
                 except Exception as e:
-                    logger.warning(f"创建任务时出错: {str(e)}")
+                    logger.warning(f"Error creating task: {str(e)}")
                     stats['tasks_failed'] += 1
                     continue
 
         if not tasks_to_create:
             return 0
 
-        # 批量插入
+        # Batch insert
         success_count, failed_count = self.batch_inserter.batch_create_tasks(tasks_to_create)
 
         stats['tasks_failed'] += failed_count
         return success_count
 
     def _task_exists_for_metric(self, pair: Dict, metric: str) -> bool:
-        """检查特定指标的任务是否已存在于数据库"""
+        """Check if task for specific metric already exists in database"""
         try:
             query = {
                 "bool": {
@@ -1343,7 +1343,7 @@ class PerformanceBisectProducer:
                 }
             }
 
-            # 检查 baseline 和 current commit
+            # Check baseline and current commit
             existing = self.client.search(index="bisect", query=query, limit=10)
 
             if existing:
@@ -1360,29 +1360,29 @@ class PerformanceBisectProducer:
             return False
 
         except Exception as e:
-            logger.debug(f"检查任务存在性失败: {str(e)}")
+            logger.debug(f"Failed to check task existence: {str(e)}")
             return False
 
     def _build_task_document(self, pair: Dict, metric_info: Dict) -> Dict:
-        """构建 bisect 任务文档
+        """Build bisect task document
 
         Args:
-            pair: 配对信息 (baseline_job, current_jobs, git_url, suite, commits)
-            metric_info: 指标信息 (metric, gap_info, v1_samples, v2_samples)
+            pair: pair info (baseline_job, current_jobs, git_url, suite, commits)
+            metric_info: metric info (metric, gap_info, v1_samples, v2_samples)
         """
         metric = metric_info['metric']
         gap_info = metric_info['gap_info']
         v1_samples = metric_info['v1_samples']
         v2_samples = metric_info['v2_samples']
 
-        # good/bad 基于时间顺序，而非性能方向
-        # - good_commit: 较旧的 commit (baseline, 祖先)
-        # - bad_commit: 较新的 commit (current, 后代)
-        # 性能方向 (worse/better) 存储在 performance_change_type 中
+        # good/bad based on chronological order, not performance direction
+        # - good_commit: older commit (baseline, ancestor)
+        # - bad_commit: newer commit (current, descendant)
+        # Performance direction (worse/better) stored in performance_change_type
         good_commit = pair['baseline_commit']
         bad_job_id = pair['current_jobs'][0]['job_id']
 
-        # 获取指标方向
+        # Get metric direction
         metric_direction = self._get_metric_direction(pair['suite'], metric)
 
         task = {
@@ -1395,7 +1395,7 @@ class PerformanceBisectProducer:
             'submit_time': int(time.time()),
             'j': {
                 'good_commit': good_commit,
-                'bad_commit': pair['current_commit'],  # 较新的 commit
+                'bad_commit': pair['current_commit'],
                 'mid_point': gap_info['mid_point'],
                 'metric_direction': metric_direction,
                 'v1_samples': v1_samples,
@@ -1416,23 +1416,23 @@ class PerformanceBisectProducer:
         return task
 
     def _get_metric_direction(self, suite: str, metric: str) -> int:
-        """获取指标的优化方向（基于前缀规范）
+        """Get metric optimization direction (based on prefix convention)
 
-        根据 lkp-stats-type.md 规范，从 metric 前缀推断方向：
-        - lat/jit/pow/cost/mem 前缀: -1 (SmallerBetter)
-        - rate 前缀: +1 (BiggerBetter)
+        Based on lkp-stats-type.md convention, infer direction from metric prefix:
+        - lat/jit/pow/cost/mem prefix: -1 (SmallerBetter)
+        - rate prefix: +1 (BiggerBetter)
 
-        +1 = 越大越好 (throughput, IOPS, bandwidth)
-        -1 = 越小越好 (latency, jitter, power)
+        +1 = bigger is better (throughput, IOPS, bandwidth)
+        -1 = smaller is better (latency, jitter, power)
 
-        metric 格式: {suite}.{PREFIX}.{name}...
-        例如: lmbench.LAT.CTX.8P.64K.latency.us
+        Metric format: {suite}.{PREFIX}.{name}...
+        Example: lmbench.LAT.CTX.8P.64K.latency.us
         """
-        # 提取前缀：跳过 suite 部分
-        # metric 可能是 "LAT.CTX.8P.64K.latency.us" 或 "lmbench.LAT.CTX.8P.64K.latency.us"
+        # Extract prefix: skip suite part
+        # metric may be "LAT.CTX.8P.64K.latency.us" or "lmbench.LAT.CTX.8P.64K.latency.us"
         parts = metric.split('.')
 
-        # 找到前缀位置
+        # Find prefix position
         prefix = None
         for part in parts:
             part_lower = part.lower()
@@ -1446,40 +1446,40 @@ class PerformanceBisectProducer:
             if prefix in self.BIGGER_BETTER_PREFIXES:
                 return 1
 
-        # 回退：根据指标名称关键词猜测
+        # Fallback: guess from metric name keywords
         metric_lower = metric.lower()
         if any(kw in metric_lower for kw in ['lat', 'time', 'latency', 'jit', 'cost']):
             return -1
         if any(kw in metric_lower for kw in ['throughput', 'iops', 'bw', 'bandwidth', 'rate', 'score']):
             return 1
 
-        return 0  # 未知
+        return 0  # Unknown
 
     def _log_stats(self, stats: Dict, start_time: float):
-        """输出统计报告"""
+        """Output statistics report"""
         duration = time.time() - start_time
 
         logger.info("=" * 80)
-        logger.info("性能 Bisect 生产者统计报告")
+        logger.info("Performance Bisect Producer Statistics Report")
         logger.info("=" * 80)
-        logger.info(f"总耗时: {duration:.2f}s")
-        logger.info(f"查询时间范围: {stats['time_range_hours']} 小时")
-        logger.info(f"查询 jobs 数: {stats['jobs_queried']}")
-        logger.info(f"分组数: {stats['groups_found']}")
-        logger.info(f"比较配对数: {stats['pairs_found']}")
-        logger.info(f"  - 缓存命中: {stats['pairs_cache_hit']}")
-        logger.info(f"  - 样本不足: {stats['pairs_insufficient_samples']}")
-        logger.info(f"  - 无性能差距: {stats['pairs_no_gap']}")
-        logger.info(f"  - 低于阈值: {stats['pairs_below_threshold']}")
-        logger.info(f"可 bisect 配对: {stats['bisectable_pairs']}")
-        logger.info(f"任务创建: {stats['tasks_created']}")
-        logger.info(f"  - 数据库重复: {stats['tasks_db_duplicate']}")
-        logger.info(f"  - 创建失败: {stats['tasks_failed']}")
+        logger.info(f"Total duration: {duration:.2f}s")
+        logger.info(f"Query time range: {stats['time_range_hours']}h")
+        logger.info(f"Jobs queried: {stats['jobs_queried']}")
+        logger.info(f"Groups found: {stats['groups_found']}")
+        logger.info(f"Comparison pairs: {stats['pairs_found']}")
+        logger.info(f"  - cache_hit: {stats['pairs_cache_hit']}")
+        logger.info(f"  - insufficient_samples: {stats['pairs_insufficient_samples']}")
+        logger.info(f"  - no_gap: {stats['pairs_no_gap']}")
+        logger.info(f"  - below_threshold: {stats['pairs_below_threshold']}")
+        logger.info(f"Bisectable pairs: {stats['bisectable_pairs']}")
+        logger.info(f"Tasks created: {stats['tasks_created']}")
+        logger.info(f"  - db_duplicate: {stats['tasks_db_duplicate']}")
+        logger.info(f"  - failed: {stats['tasks_failed']}")
         logger.info("=" * 80)
 
-        # 使用报告器保存详细统计
+        # Use reporter to save detailed stats
         try:
             self.reporter.write_report(stats, duration)
         except Exception as e:
-            logger.debug(f"保存统计报告失败: {str(e)}")
+            logger.debug(f"Failed to save statistics report: {str(e)}")
 
