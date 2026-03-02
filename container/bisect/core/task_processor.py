@@ -41,9 +41,9 @@ from bisect_utils import (
 from repo_manager import SharedRepoManager
 from config import Config
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
-from py_bisect import GitBisect
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
+from lkp_bisect.core.git_bisect import GitBisect
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/validators')
 from success_task_validator import SuccessTaskValidator

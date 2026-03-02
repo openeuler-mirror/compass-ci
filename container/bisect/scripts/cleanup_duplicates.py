@@ -24,8 +24,8 @@ import argparse
 import time
 from collections import defaultdict
 
-sys.path.append(os.environ.get('LKP_SRC', '/lkp') + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
+sys.path.append(os.environ.get('LKP_SRC', '/lkp') + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
 
 sys.path.append(os.environ.get('CCI_SRC', '/c/compass-ci') + '/container/bisect/lib')
 from config import Config

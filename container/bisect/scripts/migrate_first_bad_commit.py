@@ -31,10 +31,10 @@ from typing import Dict, List, Tuple, Optional
 
 # Add project path
 sys.path.append(os.environ.get('CCI_SRC', '/srv/cci') + '/container/bisect/lib')
-sys.path.append(os.environ.get('LKP_SRC', '/srv/lkp') + '/programs/bisect-py/')
+sys.path.append(os.environ.get('LKP_SRC', '/srv/lkp') + '/sbin/bisect/')
 
 from log_config import logger
-from manticore_simple import ManticoreClient
+from lkp_bisect.db.manticore import ManticoreClient
 
 
 class FirstBadCommitMigrator:

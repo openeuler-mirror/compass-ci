@@ -18,9 +18,9 @@ from log_config import logger, StructuredLogger
 from bisect_utils import extract_repo_name_from_url
 from notification_writer import NotificationWriter
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
-from py_bisect import GitBisect
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
+from lkp_bisect.core.git_bisect import GitBisect
 
 class BisectConsumer:
     """Bisect task consumer"""

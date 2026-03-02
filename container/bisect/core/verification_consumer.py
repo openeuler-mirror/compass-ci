@@ -26,9 +26,9 @@ from notification_writer import NotificationWriter
 from repo_manager import SharedRepoManager
 from bisect_utils import extract_git_url_from_full_text_kv, extract_repo_name_from_url, write_regression_record
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
-from py_bisect import GitBisect
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
+from lkp_bisect.core.git_bisect import GitBisect
 
 
 class VerificationConsumer:

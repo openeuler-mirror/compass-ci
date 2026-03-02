@@ -25,9 +25,9 @@ from typing import Dict, Any, Optional, List, Tuple
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from log_config import logger
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
-from py_bisect import GitBisect
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
+from lkp_bisect.core.git_bisect import GitBisect
 
 # 导入共享工具
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/core')

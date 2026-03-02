@@ -16,7 +16,7 @@ from typing import Dict, Any, List, Set, Tuple, Optional
 from pathlib import Path
 from collections import defaultdict
 
-from manticore_simple import ManticoreClient
+from lkp_bisect.db.manticore import ManticoreClient
 
 # Import project's structured logging system
 import sys

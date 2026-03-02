@@ -18,7 +18,7 @@ from collections import defaultdict
 # Add path
 sys.path.insert(0, os.path.join(os.environ.get('LKP_SRC', '/srv/cci'), 'programs/bisect-py/'))
 
-from manticore_simple import ManticoreClient
+from lkp_bisect.db.manticore import ManticoreClient
 
 
 class MidpointDiagnoser:

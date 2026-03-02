@@ -10,9 +10,9 @@ from config import Config
 from log_config import logger
 from query_builder import build_task_query_conditions, build_condition_summary, _escape_sql_string
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from py_bisect import GitBisect
-from manticore_simple import ManticoreClient
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.core.git_bisect import GitBisect
+from lkp_bisect.db.manticore import ManticoreClient
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/core')
 from task_processor import bisect_task_instance
