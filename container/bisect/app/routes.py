@@ -21,7 +21,6 @@ from .controllers import (
     trigger_pool_cleanup,
     get_pool_stats,
     verify_pool_consistency,
-    get_repo_instances,
     start_pool_monitor,
     stop_pool_monitor
 )
@@ -50,6 +49,5 @@ api_bp.route('/pool/status', methods=['GET'])(get_pool_status)
 api_bp.route('/pool/cleanup', methods=['POST'])(trigger_pool_cleanup)
 api_bp.route('/pool/stats', methods=['GET'])(get_pool_stats)
 api_bp.route('/pool/verify', methods=['POST'])(verify_pool_consistency)
-api_bp.route('/pool/instances/<repo_name>', methods=['GET'])(get_repo_instances)
 api_bp.route('/pool/monitor/start', methods=['POST'])(start_pool_monitor)
 api_bp.route('/pool/monitor/stop', methods=['POST'])(stop_pool_monitor)

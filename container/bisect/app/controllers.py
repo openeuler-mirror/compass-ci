@@ -1002,18 +1002,16 @@ def get_pool_status():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 def trigger_pool_cleanup():
-    """触发仓库池清理"""
+    """Trigger workspace cleanup"""
     try:
         monitor = _get_pool_monitor()
 
-        # 从请求参数获取选项
         dry_run = request.json.get('dry_run', True) if request.json else True
-        max_hours = request.json.get('max_hours', None) if request.json else None
+        max_age_days = request.json.get('max_age_days', None) if request.json else None
 
         result = monitor.check_and_cleanup(
             dry_run=dry_run,
-            max_hours=max_hours,
-            auto_cleanup=True
+            max_age_days=max_age_days
         )
 
         return jsonify(result), 200
@@ -1040,18 +1038,6 @@ def verify_pool_consistency():
         logger.error(f"Failed to verify pool consistency: {str(e)}")
         return jsonify({"status": "error", "error": str(e)}), 500
 
-def get_repo_instances(repo_name):
-    """获取特定仓库的实例信息"""
-    try:
-        monitor = _get_pool_monitor()
-        result = monitor.get_instance_info(repo_name)
-
-        if result['status'] == 'error':
-            return jsonify(result), 404
-        return jsonify(result), 200
-    except Exception as e:
-        logger.error(f"Failed to get repo instances: {str(e)}")
-        return jsonify({"status": "error", "error": str(e)}), 500
 
 def start_pool_monitor():
     """启动池监控线程"""
