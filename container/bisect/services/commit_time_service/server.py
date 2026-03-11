@@ -242,6 +242,40 @@ class CommitTimeService:
             }
         }
 
+    def check_ancestor(self, git_url: str, ancestor_commit: str,
+                       descendant_commit: str) -> Dict[str, Any]:
+        """
+        Check if ancestor_commit is an ancestor of descendant_commit.
+
+        Args:
+            git_url: Git repository URL
+            ancestor_commit: The potential ancestor commit hash
+            descendant_commit: The potential descendant commit hash
+
+        Returns:
+            Result dict with is_ancestor boolean
+        """
+        self.request_count += 1
+
+        try:
+            is_ancestor = self.query.is_ancestor(git_url, ancestor_commit, descendant_commit)
+            return {
+                'status': 'success',
+                'data': {
+                    'is_ancestor': is_ancestor,
+                    'ancestor': ancestor_commit,
+                    'descendant': descendant_commit
+                }
+            }
+        except Exception as e:
+            return {
+                'status': 'error',
+                'error': f'Ancestor check failed: {str(e)}',
+                'git_url': git_url,
+                'ancestor': ancestor_commit,
+                'descendant': descendant_commit
+            }
+
     def get_parent_commit(self, git_url: str, commit_hash: str) -> Dict[str, Any]:
         """
         获取 commit 的父提交信息
@@ -330,6 +364,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.handle_commit_check(params)
             elif path == '/api/v1/commit/branch_check':
                 self.handle_branch_check(params)
+            elif path == '/api/v1/commit/is-ancestor':
+                self.handle_is_ancestor(params)
             elif path == '/api/v1/commit/parent':
                 self.handle_parent_commit(params)
             elif path == '/api/v1/stats':
@@ -400,6 +436,19 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
 
         result = self.service.check_branch_version(git_url, commit, min_version)
+        self.send_json_response(result)
+
+    def handle_is_ancestor(self, params: Dict):
+        """Handle ancestor check request"""
+        git_url = params.get('repo', [None])[0]
+        ancestor = params.get('ancestor', [None])[0]
+        descendant = params.get('descendant', [None])[0]
+
+        if not git_url or not ancestor or not descendant:
+            self.send_error_response(400, 'Missing required parameters: repo, ancestor, descendant')
+            return
+
+        result = self.service.check_ancestor(git_url, ancestor, descendant)
         self.send_json_response(result)
 
     def handle_parent_commit(self, params: Dict):
@@ -504,6 +553,7 @@ def run_server(host: str = '0.0.0.0', port: int = 8765,
     logger.info("Endpoints:")
     logger.info(f"  GET  /api/v1/commit/time?repo=<url>&commit=<hash>")
     logger.info(f"  GET  /api/v1/commit/check?repo=<url>&commit=<hash>&max_age_days=365")
+    logger.info(f"  GET  /api/v1/commit/is-ancestor?repo=<url>&ancestor=<hash>&descendant=<hash>")
     logger.info(f"  GET  /api/v1/commit/parent?repo=<url>&commit=<hash>")
     logger.info(f"  POST /api/v1/commit/batch_check  (body: {{items: [...], max_age_days: 365}})")
     logger.info(f"  GET  /api/v1/stats")

@@ -167,5 +167,103 @@ class TestCommitTimeQuery(unittest.TestCase):
         self.assertLessEqual(age, 31)
 
 
+class TestIsAncestor(unittest.TestCase):
+    """Unit tests for CommitTimeQuery.is_ancestor"""
+
+    def setUp(self):
+        self.mock_repo_manager = Mock()
+        self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/test_pristine'
+        self.mock_repo_manager.pristine_locks = {}
+        self.mock_repo_manager.pristine_locks_lock = MagicMock()
+        self.query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
+
+    def test_invalid_params_return_false(self):
+        """Empty or None params should return False"""
+        self.assertFalse(self.query.is_ancestor('', 'abc', 'def'))
+        self.assertFalse(self.query.is_ancestor('http://repo', '', 'def'))
+        self.assertFalse(self.query.is_ancestor('http://repo', 'abc', ''))
+        self.assertFalse(self.query.is_ancestor(None, 'abc', 'def'))
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
+    def test_is_ancestor_true(self, mock_run, mock_is_repo):
+        """returncode 0 means ancestor relationship exists"""
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_run.return_value = mock_result
+
+        result = self.query.is_ancestor(
+            'https://gitee.com/openeuler/kernel.git',
+            'aaa111', 'bbb222'
+        )
+        self.assertTrue(result)
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        self.assertIn('merge-base', args)
+        self.assertIn('--is-ancestor', args)
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
+    def test_is_ancestor_false(self, mock_run, mock_is_repo):
+        """returncode 1 means not an ancestor"""
+        mock_result = Mock()
+        mock_result.returncode = 1
+        mock_run.return_value = mock_result
+
+        result = self.query.is_ancestor(
+            'https://gitee.com/openeuler/kernel.git',
+            'aaa111', 'bbb222'
+        )
+        self.assertFalse(result)
+        # Should NOT fetch and retry on returncode 1
+        mock_run.assert_called_once()
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
+    def test_is_ancestor_error_triggers_fetch_and_retry(self, mock_run, mock_is_repo):
+        """returncode 128 (bad commit) should fetch and retry"""
+        error_result = Mock()
+        error_result.returncode = 128
+        error_result.stderr = 'fatal: Not a valid object name'
+
+        success_result = Mock()
+        success_result.returncode = 0
+
+        # First call fails with 128, fetch call, then retry succeeds
+        mock_run.side_effect = [error_result, Mock(returncode=0), success_result]
+
+        result = self.query.is_ancestor(
+            'https://gitee.com/openeuler/kernel.git',
+            'aaa111', 'bbb222'
+        )
+        self.assertTrue(result)
+        # 3 calls: initial check, fetch, retry
+        self.assertEqual(mock_run.call_count, 3)
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
+    def test_is_ancestor_timeout(self, mock_run, mock_is_repo):
+        """Timeout should return False gracefully"""
+        import subprocess
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd='git', timeout=30)
+
+        result = self.query.is_ancestor(
+            'https://gitee.com/openeuler/kernel.git',
+            'aaa111', 'bbb222'
+        )
+        self.assertFalse(result)
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=False)
+    def test_is_ancestor_repo_clone_failure(self, mock_is_repo):
+        """If pristine repo doesn't exist and clone fails, return False"""
+        self.mock_repo_manager._ensure_pristine_repo.side_effect = Exception("clone failed")
+
+        result = self.query.is_ancestor(
+            'https://gitee.com/openeuler/kernel.git',
+            'aaa111', 'bbb222'
+        )
+        self.assertFalse(result)
+
+
 if __name__ == '__main__':
     unittest.main()

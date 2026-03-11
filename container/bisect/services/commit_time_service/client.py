@@ -198,6 +198,64 @@ class CommitTimeClient:
         except Exception as e:
             return (None, None)
 
+    def is_ancestor(self, git_url: str, ancestor_commit: str,
+                    descendant_commit: str) -> Optional[bool]:
+        """
+        Check if ancestor_commit is an ancestor of descendant_commit.
+
+        Args:
+            git_url: Git repository URL
+            ancestor_commit: The potential ancestor commit hash
+            descendant_commit: The potential descendant commit hash
+
+        Returns:
+            True if ancestor, False if not, None if query failed
+        """
+        try:
+            response = requests.get(
+                f"{self.service_url}/api/v1/commit/is-ancestor",
+                params={
+                    'repo': git_url,
+                    'ancestor': ancestor_commit,
+                    'descendant': descendant_commit
+                },
+                timeout=self.timeout
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    return result['data']['is_ancestor']
+
+            return None
+
+        except Exception:
+            return None
+
+    def batch_check_ancestry(self, git_url: str,
+                             pairs: List[Tuple[str, str]]) -> Set[int]:
+        """
+        Batch check ancestry for multiple commit pairs.
+
+        Checks each pair sequentially via the is_ancestor endpoint.
+
+        Args:
+            git_url: Git repository URL
+            pairs: List of (ancestor_commit, descendant_commit) tuples
+
+        Returns:
+            Set of indices of pairs that are NOT in an ancestor relationship
+        """
+        invalid_indices = set()
+
+        for i, (ancestor, descendant) in enumerate(pairs):
+            result = self.is_ancestor(git_url, ancestor, descendant)
+            if result is False:
+                invalid_indices.add(i)
+            # If result is None (error), we skip — graceful degradation
+
+        return invalid_indices
+
     def get_parent_commit(self, git_url: str, commit: str) -> Optional[str]:
         """
         获取 commit 的父提交 hash

@@ -369,6 +369,79 @@ class CommitTimeQuery:
 
         return (is_old, base_tag, tag_version)
 
+    def is_ancestor(self, git_url: str, ancestor_commit: str, descendant_commit: str) -> bool:
+        """
+        Check if ancestor_commit is an ancestor of descendant_commit.
+
+        Uses `git merge-base --is-ancestor` in the pristine repo.
+
+        Args:
+            git_url: Git repository URL
+            ancestor_commit: The potential ancestor commit hash
+            descendant_commit: The potential descendant commit hash
+
+        Returns:
+            True if ancestor_commit is an ancestor of descendant_commit, False otherwise.
+            Returns False on any error (graceful degradation).
+        """
+        if not git_url or not ancestor_commit or not descendant_commit:
+            return False
+
+        repo_name = extract_repo_name_from_url(git_url)
+        pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
+
+        if not SharedRepoManager._is_git_repo(pristine_repo_dir):
+            try:
+                self._ensure_pristine_repo(git_url, pristine_repo_dir)
+            except Exception as e:
+                logger.error(f"Failed to ensure pristine repo | repo: {repo_name} | error: {str(e)}")
+                return False
+
+        try:
+            result = subprocess.run(
+                ['git', '-C', pristine_repo_dir, 'merge-base', '--is-ancestor',
+                 ancestor_commit, descendant_commit],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if result.returncode == 0:
+                return True
+            elif result.returncode == 1:
+                # returncode 1 = commits exist but not in ancestor relationship
+                return False
+            else:
+                # returncode 128 or other = commit not found, try fetch and retry
+                logger.warning(f"is_ancestor check error, trying fetch | ancestor: {ancestor_commit[:12]} | "
+                              f"descendant: {descendant_commit[:12]} | stderr: {result.stderr.strip()}")
+                self._fetch_pristine_repo(pristine_repo_dir)
+
+                result = subprocess.run(
+                    ['git', '-C', pristine_repo_dir, 'merge-base', '--is-ancestor',
+                     ancestor_commit, descendant_commit],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    return True
+                elif result.returncode == 1:
+                    return False
+                else:
+                    logger.warning(f"is_ancestor still failed after fetch | "
+                                  f"ancestor: {ancestor_commit[:12]} | descendant: {descendant_commit[:12]}")
+                    return False
+
+        except subprocess.TimeoutExpired:
+            logger.error(f"is_ancestor timed out | ancestor: {ancestor_commit[:12]} | "
+                        f"descendant: {descendant_commit[:12]}")
+            return False
+        except Exception as e:
+            logger.error(f"is_ancestor failed | ancestor: {ancestor_commit[:12]} | "
+                        f"descendant: {descendant_commit[:12]} | error: {str(e)}")
+            return False
+
     def _ensure_pristine_repo(self, git_url: str, pristine_repo_dir: str):
         """确保 pristine 仓库存在"""
         # 复用 repo_manager 的 pristine 锁机制

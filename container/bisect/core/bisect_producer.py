@@ -662,6 +662,16 @@ class PerformanceBisectProducer:
         # Initialize reporter
         self.reporter = ProducerReporter(stats_dir='performance_producer_stats')
 
+        # Initialize commit time service client for ancestor checks
+        if COMMIT_TIME_CLIENT_AVAILABLE:
+            commit_service_url = config.get(
+                'commit_time_service_url',
+                os.environ.get('COMMIT_TIME_SERVICE_URL', 'http://localhost:8765')
+            )
+            self.commit_client = CommitTimeClient(commit_service_url)
+        else:
+            self.commit_client = None
+
         logger.info(f"PerformanceBisectProducer initialized | "
                    f"query_hours: {self.query_hours}h | "
                    f"interval: {Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS} days | "
@@ -743,6 +753,7 @@ class PerformanceBisectProducer:
             'pairs_found': 0,
             'pairs_cache_hit': 0,
             'pairs_insufficient_samples': 0,
+            'pairs_not_ancestor': 0,
             'pairs_no_gap': 0,
             'pairs_below_threshold': 0,
             'bisectable_pairs': 0,
@@ -1071,6 +1082,20 @@ class PerformanceBisectProducer:
                 suite = pair['suite']
                 baseline_commit = pair['baseline_commit']
                 current_commit = pair['current_commit']
+                git_url = pair.get('git_url')
+
+                # Ancestor validation: ensure baseline is ancestor of current
+                if self.commit_client and git_url:
+                    try:
+                        is_anc = self.commit_client.is_ancestor(git_url, baseline_commit, current_commit)
+                        if is_anc is False:
+                            stats['pairs_not_ancestor'] += 1
+                            logger.warning(f"Skipping non-ancestor pair | {suite}/{testbox} | "
+                                         f"baseline: {baseline_commit[:12]} | current: {current_commit[:12]}")
+                            continue
+                        # is_anc is None means service error — continue gracefully
+                    except Exception as e:
+                        logger.warning(f"Ancestor check failed, continuing | error: {str(e)}")
 
                 suite_stats[suite]['pairs'] += 1
                 suite_stats[suite]['total_metrics'] += len(pair['metrics'])
@@ -1468,6 +1493,7 @@ class PerformanceBisectProducer:
         logger.info(f"Groups found: {stats['groups_found']}")
         logger.info(f"Comparison pairs: {stats['pairs_found']}")
         logger.info(f"  - cache_hit: {stats['pairs_cache_hit']}")
+        logger.info(f"  - not_ancestor: {stats['pairs_not_ancestor']}")
         logger.info(f"  - insufficient_samples: {stats['pairs_insufficient_samples']}")
         logger.info(f"  - no_gap: {stats['pairs_no_gap']}")
         logger.info(f"  - below_threshold: {stats['pairs_below_threshold']}")
