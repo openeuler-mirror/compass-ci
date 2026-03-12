@@ -7,6 +7,7 @@ Extracted producer-related methods from TaskProcessor
 import os
 import time
 import json
+import yaml
 import logging
 import shutil
 import traceback
@@ -632,23 +633,17 @@ class PerformanceBisectProducer:
 
         # Use config
         self.producer_interval = Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS * 86400
-        self.query_hours = Config.PERFORMANCE_PRODUCER_QUERY_HOURS
+        self.baseline_query_hours = Config.BASELINE_QUERY_HOURS
+        self.current_query_hours = Config.CURRENT_QUERY_HOURS
         self.min_samples = Config.PERFORMANCE_MIN_SAMPLES
         self.default_samples = Config.PERFORMANCE_DEFAULT_SAMPLES
 
         # Performance test suites
         self.performance_suites = [s.strip() for s in Config.PERFORMANCE_SUITES.split(',')]
 
-        # Baseline config - aligned with kernel-ci KERNEL_TEST_CONFIG
-        # Format: {commit: True} means this is a baseline commit
-        self.baseline_commits = {
-            # openEuler OLK-5.10 baseline
-            '5.10.0-216.0.0': True,
-            # openEuler OLK-6.6 baseline
-            '6.6.0-98.0.0': True,
-            # linux/linux-next baseline
-            'v6.17': True,
-        }
+        # Baseline config - loaded from ci_config.yaml kernel_test_matrix
+        self.baseline_commits = self._load_baseline_commits()
+        logger.info(f"Loaded baseline commits: {list(self.baseline_commits.keys())}")
 
         # Load metric config
         self.metrics_config = self._load_metrics_config()
@@ -673,7 +668,8 @@ class PerformanceBisectProducer:
             self.commit_client = None
 
         logger.info(f"PerformanceBisectProducer initialized | "
-                   f"query_hours: {self.query_hours}h | "
+                   f"current_query_hours: {self.current_query_hours}h | "
+                   f"baseline_query_hours: {self.baseline_query_hours}h | "
                    f"interval: {Config.PERFORMANCE_PRODUCER_INTERVAL_DAYS} days | "
                    f"monitored_suites: {self.performance_suites}")
 
@@ -714,6 +710,19 @@ class PerformanceBisectProducer:
 
             logger.info(f"Phase 1 completed: found {len(performance_jobs)} performance test jobs")
 
+            # Phase 1b: supplement baseline jobs from wider window (30d)
+            baseline_supplement = self._query_baseline_jobs()
+            seen_ids = {j['job_id'] for j in performance_jobs}
+            supplemented = 0
+            for job in baseline_supplement:
+                if job['job_id'] not in seen_ids:
+                    performance_jobs.append(job)
+                    seen_ids.add(job['job_id'])
+                    supplemented += 1
+            if supplemented:
+                logger.info(f"Phase 1b: supplemented {supplemented} baseline jobs from {Config.BASELINE_QUERY_HOURS}h window")
+            stats['jobs_queried'] = len(performance_jobs)
+
             # Phase 2: group by (repo, suite, testbox)
             grouped_jobs = self._group_performance_jobs(performance_jobs)
             stats['groups_found'] = len(grouped_jobs)
@@ -747,7 +756,7 @@ class PerformanceBisectProducer:
         """Initialize statistics"""
         return {
             'cycle_start_time': int(time.time()),
-            'time_range_hours': self.query_hours,
+            'time_range_hours': self.current_query_hours,
             'jobs_queried': 0,
             'groups_found': 0,
             'pairs_found': 0,
@@ -770,10 +779,11 @@ class PerformanceBisectProducer:
         - job_stage = 'finish', job_health = 'success'
         - submit_time within query time range
         """
-        time_threshold = int(time.time() - self.query_hours * 3600)
+        time_threshold = int(time.time() - self.current_query_hours * 3600)
         suites_sql = "', '".join(self.performance_suites)
 
         # Build query - directly get j.ss.linux.commit field
+        # Uses CURRENT_QUERY_HOURS (14d) window to capture enough current jobs
         sql_query = f"""
             SELECT id, suite, testbox, submit_time, full_text_kv, j, j.ss.linux.commit as linux_commit
             FROM jobs
@@ -783,7 +793,7 @@ class PerformanceBisectProducer:
             AND j.job_data_readiness = 'complete'
             AND submit_time >= {time_threshold}
             ORDER BY submit_time DESC
-            LIMIT 5000
+            LIMIT 10000
         """
 
         try:
@@ -815,6 +825,63 @@ class PerformanceBisectProducer:
 
         except Exception as e:
             logger.error(f"Failed to query performance jobs: {str(e)}")
+            return []
+
+    def _query_baseline_jobs(self) -> List[Dict]:
+        """Query baseline jobs with wider time window (30 days)
+
+        Supplements Phase 1 results with baseline jobs that fall outside
+        the current query window. Only queries for known baseline commits
+        to keep results focused.
+
+        Returns:
+            List of parsed baseline job dicts
+        """
+        if not self.baseline_commits:
+            logger.info("No baseline commits configured, skipping baseline supplement query")
+            return []
+
+        time_threshold = int(time.time() - self.baseline_query_hours * 3600)
+        suites_sql = "', '".join(self.performance_suites)
+
+        # Build commit filter from baseline commits
+        baseline_commit_list = list(self.baseline_commits.keys())
+        commits_sql = "', '".join(baseline_commit_list)
+
+        sql_query = f"""
+            SELECT id, suite, testbox, submit_time, full_text_kv, j, j.ss.linux.commit as linux_commit
+            FROM jobs
+            WHERE suite IN ('{suites_sql}')
+            AND j.job_stage = 'finish'
+            AND j.job_health = 'success'
+            AND j.job_data_readiness = 'complete'
+            AND submit_time >= {time_threshold}
+            AND j.ss.linux.commit IN ('{commits_sql}')
+            ORDER BY submit_time DESC
+            LIMIT 10000
+        """
+
+        try:
+            result = self.client.sql_select(sql_query)
+            if not result:
+                logger.info(f"Baseline supplement query returned empty | "
+                           f"window: {self.baseline_query_hours}h | "
+                           f"commits: {baseline_commit_list}")
+                return []
+
+            logger.info(f"Baseline supplement query returned {len(result)} raw records")
+
+            processed_jobs = []
+            for item in result:
+                job_data = self._parse_job_data(item)
+                if job_data:
+                    processed_jobs.append(job_data)
+
+            logger.info(f"Baseline supplement: {len(processed_jobs)} valid jobs from {self.baseline_query_hours}h window")
+            return processed_jobs
+
+        except Exception as e:
+            logger.error(f"Failed to query baseline jobs: {str(e)}")
             return []
 
     def _parse_job_data(self, item: Dict) -> Optional[Dict]:
@@ -1034,6 +1101,47 @@ class PerformanceBisectProducer:
                        f"no_metrics: {skip_reasons['no_metrics']}")
 
         return comparison_pairs
+
+    def _load_baseline_commits(self) -> Dict[str, bool]:
+        """Load baseline commits from ci_config.yaml kernel_test_matrix.
+
+        Extracts baseline_tag.value for entries where baseline_tag.type == 'fixed'.
+        Falls back to hardcoded defaults if YAML loading fails.
+        """
+        default_baselines = {
+            '5.10.0-216.0.0': True,
+            '6.6.0-98.0.0': True,
+            'v6.17': True,
+        }
+
+        try:
+            with open(Config.CI_CONFIG_PATH, 'r') as f:
+                config = yaml.safe_load(f)
+
+            if not config or 'kernel_test_matrix' not in config:
+                logger.warning(f"No kernel_test_matrix in {Config.CI_CONFIG_PATH}, using defaults")
+                return default_baselines
+
+            baselines = {}
+            for entry in config['kernel_test_matrix']:
+                baseline_tag = entry.get('baseline_tag')
+                if not baseline_tag:
+                    continue
+                if baseline_tag.get('type') == 'fixed' and baseline_tag.get('value'):
+                    baselines[baseline_tag['value']] = True
+
+            if not baselines:
+                logger.warning("No fixed baseline tags found in kernel_test_matrix, using defaults")
+                return default_baselines
+
+            return baselines
+
+        except FileNotFoundError:
+            logger.warning(f"ci_config.yaml not found at {Config.CI_CONFIG_PATH}, using defaults")
+            return default_baselines
+        except Exception as e:
+            logger.warning(f"Failed to load ci_config.yaml: {e}, using defaults")
+            return default_baselines
 
     def _is_baseline_commit(self, commit: str) -> bool:
         """Determine if commit is a baseline commit

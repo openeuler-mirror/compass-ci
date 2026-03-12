@@ -7,6 +7,13 @@ class Config:
     BISECT_MODE = os.environ.get('bisect_mode', 'local')
     LKP_SRC = os.environ.get('LKP_SRC', '/c/lkp-tests')
     CCI_SRC = os.environ.get('CCI_SRC', '/c/compass-ci')
+    CI_CONFIG_PATH = os.environ.get(
+        'CI_CONFIG_PATH',
+        os.path.join(
+            os.environ.get('LKP_SRC', '/c/lkp-tests'),
+            'sbin/bisect/kernel_ci/ci_config.yaml'
+        )
+    )
 
     # Thread pool configuration
     # Default: 32 threads, can be increased since workspace overhead is low (~90MB per thread)
@@ -114,6 +121,12 @@ class Config:
     # Query time range in hours for performance jobs
     # 25 hours = daily run + 1 hour overlap for fault tolerance
     PERFORMANCE_PRODUCER_QUERY_HOURS = int(os.environ.get('PERFORMANCE_PRODUCER_QUERY_HOURS', 25))
+
+    # Wider query windows for performance bisect comparison pairs
+    # Baseline: 30 days (720h) — stable tags, old results remain valid
+    BASELINE_QUERY_HOURS = int(os.environ.get('BASELINE_QUERY_HOURS', 720))
+    # Current: 14 days (336h) — RC tags rotate weekly, 14 days gives ~14 samples per suite
+    CURRENT_QUERY_HOURS = int(os.environ.get('CURRENT_QUERY_HOURS', 336))
 
     # Producer interval in days (run once per day)
     PERFORMANCE_PRODUCER_INTERVAL_DAYS = int(os.environ.get('PERFORMANCE_PRODUCER_INTERVAL_DAYS', 1))
