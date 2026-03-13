@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Unit tests for is_ancestor feature across client and server layers
+"""
+
+import os
+import sys
+import unittest
+from unittest.mock import Mock, patch, MagicMock
+
+# Set environment variables
+os.environ['CCI_SRC'] = '/srv/cci'
+os.environ['WORK_DIR'] = '/tmp'
+os.environ['LKP_SRC'] = '/srv/lkp'
+
+# Add project paths
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from client import CommitTimeClient
+
+
+class TestCommitTimeClientIsAncestor(unittest.TestCase):
+    """Tests for CommitTimeClient.is_ancestor"""
+
+    def setUp(self):
+        self.client = CommitTimeClient('http://localhost:8765', timeout=5)
+
+    @patch('client.requests.get')
+    def test_is_ancestor_true(self, mock_get):
+        """Service returns is_ancestor=True"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'status': 'success',
+            'data': {'is_ancestor': True, 'ancestor': 'aaa', 'descendant': 'bbb'}
+        }
+        mock_get.return_value = mock_response
+
+        result = self.client.is_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertTrue(result)
+
+        # Verify correct endpoint and params
+        mock_get.assert_called_once()
+        call_kwargs = mock_get.call_args
+        self.assertIn('/api/v1/commit/is-ancestor', call_kwargs[0][0])
+        self.assertEqual(call_kwargs[1]['params']['ancestor'], 'aaa')
+        self.assertEqual(call_kwargs[1]['params']['descendant'], 'bbb')
+
+    @patch('client.requests.get')
+    def test_is_ancestor_false(self, mock_get):
+        """Service returns is_ancestor=False"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'status': 'success',
+            'data': {'is_ancestor': False, 'ancestor': 'aaa', 'descendant': 'bbb'}
+        }
+        mock_get.return_value = mock_response
+
+        result = self.client.is_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertFalse(result)
+
+    @patch('client.requests.get')
+    def test_is_ancestor_service_error(self, mock_get):
+        """Service returns error status"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'status': 'error',
+            'error': 'Ancestor check failed'
+        }
+        mock_get.return_value = mock_response
+
+        result = self.client.is_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertIsNone(result)
+
+    @patch('client.requests.get')
+    def test_is_ancestor_connection_error(self, mock_get):
+        """Connection failure returns None (graceful degradation)"""
+        mock_get.side_effect = Exception("Connection refused")
+
+        result = self.client.is_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertIsNone(result)
+
+    @patch('client.requests.get')
+    def test_is_ancestor_http_500(self, mock_get):
+        """HTTP 500 returns None"""
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_get.return_value = mock_response
+
+        result = self.client.is_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertIsNone(result)
+
+
+class TestCommitTimeClientBatchCheckAncestry(unittest.TestCase):
+    """Tests for CommitTimeClient.batch_check_ancestry"""
+
+    def setUp(self):
+        self.client = CommitTimeClient('http://localhost:8765', timeout=5)
+
+    @patch('client.requests.get')
+    def test_batch_all_valid(self, mock_get):
+        """All pairs are valid ancestors"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'status': 'success',
+            'data': {'is_ancestor': True}
+        }
+        mock_get.return_value = mock_response
+
+        pairs = [('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3')]
+        invalid = self.client.batch_check_ancestry('http://repo', pairs)
+        self.assertEqual(invalid, set())
+
+    @patch('client.requests.get')
+    def test_batch_some_invalid(self, mock_get):
+        """Some pairs are not in ancestor relationship"""
+        responses = []
+        for is_anc in [True, False, True]:
+            r = Mock()
+            r.status_code = 200
+            r.json.return_value = {
+                'status': 'success',
+                'data': {'is_ancestor': is_anc}
+            }
+            responses.append(r)
+        mock_get.side_effect = responses
+
+        pairs = [('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3')]
+        invalid = self.client.batch_check_ancestry('http://repo', pairs)
+        self.assertEqual(invalid, {1})
+
+    @patch('client.requests.get')
+    def test_batch_service_error_is_graceful(self, mock_get):
+        """Service errors should not mark pairs as invalid"""
+        # First pair: True, Second: error (None), Third: False
+        responses = []
+        r1 = Mock()
+        r1.status_code = 200
+        r1.json.return_value = {'status': 'success', 'data': {'is_ancestor': True}}
+        responses.append(r1)
+
+        r2 = Mock()
+        r2.status_code = 500
+        responses.append(r2)
+
+        r3 = Mock()
+        r3.status_code = 200
+        r3.json.return_value = {'status': 'success', 'data': {'is_ancestor': False}}
+        responses.append(r3)
+
+        mock_get.side_effect = responses
+
+        pairs = [('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3')]
+        invalid = self.client.batch_check_ancestry('http://repo', pairs)
+        # Only pair at index 2 is invalid; index 1 is error (None) so skipped
+        self.assertEqual(invalid, {2})
+
+    def test_batch_empty_pairs(self):
+        """Empty pairs list returns empty set"""
+        invalid = self.client.batch_check_ancestry('http://repo', [])
+        self.assertEqual(invalid, set())
+
+
+class TestServiceIsAncestorEndpoint(unittest.TestCase):
+    """Tests for CommitTimeService.check_ancestor"""
+
+    def setUp(self):
+        from server import CommitTimeService
+        self.service = CommitTimeService.__new__(CommitTimeService)
+        self.service.query = Mock()
+        self.service.request_count = 0
+
+    def test_check_ancestor_success_true(self):
+        self.service.query.is_ancestor.return_value = True
+        result = self.service.check_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertEqual(result['status'], 'success')
+        self.assertTrue(result['data']['is_ancestor'])
+        self.assertEqual(result['data']['ancestor'], 'aaa')
+        self.assertEqual(result['data']['descendant'], 'bbb')
+        self.assertEqual(self.service.request_count, 1)
+
+    def test_check_ancestor_success_false(self):
+        self.service.query.is_ancestor.return_value = False
+        result = self.service.check_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertEqual(result['status'], 'success')
+        self.assertFalse(result['data']['is_ancestor'])
+
+    def test_check_ancestor_exception(self):
+        self.service.query.is_ancestor.side_effect = Exception("git error")
+        result = self.service.check_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertEqual(result['status'], 'error')
+        self.assertIn('git error', result['error'])
+
+
+if __name__ == '__main__':
+    unittest.main()
