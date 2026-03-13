@@ -169,7 +169,7 @@ class ErrorBisectProducer:
         # === 1. Metrics collection script ===
         # Run once daily, or when forced
         if force_run_scripts or self.last_metrics_date != current_date:
-            tracker_script = os.path.join(lkp_src, 'programs/bisect-py/utils/bisect_metrics_tracker.py')
+            tracker_script = os.path.join(lkp_src, 'sbin/bisect/scripts/bisect_metrics_tracker.py')
             if self._run_script(tracker_script, ['--collect', '--plot'], "metrics collection"):
                 # Only update date marker on successful run in non-force mode to prevent forced runs from affecting auto scheduling
                 # Or: update whenever successful? Typically forced run counts as today's run.

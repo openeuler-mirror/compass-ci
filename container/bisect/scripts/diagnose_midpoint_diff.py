@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
 
 # Add path
-sys.path.insert(0, os.path.join(os.environ.get('LKP_SRC', '/srv/cci'), 'programs/bisect-py/'))
+sys.path.insert(0, os.path.join(os.environ.get('LKP_SRC', '/srv/cci'), 'sbin/bisect/'))
 
 from lkp_bisect.db.manticore import ManticoreClient
 
