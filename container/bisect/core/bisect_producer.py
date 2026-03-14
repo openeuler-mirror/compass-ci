@@ -176,11 +176,11 @@ class ErrorBisectProducer:
                 # Strategy: update date marker if run successfully
                 self.last_metrics_date = current_date
 
-        # === 2. Daily kernel test script ===
+        # === 2. Daily kernel test (ci_runner.py) ===
         # Run once daily, or when forced
         if force_run_scripts or self.last_kernel_test_date != current_date:
-            kernel_test_script = os.path.join(lkp_src, 'sbin/bisect/kernel_ci/daily_kernel_test.sh')
-            if self._run_script(kernel_test_script, None, "daily kernel test script"):
+            ci_runner_script = os.path.join(lkp_src, 'sbin/bisect/kernel_ci/ci_runner.py')
+            if self._run_script(ci_runner_script, None, "daily kernel test (ci_runner)"):
                 self.last_kernel_test_date = current_date
 
         start_time = time.time()
@@ -625,6 +625,8 @@ class PerformanceBisectProducer:
     # Prefix constants (based on lkp-stats-type.md convention)
     SMALLER_BETTER_PREFIXES = {'lat', 'jit', 'pow', 'cost', 'mem'}
     BIGGER_BETTER_PREFIXES = {'rate'}
+    # Non-performance prefixes to exclude (error IDs, test cases, metadata, etc.)
+    NON_PERF_PREFIXES = {'eid', 'tcase', 'ttotal', 'msg', 'log', 'param', 'element', 'ts', 'tstage', 'cnt', 'acc'}
 
     def __init__(self, client: ManticoreClient, config: Dict):
         self.client = client
@@ -1367,26 +1369,33 @@ class PerformanceBisectProducer:
             return []
 
     def _is_kpi_metric(self, metric: str) -> bool:
-        """Determine if metric is a KPI metric (uppercase prefix)
+        """Determine if metric is a KPI metric
 
         Based on lkp-stats-type.md convention:
-        - Lowercase prefix (lat, rate) = regular metric
         - Uppercase prefix (LAT, RATE) = KPI metric
+        - Lowercase prefix (lat, rate) = regular metric, skip
+        - Non-performance prefix (eid, tcase, ttotal, etc.) = skip
+        - No recognized prefix = treat as KPI (legacy format, let gap check filter)
 
         Metric format: {suite}.{PREFIX}.{name}...
         Example: lmbench.LAT.CTX.8P.64K.latency.us (KPI)
                  lmbench.lat.ctx.latency.us (not KPI)
+                 unixbench.Dhrystone_2 (no prefix, treat as KPI)
         """
         parts = metric.split('.')
 
-        # Find the prefix part
-        all_prefixes = self.SMALLER_BETTER_PREFIXES | self.BIGGER_BETTER_PREFIXES
+        all_perf_prefixes = self.SMALLER_BETTER_PREFIXES | self.BIGGER_BETTER_PREFIXES
         for part in parts:
-            if part.lower() in all_prefixes:
-                # Uppercase = KPI
+            part_lower = part.lower()
+            # Known performance prefix: uppercase = KPI, lowercase = regular
+            if part_lower in all_perf_prefixes:
                 return part.isupper()
+            # Known non-performance prefix: always skip
+            if part_lower in self.NON_PERF_PREFIXES:
+                return False
 
-        return False
+        # No recognized prefix (legacy format) — treat as KPI candidate
+        return True
 
     def _check_performance_gap(self, v1_samples: List[float], v2_samples: List[float]) -> Tuple[bool, Dict]:
         """Check if performance samples have a clear gap for bisect
