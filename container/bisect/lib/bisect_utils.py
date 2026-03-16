@@ -23,6 +23,7 @@ from datetime import datetime
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
 from log_config import logger
+from config import Config
 
 def _generate_task_id(bad_job_id, task_identifier):
     """Generate deterministic ID based on task_identifier
@@ -1017,11 +1018,11 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
 
         # Query all wait tasks with same signature
         # Strategy: query build tasks in wait status, filter by signature on client side
-        query = """
+        query = f"""
             SELECT id, error_id, bad_job_id, git_url, submit_time, priority_level
             FROM bisect
             WHERE bisect_status = 'wait' AND category = 'build'
-            LIMIT 1000
+            LIMIT {Config.WAIT_TASK_QUERY_LIMIT}
         """
 
         wait_tasks = client.sql_select(query)
@@ -1166,11 +1167,11 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
         )
 
         # Query all build tasks in wait status
-        query = """
+        query = f"""
             SELECT id, error_id, bad_job_id, git_url, submit_time, priority_level
             FROM bisect
             WHERE bisect_status = 'wait' AND category = 'build'
-            LIMIT 2000
+            LIMIT {Config.WAIT_TASK_QUERY_LIMIT}
         """
 
         wait_tasks = client.sql_select(query)

@@ -163,3 +163,6 @@ class Config:
     BATCH_DELETE_SIZE = int(os.environ.get('BATCH_DELETE_SIZE', 500))
     # Maximum valid 64-bit signed integer (for task ID validation)
     MAX_INT64 = 2**63 - 1
+
+    # Limit for querying wait tasks (used by signature matching and errid reuse)
+    WAIT_TASK_QUERY_LIMIT = int(os.environ.get('WAIT_TASK_QUERY_LIMIT', 5000))
