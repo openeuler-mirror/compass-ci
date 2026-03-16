@@ -2,6 +2,7 @@ import sys
 import os
 import time
 import traceback
+from datetime import datetime, timezone
 from flask import jsonify, request
 import threading
 
@@ -23,11 +24,31 @@ from services.pool_monitor_service import PoolMonitorService
 
 
 def _get_manticore_client():
-    """获取ManticoreSearch HTTP客户端"""
+    """Get ManticoreSearch HTTP client"""
     return ManticoreClient(
         host=os.environ.get('MANTICORE_HOST', 'localhost'),
         port=int(os.environ.get('MANTICORE_WRITE_PORT', '9308'))
     )
+
+# Timestamp fields to add human-readable versions for
+_TIMESTAMP_FIELDS = ('submit_time', 'updated_at', 'created_at')
+
+def _humanize_timestamps(task: dict) -> dict:
+    """Add '_human' suffix fields for unix timestamp fields (e.g. updated_at_human).
+
+    Original numeric fields are kept intact for backward compatibility.
+    """
+    for field in _TIMESTAMP_FIELDS:
+        value = task.get(field)
+        if isinstance(value, (int, float)) and value > 0:
+            task[f'{field}_human'] = datetime.fromtimestamp(value, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+    return task
+
+def _humanize_task_list(tasks):
+    """Apply timestamp humanization to a list of tasks."""
+    if not tasks:
+        return tasks
+    return [_humanize_timestamps(t) for t in tasks]
 
 def new_bisect_task():
     try:
@@ -144,11 +165,10 @@ def list_bisect_tasks():
         logger.debug(f"执行查询: {sql_query}")
         tasks = client.sql_select(sql_query)
 
-        # 返回结果
         result_count = len(tasks) if tasks else 0
 
         return jsonify({
-            "tasks": tasks or [],
+            "tasks": _humanize_task_list(tasks) or [],
             "count": result_count,
             "filters": filters,
             "limit": limit
