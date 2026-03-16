@@ -177,12 +177,12 @@ class TestIsAncestor(unittest.TestCase):
         self.mock_repo_manager.pristine_locks_lock = MagicMock()
         self.query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
 
-    def test_invalid_params_return_false(self):
-        """Empty or None params should return False"""
-        self.assertFalse(self.query.is_ancestor('', 'abc', 'def'))
-        self.assertFalse(self.query.is_ancestor('http://repo', '', 'def'))
-        self.assertFalse(self.query.is_ancestor('http://repo', 'abc', ''))
-        self.assertFalse(self.query.is_ancestor(None, 'abc', 'def'))
+    def test_invalid_params_return_none(self):
+        """Empty or None params should return None (cannot determine)"""
+        self.assertIsNone(self.query.is_ancestor('', 'abc', 'def'))
+        self.assertIsNone(self.query.is_ancestor('http://repo', '', 'def'))
+        self.assertIsNone(self.query.is_ancestor('http://repo', 'abc', ''))
+        self.assertIsNone(self.query.is_ancestor(None, 'abc', 'def'))
 
     @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
     @patch('subprocess.run')
@@ -242,8 +242,25 @@ class TestIsAncestor(unittest.TestCase):
 
     @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
     @patch('subprocess.run')
+    def test_is_ancestor_still_fails_after_fetch_returns_none(self, mock_run, mock_is_repo):
+        """returncode 128 after fetch+retry should return None (not False)"""
+        error_result = Mock()
+        error_result.returncode = 128
+        error_result.stderr = 'fatal: Not a valid object name'
+
+        # First call 128, fetch succeeds, retry still 128
+        mock_run.side_effect = [error_result, Mock(returncode=0), error_result]
+
+        result = self.query.is_ancestor(
+            'https://gitee.com/openeuler/kernel.git',
+            'aaa111', 'bbb222'
+        )
+        self.assertIsNone(result)
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
     def test_is_ancestor_timeout(self, mock_run, mock_is_repo):
-        """Timeout should return False gracefully"""
+        """Timeout should return None (cannot determine)"""
         import subprocess
         mock_run.side_effect = subprocess.TimeoutExpired(cmd='git', timeout=30)
 
@@ -251,18 +268,18 @@ class TestIsAncestor(unittest.TestCase):
             'https://gitee.com/openeuler/kernel.git',
             'aaa111', 'bbb222'
         )
-        self.assertFalse(result)
+        self.assertIsNone(result)
 
     @patch('commit_query.SharedRepoManager._is_git_repo', return_value=False)
     def test_is_ancestor_repo_clone_failure(self, mock_is_repo):
-        """If pristine repo doesn't exist and clone fails, return False"""
+        """If pristine repo doesn't exist and clone fails, return None"""
         self.mock_repo_manager._ensure_pristine_repo.side_effect = Exception("clone failed")
 
         result = self.query.is_ancestor(
             'https://gitee.com/openeuler/kernel.git',
             'aaa111', 'bbb222'
         )
-        self.assertFalse(result)
+        self.assertIsNone(result)
 
 
 if __name__ == '__main__':

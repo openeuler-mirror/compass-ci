@@ -95,70 +95,132 @@ class TestCommitTimeClientIsAncestor(unittest.TestCase):
         self.assertIsNone(result)
 
 
-class TestCommitTimeClientBatchCheckAncestry(unittest.TestCase):
-    """Tests for CommitTimeClient.batch_check_ancestry"""
+class TestCommitTimeClientBatchIsAncestor(unittest.TestCase):
+    """Tests for CommitTimeClient.batch_is_ancestor"""
 
     def setUp(self):
         self.client = CommitTimeClient('http://localhost:8765', timeout=5)
 
-    @patch('client.requests.get')
-    def test_batch_all_valid(self, mock_get):
-        """All pairs are valid ancestors"""
+    @patch('client.requests.post')
+    def test_batch_all_ancestors(self, mock_post):
+        """All pairs are ancestors"""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             'status': 'success',
-            'data': {'is_ancestor': True}
+            'data': {
+                'total': 3,
+                'results': [
+                    {'ancestor': 'a1', 'descendant': 'b1', 'is_ancestor': True},
+                    {'ancestor': 'a2', 'descendant': 'b2', 'is_ancestor': True},
+                    {'ancestor': 'a3', 'descendant': 'b3', 'is_ancestor': True},
+                ]
+            }
         }
-        mock_get.return_value = mock_response
+        mock_post.return_value = mock_response
+
+        pairs = [('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3')]
+        results = self.client.batch_is_ancestor('http://repo', pairs)
+        self.assertEqual(results, [True, True, True])
+
+    @patch('client.requests.post')
+    def test_batch_mixed_results(self, mock_post):
+        """Mix of True, False, None results"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'status': 'success',
+            'data': {
+                'total': 3,
+                'results': [
+                    {'ancestor': 'a1', 'descendant': 'b1', 'is_ancestor': True},
+                    {'ancestor': 'a2', 'descendant': 'b2', 'is_ancestor': False},
+                    {'ancestor': 'a3', 'descendant': 'b3', 'is_ancestor': None},
+                ]
+            }
+        }
+        mock_post.return_value = mock_response
+
+        pairs = [('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3')]
+        results = self.client.batch_is_ancestor('http://repo', pairs)
+        self.assertEqual(results, [True, False, None])
+
+    @patch('client.requests.post')
+    def test_batch_service_error_returns_nones(self, mock_post):
+        """Service error returns all None (graceful degradation)"""
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_post.return_value = mock_response
+
+        pairs = [('a1', 'b1'), ('a2', 'b2')]
+        results = self.client.batch_is_ancestor('http://repo', pairs)
+        self.assertEqual(results, [None, None])
+
+    @patch('client.requests.post')
+    def test_batch_connection_error_returns_nones(self, mock_post):
+        """Connection error returns all None"""
+        mock_post.side_effect = Exception("Connection refused")
+
+        pairs = [('a1', 'b1')]
+        results = self.client.batch_is_ancestor('http://repo', pairs)
+        self.assertEqual(results, [None])
+
+    def test_batch_empty_pairs(self):
+        """Empty pairs returns empty list"""
+        results = self.client.batch_is_ancestor('http://repo', [])
+        self.assertEqual(results, [])
+
+
+class TestCommitTimeClientBatchCheckAncestry(unittest.TestCase):
+    """Tests for CommitTimeClient.batch_check_ancestry (uses batch endpoint)"""
+
+    def setUp(self):
+        self.client = CommitTimeClient('http://localhost:8765', timeout=5)
+
+    @patch('client.requests.post')
+    def test_batch_all_valid(self, mock_post):
+        """All pairs are valid ancestors → empty invalid set"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'status': 'success',
+            'data': {
+                'total': 3,
+                'results': [
+                    {'ancestor': 'a1', 'descendant': 'b1', 'is_ancestor': True},
+                    {'ancestor': 'a2', 'descendant': 'b2', 'is_ancestor': True},
+                    {'ancestor': 'a3', 'descendant': 'b3', 'is_ancestor': True},
+                ]
+            }
+        }
+        mock_post.return_value = mock_response
 
         pairs = [('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3')]
         invalid = self.client.batch_check_ancestry('http://repo', pairs)
         self.assertEqual(invalid, set())
 
-    @patch('client.requests.get')
-    def test_batch_some_invalid(self, mock_get):
-        """Some pairs are not in ancestor relationship"""
-        responses = []
-        for is_anc in [True, False, True]:
-            r = Mock()
-            r.status_code = 200
-            r.json.return_value = {
-                'status': 'success',
-                'data': {'is_ancestor': is_anc}
+    @patch('client.requests.post')
+    def test_batch_some_invalid(self, mock_post):
+        """False results → invalid indices; None results → skipped"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'status': 'success',
+            'data': {
+                'total': 3,
+                'results': [
+                    {'ancestor': 'a1', 'descendant': 'b1', 'is_ancestor': True},
+                    {'ancestor': 'a2', 'descendant': 'b2', 'is_ancestor': False},
+                    {'ancestor': 'a3', 'descendant': 'b3', 'is_ancestor': None},
+                ]
             }
-            responses.append(r)
-        mock_get.side_effect = responses
+        }
+        mock_post.return_value = mock_response
 
         pairs = [('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3')]
         invalid = self.client.batch_check_ancestry('http://repo', pairs)
+        # Only index 1 (False) is invalid; index 2 (None) is skipped
         self.assertEqual(invalid, {1})
-
-    @patch('client.requests.get')
-    def test_batch_service_error_is_graceful(self, mock_get):
-        """Service errors should not mark pairs as invalid"""
-        # First pair: True, Second: error (None), Third: False
-        responses = []
-        r1 = Mock()
-        r1.status_code = 200
-        r1.json.return_value = {'status': 'success', 'data': {'is_ancestor': True}}
-        responses.append(r1)
-
-        r2 = Mock()
-        r2.status_code = 500
-        responses.append(r2)
-
-        r3 = Mock()
-        r3.status_code = 200
-        r3.json.return_value = {'status': 'success', 'data': {'is_ancestor': False}}
-        responses.append(r3)
-
-        mock_get.side_effect = responses
-
-        pairs = [('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3')]
-        invalid = self.client.batch_check_ancestry('http://repo', pairs)
-        # Only pair at index 2 is invalid; index 1 is error (None) so skipped
-        self.assertEqual(invalid, {2})
 
     def test_batch_empty_pairs(self):
         """Empty pairs list returns empty set"""
@@ -195,6 +257,50 @@ class TestServiceIsAncestorEndpoint(unittest.TestCase):
         result = self.service.check_ancestor('http://repo', 'aaa', 'bbb')
         self.assertEqual(result['status'], 'error')
         self.assertIn('git error', result['error'])
+
+
+class TestServiceBatchIsAncestor(unittest.TestCase):
+    """Tests for CommitTimeService.batch_check_ancestor"""
+
+    def setUp(self):
+        from server import CommitTimeService
+        self.service = CommitTimeService.__new__(CommitTimeService)
+        self.service.query = Mock()
+        self.service.request_count = 0
+
+    def test_batch_all_true(self):
+        self.service.query.is_ancestor.return_value = True
+        pairs = [
+            {'ancestor': 'a1', 'descendant': 'b1'},
+            {'ancestor': 'a2', 'descendant': 'b2'},
+        ]
+        result = self.service.batch_check_ancestor('http://repo', pairs)
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(len(result['data']['results']), 2)
+        self.assertTrue(all(r['is_ancestor'] for r in result['data']['results']))
+
+    def test_batch_mixed_results(self):
+        # Use deterministic mapping since ThreadPoolExecutor order is non-deterministic
+        def mock_is_ancestor(git_url, ancestor, descendant):
+            return {'a1': True, 'a2': False, 'a3': None}[ancestor]
+
+        self.service.query.is_ancestor.side_effect = mock_is_ancestor
+        pairs = [
+            {'ancestor': 'a1', 'descendant': 'b1'},
+            {'ancestor': 'a2', 'descendant': 'b2'},
+            {'ancestor': 'a3', 'descendant': 'b3'},
+        ]
+        result = self.service.batch_check_ancestor('http://repo', pairs)
+        self.assertEqual(result['status'], 'success')
+        results = result['data']['results']
+        self.assertTrue(results[0]['is_ancestor'])
+        self.assertFalse(results[1]['is_ancestor'])
+        self.assertIsNone(results[2]['is_ancestor'])
+
+    def test_batch_empty_pairs(self):
+        result = self.service.batch_check_ancestor('http://repo', [])
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(result['data']['results'], [])
 
 
 if __name__ == '__main__':

@@ -135,10 +135,14 @@ class ErrorBisectProducer:
                 universal_newlines=True
             )
             
-            # Read output in real-time
+            # Read output in real-time, skip subprocess DEBUG lines
             for line in process.stdout:
                 line = line.strip()
-                if line:
+                if not line:
+                    continue
+                if '- DEBUG -' in line:
+                    logger.debug(f"[{description}] {line}")
+                else:
                     logger.info(f"[{description}] {line}")
             
             # Wait for process to finish
@@ -335,8 +339,14 @@ class ErrorBisectProducer:
                     'item': item
                 }
 
-                # If has commit, add to batch check list
-                if commit_hash and self.commit_client:
+                # If has a real git ref (hash or v-tag), add to batch commit age check.
+                # Version strings like "6.6.0-132.0.0" or branch names like "next-20260316"
+                # are not resolvable by git log and would cause useless fetch attempts.
+                is_git_ref = bool(
+                    re.match(r'^[a-f0-9]{12,40}$', commit_hash) or  # hex hash
+                    re.match(r'^v\d+\.', commit_hash)                # v-prefixed tag
+                )
+                if commit_hash and self.commit_client and is_git_ref:
                     commit_check_items.append({
                         'job_id': bad_job_id,
                         'git_url': git_url,
@@ -1245,6 +1255,32 @@ class PerformanceBisectProducer:
         """
         bisectable = []
 
+        # Pre-pass: batch ancestor validation for all non-cached pairs
+        ancestor_results = {}  # (baseline, current) -> Optional[bool]
+        if self.commit_client:
+            # Group pairs by git_url for batch checking
+            url_pairs = defaultdict(list)  # git_url -> [(index, baseline, current)]
+            for pair in pairs:
+                pair_key = self._generate_pair_key(pair)
+                if pair_key in self.processed_pairs_cache:
+                    continue
+                git_url = pair.get('git_url')
+                if git_url:
+                    url_pairs[git_url].append((
+                        pair['baseline_commit'],
+                        pair['current_commit']
+                    ))
+
+            for git_url, commit_pairs in url_pairs.items():
+                try:
+                    results = self.commit_client.batch_is_ancestor(
+                        git_url, commit_pairs
+                    )
+                    for (baseline, current), is_anc in zip(commit_pairs, results):
+                        ancestor_results[(baseline, current)] = is_anc
+                except Exception as e:
+                    logger.warning(f"Batch ancestor check failed | git_url: {git_url[:60]} | error: {str(e)}")
+
         # Per-suite diagnostic stats
         suite_stats = defaultdict(lambda: {
             'pairs': 0,
@@ -1273,18 +1309,16 @@ class PerformanceBisectProducer:
                 current_commit = pair['current_commit']
                 git_url = pair.get('git_url')
 
-                # Ancestor validation: ensure baseline is ancestor of current
-                if self.commit_client and git_url:
-                    try:
-                        is_anc = self.commit_client.is_ancestor(git_url, baseline_commit, current_commit)
-                        if is_anc is not True:
-                            stats['pairs_not_ancestor'] += 1
-                            reason = "not ancestor" if is_anc is False else "service error (None)"
-                            logger.warning(f"Skipping pair ({reason}) | {suite}/{testbox} | "
-                                         f"baseline: {baseline_commit[:12]} | current: {current_commit[:12]}")
-                            continue
-                    except Exception as e:
-                        logger.warning(f"Ancestor check failed, continuing | error: {str(e)}")
+                # Ancestor validation: use pre-computed batch results
+                ancestor_key = (baseline_commit, current_commit)
+                if ancestor_key in ancestor_results:
+                    is_anc = ancestor_results[ancestor_key]
+                    if is_anc is not True:
+                        stats['pairs_not_ancestor'] += 1
+                        reason = "not ancestor" if is_anc is False else "unknown (None)"
+                        logger.warning(f"Skipping pair ({reason}) | {suite}/{testbox} | "
+                                     f"baseline: {baseline_commit[:12]} | current: {current_commit[:12]}")
+                        continue
 
                 suite_stats[suite]['pairs'] += 1
                 suite_stats[suite]['total_metrics'] += len(pair['metrics'])

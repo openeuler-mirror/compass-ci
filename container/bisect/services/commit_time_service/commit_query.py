@@ -372,7 +372,7 @@ class CommitTimeQuery:
 
         return (is_old, base_tag, tag_version)
 
-    def is_ancestor(self, git_url: str, ancestor_commit: str, descendant_commit: str) -> bool:
+    def is_ancestor(self, git_url: str, ancestor_commit: str, descendant_commit: str) -> Optional[bool]:
         """
         Check if ancestor_commit is an ancestor of descendant_commit.
 
@@ -384,11 +384,11 @@ class CommitTimeQuery:
             descendant_commit: The potential descendant commit hash
 
         Returns:
-            True if ancestor_commit is an ancestor of descendant_commit, False otherwise.
-            Returns False on any error (graceful degradation).
+            True if confirmed ancestor, False if confirmed not ancestor,
+            None if cannot determine (commit not in repo, timeout, error).
         """
         if not git_url or not ancestor_commit or not descendant_commit:
-            return False
+            return None
 
         repo_name = extract_repo_name_from_url(git_url)
         pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
@@ -398,7 +398,7 @@ class CommitTimeQuery:
                 self._ensure_pristine_repo(git_url, pristine_repo_dir)
             except Exception as e:
                 logger.error(f"Failed to ensure pristine repo | repo: {repo_name} | error: {str(e)}")
-                return False
+                return None
 
         try:
             result = subprocess.run(
@@ -434,16 +434,16 @@ class CommitTimeQuery:
                 else:
                     logger.warning(f"is_ancestor still failed after fetch | "
                                   f"ancestor: {ancestor_commit[:12]} | descendant: {descendant_commit[:12]}")
-                    return False
+                    return None  # Cannot determine — commit not in repo
 
         except subprocess.TimeoutExpired:
             logger.error(f"is_ancestor timed out | ancestor: {ancestor_commit[:12]} | "
                         f"descendant: {descendant_commit[:12]}")
-            return False
+            return None
         except Exception as e:
             logger.error(f"is_ancestor failed | ancestor: {ancestor_commit[:12]} | "
                         f"descendant: {descendant_commit[:12]} | error: {str(e)}")
-            return False
+            return None
 
     def _ensure_pristine_repo(self, git_url: str, pristine_repo_dir: str):
         """确保 pristine 仓库存在"""

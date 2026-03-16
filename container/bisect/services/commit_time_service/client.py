@@ -232,12 +232,55 @@ class CommitTimeClient:
         except Exception:
             return None
 
+    def batch_is_ancestor(self, git_url: str,
+                          pairs: List[Tuple[str, str]]) -> List[Optional[bool]]:
+        """
+        Batch check ancestry via server-side parallel endpoint.
+
+        Args:
+            git_url: Git repository URL
+            pairs: List of (ancestor_commit, descendant_commit) tuples
+
+        Returns:
+            List of results: True/False/None per pair, same order as input
+        """
+        if not pairs:
+            return []
+
+        try:
+            request_body = {
+                'git_url': git_url,
+                'pairs': [
+                    {'ancestor': anc, 'descendant': desc}
+                    for anc, desc in pairs
+                ]
+            }
+
+            response = requests.post(
+                f"{self.service_url}/api/v1/commit/batch_is_ancestor",
+                json=request_body,
+                timeout=self.timeout * 2
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    return [
+                        r.get('is_ancestor')
+                        for r in result['data']['results']
+                    ]
+
+            return [None] * len(pairs)
+
+        except Exception:
+            return [None] * len(pairs)
+
     def batch_check_ancestry(self, git_url: str,
                              pairs: List[Tuple[str, str]]) -> Set[int]:
         """
         Batch check ancestry for multiple commit pairs.
 
-        Checks each pair sequentially via the is_ancestor endpoint.
+        Uses server-side batch endpoint for parallel execution.
 
         Args:
             git_url: Git repository URL
@@ -246,13 +289,16 @@ class CommitTimeClient:
         Returns:
             Set of indices of pairs that are NOT in an ancestor relationship
         """
-        invalid_indices = set()
+        if not pairs:
+            return set()
 
-        for i, (ancestor, descendant) in enumerate(pairs):
-            result = self.is_ancestor(git_url, ancestor, descendant)
+        results = self.batch_is_ancestor(git_url, pairs)
+
+        invalid_indices = set()
+        for i, result in enumerate(results):
             if result is False:
                 invalid_indices.add(i)
-            # If result is None (error), we skip — graceful degradation
+            # None (error) → skip, graceful degradation
 
         return invalid_indices
 

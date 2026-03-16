@@ -331,6 +331,63 @@ class CommitTimeService:
                 'commit': commit_hash
             }
 
+    def batch_check_ancestor(self, git_url: str,
+                             pairs: list) -> Dict[str, Any]:
+        """
+        Batch check ancestor relationships for multiple commit pairs.
+
+        Runs checks in parallel using thread pool for better throughput.
+
+        Args:
+            git_url: Git repository URL
+            pairs: List of {'ancestor': str, 'descendant': str}
+
+        Returns:
+            Result dict with per-pair results
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        self.request_count += 1
+        if not pairs:
+            return {'status': 'success', 'data': {'git_url': git_url, 'total': 0, 'results': []}}
+
+        results = [None] * len(pairs)
+        max_workers = min(len(pairs), 8)
+
+        def check_one(index, ancestor, descendant):
+            is_anc = self.query.is_ancestor(git_url, ancestor, descendant)
+            return index, is_anc
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = []
+            for i, pair in enumerate(pairs):
+                ancestor = pair.get('ancestor', '')
+                descendant = pair.get('descendant', '')
+                futures.append(pool.submit(check_one, i, ancestor, descendant))
+
+            for future in as_completed(futures):
+                try:
+                    idx, is_anc = future.result(timeout=120)
+                    results[idx] = is_anc
+                except Exception:
+                    pass  # results[idx] stays None
+
+        return {
+            'status': 'success',
+            'data': {
+                'git_url': git_url,
+                'total': len(pairs),
+                'results': [
+                    {
+                        'ancestor': pairs[i].get('ancestor', ''),
+                        'descendant': pairs[i].get('descendant', ''),
+                        'is_ancestor': results[i]
+                    }
+                    for i in range(len(pairs))
+                ]
+            }
+        }
+
     def get_stats(self) -> Dict[str, Any]:
         """获取服务统计信息"""
         uptime = time.time() - self.start_time
@@ -387,6 +444,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             if path == '/api/v1/commit/batch_check':
                 self.handle_batch_check()
+            elif path == '/api/v1/commit/batch_is_ancestor':
+                self.handle_batch_is_ancestor()
             else:
                 self.send_error_response(404, 'Not Found')
 
@@ -461,6 +520,34 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
 
         result = self.service.get_parent_commit(git_url, commit)
+        self.send_json_response(result)
+
+    def handle_batch_is_ancestor(self):
+        """Handle batch ancestor check"""
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length == 0:
+            self.send_error_response(400, 'Missing request body')
+            return
+
+        body = self.rfile.read(content_length)
+        try:
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError as e:
+            self.send_error_response(400, f'Invalid JSON: {str(e)}')
+            return
+
+        git_url = data.get('git_url', '')
+        pairs = data.get('pairs', [])
+
+        if not git_url or not pairs:
+            self.send_error_response(400, 'Missing git_url or pairs')
+            return
+
+        if not isinstance(pairs, list):
+            self.send_error_response(400, 'pairs must be a list')
+            return
+
+        result = self.service.batch_check_ancestor(git_url, pairs)
         self.send_json_response(result)
 
     def handle_batch_check(self):
@@ -556,6 +643,7 @@ def run_server(host: str = '0.0.0.0', port: int = 8765,
     logger.info(f"  GET  /api/v1/commit/is-ancestor?repo=<url>&ancestor=<hash>&descendant=<hash>")
     logger.info(f"  GET  /api/v1/commit/parent?repo=<url>&commit=<hash>")
     logger.info(f"  POST /api/v1/commit/batch_check  (body: {{items: [...], max_age_days: 365}})")
+    logger.info(f"  POST /api/v1/commit/batch_is_ancestor  (body: {{git_url: ..., pairs: [{{ancestor: ..., descendant: ...}}]}})")
     logger.info(f"  GET  /api/v1/stats")
     logger.info(f"  GET  /health")
 
