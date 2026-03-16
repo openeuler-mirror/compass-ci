@@ -998,6 +998,15 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
 
         # Extract error signature
         signature = errid_intelligence.extract_coarse_signature(error_id)
+
+        # Only reuse when signature has a real file path (e.g., "nbl_core/nbl_service.c::error")
+        # Config-stage signatures without file paths (makepkg::, stderr::, unknown_file::)
+        # are too coarse and cause false matches
+        file_key = signature.split('::')[0]
+        if '/' not in file_key and '.' not in file_key:
+            logger.info(f"Task {task_id} has no-file signature '{signature}', skipping coarse reuse")
+            return
+
         logger.info(f"Task {task_id} succeeded, searching for wait tasks with same signature | signature: {signature} | git_url: {success_git_url[:60]}...")
 
         # Query all wait tasks with same signature

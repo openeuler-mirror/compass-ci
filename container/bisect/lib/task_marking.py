@@ -48,7 +48,17 @@ class TaskMarker:
             return {'success': 0, 'failed': 0}
 
         signature = self._extract_signature(successful_task)
-        similar_tasks = self._find_similar_tasks(signature)
+
+        # Only reuse when signature has a real file path (e.g., "nbl_core/nbl_service.c::error")
+        # Config-stage signatures without file paths (makepkg::, stderr::, unknown_file::)
+        # are too coarse and cause false matches
+        file_key = signature.split('::')[0]
+        if '/' not in file_key and '.' not in file_key:
+            logger.info(f"mark similar wait tasks | skip no-file signature | task_id: {successful_task.get('id')} | signature: {signature}")
+            return {'success': 0, 'failed': 0}
+
+        success_git_url = successful_task.get('git_url', '')
+        similar_tasks = self._find_similar_tasks(signature, success_git_url)
         result = self._batch_mark_verifying(similar_tasks, successful_task['id'], signature)
 
         logger.info(f"mark similar wait tasks | completed | task_id: {successful_task['id']} | "
@@ -73,10 +83,10 @@ class TaskMarker:
         logger.debug(f"mark similar wait tasks | extract signature | task_id: {task['id']} | signature: {signature}")
         return signature
 
-    def _find_similar_tasks(self, signature: str) -> List[Dict]:
+    def _find_similar_tasks(self, signature: str, git_url: str = '') -> List[Dict]:
         """业务层：查找相似任务（协调底层查询和过滤）"""
         wait_tasks = self._query_wait_build_tasks()
-        similar_tasks = self._filter_by_signature(wait_tasks, signature)
+        similar_tasks = self._filter_by_signature(wait_tasks, signature, git_url)
 
         logger.info(f"mark similar wait tasks | find similar | signature: {signature} | "
                    f"total_wait: {len(wait_tasks)} | similar: {len(similar_tasks)}")
@@ -102,9 +112,10 @@ class TaskMarker:
             logger.error(f"query wait build tasks | failed | error: {str(e)}")
             return []
 
-    def _filter_by_signature(self, tasks: List[Dict], target_signature: str) -> List[Dict]:
-        """底层：按签名过滤任务"""
+    def _filter_by_signature(self, tasks: List[Dict], target_signature: str, git_url: str = '') -> List[Dict]:
+        """底层：按签名和 git_url 过滤任务"""
         similar = []
+        skipped_cross_repo = 0
         for task in tasks:
             error_id = task.get('error_id', '')
             if not error_id:
@@ -113,11 +124,16 @@ class TaskMarker:
             try:
                 signature = self.errid_intelligence.extract_coarse_signature(error_id)
                 if signature == target_signature:
+                    if git_url and task.get('git_url', '') != git_url:
+                        skipped_cross_repo += 1
+                        continue
                     similar.append(task)
             except Exception as e:
                 logger.warning(f"filter by signature | extract failed | task_id: {task.get('id')} | error: {str(e)}")
                 continue
 
+        if skipped_cross_repo:
+            logger.info(f"filter by signature | skipped cross-repo: {skipped_cross_repo}")
         return similar
 
     def _batch_mark_verifying(self, tasks: List[Dict], related_id: str, signature: str) -> Dict[str, int]:
