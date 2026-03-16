@@ -747,7 +747,8 @@ def get_bisect_statistics(client) -> Dict[str, float]:
         total_result = client.search(
             index="bisect",
             query=total_query,
-            limit=10000  # Set large enough limit
+            limit=10000,
+            options={"max_matches": 10000}
         )
 
         total_tasks = len(total_result) if total_result else 0
@@ -765,7 +766,8 @@ def get_bisect_statistics(client) -> Dict[str, float]:
         success_result = client.search(
             index="bisect",
             query=success_query,
-            limit=10000
+            limit=10000,
+            options={"max_matches": 10000}
         )
 
         success_count = len(success_result) if success_result else 0
@@ -1024,6 +1026,7 @@ def mark_similar_wait_tasks_for_verification(client, errid_intelligence, success
             FROM bisect
             WHERE bisect_status = 'wait' AND category = 'build'
             LIMIT {Config.WAIT_TASK_QUERY_LIMIT}
+            OPTION max_matches={Config.WAIT_TASK_QUERY_LIMIT}
         """
 
         wait_tasks = client.sql_select(query)
@@ -1173,6 +1176,7 @@ def mark_introduced_errid_tasks_for_verification(client, successful_task: Dict):
             FROM bisect
             WHERE bisect_status = 'wait' AND category = 'build'
             LIMIT {Config.WAIT_TASK_QUERY_LIMIT}
+            OPTION max_matches={Config.WAIT_TASK_QUERY_LIMIT}
         """
 
         wait_tasks = client.sql_select(query)

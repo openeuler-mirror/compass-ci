@@ -572,6 +572,7 @@ def cleanup_orphaned_verifying():
             SELECT id, j FROM bisect
             WHERE bisect_status = 'verifying'
             LIMIT 10000
+            OPTION max_matches=10000
         """
 
         verifying_tasks = client.sql_select(query)

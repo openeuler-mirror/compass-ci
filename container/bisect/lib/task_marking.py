@@ -98,14 +98,15 @@ class TaskMarker:
 
     def _query_wait_build_tasks(self, limit: int = 1000) -> List[Dict]:
         """Data layer: query build tasks in wait status"""
-        query = """
+        query = f"""
             SELECT id, error_id, bad_job_id, git_url, submit_time, priority_level
             FROM bisect
             WHERE bisect_status = 'wait' AND category = 'build'
-            LIMIT %s
+            LIMIT {limit}
+            OPTION max_matches={limit}
         """
         try:
-            tasks = self.client.sql_select(query, (limit,))
+            tasks = self.client.sql_select(query)
             logger.debug(f"query wait build tasks | found: {len(tasks) if tasks else 0}")
             return tasks or []
         except Exception as e:

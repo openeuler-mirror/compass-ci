@@ -234,26 +234,47 @@ class ErrorBisectProducer:
         logger.info(f"Querying jobs table | time_range: {from_time} to {to_time}")
         logger.info(f"Query filter: exclude bisect intermediate tasks (j.bad_job_id IS NULL)")
 
-        # Scale query limit with window size: ~40 jobs/hour baseline, cap at 50000
-        query_limit = min(max(1000, time_range_hours * 40), 50000)
-        sql_query = f"""
-            SELECT id, j.errid, full_text_kv, submit_time,
-                   j.ss.linux.commit as linux_commit,
-                   j.pp.makepkg.commit as makepkg_commit
-            FROM jobs
-            WHERE j.errid IS NOT NULL
-            AND j.job_stage = 'finish'
-            AND j.job_data_readiness = 'complete'
-            AND j.bad_job_id IS NULL
-            AND submit_time >= {time_threshold}
-            ORDER BY id DESC
-            LIMIT {query_limit}
-        """
+        # Paginated query: fetch in pages of 1000 (ManticoreSearch default max_matches)
+        # This avoids requesting huge max_matches that consume server RAM
+        page_size = 1000
+        total_limit = min(max(1000, time_range_hours * 40), 50000)
+        result = []
+        last_id = None
+
+        logger.info(f"Paginated query | page_size: {page_size} | total_limit: {total_limit}")
 
         try:
-            result = self.client.sql_select(sql_query)
-            stats['jobs_queried'] = len(result) if result else 0
-            logger.info(f"Query completed | returned {stats['jobs_queried']} rows")
+            while len(result) < total_limit:
+                remaining = min(page_size, total_limit - len(result))
+                id_filter = f"AND id < {last_id}" if last_id else ""
+                sql_query = f"""
+                    SELECT id, j.errid, full_text_kv, submit_time,
+                           j.ss.linux.commit as linux_commit,
+                           j.pp.makepkg.commit as makepkg_commit
+                    FROM jobs
+                    WHERE j.errid IS NOT NULL
+                    AND j.job_stage = 'finish'
+                    AND j.job_data_readiness = 'complete'
+                    AND j.bad_job_id IS NULL
+                    AND submit_time >= {time_threshold}
+                    {id_filter}
+                    ORDER BY id DESC
+                    LIMIT {remaining}
+                """
+
+                page = self.client.sql_select(sql_query)
+                if not page:
+                    break
+
+                result.extend(page)
+                last_id = page[-1].get('id')
+                logger.debug(f"Fetched page | rows: {len(page)} | total: {len(result)} | last_id: {last_id}")
+
+                if len(page) < remaining:
+                    break  # No more data
+
+            stats['jobs_queried'] = len(result)
+            logger.info(f"Paginated query completed | total rows: {len(result)} | pages: {(len(result) + page_size - 1) // page_size}")
         except Exception as e:
             logger.error(f"Failed to query jobs table: {str(e)}")
             self._log_producer_stats(stats, start_time)
@@ -520,7 +541,7 @@ class ErrorBisectProducer:
                             ]
                         }
                     }
-                    existing = self.client.search(index="bisect", query=query, limit=10000)
+                    existing = self.client.search(index="bisect", query=query, limit=10000, options={"max_matches": 10000})
                     if existing:
                         for item in existing:
                             if item.get('error_id'):
@@ -549,7 +570,7 @@ class ErrorBisectProducer:
                                 ]
                             }
                         }
-                        failed_existing = self.client.search(index="bisect", query=query, limit=10000)
+                        failed_existing = self.client.search(index="bisect", query=query, limit=10000, options={"max_matches": 10000})
                         if failed_existing:
                             for item in failed_existing:
                                 eid = item.get('error_id')
@@ -885,6 +906,7 @@ class PerformanceBisectProducer:
             AND submit_time >= {time_threshold}
             ORDER BY submit_time DESC
             LIMIT 10000
+            OPTION max_matches=10000
         """
 
         try:
@@ -950,6 +972,7 @@ class PerformanceBisectProducer:
             AND j.ss.linux.commit IN ('{commits_sql}')
             ORDER BY submit_time DESC
             LIMIT 10000
+            OPTION max_matches=10000
         """
 
         try:
