@@ -158,5 +158,5 @@ build_task_filters:
   allowed_kernel_repos:
     - pattern: 'linux.*\.git'
       description: "各种 Linux 内核仓库"
-    - pattern: 'openeuler-kernel\.git'
-      description: "openEuler 内核"
+    - pattern: 'openeuler[/\-]kernel\.git'
+      description: "openEuler 内核 (openeuler/kernel.git or openeuler-kernel.git)"
