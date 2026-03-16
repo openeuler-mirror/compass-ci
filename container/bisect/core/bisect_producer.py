@@ -604,12 +604,22 @@ class ErrorBisectProducer:
             stats['tasks_reset_from_failed'] = reset_count
 
             # Phase 4: prepare to create truly new tasks (not in active or failed)
+            unique_error_ids = set(t['error_id'] for t in all_tasks_to_create)
+            logger.info(f"Phase 4 prep: {len(all_tasks_to_create)} task entries, {len(unique_error_ids)} unique error_ids | "
+                       f"existing: {len(existing_error_ids)} | failed_map: {len(failed_task_map)} | "
+                       f"expected new: {len(unique_error_ids) - len(existing_error_ids) - len(failed_task_map)}")
+
             tasks_to_create = []
+            seen_error_ids = set()  # Deduplicate within batch
             for task_data in all_tasks_to_create:
-                if task_data['error_id'] in existing_error_ids:
+                eid = task_data['error_id']
+                if eid in existing_error_ids:
                     continue  # Skip active duplicates
-                if task_data['error_id'] in failed_task_map:
-                    continue  # Already reset via UPDATE above
+                if eid in failed_task_map:
+                    continue  # Already handled by Phase 3b
+                if eid in seen_error_ids:
+                    continue  # Deduplicate within this batch
+                seen_error_ids.add(eid)
 
                 # Prepare task data
                 task = {
