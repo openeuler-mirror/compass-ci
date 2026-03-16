@@ -51,12 +51,208 @@ from head_validator import HeadValidator
 
 from bisect_producer import ErrorBisectProducer, PerformanceBisectProducer
 from bisect_consumer import BisectConsumer
+from polling_worker import PollingWorker
 
 
+class _ValidatorWorker(PollingWorker):
+    """PollingWorker that checks verification results and submits new verification jobs."""
+
+    def __init__(self, client, config, repo_manager, stop_event, base_interval=60):
+        super().__init__("SuccessTaskValidator", stop_event,
+                         base_interval=base_interval, max_backoff=300)
+        self.client = client
+        self._config = config
+        self.repo_manager = repo_manager
+
+    def setup(self):
+        self.validator = SuccessTaskValidator(self.client, self._config)
+        logger.info("SuccessTaskValidator initialized successfully")
+
+    def process_cycle(self) -> bool:
+        # Step 1: check submitted verification job results
+        try:
+            result = self.validator.check_verification_results_once(self.repo_manager)
+            if result['checked'] > 0:
+                logger.info(
+                    f"Verification result check | checked: {result['checked']} | "
+                    f"completed: {result['completed']} | failed: {result['failed']} | "
+                    f"timeout: {result['timeout']} | waiting: {result['waiting']} | "
+                    f"skipped: {result['skipped']}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to check verification results: {str(e)}")
+            logger.error(traceback.format_exc())
+
+        # Step 2: scan new verifying tasks and submit verification jobs
+        batch_size = self._config.get('verification_batch_size', 200)
+        tasks = self.validator.scan_unverified_tasks(limit=batch_size)
+
+        if not tasks:
+            return False
+
+        verifying_count = sum(1 for t in tasks if t.get('bisect_status') == 'verifying')
+        logger.info(f"Scanned {len(tasks)} pending verification tasks | verifying: {verifying_count}")
+
+        tasks_by_repo = self.validator.group_tasks_by_repo(tasks)
+        logger.info(f"Task grouping completed | {len(tasks_by_repo)} repos | total_tasks: {len(tasks)}")
+
+        submitted_count = 0
+        failed_count = 0
+
+        for idx, (git_url, repo_tasks) in enumerate(tasks_by_repo.items()):
+            if not self.running:
+                logger.info("SuccessTaskValidator received stop signal, exiting loop")
+                break
+
+            logger.info(
+                f"Processing repo [{idx+1}/{len(tasks_by_repo)}] | "
+                f"repo: {git_url[:60]}... | tasks: {len(repo_tasks)}"
+            )
+
+            try:
+                result = self.validator.batch_submit_verification_jobs(
+                    repo_tasks, git_url, self.repo_manager
+                )
+                submitted_count += result.get('submitted', 0)
+                failed_count += result.get('failed', 0)
+            except Exception as e:
+                logger.error(
+                    f"Failed to batch submit verification jobs | repo: {git_url[:60]} | "
+                    f"tasks: {len(repo_tasks)} | error: {str(e)}"
+                )
+                logger.error(traceback.format_exc())
+                failed_count += len(repo_tasks)
+
+        logger.info(
+            f"SuccessTaskValidator cycle completed | "
+            f"submitted: {submitted_count} | failed: {failed_count} | "
+            f"repos: {len(tasks_by_repo)}"
+        )
+        return True
+
+
+class _ConsumerWorker(PollingWorker):
+    """PollingWorker that fetches wait tasks, clusters, and submits to thread pool."""
+
+    def __init__(self, processor, stop_event, base_interval=30, wake_event=None):
+        super().__init__("BisectConsumer", stop_event,
+                         base_interval=base_interval, max_backoff=300,
+                         wake_event=wake_event)
+        self.processor = processor
+
+    def setup(self):
+        self.consumer = BisectConsumer(self.processor.client, self.processor._config)
+        self.consumer.repo_manager = self.processor.repo_manager
+        # Clean up stale locks immediately on startup
+        logger.info("Performing initial stale lock cleanup...")
+        self.processor._cleanup_stale_locks()
+        self.last_lock_cleanup_time = time.time()
+
+    def process_cycle(self) -> bool:
+        p = self.processor
+
+        # Periodically clean up stale locks
+        now = time.time()
+        if now - self.last_lock_cleanup_time > 60:
+            p._cleanup_stale_locks()
+            self.last_lock_cleanup_time = now
+
+        # Dynamically adjust query limit
+        worker_count = p.thread_pool._max_workers
+        candidate_batch_size = min(worker_count * 10, 1000)
+        submit_batch_size = worker_count
+
+        logger.info(f"query_batch: {candidate_batch_size}, submit_batch: {submit_batch_size}, workers: {worker_count}")
+        logger.debug(f"Active task locks count: {len(p.active_task_locks)}")
+
+        # Fetch candidate tasks
+        sql_query = f"""
+            SELECT id, bad_job_id, error_id, bisect_metric, bisect_status, git_url,
+                   submit_time, updated_at, category, priority_level, j
+            FROM bisect
+            WHERE bisect_status = 'wait'
+            ORDER BY priority_level DESC, submit_time DESC
+            LIMIT {candidate_batch_size}
+        """
+
+        all_candidates = p.client.sql_select(sql_query)
+
+        if not all_candidates:
+            return False
+
+        logger.info(f"Found {len(all_candidates)} candidate tasks from database")
+
+        # Filter out globally locked tasks
+        with p.active_task_locks_lock:
+            locked_tasks_set = set(p.active_task_locks)
+
+        unlocked_candidates = [
+            task for task in all_candidates
+            if str(task.get('id')) not in locked_tasks_set
+        ]
+
+        logger.info(f"After filtering locked tasks: {len(unlocked_candidates)} unlocked candidates (locked: {len(locked_tasks_set)} task_ids)")
+
+        # Execute clustering
+        tasks_to_submit = p._cluster_and_select_tasks(unlocked_candidates, submit_batch_size)
+        logger.info(f"Selected {len(tasks_to_submit)} tasks for submission")
+
+        if not tasks_to_submit:
+            logger.info("No tasks available for submission after filtering")
+            self.stop_event.wait(15)
+            return False
+
+        # Lock and submit
+        submitted_count = 0
+        skipped_count = 0
+
+        tasks_ready_to_submit = []
+        with p.active_task_locks_lock:
+            logger.info(f"Preparing to submit tasks | locked: {len(p.active_task_locks)} | thread_pool: _max_workers={p.thread_pool._max_workers}, _threads={len(p.thread_pool._threads)}")
+            for task in tasks_to_submit:
+                if not p.task_semaphore.acquire(blocking=False):
+                    logger.warning("Task queue full (Backpressure engaged), stopping this round of submissions")
+                    break
+
+                task_id = str(task.get('id'))
+                if task_id not in p.active_task_locks:
+                    p.active_task_locks.add(task_id)
+                    tasks_ready_to_submit.append((task_id, task))
+                else:
+                    p.task_semaphore.release()
+                    logger.warning(f"Task already locked, skipping | task_id: {task_id}")
+                    skipped_count += 1
+
+        for task_id, task in tasks_ready_to_submit:
+            try:
+                future = p.thread_pool.submit(p._process_task_async, self.consumer, task)
+                logger.info(f"Task submitted to thread pool | task_id: {task_id} | future: {future}")
+                submitted_count += 1
+            except Exception as e:
+                logger.error(f"Task submission failed, rolling back | task_id: {task_id} | error: {e}")
+                with p.active_task_locks_lock:
+                    if task_id in p.active_task_locks:
+                        p.active_task_locks.remove(task_id)
+                p.task_semaphore.release()
+
+        if submitted_count > 0:
+            logger.info(f"Consumer cycle completed: submitted {submitted_count} tasks, skipped {skipped_count} | thread_pool: {worker_count} workers")
+
+        return submitted_count > 0
 
 
 class TaskProcessor:
 
+    @property
+    def running(self):
+        return not self.stop_event.is_set()
+
+    @running.setter
+    def running(self, value):
+        if value:
+            self.stop_event.clear()
+        else:
+            self.stop_event.set()
 
     def _register_signal_handlers(self):
         """Register signal handlers"""
@@ -150,7 +346,7 @@ class TaskProcessor:
 
     def __init__(self):
         self._init_databases()
-        self.running = True
+        self.stop_event = threading.Event()   # replaces self.running bool
         self.exit_requested = False
         self._register_signal_handlers()
 
@@ -237,6 +433,9 @@ class TaskProcessor:
         
         # Add producer lock for concurrency control
         self.producer_lock = threading.Lock()
+
+        # Wake event: producer sets this after creating tasks so consumer polls immediately
+        self.consumer_wake_event = threading.Event()
         
         # Add execution lock for consumer tasks - task_id based lock
         self.active_task_locks = set()  # Store task_ids being processed
@@ -572,6 +771,11 @@ class TaskProcessor:
         total_tasks = error_success_count + perf_success_count
         logger.info(f"========== BisectProducer cycle COMPLETED | total_tasks: {total_tasks} (Error: {error_success_count}, Perf: {perf_success_count}) ==========")
 
+        # Wake consumer immediately if new tasks were created
+        if total_tasks > 0:
+            self.consumer_wake_event.set()
+            logger.info(f"Producer created {total_tasks} tasks, waking consumer")
+
     def trigger_producer_run(self, force: bool = False):
         """API endpoint to manually trigger a producer run."""
         # Try to acquire lock to ensure only one producer runs at a time
@@ -687,9 +891,9 @@ class TaskProcessor:
                 self._clean_old_repos(max_age_days=14) # Clean repos older than 14 days
             except Exception as e:
                 logger.error(f"Error during periodic repo cleanup: {e}")
-            
-            # Sleep for 6 hours
-            time.sleep(6 * 3600)
+
+            # Wait for 6 hours (responds to stop signal immediately)
+            self.stop_event.wait(6 * 3600)
 
 
     def bisect_producer(self):
@@ -719,10 +923,8 @@ class TaskProcessor:
                 wait_seconds = (next_run_time - now).total_seconds()
                 logger.info(f"Producer will run next at {next_run_time}. Waiting for {wait_seconds / 3600:.2f} hours.")
 
-                # Sleep in 60s intervals to respond to exit signal promptly
-                sleep_end_time = time.time() + wait_seconds
-                while self.running and time.time() < sleep_end_time:
-                    time.sleep(60)
+                # Wait until next run time (responds to stop signal immediately)
+                self.stop_event.wait(wait_seconds)
 
                 if not self.running:
                     break
@@ -737,297 +939,24 @@ class TaskProcessor:
                 with self.producer_lock:
                     self._run_producer_once()
 
-                # Sleep for configured interval
+                # Wait for configured interval (responds to stop signal immediately)
                 logger.info(f"Producer finished a cycle, sleeping for {self.producer_interval / 3600:.1f} hours.")
-                time.sleep(self.producer_interval)
+                self.stop_event.wait(self.producer_interval)
 
     def bisect_consumer(self):
-        """Consumer: process waiting bisect tasks with locking mechanism and exponential backoff"""
-
-        # Add debug info
-        current_thread = threading.current_thread()
-        logger.info(f"BisectConsumer started in thread {current_thread.name}")
-
-        consumer = BisectConsumer(self.client, self._config)
-        consumer.repo_manager = self.repo_manager
-
-        logger.info("BisectConsumer initialized, starting main loop...")
-
-        # Clean up stale locks immediately on startup
-        logger.info("Performing initial stale lock cleanup...")
-        self._cleanup_stale_locks()
-
-        # Exponential backoff variables
-        consecutive_empty_rounds = 0
-        last_lock_cleanup_time = time.time()
-        LOCK_CLEANUP_INTERVAL = 60  # Clean up locks every 1 min (prevent lock leaks)
-
-        while self.running:
-            start_time = time.time()
-            logger.debug(f"Consumer cycle starting... running={self.running}")
-
-            # Periodically clean up stale locks (prevent lock leaks)
-            if start_time - last_lock_cleanup_time > LOCK_CLEANUP_INTERVAL:
-                self._cleanup_stale_locks()
-                last_lock_cleanup_time = start_time
-
-            try:
-                # Dynamically adjust query limit: based on thread pool size
-                worker_count = self.thread_pool._max_workers
-                # Query batch: fetch more candidates (considering clustering, filtering, locking)
-                candidate_batch_size = min(worker_count * 10, 1000)
-                # Submit batch: should roughly match thread count, avoid over-submission
-                submit_batch_size = worker_count
-
-                logger.info(f"query_batch: {candidate_batch_size}, submit_batch: {submit_batch_size}, workers: {worker_count}")
-                logger.debug(f"Active task locks count: {len(self.active_task_locks)}")
-
-                # Fetch a larger batch of candidate tasks for client-side filtering
-                sql_query = f"""
-                    SELECT id, bad_job_id, error_id, bisect_metric, bisect_status, git_url,
-                           submit_time, updated_at, category, priority_level, j
-                    FROM bisect
-                    WHERE bisect_status = 'wait'
-                    ORDER BY priority_level DESC, submit_time DESC
-                    LIMIT {candidate_batch_size}
-                """
-
-                all_candidates = self.client.sql_select(sql_query)
-
-                if not all_candidates:
-                    consecutive_empty_rounds += 1
-                    # Exponential backoff: 30s -> 60s -> 120s -> 240s -> max 300s (5 min)
-                    backoff_time = min(30 * (2 ** consecutive_empty_rounds), 300)
-                    logger.debug(f"No pending tasks, backing off {backoff_time}s (round {consecutive_empty_rounds})")
-                    time.sleep(backoff_time)
-                    continue
-
-                # Reset backoff counter (found tasks)
-                consecutive_empty_rounds = 0
-
-                logger.info(f"Found {len(all_candidates)} candidate tasks from database")
-
-                # Filter out globally locked tasks (by task_id)
-                with self.active_task_locks_lock:
-                    locked_tasks_set = set(self.active_task_locks)
-
-                unlocked_candidates = [
-                    task for task in all_candidates
-                    if str(task.get('id')) not in locked_tasks_set
-                ]
-
-                logger.info(f"After filtering locked tasks: {len(unlocked_candidates)} unlocked candidates (locked: {len(locked_tasks_set)} task_ids)")
-
-                # Execute clustering, select representative tasks (only as dedup selection, no task relationships)
-                tasks_to_submit = self._cluster_and_select_tasks(
-                    unlocked_candidates,
-                    submit_batch_size
-                )
-
-                logger.info(f"Selected {len(tasks_to_submit)} tasks for submission")
-
-                if not tasks_to_submit:
-                    # When candidates exist but all locked, wait briefly
-                    logger.info("No tasks available for submission after filtering")
-                    time.sleep(15)
-                    continue
-
-                # Lock and submit the selected tasks
-                submitted_count = 0
-                skipped_count = 0
-
-                # Step 1: quickly collect tasks to submit while holding lock (avoid deadlock from thread_pool.submit inside lock)
-                tasks_ready_to_submit = []
-                with self.active_task_locks_lock:
-                    logger.info(f"Preparing to submit tasks | locked: {len(self.active_task_locks)} | thread_pool: _max_workers={self.thread_pool._max_workers}, _threads={len(self.thread_pool._threads)}")
-                    for task in tasks_to_submit:
-                        # Backpressure: Check if we have capacity
-                        if not self.task_semaphore.acquire(blocking=False):
-                            logger.warning("Task queue full (Backpressure engaged), stopping this round of submissions")
-                            break
-
-                        task_id = str(task.get('id'))
-                        # Double-check lock, as another cycle might have just locked it
-                        if task_id not in self.active_task_locks:
-                            self.active_task_locks.add(task_id)
-                            tasks_ready_to_submit.append((task_id, task))
-                        else:
-                            # Release semaphore if we didn't use it
-                            self.task_semaphore.release()
-                            logger.warning(f"Task already locked, skipping | task_id: {task_id}")
-                            skipped_count += 1
-
-                # Step 2: submit tasks to thread pool outside lock (avoid deadlock: workers need same lock on completion)
-                for task_id, task in tasks_ready_to_submit:
-                    try:
-                        future = self.thread_pool.submit(self._process_task_async, consumer, task)
-                        logger.info(f"Task submitted to thread pool | task_id: {task_id} | future: {future}")
-                        submitted_count += 1
-                    except Exception as e:
-                        logger.error(f"Task submission failed, rolling back | task_id: {task_id} | error: {e}")
-                        # Rollback: remove lock and release semaphore
-                        with self.active_task_locks_lock:
-                            if task_id in self.active_task_locks:
-                                self.active_task_locks.remove(task_id)
-                        self.task_semaphore.release()
-
-                if submitted_count > 0:
-                    logger.info(f"Consumer cycle completed: submitted {submitted_count} tasks, skipped {skipped_count} | thread_pool: {worker_count} workers")
-
-            except Exception as e:
-                logger.error(f"Consumer error: {str(e)}")
-                logger.error(traceback.format_exc())
-                # Trigger backoff on error too
-                consecutive_empty_rounds += 1
-            finally:
-                # Brief wait when processing tasks, backoff handled above when no tasks
-                if 'submitted_count' in locals() and submitted_count > 0:
-                    cycle_time = time.time() - start_time
-                    sleep_time = max(20, 30 - cycle_time)  # Min 20s wait when processing tasks
-                    logger.debug(f"Processed {submitted_count} tasks in {cycle_time:.2f}s, waiting {sleep_time}s")
-                    time.sleep(sleep_time)
-                else:
-                    # If no tasks submitted and not in exponential backoff, wait briefly
-                    if consecutive_empty_rounds == 0:
-                        cycle_time = time.time() - start_time
-                        sleep_time = max(30, 60 - cycle_time)
-                        logger.debug(f"Consumer cycle completed in {cycle_time:.2f}s, sleeping for {sleep_time:.2f}s")
-                        time.sleep(sleep_time)
-
-        logger.info("BisectConsumer main loop exited")
+        """Launch BisectConsumer as a PollingWorker."""
+        worker = _ConsumerWorker(self, self.stop_event, base_interval=30,
+                                 wake_event=self.consumer_wake_event)
+        worker.run()
 
     def success_task_validator_consumer(self):
-        """
-        SuccessTaskValidator: verification flow for verifying tasks
-
-        Two main functions:
-        1. Check submitted verification job results
-        2. Scan new verifying tasks and submit verification jobs
-        """
-        current_thread = threading.current_thread()
-        logger.info(f"SuccessTaskValidator started in thread {current_thread.name}")
-        logger.info("Processing verifying tasks: submit verification jobs + check results")
-
-        # Create validator instance
-        try:
-            validator = SuccessTaskValidator(self.client, self._config)
-            logger.info("SuccessTaskValidator initialized successfully")
-        except Exception as e:
-            logger.error(f"SuccessTaskValidator initialization failed: {str(e)}")
-            logger.error(traceback.format_exc())
-            return
-
-        # Validation interval
+        """Launch SuccessTaskValidator as a PollingWorker."""
         validation_interval = self._config.get('validation_interval', 60)
-        consecutive_empty_rounds = 0
-
-        logger.info(f"SuccessTaskValidator entering main loop | validation_interval: {validation_interval}s | running: {self.running}")
-
-        while self.running:
-            start_time = time.time()
-            logger.debug(f"SuccessTaskValidator cycle starting... running={self.running}")
-
-            try:
-                # Step 1: check submitted verification job results
-                try:
-                    result = validator.check_verification_results_once(self.repo_manager)
-                    if result['checked'] > 0:
-                        logger.info(
-                            f"Verification result check | checked: {result['checked']} | "
-                            f"completed: {result['completed']} | failed: {result['failed']} | "
-                            f"timeout: {result['timeout']} | waiting: {result['waiting']} | "
-                            f"skipped: {result['skipped']}"
-                        )
-                except Exception as e:
-                    logger.error(f"Failed to check verification results: {str(e)}")
-                    logger.error(traceback.format_exc())
-
-                # Step 2: scan new verifying tasks and submit verification jobs
-                batch_size = self._config.get('verification_batch_size', 200)
-                tasks = validator.scan_unverified_tasks(limit=batch_size)
-
-                if not tasks:
-                    consecutive_empty_rounds += 1
-                    backoff_time = min(validation_interval * (1 + consecutive_empty_rounds * 0.5), 300)
-                    logger.debug(
-                        f"No pending verification tasks, backing off {backoff_time:.0f}s "
-                        f"(round {consecutive_empty_rounds})"
-                    )
-                    time.sleep(backoff_time)
-                    continue
-
-                # Reset backoff counter
-                consecutive_empty_rounds = 0
-
-                # Count task types
-                verifying_count = sum(1 for t in tasks if t.get('bisect_status') == 'verifying')
-                logger.info(
-                    f"Scanned {len(tasks)} pending verification tasks | verifying: {verifying_count}"
-                )
-
-                # Group tasks by repository (call validator method)
-                tasks_by_repo = validator.group_tasks_by_repo(tasks)
-
-                logger.info(
-                    f"Task grouping completed | {len(tasks_by_repo)} repos | "
-                    f"total_tasks: {len(tasks)}"
-                )
-
-                # Batch submit verification jobs (by repo, call validator method)
-                submitted_count = 0
-                failed_count = 0
-
-                logger.info(f"Starting to process {len(tasks_by_repo)} repos for verification jobs...")
-
-                for idx, (git_url, repo_tasks) in enumerate(tasks_by_repo.items()):
-                    if not self.running:
-                        logger.info("SuccessTaskValidator received stop signal, exiting loop")
-                        break
-
-                    logger.info(
-                        f"Processing repo [{idx+1}/{len(tasks_by_repo)}] | "
-                        f"repo: {git_url[:60]}... | tasks: {len(repo_tasks)}"
-                    )
-
-                    try:
-                        # Batch submit all tasks for this repo (call validator method)
-                        logger.debug(f"Calling batch_submit_verification_jobs...")
-                        result = validator.batch_submit_verification_jobs(
-                            repo_tasks, git_url, self.repo_manager
-                        )
-                        logger.debug(f"batch_submit_verification_jobs returned: {result}")
-
-                        submitted_count += result.get('submitted', 0)
-                        failed_count += result.get('failed', 0)
-
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to batch submit verification jobs | repo: {git_url[:60]} | "
-                            f"tasks: {len(repo_tasks)} | error: {str(e)}"
-                        )
-                        logger.error(traceback.format_exc())
-                        failed_count += len(repo_tasks)
-
-                logger.info(
-                    f"SuccessTaskValidator cycle completed | "
-                    f"submitted: {submitted_count} | failed: {failed_count} | "
-                    f"repos: {len(tasks_by_repo)}"
-                )
-
-                # Brief wait
-                cycle_time = time.time() - start_time
-                sleep_time = max(5, validation_interval - cycle_time)
-                logger.debug(f"Submit cycle completed in {cycle_time:.2f}s, waiting {sleep_time:.2f}s")
-                time.sleep(sleep_time)
-
-            except Exception as e:
-                logger.error(f"SuccessTaskValidator cycle error: {str(e)}")
-                logger.error(traceback.format_exc())
-                consecutive_empty_rounds += 1
-                backoff_time = min(validation_interval * (1 + consecutive_empty_rounds), 300)
-                time.sleep(backoff_time)
-
-        logger.info("SuccessTaskValidator thread exited")
+        worker = _ValidatorWorker(
+            self.client, self._config, self.repo_manager,
+            self.stop_event, base_interval=validation_interval
+        )
+        worker.run()
 
     def _process_task_async(self, consumer, task):
         """Process single task asynchronously, release lock and clean up repo on completion"""
