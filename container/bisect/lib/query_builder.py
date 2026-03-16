@@ -104,7 +104,7 @@ def build_task_query_conditions() -> Tuple[str, Dict[str, Any]]:
         try:
             hours_int = int(hours)
             cutoff_time = int(time.time()) - (hours_int * 3600)
-            conditions.append(f"submit_time >= {cutoff_time}")
+            conditions.append(f"updated_at >= {cutoff_time}")
             filters['hours'] = hours_int
         except ValueError:
             pass  # 忽略无效的 hours 参数

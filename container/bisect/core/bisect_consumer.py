@@ -386,7 +386,7 @@ class BisectConsumer:
             # - failed: bisect found commit but verification failed -> depends on reason
             # - error: verification process error -> wait (re-execute)
             # - None/other: no verification info -> wait (re-execute)
-            if verification_status == 'verified' and verification_passed:
+            if verification_status in ('verified', 'success') and verification_passed:
                 final_bisect_status = "success"
                 final_verification_status = "verified"
                 final_verified = True

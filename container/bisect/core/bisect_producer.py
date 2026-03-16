@@ -492,12 +492,13 @@ class ErrorBisectProducer:
                     query = {
                         "bool": {
                             "must": [
-                                {"in": {"error_id": batch}}
+                                {"in": {"error_id": batch}},
+                                # Only consider active tasks as duplicates;
+                                # failed/stuck tasks should not block new attempts
+                                {"in": {"bisect_status": ["wait", "processing", "verifying", "success"]}}
                             ]
                         }
                     }
-                    # Increase limit to ensure all matching error_ids are found
-                    # Even if an error_id has multiple records, we just need to know it exists
                     existing = self.client.search(index="bisect", query=query, limit=10000)
                     if existing:
                         for item in existing:
@@ -520,7 +521,8 @@ class ErrorBisectProducer:
                     "bad_job_id": task_data['bad_job_id'],
                     "error_id": task_data['error_id'],
                     "bisect_status": "wait",
-                    "git_url": task_data['git_url']
+                    "git_url": task_data['git_url'],
+                    "submit_time": int(time.time()),
                 }
 
                 # Add classification

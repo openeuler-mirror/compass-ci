@@ -678,19 +678,25 @@ def batch_check_existing_tasks(client, job_id: int, task_identifiers: list, task
         return set()
 
     try:
+        # Only consider active tasks as duplicates;
+        # failed tasks should not block new bisect attempts
+        active_status_filter = {"in": {"bisect_status": ["wait", "processing", "verifying", "success"]}}
+
         # Build different queries based on task type
         if task_type == "error_id":
             # Build batch query - error ID type
             must_conditions = [
                 {"equals": {"bad_job_id": str(job_id)}},
-                {"in": {"error_id": task_identifiers}}
+                {"in": {"error_id": task_identifiers}},
+                active_status_filter
             ]
             select_field = "error_id"
         else:
             # bisect_metric type
             must_conditions = [
                 {"equals": {"bad_job_id": str(job_id)}},
-                {"in": {"bisect_metric": task_identifiers}}
+                {"in": {"bisect_metric": task_identifiers}},
+                active_status_filter
             ]
             select_field = "bisect_metric"
 
