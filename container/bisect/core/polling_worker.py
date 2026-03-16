@@ -38,7 +38,7 @@ class PollingWorker:
 
     The base class handles:
         - Exponential backoff when idle
-        - Immediate wake on stop_event
+        - Immediate wake on stop_event or external wake signal
         - Consistent logging
     """
 
@@ -50,6 +50,30 @@ class PollingWorker:
         self.base_interval = base_interval
         self.max_backoff = max_backoff
         self.wake_event = wake_event  # optional: external signal to wake early
+
+        # Condition + flag: unifies stop + wake into a single wait point.
+        # _should_wake is set by the listener thread when wake_event fires,
+        # so wait_for returns immediately instead of polling every 5s.
+        self._cond = threading.Condition(threading.Lock())
+        self._should_wake = False
+
+        if self.wake_event:
+            self._wake_listener = threading.Thread(
+                target=self._watch_wake_event,
+                daemon=True,
+                name=f"{name}-wake-listener"
+            )
+        else:
+            self._wake_listener = None
+
+    def _watch_wake_event(self):
+        """Listener thread: waits on wake_event and forwards to _cond."""
+        while not self.stop_event.is_set():
+            if self.wake_event.wait(timeout=30):
+                self.wake_event.clear()
+                with self._cond:
+                    self._should_wake = True
+                    self._cond.notify_all()
 
     @property
     def running(self) -> bool:
@@ -80,6 +104,10 @@ class PollingWorker:
             logger.error(traceback.format_exc())
             return
 
+        # Start wake listener if wake_event is configured
+        if self._wake_listener:
+            self._wake_listener.start()
+
         consecutive_empty = 0
 
         while self.running:
@@ -104,23 +132,19 @@ class PollingWorker:
                 consecutive_empty += 1
                 wait = min(self.base_interval * (2 ** consecutive_empty), self.max_backoff)
 
-            # Wait for timeout, stop signal, or external wake
-            if self.wake_event:
-                # Wait on whichever fires first: stop or wake
-                # We can't wait on two events natively, so poll with short intervals
-                # or use the wake_event as a secondary check
-                self.wake_event.clear()
-                # Use stop_event.wait but check wake_event periodically
-                remaining = wait
-                while remaining > 0 and not self.stop_event.is_set():
-                    chunk = min(remaining, 5.0)
-                    self.stop_event.wait(chunk)
-                    if self.wake_event.is_set():
-                        self.wake_event.clear()
-                        logger.info(f"{self.name} woken by external event, resuming immediately")
-                        break
-                    remaining -= chunk
-            else:
-                self.stop_event.wait(wait)
+            # Wait for timeout, stop signal, or external wake — all via _cond
+            with self._cond:
+                self._should_wake = False
+                self._cond.wait_for(
+                    lambda: self.stop_event.is_set() or self._should_wake,
+                    timeout=wait
+                )
+
+                if self._should_wake:
+                    self._should_wake = False
+                    logger.info(f"{self.name} woken by external event, resuming immediately")
+
+            if not self.running:
+                break
 
         logger.info(f"{self.name} loop exited")
