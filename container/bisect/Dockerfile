@@ -22,7 +22,11 @@ ENV RESULT_DIR /result/bisect
 ENV RUNTIME_DIR /c
 
 RUN mkdir $RUNTIME_DIR && \
-    chown -R bisect:bisect $RUNTIME_DIR
+    chown -R bisect:bisect $RUNTIME_DIR && \
+    mkdir -p $RESULT_DIR/logs/consumer $RESULT_DIR/logs/producer \
+             $RESULT_DIR/logs/api $RESULT_DIR/logs/commit-service \
+             $RESULT_DIR/logs/performance && \
+    chown -R bisect:bisect $RESULT_DIR
 
 WORKDIR $WORK_DIR
 USER bisect

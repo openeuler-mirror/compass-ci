@@ -78,23 +78,25 @@ class StructuredLogger:
         return os.path.abspath(log_dir)
 
     def _setup_file_handlers(self, log_dir: str):
-        """Configure file handlers with per-component log files.
+        """Configure file handlers with per-component subdirectories.
 
-        Log files:
-          bisect-consumer.log       — consumer/validator/task-processor (INFO+)
-          bisect-consumer-error.log — consumer/validator/task-processor (ERROR+)
-          bisect-producer.log       — producer cycles (INFO+)
-          bisect-producer-error.log — producer cycles (ERROR+)
-
-        Components are separated by matching pathname patterns in a filter.
+        Directory structure:
+          logs/consumer/   — consumer, validator, task_processor
+          logs/producer/   — producer cycles, reporter
+          logs/performance/ — performance metrics
+        API and commit-service logs are managed by supervisord.
         """
         log_path = Path(log_dir)
-        log_path.mkdir(parents=True, exist_ok=True)
 
-        # 清理旧的文件处理器
+        # Create component subdirectories
+        consumer_dir = log_path / 'consumer'
+        producer_dir = log_path / 'producer'
+        consumer_dir.mkdir(parents=True, exist_ok=True)
+        producer_dir.mkdir(parents=True, exist_ok=True)
+
+        # Clear old handlers
         self.logger.handlers = []
 
-        # 统一详细格式化器 - 包含完整文件路径、行号和函数名
         detailed_formatter = logging.Formatter(
             '%(asctime)s.%(msecs)03d [%(pathname)s:%(lineno)d] %(funcName)s() - %(message)s',
             '%Y-%m-%d %H:%M:%S'
@@ -114,9 +116,10 @@ class StructuredLogger:
 
         producer_keywords = ['bisect_producer', 'producer_reporter']
 
-        def _make_handler(filename, level, component_filter=None):
+        def _make_handler(filepath, level, component_filter=None):
+            filepath.parent.mkdir(parents=True, exist_ok=True)
             h = TimedRotatingFileHandler(
-                filename=log_path / filename,
+                filename=filepath,
                 when='D', interval=1,
                 backupCount=self.max_days,
                 encoding='utf-8'
@@ -128,15 +131,15 @@ class StructuredLogger:
                 h.addFilter(component_filter)
             return h
 
-        # Producer logs (only records from producer files)
+        # Producer logs
         producer_filter = _ComponentFilter(producer_keywords, include=True)
-        self.logger.addHandler(_make_handler('bisect-producer.log', logging.INFO, producer_filter))
-        self.logger.addHandler(_make_handler('bisect-producer-error.log', logging.ERROR, producer_filter))
+        self.logger.addHandler(_make_handler(producer_dir / 'producer.log', logging.INFO, producer_filter))
+        self.logger.addHandler(_make_handler(producer_dir / 'error.log', logging.ERROR, producer_filter))
 
         # Consumer logs (everything except producer)
         consumer_filter = _ComponentFilter(producer_keywords, include=False)
-        self.logger.addHandler(_make_handler('bisect-consumer.log', logging.INFO, consumer_filter))
-        self.logger.addHandler(_make_handler('bisect-consumer-error.log', logging.ERROR, consumer_filter))
+        self.logger.addHandler(_make_handler(consumer_dir / 'consumer.log', logging.INFO, consumer_filter))
+        self.logger.addHandler(_make_handler(consumer_dir / 'error.log', logging.ERROR, consumer_filter))
 
     def _setup_console_handler(self):
         """配置控制台处理器 - 使用与文件相同的详细格式"""
@@ -161,7 +164,7 @@ class StructuredLogger:
             cutoff_time = datetime.now() - timedelta(days=self.max_days)
             cleaned_count = 0
             
-            for log_file in log_path.glob('*.log*'):
+            for log_file in log_path.rglob('*.log*'):
                 try:
                     file_time = datetime.fromtimestamp(log_file.stat().st_mtime)
                     if file_time < cutoff_time:
@@ -199,7 +202,9 @@ class StructuredLogger:
             'session_id': self.session_id,
             **kwargs
         }
-        perf_log_path = Path(self.log_dir) / 'bisect-performance.log'
+        perf_dir = Path(self.log_dir) / 'performance'
+        perf_dir.mkdir(parents=True, exist_ok=True)
+        perf_log_path = perf_dir / 'performance.log'
         try:
             with open(perf_log_path, 'a', encoding='utf-8') as f:
                 f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} [PERF] {json.dumps(perf_data, ensure_ascii=False)}\n")
@@ -353,8 +358,8 @@ class StructuredLogger:
         try:
             log_path = Path(self.log_dir)
             if log_path.exists():
-                total_size = sum(f.stat().st_size for f in log_path.glob('*.log*'))
-                file_count = len(list(log_path.glob('*.log*')))
+                total_size = sum(f.stat().st_size for f in log_path.rglob('*.log*'))
+                file_count = len(list(log_path.rglob('*.log*')))
                 stats.update({
                     'log_files_count': file_count,
                     'total_log_size_mb': round(total_size / 1024 / 1024, 2)
