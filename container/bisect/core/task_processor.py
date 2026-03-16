@@ -162,7 +162,7 @@ class _ConsumerWorker(PollingWorker):
         candidate_batch_size = min(worker_count * 10, 1000)
         submit_batch_size = worker_count
 
-        logger.info(f"query_batch: {candidate_batch_size}, submit_batch: {submit_batch_size}, workers: {worker_count}")
+        logger.debug(f"query_batch: {candidate_batch_size}, submit_batch: {submit_batch_size}, workers: {worker_count}")
         logger.debug(f"Active task locks count: {len(p.active_task_locks)}")
 
         # Fetch candidate tasks
@@ -180,7 +180,7 @@ class _ConsumerWorker(PollingWorker):
         if not all_candidates:
             return False
 
-        logger.info(f"Found {len(all_candidates)} candidate tasks from database")
+        logger.info(f"Found {len(all_candidates)} candidate tasks | query_batch: {candidate_batch_size} | workers: {worker_count}")
 
         # Filter out globally locked tasks
         with p.active_task_locks_lock:
@@ -198,7 +198,7 @@ class _ConsumerWorker(PollingWorker):
         logger.info(f"Selected {len(tasks_to_submit)} tasks for submission")
 
         if not tasks_to_submit:
-            logger.info("No tasks available for submission after filtering")
+            logger.debug("No tasks available for submission after filtering")
             self.stop_event.wait(15)
             return False
 
