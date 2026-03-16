@@ -226,15 +226,20 @@ class BatchInserter:
                 # 准备文档内容（不包含 id 字段）
                 doc = {k: v for k, v in task.items() if k != 'id'}
 
-                result = self.client.insert("bisect", task_id, doc)
+                result = self.client.replace("bisect", task_id, doc)
 
                 if result:
                     success_count += 1
                 else:
-                    failed_count += 1
+                    # replace failed, try insert as last resort
+                    insert_result = self.client.insert("bisect", task_id, doc)
+                    if insert_result:
+                        success_count += 1
+                    else:
+                        failed_count += 1
 
             except Exception as e:
-                logger.debug(f"单个插入失败 | error_id: {task.get('error_id', 'unknown')[:50]}... | 错误: {str(e)}")
+                logger.debug(f"Single insert failed | error_id: {task.get('error_id', 'unknown')[:50]}... | error: {str(e)}")
                 failed_count += 1
 
         return success_count, failed_count
