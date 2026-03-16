@@ -415,19 +415,23 @@ class BisectConsumer:
 
                 if should_mark_failed:
                     # Mark as failed, no more retries
+                    # Merge verification metadata into existing j field to preserve
+                    # original commit info (good_commit, bad_commit, etc.)
                     bisect_failed_reason = f"boundary_verification_failed:{failed_reason}"
+                    existing_j = j_field if isinstance(j_field, dict) else {}
+                    merged_j = {**existing_j,
+                        "verification_status": verification_status,
+                        "verification_failed_reason": failed_reason,
+                        "verification_time": current_time,
+                        "first_bad_commit": result.get('first_bad_commit', ''),
+                        "boundary_verification": boundary_verification
+                    }
                     failed_doc = {
                         "bisect_status": "failed",
                         "bisect_failed_reason": bisect_failed_reason,
                         "retry_count": retry_count,
                         "updated_at": current_time,
-                        "j": {
-                            "verification_status": verification_status,
-                            "verification_failed_reason": failed_reason,
-                            "verification_time": current_time,
-                            "first_bad_commit": result.get('first_bad_commit', ''),
-                            "boundary_verification": boundary_verification
-                        }
+                        "j": merged_j
                     }
                     self.client.update("bisect", task_id, failed_doc)
                     return {
@@ -443,15 +447,19 @@ class BisectConsumer:
                         f"reason: {failed_reason} | retry_count: {retry_count}"
                     )
 
+                    # Merge verification metadata into existing j field to preserve
+                    # original commit info (good_commit, bad_commit, etc.)
+                    existing_j = j_field if isinstance(j_field, dict) else {}
+                    merged_j = {**existing_j,
+                        "last_verification_status": verification_status,
+                        "last_verification_failed_reason": failed_reason,
+                        "last_verification_time": current_time
+                    }
                     wait_doc = {
                         "bisect_status": "wait",
                         "retry_count": retry_count,
                         "updated_at": current_time,
-                        "j": {
-                            "last_verification_status": verification_status,
-                            "last_verification_failed_reason": failed_reason,
-                            "last_verification_time": current_time
-                        }
+                        "j": merged_j
                     }
                     self.client.update("bisect", task_id, wait_doc)
                     return {

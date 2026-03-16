@@ -1653,15 +1653,27 @@ class TaskProcessor:
 
         for task_id in task_ids:
             try:
+                # Fetch existing j field to merge (avoid destroying commit info)
+                existing_j = {}
+                try:
+                    task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                    if task_row:
+                        existing_j = task_row[0].get('j', {}) or {}
+                        if isinstance(existing_j, str):
+                            existing_j = json.loads(existing_j) if existing_j else {}
+                except Exception:
+                    pass
+
+                merged_j = {**existing_j,
+                    "reset_reason": reason,
+                    "reset_timestamp": current_time,
+                    "reset_by": "verification_consumer"
+                }
                 doc = {
                     "bisect_status": "wait",
                     "updated_at": current_time,
                     "submit_time": current_time,
-                    "j": {
-                        "reset_reason": reason,
-                        "reset_timestamp": current_time,
-                        "reset_by": "verification_consumer"
-                    }
+                    "j": merged_j
                 }
 
                 # Update database

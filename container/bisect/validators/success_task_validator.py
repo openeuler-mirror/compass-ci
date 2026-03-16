@@ -516,10 +516,21 @@ class SuccessTaskValidator(VerificationConsumer):
 
         for task_id in task_ids:
             try:
+                # Fetch existing j field to merge (avoid destroying commit info)
+                existing_j = {}
+                try:
+                    task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                    if task_row:
+                        existing_j = task_row[0].get('j', {}) or {}
+                        if isinstance(existing_j, str):
+                            import json
+                            existing_j = json.loads(existing_j) if existing_j else {}
+                except Exception:
+                    pass
                 reset_doc = {
                     "bisect_status": "wait",
                     "updated_at": current_time,
-                    "j": {
+                    "j": {**existing_j,
                         "reset_from_verifying": True,
                         "reset_reason": reason,
                         "reset_timestamp": current_time
@@ -629,11 +640,25 @@ class SuccessTaskValidator(VerificationConsumer):
                     if not parent_job_id or not candidate_job_id:
                         logger.warning(f"验证作业缺少 job_id | task_id: {task_id} | 标记为 wait")
 
-                        # 标记为 wait，让任务回到自然队列重新处理
+                        # Mark as wait, return to queue for reprocessing
+                        # Preserve existing j field (commit info) while clearing verification state
+                        existing_j = {}
+                        try:
+                            task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                            if task_row:
+                                existing_j = task_row[0].get('j', {}) or {}
+                                if isinstance(existing_j, str):
+                                    import json
+                                    existing_j = json.loads(existing_j) if existing_j else {}
+                                # Remove old verification keys but keep commit info
+                                for vk in ('verification_status', 'verification_jobs', 'verification_passed'):
+                                    existing_j.pop(vk, None)
+                        except Exception:
+                            pass
                         reset_doc = {
                             "bisect_status": "wait",
                             "updated_at": current_time,
-                            "j": {}  # 清除验证相关字段
+                            "j": existing_j
                         }
 
                         self.client.update("bisect", task_id, reset_doc)
@@ -834,10 +859,21 @@ class SuccessTaskValidator(VerificationConsumer):
                         # 验证失败
                         reason = f"boundary_check_failed_parent_{parent_status}_candidate_{candidate_status}"
 
+                        # Merge verification failure into existing j (preserve commit info)
+                        existing_j = {}
+                        try:
+                            task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                            if task_row:
+                                existing_j = task_row[0].get('j', {}) or {}
+                                if isinstance(existing_j, str):
+                                    import json
+                                    existing_j = json.loads(existing_j) if existing_j else {}
+                        except Exception:
+                            pass
                         update_doc = {
                             "bisect_status": "wait",
                             "updated_at": current_time,
-                            "j": {
+                            "j": {**existing_j,
                                 "verification_status": "verification_failed",
                                 "parent_job_id": parent_job_id,
                                 "candidate_job_id": candidate_job_id,
@@ -907,17 +943,28 @@ class SuccessTaskValidator(VerificationConsumer):
 
             new_timeout_count = current_timeout_count + 1
 
+            # Merge timeout metadata into existing j (preserve commit info)
+            existing_j = {}
+            try:
+                task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                if task_row:
+                    existing_j = task_row[0].get('j', {}) or {}
+                    if isinstance(existing_j, str):
+                        import json
+                        existing_j = json.loads(existing_j) if existing_j else {}
+            except Exception:
+                pass
             update_doc = {
-                "bisect_status": "wait",  # 重置为 wait，让任务重新进入 bisect 流程
+                "bisect_status": "wait",
                 "updated_at": current_time,
-                "j": {
+                "j": {**existing_j,
                     "verification_jobs": {
                         "status": "timeout",
                         "timeout_time": current_time,
                         "timeout_reason": reason
                     },
                     "verification_status": "timeout",
-                    "verification_timeout_count": new_timeout_count,  # 累加超时次数
+                    "verification_timeout_count": new_timeout_count,
                     "last_timeout_reason": reason
                 }
             }

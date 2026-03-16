@@ -896,10 +896,20 @@ class VerificationConsumer:
 
                 # 更新任务状态为wait，让标准bisect消费者处理
                 current_time = int(time.time())
+                # Merge verification failure into existing j (preserve commit info)
+                existing_j = {}
+                try:
+                    task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                    if task_row:
+                        existing_j = task_row[0].get('j', {}) or {}
+                        if isinstance(existing_j, str):
+                            existing_j = json.loads(existing_j) if existing_j else {}
+                except Exception:
+                    pass
                 reset_doc = {
                     "bisect_status": "wait",
                     "updated_at": current_time,
-                    "j": {
+                    "j": {**existing_j,
                         "verification_status": "failed",
                         "verification_failure_reason": reason,
                         "verification_details": verification_result.get('verification_details', {}),
@@ -909,7 +919,6 @@ class VerificationConsumer:
                     }
                 }
 
-                # 更新数据库
                 update_result = self.client.update("bisect", task_id, reset_doc)
                 if update_result:
                     logger.info(f"任务状态重置成功 | ID: {task_id} | status: wait | fallback: standard_bisect")
