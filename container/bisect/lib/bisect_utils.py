@@ -215,10 +215,11 @@ def extract_commit_from_full_text_kv(full_text_kv: str) -> str:
                 logger.debug(f"Successfully extracted commit hash | hash: {commit_hash[:12]}...")
                 return commit_hash
 
-        # Match tag format (version starting with v, e.g. v6.17, v5.10-rc1)
+        # Match tag format (version with or without v prefix)
         tag_patterns = [
-            r'commit[:=]\s*(v\d+\.\d+(?:\.\d+)?(?:-rc\d+)?(?:-\w+)?)\b',  # v6.17, v5.10-rc1, v6.12-openeuler
-            r'commit[:=]\s*(v\d+\.\d+[^\s,]*)',                            # v6.17-xxx looser match
+            r'commit[:=]\s*(v\d+\.\d+(?:\.\d+)?(?:-rc\d+)?(?:-[\w.]+)?)\b',  # v6.17, v5.10-rc1, v6.12-openeuler
+            r'commit[:=]\s*(v\d+\.\d+[^\s,]*)',                               # v6.17-xxx looser match
+            r'commit[:=]\s*(\d+\.\d+\.\d+[-.\w]*)',                           # 6.6.0-132.0.0 (no v prefix, openEuler style)
         ]
 
         for pattern in tag_patterns:

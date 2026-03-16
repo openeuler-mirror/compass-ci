@@ -233,7 +233,9 @@ class ErrorBisectProducer:
         # Scale query limit with window size: ~40 jobs/hour baseline, cap at 50000
         query_limit = min(max(1000, time_range_hours * 40), 50000)
         sql_query = f"""
-            SELECT id, j.errid, full_text_kv, submit_time
+            SELECT id, j.errid, full_text_kv, submit_time,
+                   j.ss.linux.commit as linux_commit,
+                   j.pp.makepkg.commit as makepkg_commit
             FROM jobs
             WHERE j.errid IS NOT NULL
             AND j.job_stage = 'finish'
@@ -319,8 +321,10 @@ class ErrorBisectProducer:
                     logger.debug(f"Filtered build task | job_id: {bad_job_id} | reason: {filter_reason}")
                     continue
 
-                # Extract commit hash
-                commit_hash = extract_commit_from_full_text_kv(full_text_kv)
+                # Extract commit hash: prefer DB fields, fall back to full_text_kv parsing
+                commit_hash = item.get('linux_commit', '') or item.get('makepkg_commit', '') or ''
+                if not commit_hash:
+                    commit_hash = extract_commit_from_full_text_kv(full_text_kv)
 
                 # Save job info
                 job_info_map[bad_job_id] = {
@@ -354,7 +358,9 @@ class ErrorBisectProducer:
                 logger.error(f"Phase 0 error processing job: {str(e)}")
                 continue
 
-        logger.info(f"Phase 0 completed: collected {len(job_info_map)} valid jobs, {len(commit_check_items)} need commit check")
+        logger.info(f"Phase 0 completed: collected {len(job_info_map)} valid jobs, {len(commit_check_items)} need commit check | "
+                     f"skipped: cache_hit={stats['jobs_cache_hit']}, no_git_url={stats['tasks_no_git_url']}, "
+                     f"build_filtered={stats.get('build_tasks_filtered', 0)}, no_commit={stats['tasks_commit_hash_not_found']}")
 
         # Phase 1: batch check commit age and branch version (key optimization: single network call)
         valid_job_ids = set(job_info_map.keys())  # All valid by default

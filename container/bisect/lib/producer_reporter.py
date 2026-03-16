@@ -65,6 +65,9 @@ class ProducerReporter:
         lines.append(f"  Query time range: {stats.get('query_time_from', 'N/A')} -> {stats.get('query_time_to', 'N/A')}")
         lines.append(f"  Queried jobs: {stats.get('jobs_queried', 0)}")
         lines.append(f"  Cache hits (already processed): {stats.get('jobs_cache_hit', 0)}")
+        lines.append(f"  No git_url (skipped): {stats.get('tasks_no_git_url', 0)}")
+        lines.append(f"  Build task filtered: {stats.get('build_tasks_filtered', 0)}")
+        lines.append(f"  No commit hash (skipped): {stats.get('tasks_commit_hash_not_found', 0)}")
         lines.append(f"  Jobs to process: {stats.get('jobs_processed', 0)}")
         lines.append("")
 
