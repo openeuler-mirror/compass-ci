@@ -72,9 +72,12 @@ class ErrorBisectProducer:
         batch_size = Config.BISECT_PRODUCER_BATCH_SIZE
         self.batch_inserter = BatchInserter(client, batch_size=batch_size)
 
-        # Use configured query time range
-        self.query_hours = Config.BISECT_PRODUCER_QUERY_HOURS
-        logger.info(f"ErrorBisectProducer initialized | query_hours: {self.query_hours}h | batch_size: {batch_size}")
+        # Adaptive query time range
+        self.base_query_hours = Config.BISECT_PRODUCER_QUERY_HOURS
+        self.max_query_hours = Config.BISECT_PRODUCER_MAX_QUERY_HOURS
+        self.query_hours = self.base_query_hours
+        logger.info(f"ErrorBisectProducer initialized | query_hours: {self.query_hours}h | "
+                     f"max_query_hours: {self.max_query_hours}h | batch_size: {batch_size}")
 
         # Initialize commit time filter client
         if COMMIT_TIME_CLIENT_AVAILABLE:
@@ -227,6 +230,8 @@ class ErrorBisectProducer:
         logger.info(f"Querying jobs table | time_range: {from_time} to {to_time}")
         logger.info(f"Query filter: exclude bisect intermediate tasks (j.bad_job_id IS NULL)")
 
+        # Scale query limit with window size: ~40 jobs/hour baseline, cap at 50000
+        query_limit = min(max(1000, time_range_hours * 40), 50000)
         sql_query = f"""
             SELECT id, j.errid, full_text_kv, submit_time
             FROM jobs
@@ -236,7 +241,7 @@ class ErrorBisectProducer:
             AND j.bad_job_id IS NULL
             AND submit_time >= {time_threshold}
             ORDER BY id DESC
-            LIMIT 1000
+            LIMIT {query_limit}
         """
 
         try:
@@ -510,11 +515,64 @@ class ErrorBisectProducer:
             stats['tasks_db_duplicate'] = len(existing_error_ids)
             logger.info(f"Deduplication completed: {len(existing_error_ids)} tasks already exist")
 
-            # Phase 4: prepare to create new tasks
+            # Phase 3b: Find previously failed tasks that can be retried
+            # These have the same deterministic task_id, so INSERT would fail.
+            # Instead, UPDATE them back to 'wait' status.
+            new_error_ids = [t['error_id'] for t in all_tasks_to_create
+                             if t['error_id'] not in existing_error_ids]
+            failed_task_map = {}  # error_id -> task_id from DB
+            if new_error_ids:
+                for i in range(0, len(new_error_ids), batch_size):
+                    batch = new_error_ids[i:i + batch_size]
+                    try:
+                        query = {
+                            "bool": {
+                                "must": [
+                                    {"in": {"error_id": batch}},
+                                    {"equals": {"bisect_status": "failed"}}
+                                ]
+                            }
+                        }
+                        failed_existing = self.client.search(index="bisect", query=query, limit=10000)
+                        if failed_existing:
+                            for item in failed_existing:
+                                eid = item.get('error_id')
+                                tid = item.get('id')
+                                if eid and tid:
+                                    failed_task_map[eid] = tid
+                    except Exception as e:
+                        logger.error(f"Failed task lookup error: {str(e)}")
+
+            # Reset failed tasks back to 'wait' for retry
+            reset_count = 0
+            if failed_task_map:
+                logger.info(f"Phase 3b: Resetting {len(failed_task_map)} previously failed tasks for retry...")
+                for error_id, task_id in failed_task_map.items():
+                    try:
+                        reset_doc = {
+                            "bisect_status": "wait",
+                            "submit_time": int(time.time()),
+                            "updated_at": int(time.time()),
+                            "first_bad_commit": "",
+                            "bisect_error": "",
+                        }
+                        result = self.client.update("bisect", task_id, reset_doc)
+                        if result:
+                            reset_count += 1
+                        else:
+                            logger.warning(f"Failed to reset task {task_id} for error_id {error_id[:50]}...")
+                    except Exception as e:
+                        logger.error(f"Reset failed task error | task_id: {task_id} | error: {str(e)}")
+                logger.info(f"Reset completed: {reset_count}/{len(failed_task_map)} tasks reset to wait")
+            stats['tasks_reset_from_failed'] = reset_count
+
+            # Phase 4: prepare to create truly new tasks (not in active or failed)
             tasks_to_create = []
             for task_data in all_tasks_to_create:
                 if task_data['error_id'] in existing_error_ids:
-                    continue  # Skip existing
+                    continue  # Skip active duplicates
+                if task_data['error_id'] in failed_task_map:
+                    continue  # Already reset via UPDATE above
 
                 # Prepare task data
                 task = {
@@ -543,6 +601,9 @@ class ErrorBisectProducer:
                 batch_stats = self.batch_inserter.get_stats()
                 stats['batch_insert_stats'] = batch_stats
                 logger.info(f"Batch creation completed | success: {success_count} | failed: {failed_count}")
+            else:
+                stats['tasks_created_success'] = 0
+                stats['tasks_created_failed'] = 0
 
         # Generate analysis files (summary and filtered/unfiltered JSON)
         if job_data_list:
@@ -560,9 +621,19 @@ class ErrorBisectProducer:
                         f"evictions: {self.processed_jobs_cache.evictions}")
             # LRU cache automatically evicts least recently used items
 
+        # Adaptive window: expand if we created new tasks (backlog exists), shrink if idle
+        total_new = stats.get('tasks_created_success', 0) + stats.get('tasks_reset_from_failed', 0)
+        if total_new > 0 and self.query_hours < self.max_query_hours:
+            new_hours = min(self.query_hours * 2, self.max_query_hours)
+            logger.info(f"Adaptive window: expanding {self.query_hours}h -> {new_hours}h (created {total_new} tasks)")
+            self.query_hours = new_hours
+        elif total_new == 0 and self.query_hours > self.base_query_hours:
+            logger.info(f"Adaptive window: resetting {self.query_hours}h -> {self.base_query_hours}h (no new tasks)")
+            self.query_hours = self.base_query_hours
+
         # Output statistics
         self._log_producer_stats(stats, start_time)
-        return stats['tasks_created_success']
+        return stats.get('tasks_created_success', 0) + stats.get('tasks_reset_from_failed', 0)
 
     def _log_producer_stats(self, stats: dict, start_time: float):
         """Output detailed producer statistics report and save to notification directory"""
@@ -1444,6 +1515,7 @@ class PerformanceBisectProducer:
             return 0
 
         tasks_to_create = []
+        reset_count = 0
 
         for pair in bisectable_pairs:
             # Iterate each metric with performance gap, create independent task for each
@@ -1451,9 +1523,14 @@ class PerformanceBisectProducer:
                 try:
                     metric = metric_info['metric']
 
-                    # Check if task for this metric already exists
+                    # Check if active task for this metric already exists
                     if self._task_exists_for_metric(pair, metric):
                         stats['tasks_db_duplicate'] += 1
+                        continue
+
+                    # Check if a previously failed task exists — reset it instead of inserting
+                    if self._reset_failed_task_for_metric(pair, metric):
+                        reset_count += 1
                         continue
 
                     # Build task document
@@ -1466,23 +1543,32 @@ class PerformanceBisectProducer:
                     stats['tasks_failed'] += 1
                     continue
 
+        if reset_count > 0:
+            logger.info(f"Reset {reset_count} previously failed performance tasks for retry")
+        stats['tasks_reset_from_failed'] = stats.get('tasks_reset_from_failed', 0) + reset_count
+
         if not tasks_to_create:
-            return 0
+            return reset_count
 
         # Batch insert
         success_count, failed_count = self.batch_inserter.batch_create_tasks(tasks_to_create)
 
         stats['tasks_failed'] += failed_count
-        return success_count
+        return success_count + reset_count
 
     def _task_exists_for_metric(self, pair: Dict, metric: str) -> bool:
-        """Check if task for specific metric already exists in database"""
+        """Check if an active task for specific metric already exists in database.
+
+        Only considers active statuses (wait/processing/verifying/success).
+        Failed tasks are not counted so they can be retried.
+        """
         try:
             query = {
                 "bool": {
                     "must": [
                         {"equals": {"bisect_metric": metric}},
-                        {"equals": {"category": "benchmark"}}
+                        {"equals": {"category": "benchmark"}},
+                        {"in": {"bisect_status": ["wait", "processing", "verifying", "success"]}}
                     ]
                 }
             }
@@ -1505,6 +1591,52 @@ class PerformanceBisectProducer:
 
         except Exception as e:
             logger.debug(f"Failed to check task existence: {str(e)}")
+            return False
+
+    def _reset_failed_task_for_metric(self, pair: Dict, metric: str) -> bool:
+        """Find and reset a previously failed task for this metric back to 'wait'.
+
+        Returns True if a failed task was found and successfully reset.
+        """
+        try:
+            query = {
+                "bool": {
+                    "must": [
+                        {"equals": {"bisect_metric": metric}},
+                        {"equals": {"category": "benchmark"}},
+                        {"equals": {"bisect_status": "failed"}}
+                    ]
+                }
+            }
+            existing = self.client.search(index="bisect", query=query, limit=10)
+            if not existing:
+                return False
+
+            for item in existing:
+                j_field = item.get('j', {})
+                if isinstance(j_field, str):
+                    import json
+                    j_field = json.loads(j_field)
+
+                if (j_field.get('baseline_commit') == pair['baseline_commit'] and
+                    j_field.get('current_commit') == pair['current_commit']):
+                    task_id = item.get('id')
+                    if task_id:
+                        reset_doc = {
+                            "bisect_status": "wait",
+                            "submit_time": int(time.time()),
+                            "updated_at": int(time.time()),
+                            "first_bad_commit": "",
+                            "bisect_error": "",
+                        }
+                        result = self.client.update("bisect", task_id, reset_doc)
+                        if result:
+                            logger.info(f"Reset failed perf task {task_id} for metric {metric[:60]}")
+                            return True
+            return False
+
+        except Exception as e:
+            logger.debug(f"Failed to check/reset failed task: {str(e)}")
             return False
 
     def _build_task_document(self, pair: Dict, metric_info: Dict) -> Dict:

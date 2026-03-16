@@ -39,6 +39,12 @@ class Config:
     # 25 hours = daily run + 1 hour overlap for fault tolerance
     BISECT_PRODUCER_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_QUERY_HOURS', 25))
 
+    # Adaptive query window: max hours the producer can expand to when catching up on backlog
+    # When a cycle creates new tasks, the next cycle doubles the window (up to this cap)
+    # When no new tasks are found, the window resets to BISECT_PRODUCER_QUERY_HOURS
+    # Set to same as BISECT_PRODUCER_QUERY_HOURS to disable adaptive expansion
+    BISECT_PRODUCER_MAX_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_MAX_QUERY_HOURS', 720))
+
     # Producer batch configuration
     BISECT_PRODUCER_BATCH_SIZE = int(os.environ.get('BISECT_PRODUCER_BATCH_SIZE', 50))
 
