@@ -1198,12 +1198,12 @@ class PerformanceBisectProducer:
                 if self.commit_client and git_url:
                     try:
                         is_anc = self.commit_client.is_ancestor(git_url, baseline_commit, current_commit)
-                        if is_anc is False:
+                        if is_anc is not True:
                             stats['pairs_not_ancestor'] += 1
-                            logger.warning(f"Skipping non-ancestor pair | {suite}/{testbox} | "
+                            reason = "not ancestor" if is_anc is False else "service error (None)"
+                            logger.warning(f"Skipping pair ({reason}) | {suite}/{testbox} | "
                                          f"baseline: {baseline_commit[:12]} | current: {current_commit[:12]}")
                             continue
-                        # is_anc is None means service error — continue gracefully
                     except Exception as e:
                         logger.warning(f"Ancestor check failed, continuing | error: {str(e)}")
 

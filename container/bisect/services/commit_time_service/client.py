@@ -14,7 +14,7 @@ from typing import Optional, Dict, Tuple, List, Set
 class CommitTimeClient:
     """Commit 时间服务客户端"""
 
-    def __init__(self, service_url: str = 'http://localhost:8765', timeout: int = 10):
+    def __init__(self, service_url: str = 'http://localhost:8765', timeout: int = 120):
         """
         初始化客户端
 

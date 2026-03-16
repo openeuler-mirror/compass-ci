@@ -13,6 +13,7 @@ import sys
 import subprocess
 import time
 import re
+import threading
 from typing import Optional, Dict, Tuple, List
 from datetime import datetime
 
@@ -38,6 +39,8 @@ class CommitTimeQuery:
         """
         self.repo_manager = repo_manager or SharedRepoManager()
         self.pristine_base_dir = self.repo_manager.PRISTINE_BASE_DIR
+        self._fetch_locks = {}
+        self._fetch_locks_lock = threading.Lock()
 
     def get_commit_timestamp(self, git_url: str, commit_hash: str) -> Optional[int]:
         """
@@ -455,7 +458,18 @@ class CommitTimeQuery:
             self.repo_manager._ensure_pristine_repo(git_url, pristine_repo_dir)
 
     def _fetch_pristine_repo(self, pristine_repo_dir: str):
-        """更新 pristine 仓库"""
+        """更新 pristine 仓库 (per-repo lock to avoid concurrent fetches)"""
+        with self._fetch_locks_lock:
+            if pristine_repo_dir not in self._fetch_locks:
+                self._fetch_locks[pristine_repo_dir] = threading.Lock()
+            lock = self._fetch_locks[pristine_repo_dir]
+
+        if not lock.acquire(blocking=False):
+            logger.info(f"Fetch already in progress, waiting | path: {pristine_repo_dir}")
+            lock.acquire()
+            lock.release()
+            return
+
         try:
             subprocess.run(
                 ['git', '-C', pristine_repo_dir, 'fetch', 'origin'],
@@ -466,6 +480,8 @@ class CommitTimeQuery:
             logger.info(f"Pristine repo fetched | path: {pristine_repo_dir}")
         except Exception as e:
             logger.warning(f"Fetch failed | path: {pristine_repo_dir} | error: {str(e)}")
+        finally:
+            lock.release()
 
     def get_parent_commit(self, git_url: str, commit_hash: str) -> Optional[Dict]:
         """
