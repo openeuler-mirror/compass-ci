@@ -1,3 +1,5 @@
+"""Application-level configuration defaults for the bisect API service."""
+
 import os
 
 class Config:

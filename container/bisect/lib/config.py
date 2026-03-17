@@ -1,3 +1,5 @@
+"""Environment-backed configuration schema and defaults for bisect runtime."""
+
 import os
 
 class Config:
@@ -150,10 +152,10 @@ class Config:
         'unixbench,lmbench,iozone,fio,filebench,stream,hackbench,netperf,sysbench,sysbench-cpu,sysbench-memory,sysbench-mutex,sysbench-threads,stress-ng'
     )
 
-    # 已废弃: performance_metrics.yaml 配置文件
-    # 现在使用基于 lkp-stats-type.md 规范的前缀判断 KPI 和方向
-    # KPI 指标: 大写前缀 (LAT, RATE, JIT, POW, COST, MEM)
-    # 方向: lat/jit/pow/cost/mem = -1 (SmallerBetter), rate = +1 (BiggerBetter)
+    # : performance_metrics.yaml configfile
+    #  lkp-stats-type.md  KPI 
+    # KPI :  (LAT, RATE, JIT, POW, COST, MEM)
+    # : lat/jit/pow/cost/mem = -1 (SmallerBetter), rate = +1 (BiggerBetter)
 
     # ====== SQL Query Configuration ======
     # Default limit for list queries

@@ -1,8 +1,10 @@
+"""Flask application factory and startup wiring for the bisect service."""
+
 import sys
 import os
 from flask import Flask
 
-print(f"环境变量验证 - LOG_LEVEL = {os.getenv('LOG_LEVEL')}")
+print(f"Env check - LOG_LEVEL = {os.getenv('LOG_LEVEL')}")
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from log_config import logger

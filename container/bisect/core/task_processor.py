@@ -1,3 +1,5 @@
+"""Task processor loop coordinating polling, dispatching, and lifecycle updates."""
+
 import os
 import time
 import threading

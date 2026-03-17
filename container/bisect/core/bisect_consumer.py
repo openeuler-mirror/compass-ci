@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+"""Bisect consumer that executes queued bisect tasks and persists results."""
+
+
 
 import sys
 import os

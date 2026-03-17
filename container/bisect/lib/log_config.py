@@ -1,3 +1,5 @@
+"""Central logging setup with structured log helpers for bisect components."""
+
 # SPDX-License-Identifier: MulanPSL-2.0+
 
 import logging
@@ -13,7 +15,7 @@ from pathlib import Path
 import threading
 
 class StructuredLogger:
-    """统一的结构化日志记录器 - 支持按日期分割，减少控制台输出"""
+    """log - support，"""
 
     _instance = None
     _lock = threading.Lock()
@@ -29,7 +31,7 @@ class StructuredLogger:
         if hasattr(self, '_initialized'):
             return
             
-        # 动态设置日志级别
+        # log
         log_level_str = os.getenv('LOG_LEVEL', 'INFO').upper()
         self.log_level = getattr(logging, log_level_str, logging.INFO)
         
@@ -45,28 +47,28 @@ class StructuredLogger:
             'pid': os.getpid()
         }
         
-        # 日志清理配置
+        # logconfig
         self.max_days = max_days
         self.log_dir = log_dir or self._get_default_log_dir()
         
-        # 设置全局日志级别
-        self.logger.setLevel(logging.DEBUG)  # Logger本身接受所有级别，由处理器控制
+        # log
+        self.logger.setLevel(logging.DEBUG)  # Logger，
 
         self._setup_file_handlers(self.log_dir)
         self._setup_console_handler()
         
-        # 启动时清理旧日志
+        # log
         self._cleanup_old_logs()
         
         self._initialized = True
         
-        # 记录初始化信息（仅文件，不输出到控制台）
-        self._log_to_file_only('info', f"日志系统已启动 | 级别:{log_level_str} | 保留:{max_days}天")
+        # initialize（file，）
+        self._log_to_file_only('info', f"log | :{log_level_str} | :{max_days}")
 
     def _get_default_log_dir(self) -> str:
-        """获取默认日志目录"""
-        # 优先使用 RESULT_DIR/logs（持久化目录）
-        # 注意：RESULT_DIR 通常已经是 /result/bisect，不需要再追加 bisect
+        """getdefaultlog"""
+        #  RESULT_DIR/logs（）
+        # ：RESULT_DIR  /result/bisect， bisect
         if os.getenv('RESULT_DIR'):
             base_dir = os.getenv('RESULT_DIR')
         elif os.getenv('WORK_DIR'):
@@ -142,20 +144,20 @@ class StructuredLogger:
         self.logger.addHandler(_make_handler(consumer_dir / 'error.log', logging.ERROR, consumer_filter))
 
     def _setup_console_handler(self):
-        """配置控制台处理器 - 使用与文件相同的详细格式"""
+        """config - file"""
         console = logging.StreamHandler()
-        # 与文件日志相同的详细格式，便于 supervisor 捕获后溯源
+        # filelog， supervisor 
         console_formatter = logging.Formatter(
             '%(asctime)s.%(msecs)03d [%(pathname)s:%(lineno)d] %(funcName)s() - %(message)s',
             '%Y-%m-%d %H:%M:%S'
         )
         console.setFormatter(console_formatter)
-        # 控制台显示WARNING及以上级别（重要信息）
+        # WARNING（）
         console.setLevel(logging.WARNING)
         self.logger.addHandler(console)
 
     def _cleanup_old_logs(self):
-        """清理过期的日志文件"""
+        """logfile"""
         try:
             log_path = Path(self.log_dir)
             if not log_path.exists():
@@ -174,28 +176,28 @@ class StructuredLogger:
                     pass
                     
             if cleaned_count > 0:
-                self._log_to_file_only('info', f"清理了 {cleaned_count} 个过期日志文件")
+                self._log_to_file_only('info', f" {cleaned_count} logfile")
                 
         except Exception:
             pass
 
     def _log_to_file_only(self, level: str, message: str):
-        """仅写入文件，不输出到控制台"""
-        # 临时移除控制台处理器
+        """file，"""
+        # 
         console_handlers = [h for h in self.logger.handlers if isinstance(h, logging.StreamHandler)]
         for h in console_handlers:
             self.logger.removeHandler(h)
         
-        # 记录日志
+        # log
         log_method = getattr(self.logger, level.lower())
         log_method(message)
         
-        # 恢复控制台处理器
+        # 
         for h in console_handlers:
             self.logger.addHandler(h)
 
     def log_performance(self, operation: str, duration: float, **kwargs):
-        """记录性能信息"""
+        """"""
         perf_data = {
             'operation': operation,
             'duration_ms': round(duration * 1000, 2),
@@ -212,7 +214,7 @@ class StructuredLogger:
             pass
 
     def debug(self, message: str, *args, **kwargs):
-        # 分离标准 logger 关键字参数和额外的结构化参数
+        #  logger 
         standard_kwargs = {}
         extra_kwargs = {}
 
@@ -222,7 +224,7 @@ class StructuredLogger:
             else:
                 extra_kwargs[key] = value
 
-        # 如果有额外参数，放入 extra 字典
+        # ， extra dict
         if extra_kwargs:
             standard_kwargs['extra'] = extra_kwargs
 
@@ -232,7 +234,7 @@ class StructuredLogger:
             self.logger.debug(message, stacklevel=2, **standard_kwargs)
 
     def info(self, message: str, *args, **kwargs):
-        # 分离标准 logger 关键字参数和额外的结构化参数
+        #  logger 
         standard_kwargs = {}
         extra_kwargs = {}
 
@@ -242,7 +244,7 @@ class StructuredLogger:
             else:
                 extra_kwargs[key] = value
 
-        # 如果有额外参数，放入 extra 字典
+        # ， extra dict
         if extra_kwargs:
             standard_kwargs['extra'] = extra_kwargs
 
@@ -252,7 +254,7 @@ class StructuredLogger:
             self.logger.info(message, stacklevel=2, **standard_kwargs)
 
     def warning(self, message: str, *args, **kwargs):
-        # 分离标准 logger 关键字参数和额外的结构化参数
+        #  logger 
         standard_kwargs = {}
         extra_kwargs = {}
 
@@ -262,7 +264,7 @@ class StructuredLogger:
             else:
                 extra_kwargs[key] = value
 
-        # 如果有额外参数，放入 extra 字典
+        # ， extra dict
         if extra_kwargs:
             standard_kwargs['extra'] = extra_kwargs
 
@@ -272,7 +274,7 @@ class StructuredLogger:
             self.logger.warning(message, stacklevel=2, **standard_kwargs)
 
     def error(self, message: str, *args, **kwargs):
-        # 分离标准 logger 关键字参数和额外的结构化参数
+        #  logger 
         standard_kwargs = {}
         extra_kwargs = {}
 
@@ -282,11 +284,11 @@ class StructuredLogger:
             else:
                 extra_kwargs[key] = value
 
-        # 如果有额外参数，放入 extra 字典
+        # ， extra dict
         if extra_kwargs:
             standard_kwargs['extra'] = extra_kwargs
 
-        # 自动捕获异常堆栈（如果存在当前异常）
+        # Exception traceback（exception）
         import sys
         if sys.exc_info()[0] is not None and 'exc_info' not in standard_kwargs:
             standard_kwargs['exc_info'] = True
@@ -297,7 +299,7 @@ class StructuredLogger:
             self.logger.error(message, stacklevel=2, **standard_kwargs)
 
     def critical(self, message: str, *args, **kwargs):
-        # 分离标准 logger 关键字参数和额外的结构化参数
+        #  logger 
         standard_kwargs = {}
         extra_kwargs = {}
 
@@ -307,7 +309,7 @@ class StructuredLogger:
             else:
                 extra_kwargs[key] = value
 
-        # 如果有额外参数，放入 extra 字典
+        # ， extra dict
         if extra_kwargs:
             standard_kwargs['extra'] = extra_kwargs
 
@@ -317,20 +319,20 @@ class StructuredLogger:
             self.logger.critical(message, stacklevel=2, **standard_kwargs)
 
     def exception(self, message: str, **kwargs):
-        """记录异常信息，包含完整堆栈"""
-        # 移除不支持的kwargs参数，只保留消息内容
+        """exception，"""
+        # supportkwargs，
         if 'error' in kwargs:
             message = f"{message}: {kwargs.pop('error')}"
         if 'exception' in kwargs:
             message = f"{message}: {kwargs.pop('exception')}"
-        # 清理其他可能的无效参数
+        # 
         kwargs = {k: v for k, v in kwargs.items() if k in ['exc_info', 'stack_info']}
 
-        # 确保总是捕获异常信息
+        # exception
         if 'exc_info' not in kwargs:
             kwargs['exc_info'] = True
 
-        # 记录异常类型（如果有当前异常）
+        # exception（exception）
         import sys
         if sys.exc_info()[1]:
             exception_type = type(sys.exc_info()[1]).__name__
@@ -339,14 +341,14 @@ class StructuredLogger:
         self.logger.error(message, stacklevel=2, **kwargs)
     
     def configure(self, log_dir: str = None, **kwargs):
-        """配置方法，为兼容py_bisect"""
+        """config，py_bisect"""
         if log_dir:
-            logger.debug(f"日志配置请求：设置目录为 {log_dir}")
-            # 这里可以根据需要重新配置日志目录，暂时只记录
+            logger.debug(f"logconfig： {log_dir}")
+            # configlog，
         return True
         
     def get_log_stats(self) -> Dict[str, Any]:
-        """获取日志统计信息"""
+        """getlogstats"""
         stats = {
             'log_dir': self.log_dir,
             'session_id': self.session_id,
@@ -354,7 +356,7 @@ class StructuredLogger:
             'uptime_seconds': round(time.time() - self.start_time, 2)
         }
         
-        # 统计日志文件大小
+        # statslogfile
         try:
             log_path = Path(self.log_dir)
             if log_path.exists():
@@ -369,5 +371,5 @@ class StructuredLogger:
             
         return stats
 
-# 全局日志实例
+# loginstance
 logger = StructuredLogger()
