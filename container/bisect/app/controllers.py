@@ -2,17 +2,18 @@ import sys
 import os
 import time
 import traceback
+from datetime import datetime, timezone
 from flask import jsonify, request
 import threading
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from config import Config
 from log_config import logger
-from query_builder import build_task_query_conditions, build_condition_summary
+from query_builder import build_task_query_conditions, build_condition_summary, _escape_sql_string
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from py_bisect import GitBisect
-from manticore_simple import ManticoreClient
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.core.git_bisect import GitBisect
+from lkp_bisect.db.manticore import ManticoreClient
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/core')
 from task_processor import bisect_task_instance
@@ -21,22 +22,33 @@ from task_processor import bisect_task_instance
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect')
 from services.pool_monitor_service import PoolMonitorService
 
-def _escape_sql_string(value: str) -> str:
-    """
-    Escape string for ManticoreSearch SQL queries
-    ManticoreSearch uses backslash escaping, not double quotes
-    """
-    if value is None:
-        return ""
-    # First escape backslashes, then single quotes
-    return value.replace("\\", "\\\\").replace("'", "\\'")
 
 def _get_manticore_client():
-    """获取ManticoreSearch HTTP客户端"""
+    """Get ManticoreSearch HTTP client"""
     return ManticoreClient(
         host=os.environ.get('MANTICORE_HOST', 'localhost'),
         port=int(os.environ.get('MANTICORE_WRITE_PORT', '9308'))
     )
+
+# Timestamp fields to add human-readable versions for
+_TIMESTAMP_FIELDS = ('submit_time', 'updated_at', 'created_at')
+
+def _humanize_timestamps(task: dict) -> dict:
+    """Add '_human' suffix fields for unix timestamp fields (e.g. updated_at_human).
+
+    Original numeric fields are kept intact for backward compatibility.
+    """
+    for field in _TIMESTAMP_FIELDS:
+        value = task.get(field)
+        if isinstance(value, (int, float)) and value > 0:
+            task[f'{field}_human'] = datetime.fromtimestamp(value, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+    return task
+
+def _humanize_task_list(tasks):
+    """Apply timestamp humanization to a list of tasks."""
+    if not tasks:
+        return tasks
+    return [_humanize_timestamps(t) for t in tasks]
 
 def new_bisect_task():
     try:
@@ -125,7 +137,7 @@ def list_bisect_tasks():
     - task_id: 单个任务ID
     - task_ids: 多个任务ID (逗号分隔)
     - first_bad_commit: 按first_bad_commit筛选 (精确匹配)
-    - limit: 限制返回结果数量 (默认100000)
+    - limit: 限制返回结果数量 (默认 Config.DEFAULT_QUERY_LIMIT)
     """
     try:
         client = _get_manticore_client()
@@ -134,13 +146,12 @@ def list_bisect_tasks():
         where_clause, filters = build_task_query_conditions()
 
         # 获取 limit 参数
-        limit = request.args.get('limit', '100000')
+        limit = request.args.get('limit', str(Config.DEFAULT_QUERY_LIMIT))
         try:
             limit = int(limit)
-            # 限制范围 (1 到 1,000,000)
-            limit = max(1, min(limit, 1000000))
+            limit = max(1, min(limit, Config.MAX_QUERY_LIMIT))
         except ValueError:
-            limit = 100000
+            limit = Config.DEFAULT_QUERY_LIMIT
 
         # 构建 SQL 查询
         sql_query = f"""
@@ -154,11 +165,10 @@ def list_bisect_tasks():
         logger.debug(f"执行查询: {sql_query}")
         tasks = client.sql_select(sql_query)
 
-        # 返回结果
         result_count = len(tasks) if tasks else 0
 
         return jsonify({
-            "tasks": tasks or [],
+            "tasks": _humanize_task_list(tasks) or [],
             "count": result_count,
             "filters": filters,
             "limit": limit
@@ -562,6 +572,7 @@ def cleanup_orphaned_verifying():
             SELECT id, j FROM bisect
             WHERE bisect_status = 'verifying'
             LIMIT 10000
+            OPTION max_matches=10000
         """
 
         verifying_tasks = client.sql_select(query)
@@ -720,8 +731,8 @@ def reset_task_by_id():
 
         try:
             task_id_int = int(task_id)
-            # ManticoreSearch使用64位整数，验证范围
-            if task_id_int <= 0 or task_id_int > 2**63 - 1:
+            # ManticoreSearch uses 64-bit integers
+            if task_id_int <= 0 or task_id_int > Config.MAX_INT64:
                 return jsonify({
                     "status": "error",
                     "error": "Task ID out of valid range"
@@ -1012,18 +1023,16 @@ def get_pool_status():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 def trigger_pool_cleanup():
-    """触发仓库池清理"""
+    """Trigger workspace cleanup"""
     try:
         monitor = _get_pool_monitor()
 
-        # 从请求参数获取选项
         dry_run = request.json.get('dry_run', True) if request.json else True
-        max_hours = request.json.get('max_hours', None) if request.json else None
+        max_age_days = request.json.get('max_age_days', None) if request.json else None
 
         result = monitor.check_and_cleanup(
             dry_run=dry_run,
-            max_hours=max_hours,
-            auto_cleanup=True
+            max_age_days=max_age_days
         )
 
         return jsonify(result), 200
@@ -1050,18 +1059,6 @@ def verify_pool_consistency():
         logger.error(f"Failed to verify pool consistency: {str(e)}")
         return jsonify({"status": "error", "error": str(e)}), 500
 
-def get_repo_instances(repo_name):
-    """获取特定仓库的实例信息"""
-    try:
-        monitor = _get_pool_monitor()
-        result = monitor.get_instance_info(repo_name)
-
-        if result['status'] == 'error':
-            return jsonify(result), 404
-        return jsonify(result), 200
-    except Exception as e:
-        logger.error(f"Failed to get repo instances: {str(e)}")
-        return jsonify({"status": "error", "error": str(e)}), 500
 
 def start_pool_monitor():
     """启动池监控线程"""

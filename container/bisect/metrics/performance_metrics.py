@@ -314,7 +314,7 @@ class MetricsCollector:
         """获取当前CPU使用率"""
         try:
             return psutil.cpu_percent(interval=0)  # 改为0，不等待
-        except:
+        except (OSError, psutil.Error):
             return 0.0
 
     def _get_current_memory_usage(self) -> float:
@@ -322,7 +322,7 @@ class MetricsCollector:
         try:
             process = psutil.Process()
             return process.memory_info().rss / 1024 / 1024
-        except:
+        except (OSError, psutil.Error):
             return 0.0
 
     def export_metrics(self, filepath: str) -> None:

@@ -182,7 +182,7 @@ class SharedRepoManager:
                         path_parts = workspace_repo_dir.rstrip('/').split('/')
                         if len(path_parts) >= 2 and path_parts[-2].isdigit():
                             task_id = path_parts[-2]
-                    except:
+                    except (IndexError, AttributeError):
                         pass
 
                 logger.info(f"Releasing workspace | task: {task_id or 'unknown'} | path: {workspace_repo_dir}")
@@ -299,6 +299,13 @@ class SharedRepoManager:
                         shutil.rmtree(repo_dir, ignore_errors=True)
                     os.rename(temp_dir, repo_dir)
 
+                    # Bare clone doesn't set fetch refspec — configure it
+                    # so that subsequent `git fetch origin` pulls all refs + tags
+                    subprocess.run(
+                        ['git', '-C', repo_dir, 'config', 'remote.origin.fetch', '+refs/*:refs/*'],
+                        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    )
+
                     logger.info(f"Pristine bare repository cloned atomically | repo: {repo_name}")
                     return
 
@@ -354,7 +361,7 @@ class SharedRepoManager:
                 try:
                     os.rename(old_dir, repo_dir)
                     logger.info(f"Restored old pristine repo after failure | repo: {repo_name}")
-                except:
+                except OSError:
                     pass
 
             # 清理临时目录
@@ -368,13 +375,26 @@ class SharedRepoManager:
         self._clone_repo_atomic(repo_url, repo_dir)
 
     def _fetch_repo(self, repo_dir):
-        """在 bare 仓库中执行 git fetch"""
+        """Fetch updates for bare pristine repository"""
         try:
+            # Ensure refspec exists (may be missing on old bare clones)
+            result = subprocess.run(
+                ['git', '-C', repo_dir, 'config', 'remote.origin.fetch'],
+                capture_output=True, text=True
+            )
+            if not result.stdout.strip():
+                logger.info(f"Setting missing fetch refspec | path: {repo_dir}")
+                subprocess.run(
+                    ['git', '-C', repo_dir, 'config', 'remote.origin.fetch', '+refs/*:refs/*'],
+                    check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+
             subprocess.run(
                 ['git', '-C', repo_dir, 'fetch', 'origin'],
-                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=120
             )
-            logger.info(f"Pristine bare repository updated successfully | Path: {repo_dir}")
+            logger.info(f"Pristine bare repository updated successfully | path: {repo_dir}")
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to fetch updates for pristine repo {repo_dir}: {e.stderr.decode()}")
             raise
@@ -683,7 +703,7 @@ class SharedRepoManager:
                 active_workspaces = len([d for d in os.listdir(self.REPO_BASE_DIR)
                                         if os.path.isdir(os.path.join(self.REPO_BASE_DIR, d))])
                 stats['active_workspaces'] = active_workspaces
-        except:
+        except OSError:
             stats['active_workspaces'] = 0
 
         return stats

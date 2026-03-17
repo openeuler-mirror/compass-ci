@@ -7,6 +7,13 @@ class Config:
     BISECT_MODE = os.environ.get('bisect_mode', 'local')
     LKP_SRC = os.environ.get('LKP_SRC', '/c/lkp-tests')
     CCI_SRC = os.environ.get('CCI_SRC', '/c/compass-ci')
+    CI_CONFIG_PATH = os.environ.get(
+        'CI_CONFIG_PATH',
+        os.path.join(
+            os.environ.get('LKP_SRC', '/c/lkp-tests'),
+            'sbin/bisect/kernel_ci/ci_config.yaml'
+        )
+    )
 
     # Thread pool configuration
     # Default: 32 threads, can be increased since workspace overhead is low (~90MB per thread)
@@ -30,7 +37,14 @@ class Config:
     # Producer query time range configuration (hours)
     # How many hours of historical data to query
     # 25 hours = daily run + 1 hour overlap for fault tolerance
-    BISECT_PRODUCER_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_QUERY_HOURS', 25))
+    # TODO: temporarily set to 720 for backlog catch-up, revert to 25 after testing
+    BISECT_PRODUCER_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_QUERY_HOURS', 720))
+
+    # Adaptive query window: max hours the producer can expand to when catching up on backlog
+    # When a cycle creates new tasks, the next cycle doubles the window (up to this cap)
+    # When no new tasks are found, the window resets to BISECT_PRODUCER_QUERY_HOURS
+    # Set to same as BISECT_PRODUCER_QUERY_HOURS to disable adaptive expansion
+    BISECT_PRODUCER_MAX_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_MAX_QUERY_HOURS', 720))
 
     # Producer batch configuration
     BISECT_PRODUCER_BATCH_SIZE = int(os.environ.get('BISECT_PRODUCER_BATCH_SIZE', 50))
@@ -112,13 +126,17 @@ class Config:
     PERFORMANCE_PRODUCER_ENABLED = os.environ.get('PERFORMANCE_PRODUCER_ENABLED', 'true').lower() == 'true'
 
     # Query time range in hours for performance jobs
-    PERFORMANCE_PRODUCER_QUERY_HOURS = int(os.environ.get('PERFORMANCE_PRODUCER_QUERY_HOURS', 168))  # 7 days
+    # 25 hours = daily run + 1 hour overlap for fault tolerance
+    PERFORMANCE_PRODUCER_QUERY_HOURS = int(os.environ.get('PERFORMANCE_PRODUCER_QUERY_HOURS', 25))
 
-    # Producer interval in days
-    PERFORMANCE_PRODUCER_INTERVAL_DAYS = int(os.environ.get('PERFORMANCE_PRODUCER_INTERVAL_DAYS', 7))
+    # Wider query windows for performance bisect comparison pairs
+    # Baseline: 30 days (720h) — stable tags, old results remain valid
+    BASELINE_QUERY_HOURS = int(os.environ.get('BASELINE_QUERY_HOURS', 720))
+    # Current: 14 days (336h) — RC tags rotate weekly, 14 days gives ~14 samples per suite
+    CURRENT_QUERY_HOURS = int(os.environ.get('CURRENT_QUERY_HOURS', 336))
 
-    # Minimum performance change percent to trigger bisect
-    PERFORMANCE_MIN_CHANGE_PERCENT = float(os.environ.get('PERFORMANCE_MIN_CHANGE_PERCENT', 5.0))
+    # Producer interval in days (run once per day)
+    PERFORMANCE_PRODUCER_INTERVAL_DAYS = int(os.environ.get('PERFORMANCE_PRODUCER_INTERVAL_DAYS', 1))
 
     # Minimum samples required per version for valid comparison
     PERFORMANCE_MIN_SAMPLES = int(os.environ.get('PERFORMANCE_MIN_SAMPLES', 2))
@@ -129,10 +147,23 @@ class Config:
     # Performance test suites to monitor (comma-separated)
     PERFORMANCE_SUITES = os.environ.get(
         'PERFORMANCE_SUITES',
-        'unixbench,lmbench,iozone,fio,stream,hackbench,netperf'
+        'unixbench,lmbench,iozone,fio,filebench,stream,hackbench,netperf,sysbench,sysbench-cpu,sysbench-memory,sysbench-mutex,sysbench-threads,stress-ng'
     )
 
     # 已废弃: performance_metrics.yaml 配置文件
     # 现在使用基于 lkp-stats-type.md 规范的前缀判断 KPI 和方向
     # KPI 指标: 大写前缀 (LAT, RATE, JIT, POW, COST, MEM)
     # 方向: lat/jit/pow/cost/mem = -1 (SmallerBetter), rate = +1 (BiggerBetter)
+
+    # ====== SQL Query Configuration ======
+    # Default limit for list queries
+    DEFAULT_QUERY_LIMIT = int(os.environ.get('DEFAULT_QUERY_LIMIT', 100000))
+    # Maximum allowed query limit
+    MAX_QUERY_LIMIT = int(os.environ.get('MAX_QUERY_LIMIT', 1000000))
+    # Batch size for delete operations
+    BATCH_DELETE_SIZE = int(os.environ.get('BATCH_DELETE_SIZE', 500))
+    # Maximum valid 64-bit signed integer (for task ID validation)
+    MAX_INT64 = 2**63 - 1
+
+    # Limit for querying wait tasks (used by signature matching and errid reuse)
+    WAIT_TASK_QUERY_LIMIT = int(os.environ.get('WAIT_TASK_QUERY_LIMIT', 5000))

@@ -78,7 +78,16 @@ class StructuredLogger:
         return os.path.abspath(log_dir)
 
     def _setup_file_handlers(self, log_dir: str):
-        """配置文件处理器"""
+        """Configure file handlers with per-component log files.
+
+        Log files:
+          bisect-consumer.log       — consumer/validator/task-processor (INFO+)
+          bisect-consumer-error.log — consumer/validator/task-processor (ERROR+)
+          bisect-producer.log       — producer cycles (INFO+)
+          bisect-producer-error.log — producer cycles (ERROR+)
+
+        Components are separated by matching pathname patterns in a filter.
+        """
         log_path = Path(log_dir)
         log_path.mkdir(parents=True, exist_ok=True)
 
@@ -91,31 +100,43 @@ class StructuredLogger:
             '%Y-%m-%d %H:%M:%S'
         )
 
-        # 1. 综合日志 (INFO及以上) - 使用详细格式
-        all_handler = TimedRotatingFileHandler(
-            filename=log_path / 'bisect_all.log',
-            when='D',
-            interval=1,
-            backupCount=self.max_days,
-            encoding='utf-8'
-        )
-        all_handler.suffix = '%Y-%m-%d'
-        all_handler.setFormatter(detailed_formatter)
-        all_handler.setLevel(logging.INFO)
-        self.logger.addHandler(all_handler)
+        # Path-based filter to route log records to the right file
+        class _ComponentFilter(logging.Filter):
+            def __init__(self, keywords, include=True):
+                super().__init__()
+                self.keywords = keywords
+                self.include = include
 
-        # 2. 错误日志 (ERROR及以上) - 使用详细格式
-        error_handler = TimedRotatingFileHandler(
-            filename=log_path / 'bisect_error.log',
-            when='D',
-            interval=1,
-            backupCount=self.max_days,
-            encoding='utf-8'
-        )
-        error_handler.suffix = '%Y-%m-%d'
-        error_handler.setLevel(logging.ERROR)
-        error_handler.setFormatter(detailed_formatter)
-        self.logger.addHandler(error_handler)
+            def filter(self, record):
+                path = getattr(record, 'pathname', '')
+                match = any(kw in path for kw in self.keywords)
+                return match if self.include else not match
+
+        producer_keywords = ['bisect_producer', 'producer_reporter']
+
+        def _make_handler(filename, level, component_filter=None):
+            h = TimedRotatingFileHandler(
+                filename=log_path / filename,
+                when='D', interval=1,
+                backupCount=self.max_days,
+                encoding='utf-8'
+            )
+            h.suffix = '%Y-%m-%d'
+            h.setFormatter(detailed_formatter)
+            h.setLevel(level)
+            if component_filter:
+                h.addFilter(component_filter)
+            return h
+
+        # Producer logs (only records from producer files)
+        producer_filter = _ComponentFilter(producer_keywords, include=True)
+        self.logger.addHandler(_make_handler('bisect-producer.log', logging.INFO, producer_filter))
+        self.logger.addHandler(_make_handler('bisect-producer-error.log', logging.ERROR, producer_filter))
+
+        # Consumer logs (everything except producer)
+        consumer_filter = _ComponentFilter(producer_keywords, include=False)
+        self.logger.addHandler(_make_handler('bisect-consumer.log', logging.INFO, consumer_filter))
+        self.logger.addHandler(_make_handler('bisect-consumer-error.log', logging.ERROR, consumer_filter))
 
     def _setup_console_handler(self):
         """配置控制台处理器 - 使用与文件相同的详细格式"""
@@ -178,7 +199,7 @@ class StructuredLogger:
             'session_id': self.session_id,
             **kwargs
         }
-        perf_log_path = Path(self.log_dir) / 'bisect_performance.log'
+        perf_log_path = Path(self.log_dir) / 'bisect-performance.log'
         try:
             with open(perf_log_path, 'a', encoding='utf-8') as f:
                 f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} [PERF] {json.dumps(perf_data, ensure_ascii=False)}\n")

@@ -28,12 +28,16 @@ sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from log_config import logger
 from bisect_utils import write_regression_record
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
-from py_bisect import GitBisect
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
+from lkp_bisect.core.git_bisect import GitBisect
 
 # 导入父类 VerificationConsumer
 from verification_consumer import VerificationConsumer
+
+# 导入 CommitTimeClient 用于获取父提交
+sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/services/commit_time_service')
+from client import CommitTimeClient
 from bisect_utils import (
         mark_similar_wait_tasks_for_verification,
         mark_introduced_errid_tasks_for_verification
@@ -59,10 +63,15 @@ class SuccessTaskValidator(VerificationConsumer):
         # Initialize GitBisect instance for job submission
         self.bisect_instance = GitBisect(logger)
 
+        # Initialize CommitTimeClient for getting parent commits via API
+        commit_time_service_url = config.get('commit_time_service_url', 'http://localhost:8765')
+        self.commit_time_client = CommitTimeClient(service_url=commit_time_service_url)
+
         logger.info(
             f"SuccessTaskValidator initialized | "
             f"batch_size: {self.validation_batch_size} | "
-            f"interval: {self.validation_interval}s"
+            f"interval: {self.validation_interval}s | "
+            f"commit_time_service: {commit_time_service_url}"
         )
 
     def scan_unverified_tasks(self, limit: int = None) -> List[Dict]:
@@ -205,20 +214,17 @@ class SuccessTaskValidator(VerificationConsumer):
         return tasks_by_repo
 
     def batch_submit_verification_jobs(
-        self, repo_tasks: List[Dict], git_url: str, repo_manager
+        self, repo_tasks: List[Dict], git_url: str, repo_manager=None
     ) -> Dict[str, int]:
         """
-        批量提交验证作业（正确的批量流程）
+        批量提交验证作业
 
-        正确流程：
-        1. 先获取一次共享仓库（只克隆一次）
-        2. 循环所有任务，复用同一个仓库目录提交作业
-        3. 避免每个任务重复调用 get_repo_dir
+        通过 CommitTimeService API 获取父提交，无需 clone 仓库。
 
         Args:
             repo_tasks: 该仓库的任务列表（只包含 verifying 状态）
             git_url: 仓库 URL
-            repo_manager: 仓库管理器实例
+            repo_manager: 已废弃，保留以兼容旧调用
 
         Returns:
             {'submitted': 提交成功数, 'failed': 失败数}
@@ -332,47 +338,25 @@ class SuccessTaskValidator(VerificationConsumer):
         if not tasks_to_submit:
             return {'submitted': 0, 'failed': failed_count}
 
-        # Step 3: 获取共享仓库（只克隆一次）
-        # 使用唯一的 batch_id 防止多个 validator 并行时互相冲突
-        import uuid
-        batch_id = f"batch_{int(time.time())}_{uuid.uuid4().hex[:8]}"
-        try:
-            logger.info(f"获取共享仓库 | batch_id: {batch_id} | git_url: {git_url[:60]}... | bad_job_id: {first_bad_job_id}")
-            repo_dir, job_dir = repo_manager.get_repo_dir(
-                batch_id,  # 使用唯一的 batch_id 防止并行冲突
-                first_bad_job_id,
-                git_url
-            )
-            logger.info(f"共享仓库获取成功 | repo_dir: {repo_dir}")
-        except Exception as e:
-            logger.error(f"获取共享仓库失败: {str(e)}")
-            logger.error(traceback.format_exc())
-            return {'submitted': 0, 'failed': len(tasks_to_submit)}
-
-        # Step 4: 循环提交所有任务（复用同一个仓库目录）
-        logger.info(f"开始循环提交 {len(tasks_to_submit)} 个任务（复用仓库 {repo_dir}）")
+        # Step 3: 循环提交所有任务（通过 API 获取父提交，无需 clone 仓库）
+        logger.info(f"开始循环提交 {len(tasks_to_submit)} 个任务（通过 CommitTimeService API 获取父提交）")
 
         for task_info in tasks_to_submit:
             task_id = task_info['task_id']
             first_bad_commit = task_info['first_bad_commit']
             error_id = task_info['error_id']
             bad_job_id = task_info['bad_job_id']
-
-            # 在每次循环开始时检查仓库目录是否仍然存在
-            if not os.path.exists(repo_dir):
-                logger.error(f"共享仓库已被删除，终止批量提交 | repo_dir: {repo_dir}")
-                failed_count += len(tasks_to_submit) - submitted_count - failed_count
-                break
+            related_task_id = task_info.get('related_task_id', '')
 
             try:
-                # 使用共享仓库提交验证作业
+                # 提交验证作业（通过 API 获取父提交）
                 result = self._submit_verification_jobs_with_shared_repo(
                     task_id=task_id,
                     bad_job_id=bad_job_id,
                     first_bad_commit=first_bad_commit,
                     git_url=git_url,
                     error_id=error_id,
-                    repo_dir=repo_dir
+                    repo_dir=""  # 不再使用，保留参数以兼容接口
                 )
 
                 if result.get('status') == 'success':
@@ -386,29 +370,20 @@ class SuccessTaskValidator(VerificationConsumer):
                     failed_count += 1
                     error = result.get('error', '')
                     logger.error(f"✗ 提交验证作业失败 | task_id: {task_id} | error: {error}")
-
-                    # 如果是共享仓库不存在的错误，终止整个批次
-                    if 'shared_repo_not_found' in error:
-                        logger.error(f"共享仓库不存在，终止批量提交")
-                        failed_count += len(tasks_to_submit) - submitted_count - failed_count
-                        break
+                    # 标记任务失败，避免重复尝试
+                    self._mark_task_failed(task_id, related_task_id, f"verification_submit_failed: {error}")
 
             except Exception as e:
                 failed_count += 1
                 logger.error(f"✗ 提交验证作业异常 | task_id: {task_id} | error: {str(e)}")
                 logger.error(traceback.format_exc())
+                # 标记任务失败，避免重复尝试
+                self._mark_task_failed(task_id, related_task_id, f"verification_submit_exception: {str(e)}")
 
         logger.info(
             f"批量提交完成 | repo: {git_url[:60]}... | "
             f"submitted: {submitted_count} | failed: {failed_count} | skipped: {skipped_count}"
         )
-
-        # 清理共享仓库
-        try:
-            repo_manager.release_repo_dir(repo_dir)
-            logger.info(f"已清理批量验证仓库 | repo_dir: {repo_dir}")
-        except Exception as e:
-            logger.warning(f"清理批量验证仓库失败 | error: {str(e)}")
 
         return {'submitted': submitted_count, 'failed': failed_count}
 
@@ -425,82 +400,32 @@ class SuccessTaskValidator(VerificationConsumer):
             first_bad_commit: 候选 commit
             git_url: 仓库 URL
             error_id: 错误 ID
-            repo_dir: 共享仓库目录
+            repo_dir: 共享仓库目录（保留参数以保持接口兼容，但不再使用）
 
         Returns:
             {'status': 'success', 'parent_job_id': xxx, 'candidate_job_id': xxx}
         """
-        # 检查共享仓库目录是否存在
-        if not os.path.exists(repo_dir):
-            error_msg = f"shared_repo_not_found: {repo_dir}"
-            logger.error(f"共享仓库目录不存在 | task_id: {task_id} | repo_dir: {repo_dir}")
-            return {
-                'status': 'failed',
-                'task_id': task_id,
-                'error': error_msg
-            }
         try:
             current_time = int(time.time())
 
             logger.info(
-                f"提交验证作业（共享仓库）| task_id: {task_id} | "
-                f"candidate: {first_bad_commit[:12]} | repo_dir: {repo_dir}"
+                f"提交验证作业 | task_id: {task_id} | "
+                f"candidate: {first_bad_commit[:12]} | git_url: {git_url[:60]}..."
             )
 
-            # 获取父提交（支持自动 fetch 重试）
-            parent_commit = None
-            try:
-                result = subprocess.run(
-                    ['git', '-C', repo_dir, 'rev-parse', f'{first_bad_commit}^1'],
-                    capture_output=True, text=True, check=True, timeout=60
-                )
-                parent_commit = result.stdout.strip()
+            # 通过 CommitTimeService API 获取父提交（无需 clone 仓库）
+            parent_commit = self.commit_time_client.get_parent_commit(git_url, first_bad_commit)
 
-                if not parent_commit:
-                    return {'status': 'failed', 'error': 'failed_to_get_parent_commit'}
+            if not parent_commit:
+                error_msg = f"failed_to_get_parent_commit_via_api: commit={first_bad_commit[:12]}"
+                logger.error(f"通过 API 获取父提交失败 | task_id: {task_id} | commit: {first_bad_commit[:12]}")
+                return {
+                    'status': 'failed',
+                    'task_id': task_id,
+                    'error': error_msg
+                }
 
-                logger.debug(f"父提交获取成功 | parent: {parent_commit[:12]}")
-
-            except subprocess.CalledProcessError as e:
-                logger.warning(f"首次获取父提交失败（可能是仓库落后）| error: {str(e)}")
-
-                # 策略1: 尝试在 workspace 中 fetch 更新，然后重试
-                try:
-                    logger.info(f"尝试更新共享仓库 | repo_dir: {repo_dir}")
-                    fetch_result = subprocess.run(
-                        ['git', '-C', repo_dir, 'fetch', 'origin', '--tags'],
-                        capture_output=True, text=True, timeout=120
-                    )
-                    if fetch_result.returncode == 0:
-                        logger.info(f"仓库更新成功，重试获取父提交 | commit: {first_bad_commit[:12]}")
-
-                        # 重试获取父提交
-                        retry_result = subprocess.run(
-                            ['git', '-C', repo_dir, 'rev-parse', f'{first_bad_commit}^1'],
-                            capture_output=True, text=True, check=True, timeout=60
-                        )
-                        parent_commit = retry_result.stdout.strip()
-
-                        if parent_commit:
-                            logger.info(f"✓ fetch 后成功获取父提交 | parent: {parent_commit[:12]}")
-                        else:
-                            raise ValueError("Parent commit is empty after fetch")
-                    else:
-                        logger.error(f"Fetch 失败 | stderr: {fetch_result.stderr}")
-                        raise subprocess.CalledProcessError(fetch_result.returncode, fetch_result.args)
-
-                except Exception as fetch_err:
-                    error_msg = f"get_parent_failed_after_fetch: {str(fetch_err)}"
-                    logger.error(f"Fetch 重试后仍然失败 | error: {error_msg}")
-
-                    # 注意：不要清理共享仓库目录，因为其他任务还在使用它
-                    # 只返回当前任务失败，让外层循环继续处理其他任务
-
-                    return {
-                        'status': 'failed',
-                        'task_id': task_id,
-                        'error': error_msg
-                    }
+            logger.debug(f"父提交获取成功（via API）| parent: {parent_commit[:12]}")
 
             # 使用 GitBisect 实例提交验证作业
             # 1. 提交父提交验证作业
@@ -591,10 +516,21 @@ class SuccessTaskValidator(VerificationConsumer):
 
         for task_id in task_ids:
             try:
+                # Fetch existing j field to merge (avoid destroying commit info)
+                existing_j = {}
+                try:
+                    task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                    if task_row:
+                        existing_j = task_row[0].get('j', {}) or {}
+                        if isinstance(existing_j, str):
+                            import json
+                            existing_j = json.loads(existing_j) if existing_j else {}
+                except Exception:
+                    pass
                 reset_doc = {
                     "bisect_status": "wait",
                     "updated_at": current_time,
-                    "j": {
+                    "j": {**existing_j,
                         "reset_from_verifying": True,
                         "reset_reason": reason,
                         "reset_timestamp": current_time
@@ -704,11 +640,25 @@ class SuccessTaskValidator(VerificationConsumer):
                     if not parent_job_id or not candidate_job_id:
                         logger.warning(f"验证作业缺少 job_id | task_id: {task_id} | 标记为 wait")
 
-                        # 标记为 wait，让任务回到自然队列重新处理
+                        # Mark as wait, return to queue for reprocessing
+                        # Preserve existing j field (commit info) while clearing verification state
+                        existing_j = {}
+                        try:
+                            task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                            if task_row:
+                                existing_j = task_row[0].get('j', {}) or {}
+                                if isinstance(existing_j, str):
+                                    import json
+                                    existing_j = json.loads(existing_j) if existing_j else {}
+                                # Remove old verification keys but keep commit info
+                                for vk in ('verification_status', 'verification_jobs', 'verification_passed'):
+                                    existing_j.pop(vk, None)
+                        except Exception:
+                            pass
                         reset_doc = {
                             "bisect_status": "wait",
                             "updated_at": current_time,
-                            "j": {}  # 清除验证相关字段
+                            "j": existing_j
                         }
 
                         self.client.update("bisect", task_id, reset_doc)
@@ -909,10 +859,21 @@ class SuccessTaskValidator(VerificationConsumer):
                         # 验证失败
                         reason = f"boundary_check_failed_parent_{parent_status}_candidate_{candidate_status}"
 
+                        # Merge verification failure into existing j (preserve commit info)
+                        existing_j = {}
+                        try:
+                            task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                            if task_row:
+                                existing_j = task_row[0].get('j', {}) or {}
+                                if isinstance(existing_j, str):
+                                    import json
+                                    existing_j = json.loads(existing_j) if existing_j else {}
+                        except Exception:
+                            pass
                         update_doc = {
                             "bisect_status": "wait",
                             "updated_at": current_time,
-                            "j": {
+                            "j": {**existing_j,
                                 "verification_status": "verification_failed",
                                 "parent_job_id": parent_job_id,
                                 "candidate_job_id": candidate_job_id,
@@ -982,17 +943,28 @@ class SuccessTaskValidator(VerificationConsumer):
 
             new_timeout_count = current_timeout_count + 1
 
+            # Merge timeout metadata into existing j (preserve commit info)
+            existing_j = {}
+            try:
+                task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                if task_row:
+                    existing_j = task_row[0].get('j', {}) or {}
+                    if isinstance(existing_j, str):
+                        import json
+                        existing_j = json.loads(existing_j) if existing_j else {}
+            except Exception:
+                pass
             update_doc = {
-                "bisect_status": "wait",  # 重置为 wait，让任务重新进入 bisect 流程
+                "bisect_status": "wait",
                 "updated_at": current_time,
-                "j": {
+                "j": {**existing_j,
                     "verification_jobs": {
                         "status": "timeout",
                         "timeout_time": current_time,
                         "timeout_reason": reason
                     },
                     "verification_status": "timeout",
-                    "verification_timeout_count": new_timeout_count,  # 累加超时次数
+                    "verification_timeout_count": new_timeout_count,
                     "last_timeout_reason": reason
                 }
             }

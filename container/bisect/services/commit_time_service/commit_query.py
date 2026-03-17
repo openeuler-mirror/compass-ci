@@ -13,6 +13,7 @@ import sys
 import subprocess
 import time
 import re
+import threading
 from typing import Optional, Dict, Tuple, List
 from datetime import datetime
 
@@ -38,6 +39,8 @@ class CommitTimeQuery:
         """
         self.repo_manager = repo_manager or SharedRepoManager()
         self.pristine_base_dir = self.repo_manager.PRISTINE_BASE_DIR
+        self._fetch_locks = {}
+        self._fetch_locks_lock = threading.Lock()
 
     def get_commit_timestamp(self, git_url: str, commit_hash: str) -> Optional[int]:
         """
@@ -369,6 +372,79 @@ class CommitTimeQuery:
 
         return (is_old, base_tag, tag_version)
 
+    def is_ancestor(self, git_url: str, ancestor_commit: str, descendant_commit: str) -> Optional[bool]:
+        """
+        Check if ancestor_commit is an ancestor of descendant_commit.
+
+        Uses `git merge-base --is-ancestor` in the pristine repo.
+
+        Args:
+            git_url: Git repository URL
+            ancestor_commit: The potential ancestor commit hash
+            descendant_commit: The potential descendant commit hash
+
+        Returns:
+            True if confirmed ancestor, False if confirmed not ancestor,
+            None if cannot determine (commit not in repo, timeout, error).
+        """
+        if not git_url or not ancestor_commit or not descendant_commit:
+            return None
+
+        repo_name = extract_repo_name_from_url(git_url)
+        pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
+
+        if not SharedRepoManager._is_git_repo(pristine_repo_dir):
+            try:
+                self._ensure_pristine_repo(git_url, pristine_repo_dir)
+            except Exception as e:
+                logger.error(f"Failed to ensure pristine repo | repo: {repo_name} | error: {str(e)}")
+                return None
+
+        try:
+            result = subprocess.run(
+                ['git', '-C', pristine_repo_dir, 'merge-base', '--is-ancestor',
+                 ancestor_commit, descendant_commit],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if result.returncode == 0:
+                return True
+            elif result.returncode == 1:
+                # returncode 1 = commits exist but not in ancestor relationship
+                return False
+            else:
+                # returncode 128 or other = commit not found, try fetch and retry
+                logger.warning(f"is_ancestor check error, trying fetch | ancestor: {ancestor_commit[:12]} | "
+                              f"descendant: {descendant_commit[:12]} | stderr: {result.stderr.strip()}")
+                self._fetch_pristine_repo(pristine_repo_dir)
+
+                result = subprocess.run(
+                    ['git', '-C', pristine_repo_dir, 'merge-base', '--is-ancestor',
+                     ancestor_commit, descendant_commit],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    return True
+                elif result.returncode == 1:
+                    return False
+                else:
+                    logger.warning(f"is_ancestor still failed after fetch | "
+                                  f"ancestor: {ancestor_commit[:12]} | descendant: {descendant_commit[:12]}")
+                    return None  # Cannot determine — commit not in repo
+
+        except subprocess.TimeoutExpired:
+            logger.error(f"is_ancestor timed out | ancestor: {ancestor_commit[:12]} | "
+                        f"descendant: {descendant_commit[:12]}")
+            return None
+        except Exception as e:
+            logger.error(f"is_ancestor failed | ancestor: {ancestor_commit[:12]} | "
+                        f"descendant: {descendant_commit[:12]} | error: {str(e)}")
+            return None
+
     def _ensure_pristine_repo(self, git_url: str, pristine_repo_dir: str):
         """确保 pristine 仓库存在"""
         # 复用 repo_manager 的 pristine 锁机制
@@ -382,7 +458,18 @@ class CommitTimeQuery:
             self.repo_manager._ensure_pristine_repo(git_url, pristine_repo_dir)
 
     def _fetch_pristine_repo(self, pristine_repo_dir: str):
-        """更新 pristine 仓库"""
+        """更新 pristine 仓库 (per-repo lock to avoid concurrent fetches)"""
+        with self._fetch_locks_lock:
+            if pristine_repo_dir not in self._fetch_locks:
+                self._fetch_locks[pristine_repo_dir] = threading.Lock()
+            lock = self._fetch_locks[pristine_repo_dir]
+
+        if not lock.acquire(blocking=False):
+            logger.info(f"Fetch already in progress, waiting | path: {pristine_repo_dir}")
+            lock.acquire()
+            lock.release()
+            return
+
         try:
             subprocess.run(
                 ['git', '-C', pristine_repo_dir, 'fetch', 'origin'],
@@ -393,6 +480,8 @@ class CommitTimeQuery:
             logger.info(f"Pristine repo fetched | path: {pristine_repo_dir}")
         except Exception as e:
             logger.warning(f"Fetch failed | path: {pristine_repo_dir} | error: {str(e)}")
+        finally:
+            lock.release()
 
     def get_parent_commit(self, git_url: str, commit_hash: str) -> Optional[Dict]:
         """

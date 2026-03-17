@@ -25,9 +25,9 @@ from typing import Dict, Any, Optional, List, Tuple
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from log_config import logger
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
-from py_bisect import GitBisect
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
+from lkp_bisect.core.git_bisect import GitBisect
 
 # 导入共享工具
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/core')
@@ -264,7 +264,7 @@ class HeadValidator(VerificationConsumer):
                 import json
                 try:
                     j_field = json.loads(j_field) if j_field else {}
-                except:
+                except json.JSONDecodeError:
                     j_field = {}
             previous_head_status = j_field.get('head_check_status')
 
@@ -440,7 +440,7 @@ class HeadValidator(VerificationConsumer):
                                 import json
                                 try:
                                     j_field = json.loads(j_field) if j_field else {}
-                                except:
+                                except json.JSONDecodeError:
                                     j_field = {}
                             introduced_errids = j_field.get('introduced_errids', []) or []
 

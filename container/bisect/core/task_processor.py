@@ -41,9 +41,9 @@ from bisect_utils import (
 from repo_manager import SharedRepoManager
 from config import Config
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
-from py_bisect import GitBisect
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
+from lkp_bisect.core.git_bisect import GitBisect
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/validators')
 from success_task_validator import SuccessTaskValidator
@@ -51,15 +51,211 @@ from head_validator import HeadValidator
 
 from bisect_producer import ErrorBisectProducer, PerformanceBisectProducer
 from bisect_consumer import BisectConsumer
+from polling_worker import PollingWorker
 
 
+class _ValidatorWorker(PollingWorker):
+    """PollingWorker that checks verification results and submits new verification jobs."""
+
+    def __init__(self, client, config, repo_manager, stop_event, base_interval=60):
+        super().__init__("SuccessTaskValidator", stop_event,
+                         base_interval=base_interval, max_backoff=300)
+        self.client = client
+        self._config = config
+        self.repo_manager = repo_manager
+
+    def setup(self):
+        self.validator = SuccessTaskValidator(self.client, self._config)
+        logger.info("SuccessTaskValidator initialized successfully")
+
+    def process_cycle(self) -> bool:
+        # Step 1: check submitted verification job results
+        try:
+            result = self.validator.check_verification_results_once(self.repo_manager)
+            if result['checked'] > 0:
+                logger.info(
+                    f"Verification result check | checked: {result['checked']} | "
+                    f"completed: {result['completed']} | failed: {result['failed']} | "
+                    f"timeout: {result['timeout']} | waiting: {result['waiting']} | "
+                    f"skipped: {result['skipped']}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to check verification results: {str(e)}")
+            logger.error(traceback.format_exc())
+
+        # Step 2: scan new verifying tasks and submit verification jobs
+        batch_size = self._config.get('verification_batch_size', 200)
+        tasks = self.validator.scan_unverified_tasks(limit=batch_size)
+
+        if not tasks:
+            return False
+
+        verifying_count = sum(1 for t in tasks if t.get('bisect_status') == 'verifying')
+        logger.info(f"Scanned {len(tasks)} pending verification tasks | verifying: {verifying_count}")
+
+        tasks_by_repo = self.validator.group_tasks_by_repo(tasks)
+        logger.info(f"Task grouping completed | {len(tasks_by_repo)} repos | total_tasks: {len(tasks)}")
+
+        submitted_count = 0
+        failed_count = 0
+
+        for idx, (git_url, repo_tasks) in enumerate(tasks_by_repo.items()):
+            if not self.running:
+                logger.info("SuccessTaskValidator received stop signal, exiting loop")
+                break
+
+            logger.info(
+                f"Processing repo [{idx+1}/{len(tasks_by_repo)}] | "
+                f"repo: {git_url[:60]}... | tasks: {len(repo_tasks)}"
+            )
+
+            try:
+                result = self.validator.batch_submit_verification_jobs(
+                    repo_tasks, git_url, self.repo_manager
+                )
+                submitted_count += result.get('submitted', 0)
+                failed_count += result.get('failed', 0)
+            except Exception as e:
+                logger.error(
+                    f"Failed to batch submit verification jobs | repo: {git_url[:60]} | "
+                    f"tasks: {len(repo_tasks)} | error: {str(e)}"
+                )
+                logger.error(traceback.format_exc())
+                failed_count += len(repo_tasks)
+
+        logger.info(
+            f"SuccessTaskValidator cycle completed | "
+            f"submitted: {submitted_count} | failed: {failed_count} | "
+            f"repos: {len(tasks_by_repo)}"
+        )
+        return True
+
+
+class _ConsumerWorker(PollingWorker):
+    """PollingWorker that fetches wait tasks, clusters, and submits to thread pool."""
+
+    def __init__(self, processor, stop_event, base_interval=30, wake_event=None):
+        super().__init__("BisectConsumer", stop_event,
+                         base_interval=base_interval, max_backoff=300,
+                         wake_event=wake_event)
+        self.processor = processor
+
+    def setup(self):
+        self.consumer = BisectConsumer(self.processor.client, self.processor._config)
+        self.consumer.repo_manager = self.processor.repo_manager
+        # Clean up stale locks immediately on startup
+        logger.info("Performing initial stale lock cleanup...")
+        self.processor._cleanup_stale_locks()
+        self.last_lock_cleanup_time = time.time()
+
+    def process_cycle(self) -> bool:
+        p = self.processor
+
+        # Periodically clean up stale locks
+        now = time.time()
+        if now - self.last_lock_cleanup_time > 60:
+            p._cleanup_stale_locks()
+            self.last_lock_cleanup_time = now
+
+        # Dynamically adjust query limit
+        worker_count = p.thread_pool._max_workers
+        candidate_batch_size = min(worker_count * 10, 1000)
+        submit_batch_size = worker_count
+
+        logger.debug(f"query_batch: {candidate_batch_size}, submit_batch: {submit_batch_size}, workers: {worker_count}")
+        logger.debug(f"Active task locks count: {len(p.active_task_locks)}")
+
+        # Fetch candidate tasks
+        sql_query = f"""
+            SELECT id, bad_job_id, error_id, bisect_metric, bisect_status, git_url,
+                   submit_time, updated_at, category, priority_level, j
+            FROM bisect
+            WHERE bisect_status = 'wait'
+            ORDER BY priority_level DESC, submit_time DESC
+            LIMIT {candidate_batch_size}
+        """
+
+        all_candidates = p.client.sql_select(sql_query)
+
+        if not all_candidates:
+            return False
+
+        logger.info(f"Found {len(all_candidates)} candidate tasks | query_batch: {candidate_batch_size} | workers: {worker_count}")
+
+        # Filter out globally locked tasks
+        with p.active_task_locks_lock:
+            locked_tasks_set = set(p.active_task_locks)
+
+        unlocked_candidates = [
+            task for task in all_candidates
+            if str(task.get('id')) not in locked_tasks_set
+        ]
+
+        logger.info(f"After filtering locked tasks: {len(unlocked_candidates)} unlocked candidates (locked: {len(locked_tasks_set)} task_ids)")
+
+        # Execute clustering
+        tasks_to_submit = p._cluster_and_select_tasks(unlocked_candidates, submit_batch_size)
+        logger.info(f"Selected {len(tasks_to_submit)} tasks for submission")
+
+        if not tasks_to_submit:
+            logger.debug("No tasks available for submission after filtering")
+            self.stop_event.wait(15)
+            return False
+
+        # Lock and submit
+        submitted_count = 0
+        skipped_count = 0
+
+        tasks_ready_to_submit = []
+        with p.active_task_locks_lock:
+            logger.info(f"Preparing to submit tasks | locked: {len(p.active_task_locks)} | thread_pool: _max_workers={p.thread_pool._max_workers}, _threads={len(p.thread_pool._threads)}")
+            for task in tasks_to_submit:
+                if not p.task_semaphore.acquire(blocking=False):
+                    logger.warning("Task queue full (Backpressure engaged), stopping this round of submissions")
+                    break
+
+                task_id = str(task.get('id'))
+                if task_id not in p.active_task_locks:
+                    p.active_task_locks.add(task_id)
+                    tasks_ready_to_submit.append((task_id, task))
+                else:
+                    p.task_semaphore.release()
+                    logger.warning(f"Task already locked, skipping | task_id: {task_id}")
+                    skipped_count += 1
+
+        for task_id, task in tasks_ready_to_submit:
+            try:
+                future = p.thread_pool.submit(p._process_task_async, self.consumer, task)
+                logger.info(f"Task submitted to thread pool | task_id: {task_id} | future: {future}")
+                submitted_count += 1
+            except Exception as e:
+                logger.error(f"Task submission failed, rolling back | task_id: {task_id} | error: {e}")
+                with p.active_task_locks_lock:
+                    if task_id in p.active_task_locks:
+                        p.active_task_locks.remove(task_id)
+                p.task_semaphore.release()
+
+        if submitted_count > 0:
+            logger.info(f"Consumer cycle completed: submitted {submitted_count} tasks, skipped {skipped_count} | thread_pool: {worker_count} workers")
+
+        return submitted_count > 0
 
 
 class TaskProcessor:
 
+    @property
+    def running(self):
+        return not self.stop_event.is_set()
+
+    @running.setter
+    def running(self, value):
+        if value:
+            self.stop_event.clear()
+        else:
+            self.stop_event.set()
 
     def _register_signal_handlers(self):
-        """注册信号处理"""
+        """Register signal handlers"""
         signal.signal(signal.SIGINT, self._handle_exit_signal)
         signal.signal(signal.SIGTERM, self._handle_exit_signal)
         logger.info("Exit signal handlers registered")
@@ -86,22 +282,22 @@ class TaskProcessor:
 
     def _reset_stuck_tasks_on_startup(self):
         """
-        容器启动时重置卡在中间状态的任务
+        Reset tasks stuck in intermediate states on container startup
 
-        重置规则：
-        - processing -> wait (容器重启，线程池任务丢失，需要重新执行)
-        - verifying -> wait (容器重启，验证作业状态不可靠，需要重新执行)
+        Reset rules:
+        - processing -> wait (container restart, thread pool tasks lost, need re-execution)
+        - verifying -> wait (container restart, verification job status unreliable, need re-execution)
 
-        注意：
-        - 使用直接 UPDATE 语句，避免 SELECT 的 LIMIT 限制问题
-        - 会清理文件系统上的残留 workspace 目录
+        Note:
+        - Uses direct UPDATE statements to avoid SELECT LIMIT issues
+        - Cleans up residual workspace directories on filesystem
         """
         try:
-            logger.info("容器启动：检查并重置卡住的任务...")
+            logger.info("Container startup: checking and resetting stuck tasks...")
 
             current_time = int(time.time())
 
-            # 直接 UPDATE 所有 processing 状态的任务为 wait（不修改 j 字段，保留 good_commit 等信息）
+            # Directly UPDATE all processing tasks to wait (preserve j field, keep good_commit etc.)
             processing_update_sql = f"""
                 UPDATE bisect
                 SET bisect_status = 'wait', updated_at = {current_time}
@@ -110,7 +306,7 @@ class TaskProcessor:
             processing_result = self.client.sql_raw(processing_update_sql)
             processing_reset = processing_result[0].get('total', 0) if processing_result and len(processing_result) > 0 else 0
 
-            # 直接 UPDATE 所有 verifying 状态的任务为 wait（不修改 j 字段，保留验证信息）
+            # Directly UPDATE all verifying tasks to wait (preserve j field, keep verification info)
             verifying_update_sql = f"""
                 UPDATE bisect
                 SET bisect_status = 'wait', updated_at = {current_time}
@@ -119,38 +315,38 @@ class TaskProcessor:
             verifying_result = self.client.sql_raw(verifying_update_sql)
             verifying_reset = verifying_result[0].get('total', 0) if verifying_result and len(verifying_result) > 0 else 0
 
-            # 清理文件系统上所有以数字开头的 workspace 目录（任务残留）
+            # Clean up all workspace directories starting with digits (task residuals)
             cleaned_dirs = 0
             if hasattr(self, 'repo_manager') and self.repo_manager:
                 try:
                     base_dir = self.repo_manager.REPO_BASE_DIR
                     if os.path.exists(base_dir):
                         for entry in os.listdir(base_dir):
-                            # 任务 workspace 目录名是数字（task_id）
+                            # Task workspace directory names are digits (task_id)
                             if entry.isdigit():
                                 task_dir = os.path.join(base_dir, entry)
                                 if os.path.isdir(task_dir):
                                     shutil.rmtree(task_dir, ignore_errors=True)
                                     cleaned_dirs += 1
                 except Exception as e:
-                    logger.warning(f"清理残留目录失败: {str(e)}")
+                    logger.warning(f"Failed to clean up residual directory: {str(e)}")
 
             logger.warning(
-                f"容器启动重置完成 | "
+                f"Container startup reset completed | "
                 f"processing→wait: {processing_reset} | "
                 f"verifying→wait: {verifying_reset} | "
-                f"清理目录: {cleaned_dirs}"
+                f"cleaned_dirs: {cleaned_dirs}"
             )
 
         except Exception as e:
-            logger.error(f"容器启动重置任务失败: {str(e)}")
+            logger.error(f"Container startup task reset failed: {str(e)}")
             logger.error(traceback.format_exc())
 
 
 
     def __init__(self):
         self._init_databases()
-        self.running = True
+        self.stop_event = threading.Event()   # replaces self.running bool
         self.exit_requested = False
         self._register_signal_handlers()
 
@@ -165,7 +361,7 @@ class TaskProcessor:
         self.errid_intelligence = ErridIntelligence()
         logger.info("Intelligent Error ID filter initialized")
 
-        # Enhanced Error ID Parser 已移除 - 不再使用相似度匹配
+        # Enhanced Error ID Parser removed - no longer using similarity matching
 
         # New: Initialize notification writer
         self.notification_writer = NotificationWriter(notification_dir=Config.NOTIFICATION_DIR)
@@ -180,16 +376,16 @@ class TaskProcessor:
         self.last_producer_run = 0  # Last producer run time
         self.producer_interval = Config.BISECT_PRODUCER_CYCLE_HOURS * 3600
 
-        # 添加job信息缓存
+        # Add job info cache
         self._job_info_cache = {}
         self._job_info_cache_lock = threading.Lock()
-        self._job_cache_ttl = 1800  # 30分钟缓存
+        self._job_cache_ttl = 1800  # 30 min cache
 
-        # 成功任务缓存已移除 - 不再使用相似度匹配
+        # Success task cache removed - no longer using similarity matching
 
-        # 成功任务签名缓存（用于优化 _find_successful_task_by_signature 高频查询）
+        # Success task signature cache (optimize _find_successful_task_by_signature high-frequency queries)
         self._success_signature_cache = {}  # {signature: task_info}
-        self._success_cache_ttl = 3600  # 1小时缓存
+        self._success_cache_ttl = 3600  # 1 hour cache
         self._success_cache_last_refresh = 0
         self._success_cache_lock = threading.Lock()
         logger.info("Success task signature cache initialized (TTL: 1 hour)")
@@ -237,9 +433,12 @@ class TaskProcessor:
         
         # Add producer lock for concurrency control
         self.producer_lock = threading.Lock()
+
+        # Wake event: producer sets this after creating tasks so consumer polls immediately
+        self.consumer_wake_event = threading.Event()
         
-        # Add execution lock for consumer tasks - 改为task_id锁
-        self.active_task_locks = set()  # 存储正在处理的task_id
+        # Add execution lock for consumer tasks - task_id based lock
+        self.active_task_locks = set()  # Store task_ids being processed
         self.active_task_locks_lock = threading.Lock()
 
         # Initialize GitBisect instance for reuse (stateless utility methods only)
@@ -265,16 +464,16 @@ class TaskProcessor:
         )
 
     def add_bisect_task_batch(self, task_data_list, priority: int = None):
-        """批量添加bisect任务 - 优化版本减少查询风暴"""
+        """Batch add bisect tasks - optimized to reduce query storms"""
         if not task_data_list:
             return []
 
         results = []
         start_time = time.time()
 
-        logger.info(f"开始批量添加 {len(task_data_list)} 个任务")
+        logger.info(f"Starting batch add of {len(task_data_list)} tasks")
 
-        # Phase 1: 批量验证所有任务数据
+        # Phase 1: batch validate all task data
         validated_tasks = []
         for task_data in task_data_list:
             try:
@@ -283,13 +482,13 @@ class TaskProcessor:
                     validated['priority'] = priority
                 validated_tasks.append(validated)
             except Exception as e:
-                logger.error(f"任务验证失败: {str(e)}")
+                logger.error(f"Task validation failed: {str(e)}")
                 results.append({'status': 'error', 'message': str(e)})
 
         if not validated_tasks:
             return results
 
-        # Phase 2: 批量检查重复（一次查询检查所有）
+        # Phase 2: batch check duplicates (single query for all)
         error_ids = [t.get("error_id") for t in validated_tasks if t.get("error_id")]
         metric_tasks = [(t.get("bisect_metric"), t.get("bad_job_id"))
                        for t in validated_tasks if t.get("bisect_metric")]
@@ -297,7 +496,7 @@ class TaskProcessor:
         existing_error_ids = set()
         existing_metrics = set()
 
-        # 批量查询已存在的error_ids
+        # Batch query existing error_ids
         if error_ids:
             try:
                 query = {
@@ -314,11 +513,11 @@ class TaskProcessor:
                 )
                 if existing:
                     existing_error_ids = {item.get('error_id') for item in existing if item.get('error_id')}
-                    logger.info(f"批量去重: 发现 {len(existing_error_ids)} 个已存在的error_id")
+                    logger.info(f"Batch dedup: found {len(existing_error_ids)} existing error_ids")
             except Exception as e:
-                logger.error(f"批量检查error_ids失败: {str(e)}")
+                logger.error(f"Batch check error_ids failed: {str(e)}")
 
-        # 批量查询已存在的metrics
+        # Batch query existing metrics
         if metric_tasks:
             for metric, job_id in metric_tasks:
                 try:
@@ -334,15 +533,15 @@ class TaskProcessor:
                     if existing and len(existing) > 0:
                         existing_metrics.add((metric, job_id))
                 except Exception as e:
-                    logger.error(f"检查metric任务失败: {str(e)}")
+                    logger.error(f"Check metric task failed: {str(e)}")
 
-        # Phase 3: 批量创建不存在的任务
+        # Phase 3: batch create non-existing tasks
         created_count = 0
         duplicate_count = 0
         failed_count = 0
 
         for validated in validated_tasks:
-            # 检查是否重复
+            # Check for duplicates
             if validated.get("error_id") and validated["error_id"] in existing_error_ids:
                 results.append({'status': 'duplicate', 'message': 'Task already exists'})
                 duplicate_count += 1
@@ -355,7 +554,7 @@ class TaskProcessor:
                     duplicate_count += 1
                     continue
 
-            # 生成task_id
+            # Generate task_id
             if validated.get("error_id"):
                 task_identifier = f"error_id='{validated['error_id']}'"
             else:
@@ -363,25 +562,25 @@ class TaskProcessor:
 
             task_id = _generate_task_id(validated["bad_job_id"], task_identifier)
 
-            # 创建任务文档
+            # Create task document
             task_doc = _create_task_document(validated)
 
-            # 设置优先级
+            # Set priority
             if priority is not None:
                 task_doc["priority_level"] = priority
 
-            # 处理git_url和分类
+            # Process git_url and classification
             if "git_url" in validated and validated["git_url"]:
                 task_doc["git_url"] = validated["git_url"]
             else:
-                # 尝试从缓存或full_text_kv获取
+                # Try to get from cache or full_text_kv
                 task_doc["git_url"] = ""
 
-            # 自动分类
+            # Auto classify
             category = categorize_bisect_task(validated, validated.get("full_text_kv", ""))
             task_doc["category"] = category
 
-            # 清理null字段
+            # Clean null fields
             for key, value in task_doc.items():
                 if value is None:
                     if key in ['submit_time', 'updated_at', 'start_time', 'end_time']:
@@ -389,7 +588,7 @@ class TaskProcessor:
                     else:
                         task_doc[key] = ''
 
-            # 插入数据库
+            # Insert to database
             try:
                 result = self.client.insert("bisect", task_id, task_doc)
                 if result:
@@ -404,8 +603,8 @@ class TaskProcessor:
 
         duration = time.time() - start_time
         logger.info(
-            f"批量创建完成 | 耗时: {duration:.3f}s | "
-            f"成功: {created_count} | 重复: {duplicate_count} | 失败: {failed_count}"
+            f"Batch creation completed | duration: {duration:.3f}s | "
+            f"success: {created_count} | duplicate: {duplicate_count} | failed: {failed_count}"
         )
 
         return results
@@ -465,13 +664,13 @@ class TaskProcessor:
             if priority is not None:
                 task_doc["priority_level"] = priority
             
-            # 无论是否有git_url，都获取full_text_kv用于分类判断
+            # Get full_text_kv for classification regardless of git_url
             full_text_kv = ""
             try:
                 bad_job_id = validated_data["bad_job_id"]
-                logger.debug(f"DEBUG - 查询jobs表获取full_text_kv用于分类 | bad_job_id: {bad_job_id}")
+                logger.debug(f"DEBUG - querying jobs table for full_text_kv classification | bad_job_id: {bad_job_id}")
                 
-                # 使用SQL查询jobs表 - 简化查询，避免复杂字段名
+                # Use SQL to query jobs table - simplified query, avoid complex field names
                 jobs_sql = f"""
                     SELECT id, full_text_kv
                     FROM jobs 
@@ -484,34 +683,34 @@ class TaskProcessor:
                 if jobs_results and len(jobs_results) > 0:
                     job_data = jobs_results[0]
                     full_text_kv = job_data.get("full_text_kv", "")
-                    logger.debug(f"DEBUG - 获取full_text_kv用于分类: {full_text_kv[:100]}...")
+                    logger.debug(f"DEBUG - got full_text_kv for classification: {full_text_kv[:100]}...")
                 else:
-                    logger.warning(f"在jobs表中未找到bad_job_id: {bad_job_id}")
+                    logger.warning(f"bad_job_id not found in jobs table: {bad_job_id}")
             except Exception as e:
-                logger.error(f"查询jobs表获取full_text_kv时出错: {str(e)}")
+                logger.error(f"Error querying jobs table for full_text_kv: {str(e)}")
             
-            # 处理git_url
+            # Process git_url
             if "git_url" in task_data and task_data["git_url"]:
                 task_doc["git_url"] = task_data["git_url"]
-                logger.debug(f"DEBUG - 添加 git_url: {task_data['git_url']}")
+                logger.debug(f"DEBUG - adding git_url: {task_data['git_url']}")
             else:
-                # 如果没有提供git_url，尝试从full_text_kv中提取
+                # If no git_url provided, try extracting from full_text_kv
                 if full_text_kv:
                     extracted_url = extract_git_url_from_full_text_kv(full_text_kv)
                     if extracted_url:
                         task_doc["git_url"] = extracted_url
-                        logger.debug(f"DEBUG - 从full_text_kv提取 git_url | job_id={bad_job_id}, url={extracted_url}")
+                        logger.debug(f"DEBUG - extracted git_url from full_text_kv | job_id={bad_job_id}, url={extracted_url}")
                     else:
-                        logger.warning(f"未找到 git_url | job_id={bad_job_id}")
+                        logger.warning(f"git_url not found | job_id={bad_job_id}")
                 
                 if "git_url" not in task_doc:
-                    logger.warning("任务数据缺少git_url，且无法从jobs表中提取")
-                    task_doc["git_url"] = ""  # 确保有默认值
+                    logger.warning("Task data missing git_url and unable to extract from jobs table")
+                    task_doc["git_url"] = ""  # Ensure default value
             
-            # 自动分类任务
+            # Auto classify task
             category = categorize_bisect_task(validated_data, full_text_kv)
             task_doc["category"] = category
-            logger.debug(f"DEBUG - 自动分类任务: {category} | bisect_metric: {bool(validated_data.get('bisect_metric'))} | full_text_kv样例: {full_text_kv[:100]}...")
+            logger.debug(f"DEBUG - auto classify task: {category} | bisect_metric: {bool(validated_data.get('bisect_metric'))} | full_text_kv_sample: {full_text_kv[:100]}...")
         
             for key, value in task_doc.items():
                 if value is None:
@@ -519,49 +718,49 @@ class TaskProcessor:
                         task_doc[key] = 0
                     else:
                         task_doc[key] = ''
-                    logger.debug(f"清理任务创建时的null字段: {key} = {task_doc[key]}")
+                    logger.debug(f"Cleaning null field during task creation: {key} = {task_doc[key]}")
         
             logger.debug(f"DEBUG - Preparing to insert task | ID: {task_id}, Document: {task_doc}")
             
             result = self.client.insert("bisect", task_id, task_doc)
             
-            logger.debug(f"DEBUG - 插入结果 | ID: {task_id}, 成功: {result}")
+            logger.debug(f"DEBUG - insert result | ID: {task_id}, success: {result}")
 
             if result:
                 return {'status': 'created', 'message': 'Task created successfully', 'task_id': task_id}
             else:
                 return {'status': 'failed', 'message': 'Failed to insert task'}
         except Exception as e:
-            logger.error(f"添加任务失败: {str(e)}")
-            logger.error(f"异常堆栈:\n{traceback.format_exc()}")
+            logger.error(f"Failed to add task: {str(e)}")
+            logger.error(f"Stack trace:\n{traceback.format_exc()}")
             return {'status': 'error', 'message': f'Exception: {str(e)}'}
 
     def _run_producer_once(self, force: bool = False):
-        """执行一次完整的生产者任务发现（Error + Performance）"""
+        """Execute a complete producer task discovery cycle (Error + Performance)"""
         logger.info(f"========== BisectProducer cycle STARTED (force={force}) ==========")
 
-        # 1. 执行错误类型生产者
+        # 1. Execute error type producer
         error_success_count = 0
         try:
             error_producer = ErrorBisectProducer(self.client, self._config)
             error_producer.add_bisect_task_func = self.add_bisect_task
             error_success_count = error_producer.execute_producer_cycle(force_run_scripts=force)
-            logger.info(f"[Error Producer] 完成 | 新任务: {error_success_count}")
+            logger.info(f"[Error Producer] completed | new_tasks: {error_success_count}")
         except Exception as e:
-            logger.error(f"[Error Producer] 失败: {e}")
+            logger.error(f"[Error Producer] failed: {e}")
             logger.error(traceback.format_exc())
 
-        # 2. 执行性能类型生产者
+        # 2. Execute performance type producer
         perf_success_count = 0
         try:
             perf_producer = PerformanceBisectProducer(self.client, self._config)
             perf_success_count = perf_producer.execute_producer_cycle()
-            logger.info(f"[Performance Producer] 完成 | 新任务: {perf_success_count}")
+            logger.info(f"[Performance Producer] completed | new_tasks: {perf_success_count}")
         except Exception as e:
-            logger.error(f"[Performance Producer] 失败: {e}")
+            logger.error(f"[Performance Producer] failed: {e}")
             logger.error(traceback.format_exc())
 
-        # 清理缓存
+        # Clear cache
         if len(self.processed_jobs_cache) > 5000:
             logger.info(f"Cache size ({len(self.processed_jobs_cache)}) exceeds limit, cleaning...")
             cache_list = list(self.processed_jobs_cache)
@@ -570,7 +769,12 @@ class TaskProcessor:
             logger.info(f"Cache cleaned, kept {len(self.processed_jobs_cache)} recent entries")
 
         total_tasks = error_success_count + perf_success_count
-        logger.info(f"========== BisectProducer cycle COMPLETED | 总任务: {total_tasks} (Error: {error_success_count}, Perf: {perf_success_count}) ==========")
+        logger.info(f"========== BisectProducer cycle COMPLETED | total_tasks: {total_tasks} (Error: {error_success_count}, Perf: {perf_success_count}) ==========")
+
+        # Wake consumer immediately if new tasks were created
+        if total_tasks > 0:
+            self.consumer_wake_event.set()
+            logger.info(f"Producer created {total_tasks} tasks, waking consumer")
 
     def trigger_producer_run(self, force: bool = False):
         """API endpoint to manually trigger a producer run."""
@@ -609,10 +813,10 @@ class TaskProcessor:
             return {'status': 'busy', 'message': 'Producer is already running.'}
 
     def _start_background_tasks(self):
-        """启动后台任务 - 优化版本"""
+        """Start background tasks - optimized version"""
         background_threads = []
 
-        # 1. 消费者线程始终启动
+        # 1. Always start consumer thread
         logger.info("Starting BisectConsumer thread...")
         consumer_thread = threading.Thread(
             target=self.bisect_consumer,
@@ -623,7 +827,7 @@ class TaskProcessor:
         background_threads.append(("BisectConsumer", consumer_thread))
         logger.info(f"BisectConsumer thread started with ID: {consumer_thread.ident}")
 
-        # 3. 仓库定期清理线程
+        # 3. Repository periodic cleanup thread
         repo_cleanup_thread = threading.Thread(
             target=self._repo_cleanup_worker,
             daemon=True,
@@ -632,8 +836,8 @@ class TaskProcessor:
         repo_cleanup_thread.start()
         background_threads.append(("RepoCleanupWorker", repo_cleanup_thread))
 
-        # 4. 生产者线程（根据配置启动）
-        # 统一的 BisectProducer 线程，包含 Error 和 Performance 两种类型
+        # 4. Producer thread (start based on config)
+        # Unified BisectProducer thread, includes both Error and Performance types
         if Config.BISECT_PRODUCER_ENABLED:
             producer_thread = threading.Thread(
                 target=self.bisect_producer,
@@ -647,7 +851,7 @@ class TaskProcessor:
             logger.info("Producer background tasks disabled (by config)")
 
 
-        # 6. 🔥 SuccessTaskValidator 线程（统一处理 success 和 verifying 任务）
+        # 6. SuccessTaskValidator thread (handles both success and verifying tasks)
         logger.info("Starting SuccessTaskValidator thread...")
         success_validator_thread = threading.Thread(
             target=self.success_task_validator_consumer,
@@ -658,7 +862,7 @@ class TaskProcessor:
         background_threads.append(("SuccessTaskValidator", success_validator_thread))
         logger.info(f"SuccessTaskValidator thread started with ID: {success_validator_thread.ident}")
 
-        # 7. HEAD回归检测线程（暂时禁用）
+        # 7. HEAD regression detection thread (temporarily disabled)
         # logger.info("Starting HeadValidator thread...")
         # head_validator_thread = threading.Thread(
         #     target=self.head_validator_consumer,
@@ -670,36 +874,36 @@ class TaskProcessor:
         # logger.info(f"HeadValidator thread started with ID: {head_validator_thread.ident}")
         logger.info("HeadValidator disabled (temporarily)")
 
-        # 7. 记录启动的线程
+        # 7. Record started threads
         for name, thread in background_threads:
             logger.info(f"Background task started: {name} (Thread ID: {thread.ident})")
 
         logger.info(f"Total background threads started: {len(background_threads)}")
 
-        # 6. 存储线程引用供后续管理
+        # 6. Store thread references for management
         self.background_threads = background_threads
 
     def _repo_cleanup_worker(self):
-        """定期清理旧的或残留的仓库目录"""
+        """Periodically clean up old or residual repository directories"""
         while self.running:
             try:
                 logger.info("Running periodic repository cleanup...")
                 self._clean_old_repos(max_age_days=14) # Clean repos older than 14 days
             except Exception as e:
                 logger.error(f"Error during periodic repo cleanup: {e}")
-            
-            # Sleep for 6 hours
-            time.sleep(6 * 3600)
+
+            # Wait for 6 hours (responds to stop signal immediately)
+            self.stop_event.wait(6 * 3600)
 
 
     def bisect_producer(self):
-        """统一的 Bisect 任务生产者 - 包含 Error 和 Performance 两种类型"""
+        """Unified Bisect task producer - includes both Error and Performance types"""
         if not Config.BISECT_PRODUCER_ENABLED:
             logger.info("BisectProducer is disabled by config, exiting.")
             return
 
         if Config.BISECT_PRODUCER_SCHEDULED_ENABLED:
-            # 定时执行模式
+            # Scheduled execution mode
             try:
                 hour, minute = map(int, Config.BISECT_PRODUCER_SCHEDULED_TIME.split(':'))
             except ValueError:
@@ -713,324 +917,49 @@ class TaskProcessor:
                 next_run_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
                 if now > next_run_time:
-                    # 如果今天的时间已过，则安排在明天
+                    # If today's time has passed, schedule for tomorrow
                     next_run_time += timedelta(days=1)
 
                 wait_seconds = (next_run_time - now).total_seconds()
                 logger.info(f"Producer will run next at {next_run_time}. Waiting for {wait_seconds / 3600:.2f} hours.")
 
-                # 以60秒为间隔进行睡眠，以便能及时响应退出信号
-                sleep_end_time = time.time() + wait_seconds
-                while self.running and time.time() < sleep_end_time:
-                    time.sleep(60)
+                # Wait until next run time (responds to stop signal immediately)
+                self.stop_event.wait(wait_seconds)
 
                 if not self.running:
                     break
 
-                # 执行生产者逻辑
+                # Execute producer logic
                 with self.producer_lock:
                     self._run_producer_once()
         else:
-            # 间隔执行模式（原始逻辑）
+            # Interval execution mode (original logic)
             logger.info(f"Producer is in interval mode. Will run every {Config.BISECT_PRODUCER_CYCLE_HOURS} hours.")
             while self.running:
                 with self.producer_lock:
                     self._run_producer_once()
 
-                # 按配置的间隔休眠
+                # Wait for configured interval (responds to stop signal immediately)
                 logger.info(f"Producer finished a cycle, sleeping for {self.producer_interval / 3600:.1f} hours.")
-                time.sleep(self.producer_interval)
+                self.stop_event.wait(self.producer_interval)
 
     def bisect_consumer(self):
-        """Consumer: process waiting bisect tasks with locking mechanism and exponential backoff"""
-
-        # 添加调试信息
-        current_thread = threading.current_thread()
-        logger.info(f"BisectConsumer started in thread {current_thread.name}")
-
-        consumer = BisectConsumer(self.client, self._config)
-        consumer.repo_manager = self.repo_manager
-
-        logger.info("BisectConsumer initialized, starting main loop...")
-
-        # 启动时立即清理一次陈旧的锁
-        logger.info("Performing initial stale lock cleanup...")
-        self._cleanup_stale_locks()
-
-        # 指数退避变量
-        consecutive_empty_rounds = 0
-        last_lock_cleanup_time = time.time()
-        LOCK_CLEANUP_INTERVAL = 60  # 每1分钟清理一次锁（防止锁泄漏）
-
-        while self.running:
-            start_time = time.time()
-            logger.debug(f"Consumer cycle starting... running={self.running}")
-
-            # 定期清理陈旧的锁（防止锁泄漏）
-            if start_time - last_lock_cleanup_time > LOCK_CLEANUP_INTERVAL:
-                self._cleanup_stale_locks()
-                last_lock_cleanup_time = start_time
-
-            try:
-                # 动态调整查询限制：基于线程池大小
-                worker_count = self.thread_pool._max_workers
-                # 查询批次：多查询一些候选（考虑聚类、过滤、锁定）
-                candidate_batch_size = min(worker_count * 10, 1000)
-                # 提交批次：应该和线程数大致一致，避免过度提交
-                submit_batch_size = worker_count
-
-                logger.info(f"查询批次: {candidate_batch_size}, 提交批次: {submit_batch_size}, 工作线程: {worker_count}")
-                logger.debug(f"当前活跃任务锁数量: {len(self.active_task_locks)}")
-
-                # Fetch a larger batch of candidate tasks for client-side filtering
-                sql_query = f"""
-                    SELECT id, bad_job_id, error_id, bisect_metric, bisect_status, git_url,
-                           submit_time, updated_at, category, priority_level, j
-                    FROM bisect
-                    WHERE bisect_status = 'wait'
-                    ORDER BY priority_level DESC, submit_time DESC
-                    LIMIT {candidate_batch_size}
-                """
-
-                all_candidates = self.client.sql_select(sql_query)
-
-                if not all_candidates:
-                    consecutive_empty_rounds += 1
-                    # 指数退避：30s -> 60s -> 120s -> 240s -> 最大300s (5分钟)
-                    backoff_time = min(30 * (2 ** consecutive_empty_rounds), 300)
-                    logger.debug(f"无待处理任务，退避等待 {backoff_time}s (第{consecutive_empty_rounds}轮)")
-                    time.sleep(backoff_time)
-                    continue
-
-                # 重置退避计数器（找到任务了）
-                consecutive_empty_rounds = 0
-
-                logger.info(f"Found {len(all_candidates)} candidate tasks from database")
-
-                # Filter out globally locked tasks (by task_id)
-                with self.active_task_locks_lock:
-                    locked_tasks_set = set(self.active_task_locks)
-
-                unlocked_candidates = [
-                    task for task in all_candidates
-                    if str(task.get('id')) not in locked_tasks_set
-                ]
-
-                logger.info(f"After filtering locked tasks: {len(unlocked_candidates)} unlocked candidates (locked: {len(locked_tasks_set)} task_ids)")
-
-                # 执行聚类，选择代表任务（仅作为去重选择机制，不建立任务关系）
-                tasks_to_submit = self._cluster_and_select_tasks(
-                    unlocked_candidates,
-                    submit_batch_size
-                )
-
-                logger.info(f"Selected {len(tasks_to_submit)} tasks for submission")
-
-                if not tasks_to_submit:
-                    # 有候选任务但都被锁定时，短暂等待
-                    logger.info("No tasks available for submission after filtering")
-                    time.sleep(15)
-                    continue
-
-                # Lock and submit the selected tasks
-                submitted_count = 0
-                skipped_count = 0
-
-                # Step 1: 在持有锁时快速收集需要提交的任务（避免在锁内调用thread_pool.submit造成死锁）
-                tasks_ready_to_submit = []
-                with self.active_task_locks_lock:
-                    logger.info(f"准备提交任务 | 当前锁定: {len(self.active_task_locks)} | 线程池: _max_workers={self.thread_pool._max_workers}, _threads={len(self.thread_pool._threads)}")
-                    for task in tasks_to_submit:
-                        # Backpressure: Check if we have capacity
-                        if not self.task_semaphore.acquire(blocking=False):
-                            logger.warning("任务队列已满 (Backpressure engaged)，停止本轮提交")
-                            break
-
-                        task_id = str(task.get('id'))
-                        # Double-check lock, as another cycle might have just locked it
-                        if task_id not in self.active_task_locks:
-                            self.active_task_locks.add(task_id)
-                            tasks_ready_to_submit.append((task_id, task))
-                        else:
-                            # Release semaphore if we didn't use it
-                            self.task_semaphore.release()
-                            logger.warning(f"任务已锁定，跳过 | task_id: {task_id}")
-                            skipped_count += 1
-
-                # Step 2: 在锁外提交任务到线程池（避免死锁：工作线程完成时也需要获取同一个锁）
-                for task_id, task in tasks_ready_to_submit:
-                    try:
-                        future = self.thread_pool.submit(self._process_task_async, consumer, task)
-                        logger.info(f"任务已提交到线程池 | task_id: {task_id} | future: {future}")
-                        submitted_count += 1
-                    except Exception as e:
-                        logger.error(f"提交任务失败，回滚状态 | task_id: {task_id} | error: {e}")
-                        # Rollback: remove lock and release semaphore
-                        with self.active_task_locks_lock:
-                            if task_id in self.active_task_locks:
-                                self.active_task_locks.remove(task_id)
-                        self.task_semaphore.release()
-
-                if submitted_count > 0:
-                    logger.info(f"Consumer cycle完成: 提交 {submitted_count} 个任务，跳过 {skipped_count} 个 | 线程池: {worker_count} workers")
-
-            except Exception as e:
-                logger.error(f"Consumer error: {str(e)}")
-                logger.error(traceback.format_exc())
-                # 出错时也触发退避
-                consecutive_empty_rounds += 1
-            finally:
-                # 有任务处理时短暂等待，无任务时已经在上面处理了退避
-                if 'submitted_count' in locals() and submitted_count > 0:
-                    cycle_time = time.time() - start_time
-                    sleep_time = max(20, 30 - cycle_time)  # 有任务时最少等20s
-                    logger.debug(f"处理了{submitted_count}个任务，耗时{cycle_time:.2f}s，等待{sleep_time}s")
-                    time.sleep(sleep_time)
-                else:
-                    # 如果没有提交任务且没有进入指数退避，短暂等待
-                    if consecutive_empty_rounds == 0:
-                        cycle_time = time.time() - start_time
-                        sleep_time = max(30, 60 - cycle_time)
-                        logger.debug(f"Consumer cycle completed in {cycle_time:.2f}s, sleeping for {sleep_time:.2f}s")
-                        time.sleep(sleep_time)
-
-        logger.info("BisectConsumer main loop exited")
+        """Launch BisectConsumer as a PollingWorker."""
+        worker = _ConsumerWorker(self, self.stop_event, base_interval=30,
+                                 wake_event=self.consumer_wake_event)
+        worker.run()
 
     def success_task_validator_consumer(self):
-        """
-        SuccessTaskValidator: 处理 verifying 任务的验证流程
-
-        两个主要功能：
-        1. 检查已提交的验证作业结果
-        2. 扫描新的 verifying 任务并提交验证作业
-        """
-        current_thread = threading.current_thread()
-        logger.info(f"SuccessTaskValidator started in thread {current_thread.name}")
-        logger.info("处理 verifying 任务：提交验证作业 + 检查验证结果")
-
-        # 创建验证器实例
-        try:
-            validator = SuccessTaskValidator(self.client, self._config)
-            logger.info("SuccessTaskValidator 初始化成功")
-        except Exception as e:
-            logger.error(f"SuccessTaskValidator 初始化失败: {str(e)}")
-            logger.error(traceback.format_exc())
-            return
-
-        # 验证间隔
+        """Launch SuccessTaskValidator as a PollingWorker."""
         validation_interval = self._config.get('validation_interval', 60)
-        consecutive_empty_rounds = 0
-
-        logger.info(f"SuccessTaskValidator 进入主循环 | validation_interval: {validation_interval}s | running: {self.running}")
-
-        while self.running:
-            start_time = time.time()
-            logger.debug(f"SuccessTaskValidator cycle starting... running={self.running}")
-
-            try:
-                # 步骤 1: 检查已提交的验证作业结果
-                try:
-                    result = validator.check_verification_results_once(self.repo_manager)
-                    if result['checked'] > 0:
-                        logger.info(
-                            f"验证结果检查 | checked: {result['checked']} | "
-                            f"completed: {result['completed']} | failed: {result['failed']} | "
-                            f"timeout: {result['timeout']} | waiting: {result['waiting']} | "
-                            f"skipped: {result['skipped']}"
-                        )
-                except Exception as e:
-                    logger.error(f"检查验证结果失败: {str(e)}")
-                    logger.error(traceback.format_exc())
-
-                # 步骤 2: 扫描新的 verifying 任务并提交验证作业
-                batch_size = self._config.get('verification_batch_size', 200)
-                tasks = validator.scan_unverified_tasks(limit=batch_size)
-
-                if not tasks:
-                    consecutive_empty_rounds += 1
-                    backoff_time = min(validation_interval * (1 + consecutive_empty_rounds * 0.5), 300)
-                    logger.debug(
-                        f"无待验证任务，退避等待 {backoff_time:.0f}s "
-                        f"(第{consecutive_empty_rounds}轮)"
-                    )
-                    time.sleep(backoff_time)
-                    continue
-
-                # 重置退避计数器
-                consecutive_empty_rounds = 0
-
-                # 统计任务类型
-                verifying_count = sum(1 for t in tasks if t.get('bisect_status') == 'verifying')
-                logger.info(
-                    f"扫描到 {len(tasks)} 个待验证任务 | verifying: {verifying_count}"
-                )
-
-                # 按仓库分组任务（调用 validator 的方法）
-                tasks_by_repo = validator.group_tasks_by_repo(tasks)
-
-                logger.info(
-                    f"任务分组完成 | {len(tasks_by_repo)} 个仓库 | "
-                    f"总任务: {len(tasks)}"
-                )
-
-                # 批量提交验证作业（按仓库，调用 validator 的方法）
-                submitted_count = 0
-                failed_count = 0
-
-                logger.info(f"开始遍历 {len(tasks_by_repo)} 个仓库提交验证作业...")
-
-                for idx, (git_url, repo_tasks) in enumerate(tasks_by_repo.items()):
-                    if not self.running:
-                        logger.info("SuccessTaskValidator 收到停止信号，退出循环")
-                        break
-
-                    logger.info(
-                        f"处理仓库 [{idx+1}/{len(tasks_by_repo)}] | "
-                        f"repo: {git_url[:60]}... | tasks: {len(repo_tasks)}"
-                    )
-
-                    try:
-                        # 批量提交该仓库的所有任务（调用 validator 的方法）
-                        logger.debug(f"调用 batch_submit_verification_jobs...")
-                        result = validator.batch_submit_verification_jobs(
-                            repo_tasks, git_url, self.repo_manager
-                        )
-                        logger.debug(f"batch_submit_verification_jobs 返回: {result}")
-
-                        submitted_count += result.get('submitted', 0)
-                        failed_count += result.get('failed', 0)
-
-                    except Exception as e:
-                        logger.error(
-                            f"批量提交验证作业失败 | repo: {git_url[:60]} | "
-                            f"tasks: {len(repo_tasks)} | error: {str(e)}"
-                        )
-                        logger.error(traceback.format_exc())
-                        failed_count += len(repo_tasks)
-
-                logger.info(
-                    f"SuccessTaskValidator cycle completed | "
-                    f"submitted: {submitted_count} | failed: {failed_count} | "
-                    f"repos: {len(tasks_by_repo)}"
-                )
-
-                # 短暂等待
-                cycle_time = time.time() - start_time
-                sleep_time = max(5, validation_interval - cycle_time)
-                logger.debug(f"提交循环完成，耗时 {cycle_time:.2f}s，等待 {sleep_time:.2f}s")
-                time.sleep(sleep_time)
-
-            except Exception as e:
-                logger.error(f"SuccessTaskValidator cycle error: {str(e)}")
-                logger.error(traceback.format_exc())
-                consecutive_empty_rounds += 1
-                backoff_time = min(validation_interval * (1 + consecutive_empty_rounds), 300)
-                time.sleep(backoff_time)
-
-        logger.info("SuccessTaskValidator 线程已退出")
+        worker = _ValidatorWorker(
+            self.client, self._config, self.repo_manager,
+            self.stop_event, base_interval=validation_interval
+        )
+        worker.run()
 
     def _process_task_async(self, consumer, task):
-        """异步处理单个任务，并在结束后释放锁和清理仓库"""
+        """Process single task asynchronously, release lock and clean up repo on completion"""
         task_id = str(task.get('id'))
         logger.info(f"_process_task_async started for task_id: {task_id}")
         try:
@@ -1038,16 +967,16 @@ class TaskProcessor:
 
             if result.get('status') == 'success':
                 logger.info(f"Task completed: {task_id}")
-                # 注意：regression 记录现在由 VerificationConsumer 在验证成功后写入
-                # 这样可以确保只有验证通过的高质量结果才会进入 regression 表
-                # 旧的直接写入逻辑已移除，参见 verification_consumer.py:_handle_verification_success
+                # Note: regression records are now written by VerificationConsumer after verification success
+                # This ensures only high-quality verified results enter the regression table
+                # Old direct-write logic removed, see verification_consumer.py:_handle_verification_success
 
-                # 新增：批量处理相同签名的 wait 任务
+                # Batch process wait tasks with same signature
                 try:
                     mark_similar_wait_tasks_for_verification(self.client, self.errid_intelligence, task)
                     mark_introduced_errid_tasks_for_verification(self.client, task)
                 except Exception as e:
-                    # 不影响主流程，记录错误即可
+                    # Does not affect main flow, just log errors
                     logger.error(f"Failed to mark similar wait tasks: {str(e)}")
             else:
                 error_msg = result.get('error', 'Unknown error')
@@ -1063,7 +992,7 @@ class TaskProcessor:
             except Exception as e:
                 logger.error(f"Failed to release semaphore: {e}")
 
-            # 释放任务锁
+            # Release task lock
             if task_id:
                 with self.active_task_locks_lock:
                     if task_id in self.active_task_locks:
@@ -1072,11 +1001,11 @@ class TaskProcessor:
                     else:
                         logger.warning(f"Attempted to release lock for task_id {task_id}, but it was not found. Current locks: {len(self.active_task_locks)}")
 
-            # 清理任务工作目录
+            # Clean up task working directory
             self._cleanup_task_workspace(task_id)
 
     def _cleanup_task_workspace(self, task_id):
-        """清理任务的工作目录（成功或失败都删除）"""
+        """Clean up task working directory (delete on both success and failure)"""
         try:
             task_workspace_dir = os.path.join(self.repo_manager.REPO_BASE_DIR, str(task_id))
             if os.path.exists(task_workspace_dir):
@@ -1089,17 +1018,17 @@ class TaskProcessor:
 
     def _cleanup_stale_locks(self):
         """
-        清理陈旧的锁（任务已完成或被外部重置）
+        Clean up stale locks (tasks completed or externally reset)
 
-        陈旧锁的判断标准：
-        1. 任务状态是终态（success/failed）
-        2. 任务状态是 verifying（已进入验证阶段）
-        3. 任务不存在（被删除）
-        4. 任务状态是 wait（被外部 API 重置，需要重新执行）
+        Stale lock criteria:
+        1. Task status is terminal (success/failed)
+        2. Task status is verifying (entered verification phase)
+        3. Task does not exist (deleted)
+        4. Task status is wait (externally reset via API, needs re-execution)
 
-        注意：
-        - processing 状态的任务正在执行，不应清理
-        - wait 状态的任务如果有锁，说明被外部重置了，应该清理锁让其重新执行
+        Note:
+        - Tasks in processing status are being executed, should not clean up
+        - Tasks in wait status with locks indicate external reset, should clean up lock for re-execution
         """
         try:
             with self.active_task_locks_lock:
@@ -1109,11 +1038,11 @@ class TaskProcessor:
                 locked_task_ids = list(self.active_task_locks)
                 initial_count = len(locked_task_ids)
 
-            logger.info(f"cleanup stale locks | start | current_locks: {initial_count}")
+            logger.debug(f"cleanup stale locks | start | current_locks: {initial_count}")
 
-            # 批量查询这些任务的状态
+            # Batch query task statuses
             if locked_task_ids:
-                # 分批查询（避免IN列表过长）
+                # Query in batches (avoid overly long IN lists)
                 batch_size = 500
                 stale_locks = set()
 
@@ -1129,18 +1058,18 @@ class TaskProcessor:
 
                     results = self.client.sql_select(query)
                     if results:
-                        # 构建状态映射
+                        # Build status mapping
                         status_map = {str(r['id']): r.get('bisect_status') for r in results}
 
-                        # 判断哪些锁是陈旧的
+                        # Determine which locks are stale
                         for task_id in batch_ids:
                             status = status_map.get(task_id)
 
-                            # 陈旧锁的条件：
-                            # 1. 任务不存在（None）
-                            # 2. 任务已完成（success/failed）
-                            # 3. 任务在验证中（verifying）- 不需要锁了
-                            # 4. 任务被重置为 wait（被外部 API 重置，需要清理锁让其重新执行）
+                            # Stale lock conditions:
+                            # 1. Task does not exist (None)
+                            # 2. Task completed (success/failed)
+                            # 3. Task in verification (verifying) - no lock needed
+                            # 4. Task reset to wait (externally reset via API, clean lock for re-execution)
                             if status is None:
                                 stale_locks.add(task_id)
                                 logger.debug(f"cleanup stale locks | task not found | task_id: {task_id}")
@@ -1148,12 +1077,12 @@ class TaskProcessor:
                                 stale_locks.add(task_id)
                                 logger.debug(f"cleanup stale locks | task completed | task_id: {task_id} | status: {status}")
                             elif status == 'wait':
-                                # 任务被外部 API 重置为 wait，需要清理锁让其重新被消费
+                                # Task externally reset to wait via API, clean lock for re-consumption
                                 stale_locks.add(task_id)
                                 logger.info(f"cleanup stale locks | task reset to wait | task_id: {task_id}")
-                            # processing 状态的任务正在执行，不应清理
+                            # Tasks in processing status are executing, should not clean
 
-                # 移除陈旧的锁
+                # Remove stale locks
                 if stale_locks:
                     with self.active_task_locks_lock:
                         for task_id in stale_locks:
@@ -1163,39 +1092,39 @@ class TaskProcessor:
 
                     logger.warning(f"cleanup stale locks | cleaned | count: {len(stale_locks)} | before: {initial_count} | after: {final_count}")
                 else:
-                    logger.info(f"cleanup stale locks | no stale | all {initial_count} locks are valid")
+                    logger.debug(f"cleanup stale locks | no stale | all {initial_count} locks are valid")
 
         except Exception as e:
             logger.error(f"cleanup stale locks | failed | error: {str(e)}")
             logger.error(traceback.format_exc())
 
     def _clean_old_repos(self, max_age_days=7):
-        """清理超过指定天数未使用的工作区仓库
+        """Clean up workspace repos unused for specified days
 
-        委托给 SharedRepoManager 处理，因为仓库管理是它的职责
+        Delegated to SharedRepoManager as repository management is its responsibility
         """
         try:
             if hasattr(self, 'repo_manager') and self.repo_manager:
-                # 调用 repo_manager 的清理方法 (简化版返回: deleted, skipped)
+                # Call repo_manager cleanup method (simplified return: deleted, skipped)
                 deleted, skipped = self.repo_manager.cleanup_old_workspaces(max_age_days)
 
-                # 输出统计报告
+                # Output statistics report
                 if deleted > 0:
                     logger.info(f"╔══════════════════════════════════════════╗")
-                    logger.info(f"║        仓库清理统计报告                   ║")
+                    logger.info(f"║        Repository Cleanup Report             ║")
                     logger.info(f"╠══════════════════════════════════════════╣")
-                    logger.info(f"║  跳过（未超期）: {skipped:4} 个任务               ║")
-                    logger.info(f"║  已删除目录:     {deleted:4} 个目录               ║")
+                    logger.info(f"║  Skipped (not expired): {skipped:4} repos            ║")
+                    logger.info(f"║  Deleted dirs:         {deleted:4} dirs             ║")
                     logger.info(f"╚══════════════════════════════════════════╝")
             else:
                 logger.warning("repo_manager not available, skipping old repo cleanup")
         except Exception as e:
-            logger.error(f"清理仓库时出错: {str(e)}")
+            logger.error(f"Error cleaning up repos: {str(e)}")
 
     def _cleanup_interrupted_tasks(self):
-        """清理被中断的任务"""
+        """Clean up interrupted tasks"""
         try:
-            # 1. 获取所有 processing 状态的任务
+            # 1. Get all processing status tasks
             processing_query = {
                 "bool": {
                     "must": [
@@ -1207,13 +1136,13 @@ class TaskProcessor:
             tasks = self.client.search(
                 index="bisect",
                 query=processing_query,
-                limit=1000  # 设置较大的限制以获取所有processing任务
+                limit=1000  # Set large limit to get all processing tasks
             )
             
             if tasks:
-                logger.info(f"发现 {len(tasks)} 个需要清理的任务")
+                logger.info(f"Found {len(tasks)} tasks needing cleanup")
 
-                # 2. 批量更新状态为 wait
+                # 2. Batch update status to wait
                 for task in tasks:
                     task_id = task.get('id')
                     if task_id:
@@ -1223,47 +1152,47 @@ class TaskProcessor:
                         }
                         self.client.update("bisect", task_id, update_doc)
                         
-                logger.info(f"已重置 {len(tasks)} 个任务状态")
+                logger.info(f"Reset {len(tasks)} task statuses")
 
-                # 3. 删除数据目录
+                # 3. Delete data directories
                 for task in tasks:
                     result_root = task.get('bisect_result_root')
                     if result_root and os.path.exists(result_root):
                         try:
                             shutil.rmtree(result_root)
-                            logger.info(f"成功删除数据目录: {result_root}")
+                            logger.info(f"Successfully deleted data directory: {result_root}")
                         except Exception as e:
-                            logger.error(f"删除目录失败 {result_root}: {str(e)}")
+                            logger.error(f"Failed to delete directory {result_root}: {str(e)}")
 
         except Exception as e:
-            logger.error(f"清理过程中发生错误: {str(e)}")
+            logger.error(f"Error during cleanup: {str(e)}")
             logger.error(traceback.format_exc())
         finally:
-            logger.info("资源清理完成")
+            logger.info("Resource cleanup completed")
 
     def _batch_check_existing_tasks(self, job_id: int, task_identifiers: list, task_type: str = "error_id") -> set:
-        """批量检查哪些任务已经存在"""
+        """Batch check which tasks already exist"""
         if not task_identifiers:
             return set()
 
         try:
-            # 根据任务类型构造不同的查询
+            # Build different queries based on task type
             if task_type == "error_id":
-                # 构造批量查询 - 错误ID类型
+                # Build batch query - error ID type
                 must_conditions = [
                     {"equals": {"bad_job_id": str(job_id)}},
                     {"in": {"error_id": task_identifiers}}
                 ]
                 select_field = "error_id"
             else:
-                # bisect_metric类型
+                # bisect_metric type
                 must_conditions = [
                     {"equals": {"bad_job_id": str(job_id)}},
                     {"in": {"bisect_metric": task_identifiers}}
                 ]
                 select_field = "bisect_metric"
 
-            # 使用ManticoreSearch查询
+            # Query using ManticoreSearch
             query = {
                 "bool": {
                     "must": must_conditions
@@ -1278,97 +1207,97 @@ class TaskProcessor:
             return existing_ids
 
         except Exception as e:
-            logger.error(f"批量检查失败: {str(e)}")
+            logger.error(f"Batch check failed: {str(e)}")
             return set()
 
     def _cluster_and_select_tasks(self, candidates: List[Dict], max_selection: int) -> List[Dict]:
         """
-        对候选任务进行聚类，选择代表任务（仅作为去重选择机制，不建立任务关系）
+        Cluster candidate tasks and select representatives (only as dedup selection, no task relationships)
 
         Args:
-            candidates: 候选任务列表
-            max_selection: 最多选择多少个代表任务
+            candidates: candidate task list
+            max_selection: maximum number of representative tasks to select
 
         Returns:
-            selected_tasks: 选中的代表任务列表（需要执行 bisect）
+            selected_tasks: selected representative task list (need bisect execution)
 
-        注意：
-            - 聚类仅用于避免重复 bisect 相似的错误
-            - 不建立 related_task_id 关系
-            - 未选中的任务保持 wait 状态，等待下次循环
+        Note:
+            - Clustering only used to avoid duplicate bisect of similar errors
+            - Does not establish related_task_id relationships
+            - Unselected tasks remain in wait status for next cycle
         """
         if not candidates:
             return []
 
         try:
-            # 导入智能筛选器
+            # Import smart filter
             errid_intel = ErridIntelligence()
 
-            # 注意：理论上 wait 状态的任务不应该有 related_task_id
-            # 如果有，说明是容器重启后的脏数据，应该在重置时被清除
-            # 这里作为兜底处理：如果发现 wait 任务有 related_task_id，批量清除
+            # Note: theoretically wait status tasks should not have related_task_id
+            # If they do, it's dirty data from container restart, should be cleaned during reset
+            # As a fallback: if wait tasks have related_task_id, batch clear them
             dirty_task_ids = []
             for task in candidates:
                 j_field = task.get('j') or {}
                 if isinstance(j_field, str):
                     try:
                         j_field = json.loads(j_field) if j_field else {}
-                    except:
+                    except json.JSONDecodeError:
                         j_field = {}
 
                 if j_field.get('related_task_id') or j_field.get('clustered_by'):
                     dirty_task_ids.append(task.get('id'))
 
-            # 批量清除脏数据
+            # Batch clear dirty data
             if dirty_task_ids:
-                logger.warning(f"发现 {len(dirty_task_ids)} 个 wait 任务有聚类脏数据，开始批量清除")
+                logger.warning(f"Found {len(dirty_task_ids)} wait tasks with clustering dirty data, starting batch cleanup")
                 cleaned_count = 0
                 dirty_task_ids_set = set(dirty_task_ids)
                 for task_id in dirty_task_ids:
                     if self.client.update("bisect", task_id, {"j": {}}):
                         cleaned_count += 1
-                logger.warning(f"清除完成 | 成功: {cleaned_count}/{len(dirty_task_ids)}")
+                logger.warning(f"Cleanup completed | success: {cleaned_count}/{len(dirty_task_ids)}")
 
-                # 关键：同步更新内存中 task 对象的 j 字段，避免后续判断使用旧数据
+                # Critical: sync update in-memory task j field to avoid stale data in later checks
                 for task in candidates:
                     if task.get('id') in dirty_task_ids_set:
                         task['j'] = {}
 
-            # 步骤 1: 按任务类型分组（只对构建任务使用签名聚类）
+            # Step 1: group by task type (only use signature clustering for build tasks)
             build_tasks = []
             non_build_tasks = []
 
             for task in candidates:
-                category = task.get('category', 'function')  # 默认为 function
+                category = task.get('category', 'function')  # Default to function
                 if category == 'build':
                     build_tasks.append(task)
                 else:
-                    # function 和 benchmark 任务不使用签名聚类
+                    # function and benchmark tasks do not use signature clustering
                     non_build_tasks.append(task)
 
-            logger.info(f"任务类型分组: 构建任务 {len(build_tasks)} 个（将聚类）, 非构建任务 {len(non_build_tasks)} 个（不聚类）")
+            logger.info(f"Task type grouping: build_tasks {len(build_tasks)} (will cluster), non_build_tasks {len(non_build_tasks)} (no clustering)")
 
-            # 步骤 2: 只对构建任务按错误签名聚类
+            # Step 2: cluster only build tasks by error signature
             signature_groups = {}  # {signature: [task1, task2, ...]}
-            skip_clustering_tasks = []  # 跳过聚类的任务，直接走独立 bisect
+            skip_clustering_tasks = []  # Tasks skipping clustering, go to independent bisect
 
             for task in build_tasks:
-                # 检查是否已标记跳过聚类
+                # Check if marked to skip clustering
                 j_field = task.get('j') or {}
                 if isinstance(j_field, str):
                     try:
                         j_field = json.loads(j_field) if j_field else {}
-                    except:
+                    except json.JSONDecodeError:
                         j_field = {}
 
                 if j_field.get('skip_clustering'):
-                    # 已标记跳过聚类，直接作为独立任务
+                    # Already marked to skip clustering, treat as independent task
                     skip_clustering_tasks.append(task)
                     continue
 
                 error_id = task.get('error_id', '')
                 if not error_id:
-                    # 没有 error_id 的任务单独处理
+                    # Tasks without error_id handled separately
                     signature = 'no_error_id'
                 else:
                     signature = errid_intel.extract_coarse_signature(error_id)
@@ -1379,26 +1308,26 @@ class TaskProcessor:
                 signature_groups[signature].append(task)
 
             if skip_clustering_tasks:
-                logger.info(f"跳过聚类的任务: {len(skip_clustering_tasks)} 个（将走独立 bisect）")
+                logger.info(f"Tasks skipping clustering: {len(skip_clustering_tasks)} (will go to independent bisect)")
 
-            logger.info(f"构建任务聚类结果: {len(build_tasks) - len(skip_clustering_tasks)} 个任务 → {len(signature_groups)} 个聚类")
+            logger.info(f"Build task clustering result: {len(build_tasks) - len(skip_clustering_tasks)} tasks -> {len(signature_groups)} clusters")
 
-            # 步骤 3: 从每个聚类选择一个代表任务（不建立关系，仅作为去重选择）
+            # Step 3: select one representative task from each cluster (no relationships, dedup only)
             selected_tasks = []
-            skipped_count = 0  # 跳过的任务数（已有成功任务的聚类）
+            skipped_count = 0  # Skipped tasks count (clusters with existing successful tasks)
 
-            # 3.1 处理构建任务的聚类
+            # 3.1 Process build task clusters
             for signature, tasks in signature_groups.items():
-                # 先查询是否已经有成功的任务具有相同签名
+                # First check if there is already a successful task with same signature
                 successful_task = self._find_successful_task_by_signature(signature)
 
                 if successful_task:
-                    # 找到已成功的任务，立即标记为 verifying（避免无限循环）
+                    # Found successful task, immediately mark as verifying (avoid infinite loop)
                     successful_task_id = successful_task['id']
-                    logger.info(f"聚类 {signature}: 找到已成功任务 {successful_task_id}，"
-                               f"立即标记 {len(tasks)} 个任务为 verifying")
+                    logger.info(f"Cluster {signature}: found successful task {successful_task_id}, "
+                               f"immediately marking {len(tasks)} tasks as verifying")
 
-                    # 批量标记为 verifying（兜底机制，防止漏标）
+                    # Batch mark as verifying (fallback mechanism, prevent missed marking)
                     current_time = int(time.time())
                     marked_count = 0
                     failed_count = 0
@@ -1406,19 +1335,19 @@ class TaskProcessor:
                         try:
                             task_id = task['id']
 
-                            # 检查是否之前已经尝试标记过（避免无限重试）
+                            # Check if marking was attempted before (avoid infinite retry)
                             j_field = task.get('j') or {}
                             if isinstance(j_field, str):
                                 try:
                                     j_field = json.loads(j_field) if j_field else {}
-                                except:
+                                except json.JSONDecodeError:
                                     j_field = {}
 
                             marking_attempts = j_field.get('marking_attempts', 0)
                             if marking_attempts >= 3:
-                                # 达到重试上限，跳过聚类标记，让任务走独立 bisect 流程
-                                logger.warning(f"聚类标记达到重试上限 | task_id: {task_id} | 已尝试 {marking_attempts} 次 | 跳过聚类，走独立 bisect")
-                                # 清除聚类相关字段，添加 skip_clustering 标记，保持 wait 状态
+                                # Retry limit reached, skip clustering mark, let task go through independent bisect flow
+                                logger.warning(f"Cluster marking retry limit reached | task_id: {task_id} | attempted {marking_attempts} times | skipping clustering, going to independent bisect")
+                                # Clear clustering fields, add skip_clustering flag, keep wait status
                                 skip_doc = {
                                     "updated_at": current_time,
                                     "j": {
@@ -1448,55 +1377,55 @@ class TaskProcessor:
                                 marked_count += 1
                             else:
                                 failed_count += 1
-                                logger.warning(f"聚类标记更新失败 | task_id: {task_id}")
+                                logger.warning(f"Cluster marking update failed | task_id: {task_id}")
                         except Exception as e:
                             failed_count += 1
-                            logger.error(f"聚类标记失败 | task_id: {task.get('id')} | error: {str(e)}")
+                            logger.error(f"Cluster marking failed | task_id: {task.get('id')} | error: {str(e)}")
 
                     skipped_count += marked_count
                     if failed_count > 0:
-                        logger.warning(f"聚类标记完成 | signature: {signature} | marked: {marked_count}/{len(tasks)} | failed: {failed_count}")
+                        logger.warning(f"Cluster marking completed | signature: {signature} | marked: {marked_count}/{len(tasks)} | failed: {failed_count}")
                     else:
-                        logger.info(f"聚类标记完成 | signature: {signature} | marked: {marked_count}/{len(tasks)}")
+                        logger.info(f"Cluster marking completed | signature: {signature} | marked: {marked_count}/{len(tasks)}")
 
                 elif len(tasks) == 1:
-                    # 没有成功任务，且只有单个任务，直接选择
+                    # No successful task and only single task, select directly
                     selected_tasks.append(tasks[0])
-                    logger.debug(f"聚类 {signature}: 单个任务 {tasks[0]['id']}")
+                    logger.debug(f"Cluster {signature}: single task {tasks[0]['id']}")
                 else:
-                    # 没有成功任务，多个任务，选择一个代表
-                    # 按优先级和提交时间排序，选择最佳代表
+                    # No successful task, multiple tasks, select one representative
+                    # Sort by priority and submit time, select best representative
                     tasks_sorted = sorted(tasks, key=lambda t: (
-                        -t.get('priority_level', 0),  # 优先级高的在前
-                        -t.get('submit_time', 0)      # 提交时间晚的在前（负号表示降序）
+                        -t.get('priority_level', 0),  # Higher priority first
+                        -t.get('submit_time', 0)      # Later submit time first (negative for descending)
                     ))
 
                     representative = tasks_sorted[0]
                     selected_tasks.append(representative)
 
-                    logger.info(f"聚类 {signature}: 选择任务 {representative['id']} 作为代表，"
-                               f"其余 {len(tasks)-1} 个任务保持 wait 状态")
+                    logger.info(f"Cluster {signature}: selected task {representative['id']} as representative, "
+                               f"remaining {len(tasks)-1} tasks stay in wait status")
 
             if skipped_count > 0:
                 logger.info(f"cluster tasks | marked existing success | count: {skipped_count}")
 
-            # 3.2 处理非构建任务：直接添加到 selected_tasks（不聚类）
+            # 3.2 Process non-build tasks: add directly to selected_tasks (no clustering)
             if non_build_tasks:
                 selected_tasks.extend(non_build_tasks)
                 logger.info(f"cluster tasks | non-build tasks | count: {len(non_build_tasks)}")
 
-            # 3.3 处理跳过聚类的任务：直接添加到 selected_tasks（走独立 bisect）
+            # 3.3 Process skip-clustering tasks: add directly to selected_tasks (independent bisect)
             if skip_clustering_tasks:
                 selected_tasks.extend(skip_clustering_tasks)
                 logger.info(f"cluster tasks | skip-clustering tasks | count: {len(skip_clustering_tasks)}")
 
-            # 3.4 重新按优先级排序（确保高优先级任务优先执行）
+            # 3.4 Re-sort by priority (ensure high-priority tasks execute first)
             selected_tasks.sort(key=lambda t: (
-                -t.get('priority_level', 0),  # 优先级高的在前
-                -t.get('submit_time', 0)      # 提交时间晚的在前
+                -t.get('priority_level', 0),  # Higher priority first
+                -t.get('submit_time', 0)      # Later submit time first
             ))
 
-            # 限制选中的任务数量
+            # Limit selected task count
             final_selected = selected_tasks[:max_selection]
 
             logger.info(f"cluster tasks | completed | selected: {len(final_selected)} | "
@@ -1505,22 +1434,22 @@ class TaskProcessor:
             return final_selected
 
         except Exception as e:
-            logger.error(f"聚类选择任务失败: {str(e)}")
+            logger.error(f"Cluster task selection failed: {str(e)}")
             logger.error(traceback.format_exc())
-            # 失败时回退到原始逻辑
+            # Fallback to original logic on failure
             return candidates[:max_selection]
 
     def _batch_mark_verifying(self, verifying_tasks: List[Dict]):
         """
-        批量标记任务为 verifying 状态（直接复用已成功任务）
+        Batch mark tasks as verifying status (directly reuse successful tasks)
 
         Args:
-            verifying_tasks: 待标记的任务列表，每个元素包含:
-                - id: 任务ID
-                - related_task_id: 关联的已成功任务ID
-                - error_signature: 错误签名
-                - original_error_id: 原始错误ID
-                - reused_from_successful: True（标记为复用）
+            verifying_tasks: list of tasks to mark, each containing:
+                - id: task ID
+                - related_task_id: related successful task ID
+                - error_signature: error signature
+                - original_error_id: original error ID
+                - reused_from_successful: True (marked as reuse)
         """
         if not verifying_tasks:
             return
@@ -1529,7 +1458,7 @@ class TaskProcessor:
         success_count = 0
         failed_count = 0
 
-        logger.info(f"开始批量标记 {len(verifying_tasks)} 个任务为 verifying 状态（复用已成功任务）")
+        logger.info(f"Starting batch mark of {len(verifying_tasks)} tasks as verifying (reusing successful tasks)")
 
         for task_info in verifying_tasks:
             try:
@@ -1547,51 +1476,51 @@ class TaskProcessor:
                         "original_error_id": original_error_id,
                         "clustering_timestamp": current_time,
                         "clustered_by": "task_processor",
-                        "reused_from_successful": True,  # 标记为复用已成功任务
-                        "direct_to_verifying": True  # 跳过 pending_verification
+                        "reused_from_successful": True,  # Marked as reusing successful task
+                        "direct_to_verifying": True  # Skip pending_verification
                     }
                 }
 
-                # 更新数据库
+                # Update database
                 update_result = self.client.update("bisect", task_id, doc)
 
                 if update_result:
                     success_count += 1
-                    logger.debug(f"任务 {task_id} 标记为 verifying，关联已成功任务 {related_task_id}")
+                    logger.debug(f"Task {task_id} marked as verifying, linked to successful task {related_task_id}")
                 else:
                     failed_count += 1
-                    logger.warning(f"任务 {task_id} 标记失败")
+                    logger.warning(f"Task {task_id} marking failed")
 
             except Exception as e:
                 failed_count += 1
-                logger.error(f"标记任务 {task_info.get('id', 'unknown')} 失败: {str(e)}")
+                logger.error(f"Failed to mark task {task_info.get('id', 'unknown')}: {str(e)}")
 
-        logger.info(f"批量标记 verifying 完成: 成功 {success_count} 个，失败 {failed_count} 个")
+        logger.info(f"Batch marking verifying completed: success {success_count}, failed {failed_count}")
 
     def _find_successful_task_by_signature(self, signature: str) -> Optional[Dict]:
         """
-        查找具有相同签名的已成功任务（带缓存，只返回高置信度任务）
+        Find successful task with same signature (with cache, only returns high-confidence tasks)
 
         Args:
-            signature: 错误签名
+            signature: error signature
 
         Returns:
-            已成功的任务信息（包含 id, first_bad_commit, j 等），如果没有则返回 None
+            Successful task info (contains id, first_bad_commit, j, etc.), or None if not found
         """
         try:
             current_time = int(time.time())
 
-            # 检查缓存是否过期
+            # Check if cache expired
             with self._success_cache_lock:
                 if current_time - self._success_cache_last_refresh > self._success_cache_ttl:
-                    logger.info("成功任务签名缓存已过期，开始刷新...")
+                    logger.info("Success task signature cache expired, refreshing...")
                     self._refresh_success_signature_cache()
 
-                # 从缓存查找
+                # Look up from cache
                 if signature in self._success_signature_cache:
                     cached_task = self._success_signature_cache[signature]
 
-                    # 提取置信度信息（用于日志）
+                    # Extract confidence info (for logging)
                     j_field = cached_task.get('j', {})
                     if isinstance(j_field, str):
                         import json
@@ -1599,31 +1528,31 @@ class TaskProcessor:
                     confidence = j_field.get('confidence', 'unknown')
 
                     logger.info(
-                        f"从缓存找到成功任务 | signature: {signature} | "
+                        f"Found successful task from cache | signature: {signature} | "
                         f"task_id: {cached_task['id']} | confidence: {confidence}"
                     )
                     return cached_task
 
-            logger.debug(f"缓存中未找到成功任务 | signature: {signature}")
+            logger.debug(f"Successful task not found in cache | signature: {signature}")
             return None
 
         except Exception as e:
-            logger.error(f"查找成功任务失败: {str(e)}")
+            logger.error(f"Failed to find successful task: {str(e)}")
             logger.error(traceback.format_exc())
             return None
 
     def _refresh_success_signature_cache(self):
         """
-        刷新成功任务签名缓存（批量），只缓存高置信度任务
-        注意：此方法必须在持有 _success_cache_lock 的情况下调用
+        Refresh success task signature cache (batch), only cache high-confidence tasks
+        Note: this method must be called while holding _success_cache_lock
         """
         try:
-            # 定义置信度优先级（用于过滤和排序）
+            # Define confidence priority (for filtering and sorting)
             confidence_priority = {'high': 3, 'medium': 2, 'low': 1, '': 0}
-            min_confidence = Config.TASK_REUSE_MIN_CONFIDENCE  # 从配置读取最小置信度
-            min_priority = confidence_priority.get(min_confidence, 3)  # 默认要求 high
+            min_confidence = Config.TASK_REUSE_MIN_CONFIDENCE  # Read min confidence from config
+            min_priority = confidence_priority.get(min_confidence, 3)  # Default requires high
 
-            # 查询最近成功的构建任务（只查询构建任务，因为只有构建任务使用签名聚类）
+            # Query recently successful build tasks (only build tasks use signature clustering)
             query = """
                 SELECT id, first_bad_commit, updated_at, j, error_id, category
                 FROM bisect
@@ -1634,15 +1563,15 @@ class TaskProcessor:
 
             results = self.client.sql_select(query)
             if not results:
-                logger.info("没有找到成功的构建任务")
+                logger.info("No successful build tasks found")
                 return
 
-            # 导入智能筛选器
+            # Import smart filter
             errid_intel = ErridIntelligence()
 
-            # 批量构建签名缓存（只保留高置信度任务）
+            # Batch build signature cache (only keep high-confidence tasks)
             new_cache = {}
-            filtered_count = 0  # 被过滤掉的低置信度任务数
+            filtered_count = 0  # Count of low-confidence tasks filtered out
 
             for task in results:
                 error_id = task.get('error_id', '')
@@ -1650,7 +1579,7 @@ class TaskProcessor:
                     continue
 
                 try:
-                    # 提取置信度
+                    # Extract confidence
                     j_field = task.get('j', {})
                     if isinstance(j_field, str):
                         import json
@@ -1659,18 +1588,18 @@ class TaskProcessor:
                     confidence = j_field.get('confidence', '').lower()
                     task_priority = confidence_priority.get(confidence, 0)
 
-                    # 只缓存满足最小置信度的任务
+                    # Only cache tasks meeting min confidence
                     if task_priority < min_priority:
                         filtered_count += 1
                         logger.debug(
-                            f"跳过低置信度任务 | task_id: {task['id']} | "
+                            f"Skipping low confidence task | task_id: {task['id']} | "
                             f"confidence: {confidence or 'unknown'} | min_required: {min_confidence}"
                         )
                         continue
 
                     signature = errid_intel.extract_coarse_signature(error_id)
 
-                    # 如果已有相同签名的缓存，比较置信度，保留更高的
+                    # If cache already has same signature, compare confidence, keep higher
                     if signature in new_cache:
                         cached_task = new_cache[signature]
                         cached_j = cached_task.get('j', {})
@@ -1679,7 +1608,7 @@ class TaskProcessor:
                         cached_confidence = cached_j.get('confidence', '').lower()
                         cached_priority = confidence_priority.get(cached_confidence, 0)
 
-                        # 保留置信度更高的任务，如果相同则保留更新时间更晚的
+                        # Keep higher confidence task, if same keep later update time
                         if task_priority > cached_priority or (
                             task_priority == cached_priority and
                             task.get('updated_at', 0) > cached_task.get('updated_at', 0)
@@ -1689,29 +1618,29 @@ class TaskProcessor:
                         new_cache[signature] = task
 
                 except Exception as e:
-                    logger.warning(f"提取签名失败 | task_id: {task['id']} | error: {str(e)}")
+                    logger.warning(f"Failed to extract signature | task_id: {task['id']} | error: {str(e)}")
                     continue
 
             self._success_signature_cache = new_cache
             self._success_cache_last_refresh = int(time.time())
 
             logger.info(
-                f"成功任务签名缓存已刷新 | "
-                f"签名数: {len(new_cache)} | 来自 {len(results)} 个成功任务 | "
-                f"过滤掉低置信度: {filtered_count} | min_confidence: {min_confidence}"
+                f"Success task signature cache refreshed | "
+                f"signatures: {len(new_cache)} | from {len(results)} successful tasks | "
+                f"low_confidence_filtered: {filtered_count} | min_confidence: {min_confidence}"
             )
 
         except Exception as e:
-            logger.error(f"刷新签名缓存失败: {str(e)}")
+            logger.error(f"Failed to refresh signature cache: {str(e)}")
             logger.error(traceback.format_exc())
 
     def _batch_reset_tasks_to_wait(self, task_ids: list, reason: str = "unknown"):
         """
-        批量重置任务为 wait 状态
+        Batch reset tasks to wait status
 
         Args:
-            task_ids: 任务ID列表
-            reason: 重置原因（用于日志记录）
+            task_ids: task ID list
+            reason: reset reason (for logging)
         """
         if not task_ids:
             return
@@ -1720,36 +1649,48 @@ class TaskProcessor:
         success_count = 0
         failed_count = 0
 
-        logger.info(f"开始批量重置 {len(task_ids)} 个任务为 wait 状态 | 原因: {reason}")
+        logger.info(f"Starting batch reset of {len(task_ids)} tasks to wait | reason: {reason}")
 
         for task_id in task_ids:
             try:
+                # Fetch existing j field to merge (avoid destroying commit info)
+                existing_j = {}
+                try:
+                    task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                    if task_row:
+                        existing_j = task_row[0].get('j', {}) or {}
+                        if isinstance(existing_j, str):
+                            existing_j = json.loads(existing_j) if existing_j else {}
+                except Exception:
+                    pass
+
+                merged_j = {**existing_j,
+                    "reset_reason": reason,
+                    "reset_timestamp": current_time,
+                    "reset_by": "verification_consumer"
+                }
                 doc = {
                     "bisect_status": "wait",
                     "updated_at": current_time,
                     "submit_time": current_time,
-                    "j": {
-                        "reset_reason": reason,
-                        "reset_timestamp": current_time,
-                        "reset_by": "verification_consumer"
-                    }
+                    "j": merged_j
                 }
 
-                # 更新数据库
+                # Update database
                 update_result = self.client.update("bisect", task_id, doc)
 
                 if update_result:
                     success_count += 1
-                    logger.debug(f"任务 {task_id} 重置为 wait | 原因: {reason}")
+                    logger.debug(f"Task {task_id} reset to wait | reason: {reason}")
                 else:
                     failed_count += 1
-                    logger.warning(f"任务 {task_id} 重置失败")
+                    logger.warning(f"Task {task_id} reset failed")
 
             except Exception as e:
                 failed_count += 1
-                logger.error(f"重置任务 {task_id} 失败: {str(e)}")
+                logger.error(f"Failed to reset task {task_id}: {str(e)}")
 
-        logger.info(f"批量重置完成: 成功 {success_count} 个，失败 {failed_count} 个")
+        logger.info(f"Batch reset completed: success {success_count}, failed {failed_count}")
 
 
 # Global instance for controllers

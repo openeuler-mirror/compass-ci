@@ -14,7 +14,7 @@ from typing import Optional, Dict, Tuple, List, Set
 class CommitTimeClient:
     """Commit 时间服务客户端"""
 
-    def __init__(self, service_url: str = 'http://localhost:8765', timeout: int = 10):
+    def __init__(self, service_url: str = 'http://localhost:8765', timeout: int = 120):
         """
         初始化客户端
 
@@ -198,6 +198,110 @@ class CommitTimeClient:
         except Exception as e:
             return (None, None)
 
+    def is_ancestor(self, git_url: str, ancestor_commit: str,
+                    descendant_commit: str) -> Optional[bool]:
+        """
+        Check if ancestor_commit is an ancestor of descendant_commit.
+
+        Args:
+            git_url: Git repository URL
+            ancestor_commit: The potential ancestor commit hash
+            descendant_commit: The potential descendant commit hash
+
+        Returns:
+            True if ancestor, False if not, None if query failed
+        """
+        try:
+            response = requests.get(
+                f"{self.service_url}/api/v1/commit/is-ancestor",
+                params={
+                    'repo': git_url,
+                    'ancestor': ancestor_commit,
+                    'descendant': descendant_commit
+                },
+                timeout=self.timeout
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    return result['data']['is_ancestor']
+
+            return None
+
+        except Exception:
+            return None
+
+    def batch_is_ancestor(self, git_url: str,
+                          pairs: List[Tuple[str, str]]) -> List[Optional[bool]]:
+        """
+        Batch check ancestry via server-side parallel endpoint.
+
+        Args:
+            git_url: Git repository URL
+            pairs: List of (ancestor_commit, descendant_commit) tuples
+
+        Returns:
+            List of results: True/False/None per pair, same order as input
+        """
+        if not pairs:
+            return []
+
+        try:
+            request_body = {
+                'git_url': git_url,
+                'pairs': [
+                    {'ancestor': anc, 'descendant': desc}
+                    for anc, desc in pairs
+                ]
+            }
+
+            response = requests.post(
+                f"{self.service_url}/api/v1/commit/batch_is_ancestor",
+                json=request_body,
+                timeout=self.timeout * 2
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    return [
+                        r.get('is_ancestor')
+                        for r in result['data']['results']
+                    ]
+
+            return [None] * len(pairs)
+
+        except Exception:
+            return [None] * len(pairs)
+
+    def batch_check_ancestry(self, git_url: str,
+                             pairs: List[Tuple[str, str]]) -> Set[int]:
+        """
+        Batch check ancestry for multiple commit pairs.
+
+        Uses server-side batch endpoint for parallel execution.
+
+        Args:
+            git_url: Git repository URL
+            pairs: List of (ancestor_commit, descendant_commit) tuples
+
+        Returns:
+            Set of indices of pairs that are NOT in an ancestor relationship
+        """
+        if not pairs:
+            return set()
+
+        results = self.batch_is_ancestor(git_url, pairs)
+
+        invalid_indices = set()
+        for i, result in enumerate(results):
+            if result is False:
+                invalid_indices.add(i)
+            # None (error) → skip, graceful degradation
+
+        return invalid_indices
+
     def get_parent_commit(self, git_url: str, commit: str) -> Optional[str]:
         """
         获取 commit 的父提交 hash
@@ -224,11 +328,20 @@ class CommitTimeClient:
                     data = result['data']
                     # 返回 parent hash（root commit 时为 None）
                     return data.get('parent')
+                else:
+                    # 服务端返回了 error 状态
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"get_parent_commit API error | commit: {commit[:12]} | "
+                                  f"error: {result.get('error', 'unknown')}")
 
             return None
 
-        except Exception:
+        except Exception as e:
             # 服务不可用时返回 None
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"get_parent_commit request failed | commit: {commit[:12]} | error: {str(e)}")
             return None
 
     def get_parent_commit_info(self, git_url: str, commit: str) -> Optional[Dict]:
@@ -280,7 +393,7 @@ class CommitTimeClient:
                 timeout=self.timeout
             )
             return response.status_code == 200
-        except:
+        except requests.RequestException:
             return False
 
 

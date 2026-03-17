@@ -8,13 +8,45 @@ API 查询条件构建器
 import time
 from typing import Dict, Any, Optional, List, Tuple
 from flask import request
+from config import Config
 
 
-def _escape_sql_string(value: str) -> str:
-    """Escape string for ManticoreSearch SQL queries"""
+def _escape_sql_string(value: str, escape_wildcards: bool = False) -> str:
+    """Escape string for ManticoreSearch SQL queries
+
+    Args:
+        value: The string to escape
+        escape_wildcards: If True, also escape LIKE wildcards (% and _)
+
+    Returns:
+        Escaped string safe for SQL queries
+    """
     if value is None:
         return ""
-    return value.replace("\\", "\\\\").replace("'", "\\'")
+    escaped = value.replace("\\", "\\\\").replace("'", "\\'")
+    if escape_wildcards:
+        escaped = escaped.replace("%", "\\%").replace("_", "\\_")
+    return escaped
+
+
+def _validate_task_id(task_id: str) -> int:
+    """Validate and convert task_id to integer
+
+    Args:
+        task_id: Task ID string to validate
+
+    Returns:
+        Validated task ID as integer
+
+    Raises:
+        ValueError: If task_id is invalid
+    """
+    if not task_id or not task_id.strip().isdigit():
+        raise ValueError(f"Invalid task_id format: {task_id}")
+    task_id_int = int(task_id.strip())
+    if task_id_int <= 0 or task_id_int > Config.MAX_INT64:
+        raise ValueError(f"task_id out of valid range: {task_id_int}")
+    return task_id_int
 
 
 def build_task_query_conditions() -> Tuple[str, Dict[str, Any]]:
@@ -72,7 +104,7 @@ def build_task_query_conditions() -> Tuple[str, Dict[str, Any]]:
         try:
             hours_int = int(hours)
             cutoff_time = int(time.time()) - (hours_int * 3600)
-            conditions.append(f"submit_time >= {cutoff_time}")
+            conditions.append(f"updated_at >= {cutoff_time}")
             filters['hours'] = hours_int
         except ValueError:
             pass  # 忽略无效的 hours 参数
@@ -91,19 +123,22 @@ def build_task_query_conditions() -> Tuple[str, Dict[str, Any]]:
         conditions.append(f"first_bad_commit = '{commit_escaped}'")
         filters['first_bad_commit'] = first_bad_commit
 
-    # 单个任务ID
+    # 单个任务ID (with validation)
     task_id = request.args.get('task_id')
     if task_id:
-        conditions.append(f"id = {task_id}")
-        filters['task_id'] = task_id
+        task_id_int = _validate_task_id(task_id)
+        conditions.append(f"id = {task_id_int}")
+        filters['task_id'] = task_id_int
 
-    # 多个任务ID (逗号分隔)
+    # 多个任务ID (逗号分隔, with validation)
     task_ids = request.args.get('task_ids')
     if task_ids:
-        ids_list = [tid.strip() for tid in task_ids.split(',')]
-        ids_str = ','.join(ids_list)
+        validated_ids = []
+        for tid in task_ids.split(','):
+            validated_ids.append(_validate_task_id(tid))
+        ids_str = ','.join(str(tid) for tid in validated_ids)
         conditions.append(f"id IN ({ids_str})")
-        filters['task_ids'] = ids_list
+        filters['task_ids'] = validated_ids
 
     # 构建 WHERE 子句
     where_clause = " AND ".join(conditions) if conditions else "1=1"

@@ -20,6 +20,13 @@ defaults.merge!(service_authentication)
 
 env = docker_env(defaults)
 
+# 开发模式配置
+# 使用方式：BISECT_DEV_MODE=true ./start
+# 开发模式下代码通过 volume 映射，修改后只需 docker restart bisect
+DEV_MODE = ENV['BISECT_DEV_MODE'] == 'true'
+HOST_CCI_SRC = ENV['HOST_CCI_SRC'] || File.expand_path('~/git/gitee/compass-ci')
+HOST_LKP_SRC = ENV['HOST_LKP_SRC'] || File.expand_path('~/git/gitee/lkp-tests')
+
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'
 FLASK_APP = '/c/compass-ci/container/bisect/app/__init__.py'
@@ -54,6 +61,7 @@ cmd = %w[
   -e FLASK_APP=#{FLASK_APP}
   -e LOG_LEVEL=DEBUG
   -e COMMIT_TIME_SERVICE_URL=http://localhost:8765
+  -e KERNEL_CI_CONFIG_DIR=#{BISECT_RESULT_DIR}bisect/kernel_ci_config
   -e BISECT_MAX_COMMIT_AGE_DAYS=365
   -e BISECT_THREADS=64
   -e WORK_DIR=#{BISECT_WORK_DIR}
@@ -70,9 +78,21 @@ cmd = %w[
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro
   -p 9999:9999
   -p 8765:8765
-  bisect
 ]
 
+# 开发模式：映射宿主机代码目录，覆盖镜像内代码
+if DEV_MODE
+  puts "=== DEV MODE ==="
+  puts "  CCI_SRC: #{HOST_CCI_SRC} -> #{DEFAULT_CCI}"
+  puts "  LKP_SRC: #{HOST_LKP_SRC} -> #{DEFAULT_LKP}"
+
+  cmd += %W[
+    -v #{HOST_CCI_SRC}:#{DEFAULT_CCI}:ro
+    -v #{HOST_LKP_SRC}:#{DEFAULT_LKP}:ro
+  ]
+end
+
+cmd += ['bisect']
 cmd += ['supervisord', '-c', '/etc/supervisor/supervisord.conf']
 
 system(*cmd)

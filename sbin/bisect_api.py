@@ -287,24 +287,20 @@ class BisectAPIClient:
         """获取仓库池状态"""
         return self._make_request("GET", "/pool/status")
 
-    def pool_cleanup(self, dry_run: bool = True, max_hours: Optional[float] = None) -> Optional[Dict]:
-        """触发仓库池清理"""
+    def pool_cleanup(self, dry_run: bool = True, max_age_days: Optional[float] = None) -> Optional[Dict]:
+        """Trigger workspace cleanup"""
         data = {"dry_run": dry_run}
-        if max_hours is not None:
-            data["max_hours"] = max_hours
+        if max_age_days is not None:
+            data["max_age_days"] = max_age_days
         return self._make_request("POST", "/pool/cleanup", json_data=data)
 
     def pool_stats(self) -> Optional[Dict]:
-        """获取池监控统计信息"""
+        """Get monitor statistics"""
         return self._make_request("GET", "/pool/stats")
 
     def pool_verify(self) -> Optional[Dict]:
-        """验证池一致性"""
+        """Verify workspace consistency"""
         return self._make_request("POST", "/pool/verify")
-
-    def pool_instances(self, repo_name: str) -> Optional[Dict]:
-        """获取特定仓库的实例信息"""
-        return self._make_request("GET", f"/pool/instances/{repo_name}")
 
     def pool_monitor_start(self) -> Optional[Dict]:
         """启动池监控线程"""
@@ -614,19 +610,16 @@ def main():
     # Pool monitoring commands
     subparsers.add_parser('pool_status', help='获取仓库池状态')
 
-    pool_cleanup_parser = subparsers.add_parser('pool_cleanup', help='触发仓库池清理')
-    pool_cleanup_parser.add_argument('--dry-run', action='store_true', default=True, help='预览模式，不实际执行清理')
-    pool_cleanup_parser.add_argument('--execute', action='store_true', help='实际执行清理（非预览模式）')
-    pool_cleanup_parser.add_argument('--max-hours', type=float, help='最大占用时长（小时），默认10小时')
+    pool_cleanup_parser = subparsers.add_parser('pool_cleanup', help='Trigger workspace cleanup')
+    pool_cleanup_parser.add_argument('--dry-run', action='store_true', default=True, help='Preview mode')
+    pool_cleanup_parser.add_argument('--execute', action='store_true', help='Execute cleanup')
+    pool_cleanup_parser.add_argument('--max-age-days', type=float, help='Max workspace age in days (default: 7)')
 
-    subparsers.add_parser('pool_stats', help='获取池监控统计信息')
-    subparsers.add_parser('pool_verify', help='验证池一致性')
+    subparsers.add_parser('pool_stats', help='Get monitor statistics')
+    subparsers.add_parser('pool_verify', help='Verify workspace consistency')
 
-    pool_instances_parser = subparsers.add_parser('pool_instances', help='获取特定仓库的实例信息')
-    pool_instances_parser.add_argument('repo_name', help='仓库名称，如: ltp, linux-next')
-
-    subparsers.add_parser('pool_monitor_start', help='启动池监控线程')
-    subparsers.add_parser('pool_monitor_stop', help='停止池监控线程')
+    subparsers.add_parser('pool_monitor_start', help='Start monitor thread')
+    subparsers.add_parser('pool_monitor_stop', help='Stop monitor thread')
 
     args = parser.parse_args()
 
@@ -718,14 +711,12 @@ def main():
     elif args.command == 'pool_status':
         client.pool_status()
     elif args.command == 'pool_cleanup':
-        dry_run = not args.execute  # 如果用户指定 --execute，则dry_run为False
-        client.pool_cleanup(dry_run=dry_run, max_hours=args.max_hours)
+        dry_run = not args.execute
+        client.pool_cleanup(dry_run=dry_run, max_age_days=getattr(args, 'max_age_days', None))
     elif args.command == 'pool_stats':
         client.pool_stats()
     elif args.command == 'pool_verify':
         client.pool_verify()
-    elif args.command == 'pool_instances':
-        client.pool_instances(args.repo_name)
     elif args.command == 'pool_monitor_start':
         client.pool_monitor_start()
     elif args.command == 'pool_monitor_stop':

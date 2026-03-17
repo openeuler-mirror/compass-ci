@@ -24,8 +24,8 @@ from typing import Dict, Any, Optional, List
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 from log_config import logger
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
 
 
 class TaskOptimizer:

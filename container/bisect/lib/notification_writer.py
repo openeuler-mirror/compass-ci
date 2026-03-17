@@ -326,7 +326,7 @@ class NotificationWriter:
         if isinstance(j_field, str):
             try:
                 j_field = json.loads(j_field) if j_field else {}
-            except:
+            except json.JSONDecodeError:
                 j_field = {}
 
         # 生成报告内容（包含置信度警告）

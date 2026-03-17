@@ -26,9 +26,9 @@ from notification_writer import NotificationWriter
 from repo_manager import SharedRepoManager
 from bisect_utils import extract_git_url_from_full_text_kv, extract_repo_name_from_url, write_regression_record
 
-sys.path.append((os.environ['LKP_SRC']) + '/programs/bisect-py/')
-from manticore_simple import ManticoreClient
-from py_bisect import GitBisect
+sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
+from lkp_bisect.db.manticore import ManticoreClient
+from lkp_bisect.core.git_bisect import GitBisect
 
 
 class VerificationConsumer:
@@ -850,7 +850,7 @@ class VerificationConsumer:
                             try:
                                 import json
                                 j_field = json.loads(j_field) if j_field else {}
-                            except:
+                            except json.JSONDecodeError:
                                 j_field = {}
 
                         # 优先使用 change_point，否则组合 first_bad_commit + subject
@@ -896,10 +896,20 @@ class VerificationConsumer:
 
                 # 更新任务状态为wait，让标准bisect消费者处理
                 current_time = int(time.time())
+                # Merge verification failure into existing j (preserve commit info)
+                existing_j = {}
+                try:
+                    task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                    if task_row:
+                        existing_j = task_row[0].get('j', {}) or {}
+                        if isinstance(existing_j, str):
+                            existing_j = json.loads(existing_j) if existing_j else {}
+                except Exception:
+                    pass
                 reset_doc = {
                     "bisect_status": "wait",
                     "updated_at": current_time,
-                    "j": {
+                    "j": {**existing_j,
                         "verification_status": "failed",
                         "verification_failure_reason": reason,
                         "verification_details": verification_result.get('verification_details', {}),
@@ -909,7 +919,6 @@ class VerificationConsumer:
                     }
                 }
 
-                # 更新数据库
                 update_result = self.client.update("bisect", task_id, reset_doc)
                 if update_result:
                     logger.info(f"任务状态重置成功 | ID: {task_id} | status: wait | fallback: standard_bisect")
