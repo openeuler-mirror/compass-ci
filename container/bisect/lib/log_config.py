@@ -14,6 +14,42 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import threading
 
+_LOG_COMPONENT_CONTEXT = threading.local()
+
+
+def set_log_component(component: str = None):
+    """Set per-thread logical component for log routing.
+
+    Args:
+        component: one of {"producer", "consumer", "commit_time_service"}.
+                   Pass None or empty string to clear.
+    """
+    if component:
+        _LOG_COMPONENT_CONTEXT.component = component
+    elif hasattr(_LOG_COMPONENT_CONTEXT, 'component'):
+        delattr(_LOG_COMPONENT_CONTEXT, 'component')
+
+
+def get_log_component() -> str:
+    """Get current thread's routing component, or empty string if unset."""
+    return getattr(_LOG_COMPONENT_CONTEXT, 'component', '')
+
+
+def resolve_log_component(pathname: str = '', record_component: str = '') -> str:
+    """Resolve effective component used by log handler routing."""
+    if record_component:
+        return record_component
+
+    thread_component = get_log_component()
+    if thread_component:
+        return thread_component
+
+    if '/services/commit_time_service/' in pathname or '\\services\\commit_time_service\\' in pathname:
+        return 'commit_time_service'
+    if 'bisect_producer' in pathname or 'producer_reporter' in pathname:
+        return 'producer'
+    return 'consumer'
+
 class StructuredLogger:
     """log - support，"""
 
@@ -107,23 +143,18 @@ class StructuredLogger:
             '%Y-%m-%d %H:%M:%S'
         )
 
-        # Path-based filter to route log records to the right file
+        # Component-aware filter: explicit record/thread component first, path fallback.
         class _ComponentFilter(logging.Filter):
-            def __init__(self, keywords, include=True):
+            def __init__(self, component_name):
                 super().__init__()
-                self.keywords = keywords
-                self.include = include
+                self.component_name = component_name
 
             def filter(self, record):
                 path = getattr(record, 'pathname', '')
-                match = any(kw in path for kw in self.keywords)
-                return match if self.include else not match
-
-        producer_keywords = ['bisect_producer', 'producer_reporter']
-        commit_time_service_keywords = [
-            '/services/commit_time_service/',
-            '\\services\\commit_time_service\\',
-        ]
+                record_component = getattr(record, 'component', '')
+                effective_component = resolve_log_component(path, record_component)
+                record.component = effective_component
+                return effective_component == self.component_name
 
         def _make_handler(filepath, level, component_filter=None):
             filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -141,12 +172,12 @@ class StructuredLogger:
             return h
 
         # Producer logs
-        producer_filter = _ComponentFilter(producer_keywords, include=True)
+        producer_filter = _ComponentFilter('producer')
         self.logger.addHandler(_make_handler(producer_dir / 'producer.log', logging.INFO, producer_filter))
         self.logger.addHandler(_make_handler(producer_dir / 'error.log', logging.ERROR, producer_filter))
 
         # Commit-time service logs
-        commit_time_service_filter = _ComponentFilter(commit_time_service_keywords, include=True)
+        commit_time_service_filter = _ComponentFilter('commit_time_service')
         self.logger.addHandler(_make_handler(
             commit_time_service_dir / 'commit_time_service.log',
             logging.INFO,
@@ -158,8 +189,8 @@ class StructuredLogger:
             commit_time_service_filter
         ))
 
-        # Consumer logs (everything except producer and commit-time service)
-        consumer_filter = _ComponentFilter(producer_keywords + commit_time_service_keywords, include=False)
+        # Consumer logs (default bucket)
+        consumer_filter = _ComponentFilter('consumer')
         self.logger.addHandler(_make_handler(consumer_dir / 'consumer.log', logging.INFO, consumer_filter))
         self.logger.addHandler(_make_handler(consumer_dir / 'error.log', logging.ERROR, consumer_filter))
 

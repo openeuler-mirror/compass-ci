@@ -20,7 +20,7 @@ from collections import defaultdict
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/core')
-from log_config import logger, StructuredLogger
+from log_config import logger, StructuredLogger, set_log_component
 from errid_intelligence import ErridIntelligence
 from notification_writer import NotificationWriter
 from bisect_utils import (
@@ -739,6 +739,7 @@ class TaskProcessor:
 
     def _run_producer_once(self, force: bool = False):
         """Execute a complete producer task discovery cycle (Error + Performance)"""
+        set_log_component('producer')
         logger.info(f"========== BisectProducer cycle STARTED (force={force}) ==========")
 
         # 1. Execute error type producer
@@ -887,6 +888,7 @@ class TaskProcessor:
 
     def _repo_cleanup_worker(self):
         """Periodically clean up old or residual repository directories"""
+        set_log_component('consumer')
         while self.running:
             try:
                 logger.info("Running periodic repository cleanup...")
@@ -900,6 +902,7 @@ class TaskProcessor:
 
     def bisect_producer(self):
         """Unified Bisect task producer - includes both Error and Performance types"""
+        set_log_component('producer')
         if not Config.BISECT_PRODUCER_ENABLED:
             logger.info("BisectProducer is disabled by config, exiting.")
             return
@@ -947,12 +950,14 @@ class TaskProcessor:
 
     def bisect_consumer(self):
         """Launch BisectConsumer as a PollingWorker."""
+        set_log_component('consumer')
         worker = _ConsumerWorker(self, self.stop_event, base_interval=30,
                                  wake_event=self.consumer_wake_event)
         worker.run()
 
     def success_task_validator_consumer(self):
         """Launch SuccessTaskValidator as a PollingWorker."""
+        set_log_component('consumer')
         validation_interval = self._config.get('validation_interval', 60)
         worker = _ValidatorWorker(
             self.client, self._config, self.repo_manager,
@@ -962,6 +967,7 @@ class TaskProcessor:
 
     def _process_task_async(self, consumer, task):
         """Process single task asynchronously, release lock and clean up repo on completion"""
+        set_log_component('consumer')
         task_id = str(task.get('id'))
         logger.info(f"_process_task_async started for task_id: {task_id}")
         try:
@@ -1697,4 +1703,3 @@ class TaskProcessor:
 
 # Global instance for controllers
 bisect_task_instance = TaskProcessor()
-
