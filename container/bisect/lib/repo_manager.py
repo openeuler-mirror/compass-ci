@@ -2,16 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-SharedRepoManager - 简化版Git仓库管理器
+SharedRepoManager - Gitrepo
 
-管理共享Git仓库，使用--reference优化空间占用。
-每个任务使用独立的临时克隆，任务完成后清理。
+Gitrepo，--reference。
+task，taskcompleted。
 
-重构说明：
-- 移除复杂的池化机制，消除状态同步问题
-- 保留pristine repo缓存和--reference优化
-- 大幅简化锁机制：仅3个锁而非8个
-- 提升鲁棒性：无共享状态，任务间完全隔离
+description：
+- ，status
+- pristine repo--reference
+- ：38
+- ：status，task
 """
 
 import os
@@ -23,7 +23,7 @@ import re
 import traceback
 from contextlib import contextmanager
 
-# 导入日志系统
+# log
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
 from log_config import logger
@@ -32,7 +32,7 @@ from bisect_utils import extract_repo_name_from_url
 
 
 class SharedRepoManager:
-    """管理共享Git仓库，使用临时克隆+pristine缓存的简化架构"""
+    """Gitrepo，+pristine"""
 
     REPO_BASE_DIR = os.path.join(os.environ['WORK_DIR'], "bisect_repos", "workspaces")
     PRISTINE_BASE_DIR = os.path.join(os.environ['WORK_DIR'], "bisect_repos", "pristine")
@@ -47,26 +47,26 @@ class SharedRepoManager:
 
     def __init__(self):
         """
-        初始化仓库管理器 - 简化版本
+        initializerepo - 
 
-        仅保留必要的3个锁：
-        1. pristine_locks - 每个仓库URL的pristine更新锁
-        2. pristine_locks_lock - pristine_locks字典的访问锁
-        3. clone_semaphore - 限制并发克隆数
+        3：
+        1. pristine_locks - repoURLpristine
+        2. pristine_locks_lock - pristine_locksdict
+        3. clone_semaphore - 
         """
         os.makedirs(self.REPO_BASE_DIR, exist_ok=True)
         os.makedirs(self.PRISTINE_BASE_DIR, exist_ok=True)
         logger.info(f"Shared repository workspace root: {self.REPO_BASE_DIR}")
         logger.info(f"Shared repository pristine root: {self.PRISTINE_BASE_DIR}")
 
-        # 启动时清理旧的验证仓库
+        # verifyrepo
         self._cleanup_stale_verify_repos()
 
         # Pristine repo locks (per-repo-URL)
         self.pristine_locks = {}  # repo_url -> threading.Lock
         self.pristine_locks_lock = threading.Lock()  # Lock for pristine_locks dict
         self.pristine_fetch_timestamps = {}  # repo_url -> last_fetch_time
-        self.PRISTINE_FETCH_INTERVAL = Config.GIT_PRISTINE_FETCH_INTERVAL  # 从配置读取（默认1小时）
+        self.PRISTINE_FETCH_INTERVAL = Config.GIT_PRISTINE_FETCH_INTERVAL  # config（default1）
 
         # Clone concurrency control - shared semaphore
         self.clone_semaphore = threading.Semaphore(self.MAX_CONCURRENT_CLONES)
@@ -75,7 +75,7 @@ class SharedRepoManager:
         logger.info("SharedRepoManager initialized (simplified architecture)")
 
     def _cleanup_stale_verify_repos(self):
-        """启动时清理旧的验证仓库 (verify_xxx 和 batch_xxx 目录)"""
+        """verifyrepo (verify_xxx  batch_xxx )"""
         try:
             if not os.path.exists(self.REPO_BASE_DIR):
                 return
@@ -86,29 +86,29 @@ class SharedRepoManager:
                 if not os.path.isdir(item_path):
                     continue
 
-                # 清理 verify_ 前缀和 batch_ 前缀的目录
+                #  verify_  batch_ 
                 if item.startswith('verify_') or item.startswith('batch_'):
                     try:
                         shutil.rmtree(item_path, ignore_errors=True)
                         cleaned_count += 1
-                        logger.debug(f"清理旧验证仓库 | path: {item_path}")
+                        logger.debug(f"verifyrepo | path: {item_path}")
                     except Exception as e:
-                        logger.warning(f"清理验证仓库失败 | path: {item_path} | error: {str(e)}")
+                        logger.warning(f"verifyrepofailed | path: {item_path} | error: {str(e)}")
 
             if cleaned_count > 0:
-                logger.info(f"启动清理完成 | 清理了 {cleaned_count} 个旧验证仓库")
+                logger.info(f"completed |  {cleaned_count} verifyrepo")
 
         except Exception as e:
-            logger.warning(f"启动清理验证仓库失败: {str(e)}")
+            logger.warning(f"verifyrepofailed: {str(e)}")
 
     def get_repo_dir(self, task_id, bad_job_id, repo_url):
         """
-        获取仓库工作目录 - 简化版本
+        getrepo - 
 
-        流程：
-        1. 确保pristine repo存在且最新
-        2. 为任务创建独立的workspace目录
-        3. 使用--reference从pristine克隆到workspace（在pristine锁保护下）
+        ：
+        1. pristine repo
+        2. taskcreateworkspace
+        3. --referencepristineworkspace（pristine）
 
         Returns:
             tuple: (workspace_repo_dir, task_workspace_dir)
@@ -163,20 +163,20 @@ class SharedRepoManager:
 
     def release_repo_dir(self, workspace_repo_dir, repo_name=None, instance_id=None, task_id=None):
         """
-        释放仓库目录 - 简化版本
+        repo - 
 
-        直接删除workspace目录，无需复杂的回收逻辑。
-        --reference机制保证了空间效率。
+        deleteworkspace，。
+        --reference。
 
         Args:
-            workspace_repo_dir: 工作区仓库目录
-            repo_name: 仓库名称（兼容参数，可选）
-            instance_id: 实例ID（兼容参数，可选）
-            task_id: 任务ID（兼容参数，可选）
+            workspace_repo_dir: repo
+            repo_name: repo（，）
+            instance_id: instanceID（，）
+            task_id: taskID（，）
         """
         try:
             if workspace_repo_dir and os.path.exists(workspace_repo_dir):
-                # 尝试从路径推断task_id用于日志
+                # task_idlog
                 if not task_id:
                     try:
                         path_parts = workspace_repo_dir.rstrip('/').split('/')
@@ -196,30 +196,30 @@ class SharedRepoManager:
 
     @staticmethod
     def _is_git_repo(repo_dir):
-        """检测目录是否是有效的 git 仓库 (支持 bare 和普通仓库)
+        """ git repo (support bare repo)
 
         Args:
-            repo_dir: 仓库目录路径
+            repo_dir: repo
 
         Returns:
-            bool: 是否是有效的 git 仓库
+            bool:  git repo
         """
         if not os.path.exists(repo_dir):
             return False
 
-        # 检查是否是 bare 仓库 (直接包含 refs/, objects/ 等)
+        # check bare repo ( refs/, objects/ )
         if os.path.exists(os.path.join(repo_dir, "refs")) and \
            os.path.exists(os.path.join(repo_dir, "objects")):
             return True
 
-        # 检查是否是普通仓库 (包含 .git 目录)
+        # checkrepo ( .git )
         if os.path.exists(os.path.join(repo_dir, ".git")):
             return True
 
         return False
 
     def _ensure_pristine_repo(self, repo_url, pristine_repo_dir):
-        """确保参考仓库存在且是最新状态（原子化操作）"""
+        """repostatus（）"""
         repo_name = extract_repo_name_from_url(repo_url)
         current_time = time.time()
 
@@ -231,10 +231,10 @@ class SharedRepoManager:
                 shutil.rmtree(pristine_repo_dir, ignore_errors=True)
             self._clone_repo_atomic(repo_url, pristine_repo_dir)
             logger.info(f"Pristine repo cloned | repo: {repo_name}")
-            # 更新 fetch 时间戳
+            #  fetch 
             self.pristine_fetch_timestamps[repo_url] = current_time
         else:
-            # 检查是否需要 fetch（避免短时间内重复 fetch）
+            # check fetch（duplicate fetch）
             last_fetch_time = self.pristine_fetch_timestamps.get(repo_url, 0)
             time_since_last_fetch = current_time - last_fetch_time
 
@@ -248,21 +248,21 @@ class SharedRepoManager:
             try:
                 self._fetch_repo(pristine_repo_dir)
                 logger.info(f"Pristine repo updated | repo: {repo_name}")
-                # 更新 fetch 时间戳
+                #  fetch 
                 self.pristine_fetch_timestamps[repo_url] = current_time
             except Exception as e:
                 logger.warning(f"Pristine repo fetch failed, will recreate | repo: {repo_name} | error: {str(e)}")
-                # 如果fetch失败，使用原子化方式重建
+                # fetchfailed，
                 self._recreate_pristine_repo_atomic(repo_url, pristine_repo_dir)
                 logger.info(f"Pristine repo recreated | repo: {repo_name}")
-                # 更新 fetch 时间戳
+                #  fetch 
                 self.pristine_fetch_timestamps[repo_url] = current_time
 
     def _clone_repo_atomic(self, repo_url, repo_dir):
-        """原子化克隆 pristine bare 仓库
+        """ pristine bare repo
 
-        先克隆到临时目录，成功后再原子重命名到目标目录。
-        这确保 repo_dir 要么不存在，要么是完整可用的仓库。
+        ，success。
+         repo_dir not found，repo。
         """
         # Sanitize URL before attempting to clone
         if repo_url.startswith("git+http"):
@@ -271,7 +271,7 @@ class SharedRepoManager:
         repo_name = extract_repo_name_from_url(repo_url)
         temp_dir = f"{repo_dir}.tmp.{int(time.time())}"
 
-        # 使用信号量限制并发克隆数量
+        # count
         logger.info(f"Waiting for clone slot... | repo: {repo_name} | max_concurrent: {self.MAX_CONCURRENT_CLONES}")
         with self.clone_semaphore:
             logger.info(f"Clone slot acquired | repo: {repo_name} | starting atomic pristine clone")
@@ -320,7 +320,7 @@ class SharedRepoManager:
                             shutil.rmtree(temp_dir, ignore_errors=True)
                         raise
 
-                    time.sleep(2 ** i)  # 指数退避：1s, 2s, 4s
+                    time.sleep(2 ** i)  # ：1s, 2s, 4s
 
                 except Exception as e:
                     logger.error(f"Unexpected error during atomic clone | repo: {repo_name} | error: {str(e)}")
@@ -330,33 +330,33 @@ class SharedRepoManager:
                     raise
 
     def _recreate_pristine_repo_atomic(self, repo_url, repo_dir):
-        """原子化重建 pristine 仓库
+        """ pristine repo
 
-        先克隆到新目录，成功后再替换旧目录。
-        这确保在重建过程中，旧仓库仍然可用。
+        ，success。
+        ，repo。
         """
         repo_name = extract_repo_name_from_url(repo_url)
         temp_dir = f"{repo_dir}.new.{int(time.time())}"
         old_dir = f"{repo_dir}.old.{int(time.time())}"
 
         try:
-            # 克隆到临时目录
+            # 
             self._clone_repo_atomic(repo_url, temp_dir)
 
-            # 原子替换：旧目录改名 -> 临时目录改名到目标 -> 删除旧目录
+            # ： ->  -> delete
             if os.path.exists(repo_dir):
                 os.rename(repo_dir, old_dir)
 
             os.rename(temp_dir, repo_dir)
 
-            # 异步清理旧目录
+            # 
             if os.path.exists(old_dir):
                 shutil.rmtree(old_dir, ignore_errors=True)
 
             logger.info(f"Pristine repo recreated atomically | repo: {repo_name}")
 
         except Exception as e:
-            # 恢复旧目录（如果存在）
+            # （）
             if os.path.exists(old_dir) and not os.path.exists(repo_dir):
                 try:
                     os.rename(old_dir, repo_dir)
@@ -364,14 +364,14 @@ class SharedRepoManager:
                 except OSError:
                     pass
 
-            # 清理临时目录
+            # 
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
             raise
 
     def _clone_repo(self, repo_url, repo_dir):
-        """克隆一个 bare 仓库（向后兼容，调用原子化版本）"""
+        """ bare repo（，）"""
         self._clone_repo_atomic(repo_url, repo_dir)
 
     def _fetch_repo(self, repo_dir):
@@ -400,51 +400,51 @@ class SharedRepoManager:
             raise
 
     def _clone_workspace_repo(self, repo_url, pristine_repo_dir, workspace_repo_dir):
-        """使用 --bare --reference 克隆一个 bare 工作区 - 带信号量控制和重试"""
+        """ --bare --reference  bare  - """
         repo_name = extract_repo_name_from_url(repo_url)
 
-        # 使用信号量限制并发克隆数量
+        # count
         logger.info(f"Waiting for clone slot... | repo: {repo_name} | max_concurrent: {self.MAX_CONCURRENT_CLONES}")
         with self.clone_semaphore:
             logger.info(f"Clone slot acquired | repo: {repo_name} | starting bare workspace clone")
 
-            # 重试机制：最多尝试 3 次
+            # ： 3 
             max_retries = 3
             last_error = None
 
             for attempt in range(1, max_retries + 1):
                 try:
                     self._clone_workspace_repo_internal(repo_url, pristine_repo_dir, workspace_repo_dir)
-                    return  # 成功则直接返回
+                    return  # success
                 except Exception as e:
                     last_error = e
                     logger.warning(f"Clone attempt {attempt}/{max_retries} failed | repo: {repo_name} | error: {str(e)}")
 
-                    # 清理失败的目录
+                    # failed
                     if os.path.exists(workspace_repo_dir):
                         shutil.rmtree(workspace_repo_dir, ignore_errors=True)
 
                     if attempt < max_retries:
-                        wait_time = attempt * 2  # 递增等待：2s, 4s
+                        wait_time = attempt * 2  # ：2s, 4s
                         logger.info(f"Waiting {wait_time}s before retry...")
                         time.sleep(wait_time)
 
-            # 所有重试都失败
+            # failed
             logger.error(f"All {max_retries} clone attempts failed | repo: {repo_name}")
             raise last_error
 
     def _clone_workspace_repo_internal(self, repo_url, pristine_repo_dir, workspace_repo_dir):
-        """使用 --bare --reference 克隆 bare 工作区 - 内部实现（单次尝试）
+        """ --bare --reference  bare  - （）
 
-        使用 --bare --reference 引用 bare pristine repo 的优势:
-        - 对象引用 pristine bare repo，减少磁盘占用
-        - 克隆速度快（仅复制差异对象）
-        - 无工作树，大幅减少磁盘 IO
-        - bare 仓库支持 git bisect 操作
+         --bare --reference  bare pristine repo :
+        -  pristine bare repo，
+        - （）
+        - ， IO
+        - bare reposupport git bisect 
         """
         repo_name = extract_repo_name_from_url(repo_url)
 
-        # 克隆前先清理目标目录（防止残留目录导致失败）
+        # （failed）
         if os.path.exists(workspace_repo_dir):
             logger.warning(f"Target directory exists before clone, cleaning up | path: {workspace_repo_dir}")
             shutil.rmtree(workspace_repo_dir)
@@ -453,7 +453,7 @@ class SharedRepoManager:
         logger.info(f"Starting bare clone with --reference: {repo_name} -> {workspace_repo_dir}")
         start_time = time.time()
 
-        # 尝试使用 --reference 克隆
+        #  --reference 
         result = subprocess.run(
             ['git', 'clone', '--bare', '--reference', pristine_repo_dir, repo_url, workspace_repo_dir],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=self.WORKSPACE_CLONE_TIMEOUT
@@ -464,15 +464,15 @@ class SharedRepoManager:
             logger.info(f"Bare clone with --reference successful | repo: {repo_name} | time: {clone_time:.1f}s")
             return
 
-        # --reference 克隆失败，尝试普通克隆
+        # --reference failed，
         stderr_output = result.stderr.decode() if result.stderr else "No stderr"
         logger.warning(f"Bare clone with --reference failed | repo: {repo_name} | stderr: {stderr_output[:300]}")
 
-        # 清理失败的目录
+        # failed
         if os.path.exists(workspace_repo_dir):
             shutil.rmtree(workspace_repo_dir, ignore_errors=True)
 
-        # 回退到普通 bare 克隆 (不使用 reference)
+        #  bare  ( reference)
         logger.info(f"Falling back to standard bare clone: {repo_name}")
         result = subprocess.run(
             ['git', 'clone', '--bare', repo_url, workspace_repo_dir],
@@ -484,11 +484,11 @@ class SharedRepoManager:
             logger.info(f"Standard bare clone successful | repo: {repo_name} | time: {clone_time:.1f}s")
             return
 
-        # 普通克隆也失败
+        # failed
         fallback_stderr = result.stderr.decode() if result.stderr else "No stderr"
         logger.error(f"Standard bare clone also failed | repo: {repo_name} | stderr: {fallback_stderr[:300]}")
 
-        # 清理
+        # 
         if os.path.exists(workspace_repo_dir):
             shutil.rmtree(workspace_repo_dir, ignore_errors=True)
 
@@ -496,17 +496,17 @@ class SharedRepoManager:
 
     def _cleanup_stale_locks(self, repo_dir):
         """
-        清理 Git 仓库中的过期锁文件 (支持 bare 和普通仓库)
+         Git repofile (support bare repo)
 
-        Git 操作被中断时会留下 .lock 文件，阻止后续操作。
+        Git  .lock file，。
         """
-        # 确定 git 目录位置
+        #  git 
         if os.path.exists(os.path.join(repo_dir, '.git')):
-            # 普通仓库
+            # repo
             git_dir = os.path.join(repo_dir, '.git')
         elif os.path.exists(os.path.join(repo_dir, 'refs')) and \
              os.path.exists(os.path.join(repo_dir, 'objects')):
-            # bare 仓库,整个目录就是 git 目录
+            # bare repo, git 
             git_dir = repo_dir
         else:
             logger.warning(f"Not a valid git repository, skipping lock cleanup | path: {repo_dir}")
@@ -549,13 +549,13 @@ class SharedRepoManager:
 
     def _recover_checkout(self, repo_dir):
         """
-        尝试恢复失败的 checkout 操作
+        failed checkout 
 
         Returns:
             bool: True if recovery successful, False otherwise
         """
         max_retries = 3
-        base_delay = 5  # 基础等待时间（秒）
+        base_delay = 5  # （）
 
         # First, clean up any stale locks
         self._cleanup_stale_locks(repo_dir)
@@ -564,19 +564,19 @@ class SharedRepoManager:
             try:
                 logger.info(f"Checkout recovery attempt {attempt + 1}/{max_retries} | path: {repo_dir}")
 
-                # 等待 IO 压力降低
+                #  IO 
                 if attempt > 0:
                     delay = base_delay * (2 ** (attempt - 1))
                     logger.info(f"Waiting {delay}s for IO pressure to decrease...")
                     time.sleep(delay)
 
-                # 尝试 reset + restore 恢复工作树
+                #  reset + restore 
                 subprocess.run(
                     ['git', '-C', repo_dir, 'reset', '--hard', 'HEAD'],
                     check=True, capture_output=True, timeout=300
                 )
 
-                # 验证 checkout 是否成功
+                # verify checkout success
                 result = subprocess.run(
                     ['git', '-C', repo_dir, 'status'],
                     check=True, capture_output=True, timeout=30
@@ -627,12 +627,12 @@ class SharedRepoManager:
 
     def cleanup_old_workspaces(self, max_age_days=7):
         """
-        清理超过指定天数未使用的工作区仓库
+        repo
 
-        简化版：直接删除旧的task workspace目录
+        ：deletetask workspace
 
         Args:
-            max_age_days: 超过多少天的目录会被清理
+            max_age_days: 
 
         Returns:
             tuple: (deleted_count, skipped_count)
@@ -647,14 +647,14 @@ class SharedRepoManager:
             skipped_count = 0
             max_age_seconds = max_age_days * 86400
 
-            # 遍历所有任务目录
+            # task
             for task_id in os.listdir(workspaces_dir):
                 task_dir = os.path.join(workspaces_dir, task_id)
 
                 if not os.path.isdir(task_dir):
                     continue
 
-                # 检查目录最后使用时间
+                # check
                 try:
                     last_used = os.path.getmtime(task_dir)
                     age_seconds = time.time() - last_used
@@ -684,12 +684,12 @@ class SharedRepoManager:
 
     def get_pool_stats(self):
         """
-        获取统计信息 - 简化版
+        getstats - 
 
-        仅返回基本的workspace统计，不再有池化状态
+        workspacestats，status
 
         Returns:
-            dict: 统计信息
+            dict: stats
         """
         stats = {
             'architecture': 'simplified',
@@ -697,7 +697,7 @@ class SharedRepoManager:
             'max_concurrent_clones': self.MAX_CONCURRENT_CLONES
         }
 
-        # 统计当前活跃的workspace数量
+        # statsworkspacecount
         try:
             if os.path.exists(self.REPO_BASE_DIR):
                 active_workspaces = len([d for d in os.listdir(self.REPO_BASE_DIR)
