@@ -40,7 +40,7 @@ class Config:
     # How many hours of historical data to query
     # 25 hours = daily run + 1 hour overlap for fault tolerance
     # TODO: temporarily set to 720 for backlog catch-up, revert to 25 after testing
-    BISECT_PRODUCER_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_QUERY_HOURS', 720))
+    BISECT_PRODUCER_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_QUERY_HOURS', 48))
 
     # Adaptive query window: max hours the producer can expand to when catching up on backlog
     # When a cycle creates new tasks, the next cycle doubles the window (up to this cap)
