@@ -331,9 +331,8 @@ To upgrade the service:
 | Document | Description |
 |----------|-------------|
 | [docs/INDEX.md](docs/INDEX.md) | Document index — links to all docs, configs, issues |
-| [CODEBASE.md](CODEBASE.md) | Code map — every file's path and purpose |
+| [docs/CODEBASE.md](docs/CODEBASE.md) | Code map — every file's path and purpose |
 | [docs/DESIGN.md](docs/DESIGN.md) | Architecture deep dive |
 | [docs/TESTING.md](docs/TESTING.md) | Unit tests and post-deploy validation |
 | [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) | REST API reference |
 | [docs/DATA_BASE.md](docs/DATA_BASE.md) | ManticoreSearch schema |
-

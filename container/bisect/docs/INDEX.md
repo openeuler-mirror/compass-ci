@@ -7,7 +7,7 @@ Quick reference to all documentation, code maps, and issue trackers.
 | Doc | What it covers |
 |-----|---------------|
 | [README.md](../README.md) | Deployment, configuration, API usage, troubleshooting |
-| [CODEBASE.md](../CODEBASE.md) | Code map — every file's path and purpose, architecture diagram |
+| [docs/CODEBASE.md](CODEBASE.md) | Code map — every file's path and purpose, architecture diagram |
 | [docs/DESIGN.md](DESIGN.md) | Architecture deep dive — task lifecycle, verification, repo pooling |
 | [docs/ALGORITHM.md](ALGORITHM.md) | Bisect algorithm specification |
 
@@ -15,7 +15,7 @@ Quick reference to all documentation, code maps, and issue trackers.
 
 | Doc | What it covers |
 |-----|---------------|
-| [CODEBASE.md](../CODEBASE.md) | File inventory with descriptions, data flow diagram |
+| [docs/CODEBASE.md](CODEBASE.md) | File inventory with descriptions, data flow diagram |
 | [docs/TESTING.md](TESTING.md) | How to test — unit tests, post-deploy validation, producer/consumer verification |
 | [docs/API_DOCUMENTATION.md](API_DOCUMENTATION.md) | REST API endpoints and examples |
 | [docs/DATA_BASE.md](DATA_BASE.md) | ManticoreSearch schema — bisect/jobs/regression indexes |

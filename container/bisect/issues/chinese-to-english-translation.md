@@ -2,6 +2,10 @@
 
 ## Status: DONE
 
+## Operational note
+
+For continuation/testing context, see `container/bisect/docs/HANDOFF.md`.
+
 ## Background
 
 The remaining Chinese text in bisect Python modules has been removed or translated

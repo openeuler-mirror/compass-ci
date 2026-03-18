@@ -2,10 +2,14 @@
 
 ## Status: DONE
 
+## Operational note
+
+For continuation/testing context, see `container/bisect/docs/HANDOFF.md`.
+
 ## Background
 
 Many `.py` files have empty or missing module-level docstrings. These should be added
-for consistency with CODEBASE.md descriptions and to help both humans and AI tools
+for consistency with docs/CODEBASE.md descriptions and to help both humans and AI tools
 understand each module's purpose without reading the full code.
 
 ## Resolution summary
@@ -46,7 +50,7 @@ Expected result: `missing module docstrings: 0`
 
 ## Standard format
 
-Each file should have a brief English docstring matching the description in `CODEBASE.md`:
+Each file should have a brief English docstring matching the description in `docs/CODEBASE.md`:
 
 ```python
 #!/usr/bin/env python3
@@ -59,4 +63,4 @@ Clones repo, runs git bisect, parses results, updates task status.
 
 ## Reference
 
-See `container/bisect/CODEBASE.md` for per-file descriptions to use as docstrings.
+See `container/bisect/docs/CODEBASE.md` for per-file descriptions to use as docstrings.
