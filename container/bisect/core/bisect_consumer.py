@@ -431,7 +431,7 @@ class BisectConsumer:
                     }
                     failed_doc = {
                         "bisect_status": "failed",
-                        "bisect_failed_reason": bisect_failed_reason,
+                        "last_error": bisect_failed_reason,
                         "retry_count": retry_count,
                         "updated_at": current_time,
                         "j": merged_j

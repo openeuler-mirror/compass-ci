@@ -84,7 +84,7 @@ class TaskOptimizer:
                 WHERE j.verification_status = 'verified'
                 AND git_url = '{git_url}'
                 AND j.introduced_errids IS NOT NULL
-                ORDER BY verified_at DESC
+                ORDER BY updated_at DESC
                 LIMIT 10
             """
 

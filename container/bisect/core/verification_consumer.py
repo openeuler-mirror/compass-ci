@@ -766,7 +766,6 @@ class VerificationConsumer:
                 "end_time": current_time,
                 "start_time": current_time - 300,  # verify5
                 "last_error": "",  # error
-                "confidence_level": confidence_level,  # 
                 "j": j_field
             }
 

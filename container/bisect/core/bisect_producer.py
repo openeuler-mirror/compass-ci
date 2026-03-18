@@ -591,7 +591,7 @@ class ErrorBisectProducer:
                             "submit_time": int(time.time()),
                             "updated_at": int(time.time()),
                             "first_bad_commit": "",
-                            "bisect_error": "",
+                            "last_error": "",
                         }
                         result = self.client.update("bisect", task_id, reset_doc)
                         if result:
@@ -603,7 +603,7 @@ class ErrorBisectProducer:
                             logger.warning(f"update() returned {result} for task {task_id}, trying SQL UPDATE...")
                             sql = (f"UPDATE bisect SET bisect_status='wait', "
                                    f"submit_time={int(time.time())}, updated_at={int(time.time())}, "
-                                   f"first_bad_commit='', bisect_error='' "
+                                   f"first_bad_commit='', last_error='' "
                                    f"WHERE id={task_id}")
                             sql_result = self.client.sql_raw(sql)
                             if sql_result:
@@ -1713,7 +1713,7 @@ class PerformanceBisectProducer:
                             "submit_time": int(time.time()),
                             "updated_at": int(time.time()),
                             "first_bad_commit": "",
-                            "bisect_error": "",
+                            "last_error": "",
                         }
                         result = self.client.update("bisect", task_id, reset_doc)
                         if result:
@@ -1845,4 +1845,3 @@ class PerformanceBisectProducer:
             self.reporter.write_report(stats, duration)
         except Exception as e:
             logger.debug(f"Failed to save statistics report: {str(e)}")
-
