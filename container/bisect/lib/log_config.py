@@ -85,6 +85,7 @@ class StructuredLogger:
         Directory structure:
           logs/consumer/   — consumer, validator, task_processor
           logs/producer/   — producer cycles, reporter
+          logs/commit_time_service/ — commit-time HTTP service logs
           logs/performance/ — performance metrics
         API and commit-service logs are managed by supervisord.
         """
@@ -93,8 +94,10 @@ class StructuredLogger:
         # Create component subdirectories
         consumer_dir = log_path / 'consumer'
         producer_dir = log_path / 'producer'
+        commit_time_service_dir = log_path / 'commit_time_service'
         consumer_dir.mkdir(parents=True, exist_ok=True)
         producer_dir.mkdir(parents=True, exist_ok=True)
+        commit_time_service_dir.mkdir(parents=True, exist_ok=True)
 
         # Clear old handlers
         self.logger.handlers = []
@@ -117,6 +120,10 @@ class StructuredLogger:
                 return match if self.include else not match
 
         producer_keywords = ['bisect_producer', 'producer_reporter']
+        commit_time_service_keywords = [
+            '/services/commit_time_service/',
+            '\\services\\commit_time_service\\',
+        ]
 
         def _make_handler(filepath, level, component_filter=None):
             filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -138,8 +145,21 @@ class StructuredLogger:
         self.logger.addHandler(_make_handler(producer_dir / 'producer.log', logging.INFO, producer_filter))
         self.logger.addHandler(_make_handler(producer_dir / 'error.log', logging.ERROR, producer_filter))
 
-        # Consumer logs (everything except producer)
-        consumer_filter = _ComponentFilter(producer_keywords, include=False)
+        # Commit-time service logs
+        commit_time_service_filter = _ComponentFilter(commit_time_service_keywords, include=True)
+        self.logger.addHandler(_make_handler(
+            commit_time_service_dir / 'commit_time_service.log',
+            logging.INFO,
+            commit_time_service_filter
+        ))
+        self.logger.addHandler(_make_handler(
+            commit_time_service_dir / 'error.log',
+            logging.ERROR,
+            commit_time_service_filter
+        ))
+
+        # Consumer logs (everything except producer and commit-time service)
+        consumer_filter = _ComponentFilter(producer_keywords + commit_time_service_keywords, include=False)
         self.logger.addHandler(_make_handler(consumer_dir / 'consumer.log', logging.INFO, consumer_filter))
         self.logger.addHandler(_make_handler(consumer_dir / 'error.log', logging.ERROR, consumer_filter))
 

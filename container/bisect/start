@@ -43,8 +43,18 @@ KERNEL_CI_DIR='/srv/log/kernel_ci'
 AUTO_TEST_REPOS_DIR='/srv/git/auto_test_repos'
 SUPERVISORD_CONF = File.join(File.dirname(__FILE__), 'config/supervisord.conf')
 
-# 确保日志目录存在
-FileUtils.mkdir_p("#{HOST_RESULT_DIR}/bisect/logs")
+# Ensure log directories exist before supervisord starts.
+# This is required because HOST_RESULT_DIR is bind-mounted and may be empty.
+%w[
+  logs
+  logs/consumer
+  logs/producer
+  logs/api
+  logs/commit-service
+  logs/commit_time_service
+].each do |subdir|
+  FileUtils.mkdir_p("#{HOST_RESULT_DIR}/bisect/#{subdir}")
+end
 
 docker_rm 'bisect'
 
