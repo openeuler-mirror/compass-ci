@@ -46,6 +46,47 @@ docker logs -f bisect
 
 **Note**: The `container/bisect/start` script contains various parameters (like database hosts, ports, etc.). You can modify this file directly to adjust the configuration for your environment.
 
+### Development Mode (bind-mount local source)
+
+Development mode runs the container with local source directories mounted into the container so code changes are visible immediately after restart.
+
+Use one of the following methods:
+
+```bash
+# Method 1: one-shot environment variables for this command
+BISECT_DEV_MODE=true \
+HOST_CCI_SRC=/home/bisect/compass-ci \
+HOST_LKP_SRC=/home/bisect/lkp-tests \
+./start
+```
+
+```bash
+# Method 2: export variables first
+export BISECT_DEV_MODE=true
+export HOST_CCI_SRC=/home/bisect/compass-ci
+export HOST_LKP_SRC=/home/bisect/lkp-tests
+./start
+```
+
+Important notes:
+
+- `HOST_CCI_SRC` must point to the Compass-CI repo root that contains `container/bisect/app/__init__.py`.
+- `HOST_LKP_SRC` must point to the lkp-tests repo root.
+- In development mode, both mounts are read-write:
+  - `HOST_CCI_SRC -> /c/compass-ci`
+  - `HOST_LKP_SRC -> /c/lkp-tests`
+- If variables are not exported (or not passed inline), `start` falls back to default paths and may mount an empty directory.
+
+Quick verification:
+
+```bash
+docker inspect bisect --format '{{range .Mounts}}{{println .Destination " RW=" .RW " Source=" .Source}}{{end}}' | grep -E '/c/compass-ci|/c/lkp-tests'
+docker exec -it bisect ls -la /c/compass-ci/container/bisect/app/__init__.py
+docker exec -it bisect ls -la /c/compass-ci/container/bisect/services/commit_time_service/server.py
+```
+
+If you see `Error: Could not import 'app'`, check that `/c/compass-ci` inside the container is not empty and points to the correct host path.
+
 ## 3. Configuration
 
 The service is configured via environment variables, which are set in the `container/bisect/start` script.
