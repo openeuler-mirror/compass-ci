@@ -97,8 +97,8 @@ if DEV_MODE
   puts "  LKP_SRC: #{HOST_LKP_SRC} -> #{DEFAULT_LKP}"
 
   cmd += %W[
-    -v #{HOST_CCI_SRC}:#{DEFAULT_CCI}:ro
-    -v #{HOST_LKP_SRC}:#{DEFAULT_LKP}:ro
+    -v #{HOST_CCI_SRC}:#{DEFAULT_CCI}
+    -v #{HOST_LKP_SRC}:#{DEFAULT_LKP}
   ]
 end
 
