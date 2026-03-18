@@ -127,7 +127,7 @@ Returns the current status of the automatic task producer (enabled or disabled).
 
 The Bisect service runs as a single Docker container with multiple internal processes:
 
-- **Flask API Server**: Port 5000 (internal), handles HTTP requests
+- **Flask API Server**: Port 9999 (internal), handles HTTP requests
 - **BisectConsumer Thread**: Processes standard bisect tasks
 - **VerificationConsumer Thread**: Handles intelligent task verification
 - **Producer Thread**: Discovers new tasks (if enabled)
@@ -165,12 +165,27 @@ The container requires several volume mounts for proper operation:
 
 ### Log Files
 
-All logs are written to `/srv/log/bisect/` with the following structure:
+Logs are organized by component in `/result/bisect/logs/`:
 
-- `bisect.log`: Main application log
-- `error.log`: Error-level messages only
-- `producer.log`: Producer-specific activities
-- `consumer.log`: Consumer processing details
+```
+logs/
+├── consumer/       # Consumer, validator, task_processor
+│   ├── consumer.log
+│   └── error.log
+├── producer/       # Producer cycles and reports
+│   ├── producer.log
+│   └── error.log
+├── api/            # Flask REST API
+│   ├── api.log
+│   └── error.log
+├── commit-service/ # Commit time service
+│   ├── service.log
+│   └── error.log
+└── performance/    # Performance metrics
+    └── performance.log
+```
+
+Daily rotation appends `.YYYY-MM-DD` suffix. Old logs auto-cleaned after 30 days.
 
 ### Health Check Endpoint
 
@@ -311,11 +326,14 @@ To upgrade the service:
 2. Stop current container: `docker stop bisect`
 3. Start new container: `ruby container/bisect/start`
 
-## 10. Support
+## 10. Further Reading
 
-For issues or questions:
-
-1. Check logs in `/srv/log/bisect/`
-2. Review DESIGN.md for architecture details
-3. Submit issues to the project repository
+| Document | Description |
+|----------|-------------|
+| [docs/INDEX.md](docs/INDEX.md) | Document index — links to all docs, configs, issues |
+| [CODEBASE.md](CODEBASE.md) | Code map — every file's path and purpose |
+| [docs/DESIGN.md](docs/DESIGN.md) | Architecture deep dive |
+| [docs/TESTING.md](docs/TESTING.md) | Unit tests and post-deploy validation |
+| [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) | REST API reference |
+| [docs/DATA_BASE.md](docs/DATA_BASE.md) | ManticoreSearch schema |
 
