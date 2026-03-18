@@ -10,22 +10,22 @@ import sys
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 
-# 设置环境变量
+# 
 os.environ['CCI_SRC'] = '/srv/cci'
 os.environ['WORK_DIR'] = '/tmp'
 os.environ['LKP_SRC'] = '/srv/lkp'
 
-# 添加项目路径
+# 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from commit_query import CommitTimeQuery
 
 
 class TestCommitTimeQuery(unittest.TestCase):
-    """CommitTimeQuery 单元测试"""
+    """CommitTimeQuery test"""
 
     def setUp(self):
-        """测试前置"""
+        """test"""
         # Mock SharedRepoManager
         self.mock_repo_manager = Mock()
         self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/test_pristine'
@@ -37,11 +37,11 @@ class TestCommitTimeQuery(unittest.TestCase):
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_timestamp_success(self, mock_exists, mock_run):
-        """测试成功获取 commit 时间戳"""
-        # Mock 仓库存在
+        """testsuccessget commit """
+        # Mock repo
         mock_exists.return_value = True
 
-        # Mock git log 命令成功
+        # Mock git log success
         mock_result = Mock()
         mock_result.returncode = 0
         mock_result.stdout = '1700000000\n'
@@ -58,11 +58,11 @@ class TestCommitTimeQuery(unittest.TestCase):
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_timestamp_not_found(self, mock_exists, mock_run):
-        """测试 commit 不存在的情况"""
-        # Mock 仓库存在
+        """test commit not found"""
+        # Mock repo
         mock_exists.return_value = True
 
-        # Mock git log 失败（commit 不存在）
+        # Mock git log failed（commit not found）
         mock_result = Mock()
         mock_result.returncode = 128
         mock_result.stderr = 'fatal: bad revision'
@@ -78,11 +78,11 @@ class TestCommitTimeQuery(unittest.TestCase):
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_info_success(self, mock_exists, mock_run):
-        """测试成功获取 commit 详细信息"""
-        # Mock 仓库存在
+        """testsuccessget commit """
+        # Mock repo
         mock_exists.return_value = True
 
-        # Mock git log 命令成功
+        # Mock git log success
         mock_result = Mock()
         mock_result.returncode = 0
         mock_result.stdout = 'abc123def456|1700000000|Zhang San|fix: some bug\n'
@@ -104,11 +104,11 @@ class TestCommitTimeQuery(unittest.TestCase):
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_age_days(self, mock_exists, mock_run):
-        """测试获取 commit 年龄"""
-        # Mock 仓库存在
+        """testget commit """
+        # Mock repo
         mock_exists.return_value = True
 
-        # Mock git log 返回 30 天前的时间戳
+        # Mock git log  30 
         import time
         timestamp_30_days_ago = int(time.time()) - (30 * 86400)
 
@@ -123,17 +123,17 @@ class TestCommitTimeQuery(unittest.TestCase):
         )
 
         self.assertIsNotNone(age_days)
-        self.assertGreaterEqual(age_days, 29)  # 允许一些误差
+        self.assertGreaterEqual(age_days, 29)  # 
         self.assertLessEqual(age_days, 31)
 
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_is_commit_too_old(self, mock_exists, mock_run):
-        """测试检查 commit 是否过旧"""
-        # Mock 仓库存在
+        """testcheck commit """
+        # Mock repo
         mock_exists.return_value = True
 
-        # 测试 1: 400 天前的 commit（超过 365 天）
+        # test 1: 400  commit（ 365 ）
         import time
         timestamp_400_days_ago = int(time.time()) - (400 * 86400)
 
@@ -151,7 +151,7 @@ class TestCommitTimeQuery(unittest.TestCase):
         self.assertTrue(is_old)
         self.assertGreaterEqual(age, 399)
 
-        # 测试 2: 30 天前的 commit（未超过 365 天）
+        # test 2: 30  commit（ 365 ）
         timestamp_30_days_ago = int(time.time()) - (30 * 86400)
 
         mock_result.stdout = f'{timestamp_30_days_ago}\n'

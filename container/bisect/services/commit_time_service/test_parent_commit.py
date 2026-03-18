@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-Parent Commit API 测试用例
+Parent Commit API test
 
-TDD: 先写测试，再实现功能
+TDD: test，
 """
 
 import unittest
@@ -13,38 +13,38 @@ import os
 import sys
 from unittest.mock import Mock, patch, MagicMock
 
-# 添加项目路径
+# 
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.environ.get('CCI_SRC', '/srv/cci'), 'container/bisect/lib'))
 
 
 class TestParentCommitQuery(unittest.TestCase):
-    """测试 CommitTimeQuery.get_parent_commit() 方法"""
+    """test CommitTimeQuery.get_parent_commit() """
 
     def setUp(self):
-        """测试前准备"""
-        # 使用 mock 避免实际 git 操作
+        """test"""
+        #  mock  git 
         self.mock_repo_manager = Mock()
-        # 设置 PRISTINE_BASE_DIR 为字符串，避免 os.path.join 失败
+        #  PRISTINE_BASE_DIR ， os.path.join failed
         self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/pristine_repos'
-        # Mock _is_git_repo 静态方法
+        # Mock _is_git_repo 
         self.patcher = patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
         self.mock_is_git_repo = self.patcher.start()
 
     def tearDown(self):
-        """测试后清理"""
+        """test"""
         self.patcher.stop()
 
-    # ==================== 正常情况 ====================
+    # ====================  ====================
 
     def test_get_parent_of_normal_commit(self):
-        """测试：查询普通 commit 的 parent"""
-        # Given: 一个有 parent 的普通 commit
+        """test：query commit  parent"""
+        # Given:  parent  commit
         git_url = "git://example.com/linux.git"
         commit = "abc123def456"
         expected_parent = "parent789xyz"
 
-        # When: 调用 get_parent_commit
+        # When:  get_parent_commit
         from commit_query import CommitTimeQuery
         query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
 
@@ -56,17 +56,17 @@ class TestParentCommitQuery(unittest.TestCase):
             )
             result = query.get_parent_commit(git_url, commit)
 
-        # Then: 返回正确的 parent commit
+        # Then:  parent commit
         self.assertIsNotNone(result)
         self.assertEqual(result['parent'], expected_parent)
         self.assertEqual(result['commit'], commit)
         self.assertEqual(result['parent_count'], 1)
 
     def test_get_parent_returns_full_hash(self):
-        """测试：返回完整的 40 字符 hash"""
+        """test： 40  hash"""
         git_url = "git://example.com/linux.git"
-        commit = "abc123"  # 短 hash
-        full_parent = "a" * 40  # 完整 hash
+        commit = "abc123"  #  hash
+        full_parent = "a" * 40  #  hash
 
         from commit_query import CommitTimeQuery
         query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
@@ -81,10 +81,10 @@ class TestParentCommitQuery(unittest.TestCase):
 
         self.assertEqual(len(result['parent']), 40)
 
-    # ==================== 边界情况 ====================
+    # ====================  ====================
 
     def test_get_parent_of_root_commit(self):
-        """测试：查询 root commit（无 parent）"""
+        """test：query root commit（ parent）"""
         git_url = "git://example.com/linux.git"
         root_commit = "first_commit_hash"
 
@@ -92,29 +92,29 @@ class TestParentCommitQuery(unittest.TestCase):
         query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
 
         with patch('subprocess.run') as mock_run:
-            # 实际代码调用顺序：
-            # 1. commit^@ 失败
-            # 2. commit^1 失败
+            # ：
+            # 1. commit^@ failed
+            # 2. commit^1 failed
             # (fetch)
-            # 3. commit^1 再次失败
-            # 4. commit 本身检查成功（root commit 存在）
+            # 3. commit^1 failed
+            # 4. commit checksuccess（root commit ）
             mock_run.side_effect = [
                 Mock(returncode=128, stdout="", stderr="fatal: no such object"),  # ^@
                 Mock(returncode=128, stdout="", stderr="fatal: no such object"),  # ^1
                 Mock(returncode=128, stdout="", stderr="fatal: no such object"),  # ^1 retry
-                Mock(returncode=0, stdout=root_commit, stderr=""),  # commit 本身存在
+                Mock(returncode=0, stdout=root_commit, stderr=""),  # commit 
             ]
             with patch.object(query, '_fetch_pristine_repo'):
                 result = query.get_parent_commit(git_url, root_commit)
 
-        # 应该返回明确的 "no_parent" 状态
+        #  "no_parent" status
         self.assertIsNotNone(result)
         self.assertEqual(result.get('parent'), None)
         self.assertEqual(result.get('parent_count'), 0)
         self.assertEqual(result.get('reason'), 'root_commit')
 
     def test_get_parent_of_merge_commit(self):
-        """测试：查询 merge commit（多个 parent）"""
+        """test：query merge commit（ parent）"""
         git_url = "git://example.com/linux.git"
         merge_commit = "merge_commit_hash"
         parent1 = "parent1_hash"
@@ -124,7 +124,7 @@ class TestParentCommitQuery(unittest.TestCase):
         query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
 
         with patch('subprocess.run') as mock_run:
-            # 实际代码只调用一次 commit^@，返回所有父提交（换行分隔）
+            #  commit^@，submit（）
             mock_run.return_value = Mock(
                 returncode=0,
                 stdout=f"{parent1}\n{parent2}\n",
@@ -132,12 +132,12 @@ class TestParentCommitQuery(unittest.TestCase):
             )
             result = query.get_parent_commit(git_url, merge_commit)
 
-        # 返回第一个 parent，并标明是 merge commit
+        #  parent， merge commit
         self.assertEqual(result['parent'], parent1)
         self.assertEqual(result['parent_count'], 2)
 
     def test_commit_not_found(self):
-        """测试：commit 不存在"""
+        """test：commit not found"""
         git_url = "git://example.com/linux.git"
         nonexistent_commit = "nonexistent123"
 
@@ -150,16 +150,16 @@ class TestParentCommitQuery(unittest.TestCase):
                 stdout="",
                 stderr="fatal: bad object nonexistent123"
             )
-            # 模拟 fetch 后仍然找不到
+            #  fetch 
             with patch.object(query, '_fetch_pristine_repo'):
                 result = query.get_parent_commit(git_url, nonexistent_commit)
 
         self.assertIsNone(result)
 
-    # ==================== 错误处理 ====================
+    # ==================== error ====================
 
     def test_invalid_git_url(self):
-        """测试：无效的 git_url"""
+        """test： git_url"""
         invalid_url = "not_a_valid_url"
         commit = "abc123"
 
@@ -171,7 +171,7 @@ class TestParentCommitQuery(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_empty_commit_hash(self):
-        """测试：空的 commit hash"""
+        """test： commit hash"""
         git_url = "git://example.com/linux.git"
         empty_commit = ""
 
@@ -183,7 +183,7 @@ class TestParentCommitQuery(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_timeout_handling(self):
-        """测试：git 命令超时"""
+        """test：git timeout"""
         git_url = "git://example.com/linux.git"
         commit = "abc123"
 
@@ -199,10 +199,10 @@ class TestParentCommitQuery(unittest.TestCase):
 
 
 class TestParentCommitService(unittest.TestCase):
-    """测试 CommitTimeService 的 parent commit 功能"""
+    """test CommitTimeService  parent commit """
 
     def test_service_get_parent_commit_success(self):
-        """测试：服务层成功获取 parent commit"""
+        """test：servicesuccessget parent commit"""
         from server import CommitTimeService
 
         service = CommitTimeService()
@@ -223,7 +223,7 @@ class TestParentCommitService(unittest.TestCase):
         self.assertEqual(result['data']['parent'], 'def456')
 
     def test_service_caches_parent_commit(self):
-        """测试：服务层缓存 parent commit 结果"""
+        """test：service parent commit """
         from server import CommitTimeService
 
         service = CommitTimeService()
@@ -237,22 +237,22 @@ class TestParentCommitService(unittest.TestCase):
                 'parent_count': 1
             }
 
-            # 第一次调用
+            # 
             result1 = service.get_parent_commit(git_url, commit)
-            # 第二次调用（应该走缓存）
+            # （）
             result2 = service.get_parent_commit(git_url, commit)
 
-        # query 只应该被调用一次
+        # query 
         self.assertEqual(mock_get.call_count, 1)
-        # 第二次应该标记为 cached
+        #  cached
         self.assertTrue(result2.get('cached', False))
 
 
 class TestParentCommitClient(unittest.TestCase):
-    """测试 CommitTimeClient 的 parent commit 功能"""
+    """test CommitTimeClient  parent commit """
 
     def test_client_get_parent_commit(self):
-        """测试：客户端调用 get_parent_commit"""
+        """test： get_parent_commit"""
         from client import CommitTimeClient
 
         client = CommitTimeClient(service_url="http://localhost:8765")
@@ -278,7 +278,7 @@ class TestParentCommitClient(unittest.TestCase):
         self.assertEqual(parent, 'def456')
 
     def test_client_handles_root_commit(self):
-        """测试：客户端处理 root commit"""
+        """test： root commit"""
         from client import CommitTimeClient
 
         client = CommitTimeClient(service_url="http://localhost:8765")
@@ -303,11 +303,11 @@ class TestParentCommitClient(unittest.TestCase):
                 commit="root123"
             )
 
-        # root commit 没有 parent，返回 None
+        # root commit  parent， None
         self.assertIsNone(parent)
 
     def test_client_handles_service_error(self):
-        """测试：客户端处理服务错误"""
+        """test：serviceerror"""
         from client import CommitTimeClient
         import urllib.error
 
@@ -321,15 +321,15 @@ class TestParentCommitClient(unittest.TestCase):
                 commit="abc123"
             )
 
-        # 服务不可用时返回 None
+        # service None
         self.assertIsNone(parent)
 
 
 class TestConcurrency(unittest.TestCase):
-    """并发测试：验证多个请求同时查询"""
+    """test：verifyquery"""
 
     def test_concurrent_same_commit(self):
-        """测试：多个请求同时查询同一个 commit"""
+        """test：query commit"""
         import concurrent.futures
         import threading
 
@@ -345,7 +345,7 @@ class TestConcurrency(unittest.TestCase):
             nonlocal call_count
             with lock:
                 call_count += 1
-            # 模拟耗时操作
+            # 
             import time
             time.sleep(0.1)
             return {
@@ -355,7 +355,7 @@ class TestConcurrency(unittest.TestCase):
             }
 
         with patch.object(service.query, 'get_parent_commit', side_effect=mock_get_parent):
-            # 并发 10 个请求
+            #  10 
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
                 futures = [
                     executor.submit(service.get_parent_commit, git_url, commit)
@@ -363,17 +363,17 @@ class TestConcurrency(unittest.TestCase):
                 ]
                 results = [f.result() for f in concurrent.futures.as_completed(futures)]
 
-        # 所有请求都应该成功
+        # success
         for result in results:
             self.assertEqual(result['status'], 'success')
             self.assertEqual(result['data']['parent'], 'def456')
 
-        # 由于缓存，实际查询次数应该远小于 10
-        # 注意：第一个请求会触发查询，后续请求可能命中缓存
+        # ，query 10
+        # ：query，
         self.assertLessEqual(call_count, 10)
 
     def test_concurrent_different_commits(self):
-        """测试：多个请求同时查询不同 commit"""
+        """test：query commit"""
         import concurrent.futures
 
         from server import CommitTimeService
@@ -400,7 +400,7 @@ class TestConcurrency(unittest.TestCase):
                     commit = futures[future]
                     results[commit] = future.result()
 
-        # 每个 commit 应该返回对应的 parent
+        #  commit  parent
         for commit in commits:
             self.assertEqual(results[commit]['status'], 'success')
             self.assertEqual(
@@ -409,7 +409,7 @@ class TestConcurrency(unittest.TestCase):
             )
 
     def test_concurrent_different_repos(self):
-        """测试：多个请求同时查询不同仓库"""
+        """test：queryrepo"""
         import concurrent.futures
 
         from server import CommitTimeService
@@ -441,7 +441,7 @@ class TestConcurrency(unittest.TestCase):
                     repo = futures[future]
                     results[repo] = future.result()
 
-        # 每个仓库应该返回对应的 parent
+        # repo parent
         for repo in repos:
             self.assertEqual(results[repo]['status'], 'success')
             repo_name = repo.split('/')[-1].replace('.git', '')
@@ -452,9 +452,9 @@ class TestConcurrency(unittest.TestCase):
 
 
 class TestDifferentRepos(unittest.TestCase):
-    """不同仓库测试：验证支持多种内核仓库"""
+    """repotest：verifysupportrepo"""
 
-    # 测试仓库配置
+    # testrepoconfig
     TEST_REPOS = {
         'linux': {
             'url': 'git://172.168.131.113:9418/new-upstream/l/linux/linux.git',
@@ -475,18 +475,18 @@ class TestDifferentRepos(unittest.TestCase):
     }
 
     def setUp(self):
-        """测试前准备"""
+        """test"""
         self.mock_repo_manager = Mock()
         self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/pristine_repos'
         self.patcher = patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
         self.mock_is_git_repo = self.patcher.start()
 
     def tearDown(self):
-        """测试后清理"""
+        """test"""
         self.patcher.stop()
 
     def test_extract_repo_name_linux(self):
-        """测试：从 linux 仓库 URL 提取仓库名"""
+        """test： linux repo URL repo"""
         from bisect_utils import extract_repo_name_from_url
 
         url = self.TEST_REPOS['linux']['url']
@@ -495,7 +495,7 @@ class TestDifferentRepos(unittest.TestCase):
         self.assertEqual(repo_name, 'linux')
 
     def test_extract_repo_name_linux_next(self):
-        """测试：从 linux-next 仓库 URL 提取仓库名"""
+        """test： linux-next repo URL repo"""
         from bisect_utils import extract_repo_name_from_url
 
         url = self.TEST_REPOS['linux-next']['url']
@@ -504,7 +504,7 @@ class TestDifferentRepos(unittest.TestCase):
         self.assertEqual(repo_name, 'linux-next')
 
     def test_extract_repo_name_openeuler(self):
-        """测试：从 openeuler-kernel 仓库 URL 提取仓库名"""
+        """test： openeuler-kernel repo URL repo"""
         from bisect_utils import extract_repo_name_from_url
 
         url = self.TEST_REPOS['openeuler-kernel']['url']
@@ -513,7 +513,7 @@ class TestDifferentRepos(unittest.TestCase):
         self.assertEqual(repo_name, 'openeuler-kernel')
 
     def test_query_linux_repo(self):
-        """测试：查询 linux 主仓库"""
+        """test：query linux repo"""
         from commit_query import CommitTimeQuery
 
         query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
@@ -532,7 +532,7 @@ class TestDifferentRepos(unittest.TestCase):
         self.assertEqual(result['parent'], 'parent_hash')
 
     def test_query_openeuler_kernel_repo(self):
-        """测试：查询 openeuler-kernel 仓库"""
+        """test：query openeuler-kernel repo"""
         from commit_query import CommitTimeQuery
 
         query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
@@ -551,13 +551,13 @@ class TestDifferentRepos(unittest.TestCase):
         self.assertEqual(result['parent'], 'oe_parent_hash')
 
     def test_cache_isolates_different_repos(self):
-        """测试：缓存正确隔离不同仓库的结果"""
+        """test：repo"""
         from server import CommitTimeService
 
         service = CommitTimeService()
-        commit = "abc123"  # 相同的 commit hash
+        commit = "abc123"  #  commit hash
 
-        # 在不同仓库中，相同 commit hash 可能有不同的 parent
+        # repo， commit hash  parent
         linux_url = self.TEST_REPOS['linux']['url']
         oe_url = self.TEST_REPOS['openeuler-kernel']['url']
 
@@ -573,37 +573,37 @@ class TestDifferentRepos(unittest.TestCase):
             }
 
         with patch.object(service.query, 'get_parent_commit', side_effect=mock_get_parent):
-            # 查询 linux 仓库
+            # query linux repo
             result1 = service.get_parent_commit(linux_url, commit)
-            # 查询 openeuler 仓库（不应该命中缓存）
+            # query openeuler repo（）
             result2 = service.get_parent_commit(oe_url, commit)
-            # 再次查询 linux 仓库（应该命中缓存）
+            # query linux repo（）
             result3 = service.get_parent_commit(linux_url, commit)
 
-        # linux 和 openeuler 应该返回不同的 parent
+        # linux  openeuler  parent
         self.assertEqual(result1['data']['parent'], 'parent_in_linux')
         self.assertEqual(result2['data']['parent'], 'parent_in_openeuler-kernel')
 
-        # 第三次查询应该命中缓存
+        # query
         self.assertTrue(result3.get('cached', False))
 
-        # 实际查询只应该有 2 次（linux 和 openeuler 各一次）
+        # query 2 （linux  openeuler ）
         self.assertEqual(len(call_log), 2)
 
     def test_handles_different_url_formats(self):
-        """测试：处理不同格式的 URL"""
+        """test： URL"""
         from commit_query import CommitTimeQuery
 
         query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
 
         url_formats = [
-            # git:// 协议
+            # git:// 
             "git://172.168.131.113:9418/new-upstream/l/linux/linux.git",
-            # https:// 协议
+            # https:// 
             "https://gitee.com/openeuler/kernel.git",
-            # http:// 协议
+            # http:// 
             "http://mirrors.example.com/linux.git",
-            # 清华镜像
+            # 
             "https://mirrors.tuna.tsinghua.edu.cn/git/linux.git",
         ]
 
@@ -614,17 +614,17 @@ class TestDifferentRepos(unittest.TestCase):
                     stdout="parent_hash\n",
                     stderr=""
                 )
-                # 不应该抛出异常
+                # exception
                 result = query.get_parent_commit(url, "abc123")
                 self.assertIsNotNone(result, f"Failed for URL: {url}")
 
 
 class TestIntegration(unittest.TestCase):
-    """集成测试：验证完整流程"""
+    """test：verify"""
 
-    @unittest.skip("需要实际的 git 仓库，跳过")
+    @unittest.skip(" git repo，skip")
     def test_real_linux_repo(self):
-        """测试：使用真实 linux 仓库"""
+        """test： linux repo"""
         from commit_query import CommitTimeQuery
 
         query = CommitTimeQuery()
@@ -638,9 +638,9 @@ class TestIntegration(unittest.TestCase):
         self.assertIsNotNone(result['parent'])
         self.assertEqual(result['parent_count'], 1)
 
-    @unittest.skip("需要实际的 git 仓库，跳过")
+    @unittest.skip(" git repo，skip")
     def test_real_openeuler_repo(self):
-        """测试：使用真实 openeuler-kernel 仓库"""
+        """test： openeuler-kernel repo"""
         from commit_query import CommitTimeQuery
 
         query = CommitTimeQuery()
@@ -653,9 +653,9 @@ class TestIntegration(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIsNotNone(result['parent'])
 
-    @unittest.skip("需要实际的 git 仓库，跳过")
+    @unittest.skip(" git repo，skip")
     def test_real_concurrent_queries(self):
-        """测试：真实环境并发查询"""
+        """test：query"""
         import concurrent.futures
         from commit_query import CommitTimeQuery
 
@@ -680,5 +680,5 @@ class TestIntegration(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # 运行测试
+    # test
     unittest.main(verbosity=2)

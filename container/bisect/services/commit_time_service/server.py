@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-Commit Time Service - HTTP 服务
+Commit Time Service - HTTP service
 
-提供 REST API 查询 Git commit 时间信息
+ REST API query Git commit 
 """
 
 import os
@@ -17,7 +17,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from typing import Dict, Any
 
-# 添加项目路径
+# 
 lib_path = os.path.join(os.environ.get('CCI_SRC', '/srv/cci'), 'container/bisect/lib')
 if lib_path not in sys.path:
     sys.path.insert(0, lib_path)
@@ -32,15 +32,15 @@ from log_config import logger
 
 
 class CommitTimeService:
-    """Commit 时间查询服务"""
+    """Commit queryservice"""
 
     def __init__(self, cache_size: int = 10000, cache_ttl: int = 86400):
         """
-        初始化服务
+        initializeservice
 
         Args:
-            cache_size: 缓存大小
-            cache_ttl: 缓存过期时间（秒）
+            cache_size: 
+            cache_ttl: （）
         """
         self.query = CommitTimeQuery()
         self.cache = CommitTimeCache(max_size=cache_size, ttl=cache_ttl)
@@ -50,18 +50,18 @@ class CommitTimeService:
 
     def get_commit_time(self, git_url: str, commit_hash: str) -> Dict[str, Any]:
         """
-        获取 commit 时间信息
+        get commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
 
         Returns:
-            查询结果字典
+            querydict
         """
         self.request_count += 1
 
-        # 先查缓存
+        # 
         cached_info = self.cache.get_info(git_url, commit_hash)
         if cached_info:
             self.cache_hit_count += 1
@@ -71,10 +71,10 @@ class CommitTimeService:
                 'data': cached_info
             }
 
-        # 缓存未命中，查询 git
+        # ，query git
         info = self.query.get_commit_info(git_url, commit_hash)
         if info:
-            # 存入缓存
+            # 
             self.cache.set_info(git_url, commit_hash, info)
             return {
                 'status': 'success',
@@ -91,15 +91,15 @@ class CommitTimeService:
 
     def check_commit_age(self, git_url: str, commit_hash: str, max_age_days: int = 365) -> Dict[str, Any]:
         """
-        检查 commit 是否超过指定天数
+        check commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
-            max_age_days: 最大天数
+            max_age_days: 
 
         Returns:
-            检查结果字典
+            checkdict
         """
         result = self.get_commit_time(git_url, commit_hash)
 
@@ -123,15 +123,15 @@ class CommitTimeService:
     def batch_check_commits(self, items: list, max_age_days: int = 365,
                              min_kernel_version: str = None) -> Dict[str, Any]:
         """
-        批量检查多个 commit 是否超过指定天数，以及是否在旧版本分支上
+        check commit ，
 
         Args:
-            items: 列表，每项为 {'git_url': ..., 'commit': ..., 'job_id': ...}
-            max_age_days: 最大天数
-            min_kernel_version: 最小内核版本（如 "5.10"），为 None 时不检查版本
+            items: list， {'git_url': ..., 'commit': ..., 'job_id': ...}
+            max_age_days: 
+            min_kernel_version: （ "5.10"）， None check
 
         Returns:
-            批量检查结果
+            check
         """
         results = []
         too_old_job_ids = set()
@@ -152,9 +152,9 @@ class CommitTimeService:
             filter_reason = None
             base_tag = None
 
-            # 检查 commit 时间
+            # check commit 
             if result['status'] != 'success':
-                # 查询失败时不过滤（降级策略）
+                # queryfailed（）
                 valid_job_ids.add(job_id)
                 continue
 
@@ -165,7 +165,7 @@ class CommitTimeService:
                 too_old_job_ids.add(job_id)
                 filter_reason = f'commit_too_old (>{max_age_days} days)'
             elif min_kernel_version:
-                # 检查是否在旧版本分支上
+                # check
                 is_old_branch, base_tag, _ = self.query.is_commit_on_old_branch(
                     git_url, commit_hash, min_kernel_version
                 )
@@ -186,7 +186,7 @@ class CommitTimeService:
                 'filter_reason': filter_reason
             })
 
-        # 合并过滤的 job_ids
+        #  job_ids
         filtered_job_ids = too_old_job_ids | old_branch_job_ids
 
         return {
@@ -197,7 +197,7 @@ class CommitTimeService:
                 'too_old_count': len(too_old_job_ids),
                 'old_branch_count': len(old_branch_job_ids),
                 'valid_count': len(valid_job_ids),
-                'too_old_job_ids': list(filtered_job_ids),  # 兼容旧接口
+                'too_old_job_ids': list(filtered_job_ids),  # 
                 'old_branch_job_ids': list(old_branch_job_ids),
                 'valid_job_ids': list(valid_job_ids),
                 'max_age_days': max_age_days,
@@ -210,15 +210,15 @@ class CommitTimeService:
     def check_branch_version(self, git_url: str, commit_hash: str,
                               min_version: str = "5.10") -> Dict[str, Any]:
         """
-        检查 commit 是否在旧版本分支上
+        check commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
-            min_version: 最小支持版本
+            min_version: support
 
         Returns:
-            检查结果字典
+            checkdict
         """
         is_old, base_tag, version = self.query.is_commit_on_old_branch(
             git_url, commit_hash, min_version
@@ -278,14 +278,14 @@ class CommitTimeService:
 
     def get_parent_commit(self, git_url: str, commit_hash: str) -> Dict[str, Any]:
         """
-        获取 commit 的父提交信息
+        get commit submit
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
 
         Returns:
-            查询结果字典，格式：
+            querydict，：
             {
                 'status': 'success' | 'error',
                 'cached': bool,
@@ -293,16 +293,16 @@ class CommitTimeService:
                     'commit': str,
                     'parent': str | None,
                     'parent_count': int,
-                    'reason': str  # 仅在特殊情况下返回
+                    'reason': str  # 
                 }
             }
         """
         self.request_count += 1
 
-        # 生成缓存键：parent commit 关系是不变的，可以永久缓存
+        # ：parent commit ，
         cache_key = f"parent:{git_url}:{commit_hash}"
 
-        # 先查缓存
+        # 
         cached_data = self.cache.get(cache_key)
         if cached_data:
             self.cache_hit_count += 1
@@ -312,11 +312,11 @@ class CommitTimeService:
                 'data': cached_data
             }
 
-        # 缓存未命中，查询 git
+        # ，query git
         result = self.query.get_parent_commit(git_url, commit_hash)
 
         if result:
-            # 存入缓存（parent commit 关系不变，可以长期缓存）
+            # （parent commit ，）
             self.cache.set(cache_key, result)
             return {
                 'status': 'success',
@@ -389,7 +389,7 @@ class CommitTimeService:
         }
 
     def get_stats(self) -> Dict[str, Any]:
-        """获取服务统计信息"""
+        """getservicestats"""
         uptime = time.time() - self.start_time
         cache_stats = self.cache.get_stats()
 
@@ -403,13 +403,13 @@ class CommitTimeService:
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    """HTTP 请求处理器"""
+    """HTTP """
 
-    # 类变量，由服务器设置
+    # ，service
     service = None
 
     def do_GET(self):
-        """处理 GET 请求"""
+        """ GET """
         parsed = urlparse(self.path)
         path = parsed.path
         params = parse_qs(parsed.query)
@@ -437,7 +437,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_error_response(500, str(e))
 
     def do_POST(self):
-        """处理 POST 请求"""
+        """ POST """
         parsed = urlparse(self.path)
         path = parsed.path
 
@@ -454,7 +454,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_error_response(500, str(e))
 
     def handle_commit_time(self, params: Dict):
-        """处理 commit 时间查询"""
+        """ commit query"""
         git_url = params.get('repo', [None])[0]
         commit = params.get('commit', [None])[0]
 
@@ -466,7 +466,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_json_response(result)
 
     def handle_commit_check(self, params: Dict):
-        """处理 commit 年龄检查"""
+        """ commit check"""
         git_url = params.get('repo', [None])[0]
         commit = params.get('commit', [None])[0]
         max_age = params.get('max_age_days', ['365'])[0]
@@ -485,7 +485,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_json_response(result)
 
     def handle_branch_check(self, params: Dict):
-        """处理分支版本检查"""
+        """check"""
         git_url = params.get('repo', [None])[0]
         commit = params.get('commit', [None])[0]
         min_version = params.get('min_version', ['5.10'])[0]
@@ -511,7 +511,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_json_response(result)
 
     def handle_parent_commit(self, params: Dict):
-        """处理 parent commit 查询"""
+        """ parent commit query"""
         git_url = params.get('repo', [None])[0]
         commit = params.get('commit', [None])[0]
 
@@ -551,7 +551,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_json_response(result)
 
     def handle_batch_check(self):
-        """处理批量 commit 年龄检查"""
+        """ commit check"""
         content_length = int(self.headers.get('Content-Length', 0))
         if content_length == 0:
             self.send_error_response(400, 'Missing request body')
@@ -566,7 +566,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         items = data.get('items', [])
         max_age_days = data.get('max_age_days', 365)
-        min_kernel_version = data.get('min_kernel_version')  # 新增参数
+        min_kernel_version = data.get('min_kernel_version')  # 
 
         if not items:
             self.send_error_response(400, 'Missing items in request body')
@@ -580,54 +580,54 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_json_response(result)
 
     def handle_stats(self):
-        """处理统计信息请求"""
+        """stats"""
         stats = self.service.get_stats()
         self.send_json_response(stats)
 
     def handle_health(self):
-        """处理健康检查"""
+        """check"""
         self.send_json_response({'status': 'healthy'})
 
     def send_json_response(self, data: Dict, status_code: int = 200):
-        """发送 JSON 响应"""
+        """ JSON """
         self.send_response(status_code)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
 
     def send_error_response(self, status_code: int, message: str):
-        """发送错误响应"""
+        """error"""
         self.send_json_response({
             'status': 'error',
             'error': message
         }, status_code)
 
     def log_message(self, format, *args):
-        """自定义日志格式"""
+        """log"""
         logger.info(f"{self.address_string()} - {format % args}")
 
 
 def run_server(host: str = '0.0.0.0', port: int = 8765,
                cache_size: int = 10000, cache_ttl: int = 86400):
     """
-    启动 HTTP 服务器
+     HTTP service
 
     Args:
-        host: 绑定地址
-        port: 端口号
-        cache_size: 缓存大小
-        cache_ttl: 缓存过期时间
+        host: 
+        port: 
+        cache_size: 
+        cache_ttl: 
     """
-    # 创建服务实例
+    # createserviceinstance
     service = CommitTimeService(cache_size=cache_size, cache_ttl=cache_ttl)
 
-    # 设置请求处理器的服务实例
+    # serviceinstance
     RequestHandler.service = service
 
-    # 创建服务器
+    # createservice
     server = HTTPServer((host, port), RequestHandler)
 
-    # 设置信号处理器，优雅退出
+    # ，
     def signal_handler(signum, frame):
         logger.info(f"Received signal {signum}, shutting down...")
         server.shutdown()
@@ -657,7 +657,7 @@ def run_server(host: str = '0.0.0.0', port: int = 8765,
 
 
 def main():
-    """主函数"""
+    """main function"""
     parser = argparse.ArgumentParser(description='Commit Time Service')
     parser.add_argument('--host', default='0.0.0.0', help='Bind address')
     parser.add_argument('--port', type=int, default=8765, help='Port number')
@@ -666,7 +666,7 @@ def main():
 
     args = parser.parse_args()
 
-    # 确保必要的环境变量
+    # 
     if 'CCI_SRC' not in os.environ:
         os.environ['CCI_SRC'] = '/srv/cci'
     if 'WORK_DIR' not in os.environ:

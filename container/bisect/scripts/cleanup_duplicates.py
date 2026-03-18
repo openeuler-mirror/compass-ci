@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-清理 bisect 表中的重复数据
+ bisect duplicate
 
-策略：
-1. 对于相同 error_id 的任务，保留"最有价值"的一个
-2. 价值排序：success > verifying > processing > wait > failed
-3. 同等状态下保留最新的（submit_time 最大）
+：
+1.  error_id task，""
+2. ：success > verifying > processing > wait > failed
+3. status（submit_time ）
 
-使用方式：
-    # 预览模式（不实际删除）
+：
+    # （delete）
     python cleanup_duplicates.py --dry-run
 
-    # 实际执行
+    # 
     python cleanup_duplicates.py
 
-    # 清理指定天数前的老任务
+    # task
     python cleanup_duplicates.py --clean-old-days 90
 """
 
@@ -31,7 +31,7 @@ sys.path.append(os.environ.get('CCI_SRC', '/c/compass-ci') + '/container/bisect/
 from config import Config
 
 
-# 状态优先级（数字越大越优先保留）
+# status（）
 STATUS_PRIORITY = {
     'success': 5,
     'verifying': 4,
@@ -43,7 +43,7 @@ STATUS_PRIORITY = {
 
 
 def get_client():
-    """获取 ManticoreSearch 客户端"""
+    """get ManticoreSearch """
     return ManticoreClient(
         host=os.environ.get('MANTICORE_HOST', 'localhost'),
         port=int(os.environ.get('MANTICORE_WRITE_PORT', '9308'))
@@ -51,12 +51,12 @@ def get_client():
 
 
 def find_duplicates(client, batch_size=10000):
-    """查找重复的 error_id"""
+    """duplicate error_id"""
     print("=" * 60)
-    print("Step 1: 查找重复的 error_id")
+    print("Step 1: duplicate error_id")
     print("=" * 60)
 
-    # 查询所有有 error_id 的任务
+    # query error_id task
     offset = 0
     all_tasks = []
 
@@ -75,45 +75,45 @@ def find_duplicates(client, batch_size=10000):
 
         all_tasks.extend(result)
         offset += batch_size
-        print(f"  已查询 {len(all_tasks)} 条记录...")
+        print(f"  query {len(all_tasks)} ...")
 
         if len(result) < batch_size:
             break
 
-    print(f"  总计: {len(all_tasks)} 条带 error_id 的任务")
+    print(f"  : {len(all_tasks)}  error_id task")
 
-    # 按 error_id 分组
+    #  error_id 
     groups = defaultdict(list)
     for task in all_tasks:
         error_id = task.get('error_id', '')
         if error_id:
             groups[error_id].append(task)
 
-    # 找出重复的
+    # duplicate
     duplicates = {k: v for k, v in groups.items() if len(v) > 1}
 
-    print(f"  唯一 error_id: {len(groups)} 个")
-    print(f"  重复 error_id: {len(duplicates)} 个")
+    print(f"   error_id: {len(groups)} ")
+    print(f"  duplicate error_id: {len(duplicates)} ")
 
-    # 统计重复数量分布
+    # statsduplicatecount
     dup_counts = defaultdict(int)
     for tasks in duplicates.values():
         dup_counts[len(tasks)] += 1
 
     if dup_counts:
-        print("\n  重复数量分布:")
+        print("\n  duplicatecount:")
         for count, num in sorted(dup_counts.items()):
-            print(f"    {count} 个重复: {num} 组")
+            print(f"    {count} duplicate: {num} ")
 
     return duplicates
 
 
 def select_task_to_keep(tasks):
-    """从重复任务中选择要保留的一个
+    """duplicatetask
 
-    策略：
-    1. 优先保留状态更好的（success > verifying > ... > failed）
-    2. 同等状态下保留 submit_time 最新的
+    ：
+    1. status（success > verifying > ... > failed）
+    2. status submit_time 
     """
     def sort_key(task):
         status = task.get('bisect_status', 'wait')
@@ -122,13 +122,13 @@ def select_task_to_keep(tasks):
         return (priority, submit_time)
 
     sorted_tasks = sorted(tasks, key=sort_key, reverse=True)
-    return sorted_tasks[0]  # 返回最优先保留的
+    return sorted_tasks[0]  # 
 
 
 def cleanup_duplicates(client, duplicates, dry_run=True):
-    """清理重复数据"""
+    """duplicate"""
     print("\n" + "=" * 60)
-    print(f"Step 2: 清理重复数据 ({'预览模式' if dry_run else '实际执行'})")
+    print(f"Step 2: duplicate ({'' if dry_run else ''})")
     print("=" * 60)
 
     total_to_delete = 0
@@ -144,23 +144,23 @@ def cleanup_duplicates(client, duplicates, dry_run=True):
         for task in delete_tasks:
             ids_to_delete.append(task['id'])
 
-        # 打印详情（只打印前 10 组）
+        # （ 10 ）
         if len(ids_to_delete) <= 50:
             print(f"\n  error_id: {error_id[:80]}...")
-            print(f"    保留: id={keep_id}, status={keep_task.get('bisect_status')}, "
+            print(f"    : id={keep_id}, status={keep_task.get('bisect_status')}, "
                   f"submit_time={keep_task.get('submit_time')}")
             for task in delete_tasks:
-                print(f"    删除: id={task['id']}, status={task.get('bisect_status')}, "
+                print(f"    delete: id={task['id']}, status={task.get('bisect_status')}, "
                       f"submit_time={task.get('submit_time')}")
 
-    print(f"\n  总计需要删除: {total_to_delete} 条记录")
+    print(f"\n  delete: {total_to_delete} ")
 
     if dry_run:
-        print("\n  [预览模式] 未实际删除任何数据")
-        print("  使用 --execute 参数执行实际删除")
+        print("\n  [] delete")
+        print("   --execute delete")
         return 0
 
-    # 实际删除（分批执行）
+    # delete（）
     batch_size = Config.BATCH_DELETE_SIZE
     deleted = 0
 
@@ -172,25 +172,25 @@ def cleanup_duplicates(client, duplicates, dry_run=True):
         try:
             client.sql_raw(delete_query)
             deleted += len(batch_ids)
-            print(f"  已删除: {deleted}/{total_to_delete}")
+            print(f"  delete: {deleted}/{total_to_delete}")
         except Exception as e:
-            print(f"  删除失败: {str(e)}")
+            print(f"  deletefailed: {str(e)}")
 
-    print(f"\n  实际删除: {deleted} 条记录")
+    print(f"\n  delete: {deleted} ")
     return deleted
 
 
 def cleanup_old_tasks(client, days, dry_run=True):
-    """清理老旧任务"""
+    """task"""
     print("\n" + "=" * 60)
-    print(f"Step 3: 清理 {days} 天前的老任务 ({'预览模式' if dry_run else '实际执行'})")
+    print(f"Step 3:  {days} task ({'' if dry_run else ''})")
     print("=" * 60)
 
     threshold = int(time.time()) - days * 86400
     threshold_date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(threshold))
-    print(f"  时间阈值: {threshold_date}")
+    print(f"  : {threshold_date}")
 
-    # 只清理 wait 和 failed 状态的老任务（保留 success/verifying）
+    #  wait  failed statustask（ success/verifying）
     statuses_to_clean = ['wait', 'failed']
 
     for status in statuses_to_clean:
@@ -204,16 +204,16 @@ def cleanup_old_tasks(client, days, dry_run=True):
         result = client.sql_select(count_query)
         count = result[0]['count'] if result else 0
 
-        print(f"\n  {status} 状态老任务: {count} 条")
+        print(f"\n  {status} statustask: {count} ")
 
         if count == 0:
             continue
 
         if dry_run:
-            print(f"    [预览模式] 未实际删除")
+            print(f"    [] delete")
             continue
 
-        # 实际删除
+        # delete
         delete_query = f"""
             DELETE FROM bisect
             WHERE bisect_status = '{status}'
@@ -222,18 +222,18 @@ def cleanup_old_tasks(client, days, dry_run=True):
         """
         try:
             client.sql_raw(delete_query)
-            print(f"    已删除 {count} 条 {status} 任务")
+            print(f"    delete {count}  {status} task")
         except Exception as e:
-            print(f"    删除失败: {str(e)}")
+            print(f"    deletefailed: {str(e)}")
 
 
 def show_statistics(client):
-    """显示当前数据统计"""
+    """stats"""
     print("\n" + "=" * 60)
-    print("当前数据统计")
+    print("stats")
     print("=" * 60)
 
-    # 按状态统计
+    # statusstats
     query = """
         SELECT bisect_status, COUNT(*) as count
         FROM bisect
@@ -242,7 +242,7 @@ def show_statistics(client):
     """
     result = client.sql_select(query)
     if result:
-        print("\n  按状态统计:")
+        print("\n  statusstats:")
         total = 0
         for row in result:
             status = row.get('bisect_status', 'unknown')
@@ -250,10 +250,10 @@ def show_statistics(client):
             total += count
             print(f"    {status}: {count}")
         print(f"    --------")
-        print(f"    总计: {total}")
+        print(f"    : {total}")
 
-    # 按月份统计
-    # ManticoreSearch 不支持 FROM_UNIXTIME，用简单查询代替
+    # stats
+    # ManticoreSearch support FROM_UNIXTIME，query
     query = """
         SELECT MIN(submit_time) as oldest, MAX(submit_time) as newest
         FROM bisect
@@ -263,41 +263,41 @@ def show_statistics(client):
     if result and result[0].get('oldest'):
         oldest = time.strftime('%Y-%m-%d', time.localtime(result[0]['oldest']))
         newest = time.strftime('%Y-%m-%d', time.localtime(result[0]['newest']))
-        print(f"\n  时间范围: {oldest} 至 {newest}")
+        print(f"\n  : {oldest}  {newest}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='清理 bisect 表中的重复和老旧数据')
+    parser = argparse.ArgumentParser(description=' bisect duplicate')
     parser.add_argument('--execute', action='store_true',
-                        help='实际执行删除（默认为预览模式）')
+                        help='delete（default）')
     parser.add_argument('--clean-old-days', type=int, default=0,
-                        help='清理 N 天前的 wait/failed 任务（0 表示不清理）')
+                        help=' N  wait/failed task（0 ）')
     parser.add_argument('--stats-only', action='store_true',
-                        help='只显示统计信息，不做任何清理')
+                        help='stats，')
 
     args = parser.parse_args()
     dry_run = not args.execute
 
     client = get_client()
 
-    # 显示统计
+    # stats
     show_statistics(client)
 
     if args.stats_only:
         return
 
-    # 查找并清理重复数据
+    # duplicate
     duplicates = find_duplicates(client)
     if duplicates:
         cleanup_duplicates(client, duplicates, dry_run=dry_run)
 
-    # 清理老任务
+    # task
     if args.clean_old_days > 0:
         cleanup_old_tasks(client, args.clean_old_days, dry_run=dry_run)
 
     if dry_run:
         print("\n" + "=" * 60)
-        print("以上为预览结果，使用 --execute 参数执行实际删除")
+        print("， --execute delete")
         print("=" * 60)
 
 

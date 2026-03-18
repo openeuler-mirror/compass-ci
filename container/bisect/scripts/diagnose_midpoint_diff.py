@@ -245,7 +245,7 @@ class MidpointDiagnoser:
         analysis = result.get('analysis', {})
 
         print("\n" + "="*60)
-        print("诊断报告")
+        print("")
         print("="*60)
 
         # Sample counts
