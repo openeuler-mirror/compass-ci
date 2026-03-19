@@ -28,6 +28,8 @@ from lkp_bisect.core.git_bisect import GitBisect
 class BisectConsumer:
     """Bisect task consumer"""
 
+    _INVALID_COMMIT_TOKENS = {'n/a', 'na', 'none', 'null', 'unknown', '-'}
+
     def __init__(self, client: ManticoreClient, config: Dict):
         self.client = client
         self.config = config
@@ -288,7 +290,32 @@ class BisectConsumer:
                 continue  # Skip empty string fields
             cleaned_data[key] = value
 
+        # Reject placeholder commit refs early (e.g., "N/A"), which cannot be bisected.
+        good_commit = cleaned_data.get('good_commit') or cleaned_data.get('start_commit')
+        if self._is_invalid_commit_ref(good_commit):
+            return {
+                'error': f'Invalid good commit reference: {good_commit}',
+                'id': cleaned_data.get('id', 'unknown_id')
+            }
+
+        bad_commit = cleaned_data.get('bad_commit') or cleaned_data.get('end_commit')
+        if bad_commit is not None and self._is_invalid_commit_ref(bad_commit):
+            return {
+                'error': f'Invalid bad commit reference: {bad_commit}',
+                'id': cleaned_data.get('id', 'unknown_id')
+            }
+
         return cleaned_data
+
+    @classmethod
+    def _is_invalid_commit_ref(cls, value: Any) -> bool:
+        """Return True for placeholder/non-actionable commit refs."""
+        if value is None:
+            return True
+        ref = str(value).strip()
+        if not ref:
+            return True
+        return ref.lower() in cls._INVALID_COMMIT_TOKENS
 
     def _check_task_type(self, task: Dict) -> Dict:
         """Check task type"""

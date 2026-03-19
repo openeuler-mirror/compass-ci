@@ -386,7 +386,7 @@ class TaskProcessor:
         # Success task cache removed - no longer using similarity matching
 
         # Success task signature cache (optimize _find_successful_task_by_signature high-frequency queries)
-        self._success_signature_cache = {}  # {signature: task_info}
+        self._success_signature_cache = {}  # {"<git_url>||<signature>": task_info}
         self._success_cache_ttl = 3600  # 1 hour cache
         self._success_cache_last_refresh = 0
         self._success_cache_lock = threading.Lock()
@@ -1324,95 +1324,127 @@ class TaskProcessor:
             selected_tasks = []
             skipped_count = 0  # Skipped tasks count (clusters with existing successful tasks)
 
-            # 3.1 Process build task clusters
+            # 3.1 Process build task clusters (partitioned by repo to prevent cross-repo linking)
             for signature, tasks in signature_groups.items():
-                # First check if there is already a successful task with same signature
-                successful_task = self._find_successful_task_by_signature(signature)
+                repo_groups = defaultdict(list)  # {git_url: [tasks]}
+                for task in tasks:
+                    repo_key = (task.get('git_url') or '').strip()
+                    repo_groups[repo_key].append(task)
 
-                if successful_task:
-                    # Found successful task, immediately mark as verifying (avoid infinite loop)
-                    successful_task_id = successful_task['id']
-                    logger.info(f"Cluster {signature}: found successful task {successful_task_id}, "
-                               f"immediately marking {len(tasks)} tasks as verifying")
+                for repo_key, repo_tasks in repo_groups.items():
+                    if not repo_key:
+                        # Without git_url we cannot safely reuse a successful task; fall back to representative selection.
+                        if len(repo_tasks) == 1:
+                            selected_tasks.append(repo_tasks[0])
+                            logger.debug(
+                                f"Cluster {signature} (repo=empty): single task {repo_tasks[0]['id']}"
+                            )
+                        else:
+                            tasks_sorted = sorted(repo_tasks, key=lambda t: (
+                                -t.get('priority_level', 0),
+                                -t.get('submit_time', 0)
+                            ))
+                            representative = tasks_sorted[0]
+                            selected_tasks.append(representative)
+                            logger.info(
+                                f"Cluster {signature} (repo=empty): selected task {representative['id']} as representative, "
+                                f"remaining {len(repo_tasks)-1} tasks stay in wait status"
+                            )
+                        continue
 
-                    # Batch mark as verifying (fallback mechanism, prevent missed marking)
-                    current_time = int(time.time())
-                    marked_count = 0
-                    failed_count = 0
-                    for task in tasks:
-                        try:
-                            task_id = task['id']
+                    # First check if there is already a successful task with same signature in the same repo.
+                    successful_task = self._find_successful_task_by_signature(signature, repo_key)
 
-                            # Check if marking was attempted before (avoid infinite retry)
-                            j_field = task.get('j') or {}
-                            if isinstance(j_field, str):
-                                try:
-                                    j_field = json.loads(j_field) if j_field else {}
-                                except json.JSONDecodeError:
-                                    j_field = {}
+                    if successful_task:
+                        successful_task_id = successful_task['id']
+                        logger.info(
+                            f"Cluster {signature}: found successful task {successful_task_id} in same repo, "
+                            f"immediately marking {len(repo_tasks)} tasks as verifying | repo: {repo_key[:80]}"
+                        )
 
-                            marking_attempts = j_field.get('marking_attempts', 0)
-                            if marking_attempts >= 3:
-                                # Retry limit reached, skip clustering mark, let task go through independent bisect flow
-                                logger.warning(f"Cluster marking retry limit reached | task_id: {task_id} | attempted {marking_attempts} times | skipping clustering, going to independent bisect")
-                                # Clear clustering fields, add skip_clustering flag, keep wait status
-                                skip_doc = {
+                        current_time = int(time.time())
+                        marked_count = 0
+                        failed_count = 0
+                        for task in repo_tasks:
+                            try:
+                                task_id = task['id']
+
+                                j_field = task.get('j') or {}
+                                if isinstance(j_field, str):
+                                    try:
+                                        j_field = json.loads(j_field) if j_field else {}
+                                    except json.JSONDecodeError:
+                                        j_field = {}
+
+                                marking_attempts = j_field.get('marking_attempts', 0)
+                                if marking_attempts >= 3:
+                                    logger.warning(
+                                        f"Cluster marking retry limit reached | task_id: {task_id} | "
+                                        f"attempted {marking_attempts} times | skipping clustering, going to independent bisect"
+                                    )
+                                    skip_doc = {
+                                        "updated_at": current_time,
+                                        "j": {
+                                            "skip_clustering": True,
+                                            "skip_reason": "marking_attempts_exceeded",
+                                            "error_signature": signature
+                                        }
+                                    }
+                                    self.client.update("bisect", task_id, skip_doc)
+                                    skipped_count += 1
+                                    continue
+
+                                doc = {
+                                    "bisect_status": "verifying",
                                     "updated_at": current_time,
                                     "j": {
-                                        "skip_clustering": True,
-                                        "skip_reason": "marking_attempts_exceeded",
-                                        "error_signature": signature
+                                        "related_task_id": str(successful_task_id),
+                                        "error_signature": signature,
+                                        "original_error_id": task.get('error_id', ''),
+                                        "marked_by_clustering": True,
+                                        "marked_timestamp": current_time,
+                                        "marking_attempts": marking_attempts + 1
                                     }
                                 }
-                                self.client.update("bisect", task_id, skip_doc)
-                                skipped_count = stats.get('skipped_clustering', 0) + 1
-                                stats['skipped_clustering'] = skipped_count
-                                continue
-
-                            doc = {
-                                "bisect_status": "verifying",
-                                "updated_at": current_time,
-                                "j": {
-                                    "related_task_id": str(successful_task_id),
-                                    "error_signature": signature,
-                                    "original_error_id": task.get('error_id', ''),
-                                    "marked_by_clustering": True,
-                                    "marked_timestamp": current_time,
-                                    "marking_attempts": marking_attempts + 1
-                                }
-                            }
-                            if self.client.update("bisect", task_id, doc):
-                                marked_count += 1
-                            else:
+                                if self.client.update("bisect", task_id, doc):
+                                    marked_count += 1
+                                else:
+                                    failed_count += 1
+                                    logger.warning(f"Cluster marking update failed | task_id: {task_id}")
+                            except Exception as e:
                                 failed_count += 1
-                                logger.warning(f"Cluster marking update failed | task_id: {task_id}")
-                        except Exception as e:
-                            failed_count += 1
-                            logger.error(f"Cluster marking failed | task_id: {task.get('id')} | error: {str(e)}")
+                                logger.error(f"Cluster marking failed | task_id: {task.get('id')} | error: {str(e)}")
 
-                    skipped_count += marked_count
-                    if failed_count > 0:
-                        logger.warning(f"Cluster marking completed | signature: {signature} | marked: {marked_count}/{len(tasks)} | failed: {failed_count}")
+                        skipped_count += marked_count
+                        if failed_count > 0:
+                            logger.warning(
+                                f"Cluster marking completed | signature: {signature} | repo: {repo_key[:80]} | "
+                                f"marked: {marked_count}/{len(repo_tasks)} | failed: {failed_count}"
+                            )
+                        else:
+                            logger.info(
+                                f"Cluster marking completed | signature: {signature} | repo: {repo_key[:80]} | "
+                                f"marked: {marked_count}/{len(repo_tasks)}"
+                            )
+
+                    elif len(repo_tasks) == 1:
+                        selected_tasks.append(repo_tasks[0])
+                        logger.debug(
+                            f"Cluster {signature}: single task {repo_tasks[0]['id']} | repo: {repo_key[:80]}"
+                        )
                     else:
-                        logger.info(f"Cluster marking completed | signature: {signature} | marked: {marked_count}/{len(tasks)}")
+                        tasks_sorted = sorted(repo_tasks, key=lambda t: (
+                            -t.get('priority_level', 0),
+                            -t.get('submit_time', 0)
+                        ))
 
-                elif len(tasks) == 1:
-                    # No successful task and only single task, select directly
-                    selected_tasks.append(tasks[0])
-                    logger.debug(f"Cluster {signature}: single task {tasks[0]['id']}")
-                else:
-                    # No successful task, multiple tasks, select one representative
-                    # Sort by priority and submit time, select best representative
-                    tasks_sorted = sorted(tasks, key=lambda t: (
-                        -t.get('priority_level', 0),  # Higher priority first
-                        -t.get('submit_time', 0)      # Later submit time first (negative for descending)
-                    ))
+                        representative = tasks_sorted[0]
+                        selected_tasks.append(representative)
 
-                    representative = tasks_sorted[0]
-                    selected_tasks.append(representative)
-
-                    logger.info(f"Cluster {signature}: selected task {representative['id']} as representative, "
-                               f"remaining {len(tasks)-1} tasks stay in wait status")
+                        logger.info(
+                            f"Cluster {signature}: selected task {representative['id']} as representative, "
+                            f"remaining {len(repo_tasks)-1} tasks stay in wait status | repo: {repo_key[:80]}"
+                        )
 
             if skipped_count > 0:
                 logger.info(f"cluster tasks | marked existing success | count: {skipped_count}")
@@ -1505,7 +1537,12 @@ class TaskProcessor:
 
         logger.info(f"Batch marking verifying completed: success {success_count}, failed {failed_count}")
 
-    def _find_successful_task_by_signature(self, signature: str) -> Optional[Dict]:
+    @staticmethod
+    def _success_cache_key(signature: str, git_url: str) -> str:
+        """Build cache key with signature and repo identity."""
+        return f"{(git_url or '').strip()}||{signature}"
+
+    def _find_successful_task_by_signature(self, signature: str, git_url: str) -> Optional[Dict]:
         """
         Find successful task with same signature (with cache, only returns high-confidence tasks)
 
@@ -1518,6 +1555,11 @@ class TaskProcessor:
         try:
             current_time = int(time.time())
 
+            repo_key = (git_url or '').strip()
+            if not repo_key:
+                logger.debug(f"Skip successful task lookup due to missing git_url | signature: {signature}")
+                return None
+
             # Check if cache expired
             with self._success_cache_lock:
                 if current_time - self._success_cache_last_refresh > self._success_cache_ttl:
@@ -1525,8 +1567,9 @@ class TaskProcessor:
                     self._refresh_success_signature_cache()
 
                 # Look up from cache
-                if signature in self._success_signature_cache:
-                    cached_task = self._success_signature_cache[signature]
+                cache_key = self._success_cache_key(signature, repo_key)
+                if cache_key in self._success_signature_cache:
+                    cached_task = self._success_signature_cache[cache_key]
 
                     # Extract confidence info (for logging)
                     j_field = cached_task.get('j', {})
@@ -1536,12 +1579,12 @@ class TaskProcessor:
                     confidence = j_field.get('confidence', 'unknown')
 
                     logger.info(
-                        f"Found successful task from cache | signature: {signature} | "
+                        f"Found successful task from cache | signature: {signature} | repo: {repo_key[:80]} | "
                         f"task_id: {cached_task['id']} | confidence: {confidence}"
                     )
                     return cached_task
 
-            logger.debug(f"Successful task not found in cache | signature: {signature}")
+            logger.debug(f"Successful task not found in cache | signature: {signature} | repo: {repo_key[:80]}")
             return None
 
         except Exception as e:
@@ -1562,7 +1605,7 @@ class TaskProcessor:
 
             # Query recently successful build tasks (only build tasks use signature clustering)
             query = """
-                SELECT id, first_bad_commit, updated_at, j, error_id, category
+                SELECT id, first_bad_commit, updated_at, j, error_id, category, git_url
                 FROM bisect
                 WHERE bisect_status = 'success' AND category = 'build'
                 ORDER BY updated_at DESC
@@ -1606,10 +1649,14 @@ class TaskProcessor:
                         continue
 
                     signature = errid_intel.extract_coarse_signature(error_id)
+                    git_url = (task.get('git_url') or '').strip()
+                    if not git_url:
+                        continue
+                    cache_key = self._success_cache_key(signature, git_url)
 
                     # If cache already has same signature, compare confidence, keep higher
-                    if signature in new_cache:
-                        cached_task = new_cache[signature]
+                    if cache_key in new_cache:
+                        cached_task = new_cache[cache_key]
                         cached_j = cached_task.get('j', {})
                         if isinstance(cached_j, str):
                             cached_j = json.loads(cached_j) if cached_j else {}
@@ -1621,9 +1668,9 @@ class TaskProcessor:
                             task_priority == cached_priority and
                             task.get('updated_at', 0) > cached_task.get('updated_at', 0)
                         ):
-                            new_cache[signature] = task
+                            new_cache[cache_key] = task
                     else:
-                        new_cache[signature] = task
+                        new_cache[cache_key] = task
 
                 except Exception as e:
                     logger.warning(f"Failed to extract signature | task_id: {task['id']} | error: {str(e)}")
