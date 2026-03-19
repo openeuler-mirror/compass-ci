@@ -207,11 +207,14 @@ class TestParentCommitService(unittest.TestCase):
 
         service = CommitTimeService()
 
-        with patch.object(service.query, 'get_parent_commit') as mock_get:
+        with patch.object(service.query, 'get_parent_commit_detailed') as mock_get:
             mock_get.return_value = {
-                'commit': 'abc123',
-                'parent': 'def456',
-                'parent_count': 1
+                'status': 'success',
+                'data': {
+                    'commit': 'abc123',
+                    'parent': 'def456',
+                    'parent_count': 1
+                }
             }
 
             result = service.get_parent_commit(
@@ -230,11 +233,14 @@ class TestParentCommitService(unittest.TestCase):
         git_url = "git://example.com/linux.git"
         commit = "abc123"
 
-        with patch.object(service.query, 'get_parent_commit') as mock_get:
+        with patch.object(service.query, 'get_parent_commit_detailed') as mock_get:
             mock_get.return_value = {
-                'commit': commit,
-                'parent': 'def456',
-                'parent_count': 1
+                'status': 'success',
+                'data': {
+                    'commit': commit,
+                    'parent': 'def456',
+                    'parent_count': 1
+                }
             }
 
             # 

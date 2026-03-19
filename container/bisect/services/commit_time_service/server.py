@@ -259,6 +259,16 @@ class CommitTimeService:
 
         try:
             is_ancestor = self.query.is_ancestor(git_url, ancestor_commit, descendant_commit)
+            if is_ancestor is None:
+                return {
+                    'status': 'error',
+                    'error': 'Cannot determine ancestor relationship',
+                    'error_code': 'unable_to_determine_ancestor',
+                    'retryable': True,
+                    'git_url': git_url,
+                    'ancestor': ancestor_commit,
+                    'descendant': descendant_commit
+                }
             return {
                 'status': 'success',
                 'data': {
@@ -313,23 +323,42 @@ class CommitTimeService:
             }
 
         # ，query git
-        result = self.query.get_parent_commit(git_url, commit_hash)
+        if hasattr(self.query, 'get_parent_commit_detailed'):
+            detailed = self.query.get_parent_commit_detailed(git_url, commit_hash)
+            if detailed.get('status') == 'success':
+                data = detailed.get('data', {})
+                self.cache.set(cache_key, data)
+                return {
+                    'status': 'success',
+                    'cached': False,
+                    'data': data
+                }
+            return {
+                'status': 'error',
+                'error': detailed.get('error', 'Failed to get parent commit'),
+                'error_code': detailed.get('error_code', 'unknown'),
+                'retryable': bool(detailed.get('retryable', True)),
+                'git_url': git_url,
+                'commit': commit_hash
+            }
 
+        # Backward-compatible path for older query implementations.
+        result = self.query.get_parent_commit(git_url, commit_hash)
         if result:
-            # （parent commit ，）
             self.cache.set(cache_key, result)
             return {
                 'status': 'success',
                 'cached': False,
                 'data': result
             }
-        else:
-            return {
-                'status': 'error',
-                'error': 'Failed to get parent commit',
-                'git_url': git_url,
-                'commit': commit_hash
-            }
+        return {
+            'status': 'error',
+            'error': 'Failed to get parent commit',
+            'error_code': 'unknown',
+            'retryable': True,
+            'git_url': git_url,
+            'commit': commit_hash
+        }
 
     def batch_check_ancestor(self, git_url: str,
                              pairs: list) -> Dict[str, Any]:

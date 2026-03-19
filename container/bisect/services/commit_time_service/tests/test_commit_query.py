@@ -34,6 +34,11 @@ class TestCommitTimeQuery(unittest.TestCase):
 
         self.query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
 
+    @patch.dict(os.environ, {'WORK_DIR': '/tmp/work_for_test'}, clear=False)
+    def test_uses_dedicated_query_pristine_dir_by_default(self):
+        q = CommitTimeQuery(repo_manager=self.mock_repo_manager)
+        self.assertEqual(q.pristine_base_dir, '/tmp/work_for_test/bisect_repos/pristine_query')
+
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_timestamp_success(self, mock_exists, mock_run):
@@ -280,6 +285,49 @@ class TestIsAncestor(unittest.TestCase):
             'aaa111', 'bbb222'
         )
         self.assertIsNone(result)
+
+
+class TestParentCommitDetailed(unittest.TestCase):
+    """Tests for structured parent-commit query semantics."""
+
+    def setUp(self):
+        self.mock_repo_manager = Mock()
+        self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/test_pristine'
+        self.mock_repo_manager.pristine_locks = {}
+        self.mock_repo_manager.pristine_locks_lock = MagicMock()
+        self.query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
+    def test_parent_commit_detailed_allows_tag_or_ref_input(self, mock_run, _mock_is_repo):
+        resolve_result = Mock(returncode=0, stdout='a' * 40 + '\n', stderr='')
+        parent_result = Mock(returncode=0, stdout=('a' * 40) + ' ' + ('b' * 40) + '\n', stderr='')
+        mock_run.side_effect = [resolve_result, parent_result]
+
+        result = self.query.get_parent_commit_detailed(
+            'https://gitee.com/openeuler/kernel.git',
+            'v6.12.1'
+        )
+
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(result['data']['parent'], 'b' * 40)
+        self.assertEqual(result['data']['input_ref'], 'v6.12.1')
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
+    def test_parent_commit_detailed_returns_commit_not_found(self, mock_run, _mock_is_repo):
+        mock_run.return_value = Mock(returncode=1, stdout='', stderr='fatal: Needed a single revision')
+
+        with patch.object(self.query, '_fetch_pristine_repo') as mock_fetch:
+            result = self.query.get_parent_commit_detailed(
+                'https://gitee.com/openeuler/kernel.git',
+                'not-found-ref'
+            )
+
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result['error_code'], 'commit_not_found')
+        self.assertFalse(result['retryable'])
+        mock_fetch.assert_called_once()
 
 
 if __name__ == '__main__':

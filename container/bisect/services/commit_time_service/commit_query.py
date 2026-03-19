@@ -14,7 +14,7 @@ import subprocess
 import time
 import re
 import threading
-from typing import Optional, Dict, Tuple, List
+from typing import Optional, Dict, Tuple, List, Any
 from datetime import datetime
 
 # 
@@ -38,9 +38,16 @@ class CommitTimeQuery:
             repo_manager: repoinstance， None createinstance
         """
         self.repo_manager = repo_manager or SharedRepoManager()
-        self.pristine_base_dir = self.repo_manager.PRISTINE_BASE_DIR
+        # Use a dedicated pristine directory for commit-time queries to avoid
+        # contention with bisect worker clones that use the default pristine pool.
+        self.pristine_base_dir = os.environ.get(
+            'BISECT_COMMIT_QUERY_PRISTINE_BASE_DIR',
+            os.path.join(os.environ.get('WORK_DIR', '/tmp'), 'bisect_repos', 'pristine_query')
+        )
+        os.makedirs(self.pristine_base_dir, exist_ok=True)
         self._fetch_locks = {}
         self._fetch_locks_lock = threading.Lock()
+        logger.info(f"Commit query pristine root: {self.pristine_base_dir}")
 
     def get_commit_timestamp(self, git_url: str, commit_hash: str) -> Optional[int]:
         """
@@ -483,144 +490,181 @@ class CommitTimeQuery:
         finally:
             lock.release()
 
-    def get_parent_commit(self, git_url: str, commit_hash: str) -> Optional[Dict]:
-        """
-        get commit submit
+    def _resolve_commitish(self, pristine_repo_dir: str, ref: str, timeout: int = 30) -> Optional[str]:
+        """Resolve any commit-ish ref (sha, tag, branch) to a commit SHA."""
+        result = subprocess.run(
+            ['git', '-C', pristine_repo_dir, 'rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}'],
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        if result.returncode != 0:
+            return None
+        resolved = result.stdout.strip()
+        return resolved or None
 
-        Args:
-            git_url: Git repo URL
-            commit_hash: Commit hash（）
+    def get_parent_commit_detailed(self, git_url: str, commit_hash: str) -> Dict[str, Any]:
+        """
+        Get parent info with structured error semantics.
 
         Returns:
-            submitdict:
             {
-                'commit': str,        #  commit hash
-                'parent': str | None, # submit hash（root commit  None）
-                'parent_count': int,  # submitcount（0=root, 1=, 2+=merge）
-                'reason': str         # （ 'root_commit'）
+                'status': 'success',
+                'data': {...}
             }
-            queryfailed None
+            or
+            {
+                'status': 'error',
+                'error_code': str,
+                'error': str,
+                'retryable': bool
+            }
         """
-        # verify
-        if not git_url or not commit_hash or not commit_hash.strip():
+        if not git_url or not commit_hash or not str(commit_hash).strip():
             logger.warning(f"Invalid parameters | git_url: {git_url} | commit: {commit_hash}")
-            return None
+            return {
+                'status': 'error',
+                'error_code': 'invalid_parameters',
+                'error': 'Missing git_url or commit',
+                'retryable': False
+            }
 
-        commit_hash = commit_hash.strip()
+        ref = str(commit_hash).strip()
 
-        # getrepo
         try:
             repo_name = extract_repo_name_from_url(git_url)
             if not repo_name:
-                logger.warning(f"Cannot extract repo name | git_url: {git_url}")
-                return None
+                return {
+                    'status': 'error',
+                    'error_code': 'invalid_git_url',
+                    'error': f'Cannot extract repo name from git_url: {git_url}',
+                    'retryable': False
+                }
         except Exception as e:
-            logger.warning(f"Invalid git_url | git_url: {git_url} | error: {str(e)}")
-            return None
+            return {
+                'status': 'error',
+                'error_code': 'invalid_git_url',
+                'error': f'Invalid git_url: {str(e)}',
+                'retryable': False
+            }
 
         pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
 
-        #  pristine repo
         if not SharedRepoManager._is_git_repo(pristine_repo_dir):
             logger.info(f"Pristine repo not found, need to clone | repo: {repo_name}")
             try:
                 self._ensure_pristine_repo(git_url, pristine_repo_dir)
             except Exception as e:
                 logger.error(f"Failed to ensure pristine repo | repo: {repo_name} | error: {str(e)}")
-                return None
+                return {
+                    'status': 'error',
+                    'error_code': 'ensure_pristine_failed',
+                    'error': f'Failed to prepare repo: {str(e)}',
+                    'retryable': True
+                }
 
-        # querysubmit
         try:
-            # getsubmitlist（support merge commit）
+            resolved_commit = self._resolve_commitish(pristine_repo_dir, ref)
+            if not resolved_commit:
+                logger.warning(f"Commit/ref not found, trying fetch | ref: {ref[:24]}")
+                self._fetch_pristine_repo(pristine_repo_dir)
+                resolved_commit = self._resolve_commitish(pristine_repo_dir, ref)
+
+            if not resolved_commit:
+                return {
+                    'status': 'error',
+                    'error_code': 'commit_not_found',
+                    'error': f'Commit/ref not found: {ref}',
+                    'retryable': False
+                }
+
+            # rev-list --parents output: "<commit> <parent1> <parent2> ..."
             result = subprocess.run(
-                ['git', '-C', pristine_repo_dir, 'rev-parse', f'{commit_hash}^@'],
+                ['git', '-C', pristine_repo_dir, 'rev-list', '--parents', '-n', '1', resolved_commit],
                 capture_output=True,
                 text=True,
                 timeout=30
             )
 
             if result.returncode != 0:
-                #  commit not found root commit
-                stderr = result.stderr.strip()
-
-                # check root commit（ ^@ ）
-                #  ^1 
-                check_result = subprocess.run(
-                    ['git', '-C', pristine_repo_dir, 'rev-parse', f'{commit_hash}^1'],
+                logger.warning(
+                    f"Parent query failed, trying fetch | commit: {resolved_commit[:12]} | "
+                    f"stderr: {result.stderr.strip()}"
+                )
+                self._fetch_pristine_repo(pristine_repo_dir)
+                result = subprocess.run(
+                    ['git', '-C', pristine_repo_dir, 'rev-list', '--parents', '-n', '1', resolved_commit],
                     capture_output=True,
                     text=True,
                     timeout=30
                 )
 
-                if check_result.returncode != 0:
-                    #  commit not found， fetch
-                    logger.warning(f"Parent not found, trying fetch | commit: {commit_hash[:12]}")
-                    self._fetch_pristine_repo(pristine_repo_dir)
+            if result.returncode != 0:
+                stderr = (result.stderr or '').strip()
+                error_code = 'git_query_failed'
+                retryable = True
+                if any(k in stderr.lower() for k in ['unknown revision', 'bad object', 'needed a single revision']):
+                    error_code = 'commit_not_found'
+                    retryable = False
 
-                    # 
-                    check_result = subprocess.run(
-                        ['git', '-C', pristine_repo_dir, 'rev-parse', f'{commit_hash}^1'],
-                        capture_output=True,
-                        text=True,
-                        timeout=30
-                    )
-
-                    if check_result.returncode != 0:
-                        # check commit 
-                        commit_check = subprocess.run(
-                            ['git', '-C', pristine_repo_dir, 'rev-parse', commit_hash],
-                            capture_output=True,
-                            text=True,
-                            timeout=30
-                        )
-
-                        if commit_check.returncode == 0:
-                            # Commit submit = root commit
-                            logger.info(f"Root commit detected | commit: {commit_hash[:12]}")
-                            return {
-                                'commit': commit_hash,
-                                'parent': None,
-                                'parent_count': 0,
-                                'reason': 'root_commit'
-                            }
-                        else:
-                            # Commit not found
-                            logger.error(f"Commit not found | commit: {commit_hash[:12]}")
-                            return None
-
-            # submitlist
-            parents = [p.strip() for p in result.stdout.strip().split('\n') if p.strip()]
-            parent_count = len(parents)
-
-            if parent_count == 0:
-                # Root commit
                 return {
-                    'commit': commit_hash,
-                    'parent': None,
-                    'parent_count': 0,
-                    'reason': 'root_commit'
+                    'status': 'error',
+                    'error_code': error_code,
+                    'error': f'Parent query failed: {stderr or "unknown git error"}',
+                    'retryable': retryable
                 }
 
-            # getsubmit hash
-            first_parent = parents[0]
+            tokens = [tok for tok in result.stdout.strip().split() if tok]
+            if not tokens:
+                return {
+                    'status': 'error',
+                    'error_code': 'git_query_failed',
+                    'error': 'Empty git output while querying parent commit',
+                    'retryable': True
+                }
 
+            parents = tokens[1:]
             response = {
-                'commit': commit_hash,
-                'parent': first_parent,
-                'parent_count': parent_count
+                'commit': tokens[0],
+                'parent': parents[0] if parents else None,
+                'parent_count': len(parents)
             }
+            if not parents:
+                response['reason'] = 'root_commit'
+            if tokens[0] != ref:
+                response['input_ref'] = ref
 
-            if parent_count > 1:
-                logger.debug(f"Merge commit detected | commit: {commit_hash[:12]} | parents: {parent_count}")
+            if len(parents) > 1:
+                logger.debug(
+                    f"Merge commit detected | commit: {tokens[0][:12]} | parents: {len(parents)}"
+                )
 
-            return response
+            return {'status': 'success', 'data': response}
 
         except subprocess.TimeoutExpired:
-            logger.error(f"Query timed out | commit: {commit_hash[:12]}")
-            return None
+            logger.error(f"Parent query timed out | commit: {ref[:12]}")
+            return {
+                'status': 'error',
+                'error_code': 'git_timeout',
+                'error': f'Git command timeout while querying parent for {ref}',
+                'retryable': True
+            }
         except Exception as e:
-            logger.error(f"Query failed | commit: {commit_hash[:12]} | error: {str(e)}")
+            logger.error(f"Parent query failed | commit: {ref[:12]} | error: {str(e)}")
+            return {
+                'status': 'error',
+                'error_code': 'git_query_failed',
+                'error': str(e),
+                'retryable': True
+            }
+
+    def get_parent_commit(self, git_url: str, commit_hash: str) -> Optional[Dict]:
+        """Backward-compatible wrapper that returns parent info dict or None."""
+        result = self.get_parent_commit_detailed(git_url, commit_hash)
+        if result.get('status') != 'success':
             return None
+        return result.get('data')
+
 
 
 # instance（service）
