@@ -244,6 +244,18 @@ Key metrics to monitor:
 4. **Verification Hit Rate**: Percentage of tasks resolved by verification
 5. **Repository Cache Size**: Disk usage in `/srv/git`
 
+### Repository cache layout
+
+To reduce hotspot contention, bisect workers and commit-time queries use separate pristine roots:
+
+- Bisect worker pristine (for `--reference` clones): `${WORK_DIR}/bisect_repos/pristine`
+- Commit query pristine (for parent/ancestor/tag lookup): `${WORK_DIR}/bisect_repos/pristine_query`
+
+In the default container setup (`WORK_DIR=/c/bisect`), these map to:
+
+- `/c/bisect/bisect_repos/pristine`
+- `/c/bisect/bisect_repos/pristine_query`
+
 ## 7. Troubleshooting
 
 ### Common Issues and Solutions
