@@ -14,6 +14,22 @@ PYTHONPATH=lib:core:services/commit_time_service:. \
   python3 -m pytest core/tests/ -v
 ```
 
+## One-command functional test (CI friendly)
+
+Run from repository root:
+
+```bash
+bash container/bisect/scripts/run_functional_tests.sh
+```
+
+Notes:
+- By default this runs compile checks + non-integration test suites only.
+- To include integration tests (opens localhost service socket), set:
+
+```bash
+RUN_INTEGRATION=1 bash container/bisect/scripts/run_functional_tests.sh
+```
+
 ## Test locations
 
 | Test | What it covers |
