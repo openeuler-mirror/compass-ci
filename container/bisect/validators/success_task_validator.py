@@ -78,6 +78,7 @@ class SuccessTaskValidator(VerificationConsumer):
         """
         try:
             batch_size = limit or self.validation_batch_size
+            current_time = int(time.time())
 
             # query: query verifying status tasks
             # JSON filtering is done in Python to avoid Manticore JSON syntax limitations
@@ -134,6 +135,17 @@ class SuccessTaskValidator(VerificationConsumer):
 
                 # skipsubmitverification job
                 verification_jobs = j_field.get('verification_jobs', {})
+                if verification_jobs and verification_jobs.get('status') == 'retry_pending':
+                    next_retry_at = verification_jobs.get('next_retry_at') or j_field.get('verification_submit_next_retry_at')
+                    try:
+                        next_retry_at = int(next_retry_at) if next_retry_at is not None else None
+                    except (TypeError, ValueError):
+                        next_retry_at = None
+                    if next_retry_at and next_retry_at > current_time:
+                        logger.debug(
+                            f"skip task {task_id}: retry backoff | next_retry_in: {next_retry_at - current_time}s"
+                        )
+                        continue
                 if verification_jobs and verification_jobs.get('status') == 'submitted':
                     logger.debug(f"skip task {task_id}: verification job already submitted")
                     continue
@@ -241,7 +253,7 @@ class SuccessTaskValidator(VerificationConsumer):
             try:
                 ids_str = ','.join(related_task_ids)
                 batch_query = f"""
-                    SELECT id, bisect_status, first_bad_commit
+                    SELECT id, bisect_status, first_bad_commit, git_url
                     FROM bisect
                     WHERE id IN ({ids_str})
                 """
@@ -305,6 +317,22 @@ class SuccessTaskValidator(VerificationConsumer):
                 skipped_count += 1
                 continue
 
+            # Safety guard: verification task and related successful task must use the same repo.
+            related_git_url = (related_task.get('git_url') or '').strip()
+            current_git_url = (git_url or '').strip()
+            if related_git_url and current_git_url and related_git_url != current_git_url:
+                reason = (
+                    f"related_task_repo_mismatch: current={current_git_url[:80]} "
+                    f"related={related_git_url[:80]}"
+                )
+                logger.error(
+                    f"repo mismatch, skip verification submit | "
+                    f"task_id: {task_id} | related_task_id: {related_task_id} | {reason}"
+                )
+                self._mark_task_failed(task_id, related_task_id, reason)
+                failed_count += 1
+                continue
+
             first_bad_commit = related_task.get('first_bad_commit')
             if not first_bad_commit:
                 logger.warning(f"task first_bad_commit | ID: {task_id} | related: {related_task_id}")
@@ -348,13 +376,22 @@ class SuccessTaskValidator(VerificationConsumer):
                     repo_dir=""  # , 
                 )
 
-                if result.get('status') == 'success':
+                status = result.get('status')
+                if status == 'success':
                     submitted_count += 1
                     logger.info(
                         f"[OK] verification job already submitted | task_id: {task_id} | "
                         f"parent_job: {result['parent_job_id']} | "
                         f"candidate_job: {result['candidate_job_id']}"
                     )
+                elif status == 'retry':
+                    skipped_count += 1
+                    error = result.get('error', '')
+                    logger.warning(
+                        f"[RETRY] defer verification submit | task_id: {task_id} | "
+                        f"reason: {error}"
+                    )
+                    self._schedule_verification_retry(task_id, related_task_id, error)
                 else:
                     failed_count += 1
                     error = result.get('error', '')
@@ -409,7 +446,7 @@ class SuccessTaskValidator(VerificationConsumer):
                 error_msg = f"failed_to_get_parent_commit_via_api: commit={first_bad_commit[:12]}"
                 logger.error(f" API getsubmitfailed | task_id: {task_id} | commit: {first_bad_commit[:12]}")
                 return {
-                    'status': 'failed',
+                    'status': 'retry',
                     'task_id': task_id,
                     'error': error_msg
                 }
@@ -549,6 +586,57 @@ class SuccessTaskValidator(VerificationConsumer):
             self.client.update("bisect", task_id, fail_doc)
         except Exception as e:
             logger.error(f"mark task failed exception | task_id: {task_id} | error: {str(e)}")
+
+    def _schedule_verification_retry(self, task_id: int, related_task_id: str, reason: str):
+        """Schedule verification submit retry with simple exponential backoff."""
+        try:
+            current_time = int(time.time())
+            existing_j = {}
+            try:
+                task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                if task_row:
+                    existing_j = task_row[0].get('j', {}) or {}
+                    if isinstance(existing_j, str):
+                        existing_j = json.loads(existing_j) if existing_j else {}
+            except Exception:
+                pass
+
+            retry_count = int(existing_j.get('verification_submit_retry_count', 0) or 0) + 1
+            # 5m, 10m, 20m ... cap at 1h
+            backoff_seconds = min(3600, 300 * (2 ** (retry_count - 1)))
+            next_retry_at = current_time + backoff_seconds
+
+            verification_jobs = existing_j.get('verification_jobs', {})
+            if not isinstance(verification_jobs, dict):
+                verification_jobs = {}
+            verification_jobs.update({
+                "status": "retry_pending",
+                "failure_reason": reason,
+                "retry_count": retry_count,
+                "last_retry_at": current_time,
+                "next_retry_at": next_retry_at
+            })
+
+            retry_doc = {
+                "bisect_status": "verifying",
+                "updated_at": current_time,
+                "j": {**existing_j,
+                    "related_task_id": str(related_task_id),
+                    "verification_status": "retry_pending",
+                    "verification_submit_last_error": reason,
+                    "verification_submit_retry_count": retry_count,
+                    "verification_submit_last_retry_at": current_time,
+                    "verification_submit_next_retry_at": next_retry_at,
+                    "verification_jobs": verification_jobs
+                }
+            }
+            self.client.update("bisect", task_id, retry_doc)
+            logger.info(
+                f"scheduled verification retry | task_id: {task_id} | "
+                f"retry_count: {retry_count} | next_retry_in: {backoff_seconds}s"
+            )
+        except Exception as e:
+            logger.error(f"schedule verification retry failed | task_id: {task_id} | error: {str(e)}")
 
     def check_verification_results_once(self, repo_manager=None, limit: int = 500, timeout_hours: int = 24):
         """
@@ -992,4 +1080,3 @@ if __name__ == '__main__':
     stats = validator.run_validation_cycle()
 
     logger.info(f"verifycompleted | stats: {stats}")
-
