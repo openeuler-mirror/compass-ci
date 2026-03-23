@@ -16,6 +16,7 @@ import re
 import threading
 from typing import Optional, Dict, Tuple, List, Any
 from datetime import datetime
+from contextlib import nullcontext
 
 # 
 lib_path = os.path.join(os.environ.get('CCI_SRC', '/srv/cci'), 'container/bisect/lib')
@@ -85,7 +86,7 @@ class CommitTimeQuery:
             if result.returncode != 0:
                 # commit not found， fetch 
                 logger.warning(f"Commit not found, trying fetch | commit: {commit_hash[:12]} | error: {result.stderr.strip()}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
 
                 # query
                 result = subprocess.run(
@@ -157,7 +158,7 @@ class CommitTimeQuery:
             if result.returncode != 0:
                 #  fetch 
                 logger.warning(f"Commit not found, trying fetch | commit: {commit_hash[:12]}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
 
                 result = subprocess.run(
                     ['git', '-C', pristine_repo_dir, 'log', '-1', f'--format={format_str}', commit_hash],
@@ -275,7 +276,7 @@ class CommitTimeQuery:
             if result.returncode != 0:
                 #  fetch
                 logger.warning(f"Tag not found, trying fetch | commit: {commit_hash[:12]}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
 
                 # 
                 result = subprocess.run(
@@ -425,7 +426,7 @@ class CommitTimeQuery:
                 # returncode 128 or other = commit not found, try fetch and retry
                 logger.warning(f"is_ancestor check error, trying fetch | ancestor: {ancestor_commit[:12]} | "
                               f"descendant: {descendant_commit[:12]} | stderr: {result.stderr.strip()}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
 
                 result = subprocess.run(
                     ['git', '-C', pristine_repo_dir, 'merge-base', '--is-ancestor',
@@ -454,17 +455,32 @@ class CommitTimeQuery:
 
     def _ensure_pristine_repo(self, git_url: str, pristine_repo_dir: str):
         """ pristine repo"""
+        repo_key = self.repo_manager._canonical_repo_key(git_url)
         #  repo_manager  pristine 
         with self.repo_manager.pristine_locks_lock:
-            if git_url not in self.repo_manager.pristine_locks:
+            if repo_key not in self.repo_manager.pristine_locks:
                 import threading
-                self.repo_manager.pristine_locks[git_url] = threading.Lock()
-            pristine_lock = self.repo_manager.pristine_locks[git_url]
+                self.repo_manager.pristine_locks[repo_key] = threading.Lock()
+            pristine_lock = self.repo_manager.pristine_locks[repo_key]
 
         with pristine_lock:
-            self.repo_manager._ensure_pristine_repo(git_url, pristine_repo_dir)
+            with self._cross_process_lock(git_url, pristine_repo_dir):
+                self.repo_manager._ensure_pristine_repo(git_url, pristine_repo_dir)
 
-    def _fetch_pristine_repo(self, pristine_repo_dir: str):
+    def _cross_process_lock(self, git_url: Optional[str], pristine_repo_dir: str):
+        """Best-effort cross-process lock if repo_manager exposes file-lock API."""
+        if git_url:
+            lock_fn = getattr(self.repo_manager, '_pristine_file_lock', None)
+            if callable(lock_fn):
+                try:
+                    ctx = lock_fn(git_url, pristine_repo_dir)
+                    if hasattr(ctx, '__enter__') and hasattr(ctx, '__exit__'):
+                        return ctx
+                except Exception:
+                    pass
+        return nullcontext()
+
+    def _fetch_pristine_repo(self, pristine_repo_dir: str, git_url: Optional[str] = None) -> bool:
         """ pristine repo (per-repo lock to avoid concurrent fetches)"""
         with self._fetch_locks_lock:
             if pristine_repo_dir not in self._fetch_locks:
@@ -475,18 +491,27 @@ class CommitTimeQuery:
             logger.info(f"Fetch already in progress, waiting | path: {pristine_repo_dir}")
             lock.acquire()
             lock.release()
-            return
+            return True
 
         try:
-            subprocess.run(
-                ['git', '-C', pristine_repo_dir, 'fetch', 'origin'],
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            with self._cross_process_lock(git_url, pristine_repo_dir):
+                result = subprocess.run(
+                    ['git', '-C', pristine_repo_dir, 'fetch', 'origin'],
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
+            if result.returncode != 0:
+                logger.warning(
+                    f"Fetch failed | path: {pristine_repo_dir} | "
+                    f"stderr: {(result.stderr or '').strip()[:200]}"
+                )
+                return False
             logger.info(f"Pristine repo fetched | path: {pristine_repo_dir}")
+            return True
         except Exception as e:
             logger.warning(f"Fetch failed | path: {pristine_repo_dir} | error: {str(e)}")
+            return False
         finally:
             lock.release()
 
@@ -567,7 +592,7 @@ class CommitTimeQuery:
             resolved_commit = self._resolve_commitish(pristine_repo_dir, ref)
             if not resolved_commit:
                 logger.warning(f"Commit/ref not found, trying fetch | ref: {ref[:24]}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
                 resolved_commit = self._resolve_commitish(pristine_repo_dir, ref)
 
             if not resolved_commit:
@@ -591,7 +616,7 @@ class CommitTimeQuery:
                     f"Parent query failed, trying fetch | commit: {resolved_commit[:12]} | "
                     f"stderr: {result.stderr.strip()}"
                 )
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
                 result = subprocess.run(
                     ['git', '-C', pristine_repo_dir, 'rev-list', '--parents', '-n', '1', resolved_commit],
                     capture_output=True,

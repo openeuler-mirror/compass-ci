@@ -55,6 +55,23 @@ class TestRepoManagerKeying(unittest.TestCase):
         self.assertEqual(p1, p2)
         self.assertTrue(p1.endswith('.lock'))
 
+    def test_pristine_file_lock_creates_lockfile(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = SharedRepoManager.__new__(SharedRepoManager)
+            manager.PRISTINE_BASE_DIR = os.path.join(tmpdir, 'pristine')
+            os.makedirs(manager.PRISTINE_BASE_DIR, exist_ok=True)
+
+            with patch('repo_manager.extract_repo_name_from_url', return_value='kernel'):
+                lock_path = manager._pristine_lockfile_path(
+                    'https://gitee.com/openeuler/kernel.git',
+                    os.path.join(manager.PRISTINE_BASE_DIR, 'kernel')
+                )
+                with manager._pristine_file_lock(
+                    'https://gitee.com/openeuler/kernel.git',
+                    os.path.join(manager.PRISTINE_BASE_DIR, 'kernel')
+                ):
+                    self.assertTrue(os.path.exists(lock_path))
+
     def test_get_repo_dir_wraps_ensure_and_clone_with_file_lock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = SharedRepoManager.__new__(SharedRepoManager)
