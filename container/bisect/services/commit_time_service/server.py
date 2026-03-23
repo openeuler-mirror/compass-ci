@@ -421,14 +421,25 @@ class CommitTimeService:
         """getservicestats"""
         uptime = time.time() - self.start_time
         cache_stats = self.cache.get_stats()
+        query_metrics = {}
+        if hasattr(self.query, 'get_metrics'):
+            query_metrics = self.query.get_metrics()
 
         return {
             'uptime_seconds': int(uptime),
             'total_requests': self.request_count,
             'cache_hits': self.cache_hit_count,
             'cache_hit_rate': self.cache_hit_count / self.request_count if self.request_count > 0 else 0,
-            'cache_stats': cache_stats
+            'cache_stats': cache_stats,
+            'query_metrics': query_metrics
         }
+
+    def get_health(self) -> Dict[str, Any]:
+        """Return lightweight health payload with fetch/lock observability."""
+        payload = {'status': 'healthy'}
+        if hasattr(self.query, 'get_metrics'):
+            payload['query_metrics'] = self.query.get_metrics()
+        return payload
 
 
 class RequestHandler(BaseHTTPRequestHandler):
@@ -615,7 +626,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def handle_health(self):
         """check"""
-        self.send_json_response({'status': 'healthy'})
+        self.send_json_response(self.service.get_health())
 
     def send_json_response(self, data: Dict, status_code: int = 200):
         """ JSON """

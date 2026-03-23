@@ -15,7 +15,7 @@ import time
 import re
 import threading
 from typing import Optional, Dict, Tuple, List, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import nullcontext
 
 # 
@@ -48,6 +48,15 @@ class CommitTimeQuery:
         os.makedirs(self.pristine_base_dir, exist_ok=True)
         self._fetch_locks = {}
         self._fetch_locks_lock = threading.Lock()
+        self._metrics_lock = threading.Lock()
+        self._fetch_metrics = {
+            'fetch_attempts': 0,
+            'fetch_successes': 0,
+            'fetch_failures': 0,
+            'last_fetch_at': 0,
+            'last_fetch_repo': '',
+            'last_fetch_error': ''
+        }
         logger.info(f"Commit query pristine root: {self.pristine_base_dir}")
 
     def get_commit_timestamp(self, git_url: str, commit_hash: str) -> Optional[int]:
@@ -188,7 +197,7 @@ class CommitTimeQuery:
             return {
                 'commit': full_hash,
                 'timestamp': timestamp,
-                'date': datetime.utcfromtimestamp(timestamp).isoformat() + 'Z',
+                'date': datetime.fromtimestamp(timestamp, timezone.utc).isoformat().replace('+00:00', 'Z'),
                 'age_days': age_days,
                 'author': author,
                 'subject': subject[:200]  # 
@@ -494,7 +503,29 @@ class CommitTimeQuery:
             return True
 
         try:
+            with self._metrics_lock:
+                self._fetch_metrics['fetch_attempts'] += 1
+                self._fetch_metrics['last_fetch_at'] = int(time.time())
+                self._fetch_metrics['last_fetch_repo'] = pristine_repo_dir
+                self._fetch_metrics['last_fetch_error'] = ''
+
             with self._cross_process_lock(git_url, pristine_repo_dir):
+                # Bare repos cloned long ago may miss remote.origin.fetch.
+                # Ensure it exists so fetch pulls refs/tags for commit lookup.
+                cfg = subprocess.run(
+                    ['git', '-C', pristine_repo_dir, 'config', 'remote.origin.fetch'],
+                    capture_output=True,
+                    text=True,
+                    timeout=15
+                )
+                if not (cfg.stdout or '').strip():
+                    subprocess.run(
+                        ['git', '-C', pristine_repo_dir, 'config', 'remote.origin.fetch', '+refs/*:refs/*'],
+                        check=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        timeout=15
+                    )
                 result = subprocess.run(
                     ['git', '-C', pristine_repo_dir, 'fetch', 'origin'],
                     capture_output=True,
@@ -502,18 +533,42 @@ class CommitTimeQuery:
                     timeout=120
                 )
             if result.returncode != 0:
+                with self._metrics_lock:
+                    self._fetch_metrics['fetch_failures'] += 1
+                    self._fetch_metrics['last_fetch_error'] = (result.stderr or '').strip()[:200]
                 logger.warning(
                     f"Fetch failed | path: {pristine_repo_dir} | "
                     f"stderr: {(result.stderr or '').strip()[:200]}"
                 )
                 return False
+            with self._metrics_lock:
+                self._fetch_metrics['fetch_successes'] += 1
             logger.info(f"Pristine repo fetched | path: {pristine_repo_dir}")
             return True
         except Exception as e:
+            with self._metrics_lock:
+                self._fetch_metrics['fetch_failures'] += 1
+                self._fetch_metrics['last_fetch_error'] = str(e)[:200]
             logger.warning(f"Fetch failed | path: {pristine_repo_dir} | error: {str(e)}")
             return False
         finally:
             lock.release()
+
+    def get_metrics(self) -> Dict[str, Any]:
+        """Return lightweight query/fetch metrics for health/stats endpoints."""
+        with self._metrics_lock:
+            fetch_metrics = dict(self._fetch_metrics)
+        lock_metrics = {}
+        if hasattr(self.repo_manager, 'get_pristine_lock_metrics'):
+            try:
+                lock_metrics = self.repo_manager.get_pristine_lock_metrics()
+            except Exception:
+                lock_metrics = {}
+        return {
+            'pristine_base_dir': self.pristine_base_dir,
+            'fetch': fetch_metrics,
+            'pristine_lock': lock_metrics
+        }
 
     def _resolve_commitish(self, pristine_repo_dir: str, ref: str, timeout: int = 30) -> Optional[str]:
         """Resolve any commit-ish ref (sha, tag, branch) to a commit SHA."""

@@ -127,8 +127,17 @@ class TestServiceFlow(unittest.TestCase):
         self.assertIn('uptime_seconds', stats)
         self.assertIn('total_requests', stats)
         self.assertIn('cache_stats', stats)
+        self.assertIn('query_metrics', stats)
         self.assertEqual(stats['total_requests'], 0)
         self.assertEqual(stats['cache_hits'], 0)
+
+    def test_service_health_contains_query_metrics(self):
+        from server import CommitTimeService
+
+        service = CommitTimeService()
+        health = service.get_health()
+        self.assertEqual(health['status'], 'healthy')
+        self.assertIn('query_metrics', health)
 
 
 if __name__ == '__main__':

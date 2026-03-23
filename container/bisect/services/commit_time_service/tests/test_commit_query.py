@@ -362,20 +362,29 @@ class TestFetchPristineRepo(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_fetch_pristine_repo_returns_false_on_nonzero_returncode(self, mock_run):
-        mock_run.return_value = Mock(returncode=1, stdout='', stderr='network error')
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout='+refs/*:refs/*', stderr=''),
+            Mock(returncode=1, stdout='', stderr='network error')
+        ]
         ok = self.query._fetch_pristine_repo('/tmp/test_pristine/kernel')
         self.assertFalse(ok)
 
     @patch('subprocess.run')
     def test_fetch_pristine_repo_returns_true_on_success(self, mock_run):
-        mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout='+refs/*:refs/*', stderr=''),
+            Mock(returncode=0, stdout='', stderr='')
+        ]
         ok = self.query._fetch_pristine_repo('/tmp/test_pristine/kernel')
         self.assertTrue(ok)
 
     @patch('subprocess.run')
     def test_fetch_pristine_repo_uses_file_lock_when_git_url_provided(self, mock_run):
         self.mock_repo_manager._pristine_file_lock = Mock(return_value=nullcontext())
-        mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout='+refs/*:refs/*', stderr=''),
+            Mock(returncode=0, stdout='', stderr='')
+        ]
         ok = self.query._fetch_pristine_repo(
             '/tmp/test_pristine/kernel',
             'https://gitee.com/openeuler/kernel.git'
@@ -390,11 +399,15 @@ class TestFetchPristineRepo(unittest.TestCase):
     def test_fetch_pristine_repo_concurrent_calls_share_single_fetch(self, mock_run):
         self.mock_repo_manager._pristine_file_lock = Mock(return_value=nullcontext())
 
-        def slow_success(*_args, **_kwargs):
-            time.sleep(0.2)
+        def run_side_effect(args, *_a, **_k):
+            if len(args) >= 5 and args[3] == 'config':
+                return Mock(returncode=0, stdout='+refs/*:refs/*', stderr='')
+            if len(args) >= 5 and args[3] == 'fetch':
+                time.sleep(0.2)
+                return Mock(returncode=0, stdout='', stderr='')
             return Mock(returncode=0, stdout='', stderr='')
 
-        mock_run.side_effect = slow_success
+        mock_run.side_effect = run_side_effect
 
         results = []
 
@@ -413,8 +426,28 @@ class TestFetchPristineRepo(unittest.TestCase):
         t1.join()
         t2.join()
 
-        self.assertEqual(mock_run.call_count, 1)
+        fetch_calls = [
+            c for c in mock_run.call_args_list
+            if len(c[0]) >= 1 and isinstance(c[0][0], list) and len(c[0][0]) >= 5 and c[0][0][3] == 'fetch'
+        ]
+        self.assertEqual(len(fetch_calls), 1)
         self.assertEqual(results, [True, True])
+
+    @patch('subprocess.run')
+    def test_fetch_pristine_repo_sets_refspec_when_missing(self, mock_run):
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout='', stderr=''),
+            Mock(returncode=0, stdout='', stderr=''),
+            Mock(returncode=0, stdout='', stderr=''),
+        ]
+        ok = self.query._fetch_pristine_repo('/tmp/test_pristine/kernel')
+        self.assertTrue(ok)
+        self.assertGreaterEqual(mock_run.call_count, 3)
+        set_refspec_cmd = mock_run.call_args_list[1][0][0]
+        self.assertEqual(
+            set_refspec_cmd,
+            ['git', '-C', '/tmp/test_pristine/kernel', 'config', 'remote.origin.fetch', '+refs/*:refs/*']
+        )
 
     def test_cross_process_lock_falls_back_when_lock_fn_missing(self):
         self.mock_repo_manager._pristine_file_lock = None
@@ -431,6 +464,14 @@ class TestFetchPristineRepo(unittest.TestCase):
             '/tmp/test_pristine/kernel'
         ):
             pass
+
+    def test_get_metrics_includes_fetch_and_lock_metrics(self):
+        self.mock_repo_manager.get_pristine_lock_metrics = Mock(return_value={'repos': 0, 'per_repo': {}})
+        metrics = self.query.get_metrics()
+        self.assertIn('pristine_base_dir', metrics)
+        self.assertIn('fetch', metrics)
+        self.assertIn('pristine_lock', metrics)
+        self.assertIn('fetch_attempts', metrics['fetch'])
 
 
 if __name__ == '__main__':
