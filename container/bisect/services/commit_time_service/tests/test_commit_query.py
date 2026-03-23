@@ -416,6 +416,22 @@ class TestFetchPristineRepo(unittest.TestCase):
         self.assertEqual(mock_run.call_count, 1)
         self.assertEqual(results, [True, True])
 
+    def test_cross_process_lock_falls_back_when_lock_fn_missing(self):
+        self.mock_repo_manager._pristine_file_lock = None
+        with self.query._cross_process_lock(
+            'https://gitee.com/openeuler/kernel.git',
+            '/tmp/test_pristine/kernel'
+        ):
+            pass
+
+    def test_cross_process_lock_falls_back_when_lock_fn_returns_invalid_object(self):
+        self.mock_repo_manager._pristine_file_lock = Mock(return_value=object())
+        with self.query._cross_process_lock(
+            'https://gitee.com/openeuler/kernel.git',
+            '/tmp/test_pristine/kernel'
+        ):
+            pass
+
 
 if __name__ == '__main__':
     unittest.main()
