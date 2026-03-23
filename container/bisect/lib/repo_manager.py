@@ -21,6 +21,9 @@ import shutil
 import time
 import re
 import traceback
+import hashlib
+import fcntl
+from urllib.parse import urlsplit
 from contextlib import contextmanager
 
 # log
@@ -119,11 +122,12 @@ class SharedRepoManager:
         pristine_repo_dir = os.path.join(self.PRISTINE_BASE_DIR, repo_name)
 
         # Thread-safe access to pristine_locks dictionary
+        repo_key = self._canonical_repo_key(repo_url)
         with self.pristine_locks_lock:
-            if repo_url not in self.pristine_locks:
-                self.pristine_locks[repo_url] = threading.Lock()
-                logger.info(f"Created new pristine lock for repo_url: {repo_url}")
-            pristine_lock = self.pristine_locks[repo_url]
+            if repo_key not in self.pristine_locks:
+                self.pristine_locks[repo_key] = threading.Lock()
+                logger.info(f"Created new pristine lock for repo_key: {repo_key}")
+            pristine_lock = self.pristine_locks[repo_key]
 
         # Create task workspace directory (outside lock to reduce lock time)
         task_workspace_dir = os.path.join(self.REPO_BASE_DIR, str(task_id))
@@ -146,14 +150,15 @@ class SharedRepoManager:
         logger.debug(f"Task {task_id} waiting for pristine lock | repo: {repo_name}")
         with pristine_lock:
             logger.info(f"Task {task_id} acquired pristine lock | repo: {repo_name}")
-            try:
-                self._ensure_pristine_repo(repo_url, pristine_repo_dir)
+            with self._pristine_file_lock(repo_url, pristine_repo_dir):
+                try:
+                    self._ensure_pristine_repo(repo_url, pristine_repo_dir)
 
-                # Clone workspace while holding pristine lock (prevents race with fetch)
-                logger.info(f"Cloning workspace repo | task: {task_id} | repo: {repo_name}")
-                self._clone_workspace_repo(repo_url, pristine_repo_dir, workspace_repo_dir)
-            finally:
-                logger.info(f"Task {task_id} releasing pristine lock | repo: {repo_name}")
+                    # Clone workspace while holding pristine lock (prevents race with fetch)
+                    logger.info(f"Cloning workspace repo | task: {task_id} | repo: {repo_name}")
+                    self._clone_workspace_repo(repo_url, pristine_repo_dir, workspace_repo_dir)
+                finally:
+                    logger.info(f"Task {task_id} releasing pristine lock | repo: {repo_name}")
 
         # Clean up stale lock files after clone
         self._cleanup_stale_locks(workspace_repo_dir)
@@ -218,9 +223,73 @@ class SharedRepoManager:
 
         return False
 
+    @staticmethod
+    def _canonical_repo_key(repo_url: str) -> str:
+        """Normalize repository URL so equivalent forms share one lock/timestamp key."""
+        if not repo_url:
+            return ''
+
+        raw = str(repo_url).strip()
+        if raw.startswith('git+http://') or raw.startswith('git+https://'):
+            raw = raw[4:]
+        raw = raw.rstrip('/')
+
+        if '://' in raw:
+            parsed = urlsplit(raw)
+            path = parsed.path.rstrip('/')
+            if path.endswith('.git'):
+                path = path[:-4]
+            return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{path}"
+
+        m = re.match(r'^(?:(?P<user>[^@]+)@)?(?P<host>[^:]+):(?P<path>.+)$', raw)
+        if m:
+            user = m.group('user')
+            host = m.group('host').lower()
+            path = m.group('path').rstrip('/')
+            if path.endswith('.git'):
+                path = path[:-4]
+            return f"{user + '@' if user else ''}{host}:{path}"
+
+        if raw.endswith('.git'):
+            raw = raw[:-4]
+        return raw
+
+    def _pristine_lockfile_path(self, repo_url: str, pristine_repo_dir: str) -> str:
+        """Build deterministic lock-file path for cross-process pristine operations."""
+        repo_name = extract_repo_name_from_url(repo_url) or os.path.basename(pristine_repo_dir.rstrip('/')) or 'repo'
+        safe_repo_name = re.sub(r'[^A-Za-z0-9._-]+', '_', repo_name)
+        repo_key = self._canonical_repo_key(repo_url)
+        key_hash = hashlib.sha1(repo_key.encode('utf-8')).hexdigest()[:16]
+        lock_dir = os.path.join(self.PRISTINE_BASE_DIR, '.locks')
+        os.makedirs(lock_dir, exist_ok=True)
+        return os.path.join(lock_dir, f"{safe_repo_name}-{key_hash}.lock")
+
+    @contextmanager
+    def _pristine_file_lock(self, repo_url: str, pristine_repo_dir: str):
+        """Cross-process advisory lock for pristine repo operations."""
+        lock_path = self._pristine_lockfile_path(repo_url, pristine_repo_dir)
+        fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
+        try:
+            with os.fdopen(fd, 'a+') as lock_file:
+                logger.debug(f"Waiting for file lock | path: {lock_path}")
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                logger.debug(f"Acquired file lock | path: {lock_path}")
+                try:
+                    yield
+                finally:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                    logger.debug(f"Released file lock | path: {lock_path}")
+        except Exception:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            raise
+
     def _ensure_pristine_repo(self, repo_url, pristine_repo_dir):
         """repostatus（）"""
         repo_name = extract_repo_name_from_url(repo_url)
+        repo_key = self._canonical_repo_key(repo_url)
         current_time = time.time()
 
         if not self._is_git_repo(pristine_repo_dir):
@@ -232,10 +301,10 @@ class SharedRepoManager:
             self._clone_repo_atomic(repo_url, pristine_repo_dir)
             logger.info(f"Pristine repo cloned | repo: {repo_name}")
             #  fetch 
-            self.pristine_fetch_timestamps[repo_url] = current_time
+            self.pristine_fetch_timestamps[repo_key] = current_time
         else:
             # check fetch（duplicate fetch）
-            last_fetch_time = self.pristine_fetch_timestamps.get(repo_url, 0)
+            last_fetch_time = self.pristine_fetch_timestamps.get(repo_key, 0)
             time_since_last_fetch = current_time - last_fetch_time
 
             if time_since_last_fetch < self.PRISTINE_FETCH_INTERVAL:
@@ -249,14 +318,14 @@ class SharedRepoManager:
                 self._fetch_repo(pristine_repo_dir)
                 logger.info(f"Pristine repo updated | repo: {repo_name}")
                 #  fetch 
-                self.pristine_fetch_timestamps[repo_url] = current_time
+                self.pristine_fetch_timestamps[repo_key] = current_time
             except Exception as e:
                 logger.warning(f"Pristine repo fetch failed, will recreate | repo: {repo_name} | error: {str(e)}")
                 # fetchfailed，
                 self._recreate_pristine_repo_atomic(repo_url, pristine_repo_dir)
                 logger.info(f"Pristine repo recreated | repo: {repo_name}")
                 #  fetch 
-                self.pristine_fetch_timestamps[repo_url] = current_time
+                self.pristine_fetch_timestamps[repo_key] = current_time
 
     def _clone_repo_atomic(self, repo_url, repo_dir):
         """ pristine bare repo
