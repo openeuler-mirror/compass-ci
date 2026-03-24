@@ -40,6 +40,23 @@ from errid_intelligence import ErridIntelligence
 
 class SuccessTaskValidator(VerificationConsumer):
     """Validate success/reuse tasks and persist verification artifacts."""
+    _TERMINAL_VERIFICATION_JOB_HEALTH = {
+        'cancel',
+        'terminate',
+        'abort',
+        'abort_invalid',
+        'abort_wait',
+        'abort_provider',
+    }
+
+    @classmethod
+    def _is_terminal_failed_health(cls, health: Any) -> bool:
+        value = str(health or '').strip().lower()
+        if not value:
+            return False
+        if value.startswith('timeout_'):
+            return True
+        return value in cls._TERMINAL_VERIFICATION_JOB_HEALTH
 
     def __init__(self, client: ManticoreClient, config: Dict):
         """Initialize success-task validator."""
@@ -778,6 +795,21 @@ class SuccessTaskValidator(VerificationConsumer):
                         #  6 job, job
                         job_lost = False
                         lost_reason = ""
+                        terminal_failure = False
+                        terminal_reason = ""
+
+                        parent_health_norm = str(parent_health or '').strip().lower()
+                        candidate_health_norm = str(candidate_health or '').strip().lower()
+
+                        # Batch verification should actively close terminal failed jobs
+                        # instead of waiting for the global timeout window.
+                        if (self._is_terminal_failed_health(parent_health_norm) or
+                                self._is_terminal_failed_health(candidate_health_norm)):
+                            terminal_failure = True
+                            terminal_reason = (
+                                f"terminal_job_health(parent={parent_health_norm or 'unknown'},"
+                                f"candidate={candidate_health_norm or 'unknown'})"
+                            )
 
                         if parent_health == 'job_not_found' or candidate_health == 'job_not_found':
                             # checksubmit,  6  job_not_found, 
@@ -785,6 +817,14 @@ class SuccessTaskValidator(VerificationConsumer):
                             if submit_time and (current_time - submit_time) > 6 * 3600:
                                 job_lost = True
                                 lost_reason = f"job_not_found_after_6h (parent: {parent_health}, candidate: {candidate_health})"
+
+                        if terminal_failure:
+                            logger.warning(
+                                f"verification job terminal failure | task_id: {task_id} | reason: {terminal_reason}"
+                            )
+                            self.mark_verification_timeout(task_id, reason=terminal_reason)
+                            timeout_count += 1
+                            continue
 
                         if job_lost:
                             logger.warning(f"verification job | task_id: {task_id} | reason: {lost_reason}")

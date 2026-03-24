@@ -42,6 +42,13 @@ class TestSuccessTaskValidatorRetry(unittest.TestCase):
         v.validation_batch_size = 200
         return v
 
+    def test_terminal_health_helper_matches_constants_categories(self):
+        validator = self._make_validator()
+        self.assertTrue(validator._is_terminal_failed_health('abort_provider'))
+        self.assertTrue(validator._is_terminal_failed_health('timeout_setup'))
+        self.assertTrue(validator._is_terminal_failed_health('cancel'))
+        self.assertFalse(validator._is_terminal_failed_health('success'))
+
     def test_submit_returns_retry_when_parent_commit_api_unavailable(self):
         validator = self._make_validator()
         validator.commit_time_client.get_parent_commit.return_value = None
@@ -138,6 +145,68 @@ class TestSuccessTaskValidatorRetry(unittest.TestCase):
 
         self.assertEqual(tasks, [])
         validator._reset_tasks_to_wait.assert_not_called()
+
+    @patch('success_task_validator.time.time', return_value=2_000)
+    def test_check_results_marks_timeout_for_abort_health(self, _mock_time):
+        validator = self._make_validator()
+        validator.client.sql_select.return_value = [{
+            'id': 123,
+            'bisect_status': 'verifying',
+            'updated_at': 1_900,
+            'j': {
+                'verification_jobs': {
+                    'parent_job_id': 'p1',
+                    'candidate_job_id': 'c1',
+                    'parent_result_root': '/tmp/p1',
+                    'candidate_result_root': '/tmp/c1',
+                    'submit_time': 1_900,
+                }
+            }
+        }]
+        validator.bisect_instance._poll_job_stats.side_effect = [
+            (None, 'abort'),
+            (None, 'success'),
+        ]
+        validator.mark_verification_timeout = MagicMock()
+
+        stats = validator.check_verification_results_once(limit=10, timeout_hours=24)
+
+        self.assertEqual(stats['checked'], 1)
+        self.assertEqual(stats['timeout'], 1)
+        validator.mark_verification_timeout.assert_called_once()
+        reason = validator.mark_verification_timeout.call_args.kwargs.get('reason', '')
+        self.assertIn('terminal_job_health', reason)
+
+    @patch('success_task_validator.time.time', return_value=2_000)
+    def test_check_results_marks_timeout_for_timeout_boot_health(self, _mock_time):
+        validator = self._make_validator()
+        validator.client.sql_select.return_value = [{
+            'id': 456,
+            'bisect_status': 'verifying',
+            'updated_at': 1_900,
+            'j': {
+                'verification_jobs': {
+                    'parent_job_id': 'p2',
+                    'candidate_job_id': 'c2',
+                    'parent_result_root': '/tmp/p2',
+                    'candidate_result_root': '/tmp/c2',
+                    'submit_time': 1_900,
+                }
+            }
+        }]
+        validator.bisect_instance._poll_job_stats.side_effect = [
+            (None, 'success'),
+            (None, 'timeout_boot'),
+        ]
+        validator.mark_verification_timeout = MagicMock()
+
+        stats = validator.check_verification_results_once(limit=10, timeout_hours=24)
+
+        self.assertEqual(stats['checked'], 1)
+        self.assertEqual(stats['timeout'], 1)
+        validator.mark_verification_timeout.assert_called_once()
+        reason = validator.mark_verification_timeout.call_args.kwargs.get('reason', '')
+        self.assertIn('terminal_job_health', reason)
 
 
 if __name__ == '__main__':
