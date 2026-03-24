@@ -75,6 +75,10 @@ class SharedRepoManager:
         self.clone_semaphore = threading.Semaphore(self.MAX_CONCURRENT_CLONES)
         logger.info(f"Clone semaphore initialized | max_concurrent: {self.MAX_CONCURRENT_CLONES}")
 
+        # Pristine lock observability counters (best effort)
+        self._pristine_lock_metrics_lock = threading.Lock()
+        self._pristine_lock_metrics = {}
+
         logger.info("SharedRepoManager initialized (simplified architecture)")
 
     def _cleanup_stale_verify_repos(self):
@@ -264,19 +268,70 @@ class SharedRepoManager:
         os.makedirs(lock_dir, exist_ok=True)
         return os.path.join(lock_dir, f"{safe_repo_name}-{key_hash}.lock")
 
+    def _record_pristine_lock_metric(self, repo_key: str, wait_seconds: float, hold_seconds: float):
+        """Record per-repo lock wait/hold timings for lightweight observability."""
+        if not hasattr(self, '_pristine_lock_metrics'):
+            self._pristine_lock_metrics = {}
+        if not hasattr(self, '_pristine_lock_metrics_lock'):
+            self._pristine_lock_metrics_lock = threading.Lock()
+
+        with self._pristine_lock_metrics_lock:
+            metric = self._pristine_lock_metrics.setdefault(repo_key, {
+                'acquire_count': 0,
+                'wait_seconds_total': 0.0,
+                'hold_seconds_total': 0.0,
+                'wait_seconds_max': 0.0,
+                'hold_seconds_max': 0.0,
+                'last_acquired_at': 0,
+            })
+            metric['acquire_count'] += 1
+            metric['wait_seconds_total'] += max(0.0, wait_seconds)
+            metric['hold_seconds_total'] += max(0.0, hold_seconds)
+            metric['wait_seconds_max'] = max(metric['wait_seconds_max'], wait_seconds)
+            metric['hold_seconds_max'] = max(metric['hold_seconds_max'], hold_seconds)
+            metric['last_acquired_at'] = int(time.time())
+
+    def get_pristine_lock_metrics(self) -> dict:
+        """Return snapshot of pristine lock observability metrics."""
+        if not hasattr(self, '_pristine_lock_metrics'):
+            return {'repos': 0, 'total_acquire_count': 0, 'per_repo': {}}
+        if not hasattr(self, '_pristine_lock_metrics_lock'):
+            self._pristine_lock_metrics_lock = threading.Lock()
+
+        with self._pristine_lock_metrics_lock:
+            per_repo = {}
+            total_acquire_count = 0
+            for key, value in self._pristine_lock_metrics.items():
+                total_acquire_count += int(value.get('acquire_count', 0))
+                per_repo[key] = dict(value)
+            return {
+                'repos': len(per_repo),
+                'total_acquire_count': total_acquire_count,
+                'per_repo': per_repo
+            }
+
     @contextmanager
     def _pristine_file_lock(self, repo_url: str, pristine_repo_dir: str):
         """Cross-process advisory lock for pristine repo operations."""
+        repo_key = self._canonical_repo_key(repo_url)
         lock_path = self._pristine_lockfile_path(repo_url, pristine_repo_dir)
         fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
         try:
             with os.fdopen(fd, 'a+') as lock_file:
                 logger.debug(f"Waiting for file lock | path: {lock_path}")
+                wait_start = time.time()
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                acquired_at = time.time()
                 logger.debug(f"Acquired file lock | path: {lock_path}")
                 try:
                     yield
                 finally:
+                    released_at = time.time()
+                    self._record_pristine_lock_metric(
+                        repo_key,
+                        acquired_at - wait_start,
+                        released_at - acquired_at
+                    )
                     fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
                     logger.debug(f"Released file lock | path: {lock_path}")
         except Exception:

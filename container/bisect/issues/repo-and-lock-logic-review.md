@@ -9,6 +9,39 @@ Review repository lifecycle and lock/concurrency behavior in:
 - `container/bisect/services/commit_time_service/commit_query.py`
 - `container/bisect/config/supervisord.conf`
 
+## Fix Record (2026-03-24)
+
+### Fixed A: `NameError: name 'j_field' is not defined`
+
+- File: `container/bisect/core/bisect_consumer.py`
+- Method: `_handle_bisect_result_no_release()`
+- Change:
+  - Removed out-of-scope `j_field` usage in verification-failed/retry branches.
+  - Read existing metadata from `task.get('j')` (supports both `dict` and JSON string).
+  - Keep original `j` fields (`good_commit`, `bad_commit`, etc.) when writing failed/wait updates.
+- Added regression test:
+  - `container/bisect/core/tests/test_bisect_consumer_commit_validation.py`
+  - Case: boundary verification failed path no longer throws `NameError`.
+
+### Fixed B: Dev-mode stale pristine repo missing fetch refspec
+
+- File: `container/bisect/services/commit_time_service/commit_query.py`
+- Method: `_fetch_pristine_repo()`
+- Change:
+  - Before `git fetch origin`, ensure `remote.origin.fetch` exists.
+  - Auto-set to `+refs/*:refs/*` when missing.
+  - This self-heals old/dev-mode pristine repos without requiring manual delete every time.
+- Added tests:
+  - `container/bisect/services/commit_time_service/tests/test_commit_query.py`
+  - Covers refspec auto-setup path and concurrent fetch behavior.
+
+### Verification Notes
+
+- Passed locally:
+  - `pytest -q container/bisect/core/tests/test_bisect_consumer_commit_validation.py` (`3 passed`)
+  - `python3 -m py_compile` on touched Python files
+- In this environment, full commit-time-service test collection may require explicit runtime `PYTHONPATH`/env setup.
+
 ## Findings
 
 ### 1) High: Locks are thread-local, not process-safe

@@ -59,6 +59,8 @@ class TestRepoManagerKeying(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = SharedRepoManager.__new__(SharedRepoManager)
             manager.PRISTINE_BASE_DIR = os.path.join(tmpdir, 'pristine')
+            manager._pristine_lock_metrics = {}
+            manager._pristine_lock_metrics_lock = __import__('threading').Lock()
             os.makedirs(manager.PRISTINE_BASE_DIR, exist_ok=True)
 
             with patch('repo_manager.extract_repo_name_from_url', return_value='kernel'):
@@ -71,6 +73,11 @@ class TestRepoManagerKeying(unittest.TestCase):
                     os.path.join(manager.PRISTINE_BASE_DIR, 'kernel')
                 ):
                     self.assertTrue(os.path.exists(lock_path))
+
+                metrics = manager.get_pristine_lock_metrics()
+                self.assertGreaterEqual(metrics['total_acquire_count'], 1)
+                key = manager._canonical_repo_key('https://gitee.com/openeuler/kernel.git')
+                self.assertIn(key, metrics['per_repo'])
 
     def test_get_repo_dir_wraps_ensure_and_clone_with_file_lock(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -30,14 +30,33 @@ Notes:
 RUN_INTEGRATION=1 bash container/bisect/scripts/run_functional_tests.sh
 ```
 
+## Recent regression tests (must pass)
+
+Run from repository root:
+
+```bash
+# Bug A: boundary verification failed path should not raise NameError
+pytest -q container/bisect/core/tests/test_bisect_consumer_commit_validation.py
+
+# Bug B: commit query fetch should self-heal missing remote.origin.fetch
+cd container/bisect
+PYTHONPATH=lib:services/commit_time_service:. \
+  python3 -m pytest services/commit_time_service/tests/test_commit_query.py -k "fetch_pristine_repo" -v
+```
+
+Notes:
+- If commit-time-service tests report `ModuleNotFoundError: repo_manager`, run from `container/bisect` with the `PYTHONPATH` above.
+- In dev mode, you can still remove stale query repos manually, but test expectations now assume refspec is auto-healed in fetch path.
+
 ## Test locations
 
 | Test | What it covers |
 |------|---------------|
-| `services/commit_time_service/tests/test_commit_query.py` | is_ancestor, commit timestamps, error handling |
+| `services/commit_time_service/tests/test_commit_query.py` | is_ancestor, commit timestamps, error handling, fetch/refspec self-heal |
 | `services/commit_time_service/tests/test_is_ancestor.py` | Client + server is_ancestor, batch operations |
 | `services/commit_time_service/tests/test_cache.py` | LRU cache TTL and eviction |
 | `core/tests/test_load_baseline_commits.py` | Performance producer baseline loading |
+| `core/tests/test_bisect_consumer_commit_validation.py` | Commit ref validation and boundary verification regression (Bug A) |
 
 ## Post-deploy validation
 
