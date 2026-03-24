@@ -61,6 +61,31 @@ class TestBisectConsumerCommitValidation(unittest.TestCase):
         result = consumer._validate_task_data(data)
         self.assertNotIn('error', result)
 
+    def test_boundary_verification_failure_uses_task_j_without_nameerror(self):
+        consumer = self._make_consumer()
+        task = {
+            'id': 3,
+            'retry_count': 0,
+            'j': {'good_commit': 'abc123', 'bad_commit': 'def456'},
+        }
+        result = {
+            'first_bad_commit': 'deadbeef',
+            'boundary_verification': {
+                'status': 'failed',
+                'verification_passed': False,
+                'verification_failed_reason': 'target_error_id_not_in_introduced',
+            },
+        }
+
+        out = consumer._handle_bisect_result_no_release(result, task, 3)
+
+        self.assertEqual(out['status'], 'failed')
+        consumer.client.update.assert_called_once()
+        _, _, doc = consumer.client.update.call_args[0]
+        self.assertEqual(doc['bisect_status'], 'failed')
+        self.assertEqual(doc['j']['good_commit'], 'abc123')
+        self.assertEqual(doc['j']['bad_commit'], 'def456')
+
 
 if __name__ == '__main__':
     unittest.main()

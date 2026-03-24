@@ -430,6 +430,13 @@ class BisectConsumer:
                 # 1. target_error_id_not_in_introduced: target error_id not in introduced errors list, may be flaky error
                 # 2. retry count exceeds 3
                 should_mark_failed = False
+                existing_j_raw = task.get('j')
+                if isinstance(existing_j_raw, str):
+                    try:
+                        existing_j_raw = json.loads(existing_j_raw) if existing_j_raw else {}
+                    except json.JSONDecodeError:
+                        existing_j_raw = {}
+                existing_j = existing_j_raw if isinstance(existing_j_raw, dict) else {}
                 if 'target_error_id_not_in_introduced' in failed_reason:
                     should_mark_failed = True
                     logger.warning(
@@ -448,7 +455,6 @@ class BisectConsumer:
                     # Merge verification metadata into existing j field to preserve
                     # original commit info (good_commit, bad_commit, etc.)
                     bisect_failed_reason = f"boundary_verification_failed:{failed_reason}"
-                    existing_j = j_field if isinstance(j_field, dict) else {}
                     merged_j = {**existing_j,
                         "verification_status": verification_status,
                         "verification_failed_reason": failed_reason,
@@ -479,7 +485,6 @@ class BisectConsumer:
 
                     # Merge verification metadata into existing j field to preserve
                     # original commit info (good_commit, bad_commit, etc.)
-                    existing_j = j_field if isinstance(j_field, dict) else {}
                     merged_j = {**existing_j,
                         "last_verification_status": verification_status,
                         "last_verification_failed_reason": failed_reason,
