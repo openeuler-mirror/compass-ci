@@ -133,6 +133,40 @@ class _ValidatorWorker(PollingWorker):
         return True
 
 
+class _HeadValidatorWorker(PollingWorker):
+    """PollingWorker that runs periodic HEAD regression checks."""
+
+    def __init__(self, client, config, stop_event, base_interval=86400):
+        super().__init__("HeadValidator", stop_event,
+                         base_interval=base_interval, max_backoff=3600)
+        self.client = client
+        self._config = config
+
+    def setup(self):
+        self.validator = HeadValidator(self.client, self._config)
+        logger.info("HeadValidator initialized successfully")
+
+    def process_cycle(self) -> bool:
+        stats = self.validator.run_head_check_cycle()
+        # Also poll any async checking tasks if present.
+        try:
+            self.validator._poll_head_test_results()
+        except Exception as e:
+            logger.error(f"Failed to poll HEAD test results: {str(e)}")
+            logger.error(traceback.format_exc())
+
+        scanned = int((stats or {}).get('scanned', 0) or 0)
+        if scanned > 0:
+            logger.info(
+                f"HeadValidator cycle | scanned: {scanned} | "
+                f"regressed: {stats.get('regressed', 0)} | "
+                f"fixed: {stats.get('fixed', 0)} | "
+                f"failed: {stats.get('failed', 0)}"
+            )
+            return True
+        return False
+
+
 class _ConsumerWorker(PollingWorker):
     """PollingWorker that fetches wait tasks, clusters, and submits to thread pool."""
 
@@ -397,11 +431,14 @@ class TaskProcessor:
             "manticore_host": os.environ.get('MANTICORE_HOST', 'localhost'),
             "manticore_http_port": os.environ.get('MANTICORE_WRITE_PORT', '9308'),
             "notification_dir": Config.NOTIFICATION_DIR,
+            "notification_webhook_url": Config.NOTIFICATION_WEBHOOK_URL,
+            "notification_email": Config.NOTIFICATION_EMAIL,
             # Verification configuration
             "parallel_verification_jobs": Config.PARALLEL_VERIFICATION_JOBS,
             "verification_batch_size": Config.VERIFICATION_BATCH_SIZE,
             # HEAD check configuration
-            "head_check_batch_size": Config.HEAD_CHECK_BATCH_SIZE
+            "head_check_batch_size": Config.HEAD_CHECK_BATCH_SIZE,
+            "head_check_interval": Config.HEAD_CHECK_INTERVAL
         }
 
         # Get configuration values and apply safety limits
@@ -865,17 +902,19 @@ class TaskProcessor:
         background_threads.append(("SuccessTaskValidator", success_validator_thread))
         logger.info(f"SuccessTaskValidator thread started with ID: {success_validator_thread.ident}")
 
-        # 7. HEAD regression detection thread (temporarily disabled)
-        # logger.info("Starting HeadValidator thread...")
-        # head_validator_thread = threading.Thread(
-        #     target=self.head_validator_consumer,
-        #     daemon=True,
-        #     name="HeadValidator"
-        # )
-        # head_validator_thread.start()
-        # background_threads.append(("HeadValidator", head_validator_thread))
-        # logger.info(f"HeadValidator thread started with ID: {head_validator_thread.ident}")
-        logger.info("HeadValidator disabled (temporarily)")
+        # 7. HEAD regression detection thread
+        if Config.HEAD_VALIDATOR_ENABLED:
+            logger.info("Starting HeadValidator thread...")
+            head_validator_thread = threading.Thread(
+                target=self.head_validator_consumer,
+                daemon=True,
+                name="HeadValidator"
+            )
+            head_validator_thread.start()
+            background_threads.append(("HeadValidator", head_validator_thread))
+            logger.info(f"HeadValidator thread started with ID: {head_validator_thread.ident}")
+        else:
+            logger.info("HeadValidator disabled by config")
 
         # 7. Record started threads
         for name, thread in background_threads:
@@ -962,6 +1001,16 @@ class TaskProcessor:
         worker = _ValidatorWorker(
             self.client, self._config, self.repo_manager,
             self.stop_event, base_interval=validation_interval
+        )
+        worker.run()
+
+    def head_validator_consumer(self):
+        """Launch HeadValidator as a PollingWorker."""
+        set_log_component('consumer')
+        head_check_interval = self._config.get('head_check_interval', 86400)
+        worker = _HeadValidatorWorker(
+            self.client, self._config, self.stop_event,
+            base_interval=head_check_interval
         )
         worker.run()
 

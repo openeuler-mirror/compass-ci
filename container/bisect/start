@@ -42,6 +42,9 @@ HOST_RESULT_DIR='/srv/result'
 KERNEL_CI_DIR='/srv/log/kernel_ci'
 AUTO_TEST_REPOS_DIR='/srv/git/auto_test_repos'
 SUPERVISORD_CONF = File.join(File.dirname(__FILE__), 'config/supervisord.conf')
+NOTIFICATION_WEBHOOK_URL = ENV['BISECT_NOTIFICATION_WEBHOOK_URL'] || ''
+NOTIFICATION_EMAIL = ENV['BISECT_NOTIFICATION_EMAIL'] || ''
+HEAD_VALIDATOR_ENABLED = ENV['BISECT_HEAD_VALIDATOR_ENABLED'] || 'true'
 
 # Ensure log directories exist before supervisord starts.
 # This is required because HOST_RESULT_DIR is bind-mounted and may be empty.
@@ -71,6 +74,9 @@ cmd = %w[
   -e FLASK_APP=#{FLASK_APP}
   -e LOG_LEVEL=DEBUG
   -e COMMIT_TIME_SERVICE_URL=http://localhost:8765
+  -e BISECT_NOTIFICATION_WEBHOOK_URL=#{NOTIFICATION_WEBHOOK_URL}
+  -e BISECT_NOTIFICATION_EMAIL=#{NOTIFICATION_EMAIL}
+  -e BISECT_HEAD_VALIDATOR_ENABLED=#{HEAD_VALIDATOR_ENABLED}
   -e KERNEL_CI_CONFIG_DIR=#{BISECT_RESULT_DIR}bisect/kernel_ci_config
   -e BISECT_MAX_COMMIT_AGE_DAYS=365
   -e BISECT_THREADS=64
@@ -83,7 +89,7 @@ cmd = %w[
   -v #{KERNEL_CI_DIR}:#{KERNEL_CI_DIR}
   -v #{AUTO_TEST_REPOS_DIR}:#{AUTO_TEST_REPOS_DIR}
   -v #{DEFAULT_CONFIG_DIR}:#{DEFAULT_CONFIG_DIR}:ro
-  -v #{DEFAULT_USER_CONFIG_DIR}:#{DEFAULT_BISECT_CONFIG_DIR}:ro
+  -v #{DEFAULT_USER_CONFIG_DIR}:#{DEFAULT_BISECT_CONFIG_DIR}
   -v #{SUPERVISORD_CONF}:/etc/supervisor/supervisord.conf:ro
   -v /etc/localtime:/etc/localtime:ro
   -v /etc/compass-ci/register:/etc/compass-ci/register:ro

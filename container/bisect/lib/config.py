@@ -57,6 +57,8 @@ class Config:
 
     # Notification directory configuration
     NOTIFICATION_DIR = os.environ.get('BISECT_NOTIFICATION_DIR', '/result/bisect/notifications')
+    NOTIFICATION_WEBHOOK_URL = os.environ.get('BISECT_NOTIFICATION_WEBHOOK_URL', '')
+    NOTIFICATION_EMAIL = os.environ.get('BISECT_NOTIFICATION_EMAIL', '')
 
     # Verification configuration
     PARALLEL_VERIFICATION_JOBS = int(os.environ.get('PARALLEL_VERIFICATION_JOBS', 200))
@@ -64,6 +66,8 @@ class Config:
 
     # HEAD check configuration
     HEAD_CHECK_BATCH_SIZE = int(os.environ.get('HEAD_CHECK_BATCH_SIZE', 200))
+    HEAD_CHECK_INTERVAL = int(os.environ.get('HEAD_CHECK_INTERVAL', 86400))
+    HEAD_VALIDATOR_ENABLED = os.environ.get('BISECT_HEAD_VALIDATOR_ENABLED', 'true').lower() == 'true'
 
     # Repository clone concurrency control
     # Shared by all consumers (BisectConsumer, SuccessTaskValidator, HeadValidator)

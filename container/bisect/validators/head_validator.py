@@ -11,8 +11,11 @@ and updates per-taskTrigger HEAD check notifications status.
 import os
 import sys
 import time
+import json
 import subprocess
 import traceback
+import urllib.request
+import urllib.error
 from typing import Dict, Any, Optional, List, Tuple
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
@@ -582,9 +585,19 @@ class HeadValidator(VerificationConsumer):
                 )
                 logger.info(f"HEAD fixed | task_id: {task_id}")
 
-            # TODO:  webhook/email 
+            # Optional webhook/email integration.
             if self.notification_webhook:
-                logger.info(f"TODO: send webhook notification to {self.notification_webhook}")
+                webhook_payload = {
+                    "event": "head_regression" if status == "regressed" else "head_fixed",
+                    "task_id": task_id,
+                    "status": status,
+                    "first_bad_commit": first_bad_commit,
+                    "git_url": git_url,
+                    "regressed_errids": regressed_errids if status == "regressed" else [],
+                    "introduced_errids": introduced_errids if status == "fixed" else [],
+                    "timestamp": int(time.time()),
+                }
+                self._send_webhook_notification(webhook_payload)
 
             if self.notification_email:
                 logger.info(f"TODO: send email notification to {self.notification_email}")
@@ -592,6 +605,50 @@ class HeadValidator(VerificationConsumer):
         except Exception as e:
             logger.error(f"Trigger notification failed: {str(e)}")
             logger.error(traceback.format_exc())
+
+    def _send_webhook_notification(self, payload: Dict[str, Any], timeout: int = 10) -> bool:
+        """Send notification payload to webhook endpoint."""
+        webhook_url = str(self.notification_webhook or '').strip()
+        if not webhook_url:
+            return False
+
+        data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        request = urllib.request.Request(
+            webhook_url,
+            data=data,
+            method='POST',
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'bisect-head-validator/1.0',
+            }
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as resp:
+                status_code = int(getattr(resp, 'status', 0) or resp.getcode())
+                if 200 <= status_code < 300:
+                    logger.info(
+                        f"Webhook notification sent | task_id: {payload.get('task_id')} | "
+                        f"event: {payload.get('event')} | status: {status_code}"
+                    )
+                    return True
+                logger.warning(
+                    f"Webhook returned non-2xx | task_id: {payload.get('task_id')} | "
+                    f"event: {payload.get('event')} | status: {status_code}"
+                )
+                return False
+        except urllib.error.HTTPError as e:
+            logger.warning(
+                f"Webhook HTTP error | task_id: {payload.get('task_id')} | "
+                f"event: {payload.get('event')} | status: {e.code}"
+            )
+            return False
+        except Exception as e:
+            logger.warning(
+                f"Webhook request failed | task_id: {payload.get('task_id')} | "
+                f"event: {payload.get('event')} | error: {str(e)}"
+            )
+            return False
 
 
     def run_head_check_cycle(self) -> Dict[str, int]:
