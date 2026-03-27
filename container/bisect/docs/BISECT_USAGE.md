@@ -1390,11 +1390,11 @@ bash container/bisect/build
 
 ```bash
 # 创建必需的目录
-sudo mkdir -p /srv/git           # Git 仓库缓存
 sudo mkdir -p /srv/result        # 结果存储
 sudo mkdir -p /srv/cache         # 通用缓存
 sudo mkdir -p /srv/log/kernel_ci # Kernel CI 日志
 sudo mkdir -p /srv/git/auto_test_repos  # 自动测试仓库
+sudo mkdir -p /tmp               # 工作目录（默认映射到 /c/bisect）
 
 # 设置权限
 sudo chown -R $(id -u):$(id -g) /srv/result
@@ -1416,6 +1416,63 @@ HOST_RESULT_DIR='/srv/result'      # 主机结果目录
 BISECT_THREADS=64                  # 并发线程数（根据 CPU 核数调整）
 ```
 
+#### 步骤 3.1：容器服务切换运行账号时需要修改的项
+
+如果要把容器内运行用户从默认 `bisect` 改成其它账号，至少要同步修改以下位置（缺一可能导致启动失败或无权限写日志/结果）：
+
+1. `container/bisect/Dockerfile`
+   - `addgroup/adduser` 的 UID/GID
+   - `USER bisect`（改为新用户）
+2. `container/bisect/config/supervisord.conf`
+   - `[supervisord] user=...`
+   - 各 `[program:*] user=...`
+3. `container/bisect/start`
+   - `DEFAULT_BISECT_CONFIG_DIR='/home/bisect/.config/compass-ci/'`（若新用户 home 不同，需改路径）
+   - 挂载路径与新 home 对齐（`-v ~/.config/compass-ci:/home/<new-user>/.config/compass-ci`，建议可写）
+4. 宿主机目录权限
+   - 至少保证新 UID/GID 对以下挂载目录可写：`/srv/result`、`/tmp`（对应 `HOST_WORK_DIR`）、`/srv/cache`、`/srv/log/kernel_ci`、`/srv/git/auto_test_repos`
+
+建议验证：
+
+```bash
+docker exec -it bisect id
+docker exec -it bisect sh -lc 'touch /result/bisect/logs/api/.perm_check && rm -f /result/bisect/logs/api/.perm_check'
+```
+
+#### 步骤 3.2：Kernel-CI 配置文件映射（宿主机配置）
+
+当前启动脚本通过环境变量将容器内配置目录固定为：
+
+- `KERNEL_CI_CONFIG_DIR=/result/bisect/kernel_ci_config`
+
+并通过卷映射：
+
+- 宿主机 `HOST_RESULT_DIR`（默认 `/srv/result`）挂载到容器 `/result`
+
+所以宿主机实际目录是：
+
+- `/srv/result/bisect/kernel_ci_config`
+
+在宿主机准备并放置配置文件：
+
+```bash
+mkdir -p /srv/result/bisect/kernel_ci_config
+# 例如放置 kernel-ci 相关 YAML 配置
+cp /path/to/your/kernel-ci/*.yaml /srv/result/bisect/kernel_ci_config/
+```
+
+容器内验证：
+
+```bash
+docker exec -it bisect ls -la /result/bisect/kernel_ci_config
+```
+
+另外，基础 compass-ci 配置映射仍然来自：
+- `/etc/compass-ci/defaults` -> `/etc/compass-ci/defaults`（只读）
+- `~/.config/compass-ci` -> `/home/bisect/.config/compass-ci`（读写；切换运行账号时需同步调整）
+
+说明：用户配置目录建议读写挂载。只读挂载在部分场景下会导致提交/认证相关流程无法更新本地用户配置。
+
 #### 步骤 4：启动容器
 
 ```bash
@@ -1436,8 +1493,12 @@ docker run
   -e BISECT_PRODUCER_ENABLED=true  # 启用自动任务发现
   -e BISECT_THREADS=64             # 并发执行线程数
   -e LOG_LEVEL=DEBUG               # 日志级别
+  -e KERNEL_CI_CONFIG_DIR=/result/bisect/kernel_ci_config
   -v /srv/result:/result/          # 结果目录挂载
-  -v /srv/git:/srv/git             # Git 仓库挂载
+  -v /tmp:/c/bisect                # 工作目录挂载
+  -v /srv/cache:/srv/cache         # 缓存目录挂载
+  -v /srv/log/kernel_ci:/srv/log/kernel_ci
+  -v /srv/git/auto_test_repos:/srv/git/auto_test_repos
   -p 9999:9999                     # API 端口
   -p 8765:8765                     # Commit Time Service 端口
   bisect                           # 镜像名称

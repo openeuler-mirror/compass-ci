@@ -42,6 +42,9 @@ pytest -q container/bisect/core/tests/test_bisect_consumer_commit_validation.py
 cd container/bisect
 PYTHONPATH=lib:services/commit_time_service:. \
   python3 -m pytest services/commit_time_service/tests/test_commit_query.py -k "fetch_pristine_repo" -v
+
+# Webhook notification delivery (unit level, no deployment needed)
+pytest -q container/bisect/core/tests/test_head_validator_webhook.py
 ```
 
 Notes:
