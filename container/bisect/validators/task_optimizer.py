@@ -158,14 +158,13 @@ class TaskOptimizer:
                 "bisect_status": "success",
                 "first_bad_commit": first_bad_commit,
                 "updated_at": current_time,
-                "end_time": current_time,
-                "start_time": current_time,
                 "j": {
                     "optimized": True,
                     "optimization_strategy": "reuse",
                     "optimization_source_task": verified_task_id,
                     "optimized_at": current_time,
-                    "result_source": "optimized_reuse"
+                    "result_source": "optimized_reuse",
+                    "reuse_completed_at": current_time
                 }
             }
 

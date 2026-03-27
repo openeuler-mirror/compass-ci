@@ -291,8 +291,10 @@ class BisectConsumer:
             cleaned_data[key] = value
 
         # Reject placeholder commit refs early (e.g., "N/A"), which cannot be bisected.
+        # But allow missing good/start commit and let downstream logic derive it.
         good_commit = cleaned_data.get('good_commit') or cleaned_data.get('start_commit')
-        if self._is_invalid_commit_ref(good_commit):
+        good_commit_present = ('good_commit' in cleaned_data) or ('start_commit' in cleaned_data)
+        if good_commit_present and self._is_invalid_commit_ref(good_commit):
             return {
                 'error': f'Invalid good commit reference: {good_commit}',
                 'id': cleaned_data.get('id', 'unknown_id')

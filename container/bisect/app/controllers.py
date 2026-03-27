@@ -329,7 +329,9 @@ def reset_processing_tasks():
             UPDATE bisect
             SET bisect_status = 'wait',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
@@ -400,7 +402,9 @@ def reset_failed_tasks():
             SET bisect_status = 'wait',
                 last_error = '',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
@@ -470,7 +474,9 @@ def reset_verifying_tasks():
             UPDATE bisect
             SET bisect_status = 'wait',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
@@ -540,7 +546,9 @@ def reset_pending_verification_tasks():
             UPDATE bisect
             SET bisect_status = 'wait',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
@@ -606,7 +614,8 @@ def cleanup_orphaned_verifying():
                     # task, reset wait
                     update_query = f"""
                         UPDATE bisect
-                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time}
+                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time},
+                            start_time = 0, end_time = 0
                         WHERE id = {task_id}
                     """
                     client.sql_raw(update_query)
@@ -627,7 +636,8 @@ def cleanup_orphaned_verifying():
                 if not related_result:
                     update_query = f"""
                         UPDATE bisect
-                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time}
+                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time},
+                            start_time = 0, end_time = 0
                         WHERE id = {task_id}
                     """
                     client.sql_raw(update_query)
@@ -636,7 +646,8 @@ def cleanup_orphaned_verifying():
                 elif related_result[0].get('bisect_status') == 'failed':
                     update_query = f"""
                         UPDATE bisect
-                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time}
+                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time},
+                            start_time = 0, end_time = 0
                         WHERE id = {task_id}
                     """
                     client.sql_raw(update_query)
@@ -774,7 +785,9 @@ def reset_task_by_id():
             SET bisect_status = 'wait',
                 last_error = '',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE id = {task_id_int}
         """
 
@@ -851,7 +864,9 @@ def reset_tasks_by_condition():
             SET bisect_status = 'wait',
                 last_error = '',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 

@@ -61,6 +61,17 @@ class TestBisectConsumerCommitValidation(unittest.TestCase):
         result = consumer._validate_task_data(data)
         self.assertNotIn('error', result)
 
+    def test_allows_missing_good_commit_for_regular_tasks(self):
+        consumer = self._make_consumer()
+        data = {
+            'id': 22,
+            'bad_job_id': 'job22',
+            'error_id': 'err',
+            # no good_commit/start_commit
+        }
+        result = consumer._validate_task_data(data)
+        self.assertNotIn('error', result)
+
     def test_boundary_verification_failure_uses_task_j_without_nameerror(self):
         consumer = self._make_consumer()
         task = {

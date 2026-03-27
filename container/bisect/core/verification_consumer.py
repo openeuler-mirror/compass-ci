@@ -763,11 +763,10 @@ class VerificationConsumer:
                 "bisect_status": "success",
                 "first_bad_commit": candidate_commit,
                 "updated_at": current_time,
-                "end_time": current_time,
-                "start_time": current_time - 300,  # verify5
                 "last_error": "",  # error
                 "j": j_field
             }
+            j_field["reuse_completed_at"] = current_time
 
             # 
             update_result = self.client.update("bisect", task_id, success_doc)
