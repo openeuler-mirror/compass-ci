@@ -243,7 +243,6 @@ class HeadValidator(VerificationConsumer):
             previous_head_status = None
             j_field = task.get('j', {})
             if isinstance(j_field, str):
-                import json
                 try:
                     j_field = json.loads(j_field) if j_field else {}
                 except json.JSONDecodeError:
@@ -419,7 +418,6 @@ class HeadValidator(VerificationConsumer):
                             # Read introduced_errids from existing j field.
                             j_field = updated_task.get('j', {})
                             if isinstance(j_field, str):
-                                import json
                                 try:
                                     j_field = json.loads(j_field) if j_field else {}
                                 except json.JSONDecodeError:
@@ -440,7 +438,6 @@ class HeadValidator(VerificationConsumer):
                             logger.warning(f"get task failed | task_id: {task_id}")
                     except Exception as e:
                         logger.error(f"Bisect success report exception | task_id: {task_id} | error: {str(e)}")
-                        import traceback
                         logger.error(traceback.format_exc())
                 else:
                     logger.info(f"Status unchanged, skip report generation | task_id: {task_id} | status: {final_status}")
@@ -740,7 +737,6 @@ class HeadValidator(VerificationConsumer):
                 # Read introduced_errids from existing j field.
                 j_field = task.get('j', {})
                 if isinstance(j_field, str):
-                    import json
                     j_field = json.loads(j_field)
 
                 introduced_errids = j_field.get('introduced_errids', [])
@@ -753,7 +749,6 @@ class HeadValidator(VerificationConsumer):
                 try:
                     j_field = task.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field)
                     existing_j = j_field if isinstance(j_field, dict) else {}
                 except Exception as e:
@@ -817,7 +812,6 @@ class HeadValidator(VerificationConsumer):
                     task_id = task['id']
                     j_field = task.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field)
 
                     head_job_id = j_field.get('head_check_job_id')
@@ -916,7 +910,6 @@ class HeadValidator(VerificationConsumer):
             try:
                 j_field = task.get('j', {})
                 if isinstance(j_field, str):
-                    import json
                     j_field = json.loads(j_field)
                 existing_j = j_field if isinstance(j_field, dict) else {}
             except Exception as e:
@@ -974,7 +967,6 @@ class HeadValidator(VerificationConsumer):
             try:
                 j_field = task.get('j', {}) if isinstance(task, dict) else {}
                 if isinstance(j_field, str):
-                    import json
                     j_field = json.loads(j_field)
                 existing_j = j_field if isinstance(j_field, dict) else {}
             except Exception as e:

@@ -23,6 +23,7 @@ Usage:
 
 import os
 import sys
+import traceback
 import re
 import json
 import time
@@ -386,7 +387,6 @@ Examples:
         sys.exit(1)
     except Exception as e:
         logger.error(f"\nMigration process error: {str(e)}")
-        import traceback
         traceback.print_exc()
         migrator.print_stats()
         sys.exit(1)

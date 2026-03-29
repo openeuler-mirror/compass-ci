@@ -3,6 +3,7 @@
 import sys
 import os
 import time
+import json
 import traceback
 from datetime import datetime, timezone
 from flask import jsonify, request
@@ -574,7 +575,6 @@ def reset_pending_verification_tasks():
 def cleanup_orphaned_verifying():
     """Reset orphaned verifying tasks (related task failed or missing)."""
     try:
-        import json
         client = _get_manticore_client()
 
         # query verifying-status tasks

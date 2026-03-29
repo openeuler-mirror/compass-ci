@@ -566,7 +566,6 @@ class SuccessTaskValidator(VerificationConsumer):
                     if task_row:
                         existing_j = task_row[0].get('j', {}) or {}
                         if isinstance(existing_j, str):
-                            import json
                             existing_j = json.loads(existing_j) if existing_j else {}
                 except Exception:
                     pass
@@ -742,7 +741,6 @@ class SuccessTaskValidator(VerificationConsumer):
                             if task_row:
                                 existing_j = task_row[0].get('j', {}) or {}
                                 if isinstance(existing_j, str):
-                                    import json
                                     existing_j = json.loads(existing_j) if existing_j else {}
                                 # Remove old verification keys but keep commit info
                                 for vk in ('verification_status', 'verification_jobs', 'verification_passed'):
@@ -983,7 +981,6 @@ class SuccessTaskValidator(VerificationConsumer):
                             if task_row:
                                 existing_j = task_row[0].get('j', {}) or {}
                                 if isinstance(existing_j, str):
-                                    import json
                                     existing_j = json.loads(existing_j) if existing_j else {}
                         except Exception:
                             pass
@@ -1067,7 +1064,6 @@ class SuccessTaskValidator(VerificationConsumer):
                 if task_row:
                     existing_j = task_row[0].get('j', {}) or {}
                     if isinstance(existing_j, str):
-                        import json
                         existing_j = json.loads(existing_j) if existing_j else {}
             except Exception:
                 pass

@@ -1029,7 +1029,6 @@ class PerformanceBisectProducer:
         try:
             j_field = item.get('j', {})
             if isinstance(j_field, str):
-                import json
                 j_field = json.loads(j_field)
 
             full_text_kv = item.get('full_text_kv', '')
@@ -1666,7 +1665,6 @@ class PerformanceBisectProducer:
                 for item in existing:
                     j_field = item.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field)
 
                     if (j_field.get('baseline_commit') == pair['baseline_commit'] and
@@ -1701,7 +1699,6 @@ class PerformanceBisectProducer:
             for item in existing:
                 j_field = item.get('j', {})
                 if isinstance(j_field, str):
-                    import json
                     j_field = json.loads(j_field)
 
                 if (j_field.get('baseline_commit') == pair['baseline_commit'] and

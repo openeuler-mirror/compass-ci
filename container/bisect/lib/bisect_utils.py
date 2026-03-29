@@ -503,7 +503,6 @@ def categorize_bisect_task(task_data: dict, full_text_kv: str = '') -> str:
 
     # Check build-related patterns
     if full_text_kv:
-        import re
 
         # Check multiple build-related patterns
         build_patterns = [
@@ -900,7 +899,6 @@ def write_regression_record(client, task_data: dict, bad_commit: str) -> bool:
             # Read and preserve existing j field
             existing_j = existing_record.get('j', {})
             if isinstance(existing_j, str):
-                import json
                 existing_j = json.loads(existing_j)
             if not existing_j or not isinstance(existing_j, dict):
                 existing_j = {}

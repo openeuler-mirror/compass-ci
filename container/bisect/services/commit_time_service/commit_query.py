@@ -468,7 +468,6 @@ class CommitTimeQuery:
         #  repo_manager  pristine 
         with self.repo_manager.pristine_locks_lock:
             if repo_key not in self.repo_manager.pristine_locks:
-                import threading
                 self.repo_manager.pristine_locks[repo_key] = threading.Lock()
             pristine_lock = self.repo_manager.pristine_locks[repo_key]
 

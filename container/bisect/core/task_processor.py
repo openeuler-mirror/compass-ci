@@ -1623,7 +1623,6 @@ class TaskProcessor:
                     # Extract confidence info (for logging)
                     j_field = cached_task.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field) if j_field else {}
                     confidence = j_field.get('confidence', 'unknown')
 
@@ -1682,7 +1681,6 @@ class TaskProcessor:
                     # Extract confidence
                     j_field = task.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field) if j_field else {}
 
                     confidence = j_field.get('confidence', '').lower()

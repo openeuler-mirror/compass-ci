@@ -10,6 +10,7 @@ import os
 import sys
 import time
 import json
+import traceback
 import requests
 from typing import Dict, List, Tuple
 from collections import defaultdict
@@ -258,7 +259,6 @@ def main():
         logger.warning("\nSubmission interrupted by user")
     except Exception as e:
         logger.error(f"Submission failed: {str(e)}")
-        import traceback
         logger.error(traceback.format_exc())
         sys.exit(1)
 

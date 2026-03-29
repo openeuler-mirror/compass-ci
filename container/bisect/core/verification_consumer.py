@@ -182,7 +182,6 @@ class VerificationConsumer:
         try:
             j_field = task.get('j', {})
             if isinstance(j_field, str):
-                import json
                 j_field = json.loads(j_field)
 
             related_task_id = j_field.get('related_task_id')
@@ -846,7 +845,6 @@ class VerificationConsumer:
                         j_field = task.get('j', {})
                         if isinstance(j_field, str):
                             try:
-                                import json
                                 j_field = json.loads(j_field) if j_field else {}
                             except json.JSONDecodeError:
                                 j_field = {}
