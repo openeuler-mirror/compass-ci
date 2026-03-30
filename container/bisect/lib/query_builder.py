@@ -6,6 +6,7 @@ Utilities for list/reset/delete filtering.
 """
 
 import time
+import re
 from typing import Dict, Any, Optional, List, Tuple
 from flask import request
 from config import Config
@@ -27,6 +28,11 @@ def _escape_sql_string(value: str, escape_wildcards: bool = False) -> str:
     if escape_wildcards:
         escaped = escaped.replace("%", "\\%").replace("_", "\\_")
     return escaped
+
+
+def _escape_regex_pattern(value: str) -> str:
+    """Escape user input for literal use inside a REGEX() pattern."""
+    return _escape_sql_string(re.escape(value))
 
 
 def _validate_task_id(task_id: str) -> int:
@@ -112,15 +118,18 @@ def build_task_query_conditions() -> Tuple[str, Dict[str, Any]]:
     # git_url - fuzzy match
     git_url = request.args.get('git_url')
     if git_url:
-        git_url_escaped = _escape_sql_string(git_url)
-        conditions.append(f"git_url LIKE '%{git_url_escaped}%'")
+        git_url_escaped = _escape_regex_pattern(git_url)
+        conditions.append(f"REGEX(git_url, '{git_url_escaped}')")
         filters['git_url'] = git_url
 
     # first_bad_commit - exact/full/short SHA
     first_bad_commit = request.args.get('first_bad_commit')
     if first_bad_commit:
-        commit_escaped = _escape_sql_string(first_bad_commit)
-        conditions.append(f"first_bad_commit = '{commit_escaped}'")
+        commit_escaped = _escape_regex_pattern(first_bad_commit)
+        if len(first_bad_commit) < 40:
+            conditions.append(f"REGEX(first_bad_commit, '^{commit_escaped}')")
+        else:
+            conditions.append(f"first_bad_commit = '{commit_escaped}'")
         filters['first_bad_commit'] = first_bad_commit
 
     # task ID (with validation)

@@ -33,7 +33,7 @@ api_bp = Blueprint('api', __name__)
 # API
 api_bp.route('/new_bisect_task', methods=['POST'])(new_bisect_task)
 api_bp.route('/list_bisect_tasks', methods=['GET'])(list_bisect_tasks)
-api_bp.route('/reset_failed_tasks', methods=['DELETE'])(reset_failed_tasks)
+api_bp.route('/reset_failed_tasks', methods=['POST'])(reset_failed_tasks)
 api_bp.route('/reset_processing_tasks', methods=['POST'])(reset_processing_tasks)
 api_bp.route('/reset_verifying_tasks', methods=['POST'])(reset_verifying_tasks)
 api_bp.route('/reset_pending_verification_tasks', methods=['POST'])(reset_pending_verification_tasks)
