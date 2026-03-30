@@ -71,10 +71,16 @@ class _ValidatorWorker(PollingWorker):
         logger.info("SuccessTaskValidator initialized successfully")
 
     def process_cycle(self) -> bool:
+        did_work = False
+
         # Step 1: check submitted verification job results
         try:
-            result = self.validator.check_verification_results_once(self.repo_manager)
+            timeout_hours = int(self._config.get('verification_timeout_hours', 24) or 24)
+            result = self.validator.check_verification_results_once(
+                self.repo_manager, timeout_hours=timeout_hours
+            )
             if result['checked'] > 0:
+                did_work = True
                 logger.info(
                     f"Verification result check | checked: {result['checked']} | "
                     f"completed: {result['completed']} | failed: {result['failed']} | "
@@ -85,15 +91,26 @@ class _ValidatorWorker(PollingWorker):
             logger.error(f"Failed to check verification results: {str(e)}")
             logger.error(traceback.format_exc())
 
-        # Step 2: scan new verifying tasks and submit verification jobs
-        batch_size = self._config.get('verification_batch_size', 200)
-        tasks = self.validator.scan_unverified_tasks(limit=batch_size)
+        # Step 2: enforce admission control before submitting new verification jobs
+        batch_size = int(self._config.get('verification_batch_size', 200) or 200)
+        max_verifying_tasks = int(self._config.get('max_verifying_tasks', 10) or 10)
+        inflight_verifying = self.validator.count_active_verification_tasks()
+        available_slots = max(0, max_verifying_tasks - inflight_verifying)
+
+        logger.info(
+            f"Verification admission control | inflight: {inflight_verifying} | "
+            f"max: {max_verifying_tasks} | available_slots: {available_slots}"
+        )
+
+        if available_slots <= 0:
+            return did_work
+
+        tasks = self.validator.scan_unverified_tasks(limit=min(batch_size, available_slots))
 
         if not tasks:
-            return False
+            return did_work
 
-        verifying_count = sum(1 for t in tasks if t.get('bisect_status') == 'verifying')
-        logger.info(f"Scanned {len(tasks)} pending verification tasks | verifying: {verifying_count}")
+        logger.info(f"Scanned {len(tasks)} pending verification tasks for submission")
 
         tasks_by_repo = self.validator.group_tasks_by_repo(tasks)
         logger.info(f"Task grouping completed | {len(tasks_by_repo)} repos | total_tasks: {len(tasks)}")
@@ -117,6 +134,7 @@ class _ValidatorWorker(PollingWorker):
                 )
                 submitted_count += result.get('submitted', 0)
                 failed_count += result.get('failed', 0)
+                did_work = did_work or bool(result.get('submitted', 0) or result.get('failed', 0))
             except Exception as e:
                 logger.error(
                     f"Failed to batch submit verification jobs | repo: {git_url[:60]} | "
@@ -130,7 +148,7 @@ class _ValidatorWorker(PollingWorker):
             f"submitted: {submitted_count} | failed: {failed_count} | "
             f"repos: {len(tasks_by_repo)}"
         )
-        return True
+        return did_work
 
 
 class _HeadValidatorWorker(PollingWorker):
@@ -322,10 +340,10 @@ class TaskProcessor:
 
         Reset rules:
         - processing -> wait (container restart, thread pool tasks lost, need re-execution)
-        - verifying -> wait (container restart, verification job status unreliable, need re-execution)
+        - verifying -> reconcile by persisted verification metadata
 
         Note:
-        - Uses direct UPDATE statements to avoid SELECT LIMIT issues
+        - Uses direct UPDATE statements where safe
         - Cleans up residual workspace directories on filesystem
         """
         try:
@@ -342,14 +360,7 @@ class TaskProcessor:
             processing_result = self.client.sql_raw(processing_update_sql)
             processing_reset = processing_result[0].get('total', 0) if processing_result and len(processing_result) > 0 else 0
 
-            # Directly UPDATE all verifying tasks to wait (preserve j field, keep verification info)
-            verifying_update_sql = f"""
-                UPDATE bisect
-                SET bisect_status = 'wait', updated_at = {current_time}
-                WHERE bisect_status = 'verifying'
-            """
-            verifying_result = self.client.sql_raw(verifying_update_sql)
-            verifying_reset = verifying_result[0].get('total', 0) if verifying_result and len(verifying_result) > 0 else 0
+            verifying_reset = self._reconcile_verifying_tasks_on_startup(current_time)
 
             # Clean up all workspace directories starting with digits (task residuals)
             cleaned_dirs = 0
@@ -370,13 +381,78 @@ class TaskProcessor:
             logger.warning(
                 f"Container startup reset completed | "
                 f"processing→wait: {processing_reset} | "
-                f"verifying→wait: {verifying_reset} | "
+                f"verifying_recovered: {verifying_reset} | "
                 f"cleaned_dirs: {cleaned_dirs}"
             )
 
         except Exception as e:
             logger.error(f"Container startup task reset failed: {str(e)}")
             logger.error(traceback.format_exc())
+
+    def _reconcile_verifying_tasks_on_startup(self, current_time: int) -> int:
+        """Recover verifying tasks without resubmitting jobs blindly after restart."""
+        try:
+            query = """
+                SELECT id, j
+                FROM bisect
+                WHERE bisect_status = 'verifying'
+                LIMIT 5000
+                OPTION max_matches=5000
+            """
+            tasks = self.client.sql_select(query) or []
+            recovered = 0
+
+            for task in tasks:
+                task_id = task.get('id')
+                j_field = task.get('j', {}) or {}
+                if isinstance(j_field, str):
+                    try:
+                        j_field = json.loads(j_field) if j_field else {}
+                    except Exception:
+                        j_field = {}
+
+                verification_jobs = j_field.get('verification_jobs', {})
+                if not isinstance(verification_jobs, dict):
+                    verification_jobs = {}
+
+                verification_status = str(j_field.get('verification_status') or '').strip().lower()
+                job_status = str(verification_jobs.get('status') or '').strip().lower()
+                has_submitted_jobs = bool(
+                    verification_jobs.get('parent_job_id') and verification_jobs.get('candidate_job_id')
+                )
+
+                if verification_status == 'verified':
+                    self.client.update("bisect", task_id, {
+                        "bisect_status": "success",
+                        "updated_at": current_time,
+                    })
+                    recovered += 1
+                    continue
+
+                if has_submitted_jobs and job_status not in ('failed', 'timeout', 'retry_pending'):
+                    logger.info(f"startup recovery | keep verifying | task_id: {task_id}")
+                    continue
+
+                recovered_j = {
+                    **j_field,
+                    "startup_recovered_at": current_time,
+                    "startup_recovery_from": "verifying",
+                }
+                if verification_status != 'verified':
+                    recovered_j["verification_status"] = "pending"
+
+                self.client.update("bisect", task_id, {
+                    "bisect_status": "pending_verification",
+                    "updated_at": current_time,
+                    "j": recovered_j,
+                })
+                recovered += 1
+
+            return recovered
+        except Exception as e:
+            logger.error(f"startup recovery for verifying tasks failed: {str(e)}")
+            logger.error(traceback.format_exc())
+            return 0
 
 
 
@@ -436,6 +512,11 @@ class TaskProcessor:
             # Verification configuration
             "parallel_verification_jobs": Config.PARALLEL_VERIFICATION_JOBS,
             "verification_batch_size": Config.VERIFICATION_BATCH_SIZE,
+            "validation_interval": Config.VALIDATION_INTERVAL,
+            "max_verifying_tasks": Config.MAX_VERIFYING_TASKS,
+            "verification_timeout_hours": Config.VERIFICATION_TIMEOUT_HOURS,
+            "verification_timeout_retry_max": Config.VERIFICATION_TIMEOUT_RETRY_MAX,
+            "verification_timeout_final_action": Config.VERIFICATION_TIMEOUT_FINAL_ACTION,
             # HEAD check configuration
             "head_check_batch_size": Config.HEAD_CHECK_BATCH_SIZE,
             "head_check_interval": Config.HEAD_CHECK_INTERVAL
@@ -1408,7 +1489,7 @@ class TaskProcessor:
                         successful_task_id = successful_task['id']
                         logger.info(
                             f"Cluster {signature}: found successful task {successful_task_id} in same repo, "
-                            f"immediately marking {len(repo_tasks)} tasks as verifying | repo: {repo_key[:80]}"
+                            f"marking {len(repo_tasks)} tasks as pending_verification | repo: {repo_key[:80]}"
                         )
 
                         current_time = int(time.time())
@@ -1444,7 +1525,7 @@ class TaskProcessor:
                                     continue
 
                                 doc = {
-                                    "bisect_status": "verifying",
+                                    "bisect_status": "pending_verification",
                                     "updated_at": current_time,
                                     "j": {
                                         "related_task_id": str(successful_task_id),
@@ -1452,7 +1533,8 @@ class TaskProcessor:
                                         "original_error_id": task.get('error_id', ''),
                                         "marked_by_clustering": True,
                                         "marked_timestamp": current_time,
-                                        "marking_attempts": marking_attempts + 1
+                                        "marking_attempts": marking_attempts + 1,
+                                        "verification_status": "pending"
                                     }
                                 }
                                 if self.client.update("bisect", task_id, doc):
@@ -1530,7 +1612,7 @@ class TaskProcessor:
 
     def _batch_mark_verifying(self, verifying_tasks: List[Dict]):
         """
-        Batch mark tasks as verifying status (directly reuse successful tasks)
+        Batch mark tasks as pending verification status (directly reuse successful tasks)
 
         Args:
             verifying_tasks: list of tasks to mark, each containing:
@@ -1547,7 +1629,10 @@ class TaskProcessor:
         success_count = 0
         failed_count = 0
 
-        logger.info(f"Starting batch mark of {len(verifying_tasks)} tasks as verifying (reusing successful tasks)")
+        logger.info(
+            f"Starting batch mark of {len(verifying_tasks)} tasks as pending_verification "
+            f"(reusing successful tasks)"
+        )
 
         for task_info in verifying_tasks:
             try:
@@ -1557,7 +1642,7 @@ class TaskProcessor:
                 original_error_id = task_info.get('original_error_id', '')
 
                 doc = {
-                    "bisect_status": "verifying",
+                    "bisect_status": "pending_verification",
                     "updated_at": current_time,
                     "j": {
                         "related_task_id": str(related_task_id),
@@ -1566,7 +1651,7 @@ class TaskProcessor:
                         "clustering_timestamp": current_time,
                         "clustered_by": "task_processor",
                         "reused_from_successful": True,  # Marked as reusing successful task
-                        "direct_to_verifying": True  # Skip pending_verification
+                        "verification_status": "pending"
                     }
                 }
 
@@ -1575,7 +1660,10 @@ class TaskProcessor:
 
                 if update_result:
                     success_count += 1
-                    logger.debug(f"Task {task_id} marked as verifying, linked to successful task {related_task_id}")
+                    logger.debug(
+                        f"Task {task_id} marked as pending_verification, "
+                        f"linked to successful task {related_task_id}"
+                    )
                 else:
                     failed_count += 1
                     logger.warning(f"Task {task_id} marking failed")
@@ -1584,7 +1672,9 @@ class TaskProcessor:
                 failed_count += 1
                 logger.error(f"Failed to mark task {task_info.get('id', 'unknown')}: {str(e)}")
 
-        logger.info(f"Batch marking verifying completed: success {success_count}, failed {failed_count}")
+        logger.info(
+            f"Batch marking pending_verification completed: success {success_count}, failed {failed_count}"
+        )
 
     @staticmethod
     def _success_cache_key(signature: str, git_url: str) -> str:

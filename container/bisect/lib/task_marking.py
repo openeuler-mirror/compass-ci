@@ -59,7 +59,7 @@ class TaskMarker:
 
         success_git_url = successful_task.get('git_url', '')
         similar_tasks = self._find_similar_tasks(signature, success_git_url)
-        result = self._batch_mark_verifying(similar_tasks, successful_task['id'], signature)
+        result = self._batch_mark_pending_verification(similar_tasks, successful_task['id'], signature)
 
         logger.info(f"mark similar wait tasks | completed | task_id: {successful_task['id']} | "
                    f"signature: {signature} | success: {result['success']} | failed: {result['failed']}")
@@ -137,8 +137,8 @@ class TaskMarker:
             logger.info(f"filter by signature | skipped cross-repo: {skipped_cross_repo}")
         return similar
 
-    def _batch_mark_verifying(self, tasks: List[Dict], related_id: str, signature: str) -> Dict[str, int]:
-        """Data layer: batch mark tasks as verifying"""
+    def _batch_mark_pending_verification(self, tasks: List[Dict], related_id: str, signature: str) -> Dict[str, int]:
+        """Data layer: batch mark tasks as pending verification"""
         if not tasks:
             return {'success': 0, 'failed': 0}
 
@@ -147,37 +147,42 @@ class TaskMarker:
         failed_count = 0
 
         for task in tasks:
-            if self._mark_single_verifying(task['id'], related_id, signature, task.get('error_id', ''), current_time):
+            if self._mark_single_pending_verification(
+                task['id'], related_id, signature, task.get('error_id', ''), current_time
+            ):
                 success_count += 1
             else:
                 failed_count += 1
 
         return {'success': success_count, 'failed': failed_count}
 
-    def _mark_single_verifying(self, task_id: str, related_id: str, signature: str,
-                                error_id: str, timestamp: int) -> bool:
-        """Data layer: mark a single task as verifying"""
+    def _mark_single_pending_verification(self, task_id: str, related_id: str, signature: str,
+                                           error_id: str, timestamp: int) -> bool:
+        """Data layer: mark a single task as pending verification"""
         doc = {
-            "bisect_status": "verifying",
+            "bisect_status": "pending_verification",
             "updated_at": timestamp,
             "j": {
                 "related_task_id": str(related_id),
                 "error_signature": signature,
                 "original_error_id": error_id,
                 "auto_marked_by_success": True,
-                "auto_marked_timestamp": timestamp
+                "auto_marked_timestamp": timestamp,
+                "verification_status": "pending"
             }
         }
 
         try:
             result = self.client.update("bisect", task_id, doc)
             if result:
-                logger.debug(f"mark single verifying | success | task_id: {task_id} | related: {related_id}")
+                logger.debug(
+                    f"mark single pending_verification | success | task_id: {task_id} | related: {related_id}"
+                )
             else:
-                logger.warning(f"mark single verifying | failed | task_id: {task_id}")
+                logger.warning(f"mark single pending_verification | failed | task_id: {task_id}")
             return bool(result)
         except Exception as e:
-            logger.error(f"mark single verifying | error | task_id: {task_id} | error: {str(e)}")
+            logger.error(f"mark single pending_verification | error | task_id: {task_id} | error: {str(e)}")
             return False
 
 

@@ -40,6 +40,10 @@ class TestSuccessTaskValidatorRetry(unittest.TestCase):
         v.bisect_instance = MagicMock()
         v.commit_time_client = MagicMock()
         v.validation_batch_size = 200
+        v.max_verifying_tasks = 10
+        v.verification_timeout_hours = 24
+        v.verification_timeout_retry_max = 2
+        v.verification_timeout_final_action = 'rebisect'
         return v
 
     def test_terminal_health_helper_matches_constants_categories(self):
@@ -85,7 +89,7 @@ class TestSuccessTaskValidatorRetry(unittest.TestCase):
         self.assertEqual(args[0], 'bisect')
         self.assertEqual(args[1], 123)
         doc = args[2]
-        self.assertEqual(doc['bisect_status'], 'verifying')
+        self.assertEqual(doc['bisect_status'], 'pending_verification')
         self.assertEqual(doc['j']['verification_submit_retry_count'], 2)
         self.assertEqual(doc['j']['verification_submit_last_retry_at'], 1000)
         # retry_count=2 -> backoff=600s
@@ -126,7 +130,7 @@ class TestSuccessTaskValidatorRetry(unittest.TestCase):
             'id': 123,
             'bad_job_id': 'job1',
             'error_id': 'eid',
-            'bisect_status': 'verifying',
+            'bisect_status': 'pending_verification',
             'git_url': 'https://example.com/repo.git',
             'updated_at': 900,
             'submit_time': 900,
@@ -145,6 +149,43 @@ class TestSuccessTaskValidatorRetry(unittest.TestCase):
 
         self.assertEqual(tasks, [])
         validator._reset_tasks_to_wait.assert_not_called()
+
+    def test_count_active_verification_tasks_only_counts_submitted_jobs(self):
+        validator = self._make_validator()
+        validator.client.sql_select.return_value = [
+            {
+                'id': 1,
+                'j': {
+                    'verification_jobs': {
+                        'status': 'submitted',
+                        'parent_job_id': 'p1',
+                        'candidate_job_id': 'c1',
+                    }
+                }
+            },
+            {
+                'id': 2,
+                'j': {
+                    'verification_jobs': {
+                        'status': 'retry_pending',
+                        'parent_job_id': 'p2',
+                        'candidate_job_id': 'c2',
+                    }
+                }
+            },
+            {
+                'id': 3,
+                'j': {
+                    'verification_jobs': {
+                        'status': 'completed',
+                        'parent_job_id': 'p3',
+                        'candidate_job_id': 'c3',
+                    }
+                }
+            },
+        ]
+
+        self.assertEqual(validator.count_active_verification_tasks(), 1)
 
     @patch('success_task_validator.time.time', return_value=2_000)
     def test_check_results_marks_timeout_for_abort_health(self, _mock_time):
@@ -176,6 +217,55 @@ class TestSuccessTaskValidatorRetry(unittest.TestCase):
         validator.mark_verification_timeout.assert_called_once()
         reason = validator.mark_verification_timeout.call_args.kwargs.get('reason', '')
         self.assertIn('terminal_job_health', reason)
+
+    @patch('success_task_validator.time.time', return_value=2_000)
+    def test_mark_verification_timeout_requeues_pending_before_limit(self, _mock_time):
+        validator = self._make_validator()
+        validator.client.sql_select.return_value = [{
+            'j': {
+                'verification_timeout_count': 0,
+                'verification_jobs': {
+                    'status': 'submitted',
+                    'parent_job_id': 'p1',
+                    'candidate_job_id': 'c1',
+                }
+            }
+        }]
+
+        validator.mark_verification_timeout(task_id=123, reason='timeout_exceeded')
+
+        args = validator.client.update.call_args[0]
+        self.assertEqual(args[0], 'bisect')
+        self.assertEqual(args[1], 123)
+        doc = args[2]
+        self.assertEqual(doc['bisect_status'], 'pending_verification')
+        self.assertEqual(doc['j']['verification_status'], 'timeout_retry_pending')
+        self.assertEqual(doc['j']['verification_timeout_count'], 1)
+        self.assertEqual(doc['j']['verification_next_retry_at'], 3800)
+        self.assertEqual(doc['j']['verification_jobs']['status'], 'retry_pending')
+
+    @patch('success_task_validator.time.time', return_value=2_000)
+    def test_mark_verification_timeout_rebisects_after_retry_limit(self, _mock_time):
+        validator = self._make_validator()
+        validator.client.sql_select.return_value = [{
+            'j': {
+                'verification_timeout_count': 2,
+                'verification_jobs': {
+                    'status': 'submitted',
+                    'parent_job_id': 'p1',
+                    'candidate_job_id': 'c1',
+                }
+            }
+        }]
+
+        validator.mark_verification_timeout(task_id=123, reason='timeout_exceeded')
+
+        args = validator.client.update.call_args[0]
+        doc = args[2]
+        self.assertEqual(doc['bisect_status'], 'wait')
+        self.assertEqual(doc['j']['verification_status'], 'timeout')
+        self.assertEqual(doc['j']['verification_timeout_count'], 3)
+        self.assertEqual(doc['j']['bisect_invalidation_reason'], 'verification_timeout_exhausted')
 
     @patch('success_task_validator.time.time', return_value=2_000)
     def test_check_results_marks_timeout_for_timeout_boot_health(self, _mock_time):

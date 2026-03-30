@@ -65,6 +65,12 @@ class SuccessTaskValidator(VerificationConsumer):
         # Validation settings
         self.validation_batch_size = config.get('verification_batch_size', 200)
         self.validation_interval = config.get('validation_interval', 3600)
+        self.max_verifying_tasks = int(config.get('max_verifying_tasks', 10) or 10)
+        self.verification_timeout_hours = int(config.get('verification_timeout_hours', 24) or 24)
+        self.verification_timeout_retry_max = int(config.get('verification_timeout_retry_max', 2) or 2)
+        self.verification_timeout_final_action = (
+            str(config.get('verification_timeout_final_action', 'rebisect') or 'rebisect').lower()
+        )
 
         # Initialize GitBisect instance for job submission
         self.bisect_instance = GitBisect(logger)
@@ -77,12 +83,13 @@ class SuccessTaskValidator(VerificationConsumer):
             f"SuccessTaskValidator initialized | "
             f"batch_size: {self.validation_batch_size} | "
             f"interval: {self.validation_interval}s | "
+            f"max_verifying: {self.max_verifying_tasks} | "
             f"commit_time_service: {commit_time_service_url}"
         )
 
     def scan_unverified_tasks(self, limit: int = None) -> List[Dict]:
         """
-        Scan unverified tasks in verifying/pending_verification states.
+        Scan pending verification tasks that are eligible for submission.
 
         Representative success tasks from full bisect runs do not need this.
         This scan focuses on reused tasks that still need boundary checks.
@@ -97,25 +104,26 @@ class SuccessTaskValidator(VerificationConsumer):
             batch_size = limit or self.validation_batch_size
             current_time = int(time.time())
 
-            # query: query verifying status tasks
+            # Query pending verification tasks. Submission is admission-controlled
+            # by the worker, so only tasks without in-flight jobs enter here.
             # JSON filtering is done in Python to avoid Manticore JSON syntax limitations
             sql_query = f"""
                 SELECT id, bad_job_id, error_id, bisect_status, git_url,
-                       updated_at, submit_time, j
+                       updated_at, submit_time, priority_level, j
                 FROM bisect
-                WHERE bisect_status = 'verifying'
-                ORDER BY updated_at DESC
+                WHERE bisect_status = 'pending_verification'
+                ORDER BY priority_level DESC, submit_time DESC
                 LIMIT {batch_size}
             """
 
-            logger.info(f"scanno verifying tasks found | batch_size: {batch_size}")
+            logger.info(f"scan pending verification tasks | batch_size: {batch_size}")
             results = self.client.sql_select(sql_query)
 
             if not results:
-                logger.info("no verifying tasks found")
+                logger.info("no pending verification tasks found")
                 return []
 
-            logger.info(f"SQL query returned {len(results)} no verifying tasks found")
+            logger.info(f"pending verification query returned {len(results)} tasks")
 
             # Python :  related_task_id verifycompletedtask
             filtered_tasks = []
@@ -135,7 +143,7 @@ class SuccessTaskValidator(VerificationConsumer):
                 # check conditions
                 related_task_id = j_field.get('related_task_id')
                 if not related_task_id:
-                    logger.warning(f"verifying task related_task_id, reset wait | task_id: {task_id}")
+                    logger.warning(f"pending verification task missing related_task_id, reset wait | task_id: {task_id}")
                     tasks_without_related_id.append(task_id)
                     continue
 
@@ -163,20 +171,16 @@ class SuccessTaskValidator(VerificationConsumer):
                             f"skip task {task_id}: retry backoff | next_retry_in: {next_retry_at - current_time}s"
                         )
                         continue
-                if verification_jobs and verification_jobs.get('status') == 'submitted':
-                    logger.debug(f"skip task {task_id}: verification job already submitted")
-                    continue
-
                 filtered_tasks.append(task)
 
-            # reset related_task_id task wait( verifying status)
+            # reset related_task_id task wait
             if tasks_without_related_id:
                 self._reset_tasks_to_wait(tasks_without_related_id, "no_related_task_id")
 
             logger.info(
-                f" {len(filtered_tasks)} task | "
-                f": {len(results)} | : {len(results) - len(filtered_tasks)} | "
-                f"resetwait: {len(tasks_without_related_id)}"
+                f"pending verification scan complete | eligible: {len(filtered_tasks)} | "
+                f"total: {len(results)} | skipped: {len(results) - len(filtered_tasks)} | "
+                f"reset_wait: {len(tasks_without_related_id)}"
             )
 
             return filtered_tasks
@@ -185,6 +189,44 @@ class SuccessTaskValidator(VerificationConsumer):
             logger.error(f"scan verification tasks failed: {str(e)}")
             logger.error(traceback.format_exc())
             return []
+
+    def count_active_verification_tasks(self, limit: int = 5000) -> int:
+        """Count verifying tasks that already hold submitted verification jobs."""
+        try:
+            query = f"""
+                SELECT id, j
+                FROM bisect
+                WHERE bisect_status = 'verifying'
+                LIMIT {limit}
+                OPTION max_matches={limit}
+            """
+            tasks = self.client.sql_select(query) or []
+            active_count = 0
+
+            for task in tasks:
+                j_field = task.get('j', {}) or {}
+                if isinstance(j_field, str):
+                    try:
+                        j_field = json.loads(j_field) if j_field else {}
+                    except Exception:
+                        j_field = {}
+
+                verification_jobs = j_field.get('verification_jobs', {})
+                if not isinstance(verification_jobs, dict):
+                    continue
+
+                job_status = str(verification_jobs.get('status') or '').strip().lower()
+                has_job_ids = bool(
+                    verification_jobs.get('parent_job_id') and verification_jobs.get('candidate_job_id')
+                )
+                if has_job_ids and job_status not in ('completed', 'failed', 'timeout', 'retry_pending'):
+                    active_count += 1
+
+            return active_count
+        except Exception as e:
+            logger.error(f"count active verification tasks failed: {str(e)}")
+            logger.error(traceback.format_exc())
+            return 0
 
 
     def group_tasks_by_repo(self, tasks: List[Dict]) -> Dict[str, List[Dict]]:
@@ -240,7 +282,7 @@ class SuccessTaskValidator(VerificationConsumer):
          CommitTimeService API getsubmit,  clone repo.
 
         Args:
-            repo_tasks: task list for one repo (verifying status only)
+            repo_tasks: task list for one repo (pending_verification only)
             git_url: repo URL
             repo_manager: , 
 
@@ -309,7 +351,7 @@ class SuccessTaskValidator(VerificationConsumer):
             # gettask
             related_task_id = j_field.get('related_task_id')
             if not related_task_id:
-                logger.warning(f"verifying task related_task_id | ID: {task_id}")
+                logger.warning(f"pending verification task missing related_task_id | ID: {task_id}")
                 failed_count += 1
                 continue
 
@@ -510,9 +552,23 @@ class SuccessTaskValidator(VerificationConsumer):
                 return {'status': 'failed', 'error': f'submit_candidate_failed: {str(e)}'}
 
             # 3. job
+            existing_j = {}
+            try:
+                task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                if task_row:
+                    existing_j = task_row[0].get('j', {}) or {}
+                    if isinstance(existing_j, str):
+                        existing_j = json.loads(existing_j) if existing_j else {}
+            except Exception:
+                pass
+
             update_doc = {
+                "bisect_status": "verifying",
                 "updated_at": current_time,
                 "j": {
+                    **existing_j,
+                    "verification_status": "submitted",
+                    "verification_submit_retry_count": existing_j.get('verification_submit_retry_count', 0),
                     "verification_jobs": {
                         "status": "submitted",
                         "parent_job_id": parent_job_id,
@@ -634,7 +690,7 @@ class SuccessTaskValidator(VerificationConsumer):
             })
 
             retry_doc = {
-                "bisect_status": "verifying",
+                "bisect_status": "pending_verification",
                 "updated_at": current_time,
                 "j": {**existing_j,
                     "related_task_id": str(related_task_id),
@@ -731,7 +787,7 @@ class SuccessTaskValidator(VerificationConsumer):
                     error_id = verification_jobs.get('error_id', '')
 
                     if not parent_job_id or not candidate_job_id:
-                        logger.warning(f"verification job job_id | task_id: {task_id} |  wait")
+                        logger.warning(f"verification job missing job_id | task_id: {task_id} | requeue pending_verification")
 
                         # Mark as wait, return to queue for reprocessing
                         # Preserve existing j field (commit info) while clearing verification state
@@ -748,9 +804,12 @@ class SuccessTaskValidator(VerificationConsumer):
                         except Exception:
                             pass
                         reset_doc = {
-                            "bisect_status": "wait",
+                            "bisect_status": "pending_verification",
                             "updated_at": current_time,
-                            "j": existing_j
+                            "j": {
+                                **existing_j,
+                                "verification_status": "pending",
+                            }
                         }
 
                         self.client.update("bisect", task_id, reset_doc)
@@ -1033,7 +1092,7 @@ class SuccessTaskValidator(VerificationConsumer):
             return {'checked': 0, 'completed': 0, 'failed': 0, 'timeout': 0, 'waiting': 0, 'skipped': 0}
 
     def mark_verification_timeout(self, task_id: int, reason: str = "timeout"):
-        """verification jobtimeout, reset wait status bisect 
+        """Handle verification timeout with bounded retry before rebisect.
 
         Args:
             task_id: task ID
@@ -1041,23 +1100,6 @@ class SuccessTaskValidator(VerificationConsumer):
         """
         try:
             current_time = int(time.time())
-
-            # querytimeout
-            current_timeout_count = 0
-            try:
-                query = f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1"
-                results = self.client.sql_select(query)
-                if results:
-                    j_field = results[0].get('j', {})
-                    if isinstance(j_field, str):
-                        j_field = json.loads(j_field)
-                    current_timeout_count = j_field.get('verification_timeout_count', 0)
-            except Exception as e:
-                logger.warning(f"querytimeoutfailed | task_id: {task_id} | error: {str(e)}")
-
-            new_timeout_count = current_timeout_count + 1
-
-            # Merge timeout metadata into existing j (preserve commit info)
             existing_j = {}
             try:
                 task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
@@ -1067,23 +1109,92 @@ class SuccessTaskValidator(VerificationConsumer):
                         existing_j = json.loads(existing_j) if existing_j else {}
             except Exception:
                 pass
+
+            current_timeout_count = int(existing_j.get('verification_timeout_count', 0) or 0)
+            new_timeout_count = current_timeout_count + 1
+            max_retry = max(0, self.verification_timeout_retry_max)
+            timeout_final_action = self.verification_timeout_final_action
+
+            verification_jobs = existing_j.get('verification_jobs', {})
+            if not isinstance(verification_jobs, dict):
+                verification_jobs = {}
+
+            verification_jobs.update({
+                "status": "timeout",
+                "timeout_time": current_time,
+                "timeout_reason": reason,
+                "retry_count": new_timeout_count,
+            })
+
+            if new_timeout_count <= max_retry:
+                backoff_seconds = min(8 * 3600, 1800 * (2 ** (new_timeout_count - 1)))
+                next_retry_at = current_time + backoff_seconds
+                verification_jobs["status"] = "retry_pending"
+                verification_jobs["next_retry_at"] = next_retry_at
+
+                update_doc = {
+                    "bisect_status": "pending_verification",
+                    "updated_at": current_time,
+                    "j": {
+                        **existing_j,
+                        "verification_jobs": verification_jobs,
+                        "verification_status": "timeout_retry_pending",
+                        "verification_timeout_count": new_timeout_count,
+                        "verification_last_timeout_at": current_time,
+                        "verification_next_retry_at": next_retry_at,
+                        "last_timeout_reason": reason,
+                    }
+                }
+                self.client.update("bisect", task_id, update_doc)
+                logger.info(
+                    f"verification timeout, requeue pending_verification | task_id: {task_id} | "
+                    f"reason: {reason} | timeout_count: {new_timeout_count} | "
+                    f"next_retry_in: {backoff_seconds}s"
+                )
+                return
+
+            if timeout_final_action == 'success_unverified':
+                update_doc = {
+                    "bisect_status": "success",
+                    "updated_at": current_time,
+                    "j": {
+                        **existing_j,
+                        "verification_jobs": verification_jobs,
+                        "verification_status": "timeout_unverified",
+                        "verification_timeout_count": new_timeout_count,
+                        "verification_last_timeout_at": current_time,
+                        "last_timeout_reason": reason,
+                        "result_source": "reused_unverified",
+                        "reusable_as_verification_source": False,
+                    }
+                }
+                self.client.update("bisect", task_id, update_doc)
+                logger.warning(
+                    f"verification timeout finalized as success_unverified | task_id: {task_id} | "
+                    f"reason: {reason} | timeout_count: {new_timeout_count}"
+                )
+                return
+
             update_doc = {
                 "bisect_status": "wait",
                 "updated_at": current_time,
-                "j": {**existing_j,
-                    "verification_jobs": {
-                        "status": "timeout",
-                        "timeout_time": current_time,
-                        "timeout_reason": reason
-                    },
+                "j": {
+                    **existing_j,
+                    "verification_jobs": verification_jobs,
                     "verification_status": "timeout",
                     "verification_timeout_count": new_timeout_count,
-                    "last_timeout_reason": reason
+                    "verification_last_timeout_at": current_time,
+                    "last_timeout_reason": reason,
+                    "bisect_invalidated": True,
+                    "bisect_invalidation_reason": "verification_timeout_exhausted",
                 }
             }
 
             self.client.update("bisect", task_id, update_doc)
-            logger.info(f"verification jobtimeout, reset wait | task_id: {task_id} | reason: {reason} | timeout_count: {new_timeout_count}")
+            logger.warning(
+                f"verification timeout exhausted, reset wait | task_id: {task_id} | "
+                f"reason: {reason} | timeout_count: {new_timeout_count}"
+            )
 
         except Exception as e:
             logger.error(f"verifytimeoutfailed | task_id: {task_id} | error: {str(e)}")

@@ -63,6 +63,13 @@ class Config:
     # Verification configuration
     PARALLEL_VERIFICATION_JOBS = int(os.environ.get('PARALLEL_VERIFICATION_JOBS', 200))
     VERIFICATION_BATCH_SIZE = int(os.environ.get('VERIFICATION_BATCH_SIZE', 200))
+    VALIDATION_INTERVAL = int(os.environ.get('VALIDATION_INTERVAL', 60))
+    MAX_VERIFYING_TASKS = int(os.environ.get('MAX_VERIFYING_TASKS', 10))
+    VERIFICATION_TIMEOUT_HOURS = int(os.environ.get('VERIFICATION_TIMEOUT_HOURS', 24))
+    VERIFICATION_TIMEOUT_RETRY_MAX = int(os.environ.get('VERIFICATION_TIMEOUT_RETRY_MAX', 2))
+    VERIFICATION_TIMEOUT_FINAL_ACTION = os.environ.get(
+        'VERIFICATION_TIMEOUT_FINAL_ACTION', 'rebisect'
+    ).lower()
 
     # HEAD check configuration
     HEAD_CHECK_BATCH_SIZE = int(os.environ.get('HEAD_CHECK_BATCH_SIZE', 200))
