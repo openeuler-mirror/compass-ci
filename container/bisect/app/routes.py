@@ -13,6 +13,7 @@ from .controllers import (
     reset_task_by_id,
     reset_tasks_by_condition,
     thread_pool_status,
+    get_verification_status,
     toggle_producer,
     get_producer_status,
     delete_tasks_by_condition,
@@ -40,6 +41,7 @@ api_bp.route('/cleanup_orphaned_verifying', methods=['POST'])(cleanup_orphaned_v
 api_bp.route('/reset_task', methods=['POST'])(reset_task_by_id)
 api_bp.route('/reset_tasks', methods=['POST'])(reset_tasks_by_condition)
 api_bp.route('/thread_pool_status', methods=['GET'])(thread_pool_status)
+api_bp.route('/verification_status', methods=['GET'])(get_verification_status)
 api_bp.route('/toggle_producer', methods=['POST'])(toggle_producer)
 api_bp.route('/producer_status', methods=['GET'])(get_producer_status)
 api_bp.route('/delete_tasks', methods=['DELETE'])(delete_tasks_by_condition)

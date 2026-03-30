@@ -268,6 +268,10 @@ class BisectAPIClient:
         """获取线程池状态"""
         return self._make_request("GET", "/thread_pool_status")
 
+    def verification_status(self) -> Optional[Dict]:
+        """获取验证队列状态"""
+        return self._make_request("GET", "/verification_status")
+
     def toggle_producer(self, enable: bool) -> Optional[Dict]:
         """启用或禁用生产者"""
         state = "enable" if enable else "disable"
@@ -409,6 +413,7 @@ def main():
 
   # 查看线程池状态
   %(prog)s thread_status
+  %(prog)s verification_status
 
   # 池监控命令
   %(prog)s pool_status
@@ -601,6 +606,7 @@ def main():
     add_common_filter_args(reset_tasks_parser)
 
     subparsers.add_parser('thread_status', help='获取线程池状态信息')
+    subparsers.add_parser('verification_status', help='获取验证队列和超时恢复状态')
     subparsers.add_parser('enable_producer', help='启用后台生产者任务')
     subparsers.add_parser('disable_producer', help='禁用后台生产者任务')
     subparsers.add_parser('producer_status', help='获取生产者运行状态')
@@ -698,6 +704,8 @@ def main():
         client.reset_tasks(**conditions)
     elif args.command == 'thread_status':
         client.thread_pool_status()
+    elif args.command == 'verification_status':
+        client.verification_status()
     elif args.command == 'enable_producer':
         client.toggle_producer(True)
     elif args.command == 'disable_producer':

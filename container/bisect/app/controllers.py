@@ -53,6 +53,68 @@ def _humanize_task_list(tasks):
         return tasks
     return [_humanize_timestamps(t) for t in tasks]
 
+def _select_count(client, where_clause: str) -> int:
+    """Run a small COUNT query and return zero on empty result."""
+    query = f"""
+        SELECT COUNT(*) AS count
+        FROM bisect
+        WHERE {where_clause}
+    """
+    result = client.sql_select(query)
+    return int(result[0].get('count', 0) or 0) if result else 0
+
+def _get_verification_queue_snapshot(client=None) -> dict:
+    """Build a compact snapshot of verification queue pressure and outcomes."""
+    client = client or _get_manticore_client()
+    config = getattr(bisect_task_instance, '_config', {}) or {}
+
+    pending_count = _select_count(client, "bisect_status = 'pending_verification'")
+    verifying_count = _select_count(client, "bisect_status = 'verifying'")
+    active_submitted_count = _select_count(
+        client,
+        "bisect_status = 'verifying' "
+        "AND j.verification_jobs.parent_job_id IS NOT NULL "
+        "AND j.verification_jobs.candidate_job_id IS NOT NULL "
+        "AND j.verification_jobs.status = 'submitted'"
+    )
+    timeout_retry_pending_count = _select_count(
+        client, "j.verification_status = 'timeout_retry_pending'"
+    )
+    timeout_final_count = _select_count(client, "j.verification_status = 'timeout'")
+    timeout_unverified_count = _select_count(client, "j.verification_status = 'timeout_unverified'")
+    verified_count = _select_count(client, "j.verification_status = 'verified'")
+
+    max_verifying_tasks = int(config.get('max_verifying_tasks', Config.MAX_VERIFYING_TASKS) or 0)
+    available_slots = max(0, max_verifying_tasks - active_submitted_count)
+
+    return {
+        "pending_verification": pending_count,
+        "verifying": verifying_count,
+        "active_submitted_verifying": active_submitted_count,
+        "available_verifying_slots": available_slots,
+        "verification_status_counts": {
+            "verified": verified_count,
+            "timeout_retry_pending": timeout_retry_pending_count,
+            "timeout": timeout_final_count,
+            "timeout_unverified": timeout_unverified_count,
+        },
+        "config": {
+            "max_verifying_tasks": max_verifying_tasks,
+            "verification_timeout_hours": int(
+                config.get('verification_timeout_hours', Config.VERIFICATION_TIMEOUT_HOURS) or 0
+            ),
+            "verification_timeout_retry_max": int(
+                config.get('verification_timeout_retry_max', Config.VERIFICATION_TIMEOUT_RETRY_MAX) or 0
+            ),
+            "verification_timeout_final_action": str(
+                config.get(
+                    'verification_timeout_final_action',
+                    Config.VERIFICATION_TIMEOUT_FINAL_ACTION
+                ) or ''
+            ),
+        }
+    }
+
 def new_bisect_task():
     try:
         task_data = request.json
@@ -197,11 +259,20 @@ def thread_pool_status():
             "max_workers": bisect_task_instance.thread_pool._max_workers,
             "active_threads": threading.active_count() - 1,  # 
             "pending_tasks": bisect_task_instance.thread_pool._work_queue.qsize(),
-            "completed_tasks": completed_tasks
+            "completed_tasks": completed_tasks,
+            "verification": _get_verification_queue_snapshot()
         }
         return jsonify(status), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+def get_verification_status():
+    """Return verification queue and timeout recovery status."""
+    try:
+        return jsonify(_get_verification_queue_snapshot()), 200
+    except Exception as e:
+        logger.error(f"Failed to get verification status: {str(e)}")
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 def toggle_producer():
     """status"""
