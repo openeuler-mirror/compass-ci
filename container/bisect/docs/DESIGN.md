@@ -947,12 +947,25 @@ def trigger_notification(task, status):
    - parent_commit 有 errid (应该是 Good)
    - first_bad_commit 无 errid (应该是 Bad)
    - 无法提交测试作业
+   - verification job 长时间停留在 `submit`，最终 `job_health=timeout_*`
 
 2. **处理策略**:
    - 标记 `j.verification_status = 'verification_failed'`
    - 增加 `j.retry_count`
    - 如果 retry_count < 3，由回收服务重试
    - 如果 retry_count >= 3，标记为人工审核
+
+#### 验证队列限流与超时恢复
+
+- 相似任务命中后先进入 `pending_verification`，不直接占用 `verifying` 配额
+- 只有 parent/candidate 两个 verification job 提交成功后，任务才进入 `verifying`
+- `MAX_VERIFYING_TASKS` 控制同时处于 `verifying` 且已成功提交验证作业的任务数
+- `VERIFICATION_TIMEOUT_HOURS` 定义单轮 verification job 的超时窗口
+- `VERIFICATION_TIMEOUT_RETRY_MAX` 定义 timeout 后回到 `pending_verification` 的最大重试次数
+- 超时重试耗尽后的默认动作是 `rebisect`：任务退回 `wait`，走独立 bisect
+- 容器重启时：
+  - 已持有 parent/candidate job_id 的 `verifying` 任务保持原状态，继续轮询
+  - 损坏或未完整提交的 `verifying` 任务回到 `pending_verification`
 
 #### 回收服务设计
 
@@ -2266,7 +2279,8 @@ regression = {
 
 ┌────────────┐
 │  Task B    │
-│ verifying  │  j.related_task_id = Task A
+│ pending_   │  j.related_task_id = Task A
+│ verification │
 └──────┬─────┘
        │
        │ SuccessTaskValidator 扫描
@@ -2275,12 +2289,24 @@ regression = {
 ┌────────────────────────────────────────────────────┐
 │ scan_unverified_tasks()                            │
 │ SELECT * FROM bisect                               │
-│ WHERE bisect_status='verifying'                    │
+│ WHERE bisect_status='pending_verification'         │
 │   AND j.related_task_id IS NOT NULL                │
 │   AND j.verification_status != 'verified'          │
 └────────────────────────┬───────────────────────────┘
                          │
+                         │ admission control
+                         │ max_verifying = MAX_VERIFYING_TASKS
                          ▼
+         ┌──────────────────────────┐
+         │ 还有 verifying 配额?      │
+         └────────────┬─────────────┘
+                      │
+            ┌─────────┴──────────┐
+            │                    │
+            ▼                    ▼
+          NO，继续排队          YES，尝试提交验证作业
+                               │
+                               ▼
           ┌──────────────────────────┐
           │ 检查关联任务 A 的状态     │
           └────────────┬─────────────┘
@@ -2304,7 +2330,8 @@ regression = {
 │    - parent_job:    commit=parent_commit         │
 │    - candidate_job: commit=first_bad_commit      │
 │                                                  │
-│ 4. 更新 j.verification_jobs = {                 │
+│ 4. 更新 bisect_status='verifying'                │
+│    并写入 j.verification_jobs = {               │
 │      parent_job_id, candidate_job_id,            │
 │      status: "submitted"                         │
 │    }                                             │
@@ -2335,7 +2362,9 @@ regression = {
     │        │      │ parent_status =             │
     │ 或      │      │   check_error_id(parent)    │
     │        │      │                             │
-    │ 超时   │      │ candidate_status =          │
+    │ 超时后 │      │ candidate_status =          │
+    │ 回到    │      │   check_error_id(candidate) │
+    │ pending │      │                             │
     │        │      │   check_error_id(candidate) │
     └────────┘      └───────────┬─────────────────┘
                                 │

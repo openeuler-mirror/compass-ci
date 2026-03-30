@@ -37,6 +37,7 @@ python3 sbin/bisect_api.py list_tasks -h
 | `/api/v1/reset_failed_tasks` | DELETE | 重置失败任务 | `reset_failed` |
 | `/api/v1/reset_processing_tasks` | POST | 重置processing任务 | `reset_processing` |
 | `/api/v1/thread_pool_status` | GET | 获取线程池状态 | `thread_status` |
+| `/api/v1/verification_status` | GET | 获取验证队列和超时恢复状态 | `verification_status` |
 | `/api/v1/toggle_producer` | POST | 切换生产者状态 | `enable_producer`/`disable_producer` |
 | `/api/v1/producer_status` | GET | 获取生产者状态 | `producer_status` |
 | `/api/v1/trigger_producer_run` | POST | 手动触发生产者 | `trigger_producer` |
@@ -197,11 +198,49 @@ python3 sbin/bisect_api.py thread_status
   "max_workers": 16,
   "active_threads": 3,
   "pending_tasks": 5,
-  "completed_tasks": 100
+  "completed_tasks": 100,
+  "verification": {
+    "pending_verification": 8,
+    "verifying": 4,
+    "active_submitted_verifying": 4,
+    "available_verifying_slots": 6
+  }
 }
 ```
 
-### 6. 生产者控制
+### 6. 验证队列状态
+
+用于观测复用验证的排队压力、超时恢复情况以及当前配额。
+
+**使用示例**:
+```bash
+curl -s http://localhost:9999/api/v1/verification_status | jq .
+python3 sbin/bisect_api.py verification_status
+```
+
+**响应格式**:
+```json
+{
+  "pending_verification": 12,
+  "verifying": 5,
+  "active_submitted_verifying": 5,
+  "available_verifying_slots": 5,
+  "verification_status_counts": {
+    "verified": 320,
+    "timeout_retry_pending": 3,
+    "timeout": 7,
+    "timeout_unverified": 0
+  },
+  "config": {
+    "max_verifying_tasks": 10,
+    "verification_timeout_hours": 24,
+    "verification_timeout_retry_max": 2,
+    "verification_timeout_final_action": "rebisect"
+  }
+}
+```
+
+### 7. 生产者控制
 
 **客户端命令**: `enable_producer`, `disable_producer`, `producer_status`, `trigger_producer`
 
@@ -329,5 +368,5 @@ python3 sbin/bisect_api.py list_tasks -h
 
 ---
 
-**最后更新**: 2024-10-27
+**最后更新**: 2026-03-30
 **维护者**: Bisect Team

@@ -17,7 +17,7 @@ Quick reference to all documentation, code maps, and issue trackers.
 |-----|---------------|
 | [docs/CODEBASE.md](CODEBASE.md) | File inventory with descriptions, data flow diagram |
 | [docs/TESTING.md](TESTING.md) | How to test — unit tests, post-deploy validation, producer/consumer verification |
-| [docs/API_DOCUMENTATION.md](API_DOCUMENTATION.md) | REST API endpoints and examples |
+| [docs/API_DOCUMENTATION.md](API_DOCUMENTATION.md) | REST API endpoints, examples, verification queue status API |
 | [docs/DATA_BASE.md](DATA_BASE.md) | ManticoreSearch schema — bisect/jobs/regression indexes |
 | [docs/PERFORMANCE_BISECT_DESIGN.md](PERFORMANCE_BISECT_DESIGN.md) | Performance regression bisect specifics |
 
@@ -27,7 +27,7 @@ Quick reference to all documentation, code maps, and issue trackers.
 |------|---------|
 | `config/errid_filters.yaml` | Error ID filtering rules (blacklist, whitelist, priority scores) |
 | `config/supervisord.conf` | Process manager — flask-api, commit-time-service |
-| `lib/config.py` | All environment variable defaults and feature flags |
+| `lib/config.py` | All environment variable defaults and feature flags, including verification queue limits |
 | `Dockerfile` | Container build definition |
 | `start` | Container launch script (volume mounts, env vars) |
 

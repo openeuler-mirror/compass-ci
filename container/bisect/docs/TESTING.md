@@ -45,6 +45,12 @@ PYTHONPATH=lib:services/commit_time_service:. \
 
 # Webhook notification delivery (unit level, no deployment needed)
 pytest -q container/bisect/core/tests/test_head_validator_webhook.py
+
+# Verification timeout retry / admission control
+pytest -q container/bisect/core/tests/test_success_task_validator_retry.py
+
+# Startup recovery keeps submitted verification jobs and requeues damaged state
+pytest -q container/bisect/core/tests/test_task_processor_verification_recovery.py
 ```
 
 Notes:
@@ -60,6 +66,10 @@ Notes:
 | `services/commit_time_service/tests/test_cache.py` | LRU cache TTL and eviction |
 | `core/tests/test_load_baseline_commits.py` | Performance producer baseline loading |
 | `core/tests/test_bisect_consumer_commit_validation.py` | Commit ref validation and boundary verification regression (Bug A) |
+| `core/tests/test_success_task_validator_retry.py` | Verification timeout retry, queue gating, terminal health handling |
+| `core/tests/test_task_processor_verification_recovery.py` | Startup recovery of `verifying` tasks after restart |
+| `app/tests/test_verification_status_api.py` | Verification queue status API and snapshot formatting |
+| `app/tests/test_bisect_api_client.py` | `bisect_api.py verification_status` client dispatch |
 
 ## Post-deploy validation
 
