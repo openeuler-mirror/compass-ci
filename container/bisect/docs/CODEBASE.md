@@ -128,8 +128,9 @@ lib/log_config.py
 
 lib/query_builder.py
   path: container/bisect/lib/query_builder.py
-  description: Helper for constructing ManticoreSearch queries. Builds
-    bool/must/should query structures for the JSON search API.
+  description: Query-parameter adapter for list/reset/delete APIs. Converts
+    Flask request args into SQL WHERE clauses and concise filter summaries
+    consumed by app/controllers.py before execution via ManticoreClient.
 
 lib/notification_writer.py
   path: container/bisect/lib/notification_writer.py

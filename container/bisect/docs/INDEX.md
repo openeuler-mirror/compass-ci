@@ -21,6 +21,19 @@ Quick reference to all documentation, code maps, and issue trackers.
 | [docs/DATA_BASE.md](DATA_BASE.md) | ManticoreSearch schema — bisect/jobs/regression indexes |
 | [docs/PERFORMANCE_BISECT_DESIGN.md](PERFORMANCE_BISECT_DESIGN.md) | Performance regression bisect specifics |
 
+## Database access boundary
+
+There are two database-related layers in the bisect service, with different roles:
+
+| Layer | Path | Responsibility |
+|------|------|----------------|
+| DB client | `lkp-tests/sbin/bisect/lkp_bisect/db/manticore.py` | `ManticoreClient` executes SQL against ManticoreSearch |
+| Query helper | `container/bisect/lib/query_builder.py` | Converts HTTP query params into SQL `WHERE` clauses and concise filter summaries |
+
+The typical request path is:
+
+`sbin/bisect_api.py` -> Flask route -> `app/controllers.py` -> `lib/query_builder.py` -> `ManticoreClient`
+
 ## Configuration
 
 | File | Purpose |
@@ -35,6 +48,7 @@ Quick reference to all documentation, code maps, and issue trackers.
 
 | Issue | Status |
 |-------|--------|
+| [issues/bisect-api-cli-issues.md](../issues/bisect-api-cli-issues.md) | DONE — bisect_api.py CLI/API mismatches fixed and tests added |
 | [issues/chinese-to-english-translation.md](../issues/chinese-to-english-translation.md) | DONE — Chinese text scan reports 0 Python files |
 | [issues/missing-docstrings.md](../issues/missing-docstrings.md) | DONE — module docstring scan reports 0 missing |
 

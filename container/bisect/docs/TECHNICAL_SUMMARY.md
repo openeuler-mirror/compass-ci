@@ -268,7 +268,7 @@ CREATE TABLE bisect (
   git_url VARCHAR(512),
   bisect_status ENUM('wait','processing','success','failed','verifying'),
   first_bad_commit VARCHAR(64),
-  category VARCHAR(32),           -- build/function/performance
+  category VARCHAR(32),           -- build/function/benchmark
   priority_level INT DEFAULT 0,
   retry_count INT DEFAULT 0,
   bisect_failed_reason TEXT,

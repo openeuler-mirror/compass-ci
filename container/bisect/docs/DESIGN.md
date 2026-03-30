@@ -1673,13 +1673,10 @@ python3 sbin/bisect_api.py pool_stats
 python3 sbin/bisect_api.py pool_cleanup --dry-run
 
 # 实际执行清理
-python3 sbin/bisect_api.py pool_cleanup --execute --max-hours 10
+python3 sbin/bisect_api.py pool_cleanup --execute --max-age-days 0.5
 
 # 验证池一致性
 python3 sbin/bisect_api.py pool_verify
-
-# 查看特定仓库实例
-python3 sbin/bisect_api.py pool_instances linux
 
 # 启动/停止监控
 python3 sbin/bisect_api.py pool_monitor_start
@@ -1741,11 +1738,7 @@ export REPO_POOL_CHECK_INTERVAL=600       # 检查间隔（秒）
    python3 sbin/bisect_api.py pool_status
    → 查看警告列表和长时间占用的实例
 
-2. 查看具体实例
-   python3 sbin/bisect_api.py pool_instances <repo_name>
-   → 确认幽灵实例和实际文件状态
-
-3. 验证一致性
+2. 验证一致性
    python3 sbin/bisect_api.py pool_verify
    → 检测状态不一致问题
 

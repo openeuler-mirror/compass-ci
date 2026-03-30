@@ -331,7 +331,7 @@ Bisect 系统是一个自动化的二分查找系统，用于在代码库中精�
   "bad_job_id": "25121622004840300",
   "error_id": "ltp.eid.syscalls.recvmsg01:fail",
   "bisect_status": "wait",
-  "category": "boot",
+  "category": "function",
   "git_url": "git://xxx/linux.git",
   "upstream_commit": "abc123def456",
   "submit_time": 1765788194,
@@ -860,12 +860,12 @@ python3 sbin/bisect_api.py list_tasks --status wait
 
 # 按类型筛选
 python3 sbin/bisect_api.py list_tasks --category build
-python3 sbin/bisect_api.py list_tasks --category boot
+python3 sbin/bisect_api.py list_tasks --category function
 
 # 按时间筛选
 python3 sbin/bisect_api.py list_tasks --hours 24
 
-# 按 error_id 筛选（支持特殊字符）
+# 按完整 error_id 精确筛选（支持特殊字符）
 python3 sbin/bisect_api.py list_tasks --error_id "stderr.eid.fs/#p/vfs_file.c:warning"
 
 # 按 commit 筛选
@@ -876,13 +876,17 @@ python3 sbin/bisect_api.py list_tasks --status failed --category build --hours 4
 python3 sbin/bisect_api.py list_tasks --git_url "https://github.com/torvalds/linux.git" --status success
 ```
 
+说明：
+- `--error_id` 为精确匹配，应传入完整 `error_id`
+- 特殊字符会由客户端自动完成 URL 编码
+
 #### 删除任务
 
 ```bash
 # 按 ID 删除
 python3 sbin/bisect_api.py delete_tasks --id 1001
 
-# 按 error_id 删除
+# 按完整 error_id 删除
 python3 sbin/bisect_api.py delete_tasks --error_id "test.error"
 
 # 按 commit 删除
@@ -890,6 +894,9 @@ python3 sbin/bisect_api.py delete_tasks --commit bbaaa756ad25
 
 # 组合条件删除
 python3 sbin/bisect_api.py delete_tasks --status failed --category build
+
+# 非交互环境跳过确认
+python3 sbin/bisect_api.py delete_tasks --id 1001 --yes
 ```
 
 ### 6.3 状态重置命令
@@ -897,6 +904,9 @@ python3 sbin/bisect_api.py delete_tasks --status failed --category build
 ```bash
 # 重置所有失败任务
 python3 sbin/bisect_api.py reset_failed
+
+# 非交互环境跳过确认
+python3 sbin/bisect_api.py reset_failed --yes
 
 # 重置 processing 状态任务
 python3 sbin/bisect_api.py reset_processing
@@ -936,9 +946,8 @@ python3 sbin/bisect_api.py trigger_producer --force  # 强制触发
 python3 sbin/bisect_api.py pool_status
 python3 sbin/bisect_api.py pool_stats
 python3 sbin/bisect_api.py pool_verify
-python3 sbin/bisect_api.py pool_instances linux
 python3 sbin/bisect_api.py pool_cleanup --dry-run
-python3 sbin/bisect_api.py pool_cleanup --execute --max-hours 12
+python3 sbin/bisect_api.py pool_cleanup --execute --max-age-days 0.5
 
 # 池监控控制
 python3 sbin/bisect_api.py pool_monitor_start
@@ -1282,7 +1291,7 @@ df -h /tmp
 python3 sbin/bisect_api.py pool_cleanup --dry-run
 
 # 执行清理
-python3 sbin/bisect_api.py pool_cleanup --execute --max-hours 12
+python3 sbin/bisect_api.py pool_cleanup --execute --max-age-days 0.5
 ```
 
 ---

@@ -2,7 +2,7 @@
 
 ## 概述
 
-Bisect API 提供了完整的任务管理接口，支持错误类型和性能类型的二分查找任务。系统提供了功能强大的 Python 客户端脚本 `bisect_api.py`，支持彩色输出和自动 URL 编码，比原始的 curl 命令更加方便易用。
+Bisect API 提供了完整的任务管理接口，支持错误类型和性能类型的二分查找任务。系统提供了 Python 客户端脚本 `bisect_api.py`，支持彩色输出和自动 URL 编码，较直接使用 `curl` 更方便。
 
 ## 快速开始
 
@@ -31,11 +31,11 @@ python3 sbin/bisect_api.py list_tasks -h
 
 | 端点 | 方法 | 功能 | 客户端命令 |
 |------|------|------|------------|
-| `/api/v1/new_bisect_task` | POST | 创建新的bisect任务 | `new_task` |
+| `/api/v1/new_bisect_task` | POST | 创建新的 bisect 任务 | `new_task` |
 | `/api/v1/list_bisect_tasks` | GET | 获取任务列表 | `list_tasks` |
 | `/api/v1/delete_tasks` | DELETE | 根据条件删除任务 | `delete_tasks` |
-| `/api/v1/reset_failed_tasks` | DELETE | 重置失败任务 | `reset_failed` |
-| `/api/v1/reset_processing_tasks` | POST | 重置processing任务 | `reset_processing` |
+| `/api/v1/reset_failed_tasks` | POST | 重置失败任务 | `reset_failed` |
+| `/api/v1/reset_processing_tasks` | POST | 重置 processing 任务 | `reset_processing` |
 | `/api/v1/thread_pool_status` | GET | 获取线程池状态 | `thread_status` |
 | `/api/v1/verification_status` | GET | 获取验证队列和超时恢复状态 | `verification_status` |
 | `/api/v1/toggle_producer` | POST | 切换生产者状态 | `enable_producer`/`disable_producer` |
@@ -45,7 +45,6 @@ python3 sbin/bisect_api.py list_tasks -h
 | `/api/v1/pool/cleanup` | POST | 触发仓库池清理 | `pool_cleanup` |
 | `/api/v1/pool/stats` | GET | 获取池监控统计 | `pool_stats` |
 | `/api/v1/pool/verify` | POST | 验证池一致性 | `pool_verify` |
-| `/api/v1/pool/instances/<repo_name>` | GET | 获取仓库实例信息 | `pool_instances` |
 | `/api/v1/pool/monitor/start` | POST | 启动池监控线程 | `pool_monitor_start` |
 | `/api/v1/pool/monitor/stop` | POST | 停止池监控线程 | `pool_monitor_stop` |
 
@@ -56,7 +55,7 @@ python3 sbin/bisect_api.py list_tasks -h
 **客户端命令**: `new_task`
 
 **支持的任务类型**:
-- **错误类型任务**: 基于错误ID进行二分查找
+- **错误类型任务**: 基于错误 ID 进行二分查找
 - **性能类型任务**: 基于性能指标进行二分查找
 
 **使用示例**:
@@ -73,7 +72,7 @@ python3 sbin/bisect_api.py new_task -f task.json
 # 直接传入JSON字符串
 python3 sbin/bisect_api.py new_task -j '{"bad_job_id":"123456","error_id":"test.error"}'
 
-# 指定Git仓库URL
+# 指定 Git 仓库 URL
 python3 sbin/bisect_api.py new_task --bad_job_id 123456 --error_id "test.error" --git_url "https://github.com/torvalds/linux.git"
 ```
 
@@ -95,8 +94,8 @@ python3 sbin/bisect_api.py new_task --bad_job_id 123456 --error_id "test.error" 
 
 **支持的筛选条件**:
 - `--status`: 按任务状态筛选 (`wait`/`processing`/`success`/`failed`)
-- `--error_id`: 按错误ID筛选（支持特殊字符自动编码）
-- `--bad_job_id`: 按bad_job_id筛选
+- `--error_id`: 按完整错误 ID 精确筛选（支持特殊字符自动编码）
+- `--bad_job_id`: 按 bad_job_id 筛选
 - `--limit`: 限制返回数量
 
 **使用示例**:
@@ -108,7 +107,7 @@ python3 sbin/bisect_api.py list_tasks
 python3 sbin/bisect_api.py list_tasks --status success
 python3 sbin/bisect_api.py list_tasks --status failed
 
-# 按error_id筛选（支持特殊字符）
+# 按完整 error_id 精确筛选（支持特殊字符）
 python3 sbin/bisect_api.py list_tasks --error_id "stderr.eid.fs/#p/vfs_file.c:warning"
 python3 sbin/bisect_api.py list_tasks --error_id "makepkg.eid.fs/#p/vfs_file.c:warning:Excess-function-parameter"
 
@@ -116,6 +115,10 @@ python3 sbin/bisect_api.py list_tasks --error_id "makepkg.eid.fs/#p/vfs_file.c:w
 python3 sbin/bisect_api.py list_tasks --status wait --error_id "test.error" --limit 10
 python3 sbin/bisect_api.py list_tasks --bad_job_id 12345 --status success
 ```
+
+**说明**:
+- `--error_id` 为精确匹配，不做子串匹配
+- 如果只传入 `linux/compiler_types.h` 这类片段，通常不会命中；应传入完整 `error_id`
 
 **响应格式**:
 ```json
@@ -145,26 +148,31 @@ python3 sbin/bisect_api.py list_tasks --bad_job_id 12345 --status success
 
 **支持的删除条件**:
 - `--id`: 按任务ID删除
-- `--error_id`: 按错误ID删除
-- `--bad_job_id`: 按bad_job_id删除
-- `--git_url`: 按Git URL删除
+- `--error_id`: 按完整错误 ID 删除
+- `--bad_job_id`: 按 bad_job_id 删除
+- `--git_url`: 按 Git 仓库 URL 删除
 
 **使用示例**:
 ```bash
 # 按ID删除
 python3 sbin/bisect_api.py delete_tasks --id 1001
 
-# 按error_id删除
+# 按完整 error_id 删除
 python3 sbin/bisect_api.py delete_tasks --error_id "test.error"
 
-# 按bad_job_id删除
+# 按 bad_job_id 删除
 python3 sbin/bisect_api.py delete_tasks --bad_job_id 12345
 
 # 组合条件删除（AND关系）
 python3 sbin/bisect_api.py delete_tasks --error_id "test.error" --bad_job_id 12345
+
+# 非交互环境跳过确认
+python3 sbin/bisect_api.py delete_tasks --id 1001 --yes
 ```
 
-**注意**: 删除操作会要求确认，不可恢复，请谨慎使用。
+**注意**:
+- 删除操作默认会要求确认，不可恢复，请谨慎使用
+- 在脚本、CI 或 pipe 环境中，请加 `--yes` 或 `-y`
 
 ### 4. 重置任务状态
 
@@ -179,8 +187,11 @@ python3 sbin/bisect_api.py delete_tasks --error_id "test.error" --bad_job_id 123
 # 重置失败任务
 python3 sbin/bisect_api.py reset_failed
 
-# 重置processing任务
+# 重置 processing 任务
 python3 sbin/bisect_api.py reset_processing
+
+# 非交互环境跳过确认
+python3 sbin/bisect_api.py reset_failed --yes
 ```
 
 ### 5. 线程池状态
@@ -269,7 +280,7 @@ python3 sbin/bisect_api.py trigger_producer
 
 ### 自动 URL 编码
 
-客户端自动处理特殊字符的 URL 编码，支持包含 `#`、`&`、空格等特殊字符的 error_id：
+客户端自动处理特殊字符的 URL 编码，支持包含 `#`、`&`、空格等特殊字符的完整 `error_id`：
 
 ```bash
 # 自动处理特殊字符
@@ -331,6 +342,7 @@ python3 sbin/bisect_api.py list_tasks --error_id "makepkg.eid.fs/#p/vfs_file.c:w
 ### 2. 任务查询
 - 使用 `--limit` 参数限制返回数量，避免数据过大
 - 组合使用筛选条件提高查询效率
+- `--error_id` 为精确匹配，应传入完整 `error_id`
 - 利用彩色输出快速识别任务状态
 
 ### 3. 任务管理
@@ -368,5 +380,5 @@ python3 sbin/bisect_api.py list_tasks -h
 
 ---
 
-**最后更新**: 2026-03-30
+**最后更新**: 2026-03-31
 **维护者**: Bisect Team
