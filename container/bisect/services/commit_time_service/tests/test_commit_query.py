@@ -7,41 +7,65 @@ Unit tests for commit_query module
 
 import os
 import sys
+import threading
+import time
 import unittest
 from unittest.mock import Mock, patch, MagicMock
+from contextlib import nullcontext
 
-# 设置环境变量
+# 
 os.environ['CCI_SRC'] = '/srv/cci'
 os.environ['WORK_DIR'] = '/tmp'
 os.environ['LKP_SRC'] = '/srv/lkp'
 
-# 添加项目路径
+# 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from commit_query import CommitTimeQuery
 
 
 class TestCommitTimeQuery(unittest.TestCase):
-    """CommitTimeQuery 单元测试"""
+    """CommitTimeQuery test"""
 
     def setUp(self):
-        """测试前置"""
+        """test"""
         # Mock SharedRepoManager
         self.mock_repo_manager = Mock()
         self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/test_pristine'
         self.mock_repo_manager.pristine_locks = {}
         self.mock_repo_manager.pristine_locks_lock = MagicMock()
+        self.mock_repo_manager._canonical_repo_key = Mock(side_effect=lambda x: x)
 
         self.query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
+
+    @patch.dict(os.environ, {'WORK_DIR': '/tmp/work_for_test'}, clear=False)
+    def test_uses_dedicated_query_pristine_dir_by_default(self):
+        q = CommitTimeQuery(repo_manager=self.mock_repo_manager)
+        self.assertEqual(q.pristine_base_dir, '/tmp/work_for_test/bisect_repos/pristine_query')
+
+    def test_ensure_pristine_repo_uses_canonical_lock_key(self):
+        self.mock_repo_manager._canonical_repo_key.side_effect = None
+        self.mock_repo_manager._canonical_repo_key.return_value = 'https://gitee.com/openeuler/kernel'
+        self.mock_repo_manager._ensure_pristine_repo = Mock()
+        self.mock_repo_manager._pristine_file_lock = Mock(return_value=nullcontext())
+
+        self.query._ensure_pristine_repo(
+            'git+https://gitee.com/openeuler/kernel.git/',
+            '/tmp/test_pristine/kernel'
+        )
+
+        self.assertIn('https://gitee.com/openeuler/kernel', self.mock_repo_manager.pristine_locks)
+        self.mock_repo_manager._ensure_pristine_repo.assert_called_once()
+        self.mock_repo_manager._pristine_file_lock.assert_called_once()
 
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_timestamp_success(self, mock_exists, mock_run):
-        """测试成功获取 commit 时间戳"""
-        # Mock 仓库存在
+        """testsuccessget commit """
+        # Mock repo
         mock_exists.return_value = True
 
-        # Mock git log 命令成功
+        # Mock git log success
         mock_result = Mock()
         mock_result.returncode = 0
         mock_result.stdout = '1700000000\n'
@@ -58,11 +82,11 @@ class TestCommitTimeQuery(unittest.TestCase):
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_timestamp_not_found(self, mock_exists, mock_run):
-        """测试 commit 不存在的情况"""
-        # Mock 仓库存在
+        """test commit not found"""
+        # Mock repo
         mock_exists.return_value = True
 
-        # Mock git log 失败（commit 不存在）
+        # Mock git log failed（commit not found）
         mock_result = Mock()
         mock_result.returncode = 128
         mock_result.stderr = 'fatal: bad revision'
@@ -78,11 +102,11 @@ class TestCommitTimeQuery(unittest.TestCase):
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_info_success(self, mock_exists, mock_run):
-        """测试成功获取 commit 详细信息"""
-        # Mock 仓库存在
+        """testsuccessget commit """
+        # Mock repo
         mock_exists.return_value = True
 
-        # Mock git log 命令成功
+        # Mock git log success
         mock_result = Mock()
         mock_result.returncode = 0
         mock_result.stdout = 'abc123def456|1700000000|Zhang San|fix: some bug\n'
@@ -104,11 +128,11 @@ class TestCommitTimeQuery(unittest.TestCase):
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_get_commit_age_days(self, mock_exists, mock_run):
-        """测试获取 commit 年龄"""
-        # Mock 仓库存在
+        """testget commit """
+        # Mock repo
         mock_exists.return_value = True
 
-        # Mock git log 返回 30 天前的时间戳
+        # Mock git log  30 
         import time
         timestamp_30_days_ago = int(time.time()) - (30 * 86400)
 
@@ -123,17 +147,17 @@ class TestCommitTimeQuery(unittest.TestCase):
         )
 
         self.assertIsNotNone(age_days)
-        self.assertGreaterEqual(age_days, 29)  # 允许一些误差
+        self.assertGreaterEqual(age_days, 29)  # 
         self.assertLessEqual(age_days, 31)
 
     @patch('subprocess.run')
     @patch('os.path.exists')
     def test_is_commit_too_old(self, mock_exists, mock_run):
-        """测试检查 commit 是否过旧"""
-        # Mock 仓库存在
+        """testcheck commit """
+        # Mock repo
         mock_exists.return_value = True
 
-        # 测试 1: 400 天前的 commit（超过 365 天）
+        # test 1: 400  commit（ 365 ）
         import time
         timestamp_400_days_ago = int(time.time()) - (400 * 86400)
 
@@ -151,7 +175,7 @@ class TestCommitTimeQuery(unittest.TestCase):
         self.assertTrue(is_old)
         self.assertGreaterEqual(age, 399)
 
-        # 测试 2: 30 天前的 commit（未超过 365 天）
+        # test 2: 30  commit（ 365 ）
         timestamp_30_days_ago = int(time.time()) - (30 * 86400)
 
         mock_result.stdout = f'{timestamp_30_days_ago}\n'
@@ -175,6 +199,7 @@ class TestIsAncestor(unittest.TestCase):
         self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/test_pristine'
         self.mock_repo_manager.pristine_locks = {}
         self.mock_repo_manager.pristine_locks_lock = MagicMock()
+        self.mock_repo_manager._canonical_repo_key = Mock(side_effect=lambda x: x)
         self.query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
 
     def test_invalid_params_return_none(self):
@@ -280,6 +305,173 @@ class TestIsAncestor(unittest.TestCase):
             'aaa111', 'bbb222'
         )
         self.assertIsNone(result)
+
+
+class TestParentCommitDetailed(unittest.TestCase):
+    """Tests for structured parent-commit query semantics."""
+
+    def setUp(self):
+        self.mock_repo_manager = Mock()
+        self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/test_pristine'
+        self.mock_repo_manager.pristine_locks = {}
+        self.mock_repo_manager.pristine_locks_lock = MagicMock()
+        self.mock_repo_manager._canonical_repo_key = Mock(side_effect=lambda x: x)
+        self.query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
+    def test_parent_commit_detailed_allows_tag_or_ref_input(self, mock_run, _mock_is_repo):
+        resolve_result = Mock(returncode=0, stdout='a' * 40 + '\n', stderr='')
+        parent_result = Mock(returncode=0, stdout=('a' * 40) + ' ' + ('b' * 40) + '\n', stderr='')
+        mock_run.side_effect = [resolve_result, parent_result]
+
+        result = self.query.get_parent_commit_detailed(
+            'https://gitee.com/openeuler/kernel.git',
+            'v6.12.1'
+        )
+
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(result['data']['parent'], 'b' * 40)
+        self.assertEqual(result['data']['input_ref'], 'v6.12.1')
+
+    @patch('commit_query.SharedRepoManager._is_git_repo', return_value=True)
+    @patch('subprocess.run')
+    def test_parent_commit_detailed_returns_commit_not_found(self, mock_run, _mock_is_repo):
+        mock_run.return_value = Mock(returncode=1, stdout='', stderr='fatal: Needed a single revision')
+
+        with patch.object(self.query, '_fetch_pristine_repo') as mock_fetch:
+            result = self.query.get_parent_commit_detailed(
+                'https://gitee.com/openeuler/kernel.git',
+                'not-found-ref'
+            )
+
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result['error_code'], 'commit_not_found')
+        self.assertFalse(result['retryable'])
+        mock_fetch.assert_called_once()
+
+
+class TestFetchPristineRepo(unittest.TestCase):
+    def setUp(self):
+        self.mock_repo_manager = Mock()
+        self.mock_repo_manager.PRISTINE_BASE_DIR = '/tmp/test_pristine'
+        self.mock_repo_manager.pristine_locks = {}
+        self.mock_repo_manager.pristine_locks_lock = MagicMock()
+        self.mock_repo_manager._canonical_repo_key = Mock(side_effect=lambda x: x)
+        self.query = CommitTimeQuery(repo_manager=self.mock_repo_manager)
+
+    @patch('subprocess.run')
+    def test_fetch_pristine_repo_returns_false_on_nonzero_returncode(self, mock_run):
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout='+refs/*:refs/*', stderr=''),
+            Mock(returncode=1, stdout='', stderr='network error')
+        ]
+        ok = self.query._fetch_pristine_repo('/tmp/test_pristine/kernel')
+        self.assertFalse(ok)
+
+    @patch('subprocess.run')
+    def test_fetch_pristine_repo_returns_true_on_success(self, mock_run):
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout='+refs/*:refs/*', stderr=''),
+            Mock(returncode=0, stdout='', stderr='')
+        ]
+        ok = self.query._fetch_pristine_repo('/tmp/test_pristine/kernel')
+        self.assertTrue(ok)
+
+    @patch('subprocess.run')
+    def test_fetch_pristine_repo_uses_file_lock_when_git_url_provided(self, mock_run):
+        self.mock_repo_manager._pristine_file_lock = Mock(return_value=nullcontext())
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout='+refs/*:refs/*', stderr=''),
+            Mock(returncode=0, stdout='', stderr='')
+        ]
+        ok = self.query._fetch_pristine_repo(
+            '/tmp/test_pristine/kernel',
+            'https://gitee.com/openeuler/kernel.git'
+        )
+        self.assertTrue(ok)
+        self.mock_repo_manager._pristine_file_lock.assert_called_once_with(
+            'https://gitee.com/openeuler/kernel.git',
+            '/tmp/test_pristine/kernel'
+        )
+
+    @patch('subprocess.run')
+    def test_fetch_pristine_repo_concurrent_calls_share_single_fetch(self, mock_run):
+        self.mock_repo_manager._pristine_file_lock = Mock(return_value=nullcontext())
+
+        def run_side_effect(args, *_a, **_k):
+            if len(args) >= 5 and args[3] == 'config':
+                return Mock(returncode=0, stdout='+refs/*:refs/*', stderr='')
+            if len(args) >= 5 and args[3] == 'fetch':
+                time.sleep(0.2)
+                return Mock(returncode=0, stdout='', stderr='')
+            return Mock(returncode=0, stdout='', stderr='')
+
+        mock_run.side_effect = run_side_effect
+
+        results = []
+
+        def do_fetch():
+            ok = self.query._fetch_pristine_repo(
+                '/tmp/test_pristine/kernel',
+                'https://gitee.com/openeuler/kernel.git'
+            )
+            results.append(ok)
+
+        t1 = threading.Thread(target=do_fetch)
+        t2 = threading.Thread(target=do_fetch)
+        t1.start()
+        time.sleep(0.03)  # let t1 acquire in-process fetch lock first
+        t2.start()
+        t1.join()
+        t2.join()
+
+        fetch_calls = [
+            c for c in mock_run.call_args_list
+            if len(c[0]) >= 1 and isinstance(c[0][0], list) and len(c[0][0]) >= 5 and c[0][0][3] == 'fetch'
+        ]
+        self.assertEqual(len(fetch_calls), 1)
+        self.assertEqual(results, [True, True])
+
+    @patch('subprocess.run')
+    def test_fetch_pristine_repo_sets_refspec_when_missing(self, mock_run):
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout='', stderr=''),
+            Mock(returncode=0, stdout='', stderr=''),
+            Mock(returncode=0, stdout='', stderr=''),
+        ]
+        ok = self.query._fetch_pristine_repo('/tmp/test_pristine/kernel')
+        self.assertTrue(ok)
+        self.assertGreaterEqual(mock_run.call_count, 3)
+        set_refspec_cmd = mock_run.call_args_list[1][0][0]
+        self.assertEqual(
+            set_refspec_cmd,
+            ['git', '-C', '/tmp/test_pristine/kernel', 'config', 'remote.origin.fetch', '+refs/*:refs/*']
+        )
+
+    def test_cross_process_lock_falls_back_when_lock_fn_missing(self):
+        self.mock_repo_manager._pristine_file_lock = None
+        with self.query._cross_process_lock(
+            'https://gitee.com/openeuler/kernel.git',
+            '/tmp/test_pristine/kernel'
+        ):
+            pass
+
+    def test_cross_process_lock_falls_back_when_lock_fn_returns_invalid_object(self):
+        self.mock_repo_manager._pristine_file_lock = Mock(return_value=object())
+        with self.query._cross_process_lock(
+            'https://gitee.com/openeuler/kernel.git',
+            '/tmp/test_pristine/kernel'
+        ):
+            pass
+
+    def test_get_metrics_includes_fetch_and_lock_metrics(self):
+        self.mock_repo_manager.get_pristine_lock_metrics = Mock(return_value={'repos': 0, 'per_repo': {}})
+        metrics = self.query.get_metrics()
+        self.assertIn('pristine_base_dir', metrics)
+        self.assertIn('fetch', metrics)
+        self.assertIn('pristine_lock', metrics)
+        self.assertIn('fetch_attempts', metrics['fetch'])
 
 
 if __name__ == '__main__':

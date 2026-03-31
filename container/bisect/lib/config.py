@@ -1,3 +1,5 @@
+"""Environment-backed configuration schema and defaults for bisect runtime."""
+
 import os
 
 class Config:
@@ -38,7 +40,7 @@ class Config:
     # How many hours of historical data to query
     # 25 hours = daily run + 1 hour overlap for fault tolerance
     # TODO: temporarily set to 720 for backlog catch-up, revert to 25 after testing
-    BISECT_PRODUCER_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_QUERY_HOURS', 720))
+    BISECT_PRODUCER_QUERY_HOURS = int(os.environ.get('BISECT_PRODUCER_QUERY_HOURS', 48))
 
     # Adaptive query window: max hours the producer can expand to when catching up on backlog
     # When a cycle creates new tasks, the next cycle doubles the window (up to this cap)
@@ -55,13 +57,24 @@ class Config:
 
     # Notification directory configuration
     NOTIFICATION_DIR = os.environ.get('BISECT_NOTIFICATION_DIR', '/result/bisect/notifications')
+    NOTIFICATION_WEBHOOK_URL = os.environ.get('BISECT_NOTIFICATION_WEBHOOK_URL', '')
+    NOTIFICATION_EMAIL = os.environ.get('BISECT_NOTIFICATION_EMAIL', '')
 
     # Verification configuration
     PARALLEL_VERIFICATION_JOBS = int(os.environ.get('PARALLEL_VERIFICATION_JOBS', 200))
     VERIFICATION_BATCH_SIZE = int(os.environ.get('VERIFICATION_BATCH_SIZE', 200))
+    VALIDATION_INTERVAL = int(os.environ.get('VALIDATION_INTERVAL', 60))
+    MAX_VERIFYING_TASKS = int(os.environ.get('MAX_VERIFYING_TASKS', 10))
+    VERIFICATION_TIMEOUT_HOURS = int(os.environ.get('VERIFICATION_TIMEOUT_HOURS', 24))
+    VERIFICATION_TIMEOUT_RETRY_MAX = int(os.environ.get('VERIFICATION_TIMEOUT_RETRY_MAX', 2))
+    VERIFICATION_TIMEOUT_FINAL_ACTION = os.environ.get(
+        'VERIFICATION_TIMEOUT_FINAL_ACTION', 'rebisect'
+    ).lower()
 
     # HEAD check configuration
     HEAD_CHECK_BATCH_SIZE = int(os.environ.get('HEAD_CHECK_BATCH_SIZE', 200))
+    HEAD_CHECK_INTERVAL = int(os.environ.get('HEAD_CHECK_INTERVAL', 86400))
+    HEAD_VALIDATOR_ENABLED = os.environ.get('BISECT_HEAD_VALIDATOR_ENABLED', 'true').lower() == 'true'
 
     # Repository clone concurrency control
     # Shared by all consumers (BisectConsumer, SuccessTaskValidator, HeadValidator)
@@ -150,10 +163,10 @@ class Config:
         'unixbench,lmbench,iozone,fio,filebench,stream,hackbench,netperf,sysbench,sysbench-cpu,sysbench-memory,sysbench-mutex,sysbench-threads,stress-ng'
     )
 
-    # 已废弃: performance_metrics.yaml 配置文件
-    # 现在使用基于 lkp-stats-type.md 规范的前缀判断 KPI 和方向
-    # KPI 指标: 大写前缀 (LAT, RATE, JIT, POW, COST, MEM)
-    # 方向: lat/jit/pow/cost/mem = -1 (SmallerBetter), rate = +1 (BiggerBetter)
+    # : performance_metrics.yaml configfile
+    #  lkp-stats-type.md  KPI 
+    # KPI :  (LAT, RATE, JIT, POW, COST, MEM)
+    # : lat/jit/pow/cost/mem = -1 (SmallerBetter), rate = +1 (BiggerBetter)
 
     # ====== SQL Query Configuration ======
     # Default limit for list queries

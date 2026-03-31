@@ -2,24 +2,20 @@
 # -*- coding: utf-8 -*-
 
 """
-HeadValidator - HEAD 回归检测服务
+HEAD regression validator for previously verified bisect tasks.
 
-这个模块实现了对已验证任务的 HEAD 回归检测，在最新 HEAD 上
-检查已知问题是否仍然存在，及时发现回归情况。
-
-功能：
-1. 扫描已验证任务（verification_status='verified'）
-2. 在最新 HEAD commit 提交测试
-3. 检查 introduced_errids 是否仍存在
-4. 更新 head_check_status 状态
-5. 触发回归通知
+The validator periodically retests known introduced error IDs on latest HEAD
+and updates per-taskTrigger HEAD check notifications status.
 """
 
 import os
 import sys
 import time
+import json
 import subprocess
 import traceback
+import urllib.request
+import urllib.error
 from typing import Dict, Any, Optional, List, Tuple
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
@@ -29,7 +25,7 @@ sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
 from lkp_bisect.db.manticore import ManticoreClient
 from lkp_bisect.core.git_bisect import GitBisect
 
-# 导入共享工具
+# Shared runtime imports
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/core')
 from verification_consumer import VerificationConsumer
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
@@ -38,25 +34,19 @@ from bisect_utils import extract_repo_name_from_url
 
 
 class HeadValidator(VerificationConsumer):
-    """
-    HEAD 回归检测服务
-
-    继承 VerificationConsumer，复用仓库管理和作业提交逻辑，
-    定期检查已验证任务在最新 HEAD 的状态，
-    发现问题回归或修复情况
-    """
+    """Validate whether known errids still reproduce on latest HEAD."""
 
     def __init__(self, client: ManticoreClient, config: Dict):
-        """初始化 HEAD 验证服务"""
+        """Initialize the HEAD validator."""
         super().__init__(client, config)
 
-        # 配置参数
+        # Runtime settings
         self.check_batch_size = config.get('head_check_batch_size', 10)
-        self.check_interval = config.get('head_check_interval', 86400)  # 默认每天
+        self.check_interval = config.get('head_check_interval', 86400)  # default
         self.notification_webhook = config.get('notification_webhook_url', '')
         self.notification_email = config.get('notification_email', '')
 
-        # 初始化 GitBisect 实例
+        # initialize GitBisect instance
         self.bisect_instance = GitBisect(logger)
 
         logger.info(
@@ -66,26 +56,18 @@ class HeadValidator(VerificationConsumer):
         )
 
     def scan_verified_tasks(self, limit: int = None) -> List[Dict]:
-        """
-        扫描已验证任务
-
-        Args:
-            limit: 返回的最大任务数
-
-        Returns:
-            已验证的任务列表
-        """
+        """Scan verified tasks that are eligible for a HEAD re-check."""
         try:
             batch_size = limit or self.check_batch_size
 
-            # 查询条件：
+            # query conditions:
             # 1. j.verification_status = 'verified'
-            # 2. j.introduced_errids 非空
-            # 3. head_check_completed 为空或 false（py_bisect 未完成 HEAD 检测）
-            # 4. (head_check_status 为空 OR head_check_at < 24小时前)
-            # 5. 未正在检查：head_check_status != 'checking'（避免重复提交）
-            # 6. 非失败状态：head_check_status != 'failed'（失败不自动重试）
-            # 7. 没有regressed_errids（避免重复检查已完成的任务）
+            # 2. j.introduced_errids 
+            # 3. head_check_completed  false(py_bisect completed HEAD )
+            # 4. (head_check_status  OR head_check_at < 24)
+            # 5. check: head_check_status != 'checking'(duplicate submit)
+            # 6. failed status: head_check_status != 'failed'
+            # 7. regressed_errids (skip already-completed checks)
             current_time = int(time.time())
             check_threshold = current_time - self.check_interval
 
@@ -104,27 +86,27 @@ class HeadValidator(VerificationConsumer):
                 LIMIT {batch_size}
             """
 
-            logger.info(f"扫描已验证任务（跳过 py_bisect 已完成 HEAD 检测的任务） | batch_size: {batch_size}")
+            logger.info(f"scan verification tasks (excluding py_bisect-completedTrigger HEAD check notificationss) | batch_size: {batch_size}")
             results = self.client.sql_select(sql_query)
 
             if results:
-                logger.info(f"发现 {len(results)} 个待检查任务")
+                logger.info(f" {len(results)} tasks to check")
             else:
-                logger.info("未发现待检查任务")
+                logger.info("tasks to check")
 
             return results or []
 
         except Exception as e:
-            logger.error(f"扫描已验证任务失败: {str(e)}")
+            logger.error(f"scan verification tasks failed: {str(e)}")
             logger.error(traceback.format_exc())
             return []
 
     def get_head_commit(self, repo_dir: str) -> Optional[str]:
         """
-        获取仓库的最新 HEAD commit
+        get repo HEAD commit
 
         Args:
-            repo_dir: 仓库目录
+            repo_dir: repo
 
         Returns:
             HEAD commit hash
@@ -139,25 +121,25 @@ class HeadValidator(VerificationConsumer):
             )
 
             head_commit = result.stdout.strip()
-            logger.info(f"获取 HEAD commit 成功 | commit: {head_commit[:8]}")
+            logger.info(f"get HEAD commit success | commit: {head_commit[:8]}")
             return head_commit
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"获取 HEAD commit 失败 | error: {e.stderr}")
+            logger.error(f"get HEAD commit failed | error: {e.stderr}")
             return None
         except subprocess.TimeoutExpired:
-            logger.error("获取 HEAD commit 超时")
+            logger.error("get HEAD commit timeout")
             return None
         except Exception as e:
-            logger.error(f"获取 HEAD commit 异常: {str(e)}")
+            logger.error(f"get HEAD commit exception: {str(e)}")
             return None
 
     def get_parent_commit(self, repo_dir: str, commit: str) -> Optional[str]:
         """
-        获取指定 commit 的 parent commit (commit^)
+        get commit  parent commit (commit^)
 
         Args:
-            repo_dir: 仓库目录
+            repo_dir: repo
             commit: commit hash
 
         Returns:
@@ -173,95 +155,94 @@ class HeadValidator(VerificationConsumer):
             )
 
             parent_commit = result.stdout.strip()
-            logger.info(f"获取 parent commit 成功 | commit: {commit[:8]} | parent: {parent_commit[:8]}")
+            logger.info(f"get parent commit success | commit: {commit[:8]} | parent: {parent_commit[:8]}")
             return parent_commit
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"获取 parent commit 失败 | commit: {commit[:8]} | error: {e.stderr}")
+            logger.error(f"get parent commit failed | commit: {commit[:8]} | error: {e.stderr}")
             return None
         except subprocess.TimeoutExpired:
-            logger.error(f"获取 parent commit 超时 | commit: {commit[:8]}")
+            logger.error(f"get parent commit timeout | commit: {commit[:8]}")
             return None
         except Exception as e:
-            logger.error(f"获取 parent commit 异常 | commit: {commit[:8]} | error: {str(e)}")
+            logger.error(f"get parent commit exception | commit: {commit[:8]} | error: {str(e)}")
             return None
 
     def submit_head_test(self, task: Dict, head_commit: str) -> Optional[Tuple[str, str]]:
         """
-        在 HEAD commit 提交测试
+        Submit a HEAD commit test job.
 
         Args:
-            task: bisect 任务记录
+            task: bisect task
             head_commit: HEAD commit hash
 
         Returns:
-            (job_id, result_root) 或 None
+            (job_id, result_root) or None
         """
         try:
-            logger.info(f"提交 HEAD 测试 | task_id: {task['id']} | head: {head_commit[:8]}")
+            logger.info(f"submit HEAD test | task_id: {task['id']} | head: {head_commit[:8]}")
 
-            # 使用 GitBisect 提交作业
-            # 初始化作业配置
+            # Submit job through GitBisect.
+            # Build base job config.
             bad_job_id = task.get('bad_job_id')
             if not bad_job_id:
-                logger.error(f"缺少 bad_job_id | task_id: {task['id']}")
+                logger.error(f"Missing bad_job_id | task_id: {task['id']}")
                 return None
 
             job_config = self.bisect_instance.init_job_content(bad_job_id)
 
-            # 替换 commit 为 HEAD
+            #  commit  HEAD
             if 'ss' in job_config and 'linux' in job_config['ss']:
                 job_config['ss']['linux']['commit'] = head_commit
             elif 'program' in job_config and 'makepkg' in job_config['program']:
                 job_config['program']['makepkg']['commit'] = head_commit
             else:
-                logger.error(f"无法识别作业结构 | task_id: {task['id']}")
+                logger.error(f"Unsupported job config structure | task_id: {task['id']}")
                 return None
 
-            # 提交作业
+            # Submit job.
             job_id, result_root, *_ = self.bisect_instance.submit_job(job_config)
-            logger.info(f"HEAD 测试提交成功 | job_id: {job_id} | task_id: {task['id']}")
+            logger.info(f"HEAD test submitted | job_id: {job_id} | task_id: {task['id']}")
 
             return (job_id, result_root)
 
         except Exception as e:
-            logger.error(f"提交 HEAD 测试失败: {str(e)} | task_id: {task['id']}")
+            logger.error(f"submit HEAD test failed: {str(e)} | task_id: {task['id']}")
             logger.error(traceback.format_exc())
             return None
 
     def check_head_regression(self, task: Dict) -> Dict:
         """
-        检查 HEAD 回归状态（增量验证：只验证状态变化）
+        Check HEAD regression status (with optional parent verification).
 
         Args:
-            task: bisect 任务记录
+            task: bisect task
 
         Returns:
-            检查结果字典
+            checkdict
         """
         try:
             task_id = task['id']
             git_url = task.get('git_url')
 
-            logger.info(f"检查 HEAD 回归 | task_id: {task_id}")
+            logger.info(f"check HEAD Regression detected | task_id: {task_id}")
 
             if not git_url:
                 error_msg = "missing_git_url"
                 logger.error(f"{error_msg} | task_id: {task_id}")
                 return {'status': 'failed', 'error': error_msg}
 
-            # 获取原始 error_id（数据库中的 errid 字段）
+            # get error_id( errid )
             original_error_id = task.get('error_id')
             if not original_error_id:
                 error_msg = "missing_original_error_id"
                 logger.error(f"{error_msg} | task_id: {task_id}")
                 return {'status': 'failed', 'error': error_msg}
 
-            # 获取上一次的 HEAD check 状态（用于检测状态变化）
+            # getTrigger HEAD check notifications status(status)
             previous_head_status = None
             j_field = task.get('j', {})
             if isinstance(j_field, str):
-                import json
                 try:
                     j_field = json.loads(j_field) if j_field else {}
                 except json.JSONDecodeError:
@@ -269,160 +250,160 @@ class HeadValidator(VerificationConsumer):
             previous_head_status = j_field.get('head_check_status')
 
             if previous_head_status:
-                logger.info(f"上次 HEAD 状态: {previous_head_status} | task_id: {task_id}")
+                logger.info(f"Previous HEAD status | task_id: {task_id} | status: {previous_head_status}")
             else:
-                logger.info(f"首次 HEAD 检查 | task_id: {task_id}")
+                logger.info(f"FirstTrigger HEAD check notifications | task_id: {task_id}")
 
-            logger.info(f"检查原始 errid: {original_error_id} | task_id: {task_id}")
+            logger.info(f"Target error_id | task_id: {task_id} | error_id: {original_error_id}")
 
-            # 获取仓库目录（使用基类方法）
+            # Acquire shared repository workspace.
             repo_dir, job_dir = self._get_repo_dir(task_id, task['bad_job_id'], git_url)
 
             try:
-                # 获取 HEAD commit
+                # get HEAD commit
                 head_commit = self.get_head_commit(repo_dir)
                 if not head_commit:
-                    error_msg = "failed_to_get_head_commit"
+                    error_msg = "failed to get head commit"
                     logger.error(f"{error_msg} | task_id: {task_id}")
                     return {'status': 'failed', 'error': error_msg}
 
-                # 提交 HEAD 测试
+                # submit HEAD test
                 head_result = self.submit_head_test(task, head_commit)
                 if not head_result:
-                    error_msg = "failed_to_submit_head_test"
+                    error_msg = "failed to submit head test"
                     logger.error(f"{error_msg} | task_id: {task_id}")
                     return {'status': 'failed', 'error': error_msg}
 
                 head_job_id, head_result_root = head_result
 
-                # 等待作业完成并使用综合构建日志分析检查原始 errid
+                # Poll job stats and evaluate target error_id.
                 job_stats, job_health = self.bisect_instance._poll_job_stats(head_job_id, head_result_root)
 
-                # 使用 py_bisect 的综合构建日志分析方法检查原始 errid
-                # _check_error_id 返回 (status, certainty, reason) 元组
+                #  py_bisect logcheck errid
+                # _check_error_id  (status, certainty, reason) 
                 error_status, _, _ = self.bisect_instance._check_error_id(job_stats, original_error_id, job_health, head_result_root)
 
-                # 检查回归：原始 errid 是否仍然存在
+                # checkregression:  errid 
                 regressed = (error_status == 'bad')
                 new_status = 'regressed' if regressed else 'fixed'
                 regressed_errids = [original_error_id] if regressed else []
 
-                logger.info(f"HEAD 作业完成 | 使用构建日志分析 | 原始 errid 状态: {new_status} | job_id: {head_job_id}")
+                logger.info(f"HEAD job completed | log |  errid status: {new_status} | job_id: {head_job_id}")
 
-                # 检测状态变化
+                # Determine whether status changed from previous run.
                 status_changed = (previous_head_status is not None and previous_head_status != new_status)
 
                 if status_changed:
                     logger.warning(
-                        f"HEAD 状态变化 | task_id: {task_id} | "
-                        f"{previous_head_status} → {new_status} | 需要验证"
+                        f"HEAD status | task_id: {task_id} | "
+                        f"{previous_head_status} -> {new_status} | requires_verification"
                     )
 
-                    # 状态变化需要验证：提交 HEAD^ (parent) 的测试进行边界验证
+                    # Determine whether status changed from previous run.verify: submit HEAD^ (parent) testverify
                     verification_needed = True
                 else:
                     logger.info(
-                        f"HEAD 状态未变或首次检查 | task_id: {task_id} | "
-                        f"status: {new_status} | 无需验证"
+                        f"HEAD status check | task_id: {task_id} | "
+                        f"status: {new_status} | no_parent_verification_needed"
                     )
                     verification_needed = False
 
-                # 如果需要验证（状态变化），进行边界验证
+                # Determine whether status changed from previous run. verification with optional parent check
                 verified = False
-                final_status = new_status  # 默认使用新检测到的状态
+                final_status = new_status  # default outcome
 
                 if verification_needed:
-                    # 进行边界验证：测试 HEAD^ (parent commit)
+                    # verify: test HEAD^ (parent commit)
                     parent_commit = self.get_parent_commit(repo_dir, head_commit)
                     if parent_commit:
-                        logger.info(f"开始边界验证 | HEAD: {head_commit[:8]} | parent: {parent_commit[:8]} | task_id: {task_id}")
+                        logger.info(f"startverify | HEAD: {head_commit[:8]} | parent: {parent_commit[:8]} | task_id: {task_id}")
 
-                        # 提交 parent commit 测试
+                        # submit parent commit test
                         parent_result = self.submit_head_test(task, parent_commit)
                         if parent_result:
                             parent_job_id, parent_result_root = parent_result
 
-                            # 等待 parent 测试完成
+                            # Poll parent test completion.
                             parent_job_stats, parent_job_health = self.bisect_instance._poll_job_stats(parent_job_id, parent_result_root)
-                            # _check_error_id 返回 (status, certainty, reason) 元组
+                            # _check_error_id  (status, certainty, reason) 
                             parent_error_status, _, _ = self.bisect_instance._check_error_id(parent_job_stats, original_error_id, parent_job_health, parent_result_root)
 
                             parent_status = 'bad' if parent_error_status == 'bad' else 'good'
 
                             logger.info(
-                                f"边界验证完成 | HEAD: {new_status} | parent: {parent_status} | "
+                                f"Verification completed | head_status: {new_status} | parent_status: {parent_status} | "
                                 f"task_id: {task_id} | parent_job: {parent_job_id}"
                             )
 
-                            # 验证边界条件
+                            # Evaluate verification matrix.
                             if new_status == 'regressed' and parent_status == 'good':
-                                # regressed + parent good = 确认新回归
+                                # regressed + parent good = regression
                                 verified = True
                                 final_status = 'regressed'
-                                logger.warning(f"验证通过：确认新回归 | task_id: {task_id}")
-                                # 触发通知
+                                logger.warning(f"verification result: regressed | task_id: {task_id}")
+                                # 
                                 self.trigger_notification(task, 'regressed', regressed_errids)
 
                             elif new_status == 'fixed' and parent_status == 'bad':
-                                # fixed + parent bad = 确认已修复（但parent有问题，可能不稳定）
+                                # fixed + parent bad = fixed(parent, )
                                 verified = True
                                 final_status = 'fixed'
-                                logger.info(f"验证通过：确认已修复 | task_id: {task_id}")
+                                logger.info(f"verification result: fixed | task_id: {task_id}")
 
                             elif new_status == 'fixed' and parent_status == 'good':
-                                # fixed + parent good = 确认已修复（稳定）
+                                # fixed + parent good = fixed()
                                 verified = True
                                 final_status = 'fixed'
-                                logger.info(f"验证通过：确认已修复（稳定） | task_id: {task_id}")
+                                logger.info(f"verification result: fixed (stable) | task_id: {task_id}")
 
                             elif new_status == 'regressed' and parent_status == 'bad':
-                                # regressed + parent bad = 边界条件不满足，可能是 flaky test
+                                # regressed + parent bad = conditions,  flaky test
                                 verified = False
                                 final_status = 'unverifiable'
                                 logger.warning(
-                                    f"边界验证失败：HEAD=bad, parent=bad | task_id: {task_id} | "
-                                    f"可能是 flaky test，标记为 unverifiable"
+                                    f"verification failed: HEAD=bad, parent=bad | task_id: {task_id} | "
+                                    f"possible flaky behavior; mark as unverifiable"
                                 )
 
                             else:
-                                # 其他情况
+                                # 
                                 verified = False
                                 final_status = 'unverifiable'
-                                logger.warning(f"边界验证结果异常 | task_id: {task_id}")
+                                logger.warning(f"Unexpected verification combination | task_id: {task_id}")
 
                         else:
-                            logger.error(f"提交 parent commit 测试失败 | task_id: {task_id}")
+                            logger.error(f"Submit parent commit test failed | task_id: {task_id}")
                             verified = False
-                            final_status = new_status  # 无法验证，使用原始状态
+                            final_status = new_status  # verification unavailable, keep current status
                     else:
-                        logger.error(f"获取 parent commit 失败 | task_id: {task_id}")
+                        logger.error(f"get parent commit failed | task_id: {task_id}")
                         verified = False
-                        final_status = new_status  # 无法验证，使用原始状态
+                        final_status = new_status  # verification unavailable, keep current status
                 else:
-                    # 首次检查或状态未变，不需要验证
-                    verified = True  # 认为是可信的
+                    # Determine whether status changed from previous run. check and verification
+                    verified = True  # 
                     final_status = new_status
 
-                # 更新数据库
+                # 
                 self.update_head_check_status(
                     task_id, final_status, head_commit, head_job_id, regressed_errids,
                     verified=verified, status_changed=status_changed
                 )
 
-                # 只在以下情况生成/更新报告：
-                # 1. 首次检查 (previous_head_status is None)
-                # 2. 状态变化且验证通过 (status_changed and verified)
+                # Generate/update report when needed:
+                # 1. check (previous_head_status is None)
+                # 2. statusverify (status_changed and verified)
                 should_generate_report = (previous_head_status is None) or (status_changed and verified)
 
                 if should_generate_report:
-                    # 生成 bisect 成功报告（包含 HEAD check 结果）
+                    #  bisect success(Trigger HEAD check notifications )
                     try:
-                        # 重新查询任务以获取更新后的完整信息
+                        # Query updated task for report generation.
                         updated_tasks = self.client.sql_select(f"SELECT * FROM bisect WHERE id = {task_id}")
                         if updated_tasks:
                             updated_task = updated_tasks[0]
 
-                            # 获取 job 信息用于报告
+                            # get job 
                             bad_job_id = task.get('bad_job_id')
                             job_info = None
                             if bad_job_id:
@@ -432,36 +413,34 @@ class HeadValidator(VerificationConsumer):
                                     if job_results and len(job_results) > 0:
                                         job_info = job_results[0]
                                 except Exception as e:
-                                    logger.warning(f"获取 job 信息失败 | job_id: {bad_job_id} | error: {str(e)}")
+                                    logger.warning(f"get job failed | job_id: {bad_job_id} | error: {str(e)}")
 
-                            # 从 j 字段获取 introduced_errids
+                            # Read introduced_errids from existing j field.
                             j_field = updated_task.get('j', {})
                             if isinstance(j_field, str):
-                                import json
                                 try:
                                     j_field = json.loads(j_field) if j_field else {}
                                 except json.JSONDecodeError:
                                     j_field = {}
                             introduced_errids = j_field.get('introduced_errids', []) or []
 
-                            # 写入通知报告（固定文件名，每次更新）
+                            # (file, )
                             report_path = self.notification_writer.write_bisect_success_report(
                                 updated_task,
                                 job_info=job_info,
                                 introduced_errids=introduced_errids
                             )
                             if report_path:
-                                logger.info(f"Bisect 成功报告已生成/更新 | task_id: {task_id} | HEAD: {final_status} | verified: {verified} | path: {report_path}")
+                                logger.info(f"Bisect success report updated | task_id: {task_id} | HEAD: {final_status} | verified: {verified} | path: {report_path}")
                             else:
-                                logger.warning(f"Bisect 成功报告生成失败 | task_id: {task_id}")
+                                logger.warning(f"Bisect success report generation failed | task_id: {task_id}")
                         else:
-                            logger.warning(f"无法获取更新后的任务信息 | task_id: {task_id}")
+                            logger.warning(f"get task failed | task_id: {task_id}")
                     except Exception as e:
-                        logger.error(f"Bisect 成功报告生成异常 | task_id: {task_id} | error: {str(e)}")
-                        import traceback
+                        logger.error(f"Bisect success report exception | task_id: {task_id} | error: {str(e)}")
                         logger.error(traceback.format_exc())
                 else:
-                    logger.info(f"状态未变化，跳过报告生成 | task_id: {task_id} | status: {final_status}")
+                    logger.info(f"Status unchanged, skip report generation | task_id: {task_id} | status: {final_status}")
 
                 return {
                     'status': 'success',
@@ -475,7 +454,7 @@ class HeadValidator(VerificationConsumer):
                 }
 
             finally:
-                # 释放仓库回池（使用基类方法）
+                # Release workspace back to shared pool.
                 self._release_repo_to_pool(repo_dir, job_dir)
 
         except Exception as e:
@@ -488,21 +467,21 @@ class HeadValidator(VerificationConsumer):
                                  head_job_id: str, regressed_errids: List[str],
                                  verified: bool = True, status_changed: bool = False):
         """
-        更新 HEAD 检查状态
+        Update HEAD check status fields for a task.
 
         Args:
-            task_id: 任务ID
-            status: 状态（'regressed', 'fixed', 'unverifiable'）
+            task_id: task ID
+            status: status('regressed', 'fixed', 'unverifiable')
             head_commit: HEAD commit hash
-            head_job_id: HEAD 测试作业ID
-            regressed_errids: 回归的 errid 列表
-            verified: 是否经过验证
-            status_changed: 状态是否发生变化
+            head_job_id: HEAD test job ID
+            regressed_errids: regressed errid list
+            verified: verification flag
+            status_changed: whether status changed in this cycle
         """
         try:
             current_time = int(time.time())
 
-            # 先获取现有的 j 字段，避免覆盖
+            # Read existing j field to preserve unrelated metadata.
             existing_j = {}
             try:
                 task = self.client.sql_select_one(f"SELECT j FROM bisect WHERE id = {task_id}")
@@ -511,11 +490,11 @@ class HeadValidator(VerificationConsumer):
                     if isinstance(j_field, dict):
                         existing_j = j_field
             except Exception as e:
-                logger.warning(f"解析现有 J 字段失败 | task_id: {task_id} | error: {str(e)}")
+                logger.warning(f"Failed to parse existing j field | task_id: {task_id} | error: {str(e)}")
 
-            # 合并 HEAD 检查字段到现有 J 字段
+            # Merge checking-state fields into j.
             updated_j = {
-                **existing_j,  # 保留现有字段（包括 verification_status, introduced_errids 等）
+                **existing_j,  # ( verification_status, introduced_errids )
                 "head_check_status": status,
                 "head_check_at": current_time,
                 "head_check_commit": head_commit,
@@ -534,22 +513,22 @@ class HeadValidator(VerificationConsumer):
             update_result = self.client.update("bisect", task_id, update_doc)
 
             if update_result:
-                logger.info(f"HEAD 检查状态更新 | task_id: {task_id} | status: {status}")
+                logger.info(f"HEAD check status updated | task_id: {task_id} | status: {status}")
             else:
-                logger.error(f"更新数据库失败 | task_id: {task_id}")
+                logger.error(f"HEAD check status update failed | task_id: {task_id}")
 
         except Exception as e:
-            logger.error(f"更新 HEAD 检查状态失败: {str(e)} | task_id: {task_id}")
+            logger.error(f"Trigger HEAD check notifications status update failed: {str(e)} | task_id: {task_id}")
             logger.error(traceback.format_exc())
 
     def trigger_notification(self, task: Dict, status: str, regressed_errids: List[str]):
         """
-        触发 HEAD 检查通知
+        Trigger HEAD check notifications
 
         Args:
-            task: 任务记录
-            status: 状态 ('regressed' 或 'fixed')
-            regressed_errids: 回归的 errid 列表
+            task: task
+            status: status ('regressed' or 'fixed')
+            regressed_errids: regressed errid list
         """
         try:
             task_id = task['id']
@@ -557,12 +536,12 @@ class HeadValidator(VerificationConsumer):
             git_url = task.get('git_url', 'N/A')
 
             if status == 'regressed':
-                # 回归告警
+                # Confirmed regression
                 message = (
-                    f"【HEAD 回归告警】\n"
-                    f"任务ID: {task_id}\n"
+                    f"[HEAD regression]\n"
+                    f"task ID: {task_id}\n"
                     f"First Bad Commit: {first_bad_commit}\n"
-                    f"回归 Errids: {len(regressed_errids)}\n"
+                    f"regression Errids: {len(regressed_errids)}\n"
                     f"Sample: {regressed_errids[:3]}\n"
                     f"Git URL: {git_url}"
                 )
@@ -571,24 +550,24 @@ class HeadValidator(VerificationConsumer):
                 logger.warning(message)
                 logger.warning("=" * 60)
 
-                # 写入文件通知（修复参数错误）
+                # Write file-based regression notification.
                 self.notification_writer.write_head_regression_alert(
-                    task=task,  # ✅ 传完整 task 对象
+                    task=task,  # [OK]  task 
                     regressed_errids=regressed_errids
                 )
-                logger.info(f"HEAD 回归通知已写入 | task_id: {task_id}")
+                logger.info(f"HEAD Regression detected | task_id: {task_id}")
 
             elif status == 'fixed':
-                # 修复报告（好消息！）
+                # Fixed notification
                 j_data = task.get('j', {})
                 introduced_errids = j_data.get('introduced_errids', [])
 
                 message = (
-                    f"【HEAD 修复报告】✅\n"
-                    f"任务ID: {task_id}\n"
+                    f"[HEAD fixed][OK]\n"
+                    f"task ID: {task_id}\n"
                     f"First Bad Commit: {first_bad_commit}\n"
-                    f"问题已在 HEAD 修复！\n"
-                    f"原始 Errids: {len(introduced_errids)}\n"
+                    f" HEAD fixed!\n"
+                    f" Errids: {len(introduced_errids)}\n"
                     f"Git URL: {git_url}"
                 )
 
@@ -596,42 +575,96 @@ class HeadValidator(VerificationConsumer):
                 logger.info(message)
                 logger.info("=" * 60)
 
-                # 写入修复报告
+                # fixed
                 self.notification_writer.write_head_fixed_report(
                     task=task,
                     introduced_errids=introduced_errids
                 )
-                logger.info(f"HEAD 修复报告已写入 | task_id: {task_id}")
+                logger.info(f"HEAD fixed | task_id: {task_id}")
 
-            # TODO: 实现 webhook/email 通知
+            # Optional webhook/email integration.
             if self.notification_webhook:
-                logger.info(f"TODO: 发送 webhook 通知到 {self.notification_webhook}")
+                webhook_payload = {
+                    "event": "head_regression" if status == "regressed" else "head_fixed",
+                    "task_id": task_id,
+                    "status": status,
+                    "first_bad_commit": first_bad_commit,
+                    "git_url": git_url,
+                    "regressed_errids": regressed_errids if status == "regressed" else [],
+                    "introduced_errids": introduced_errids if status == "fixed" else [],
+                    "timestamp": int(time.time()),
+                }
+                self._send_webhook_notification(webhook_payload)
 
             if self.notification_email:
-                logger.info(f"TODO: 发送邮件通知到 {self.notification_email}")
+                logger.info(f"TODO: send email notification to {self.notification_email}")
 
         except Exception as e:
-            logger.error(f"触发通知失败: {str(e)}")
+            logger.error(f"Trigger notification failed: {str(e)}")
             logger.error(traceback.format_exc())
+
+    def _send_webhook_notification(self, payload: Dict[str, Any], timeout: int = 10) -> bool:
+        """Send notification payload to webhook endpoint."""
+        webhook_url = str(self.notification_webhook or '').strip()
+        if not webhook_url:
+            return False
+
+        data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        request = urllib.request.Request(
+            webhook_url,
+            data=data,
+            method='POST',
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'bisect-head-validator/1.0',
+            }
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as resp:
+                status_code = int(getattr(resp, 'status', 0) or resp.getcode())
+                if 200 <= status_code < 300:
+                    logger.info(
+                        f"Webhook notification sent | task_id: {payload.get('task_id')} | "
+                        f"event: {payload.get('event')} | status: {status_code}"
+                    )
+                    return True
+                logger.warning(
+                    f"Webhook returned non-2xx | task_id: {payload.get('task_id')} | "
+                    f"event: {payload.get('event')} | status: {status_code}"
+                )
+                return False
+        except urllib.error.HTTPError as e:
+            logger.warning(
+                f"Webhook HTTP error | task_id: {payload.get('task_id')} | "
+                f"event: {payload.get('event')} | status: {e.code}"
+            )
+            return False
+        except Exception as e:
+            logger.warning(
+                f"Webhook request failed | task_id: {payload.get('task_id')} | "
+                f"event: {payload.get('event')} | error: {str(e)}"
+            )
+            return False
 
 
     def run_head_check_cycle(self) -> Dict[str, int]:
         """
-        运行一次 HEAD 检查周期
+        run onceTrigger HEAD check notifications
 
         Returns:
-            统计信息字典
+            stats dict
         """
         try:
             logger.info("=" * 60)
-            logger.info("开始 HEAD 回归检测周期")
+            logger.info("Start HEAD regression check cycle")
             logger.info("=" * 60)
 
-            # 扫描已验证任务
+            # scan verification tasks
             verified_tasks = self.scan_verified_tasks()
 
             if not verified_tasks:
-                logger.info("本周期无待检查任务")
+                logger.info("tasks to check")
                 return {
                     'scanned': 0,
                     'regressed': 0,
@@ -639,7 +672,7 @@ class HeadValidator(VerificationConsumer):
                     'failed': 0
                 }
 
-            # 检查统计
+            # Initialize cycle stats.
             stats = {
                 'scanned': len(verified_tasks),
                 'regressed': 0,
@@ -647,7 +680,7 @@ class HeadValidator(VerificationConsumer):
                 'failed': 0
             }
 
-            # 逐个检查任务
+            # tasks to check
             for task in verified_tasks:
                 try:
                     result = self.check_head_regression(task)
@@ -662,24 +695,24 @@ class HeadValidator(VerificationConsumer):
                         stats['failed'] += 1
 
                 except Exception as e:
-                    logger.error(f"检查任务异常: {str(e)} | task_id: {task.get('id')}")
+                    logger.error(f"task check exception: {str(e)} | task_id: {task.get('id')}")
                     stats['failed'] += 1
 
-            # 输出统计信息
+            # stats
             logger.info("=" * 60)
             logger.info(
-                f"HEAD 检查周期完成 | "
-                f"扫描: {stats['scanned']} | "
-                f"回归: {stats['regressed']} | "
-                f"修复: {stats['fixed']} | "
-                f"失败: {stats['failed']}"
+                f"HEAD check cycle completed | "
+                f"scan: {stats['scanned']} | "
+                f"regression: {stats['regressed']} | "
+                f"fixed: {stats['fixed']} | "
+                f"failed: {stats['failed']}"
             )
             logger.info("=" * 60)
 
             return stats
 
         except Exception as e:
-            logger.error(f"HEAD 检查周期异常: {str(e)}")
+            logger.error(f"HEAD check cycle exception: {str(e)}")
             logger.error(traceback.format_exc())
             return {
                 'scanned': 0,
@@ -691,48 +724,46 @@ class HeadValidator(VerificationConsumer):
 
 
     def _submit_head_test_async(self, task, head_commit):
-        """异步提交 HEAD 测试（不等待作业完成）"""
+        """Submit HEAD test asynchronously and persist checking state."""
         try:
             task_id = task['id']
 
-            # 提交 HEAD 测试
+            # submit HEAD test
             head_result = self.submit_head_test(task, head_commit)
 
             if head_result:
                 head_job_id, head_result_root = head_result
 
-                # 解析 j 字段获取 introduced_errids
+                # Read introduced_errids from existing j field.
                 j_field = task.get('j', {})
                 if isinstance(j_field, str):
-                    import json
                     j_field = json.loads(j_field)
 
                 introduced_errids = j_field.get('introduced_errids', [])
 
-                # 保存作业ID到数据库（合并现有 J 字段，避免覆盖 verification 数据）
+                # Persist job metadata while preserving existing j fields.
                 current_time = int(time.time())
 
-                # 读取现有的 J 字段
+                # Parse current j field.
                 existing_j = {}
                 try:
                     j_field = task.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field)
                     existing_j = j_field if isinstance(j_field, dict) else {}
                 except Exception as e:
-                    logger.warning(f"解析现有 J 字段失败 | task_id: {task_id} | error: {str(e)}")
+                    logger.warning(f"Failed to parse existing j field | task_id: {task_id} | error: {str(e)}")
 
-                # 合并 HEAD 检查字段到现有 J 字段
+                # Merge checking-state fields into j.
                 updated_j = {
-                    **existing_j,  # 保留现有字段（包括 introduced_errids）
+                    **existing_j,  # ( introduced_errids)
                     "head_check_status": "checking",
                     "head_check_job_id": head_job_id,
                     "head_check_result_root": head_result_root,
                     "head_check_commit": head_commit,
                     "head_check_source": "head_validator",
                     "head_check_submitted_at": current_time
-                    # 注意：不再存储 head_check_target_errids，直接使用 introduced_errids
+                    # Use introduced_errids directly as target set.
                 }
 
                 update_doc = {
@@ -746,18 +777,18 @@ class HeadValidator(VerificationConsumer):
                     'head_job_id': head_job_id
                 }
             else:
-                return {'submitted': False, 'error': 'failed_to_submit_head_test'}
+                return {'submitted': False, 'error': 'failed to submit head test'}
 
         except Exception as e:
-            logger.error(f"异步提交 HEAD 测试异常 | task_id: {task.get('id')} | error: {str(e)}")
+            logger.error(f"submit HEAD test exception | task_id: {task.get('id')} | error: {str(e)}")
             logger.error(traceback.format_exc())
             return {'submitted': False, 'error': str(e)}
 
     def _poll_head_test_results(self):
-        """轮询 HEAD 测试中的任务，检查作业是否完成"""
+        """Poll running HEAD-test tasks and finalize completed jobs."""
         try:
-            # 查询 head_check_status = 'checking' 的任务
-            # 优先处理提交时间早的任务，避免部分任务永远不被选中
+            # Query tasks currently in checking state.
+            # Process older submissions first.
             sql_query = """
                 SELECT id, error_id, j
                 FROM bisect
@@ -770,7 +801,7 @@ class HeadValidator(VerificationConsumer):
             if not checking_tasks:
                 return
 
-            logger.info(f"轮询 HEAD 测试中的任务: {len(checking_tasks)} 个")
+            logger.info(f"Polling HEAD-test tasks | count: {len(checking_tasks)}")
 
             completed_count = 0
             regressed_count = 0
@@ -781,38 +812,37 @@ class HeadValidator(VerificationConsumer):
                     task_id = task['id']
                     j_field = task.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field)
 
                     head_job_id = j_field.get('head_check_job_id')
                     head_result_root = j_field.get('head_check_result_root')
                     head_commit = j_field.get('head_check_commit')
-                    target_errids = j_field.get('introduced_errids', [])  # 直接使用 introduced_errids
+                    target_errids = j_field.get('introduced_errids', [])  #  introduced_errids
                     submitted_at = j_field.get('head_check_submitted_at', 0)
 
                     if not head_job_id or not target_errids:
                         logger.warning(
-                            f"HEAD测试任务缺少必要信息 | task_id: {task_id} | "
+                            f"HEAD-test task missing required data | task_id: {task_id} | "
                             f"head_job_id: {head_job_id} | introduced_errids: {len(target_errids) if target_errids else 0}"
                         )
                         continue
 
-                    # 检查作业是否完成（按照原版 py_bisect 逻辑）
+                    # Check whether the HEAD test job has completed.
                     try:
                         head_stats, head_health = self.bisect_instance._poll_job_stats(head_job_id, head_result_root)
 
-                        # 检查作业是否已完成
+                        # Job has completed.
                         if not (isinstance(head_stats, dict) and head_stats):
-                            logger.debug(f"HEAD 测试作业未完成 | task_id: {task_id} | job_id: {head_job_id}")
+                            logger.debug(f"HEAD test job not completed yet | task_id: {task_id} | job_id: {head_job_id}")
                             continue
 
                     except Exception as e:
-                        logger.error(f"检查 HEAD 测试作业状态失败 | task_id: {task_id} | job_id: {head_job_id} | error: {str(e)}")
+                        logger.error(f"check HEAD test job status failed | task_id: {task_id} | job_id: {head_job_id} | error: {str(e)}")
                         continue
 
-                    # 作业已完成，开始分析回归状态
-                    logger.info(f"HEAD测试已完成 | task_id: {task_id} | 开始分析回归状态")
-                    # 分析回归状态并更新结果
+                    # Job completed; now finalize regression status.
+                    logger.info(f"HEAD test completed | task_id: {task_id} | start regression analysis")
+                    # Confirmed regressionstatus
                     status = self._finalize_head_check(task, head_job_id, head_commit, target_errids)
 
                     completed_count += 1
@@ -822,73 +852,72 @@ class HeadValidator(VerificationConsumer):
                         fixed_count += 1
 
                 except Exception as e:
-                    logger.error(f"轮询 HEAD 测试异常 | task_id: {task.get('id')} | error: {str(e)}")
+                    logger.error(f"HEAD test exception | task_id: {task.get('id')} | error: {str(e)}")
 
             if completed_count > 0:
                 logger.info(
-                    f"本轮完成 HEAD 检查: {completed_count} 个任务 | "
-                    f"回归: {regressed_count} | 修复: {fixed_count}"
+                    f"completedTrigger HEAD check notifications: {completed_count} task | "
+                    f"regression: {regressed_count} | fixed: {fixed_count}"
                 )
 
         except Exception as e:
-            logger.error(f"轮询 HEAD 测试结果异常: {str(e)}")
+            logger.error(f"HEAD test exception: {str(e)}")
             logger.error(traceback.format_exc())
 
     def _finalize_head_check(self, task, head_job_id, head_commit, target_errids):
-        """完成 HEAD 检查：分析回归状态并更新数据库"""
+        """completedTrigger HEAD check notifications: regressionstatus"""
         try:
             task_id = task['id']
 
-            # 获取 HEAD 作业的 errids
+            # Read errids from HEAD job has no stats.
             job_stats, job_health = self.bisect_instance._poll_job_stats(head_job_id)
 
             if not job_stats:
-                logger.warning(f"HEAD 作业无 stats | job_id: {head_job_id}")
+                logger.warning(f"HEAD job has no stats | job_id: {head_job_id}")
                 head_errids = []
             else:
                 head_errids = list(job_stats.keys())
 
-            logger.info(f"HEAD 作业完成 | errids: {len(head_errids)} | job_id: {head_job_id}")
+            logger.info(f"HEAD job completed | errids: {len(head_errids)} | job_id: {head_job_id}")
 
-            # 检查回归：target_errids 中的任意一个存在于 head_errids 中
+            # Check regression by intersecting target_errids with head_errids.
             regressed_errids = [e for e in target_errids if e in head_errids]
 
             if regressed_errids:
-                # 问题回归
+                # Confirmed regression
                 status = 'regressed'
                 logger.warning(
-                    f"检测到回归 | task_id: {task_id} | "
+                    f"Regression detected | task_id: {task_id} | "
                     f"regressed: {len(regressed_errids)}/{len(target_errids)}"
                 )
-                logger.warning(f"回归 errids: {regressed_errids[:3]}...")
+                logger.warning(f"Regressed errids: {regressed_errids[:3]}...")
 
-                # 触发通知
+                # 
                 self.trigger_notification(task, 'regressed', regressed_errids)
             else:
-                # 问题已修复
+                # fixed
                 status = 'fixed'
-                logger.info(f"问题已修复 | task_id: {task_id} | HEAD 无已知 errids")
+                logger.info(f"Fixed on HEAD | task_id: {task_id} | no known errids on HEAD")
 
-                # 触发修复通知（好消息！）
+                # Fixed notification
                 self.trigger_notification(task, 'fixed', [])
 
-            # 更新数据库（合并现有 J 字段）
+            # Persist final HEAD-check fields in j.
             current_time = int(time.time())
 
-            # 读取现有的 J 字段
+            # Parse current j field.
             existing_j = {}
             try:
                 j_field = task.get('j', {})
                 if isinstance(j_field, str):
-                    import json
                     j_field = json.loads(j_field)
                 existing_j = j_field if isinstance(j_field, dict) else {}
             except Exception as e:
-                logger.warning(f"解析现有 J 字段失败 | task_id: {task_id} | error: {str(e)}")
+                logger.warning(f"Failed to parse existing j field | task_id: {task_id} | error: {str(e)}")
 
-            # 合并 HEAD 检查完成字段到现有 J 字段
+            # Trigger HEAD check notificationscompleted J 
             updated_j = {
-                **existing_j,  # 保留现有字段（包括 verification 数据）
+                **existing_j,  # ( verification )
                 "head_check_status": status,
                 "head_check_at": current_time,
                 "head_check_commit": head_commit,
@@ -903,50 +932,49 @@ class HeadValidator(VerificationConsumer):
                 "j": updated_j
             }
 
-            # 执行数据库更新并检查结果
+            # check
             update_result = self.client.update("bisect", task_id, update_doc)
 
             if not update_result:
                 logger.error(
-                    f"HEAD 检查数据库更新失败 | task_id: {task_id} | status: {status} | "
+                    f"HEAD check database update failed | task_id: {task_id} | status: {status} | "
                     f"update_doc: {update_doc}"
                 )
                 return 'failed'
 
-            logger.info(f"HEAD 检查完成 | task_id: {task_id} | status: {status}")
+            logger.info(f"HEAD check cycle completed | task_id: {task_id} | status: {status}")
             return status
 
         except Exception as e:
-            logger.error(f"完成 HEAD 检查异常 | task_id: {task.get('id')} | error: {str(e)}")
+            logger.error(f"Finalize HEAD check exception | task_id: {task.get('id')} | error: {str(e)}")
             logger.error(traceback.format_exc())
-            self._mark_head_check_failed(task, f"HEAD 检查异常: {str(e)}")
+            self._mark_head_check_failed(task, f"HEAD check cycle exception: {str(e)}")
             return 'failed'
 
     def _mark_head_check_failed(self, task: dict, reason: str):
-        """标记 HEAD 检查失败
+        """Mark HEAD check as failed
 
         Args:
-            task: 完整的任务字典对象
-            reason: 失败原因
+            task: task dict
+            reason: failure reason
         """
         try:
             task_id = task.get('id') if isinstance(task, dict) else task
             current_time = int(time.time())
 
-            # 读取现有的 J 字段
+            # Parse current j field.
             existing_j = {}
             try:
                 j_field = task.get('j', {}) if isinstance(task, dict) else {}
                 if isinstance(j_field, str):
-                    import json
                     j_field = json.loads(j_field)
                 existing_j = j_field if isinstance(j_field, dict) else {}
             except Exception as e:
-                logger.warning(f"解析现有 J 字段失败 | task_id: {task_id} | error: {str(e)}")
+                logger.warning(f"Failed to parse existing j field | task_id: {task_id} | error: {str(e)}")
 
-            # 合并 HEAD 检查失败字段到现有 J 字段
+            # Merge failure-state fields into j.
             updated_j = {
-                **existing_j,  # 保留现有字段
+                **existing_j,  # 
                 "head_check_status": "failed",
                 "head_check_source": "head_validator",
                 "head_check_failure_reason": reason,
@@ -958,10 +986,10 @@ class HeadValidator(VerificationConsumer):
                 "j": updated_j
             }
             self.client.update("bisect", task_id, update_doc)
-            logger.info(f"HEAD 检查失败已记录 | task_id: {task_id} | reason: {reason}")
+            logger.info(f"HEAD check database update failed | task_id: {task_id} | reason: {reason}")
 
-            # 写入通知文件（仅超时情况） - 直接使用传入的 task 对象
-            if "超时" in reason:
+            # Write timeout alert for file-based notifications.
+            if "timeout" in reason:
                 try:
                     self.notification_writer.write_timeout_alert(
                         task_id=task_id,
@@ -969,16 +997,16 @@ class HeadValidator(VerificationConsumer):
                         timeout_type='head_check',
                         reason=reason
                     )
-                    logger.info(f"HEAD 检查超时通知已写入文件 | task_id: {task_id}")
+                    logger.info(f"HEAD check timeout alert written | task_id: {task_id}")
                 except Exception as e:
-                    logger.error(f"写入 HEAD 检查超时通知异常 | task_id: {task_id} | error: {str(e)}")
+                    logger.error(f"HEAD check timeout notification exception | task_id: {task_id} | error: {str(e)}")
 
         except Exception as e:
             task_id = task.get('id') if isinstance(task, dict) else task
-            logger.error(f"标记 HEAD 检查失败异常 | task_id: {task_id} | error: {str(e)}")
+            logger.error(f"Trigger HEAD check notifications failed exception | task_id: {task_id} | error: {str(e)}")
 
 def create_head_validator(config: Dict) -> HeadValidator:
-    """创建 HEAD 验证服务实例"""
+    """Create HEAD validator instance"""
     client = ManticoreClient(
         host=config.get('manticore_host', 'localhost'),
         port=int(config.get('manticore_http_port', '9308'))
@@ -987,21 +1015,21 @@ def create_head_validator(config: Dict) -> HeadValidator:
 
 
 if __name__ == '__main__':
-    """测试 HEAD 验证服务"""
-    # 配置
+    """Manual test entry for HEAD validator."""
+    # config
     config = {
         'manticore_host': os.environ.get('MANTICORE_HOST', 'localhost'),
         'manticore_http_port': os.environ.get('MANTICORE_HTTP_PORT', '9308'),
         'head_check_batch_size': 5,
-        'head_check_interval': 86400,  # 每天
+        'head_check_interval': 86400,  # 
         'notification_webhook_url': '',
         'notification_email': ''
     }
 
-    # 创建验证服务
+    # Create validator instance.
     validator = create_head_validator(config)
 
-    # 运行一次检查周期
+    # run oncecheck
     stats = validator.run_head_check_cycle()
 
-    logger.info(f"HEAD 检查完成 | 统计: {stats}")
+    logger.info(f"HEAD check cycle completed | stats: {stats}")

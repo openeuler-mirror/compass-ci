@@ -46,6 +46,47 @@ docker logs -f bisect
 
 **Note**: The `container/bisect/start` script contains various parameters (like database hosts, ports, etc.). You can modify this file directly to adjust the configuration for your environment.
 
+### Development Mode (bind-mount local source)
+
+Development mode runs the container with local source directories mounted into the container so code changes are visible immediately after restart.
+
+Use one of the following methods:
+
+```bash
+# Method 1: one-shot environment variables for this command
+BISECT_DEV_MODE=true \
+HOST_CCI_SRC=/home/bisect/compass-ci \
+HOST_LKP_SRC=/home/bisect/lkp-tests \
+./start
+```
+
+```bash
+# Method 2: export variables first
+export BISECT_DEV_MODE=true
+export HOST_CCI_SRC=/home/bisect/compass-ci
+export HOST_LKP_SRC=/home/bisect/lkp-tests
+./start
+```
+
+Important notes:
+
+- `HOST_CCI_SRC` must point to the Compass-CI repo root that contains `container/bisect/app/__init__.py`.
+- `HOST_LKP_SRC` must point to the lkp-tests repo root.
+- In development mode, both mounts are read-write:
+  - `HOST_CCI_SRC -> /c/compass-ci`
+  - `HOST_LKP_SRC -> /c/lkp-tests`
+- If variables are not exported (or not passed inline), `start` falls back to default paths and may mount an empty directory.
+
+Quick verification:
+
+```bash
+docker inspect bisect --format '{{range .Mounts}}{{println .Destination " RW=" .RW " Source=" .Source}}{{end}}' | grep -E '/c/compass-ci|/c/lkp-tests'
+docker exec -it bisect ls -la /c/compass-ci/container/bisect/app/__init__.py
+docker exec -it bisect ls -la /c/compass-ci/container/bisect/services/commit_time_service/server.py
+```
+
+If you see `Error: Could not import 'app'`, check that `/c/compass-ci` inside the container is not empty and points to the correct host path.
+
 ## 3. Configuration
 
 The service is configured via environment variables, which are set in the `container/bisect/start` script.
@@ -127,7 +168,7 @@ Returns the current status of the automatic task producer (enabled or disabled).
 
 The Bisect service runs as a single Docker container with multiple internal processes:
 
-- **Flask API Server**: Port 5000 (internal), handles HTTP requests
+- **Flask API Server**: Port 9999 (internal), handles HTTP requests
 - **BisectConsumer Thread**: Processes standard bisect tasks
 - **VerificationConsumer Thread**: Handles intelligent task verification
 - **Producer Thread**: Discovers new tasks (if enabled)
@@ -165,12 +206,27 @@ The container requires several volume mounts for proper operation:
 
 ### Log Files
 
-All logs are written to `/srv/log/bisect/` with the following structure:
+Logs are organized by component in `/result/bisect/logs/`:
 
-- `bisect.log`: Main application log
-- `error.log`: Error-level messages only
-- `producer.log`: Producer-specific activities
-- `consumer.log`: Consumer processing details
+```
+logs/
+├── consumer/       # Consumer, validator, task_processor
+│   ├── consumer.log
+│   └── error.log
+├── producer/       # Producer cycles and reports
+│   ├── producer.log
+│   └── error.log
+├── api/            # Flask REST API
+│   ├── api.log
+│   └── error.log
+├── commit-service/ # Commit time service
+│   ├── service.log
+│   └── error.log
+└── performance/    # Performance metrics
+    └── performance.log
+```
+
+Daily rotation appends `.YYYY-MM-DD` suffix. Old logs auto-cleaned after 30 days.
 
 ### Health Check Endpoint
 
@@ -187,6 +243,18 @@ Key metrics to monitor:
 3. **Success Rate**: Percentage of successful bisects
 4. **Verification Hit Rate**: Percentage of tasks resolved by verification
 5. **Repository Cache Size**: Disk usage in `/srv/git`
+
+### Repository cache layout
+
+To reduce hotspot contention, bisect workers and commit-time queries use separate pristine roots:
+
+- Bisect worker pristine (for `--reference` clones): `${WORK_DIR}/bisect_repos/pristine`
+- Commit query pristine (for parent/ancestor/tag lookup): `${WORK_DIR}/bisect_repos/pristine_query`
+
+In the default container setup (`WORK_DIR=/c/bisect`), these map to:
+
+- `/c/bisect/bisect_repos/pristine`
+- `/c/bisect/bisect_repos/pristine_query`
 
 ## 7. Troubleshooting
 
@@ -311,11 +379,13 @@ To upgrade the service:
 2. Stop current container: `docker stop bisect`
 3. Start new container: `ruby container/bisect/start`
 
-## 10. Support
+## 10. Further Reading
 
-For issues or questions:
-
-1. Check logs in `/srv/log/bisect/`
-2. Review DESIGN.md for architecture details
-3. Submit issues to the project repository
-
+| Document | Description |
+|----------|-------------|
+| [docs/INDEX.md](docs/INDEX.md) | Document index — links to all docs, configs, issues |
+| [docs/CODEBASE.md](docs/CODEBASE.md) | Code map — every file's path and purpose |
+| [docs/DESIGN.md](docs/DESIGN.md) | Architecture deep dive |
+| [docs/TESTING.md](docs/TESTING.md) | Unit tests and post-deploy validation |
+| [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) | REST API reference |
+| [docs/DATA_BASE.md](docs/DATA_BASE.md) | ManticoreSearch schema |

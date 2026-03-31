@@ -260,9 +260,9 @@ Commit 年龄过滤已启用 | 服务: http://localhost:8765 | 最大年龄: 365
 - `services/commit_time_service/server.py`
 - `services/commit_time_service/client.py`
 - `services/commit_time_service/tests/` (测试文件)
-- `services/commit_time_service/README.md`
-- `services/commit_time_service/IMPLEMENTATION_SUMMARY.md`
-- `services/commit_time_service/CONTAINER_DEPLOYMENT.md`
+- `docs/COMMIT_TIME_SERVICE.md`
+- `docs/COMMIT_TIME_SERVICE_IMPLEMENTATION_SUMMARY.md`
+- `docs/COMMIT_TIME_SERVICE_CONTAINER_DEPLOYMENT.md`
 - `config/supervisord.conf`
 
 ### 修改文件

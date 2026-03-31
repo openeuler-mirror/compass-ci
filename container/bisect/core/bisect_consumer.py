@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+"""Bisect consumer that executes queued bisect tasks and persists results."""
+
+
 
 import sys
 import os
@@ -24,6 +27,8 @@ from lkp_bisect.core.git_bisect import GitBisect
 
 class BisectConsumer:
     """Bisect task consumer"""
+
+    _INVALID_COMMIT_TOKENS = {'n/a', 'na', 'none', 'null', 'unknown', '-'}
 
     def __init__(self, client: ManticoreClient, config: Dict):
         self.client = client
@@ -285,7 +290,34 @@ class BisectConsumer:
                 continue  # Skip empty string fields
             cleaned_data[key] = value
 
+        # Reject placeholder commit refs early (e.g., "N/A"), which cannot be bisected.
+        # But allow missing good/start commit and let downstream logic derive it.
+        good_commit = cleaned_data.get('good_commit') or cleaned_data.get('start_commit')
+        good_commit_present = ('good_commit' in cleaned_data) or ('start_commit' in cleaned_data)
+        if good_commit_present and self._is_invalid_commit_ref(good_commit):
+            return {
+                'error': f'Invalid good commit reference: {good_commit}',
+                'id': cleaned_data.get('id', 'unknown_id')
+            }
+
+        bad_commit = cleaned_data.get('bad_commit') or cleaned_data.get('end_commit')
+        if bad_commit is not None and self._is_invalid_commit_ref(bad_commit):
+            return {
+                'error': f'Invalid bad commit reference: {bad_commit}',
+                'id': cleaned_data.get('id', 'unknown_id')
+            }
+
         return cleaned_data
+
+    @classmethod
+    def _is_invalid_commit_ref(cls, value: Any) -> bool:
+        """Return True for placeholder/non-actionable commit refs."""
+        if value is None:
+            return True
+        ref = str(value).strip()
+        if not ref:
+            return True
+        return ref.lower() in cls._INVALID_COMMIT_TOKENS
 
     def _check_task_type(self, task: Dict) -> Dict:
         """Check task type"""
@@ -400,6 +432,13 @@ class BisectConsumer:
                 # 1. target_error_id_not_in_introduced: target error_id not in introduced errors list, may be flaky error
                 # 2. retry count exceeds 3
                 should_mark_failed = False
+                existing_j_raw = task.get('j')
+                if isinstance(existing_j_raw, str):
+                    try:
+                        existing_j_raw = json.loads(existing_j_raw) if existing_j_raw else {}
+                    except json.JSONDecodeError:
+                        existing_j_raw = {}
+                existing_j = existing_j_raw if isinstance(existing_j_raw, dict) else {}
                 if 'target_error_id_not_in_introduced' in failed_reason:
                     should_mark_failed = True
                     logger.warning(
@@ -418,7 +457,6 @@ class BisectConsumer:
                     # Merge verification metadata into existing j field to preserve
                     # original commit info (good_commit, bad_commit, etc.)
                     bisect_failed_reason = f"boundary_verification_failed:{failed_reason}"
-                    existing_j = j_field if isinstance(j_field, dict) else {}
                     merged_j = {**existing_j,
                         "verification_status": verification_status,
                         "verification_failed_reason": failed_reason,
@@ -428,7 +466,7 @@ class BisectConsumer:
                     }
                     failed_doc = {
                         "bisect_status": "failed",
-                        "bisect_failed_reason": bisect_failed_reason,
+                        "last_error": bisect_failed_reason,
                         "retry_count": retry_count,
                         "updated_at": current_time,
                         "j": merged_j
@@ -449,7 +487,6 @@ class BisectConsumer:
 
                     # Merge verification metadata into existing j field to preserve
                     # original commit info (good_commit, bad_commit, etc.)
-                    existing_j = j_field if isinstance(j_field, dict) else {}
                     merged_j = {**existing_j,
                         "last_verification_status": verification_status,
                         "last_verification_failed_reason": failed_reason,

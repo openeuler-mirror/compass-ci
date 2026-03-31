@@ -214,6 +214,104 @@ SELECT COUNT(*) FROM bisect WHERE j.validation_status = 'validating';
 SELECT COUNT(*) FROM bisect WHERE j.verification_status = 'verified';
 ```
 
+### 5.3 新版 verification 队列运维规范
+
+新版 verification 流程中，任务状态语义如下：
+
+- `pending_verification`: 已命中复用条件，但尚未真正提交 parent/candidate verification jobs
+- `verifying`: verification jobs 已提交成功，系统正在等待或轮询外部 job 结果
+- `success`: 验证通过，或完整 bisect 已确认成功
+- `wait`: 需要重新走独立 bisect，或尚未进入处理
+
+#### 推荐观察命令
+
+```bash
+# 查看验证队列总览
+python3 sbin/bisect_api.py verification_status
+
+# 查看待验证任务
+python3 sbin/bisect_api.py list_tasks --status pending_verification --limit 20
+
+# 查看验证中任务
+python3 sbin/bisect_api.py list_tasks --status verifying --limit 20
+```
+
+重点关注以下字段：
+
+- `pending_verification`
+- `verifying`
+- `active_submitted_verifying`
+- `available_verifying_slots`
+- `verified`
+
+#### 推荐日志观察
+
+```bash
+docker exec bisect grep -E "Verification admission control|start submit verification jobs|\\[OK\\]|\\[RETRY\\]|\\[ERR\\]|Verification result check|task verification |verification timeout" \
+  /result/bisect/logs/consumer/consumer.log | tail -200
+```
+
+#### 操作原则
+
+- 不要把 `verifying` 当成普通的中间脏状态直接清掉
+- `verifying` 现在通常表示外部 verification jobs 已真实存在
+- 日常清理优先操作 `pending_verification`，不要优先操作 `verifying`
+
+#### 什么时候不要执行 `reset_verifying`
+
+以下场景不建议执行：
+
+- 容器刚重启后
+- `verification_status` 显示 `verifying > 0`
+- `verification_status` 显示 `active_submitted_verifying > 0`
+- consumer 日志里已经出现 `[OK] verification job already submitted`
+
+原因：
+
+- 启动恢复逻辑会保留仍然有效的 `verifying` 任务
+- 此时强制 reset 会让内部状态与外部 verification jobs 脱钩
+- 可能引发重复提交、重复验证和状态混乱
+
+#### 什么时候优先用 `reset_pending_verification`
+
+适用于：
+
+- 你确认待验证候选积压太多，想先清空队列
+- 你希望重新生成验证候选，但不破坏已经提交成功的验证任务
+- 你刚上线新配置，想从更干净的候选状态重新开始
+
+#### 什么时候才考虑 `reset_verifying`
+
+只建议在以下明确场景使用：
+
+- 你确认外部 verification jobs 也应被作废
+- 你准备整体重建验证现场
+- 你确认某批 `verifying` 任务是历史脏状态，且其 `verification_jobs` 元数据已不可信
+
+#### 安全清理现场的建议顺序
+
+如果需要彻底清理验证现场，建议按以下顺序执行：
+
+```bash
+# 1. 先阻止新的验证继续进入（例如临时设置 MAX_VERIFYING_TASKS=0 并重启）
+
+# 2. 观察当前状态
+python3 sbin/bisect_api.py verification_status
+python3 sbin/bisect_api.py list_tasks --status verifying --limit 20
+python3 sbin/bisect_api.py list_tasks --status pending_verification --limit 20
+
+# 3. 优先清理 pending_verification
+python3 sbin/bisect_api.py reset_pending_verification
+
+# 4. 只有在明确知道外部 verification jobs 也应作废时，才执行
+python3 sbin/bisect_api.py reset_verifying
+```
+
+一句话原则：
+
+- 清候选，用 `reset_pending_verification`
+- 清已提交验证，用 `reset_verifying`，但前提是你明确知道外部 job 也应该废弃
+
 ### 5.3 性能指标
 
 **关键指标：**
@@ -423,5 +521,5 @@ iostat
 
 ---
 
-**最后更新**: 2024-10-27
+**最后更新**: 2026-03-30
 **维护者**: Bisect Team

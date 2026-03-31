@@ -1,6 +1,9 @@
+"""Flask controller layer for bisect task APIs and admin operations."""
+
 import sys
 import os
 import time
+import json
 import traceback
 from datetime import datetime, timezone
 from flask import jsonify, request
@@ -50,15 +53,77 @@ def _humanize_task_list(tasks):
         return tasks
     return [_humanize_timestamps(t) for t in tasks]
 
+def _select_count(client, where_clause: str) -> int:
+    """Run a small COUNT query and return zero on empty result."""
+    query = f"""
+        SELECT COUNT(*) AS count
+        FROM bisect
+        WHERE {where_clause}
+    """
+    result = client.sql_select(query)
+    return int(result[0].get('count', 0) or 0) if result else 0
+
+def _get_verification_queue_snapshot(client=None) -> dict:
+    """Build a compact snapshot of verification queue pressure and outcomes."""
+    client = client or _get_manticore_client()
+    config = getattr(bisect_task_instance, '_config', {}) or {}
+
+    pending_count = _select_count(client, "bisect_status = 'pending_verification'")
+    verifying_count = _select_count(client, "bisect_status = 'verifying'")
+    active_submitted_count = _select_count(
+        client,
+        "bisect_status = 'verifying' "
+        "AND j.verification_jobs.parent_job_id IS NOT NULL "
+        "AND j.verification_jobs.candidate_job_id IS NOT NULL "
+        "AND j.verification_jobs.status = 'submitted'"
+    )
+    timeout_retry_pending_count = _select_count(
+        client, "j.verification_status = 'timeout_retry_pending'"
+    )
+    timeout_final_count = _select_count(client, "j.verification_status = 'timeout'")
+    timeout_unverified_count = _select_count(client, "j.verification_status = 'timeout_unverified'")
+    verified_count = _select_count(client, "j.verification_status = 'verified'")
+
+    max_verifying_tasks = int(config.get('max_verifying_tasks', Config.MAX_VERIFYING_TASKS) or 0)
+    available_slots = max(0, max_verifying_tasks - active_submitted_count)
+
+    return {
+        "pending_verification": pending_count,
+        "verifying": verifying_count,
+        "active_submitted_verifying": active_submitted_count,
+        "available_verifying_slots": available_slots,
+        "verification_status_counts": {
+            "verified": verified_count,
+            "timeout_retry_pending": timeout_retry_pending_count,
+            "timeout": timeout_final_count,
+            "timeout_unverified": timeout_unverified_count,
+        },
+        "config": {
+            "max_verifying_tasks": max_verifying_tasks,
+            "verification_timeout_hours": int(
+                config.get('verification_timeout_hours', Config.VERIFICATION_TIMEOUT_HOURS) or 0
+            ),
+            "verification_timeout_retry_max": int(
+                config.get('verification_timeout_retry_max', Config.VERIFICATION_TIMEOUT_RETRY_MAX) or 0
+            ),
+            "verification_timeout_final_action": str(
+                config.get(
+                    'verification_timeout_final_action',
+                    Config.VERIFICATION_TIMEOUT_FINAL_ACTION
+                ) or ''
+            ),
+        }
+    }
+
 def new_bisect_task():
     try:
         task_data = request.json
         if not task_data:
             raise ValueError("No task data provided")
             
-        # API层验证 - 确保 j 字段不为 null
+        # API-level validation: normalize null `j` payload.
         if 'j' in task_data and task_data['j'] is None:
-            logger.warning("API请求包含无效的 null j 字段，已清理")
+            logger.warning("API request has null j field; normalizing to empty object")
             task_data['j'] = {}
             
         logger.debug(f"DEBUG - Controller received request | Data: {task_data}")
@@ -67,7 +132,7 @@ def new_bisect_task():
             
         logger.debug(f"DEBUG - Controller operation result: {result}")
         
-        # 处理新的返回格式
+        # 
         if isinstance(result, dict):
             if result['status'] == 'created':
                 return jsonify({
@@ -83,7 +148,7 @@ def new_bisect_task():
                 }), 200
             elif result['status'] == 'duplicate':
                 return jsonify({
-                    "code": 409,  # Conflict - 资源已存在
+                    "code": 409,  # Conflict - 
                     "data": None,
                     "message": result['message']
                 }), 409
@@ -94,7 +159,7 @@ def new_bisect_task():
                     "message": result['message']
                 }), 500
         else:
-            # 兼容旧的布尔返回值
+            # 
             if result:
                 return jsonify({
                     "code": 200,
@@ -108,15 +173,15 @@ def new_bisect_task():
                     "message": "Failed to add task"
                 }), 500
     except ValueError as e:
-        logger.error(f"参数错误: {str(e)}")
+        logger.error(f"Parameter error: {str(e)}")
         return jsonify({
             "code": 400,
             "data": None,
             "message": str(e)
         }), 400
     except Exception as e:
-        logger.error(f"控制器异常: {str(e)}")
-        logger.error(f"异常堆栈:\n{traceback.format_exc()}")
+        logger.error(f"Controller exception: {str(e)}")
+        logger.error(f"Exception traceback:\n{traceback.format_exc()}")
         return jsonify({
             "code": 500,
             "data": None,
@@ -125,27 +190,27 @@ def new_bisect_task():
 
 def list_bisect_tasks():
     """
-    列出bisect任务，支持多种筛选条件
+    bisecttask, supportconditions
 
-    查询参数:
-    - status: 按任务状态筛选 (wait/processing/success/failed/verifying/pending_verification)
-    - error_id: 按错误ID筛选 (精确匹配)
-    - bad_job_id: 按bad_job_id筛选
-    - category: 按类别筛选 (functional/performance/build)
-    - hours: 最近N小时内的任务
-    - git_url: 按仓库URL筛选 (模糊匹配)
-    - task_id: 单个任务ID
-    - task_ids: 多个任务ID (逗号分隔)
-    - first_bad_commit: 按first_bad_commit筛选 (精确匹配)
-    - limit: 限制返回结果数量 (默认 Config.DEFAULT_QUERY_LIMIT)
+    query:
+    - status: taskstatus (wait/processing/success/failed/verifying/pending_verification)
+    - error_id: filter by exact error ID
+    - bad_job_id: bad_job_id
+    - category:  (functional/performance/build)
+    - hours: Ntask
+    - git_url: fuzzy match by repository URL
+    - task_id: taskID
+    - task_ids: multiple task IDs (comma-separated)
+    - first_bad_commit: filter by full or short SHA
+    - limit: count (default Config.DEFAULT_QUERY_LIMIT)
     """
     try:
         client = _get_manticore_client()
 
-        # 使用公共查询构建器
+        # query
         where_clause, filters = build_task_query_conditions()
 
-        # 获取 limit 参数
+        # get limit 
         limit = request.args.get('limit', str(Config.DEFAULT_QUERY_LIMIT))
         try:
             limit = int(limit)
@@ -153,7 +218,7 @@ def list_bisect_tasks():
         except ValueError:
             limit = Config.DEFAULT_QUERY_LIMIT
 
-        # 构建 SQL 查询
+        #  SQL query
         sql_query = f"""
             SELECT id, * FROM bisect
             WHERE {where_clause}
@@ -162,7 +227,7 @@ def list_bisect_tasks():
             OPTION max_matches={limit}
         """
 
-        logger.debug(f"执行查询: {sql_query}")
+        logger.debug(f"query: {sql_query}")
         tasks = client.sql_select(sql_query)
 
         result_count = len(tasks) if tasks else 0
@@ -180,28 +245,37 @@ def list_bisect_tasks():
 
 
 def thread_pool_status():
-    """获取线程池状态"""
+    """getstatus"""
     try:
-        # Python 3.11兼容性修复：_tasks_done可能不存在
+        # Python 3.11fixed: _tasks_donenot found
         completed_tasks = 0
         try:
             completed_tasks = bisect_task_instance.thread_pool._work_queue._tasks_done
         except AttributeError:
-            # Python 3.11+ 中 SimpleQueue 没有 _tasks_done 属性
+            # Python 3.11+  SimpleQueue  _tasks_done 
             completed_tasks = "Not available (Python 3.11+)"
         
         status = {
             "max_workers": bisect_task_instance.thread_pool._max_workers,
-            "active_threads": threading.active_count() - 1,  # 排除主线程
+            "active_threads": threading.active_count() - 1,  # 
             "pending_tasks": bisect_task_instance.thread_pool._work_queue.qsize(),
-            "completed_tasks": completed_tasks
+            "completed_tasks": completed_tasks,
+            "verification": _get_verification_queue_snapshot()
         }
         return jsonify(status), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+def get_verification_status():
+    """Return verification queue and timeout recovery status."""
+    try:
+        return jsonify(_get_verification_queue_snapshot()), 200
+    except Exception as e:
+        logger.error(f"Failed to get verification status: {str(e)}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 def toggle_producer():
-    """动态切换生产者状态"""
+    """status"""
     try:
         state = request.args.get('state')
         if state not in ['enable', 'disable']:
@@ -210,9 +284,9 @@ def toggle_producer():
         old_state = Config.BISECT_PRODUCER_ENABLED
         Config.BISECT_PRODUCER_ENABLED = (state == 'enable')
         
-        # 如果从禁用切换到启用，且生产者线程不存在，需要启动新线程
+        # , not found, 
         if not old_state and Config.BISECT_PRODUCER_ENABLED:
-            # 检查是否已有生产者线程运行
+            # check
             producer_thread_exists = False
             for thread in threading.enumerate():
                 if hasattr(thread, '_target') and thread._target:
@@ -224,7 +298,7 @@ def toggle_producer():
                     break
                     
             if not producer_thread_exists:
-                # 启动新的生产者线程
+                # 
                 producer_thread = threading.Thread(
                     target=bisect_task_instance.bisect_producer, 
                     daemon=True,
@@ -244,22 +318,22 @@ def toggle_producer():
         return jsonify({"error": str(e)}), 500
 
 def get_producer_status():
-    """获取生产者状态"""
+    """getstatus"""
     try:
-        # 检查配置状态
+        # checkconfigstatus
         config_enabled = Config.BISECT_PRODUCER_ENABLED
         
-        # 检查是否有生产者线程在运行
+        # check
         producer_threads = []
         for thread in threading.enumerate():
             is_producer = False
             
-            # 检查线程目标函数名
+            # check
             if hasattr(thread, '_target') and thread._target:
                 if 'bisect_producer' in str(thread._target.__name__ if hasattr(thread._target, '__name__') else thread._target):
                     is_producer = True
             
-            # 检查线程名称
+            # check
             if hasattr(thread, 'name') and 'producer' in thread.name.lower():
                 is_producer = True
                 
@@ -282,21 +356,21 @@ def get_producer_status():
 
 def reset_processing_tasks():
     """
-    重置processing状态的任务为wait状态
+    resetprocessingstatus taskswaitstatus
 
-    支持额外的查询条件:
-    - category: 按类别筛选
-    - hours: 最近N小时
-    - git_url: 按仓库筛选
-    等等 (所有 query_builder 支持的条件)
+    supportquery conditions:
+    - category: 
+    - hours: N
+    - git_url: repo
+     ( query_builder supportconditions)
     """
     try:
         client = _get_manticore_client()
 
-        # 使用公共查询构建器
+        # query
         where_clause, filters = build_task_query_conditions()
 
-        # 如果没有指定 status，默认为 processing
+        #  status, default processing
         if 'status' not in filters:
             if where_clause == "1=1":
                 where_clause = "bisect_status = 'processing'"
@@ -304,7 +378,7 @@ def reset_processing_tasks():
                 where_clause = f"bisect_status = 'processing' AND {where_clause}"
             filters['status'] = 'processing'
 
-        # 统计数量
+        # statscount
         count_query = f"""
             SELECT COUNT(*) as count
             FROM bisect
@@ -321,20 +395,22 @@ def reset_processing_tasks():
                 "filters": filters
             }), 200
 
-        # 执行重置
+        # reset
         current_time = int(time.time())
         update_query = f"""
             UPDATE bisect
             SET bisect_status = 'wait',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
         client.sql_raw(update_query)
 
         condition_summary = build_condition_summary(filters)
-        logger.info(f"API reset | 数量: {count} | 条件: {condition_summary}")
+        logger.info(f"API reset | count: {count} | conditions: {condition_summary}")
 
         return jsonify({
             "status": "success",
@@ -344,7 +420,7 @@ def reset_processing_tasks():
         }), 200
 
     except Exception as e:
-        logger.error(f"重置processing任务失败: {str(e)}")
+        logger.error(f"reset processing tasks failed: {str(e)}")
         return jsonify({
             "status": "error",
             "error": str(e)
@@ -352,21 +428,21 @@ def reset_processing_tasks():
 
 def reset_failed_tasks():
     """
-    重置failed状态的任务为wait状态
+    Reset failed tasks to wait status
 
-    支持额外的查询条件:
-    - category: 按类别筛选
-    - hours: 最近N小时
-    - git_url: 按仓库筛选
-    等等 (所有 query_builder 支持的条件)
+    supportquery conditions:
+    - category: 
+    - hours: N
+    - git_url: repo
+     ( query_builder supportconditions)
     """
     try:
         client = _get_manticore_client()
 
-        # 使用公共查询构建器
+        # query
         where_clause, filters = build_task_query_conditions()
 
-        # 如果没有指定 status，默认为 failed
+        #  status, default failed
         if 'status' not in filters:
             if where_clause == "1=1":
                 where_clause = "bisect_status = 'failed'"
@@ -374,7 +450,7 @@ def reset_failed_tasks():
                 where_clause = f"bisect_status = 'failed' AND {where_clause}"
             filters['status'] = 'failed'
 
-        # 统计数量
+        # statscount
         count_query = f"""
             SELECT COUNT(*) as count
             FROM bisect
@@ -391,21 +467,23 @@ def reset_failed_tasks():
                 "filters": filters
             }), 200
 
-        # 执行重置 (清空 last_error)
+        # reset ( last_error)
         current_time = int(time.time())
         update_query = f"""
             UPDATE bisect
             SET bisect_status = 'wait',
                 last_error = '',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
         client.sql_raw(update_query)
 
         condition_summary = build_condition_summary(filters)
-        logger.info(f"API reset | 数量: {count} | 条件: {condition_summary}")
+        logger.info(f"API reset | count: {count} | conditions: {condition_summary}")
 
         return jsonify({
             "status": "success",
@@ -415,7 +493,7 @@ def reset_failed_tasks():
         }), 200
 
     except Exception as e:
-        logger.error(f"重置failed任务失败: {str(e)}")
+        logger.error(f"reset failed tasks failed: {str(e)}")
         return jsonify({
             "status": "error",
             "error": str(e)
@@ -423,21 +501,21 @@ def reset_failed_tasks():
 
 def reset_verifying_tasks():
     """
-    重置verifying状态的任务为wait状态
+    Reset verifying tasks to wait status
 
-    支持额外的查询条件:
-    - category: 按类别筛选
-    - hours: 最近N小时
-    - git_url: 按仓库筛选
-    等等 (所有 query_builder 支持的条件)
+    supportquery conditions:
+    - category: 
+    - hours: N
+    - git_url: repo
+     ( query_builder supportconditions)
     """
     try:
         client = _get_manticore_client()
 
-        # 使用公共查询构建器
+        # query
         where_clause, filters = build_task_query_conditions()
 
-        # 如果没有指定 status，默认为 verifying
+        #  status, default verifying
         if 'status' not in filters:
             if where_clause == "1=1":
                 where_clause = "bisect_status = 'verifying'"
@@ -445,7 +523,7 @@ def reset_verifying_tasks():
                 where_clause = f"bisect_status = 'verifying' AND {where_clause}"
             filters['status'] = 'verifying'
 
-        # 统计数量
+        # statscount
         count_query = f"""
             SELECT COUNT(*) as count
             FROM bisect
@@ -462,20 +540,22 @@ def reset_verifying_tasks():
                 "filters": filters
             }), 200
 
-        # 执行重置
+        # reset
         current_time = int(time.time())
         update_query = f"""
             UPDATE bisect
             SET bisect_status = 'wait',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
         client.sql_raw(update_query)
 
         condition_summary = build_condition_summary(filters)
-        logger.info(f"API reset | 数量: {count} | 条件: {condition_summary}")
+        logger.info(f"API reset | count: {count} | conditions: {condition_summary}")
 
         return jsonify({
             "status": "success",
@@ -485,7 +565,7 @@ def reset_verifying_tasks():
         }), 200
 
     except Exception as e:
-        logger.error(f"重置verifying任务失败: {str(e)}")
+        logger.error(f"reset verifying tasks failed: {str(e)}")
         return jsonify({
             "status": "error",
             "error": str(e)
@@ -493,21 +573,21 @@ def reset_verifying_tasks():
 
 def reset_pending_verification_tasks():
     """
-    重置pending_verification状态的任务为wait状态
+    resetpending_verification status taskwaitstatus
 
-    支持额外的查询条件:
-    - category: 按类别筛选
-    - hours: 最近N小时
-    - git_url: 按仓库筛选
-    等等 (所有 query_builder 支持的条件)
+    supportquery conditions:
+    - category: 
+    - hours: N
+    - git_url: repo
+     ( query_builder supportconditions)
     """
     try:
         client = _get_manticore_client()
 
-        # 使用公共查询构建器
+        # query
         where_clause, filters = build_task_query_conditions()
 
-        # 如果没有指定 status，默认为 pending_verification
+        #  status, default pending_verification
         if 'status' not in filters:
             if where_clause == "1=1":
                 where_clause = "bisect_status = 'pending_verification'"
@@ -515,7 +595,7 @@ def reset_pending_verification_tasks():
                 where_clause = f"bisect_status = 'pending_verification' AND {where_clause}"
             filters['status'] = 'pending_verification'
 
-        # 统计数量
+        # statscount
         count_query = f"""
             SELECT COUNT(*) as count
             FROM bisect
@@ -532,20 +612,22 @@ def reset_pending_verification_tasks():
                 "filters": filters
             }), 200
 
-        # 执行重置
+        # reset
         current_time = int(time.time())
         update_query = f"""
             UPDATE bisect
             SET bisect_status = 'wait',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
         client.sql_raw(update_query)
 
         condition_summary = build_condition_summary(filters)
-        logger.info(f"API reset | 数量: {count} | 条件: {condition_summary}")
+        logger.info(f"API reset | count: {count} | conditions: {condition_summary}")
 
         return jsonify({
             "status": "success",
@@ -555,19 +637,18 @@ def reset_pending_verification_tasks():
         }), 200
 
     except Exception as e:
-        logger.error(f"重置pending_verification任务失败: {str(e)}")
+        logger.error(f"reset pending_verification tasks failed: {str(e)}")
         return jsonify({
             "status": "error",
             "error": str(e)
         }), 500
 
 def cleanup_orphaned_verifying():
-    """清理孤立的verifying任务（关联任务已失败或不存在）"""
+    """Reset orphaned verifying tasks (related task failed or missing)."""
     try:
-        import json
         client = _get_manticore_client()
 
-        # 查询所有verifying状态的任务
+        # query verifying-status tasks
         query = """
             SELECT id, j FROM bisect
             WHERE bisect_status = 'verifying'
@@ -592,7 +673,7 @@ def cleanup_orphaned_verifying():
                 task_id = task.get('id')
                 j_field = task.get('j', '{}')
 
-                # 解析 j 字段
+                #  j 
                 if isinstance(j_field, str):
                     j_data = json.loads(j_field) if j_field else {}
                 else:
@@ -601,10 +682,11 @@ def cleanup_orphaned_verifying():
                 related_task_id = j_data.get('related_task_id')
 
                 if not related_task_id:
-                    # 没有关联任务，重置为 wait
+                    # task, reset wait
                     update_query = f"""
                         UPDATE bisect
-                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time}
+                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time},
+                            start_time = 0, end_time = 0
                         WHERE id = {task_id}
                     """
                     client.sql_raw(update_query)
@@ -612,7 +694,7 @@ def cleanup_orphaned_verifying():
                     logger.info(f"Reset verifying task {task_id} (no related_task_id)")
                     continue
 
-                # 检查关联任务状态
+                # check related task status
                 related_query = f"""
                     SELECT id, bisect_status FROM bisect
                     WHERE id = {int(related_task_id)}
@@ -621,11 +703,12 @@ def cleanup_orphaned_verifying():
 
                 related_result = client.sql_select(related_query)
 
-                # 如果关联任务不存在或状态为 failed，重置为 wait
+                # tasknot foundstatus failed, reset wait
                 if not related_result:
                     update_query = f"""
                         UPDATE bisect
-                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time}
+                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time},
+                            start_time = 0, end_time = 0
                         WHERE id = {task_id}
                     """
                     client.sql_raw(update_query)
@@ -634,7 +717,8 @@ def cleanup_orphaned_verifying():
                 elif related_result[0].get('bisect_status') == 'failed':
                     update_query = f"""
                         UPDATE bisect
-                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time}
+                        SET bisect_status = 'wait', updated_at = {current_time}, submit_time = {current_time},
+                            start_time = 0, end_time = 0
                         WHERE id = {task_id}
                     """
                     client.sql_raw(update_query)
@@ -642,7 +726,7 @@ def cleanup_orphaned_verifying():
                     logger.info(f"Reset verifying task {task_id} (related task {related_task_id} has failed)")
 
             except Exception as e:
-                logger.error(f"处理verifying任务 {task.get('id')} 失败: {str(e)}")
+                logger.error(f"verifyingtask {task.get('id')} failed: {str(e)}")
                 continue
 
         logger.info(f"API cleanup | Reset {reset_count} orphaned verifying tasks")
@@ -655,7 +739,7 @@ def cleanup_orphaned_verifying():
         }), 200
 
     except Exception as e:
-        logger.error(f"清理孤立verifying任务失败: {str(e)}")
+        logger.error(f"cleanup orphaned verifying tasks failed: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
@@ -664,22 +748,22 @@ def cleanup_orphaned_verifying():
 
 
 def test_regression_write():
-    """测试regression写入功能"""
+    """testregression"""
     try:
-        # 模拟测试数据
+        # test
         test_task = {
             "error_id": "test.error.regression_write_test",
             "bad_job_id": "test_job_123456"
         }
         test_bad_commit = "abcd1234567890abcdef1234567890abcdef1234"
         
-        # 调用写入功能
+        # 
         success = bisect_task_instance._write_regression_record(test_task, test_bad_commit)
         
         if success:
             return jsonify({
                 "status": "success",
-                "message": "regression写入测试成功",
+                "message": "regressiontestsuccess",
                 "test_data": {
                     "error_id": test_task["error_id"],
                     "bad_job_id": test_task["bad_job_id"],
@@ -689,7 +773,7 @@ def test_regression_write():
         else:
             return jsonify({
                 "status": "failed",
-                "message": "regression写入测试失败"
+                "message": "regressiontestfailed"
             }), 500
             
     except Exception as e:
@@ -712,7 +796,7 @@ def trigger_producer_run():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 def reset_task_by_id():
-    """重置指定ID的任务为wait状态"""
+    """Reset a task by ID to wait status."""
     try:
         task_id = request.args.get('id')
 
@@ -722,7 +806,7 @@ def reset_task_by_id():
                 "error": "Task ID is required"
             }), 400
 
-        # 严格的整数验证（包括范围检查）
+        # verify(check)
         if not task_id.isdigit():
             return jsonify({
                 "status": "error",
@@ -745,7 +829,7 @@ def reset_task_by_id():
 
         client = _get_manticore_client()
 
-        # 查询任务当前状态
+        # query task status
         check_query = f"SELECT id, bisect_status FROM bisect WHERE id = {task_id_int}"
         result = client.sql_select(check_query)
 
@@ -757,7 +841,7 @@ def reset_task_by_id():
 
         current_status = result[0].get('bisect_status')
 
-        # 允许重置 failed、processing 或 success 状态的任务
+        # reset failed,processing  success status tasks
         if current_status not in ['failed', 'processing', 'success']:
             return jsonify({
                 "status": "error",
@@ -765,14 +849,16 @@ def reset_task_by_id():
                 "current_status": current_status
             }), 400
 
-        # 更新任务状态
+        # taskstatus
         current_time = int(time.time())
         update_query = f"""
             UPDATE bisect
             SET bisect_status = 'wait',
                 last_error = '',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE id = {task_id_int}
         """
 
@@ -789,7 +875,7 @@ def reset_task_by_id():
         }), 200
 
     except Exception as e:
-        logger.error(f"重置任务失败: {str(e)}")
+        logger.error(f"reset tasks failed: {str(e)}")
         return jsonify({
             "status": "error",
             "error": str(e)
@@ -797,35 +883,35 @@ def reset_task_by_id():
 
 def reset_tasks_by_condition():
     """
-    根据条件重置任务为wait状态
+    Reset tasks to wait status by conditions
 
-    支持的查询条件:
-    - status: 按任务状态重置
-    - error_id: 按错误ID重置
-    - bad_job_id: 按bad_job_id重置
-    - category: 按类别重置
-    - hours: 重置最近N小时的任务
-    - git_url: 按仓库URL重置
-    - task_id: 重置单个任务
-    - task_ids: 重置多个任务 (逗号分隔)
-    - first_bad_commit: 按first_bad_commit重置 (支持完整或短SHA)
+    supportquery conditions:
+    - status: reset by task status
+    - error_id: errorIDreset
+    - bad_job_id: bad_job_idreset
+    - category: reset
+    - hours: resetNtask
+    - git_url: repoURLreset
+    - task_id: resettask
+    - task_ids: reset multiple tasks (comma-separated)
+    - first_bad_commit: first_bad_commitreset (supportSHA)
 
-    至少需要提供一个条件
+    conditions
     """
     try:
         client = _get_manticore_client()
 
-        # 使用公共查询构建器
+        # query
         where_clause, filters = build_task_query_conditions()
 
-        # 必须提供至少一个条件
+        # conditions
         if not filters:
             return jsonify({
                 "status": "error",
-                "error": "至少需要提供一个重置条件 (status, error_id, bad_job_id, category, hours, git_url, task_id, task_ids, first_bad_commit)"
+                "error": "resetconditions (status, error_id, bad_job_id, category, hours, git_url, task_id, task_ids, first_bad_commit)"
             }), 400
 
-        # 统计将要重置的数量
+        # statsresetcount
         count_query = f"""
             SELECT COUNT(*) as count
             FROM bisect
@@ -842,21 +928,23 @@ def reset_tasks_by_condition():
                 "filters": filters
             }), 200
 
-        # 执行重置
+        # reset
         current_time = int(time.time())
         update_query = f"""
             UPDATE bisect
             SET bisect_status = 'wait',
                 last_error = '',
                 updated_at = {current_time},
-                submit_time = {current_time}
+                submit_time = {current_time},
+                start_time = 0,
+                end_time = 0
             WHERE {where_clause}
         """
 
         client.sql_raw(update_query)
 
         condition_summary = build_condition_summary(filters)
-        logger.info(f"API reset | 数量: {count} | 条件: {condition_summary}")
+        logger.info(f"API reset | count: {count} | conditions: {condition_summary}")
 
         return jsonify({
             "status": "success",
@@ -866,14 +954,14 @@ def reset_tasks_by_condition():
         }), 200
 
     except Exception as e:
-        logger.error(f"重置任务失败: {str(e)}")
+        logger.error(f"reset tasks failed: {str(e)}")
         return jsonify({
             "status": "error",
             "error": str(e)
         }), 500
 
 def set_tasks_to_verifying():
-    """手动设置一个或多个任务的状态为 verifying"""
+    """taskstatus verifying"""
     try:
         data = request.json
         task_ids = data.get('task_ids')
@@ -906,7 +994,7 @@ def set_tasks_to_verifying():
         ids_str = ','.join(map(str, validated_ids))
         current_time = int(time.time())
 
-        # 更新任务状态
+        # taskstatus
         update_query = f"""
             UPDATE bisect
             SET bisect_status = 'verifying',
@@ -928,7 +1016,7 @@ def set_tasks_to_verifying():
         }), 200
 
     except Exception as e:
-        logger.error(f"设置任务为verifying失败: {str(e)}")
+        logger.error(f"task verificationingfailed: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
@@ -937,35 +1025,35 @@ def set_tasks_to_verifying():
 
 def delete_tasks_by_condition():
     """
-    根据条件删除任务
+    conditionsdeletetask
 
-    支持的查询条件:
-    - status: 按任务状态删除
-    - error_id: 按错误ID删除
-    - bad_job_id: 按bad_job_id删除
-    - category: 按类别删除
-    - hours: 删除最近N小时的任务
-    - git_url: 按仓库URL删除
-    - task_id: 删除单个任务
-    - task_ids: 删除多个任务 (逗号分隔)
-    - first_bad_commit: 按first_bad_commit删除 (支持完整或短SHA)
+    supportquery conditions:
+    - status: delete by task status
+    - error_id: errorIDdelete
+    - bad_job_id: bad_job_iddelete
+    - category: delete
+    - hours: deleteNtask
+    - git_url: repoURLdelete
+    - task_id: deletetask
+    - task_ids: delete multiple tasks (comma-separated)
+    - first_bad_commit: first_bad_commitdelete (supportSHA)
 
-    至少需要提供一个条件
+    conditions
     """
     try:
         client = _get_manticore_client()
 
-        # 使用公共查询构建器
+        # query
         where_clause, filters = build_task_query_conditions()
 
-        # 必须提供至少一个条件
+        # conditions
         if not filters:
             return jsonify({
                 "status": "error",
-                "error": "至少需要提供一个删除条件 (status, error_id, bad_job_id, category, hours, git_url, task_id, task_ids, first_bad_commit)"
+                "error": "deleteconditions (status, error_id, bad_job_id, category, hours, git_url, task_id, task_ids, first_bad_commit)"
             }), 400
 
-        # 统计将要删除的数量
+        # statsdeletecount
         count_query = f"""
             SELECT COUNT(*) as count
             FROM bisect
@@ -982,11 +1070,11 @@ def delete_tasks_by_condition():
                 "filters": filters
             }), 200
 
-        # 执行删除
+        # delete
         delete_query = f"DELETE FROM bisect WHERE {where_clause}"
 
         condition_summary = build_condition_summary(filters)
-        logger.info(f"API delete | 数量: {count} | 条件: {condition_summary}")
+        logger.info(f"API delete | count: {count} | conditions: {condition_summary}")
 
         client.sql_raw(delete_query)
 
@@ -1006,14 +1094,14 @@ def delete_tasks_by_condition():
 _pool_monitor = None
 
 def _get_pool_monitor():
-    """获取池监控服务实例（单例）"""
+    """Get the pool monitor singleton instance."""
     global _pool_monitor
     if _pool_monitor is None:
         _pool_monitor = PoolMonitorService()
     return _pool_monitor
 
 def get_pool_status():
-    """获取仓库池状态"""
+    """Get repository pool status."""
     try:
         monitor = _get_pool_monitor()
         status = monitor.get_pool_status()
@@ -1041,7 +1129,7 @@ def trigger_pool_cleanup():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 def get_pool_stats():
-    """获取池监控统计信息"""
+    """getstats"""
     try:
         monitor = _get_pool_monitor()
         return jsonify(monitor.stats), 200
@@ -1050,7 +1138,7 @@ def get_pool_stats():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 def verify_pool_consistency():
-    """验证池一致性"""
+    """verify"""
     try:
         monitor = _get_pool_monitor()
         result = monitor.verify_consistency()
@@ -1061,7 +1149,7 @@ def verify_pool_consistency():
 
 
 def start_pool_monitor():
-    """启动池监控线程"""
+    """"""
     try:
         monitor = _get_pool_monitor()
         result = monitor.start_monitor()
@@ -1071,7 +1159,7 @@ def start_pool_monitor():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 def stop_pool_monitor():
-    """停止池监控线程"""
+    """"""
     try:
         monitor = _get_pool_monitor()
         result = monitor.stop_monitor()

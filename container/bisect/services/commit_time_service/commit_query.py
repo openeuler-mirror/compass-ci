@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Commit Time Query - 查询 Git commit 时间
+Commit Time Query - query Git commit 
 
-复用 SharedRepoManager 的 pristine 仓库来查询 commit 信息，
-无需额外克隆，直接在 pristine 仓库中执行 git log 命令。
+ SharedRepoManager  pristine repoquery commit ，
+， pristine repo git log 。
 """
 
 import os
@@ -14,10 +14,11 @@ import subprocess
 import time
 import re
 import threading
-from typing import Optional, Dict, Tuple, List
-from datetime import datetime
+from typing import Optional, Dict, Tuple, List, Any
+from datetime import datetime, timezone
+from contextlib import nullcontext
 
-# 添加项目路径
+# 
 lib_path = os.path.join(os.environ.get('CCI_SRC', '/srv/cci'), 'container/bisect/lib')
 if lib_path not in sys.path:
     sys.path.insert(0, lib_path)
@@ -28,45 +29,61 @@ from log_config import logger
 
 
 class CommitTimeQuery:
-    """Commit 时间查询器"""
+    """Commit query"""
 
     def __init__(self, repo_manager: SharedRepoManager = None):
         """
-        初始化查询器
+        initializequery
 
         Args:
-            repo_manager: 共享仓库管理器实例，如果为 None 则创建新实例
+            repo_manager: repoinstance， None createinstance
         """
         self.repo_manager = repo_manager or SharedRepoManager()
-        self.pristine_base_dir = self.repo_manager.PRISTINE_BASE_DIR
+        # Use a dedicated pristine directory for commit-time queries to avoid
+        # contention with bisect worker clones that use the default pristine pool.
+        self.pristine_base_dir = os.environ.get(
+            'BISECT_COMMIT_QUERY_PRISTINE_BASE_DIR',
+            os.path.join(os.environ.get('WORK_DIR', '/tmp'), 'bisect_repos', 'pristine_query')
+        )
+        os.makedirs(self.pristine_base_dir, exist_ok=True)
         self._fetch_locks = {}
         self._fetch_locks_lock = threading.Lock()
+        self._metrics_lock = threading.Lock()
+        self._fetch_metrics = {
+            'fetch_attempts': 0,
+            'fetch_successes': 0,
+            'fetch_failures': 0,
+            'last_fetch_at': 0,
+            'last_fetch_repo': '',
+            'last_fetch_error': ''
+        }
+        logger.info(f"Commit query pristine root: {self.pristine_base_dir}")
 
     def get_commit_timestamp(self, git_url: str, commit_hash: str) -> Optional[int]:
         """
-        获取 commit 的 Unix 时间戳
+        get commit  Unix 
 
         Args:
-            git_url: Git 仓库 URL
-            commit_hash: Commit hash（完整或简短）
+            git_url: Git repo URL
+            commit_hash: Commit hash（）
 
         Returns:
-            Unix 时间戳，如果查询失败返回 None
+            Unix ，queryfailed None
         """
         repo_name = extract_repo_name_from_url(git_url)
         pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
 
-        # 确保 pristine 仓库存在（支持 bare 仓库）
+        #  pristine repo（support bare repo）
         if not SharedRepoManager._is_git_repo(pristine_repo_dir):
             logger.info(f"Pristine repo not found, need to clone | repo: {repo_name}")
-            # 使用 repo_manager 的方法确保仓库存在
+            #  repo_manager repo
             try:
                 self._ensure_pristine_repo(git_url, pristine_repo_dir)
             except Exception as e:
                 logger.error(f"Failed to ensure pristine repo | repo: {repo_name} | error: {str(e)}")
                 return None
 
-        # 查询 commit 时间戳
+        # query commit 
         try:
             result = subprocess.run(
                 ['git', '-C', pristine_repo_dir, 'log', '-1', '--format=%ct', commit_hash],
@@ -76,11 +93,11 @@ class CommitTimeQuery:
             )
 
             if result.returncode != 0:
-                # commit 可能不存在，尝试 fetch 更新
+                # commit not found， fetch 
                 logger.warning(f"Commit not found, trying fetch | commit: {commit_hash[:12]} | error: {result.stderr.strip()}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
 
-                # 重试查询
+                # query
                 result = subprocess.run(
                     ['git', '-C', pristine_repo_dir, 'log', '-1', '--format=%ct', commit_hash],
                     capture_output=True,
@@ -107,27 +124,27 @@ class CommitTimeQuery:
 
     def get_commit_info(self, git_url: str, commit_hash: str) -> Optional[Dict]:
         """
-        获取 commit 的详细信息
+        get commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
 
         Returns:
-            包含 commit 信息的字典:
+             commit dict:
             {
-                'commit': str,           # 完整 hash
-                'timestamp': int,        # Unix 时间戳
-                'date': str,             # ISO 格式日期
-                'age_days': int,         # 距今天数
-                'author': str,           # 作者
-                'subject': str           # 提交信息（第一行）
+                'commit': str,           #  hash
+                'timestamp': int,        # Unix 
+                'date': str,             # ISO 
+                'age_days': int,         # 
+                'author': str,           # 
+                'subject': str           # submit（）
             }
         """
         repo_name = extract_repo_name_from_url(git_url)
         pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
 
-        # 确保 pristine 仓库存在（支持 bare 仓库）
+        #  pristine repo（support bare repo）
         if not SharedRepoManager._is_git_repo(pristine_repo_dir):
             try:
                 self._ensure_pristine_repo(git_url, pristine_repo_dir)
@@ -135,8 +152,8 @@ class CommitTimeQuery:
                 logger.error(f"Failed to ensure pristine repo | repo: {repo_name} | error: {str(e)}")
                 return None
 
-        # 查询 commit 详细信息
-        # 格式: hash|timestamp|author|subject
+        # query commit 
+        # : hash|timestamp|author|subject
         format_str = '%H|%ct|%an|%s'
 
         try:
@@ -148,9 +165,9 @@ class CommitTimeQuery:
             )
 
             if result.returncode != 0:
-                # 尝试 fetch 更新
+                #  fetch 
                 logger.warning(f"Commit not found, trying fetch | commit: {commit_hash[:12]}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
 
                 result = subprocess.run(
                     ['git', '-C', pristine_repo_dir, 'log', '-1', f'--format={format_str}', commit_hash],
@@ -163,7 +180,7 @@ class CommitTimeQuery:
                     logger.error(f"Commit still not found after fetch | commit: {commit_hash[:12]}")
                     return None
 
-            # 解析输出
+            # 
             parts = result.stdout.strip().split('|', 3)
             if len(parts) != 4:
                 logger.error(f"Invalid git log output | commit: {commit_hash[:12]} | output: {result.stdout}")
@@ -172,7 +189,7 @@ class CommitTimeQuery:
             full_hash, timestamp_str, author, subject = parts
             timestamp = int(timestamp_str)
 
-            # 计算距今天数
+            # 
             now = int(time.time())
             age_seconds = now - timestamp
             age_days = age_seconds // 86400
@@ -180,10 +197,10 @@ class CommitTimeQuery:
             return {
                 'commit': full_hash,
                 'timestamp': timestamp,
-                'date': datetime.utcfromtimestamp(timestamp).isoformat() + 'Z',
+                'date': datetime.fromtimestamp(timestamp, timezone.utc).isoformat().replace('+00:00', 'Z'),
                 'age_days': age_days,
                 'author': author,
-                'subject': subject[:200]  # 限制长度
+                'subject': subject[:200]  # 
             }
 
         except subprocess.TimeoutExpired:
@@ -195,14 +212,14 @@ class CommitTimeQuery:
 
     def get_commit_age_days(self, git_url: str, commit_hash: str) -> Optional[int]:
         """
-        获取 commit 距今的天数
+        get commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
 
         Returns:
-            距今天数，如果查询失败返回 None
+            ，queryfailed None
         """
         timestamp = self.get_commit_timestamp(git_url, commit_hash)
         if timestamp is None:
@@ -214,17 +231,17 @@ class CommitTimeQuery:
 
     def is_commit_too_old(self, git_url: str, commit_hash: str, max_age_days: int = 365) -> Tuple[bool, Optional[int]]:
         """
-        检查 commit 是否超过指定天数
+        check commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
-            max_age_days: 最大天数阈值（默认365天）
+            max_age_days: （default365）
 
         Returns:
             (is_too_old, age_days)
-            - is_too_old: True 表示超过阈值，False 表示未超过，None 表示查询失败
-            - age_days: 实际天数，查询失败时为 None
+            - is_too_old: True ，False ，None queryfailed
+            - age_days: ，queryfailed None
         """
         age_days = self.get_commit_age_days(git_url, commit_hash)
         if age_days is None:
@@ -235,20 +252,20 @@ class CommitTimeQuery:
 
     def get_commit_base_tag(self, git_url: str, commit_hash: str) -> Optional[str]:
         """
-        获取 commit 最近的祖先 tag（用于判断 commit 所在的分支版本）
+        get commit  tag（ commit ）
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
 
         Returns:
-            最近的祖先 tag，如果查询失败返回 None
-            例如: 'v6.6-rc3', 'v4.9.337', 'v5.10.100'
+             tag，queryfailed None
+            : 'v6.6-rc3', 'v4.9.337', 'v5.10.100'
         """
         repo_name = extract_repo_name_from_url(git_url)
         pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
 
-        # 确保仓库存在
+        # repo
         if not SharedRepoManager._is_git_repo(pristine_repo_dir):
             try:
                 self._ensure_pristine_repo(git_url, pristine_repo_dir)
@@ -257,7 +274,7 @@ class CommitTimeQuery:
                 return None
 
         try:
-            # 使用 git describe --tags --abbrev=0 获取最近的祖先 tag
+            #  git describe --tags --abbrev=0 get tag
             result = subprocess.run(
                 ['git', '-C', pristine_repo_dir, 'describe', '--tags', '--abbrev=0', commit_hash],
                 capture_output=True,
@@ -266,11 +283,11 @@ class CommitTimeQuery:
             )
 
             if result.returncode != 0:
-                # 可能需要 fetch
+                #  fetch
                 logger.warning(f"Tag not found, trying fetch | commit: {commit_hash[:12]}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
 
-                # 重试
+                # 
                 result = subprocess.run(
                     ['git', '-C', pristine_repo_dir, 'describe', '--tags', '--abbrev=0', commit_hash],
                     capture_output=True,
@@ -295,18 +312,18 @@ class CommitTimeQuery:
     @staticmethod
     def parse_kernel_version(tag: str) -> Optional[Tuple[int, int, Optional[int]]]:
         """
-        解析内核版本 tag
+         tag
 
         Args:
-            tag: 版本 tag，例如 'v6.6-rc3', 'v4.9.337', 'v5.10.100'
+            tag:  tag， 'v6.6-rc3', 'v4.9.337', 'v5.10.100'
 
         Returns:
-            (major, minor, patch) 元组，解析失败返回 None
+            (major, minor, patch) ，failed None
         """
         if not tag:
             return None
 
-        # 匹配标准 Linux 内核版本格式: v<major>.<minor>[.<patch>][-rc<n>]
+        #  Linux : v<major>.<minor>[.<patch>][-rc<n>]
         match = re.match(r'^v?(\d+)\.(\d+)(?:\.(\d+))?', tag)
         if match:
             major = int(match.group(1))
@@ -320,7 +337,7 @@ class CommitTimeQuery:
     def compare_kernel_versions(v1: Tuple[int, int, Optional[int]],
                                  v2: Tuple[int, int, Optional[int]]) -> int:
         """
-        比较两个内核版本
+        
 
         Returns:
             -1: v1 < v2, 0: v1 == v2, 1: v1 > v2
@@ -338,12 +355,12 @@ class CommitTimeQuery:
     def is_commit_on_old_branch(self, git_url: str, commit_hash: str,
                                  min_version: str = "5.10") -> Tuple[Optional[bool], Optional[str], Optional[Tuple]]:
         """
-        检查 commit 是否在旧版本分支上（基于 base tag）
+        check commit （ base tag）
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
-            min_version: 最小支持版本，例如 "5.10" 或 "6.1"
+            min_version: support， "5.10"  "6.1"
 
         Returns:
             (is_old_branch, base_tag, parsed_version)
@@ -418,7 +435,7 @@ class CommitTimeQuery:
                 # returncode 128 or other = commit not found, try fetch and retry
                 logger.warning(f"is_ancestor check error, trying fetch | ancestor: {ancestor_commit[:12]} | "
                               f"descendant: {descendant_commit[:12]} | stderr: {result.stderr.strip()}")
-                self._fetch_pristine_repo(pristine_repo_dir)
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
 
                 result = subprocess.run(
                     ['git', '-C', pristine_repo_dir, 'merge-base', '--is-ancestor',
@@ -446,19 +463,33 @@ class CommitTimeQuery:
             return None
 
     def _ensure_pristine_repo(self, git_url: str, pristine_repo_dir: str):
-        """确保 pristine 仓库存在"""
-        # 复用 repo_manager 的 pristine 锁机制
+        """ pristine repo"""
+        repo_key = self.repo_manager._canonical_repo_key(git_url)
+        #  repo_manager  pristine 
         with self.repo_manager.pristine_locks_lock:
-            if git_url not in self.repo_manager.pristine_locks:
-                import threading
-                self.repo_manager.pristine_locks[git_url] = threading.Lock()
-            pristine_lock = self.repo_manager.pristine_locks[git_url]
+            if repo_key not in self.repo_manager.pristine_locks:
+                self.repo_manager.pristine_locks[repo_key] = threading.Lock()
+            pristine_lock = self.repo_manager.pristine_locks[repo_key]
 
         with pristine_lock:
-            self.repo_manager._ensure_pristine_repo(git_url, pristine_repo_dir)
+            with self._cross_process_lock(git_url, pristine_repo_dir):
+                self.repo_manager._ensure_pristine_repo(git_url, pristine_repo_dir)
 
-    def _fetch_pristine_repo(self, pristine_repo_dir: str):
-        """更新 pristine 仓库 (per-repo lock to avoid concurrent fetches)"""
+    def _cross_process_lock(self, git_url: Optional[str], pristine_repo_dir: str):
+        """Best-effort cross-process lock if repo_manager exposes file-lock API."""
+        if git_url:
+            lock_fn = getattr(self.repo_manager, '_pristine_file_lock', None)
+            if callable(lock_fn):
+                try:
+                    ctx = lock_fn(git_url, pristine_repo_dir)
+                    if hasattr(ctx, '__enter__') and hasattr(ctx, '__exit__'):
+                        return ctx
+                except Exception:
+                    pass
+        return nullcontext()
+
+    def _fetch_pristine_repo(self, pristine_repo_dir: str, git_url: Optional[str] = None) -> bool:
+        """ pristine repo (per-repo lock to avoid concurrent fetches)"""
         with self._fetch_locks_lock:
             if pristine_repo_dir not in self._fetch_locks:
                 self._fetch_locks[pristine_repo_dir] = threading.Lock()
@@ -468,167 +499,259 @@ class CommitTimeQuery:
             logger.info(f"Fetch already in progress, waiting | path: {pristine_repo_dir}")
             lock.acquire()
             lock.release()
-            return
+            return True
 
         try:
-            subprocess.run(
-                ['git', '-C', pristine_repo_dir, 'fetch', 'origin'],
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            with self._metrics_lock:
+                self._fetch_metrics['fetch_attempts'] += 1
+                self._fetch_metrics['last_fetch_at'] = int(time.time())
+                self._fetch_metrics['last_fetch_repo'] = pristine_repo_dir
+                self._fetch_metrics['last_fetch_error'] = ''
+
+            with self._cross_process_lock(git_url, pristine_repo_dir):
+                # Bare repos cloned long ago may miss remote.origin.fetch.
+                # Ensure it exists so fetch pulls refs/tags for commit lookup.
+                cfg = subprocess.run(
+                    ['git', '-C', pristine_repo_dir, 'config', 'remote.origin.fetch'],
+                    capture_output=True,
+                    text=True,
+                    timeout=15
+                )
+                if not (cfg.stdout or '').strip():
+                    subprocess.run(
+                        ['git', '-C', pristine_repo_dir, 'config', 'remote.origin.fetch', '+refs/*:refs/*'],
+                        check=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        timeout=15
+                    )
+                result = subprocess.run(
+                    ['git', '-C', pristine_repo_dir, 'fetch', 'origin'],
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
+            if result.returncode != 0:
+                with self._metrics_lock:
+                    self._fetch_metrics['fetch_failures'] += 1
+                    self._fetch_metrics['last_fetch_error'] = (result.stderr or '').strip()[:200]
+                logger.warning(
+                    f"Fetch failed | path: {pristine_repo_dir} | "
+                    f"stderr: {(result.stderr or '').strip()[:200]}"
+                )
+                return False
+            with self._metrics_lock:
+                self._fetch_metrics['fetch_successes'] += 1
             logger.info(f"Pristine repo fetched | path: {pristine_repo_dir}")
+            return True
         except Exception as e:
+            with self._metrics_lock:
+                self._fetch_metrics['fetch_failures'] += 1
+                self._fetch_metrics['last_fetch_error'] = str(e)[:200]
             logger.warning(f"Fetch failed | path: {pristine_repo_dir} | error: {str(e)}")
+            return False
         finally:
             lock.release()
 
-    def get_parent_commit(self, git_url: str, commit_hash: str) -> Optional[Dict]:
-        """
-        获取 commit 的父提交信息
+    def get_metrics(self) -> Dict[str, Any]:
+        """Return lightweight query/fetch metrics for health/stats endpoints."""
+        with self._metrics_lock:
+            fetch_metrics = dict(self._fetch_metrics)
+        lock_metrics = {}
+        if hasattr(self.repo_manager, 'get_pristine_lock_metrics'):
+            try:
+                lock_metrics = self.repo_manager.get_pristine_lock_metrics()
+            except Exception:
+                lock_metrics = {}
+        return {
+            'pristine_base_dir': self.pristine_base_dir,
+            'fetch': fetch_metrics,
+            'pristine_lock': lock_metrics
+        }
 
-        Args:
-            git_url: Git 仓库 URL
-            commit_hash: Commit hash（完整或简短）
+    def _resolve_commitish(self, pristine_repo_dir: str, ref: str, timeout: int = 30) -> Optional[str]:
+        """Resolve any commit-ish ref (sha, tag, branch) to a commit SHA."""
+        result = subprocess.run(
+            ['git', '-C', pristine_repo_dir, 'rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}'],
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        if result.returncode != 0:
+            return None
+        resolved = result.stdout.strip()
+        return resolved or None
+
+    def get_parent_commit_detailed(self, git_url: str, commit_hash: str) -> Dict[str, Any]:
+        """
+        Get parent info with structured error semantics.
 
         Returns:
-            包含父提交信息的字典:
             {
-                'commit': str,        # 原始 commit hash
-                'parent': str | None, # 父提交 hash（root commit 为 None）
-                'parent_count': int,  # 父提交数量（0=root, 1=普通, 2+=merge）
-                'reason': str         # 仅在特殊情况下返回（如 'root_commit'）
+                'status': 'success',
+                'data': {...}
             }
-            查询失败返回 None
+            or
+            {
+                'status': 'error',
+                'error_code': str,
+                'error': str,
+                'retryable': bool
+            }
         """
-        # 参数验证
-        if not git_url or not commit_hash or not commit_hash.strip():
+        if not git_url or not commit_hash or not str(commit_hash).strip():
             logger.warning(f"Invalid parameters | git_url: {git_url} | commit: {commit_hash}")
-            return None
+            return {
+                'status': 'error',
+                'error_code': 'invalid_parameters',
+                'error': 'Missing git_url or commit',
+                'retryable': False
+            }
 
-        commit_hash = commit_hash.strip()
+        ref = str(commit_hash).strip()
 
-        # 获取仓库名和路径
         try:
             repo_name = extract_repo_name_from_url(git_url)
             if not repo_name:
-                logger.warning(f"Cannot extract repo name | git_url: {git_url}")
-                return None
+                return {
+                    'status': 'error',
+                    'error_code': 'invalid_git_url',
+                    'error': f'Cannot extract repo name from git_url: {git_url}',
+                    'retryable': False
+                }
         except Exception as e:
-            logger.warning(f"Invalid git_url | git_url: {git_url} | error: {str(e)}")
-            return None
+            return {
+                'status': 'error',
+                'error_code': 'invalid_git_url',
+                'error': f'Invalid git_url: {str(e)}',
+                'retryable': False
+            }
 
         pristine_repo_dir = os.path.join(self.pristine_base_dir, repo_name)
 
-        # 确保 pristine 仓库存在
         if not SharedRepoManager._is_git_repo(pristine_repo_dir):
             logger.info(f"Pristine repo not found, need to clone | repo: {repo_name}")
             try:
                 self._ensure_pristine_repo(git_url, pristine_repo_dir)
             except Exception as e:
                 logger.error(f"Failed to ensure pristine repo | repo: {repo_name} | error: {str(e)}")
-                return None
+                return {
+                    'status': 'error',
+                    'error_code': 'ensure_pristine_failed',
+                    'error': f'Failed to prepare repo: {str(e)}',
+                    'retryable': True
+                }
 
-        # 查询父提交
         try:
-            # 首先获取父提交列表（支持 merge commit）
+            resolved_commit = self._resolve_commitish(pristine_repo_dir, ref)
+            if not resolved_commit:
+                logger.warning(f"Commit/ref not found, trying fetch | ref: {ref[:24]}")
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
+                resolved_commit = self._resolve_commitish(pristine_repo_dir, ref)
+
+            if not resolved_commit:
+                return {
+                    'status': 'error',
+                    'error_code': 'commit_not_found',
+                    'error': f'Commit/ref not found: {ref}',
+                    'retryable': False
+                }
+
+            # rev-list --parents output: "<commit> <parent1> <parent2> ..."
             result = subprocess.run(
-                ['git', '-C', pristine_repo_dir, 'rev-parse', f'{commit_hash}^@'],
+                ['git', '-C', pristine_repo_dir, 'rev-list', '--parents', '-n', '1', resolved_commit],
                 capture_output=True,
                 text=True,
                 timeout=30
             )
 
             if result.returncode != 0:
-                # 可能是 commit 不存在或者是 root commit
-                stderr = result.stderr.strip()
-
-                # 检查是否是 root commit（没有 ^@ 语法的结果）
-                # 尝试用 ^1 来确认
-                check_result = subprocess.run(
-                    ['git', '-C', pristine_repo_dir, 'rev-parse', f'{commit_hash}^1'],
+                logger.warning(
+                    f"Parent query failed, trying fetch | commit: {resolved_commit[:12]} | "
+                    f"stderr: {result.stderr.strip()}"
+                )
+                self._fetch_pristine_repo(pristine_repo_dir, git_url)
+                result = subprocess.run(
+                    ['git', '-C', pristine_repo_dir, 'rev-list', '--parents', '-n', '1', resolved_commit],
                     capture_output=True,
                     text=True,
                     timeout=30
                 )
 
-                if check_result.returncode != 0:
-                    # 可能是 commit 不存在，尝试 fetch
-                    logger.warning(f"Parent not found, trying fetch | commit: {commit_hash[:12]}")
-                    self._fetch_pristine_repo(pristine_repo_dir)
+            if result.returncode != 0:
+                stderr = (result.stderr or '').strip()
+                error_code = 'git_query_failed'
+                retryable = True
+                if any(k in stderr.lower() for k in ['unknown revision', 'bad object', 'needed a single revision']):
+                    error_code = 'commit_not_found'
+                    retryable = False
 
-                    # 重试
-                    check_result = subprocess.run(
-                        ['git', '-C', pristine_repo_dir, 'rev-parse', f'{commit_hash}^1'],
-                        capture_output=True,
-                        text=True,
-                        timeout=30
-                    )
-
-                    if check_result.returncode != 0:
-                        # 检查 commit 本身是否存在
-                        commit_check = subprocess.run(
-                            ['git', '-C', pristine_repo_dir, 'rev-parse', commit_hash],
-                            capture_output=True,
-                            text=True,
-                            timeout=30
-                        )
-
-                        if commit_check.returncode == 0:
-                            # Commit 存在但没有父提交 = root commit
-                            logger.info(f"Root commit detected | commit: {commit_hash[:12]}")
-                            return {
-                                'commit': commit_hash,
-                                'parent': None,
-                                'parent_count': 0,
-                                'reason': 'root_commit'
-                            }
-                        else:
-                            # Commit 不存在
-                            logger.error(f"Commit not found | commit: {commit_hash[:12]}")
-                            return None
-
-            # 解析父提交列表
-            parents = [p.strip() for p in result.stdout.strip().split('\n') if p.strip()]
-            parent_count = len(parents)
-
-            if parent_count == 0:
-                # Root commit
                 return {
-                    'commit': commit_hash,
-                    'parent': None,
-                    'parent_count': 0,
-                    'reason': 'root_commit'
+                    'status': 'error',
+                    'error_code': error_code,
+                    'error': f'Parent query failed: {stderr or "unknown git error"}',
+                    'retryable': retryable
                 }
 
-            # 获取第一个父提交的完整 hash
-            first_parent = parents[0]
+            tokens = [tok for tok in result.stdout.strip().split() if tok]
+            if not tokens:
+                return {
+                    'status': 'error',
+                    'error_code': 'git_query_failed',
+                    'error': 'Empty git output while querying parent commit',
+                    'retryable': True
+                }
 
+            parents = tokens[1:]
             response = {
-                'commit': commit_hash,
-                'parent': first_parent,
-                'parent_count': parent_count
+                'commit': tokens[0],
+                'parent': parents[0] if parents else None,
+                'parent_count': len(parents)
             }
+            if not parents:
+                response['reason'] = 'root_commit'
+            if tokens[0] != ref:
+                response['input_ref'] = ref
 
-            if parent_count > 1:
-                logger.debug(f"Merge commit detected | commit: {commit_hash[:12]} | parents: {parent_count}")
+            if len(parents) > 1:
+                logger.debug(
+                    f"Merge commit detected | commit: {tokens[0][:12]} | parents: {len(parents)}"
+                )
 
-            return response
+            return {'status': 'success', 'data': response}
 
         except subprocess.TimeoutExpired:
-            logger.error(f"Query timed out | commit: {commit_hash[:12]}")
-            return None
+            logger.error(f"Parent query timed out | commit: {ref[:12]}")
+            return {
+                'status': 'error',
+                'error_code': 'git_timeout',
+                'error': f'Git command timeout while querying parent for {ref}',
+                'retryable': True
+            }
         except Exception as e:
-            logger.error(f"Query failed | commit: {commit_hash[:12]} | error: {str(e)}")
+            logger.error(f"Parent query failed | commit: {ref[:12]} | error: {str(e)}")
+            return {
+                'status': 'error',
+                'error_code': 'git_query_failed',
+                'error': str(e),
+                'retryable': True
+            }
+
+    def get_parent_commit(self, git_url: str, commit_hash: str) -> Optional[Dict]:
+        """Backward-compatible wrapper that returns parent info dict or None."""
+        result = self.get_parent_commit_detailed(git_url, commit_hash)
+        if result.get('status') != 'success':
             return None
+        return result.get('data')
 
 
-# 单例实例（服务共享）
+
+# instance（service）
 _query_instance = None
 
 
 def get_query_instance() -> CommitTimeQuery:
-    """获取全局查询实例"""
+    """getqueryinstance"""
     global _query_instance
     if _query_instance is None:
         _query_instance = CommitTimeQuery()
@@ -636,11 +759,11 @@ def get_query_instance() -> CommitTimeQuery:
 
 
 if __name__ == '__main__':
-    # 测试代码
-    print("测试 CommitTimeQuery...")
+    # test
+    print("test CommitTimeQuery...")
     print("=" * 60)
 
-    # 需要设置环境变量
+    # 
     if 'CCI_SRC' not in os.environ:
         os.environ['CCI_SRC'] = '/srv/cci'
     if 'WORK_DIR' not in os.environ:
@@ -650,39 +773,39 @@ if __name__ == '__main__':
 
     query = CommitTimeQuery()
 
-    # 测试参数
+    # test
     test_url = 'https://gitee.com/openeuler/kernel.git'
     test_commit = '5e5d40e65cb55e4699c9879674a004f246606a8d'
 
-    print(f"\n测试仓库: {test_url}")
-    print(f"测试 commit: {test_commit}")
+    print(f"\ntestrepo: {test_url}")
+    print(f"test commit: {test_commit}")
 
-    # 测试 1: 获取时间戳
-    print("\n--- 测试 1: 获取时间戳 ---")
+    # test 1: get
+    print("\n--- test 1: get ---")
     timestamp = query.get_commit_timestamp(test_url, test_commit)
     if timestamp:
-        print(f"时间戳: {timestamp}")
-        print(f"日期: {datetime.utcfromtimestamp(timestamp).isoformat()}")
+        print(f": {timestamp}")
+        print(f": {datetime.utcfromtimestamp(timestamp).isoformat()}")
     else:
-        print("查询失败")
+        print("queryfailed")
 
-    # 测试 2: 获取详细信息
-    print("\n--- 测试 2: 获取详细信息 ---")
+    # test 2: get
+    print("\n--- test 2: get ---")
     info = query.get_commit_info(test_url, test_commit)
     if info:
         for key, value in info.items():
             print(f"  {key}: {value}")
     else:
-        print("查询失败")
+        print("queryfailed")
 
-    # 测试 3: 检查是否过旧
-    print("\n--- 测试 3: 检查是否超过 365 天 ---")
+    # test 3: check
+    print("\n--- test 3: check 365  ---")
     is_old, age = query.is_commit_too_old(test_url, test_commit, max_age_days=365)
     if is_old is not None:
-        print(f"距今: {age} 天")
-        print(f"超过365天: {'是' if is_old else '否'}")
+        print(f": {age} ")
+        print(f"365: {'' if is_old else ''}")
     else:
-        print("查询失败")
+        print("queryfailed")
 
     print("\n" + "=" * 60)
-    print("测试完成")
+    print("testcompleted")

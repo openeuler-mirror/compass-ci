@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-批量插入工具
 
-用于批量创建bisect任务，减少数据库交互次数。
+
+createbisecttask，。
 """
 
 import time
@@ -14,27 +14,27 @@ from log_config import logger
 
 class BatchInserter:
     """
-    批量插入管理器
+    
 
-    特性：
-    - 批量创建bisect任务
-    - 自动处理批次大小
-    - 错误时回退到单个插入
-    - 统计插入性能
+    ：
+    - createbisecttask
+    - 
+    - error
+    - stats
     """
 
     def __init__(self, client, batch_size: int = 50):
         """
-        初始化批量插入器
+        initialize
 
         Args:
-            client: ManticoreClient实例
-            batch_size: 每批次的大小
+            client: ManticoreClientinstance
+            batch_size: 
         """
         self.client = client
         self.batch_size = batch_size
 
-        # 统计信息
+        # stats
         self.stats = {
             'total_tasks': 0,
             'batches_processed': 0,
@@ -46,19 +46,19 @@ class BatchInserter:
 
     def batch_create_tasks(self, tasks: List[Dict[str, Any]]) -> Tuple[int, int]:
         """
-        批量创建任务
+        createtask
 
         Args:
-            tasks: 任务列表，每个任务是一个字典包含：
-                - bad_job_id: 错误job ID
-                - error_id: 错误ID
-                - bisect_status: 状态（通常是"wait"）
-                - git_url: Git仓库URL
-                - category: 任务分类
-                - 其他任务字段
+            tasks: tasklist，taskdict：
+                - bad_job_id: errorjob ID
+                - error_id: errorID
+                - bisect_status: status（"wait"）
+                - git_url: GitrepoURL
+                - category: task
+                - task
 
         Returns:
-            (成功数, 失败数) 元组
+            (success, failed) 
         """
         if not tasks:
             return 0, 0
@@ -69,65 +69,65 @@ class BatchInserter:
 
         self.stats['total_tasks'] += len(tasks)
 
-        logger.info(f"开始批量创建任务 | 总数: {len(tasks)} | 批次大小: {self.batch_size}")
+        logger.info(f"startcreatetask | : {len(tasks)} | : {self.batch_size}")
 
-        # 按批次处理
+        # 
         for i in range(0, len(tasks), self.batch_size):
             batch = tasks[i:i + self.batch_size]
             batch_num = i // self.batch_size + 1
             total_batches = (len(tasks) + self.batch_size - 1) // self.batch_size
 
-            logger.debug(f"处理批次 {batch_num}/{total_batches} | 任务数: {len(batch)}")
+            logger.debug(f" {batch_num}/{total_batches} | task: {len(batch)}")
 
             try:
-                # 尝试批量插入
+                # 
                 batch_success = self._batch_insert(batch)
                 success_count += batch_success
                 failed_count += len(batch) - batch_success
                 self.stats['batches_processed'] += 1
 
             except Exception as e:
-                logger.warning(f"批量插入失败，回退到单个插入 | 错误: {str(e)}")
-                # 回退到单个插入
+                logger.warning(f"failed， | error: {str(e)}")
+                # 
                 single_success, single_failed = self._fallback_single_insert(batch)
                 success_count += single_success
                 failed_count += single_failed
                 self.stats['fallback_singles'] += len(batch)
 
-        # 更新统计
+        # stats
         elapsed_ms = (time.time() - start_time) * 1000
         self.stats['successful_inserts'] += success_count
         self.stats['failed_inserts'] += failed_count
         self.stats['total_time_ms'] += elapsed_ms
 
-        # 计算性能指标
+        # 
         tasks_per_second = len(tasks) / (elapsed_ms / 1000) if elapsed_ms > 0 else 0
 
-        logger.info(f"批量创建完成 | 成功: {success_count}/{len(tasks)} | "
-                   f"耗时: {elapsed_ms:.2f}ms | 速率: {tasks_per_second:.1f} tasks/s")
+        logger.info(f"createcompleted | success: {success_count}/{len(tasks)} | "
+                   f": {elapsed_ms:.2f}ms | : {tasks_per_second:.1f} tasks/s")
 
         return success_count, failed_count
 
     def _batch_insert(self, batch: List[Dict[str, Any]]) -> int:
         """
-        执行真正的批量插入（使用 ManticoreClient 的 batch_insert 方法）
+        （ ManticoreClient  batch_insert ）
 
         Args:
-            batch: 任务批次
+            batch: task
 
         Returns:
-            成功插入的数量
+            successcount
 
         Raises:
-            Exception: 当整个批次插入失败时抛出异常
+            Exception: failedexception
         """
-        # 导入正确的 ID 生成函数
+        #  ID 
         import sys
         import os
         sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
         from bisect_utils import _generate_task_id
 
-        # 构建批量插入的数据字典
+        # dict
         documents = {}
         for task in batch:
             bad_job_id = task.get('bad_job_id', '')
@@ -135,62 +135,62 @@ class BatchInserter:
             bisect_metric = task.get('bisect_metric', '')
 
             if not bad_job_id:
-                logger.warning("任务缺少 bad_job_id，跳过")
+                logger.warning("task bad_job_id，skip")
                 continue
 
-            # 构建 task_identifier（与 task_processor.py 保持一致）
+            #  task_identifier（ task_processor.py ）
             if error_id:
                 task_identifier = f"error_id='{error_id}'"
             elif bisect_metric:
                 task_identifier = f"bisect_metric='{bisect_metric}'"
             else:
-                logger.warning("任务既没有 error_id 也没有 bisect_metric，跳过")
+                logger.warning("task error_id  bisect_metric，skip")
                 continue
 
-            # 🔧 使用正确的 ID 生成方式
+            # 🔧  ID 
             task_id = _generate_task_id(bad_job_id, task_identifier)
 
-            # 准备文档内容（不包含 id 字段）
+            # （ id ）
             doc = {k: v for k, v in task.items() if k != 'id'}
             documents[task_id] = doc
 
         if not documents:
-            logger.warning("批次中没有有效的任务")
+            logger.warning("task")
             return 0
 
         try:
-            # 使用 ManticoreClient 的 batch_insert 方法进行真正的批量插入
-            logger.debug(f"执行真正的批量插入 | 文档数: {len(documents)}")
+            #  ManticoreClient  batch_insert 
+            logger.debug(f" | : {len(documents)}")
             result = self.client.batch_insert("bisect", documents)
 
             if result:
-                logger.debug(f"批量插入成功 | 插入 {len(documents)} 个文档")
+                logger.debug(f"success |  {len(documents)} ")
                 return len(documents)
             else:
-                logger.warning("批量插入返回失败")
-                # 如果批量插入失败，抛出异常触发回退
-                raise Exception("批量插入操作失败")
+                logger.warning("failed")
+                # failed，exception
+                raise Exception("failed")
 
         except AttributeError as e:
-            # ManticoreClient 没有 batch_insert 方法，回退到逐个插入
-            logger.warning(f"ManticoreClient 不支持 batch_insert: {e}")
-            raise Exception("不支持批量插入") from e
+            # ManticoreClient  batch_insert ，
+            logger.warning(f"ManticoreClient support batch_insert: {e}")
+            raise Exception("support") from e
 
         except Exception as e:
-            logger.error(f"批量插入异常: {str(e)}")
+            logger.error(f"exception: {str(e)}")
             raise
 
     def _fallback_single_insert(self, batch: List[Dict[str, Any]]) -> Tuple[int, int]:
         """
-        回退到单个插入（当批量插入失败时）
+        （failed）
 
         Args:
-            batch: 任务批次
+            batch: task
 
         Returns:
-            (成功数, 失败数) 元组
+            (success, failed) 
         """
-        # 导入正确的 ID 生成函数
+        #  ID 
         import sys
         import os
         sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
@@ -206,24 +206,24 @@ class BatchInserter:
                 bisect_metric = task.get('bisect_metric', '')
 
                 if not bad_job_id:
-                    logger.warning("任务缺少 bad_job_id，跳过")
+                    logger.warning("task bad_job_id，skip")
                     failed_count += 1
                     continue
 
-                # 构建 task_identifier（与 task_processor.py 保持一致）
+                #  task_identifier（ task_processor.py ）
                 if error_id:
                     task_identifier = f"error_id='{error_id}'"
                 elif bisect_metric:
                     task_identifier = f"bisect_metric='{bisect_metric}'"
                 else:
-                    logger.warning("任务既没有 error_id 也没有 bisect_metric，跳过")
+                    logger.warning("task error_id  bisect_metric，skip")
                     failed_count += 1
                     continue
 
-                # 🔧 使用正确的 ID 生成方式
+                # 🔧  ID 
                 task_id = _generate_task_id(bad_job_id, task_identifier)
 
-                # 准备文档内容（不包含 id 字段）
+                # （ id ）
                 doc = {k: v for k, v in task.items() if k != 'id'}
 
                 result = self.client.replace("bisect", task_id, doc)
@@ -246,10 +246,10 @@ class BatchInserter:
 
     def get_stats(self) -> Dict[str, Any]:
         """
-        获取批量插入统计信息
+        getstats
 
         Returns:
-            统计信息字典
+            statsdict
         """
         avg_time_per_task = self.stats['total_time_ms'] / self.stats['total_tasks'] \
             if self.stats['total_tasks'] > 0 else 0
@@ -265,7 +265,7 @@ class BatchInserter:
         }
 
     def reset_stats(self):
-        """重置统计信息"""
+        """resetstats"""
         self.stats = {
             'total_tasks': 0,
             'batches_processed': 0,

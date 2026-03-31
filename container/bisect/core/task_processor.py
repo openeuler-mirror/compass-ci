@@ -1,3 +1,5 @@
+"""Task processor loop coordinating polling, dispatching, and lifecycle updates."""
+
 import os
 import time
 import threading
@@ -18,7 +20,7 @@ from collections import defaultdict
 
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/lib')
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/core')
-from log_config import logger, StructuredLogger
+from log_config import logger, StructuredLogger, set_log_component
 from errid_intelligence import ErridIntelligence
 from notification_writer import NotificationWriter
 from bisect_utils import (
@@ -69,10 +71,16 @@ class _ValidatorWorker(PollingWorker):
         logger.info("SuccessTaskValidator initialized successfully")
 
     def process_cycle(self) -> bool:
+        did_work = False
+
         # Step 1: check submitted verification job results
         try:
-            result = self.validator.check_verification_results_once(self.repo_manager)
+            timeout_hours = int(self._config.get('verification_timeout_hours', 24) or 24)
+            result = self.validator.check_verification_results_once(
+                self.repo_manager, timeout_hours=timeout_hours
+            )
             if result['checked'] > 0:
+                did_work = True
                 logger.info(
                     f"Verification result check | checked: {result['checked']} | "
                     f"completed: {result['completed']} | failed: {result['failed']} | "
@@ -83,15 +91,26 @@ class _ValidatorWorker(PollingWorker):
             logger.error(f"Failed to check verification results: {str(e)}")
             logger.error(traceback.format_exc())
 
-        # Step 2: scan new verifying tasks and submit verification jobs
-        batch_size = self._config.get('verification_batch_size', 200)
-        tasks = self.validator.scan_unverified_tasks(limit=batch_size)
+        # Step 2: enforce admission control before submitting new verification jobs
+        batch_size = int(self._config.get('verification_batch_size', 200) or 200)
+        max_verifying_tasks = int(self._config.get('max_verifying_tasks', 10) or 10)
+        inflight_verifying = self.validator.count_active_verification_tasks()
+        available_slots = max(0, max_verifying_tasks - inflight_verifying)
+
+        logger.info(
+            f"Verification admission control | inflight: {inflight_verifying} | "
+            f"max: {max_verifying_tasks} | available_slots: {available_slots}"
+        )
+
+        if available_slots <= 0:
+            return did_work
+
+        tasks = self.validator.scan_unverified_tasks(limit=min(batch_size, available_slots))
 
         if not tasks:
-            return False
+            return did_work
 
-        verifying_count = sum(1 for t in tasks if t.get('bisect_status') == 'verifying')
-        logger.info(f"Scanned {len(tasks)} pending verification tasks | verifying: {verifying_count}")
+        logger.info(f"Scanned {len(tasks)} pending verification tasks for submission")
 
         tasks_by_repo = self.validator.group_tasks_by_repo(tasks)
         logger.info(f"Task grouping completed | {len(tasks_by_repo)} repos | total_tasks: {len(tasks)}")
@@ -115,6 +134,7 @@ class _ValidatorWorker(PollingWorker):
                 )
                 submitted_count += result.get('submitted', 0)
                 failed_count += result.get('failed', 0)
+                did_work = did_work or bool(result.get('submitted', 0) or result.get('failed', 0))
             except Exception as e:
                 logger.error(
                     f"Failed to batch submit verification jobs | repo: {git_url[:60]} | "
@@ -128,7 +148,41 @@ class _ValidatorWorker(PollingWorker):
             f"submitted: {submitted_count} | failed: {failed_count} | "
             f"repos: {len(tasks_by_repo)}"
         )
-        return True
+        return did_work
+
+
+class _HeadValidatorWorker(PollingWorker):
+    """PollingWorker that runs periodic HEAD regression checks."""
+
+    def __init__(self, client, config, stop_event, base_interval=86400):
+        super().__init__("HeadValidator", stop_event,
+                         base_interval=base_interval, max_backoff=3600)
+        self.client = client
+        self._config = config
+
+    def setup(self):
+        self.validator = HeadValidator(self.client, self._config)
+        logger.info("HeadValidator initialized successfully")
+
+    def process_cycle(self) -> bool:
+        stats = self.validator.run_head_check_cycle()
+        # Also poll any async checking tasks if present.
+        try:
+            self.validator._poll_head_test_results()
+        except Exception as e:
+            logger.error(f"Failed to poll HEAD test results: {str(e)}")
+            logger.error(traceback.format_exc())
+
+        scanned = int((stats or {}).get('scanned', 0) or 0)
+        if scanned > 0:
+            logger.info(
+                f"HeadValidator cycle | scanned: {scanned} | "
+                f"regressed: {stats.get('regressed', 0)} | "
+                f"fixed: {stats.get('fixed', 0)} | "
+                f"failed: {stats.get('failed', 0)}"
+            )
+            return True
+        return False
 
 
 class _ConsumerWorker(PollingWorker):
@@ -286,10 +340,10 @@ class TaskProcessor:
 
         Reset rules:
         - processing -> wait (container restart, thread pool tasks lost, need re-execution)
-        - verifying -> wait (container restart, verification job status unreliable, need re-execution)
+        - verifying -> reconcile by persisted verification metadata
 
         Note:
-        - Uses direct UPDATE statements to avoid SELECT LIMIT issues
+        - Uses direct UPDATE statements where safe
         - Cleans up residual workspace directories on filesystem
         """
         try:
@@ -306,14 +360,7 @@ class TaskProcessor:
             processing_result = self.client.sql_raw(processing_update_sql)
             processing_reset = processing_result[0].get('total', 0) if processing_result and len(processing_result) > 0 else 0
 
-            # Directly UPDATE all verifying tasks to wait (preserve j field, keep verification info)
-            verifying_update_sql = f"""
-                UPDATE bisect
-                SET bisect_status = 'wait', updated_at = {current_time}
-                WHERE bisect_status = 'verifying'
-            """
-            verifying_result = self.client.sql_raw(verifying_update_sql)
-            verifying_reset = verifying_result[0].get('total', 0) if verifying_result and len(verifying_result) > 0 else 0
+            verifying_reset = self._reconcile_verifying_tasks_on_startup(current_time)
 
             # Clean up all workspace directories starting with digits (task residuals)
             cleaned_dirs = 0
@@ -334,13 +381,78 @@ class TaskProcessor:
             logger.warning(
                 f"Container startup reset completed | "
                 f"processing→wait: {processing_reset} | "
-                f"verifying→wait: {verifying_reset} | "
+                f"verifying_recovered: {verifying_reset} | "
                 f"cleaned_dirs: {cleaned_dirs}"
             )
 
         except Exception as e:
             logger.error(f"Container startup task reset failed: {str(e)}")
             logger.error(traceback.format_exc())
+
+    def _reconcile_verifying_tasks_on_startup(self, current_time: int) -> int:
+        """Recover verifying tasks without resubmitting jobs blindly after restart."""
+        try:
+            query = """
+                SELECT id, j
+                FROM bisect
+                WHERE bisect_status = 'verifying'
+                LIMIT 5000
+                OPTION max_matches=5000
+            """
+            tasks = self.client.sql_select(query) or []
+            recovered = 0
+
+            for task in tasks:
+                task_id = task.get('id')
+                j_field = task.get('j', {}) or {}
+                if isinstance(j_field, str):
+                    try:
+                        j_field = json.loads(j_field) if j_field else {}
+                    except Exception:
+                        j_field = {}
+
+                verification_jobs = j_field.get('verification_jobs', {})
+                if not isinstance(verification_jobs, dict):
+                    verification_jobs = {}
+
+                verification_status = str(j_field.get('verification_status') or '').strip().lower()
+                job_status = str(verification_jobs.get('status') or '').strip().lower()
+                has_submitted_jobs = bool(
+                    verification_jobs.get('parent_job_id') and verification_jobs.get('candidate_job_id')
+                )
+
+                if verification_status == 'verified':
+                    self.client.update("bisect", task_id, {
+                        "bisect_status": "success",
+                        "updated_at": current_time,
+                    })
+                    recovered += 1
+                    continue
+
+                if has_submitted_jobs and job_status not in ('failed', 'timeout', 'retry_pending'):
+                    logger.info(f"startup recovery | keep verifying | task_id: {task_id}")
+                    continue
+
+                recovered_j = {
+                    **j_field,
+                    "startup_recovered_at": current_time,
+                    "startup_recovery_from": "verifying",
+                }
+                if verification_status != 'verified':
+                    recovered_j["verification_status"] = "pending"
+
+                self.client.update("bisect", task_id, {
+                    "bisect_status": "pending_verification",
+                    "updated_at": current_time,
+                    "j": recovered_j,
+                })
+                recovered += 1
+
+            return recovered
+        except Exception as e:
+            logger.error(f"startup recovery for verifying tasks failed: {str(e)}")
+            logger.error(traceback.format_exc())
+            return 0
 
 
 
@@ -384,7 +496,7 @@ class TaskProcessor:
         # Success task cache removed - no longer using similarity matching
 
         # Success task signature cache (optimize _find_successful_task_by_signature high-frequency queries)
-        self._success_signature_cache = {}  # {signature: task_info}
+        self._success_signature_cache = {}  # {"<git_url>||<signature>": task_info}
         self._success_cache_ttl = 3600  # 1 hour cache
         self._success_cache_last_refresh = 0
         self._success_cache_lock = threading.Lock()
@@ -395,11 +507,19 @@ class TaskProcessor:
             "manticore_host": os.environ.get('MANTICORE_HOST', 'localhost'),
             "manticore_http_port": os.environ.get('MANTICORE_WRITE_PORT', '9308'),
             "notification_dir": Config.NOTIFICATION_DIR,
+            "notification_webhook_url": Config.NOTIFICATION_WEBHOOK_URL,
+            "notification_email": Config.NOTIFICATION_EMAIL,
             # Verification configuration
             "parallel_verification_jobs": Config.PARALLEL_VERIFICATION_JOBS,
             "verification_batch_size": Config.VERIFICATION_BATCH_SIZE,
+            "validation_interval": Config.VALIDATION_INTERVAL,
+            "max_verifying_tasks": Config.MAX_VERIFYING_TASKS,
+            "verification_timeout_hours": Config.VERIFICATION_TIMEOUT_HOURS,
+            "verification_timeout_retry_max": Config.VERIFICATION_TIMEOUT_RETRY_MAX,
+            "verification_timeout_final_action": Config.VERIFICATION_TIMEOUT_FINAL_ACTION,
             # HEAD check configuration
-            "head_check_batch_size": Config.HEAD_CHECK_BATCH_SIZE
+            "head_check_batch_size": Config.HEAD_CHECK_BATCH_SIZE,
+            "head_check_interval": Config.HEAD_CHECK_INTERVAL
         }
 
         # Get configuration values and apply safety limits
@@ -737,6 +857,7 @@ class TaskProcessor:
 
     def _run_producer_once(self, force: bool = False):
         """Execute a complete producer task discovery cycle (Error + Performance)"""
+        set_log_component('producer')
         logger.info(f"========== BisectProducer cycle STARTED (force={force}) ==========")
 
         # 1. Execute error type producer
@@ -862,17 +983,19 @@ class TaskProcessor:
         background_threads.append(("SuccessTaskValidator", success_validator_thread))
         logger.info(f"SuccessTaskValidator thread started with ID: {success_validator_thread.ident}")
 
-        # 7. HEAD regression detection thread (temporarily disabled)
-        # logger.info("Starting HeadValidator thread...")
-        # head_validator_thread = threading.Thread(
-        #     target=self.head_validator_consumer,
-        #     daemon=True,
-        #     name="HeadValidator"
-        # )
-        # head_validator_thread.start()
-        # background_threads.append(("HeadValidator", head_validator_thread))
-        # logger.info(f"HeadValidator thread started with ID: {head_validator_thread.ident}")
-        logger.info("HeadValidator disabled (temporarily)")
+        # 7. HEAD regression detection thread
+        if Config.HEAD_VALIDATOR_ENABLED:
+            logger.info("Starting HeadValidator thread...")
+            head_validator_thread = threading.Thread(
+                target=self.head_validator_consumer,
+                daemon=True,
+                name="HeadValidator"
+            )
+            head_validator_thread.start()
+            background_threads.append(("HeadValidator", head_validator_thread))
+            logger.info(f"HeadValidator thread started with ID: {head_validator_thread.ident}")
+        else:
+            logger.info("HeadValidator disabled by config")
 
         # 7. Record started threads
         for name, thread in background_threads:
@@ -885,6 +1008,7 @@ class TaskProcessor:
 
     def _repo_cleanup_worker(self):
         """Periodically clean up old or residual repository directories"""
+        set_log_component('consumer')
         while self.running:
             try:
                 logger.info("Running periodic repository cleanup...")
@@ -898,6 +1022,7 @@ class TaskProcessor:
 
     def bisect_producer(self):
         """Unified Bisect task producer - includes both Error and Performance types"""
+        set_log_component('producer')
         if not Config.BISECT_PRODUCER_ENABLED:
             logger.info("BisectProducer is disabled by config, exiting.")
             return
@@ -945,12 +1070,14 @@ class TaskProcessor:
 
     def bisect_consumer(self):
         """Launch BisectConsumer as a PollingWorker."""
+        set_log_component('consumer')
         worker = _ConsumerWorker(self, self.stop_event, base_interval=30,
                                  wake_event=self.consumer_wake_event)
         worker.run()
 
     def success_task_validator_consumer(self):
         """Launch SuccessTaskValidator as a PollingWorker."""
+        set_log_component('consumer')
         validation_interval = self._config.get('validation_interval', 60)
         worker = _ValidatorWorker(
             self.client, self._config, self.repo_manager,
@@ -958,8 +1085,19 @@ class TaskProcessor:
         )
         worker.run()
 
+    def head_validator_consumer(self):
+        """Launch HeadValidator as a PollingWorker."""
+        set_log_component('consumer')
+        head_check_interval = self._config.get('head_check_interval', 86400)
+        worker = _HeadValidatorWorker(
+            self.client, self._config, self.stop_event,
+            base_interval=head_check_interval
+        )
+        worker.run()
+
     def _process_task_async(self, consumer, task):
         """Process single task asynchronously, release lock and clean up repo on completion"""
+        set_log_component('consumer')
         task_id = str(task.get('id'))
         logger.info(f"_process_task_async started for task_id: {task_id}")
         try:
@@ -1316,95 +1454,128 @@ class TaskProcessor:
             selected_tasks = []
             skipped_count = 0  # Skipped tasks count (clusters with existing successful tasks)
 
-            # 3.1 Process build task clusters
+            # 3.1 Process build task clusters (partitioned by repo to prevent cross-repo linking)
             for signature, tasks in signature_groups.items():
-                # First check if there is already a successful task with same signature
-                successful_task = self._find_successful_task_by_signature(signature)
+                repo_groups = defaultdict(list)  # {git_url: [tasks]}
+                for task in tasks:
+                    repo_key = (task.get('git_url') or '').strip()
+                    repo_groups[repo_key].append(task)
 
-                if successful_task:
-                    # Found successful task, immediately mark as verifying (avoid infinite loop)
-                    successful_task_id = successful_task['id']
-                    logger.info(f"Cluster {signature}: found successful task {successful_task_id}, "
-                               f"immediately marking {len(tasks)} tasks as verifying")
+                for repo_key, repo_tasks in repo_groups.items():
+                    if not repo_key:
+                        # Without git_url we cannot safely reuse a successful task; fall back to representative selection.
+                        if len(repo_tasks) == 1:
+                            selected_tasks.append(repo_tasks[0])
+                            logger.debug(
+                                f"Cluster {signature} (repo=empty): single task {repo_tasks[0]['id']}"
+                            )
+                        else:
+                            tasks_sorted = sorted(repo_tasks, key=lambda t: (
+                                -t.get('priority_level', 0),
+                                -t.get('submit_time', 0)
+                            ))
+                            representative = tasks_sorted[0]
+                            selected_tasks.append(representative)
+                            logger.info(
+                                f"Cluster {signature} (repo=empty): selected task {representative['id']} as representative, "
+                                f"remaining {len(repo_tasks)-1} tasks stay in wait status"
+                            )
+                        continue
 
-                    # Batch mark as verifying (fallback mechanism, prevent missed marking)
-                    current_time = int(time.time())
-                    marked_count = 0
-                    failed_count = 0
-                    for task in tasks:
-                        try:
-                            task_id = task['id']
+                    # First check if there is already a successful task with same signature in the same repo.
+                    successful_task = self._find_successful_task_by_signature(signature, repo_key)
 
-                            # Check if marking was attempted before (avoid infinite retry)
-                            j_field = task.get('j') or {}
-                            if isinstance(j_field, str):
-                                try:
-                                    j_field = json.loads(j_field) if j_field else {}
-                                except json.JSONDecodeError:
-                                    j_field = {}
+                    if successful_task:
+                        successful_task_id = successful_task['id']
+                        logger.info(
+                            f"Cluster {signature}: found successful task {successful_task_id} in same repo, "
+                            f"marking {len(repo_tasks)} tasks as pending_verification | repo: {repo_key[:80]}"
+                        )
 
-                            marking_attempts = j_field.get('marking_attempts', 0)
-                            if marking_attempts >= 3:
-                                # Retry limit reached, skip clustering mark, let task go through independent bisect flow
-                                logger.warning(f"Cluster marking retry limit reached | task_id: {task_id} | attempted {marking_attempts} times | skipping clustering, going to independent bisect")
-                                # Clear clustering fields, add skip_clustering flag, keep wait status
-                                skip_doc = {
+                        current_time = int(time.time())
+                        marked_count = 0
+                        failed_count = 0
+                        for task in repo_tasks:
+                            try:
+                                task_id = task['id']
+
+                                j_field = task.get('j') or {}
+                                if isinstance(j_field, str):
+                                    try:
+                                        j_field = json.loads(j_field) if j_field else {}
+                                    except json.JSONDecodeError:
+                                        j_field = {}
+
+                                marking_attempts = j_field.get('marking_attempts', 0)
+                                if marking_attempts >= 3:
+                                    logger.warning(
+                                        f"Cluster marking retry limit reached | task_id: {task_id} | "
+                                        f"attempted {marking_attempts} times | skipping clustering, going to independent bisect"
+                                    )
+                                    skip_doc = {
+                                        "updated_at": current_time,
+                                        "j": {
+                                            "skip_clustering": True,
+                                            "skip_reason": "marking_attempts_exceeded",
+                                            "error_signature": signature
+                                        }
+                                    }
+                                    self.client.update("bisect", task_id, skip_doc)
+                                    skipped_count += 1
+                                    continue
+
+                                doc = {
+                                    "bisect_status": "pending_verification",
                                     "updated_at": current_time,
                                     "j": {
-                                        "skip_clustering": True,
-                                        "skip_reason": "marking_attempts_exceeded",
-                                        "error_signature": signature
+                                        "related_task_id": str(successful_task_id),
+                                        "error_signature": signature,
+                                        "original_error_id": task.get('error_id', ''),
+                                        "marked_by_clustering": True,
+                                        "marked_timestamp": current_time,
+                                        "marking_attempts": marking_attempts + 1,
+                                        "verification_status": "pending"
                                     }
                                 }
-                                self.client.update("bisect", task_id, skip_doc)
-                                skipped_count = stats.get('skipped_clustering', 0) + 1
-                                stats['skipped_clustering'] = skipped_count
-                                continue
-
-                            doc = {
-                                "bisect_status": "verifying",
-                                "updated_at": current_time,
-                                "j": {
-                                    "related_task_id": str(successful_task_id),
-                                    "error_signature": signature,
-                                    "original_error_id": task.get('error_id', ''),
-                                    "marked_by_clustering": True,
-                                    "marked_timestamp": current_time,
-                                    "marking_attempts": marking_attempts + 1
-                                }
-                            }
-                            if self.client.update("bisect", task_id, doc):
-                                marked_count += 1
-                            else:
+                                if self.client.update("bisect", task_id, doc):
+                                    marked_count += 1
+                                else:
+                                    failed_count += 1
+                                    logger.warning(f"Cluster marking update failed | task_id: {task_id}")
+                            except Exception as e:
                                 failed_count += 1
-                                logger.warning(f"Cluster marking update failed | task_id: {task_id}")
-                        except Exception as e:
-                            failed_count += 1
-                            logger.error(f"Cluster marking failed | task_id: {task.get('id')} | error: {str(e)}")
+                                logger.error(f"Cluster marking failed | task_id: {task.get('id')} | error: {str(e)}")
 
-                    skipped_count += marked_count
-                    if failed_count > 0:
-                        logger.warning(f"Cluster marking completed | signature: {signature} | marked: {marked_count}/{len(tasks)} | failed: {failed_count}")
+                        skipped_count += marked_count
+                        if failed_count > 0:
+                            logger.warning(
+                                f"Cluster marking completed | signature: {signature} | repo: {repo_key[:80]} | "
+                                f"marked: {marked_count}/{len(repo_tasks)} | failed: {failed_count}"
+                            )
+                        else:
+                            logger.info(
+                                f"Cluster marking completed | signature: {signature} | repo: {repo_key[:80]} | "
+                                f"marked: {marked_count}/{len(repo_tasks)}"
+                            )
+
+                    elif len(repo_tasks) == 1:
+                        selected_tasks.append(repo_tasks[0])
+                        logger.debug(
+                            f"Cluster {signature}: single task {repo_tasks[0]['id']} | repo: {repo_key[:80]}"
+                        )
                     else:
-                        logger.info(f"Cluster marking completed | signature: {signature} | marked: {marked_count}/{len(tasks)}")
+                        tasks_sorted = sorted(repo_tasks, key=lambda t: (
+                            -t.get('priority_level', 0),
+                            -t.get('submit_time', 0)
+                        ))
 
-                elif len(tasks) == 1:
-                    # No successful task and only single task, select directly
-                    selected_tasks.append(tasks[0])
-                    logger.debug(f"Cluster {signature}: single task {tasks[0]['id']}")
-                else:
-                    # No successful task, multiple tasks, select one representative
-                    # Sort by priority and submit time, select best representative
-                    tasks_sorted = sorted(tasks, key=lambda t: (
-                        -t.get('priority_level', 0),  # Higher priority first
-                        -t.get('submit_time', 0)      # Later submit time first (negative for descending)
-                    ))
+                        representative = tasks_sorted[0]
+                        selected_tasks.append(representative)
 
-                    representative = tasks_sorted[0]
-                    selected_tasks.append(representative)
-
-                    logger.info(f"Cluster {signature}: selected task {representative['id']} as representative, "
-                               f"remaining {len(tasks)-1} tasks stay in wait status")
+                        logger.info(
+                            f"Cluster {signature}: selected task {representative['id']} as representative, "
+                            f"remaining {len(repo_tasks)-1} tasks stay in wait status | repo: {repo_key[:80]}"
+                        )
 
             if skipped_count > 0:
                 logger.info(f"cluster tasks | marked existing success | count: {skipped_count}")
@@ -1441,7 +1612,7 @@ class TaskProcessor:
 
     def _batch_mark_verifying(self, verifying_tasks: List[Dict]):
         """
-        Batch mark tasks as verifying status (directly reuse successful tasks)
+        Batch mark tasks as pending verification status (directly reuse successful tasks)
 
         Args:
             verifying_tasks: list of tasks to mark, each containing:
@@ -1458,7 +1629,10 @@ class TaskProcessor:
         success_count = 0
         failed_count = 0
 
-        logger.info(f"Starting batch mark of {len(verifying_tasks)} tasks as verifying (reusing successful tasks)")
+        logger.info(
+            f"Starting batch mark of {len(verifying_tasks)} tasks as pending_verification "
+            f"(reusing successful tasks)"
+        )
 
         for task_info in verifying_tasks:
             try:
@@ -1468,7 +1642,7 @@ class TaskProcessor:
                 original_error_id = task_info.get('original_error_id', '')
 
                 doc = {
-                    "bisect_status": "verifying",
+                    "bisect_status": "pending_verification",
                     "updated_at": current_time,
                     "j": {
                         "related_task_id": str(related_task_id),
@@ -1477,7 +1651,7 @@ class TaskProcessor:
                         "clustering_timestamp": current_time,
                         "clustered_by": "task_processor",
                         "reused_from_successful": True,  # Marked as reusing successful task
-                        "direct_to_verifying": True  # Skip pending_verification
+                        "verification_status": "pending"
                     }
                 }
 
@@ -1486,7 +1660,10 @@ class TaskProcessor:
 
                 if update_result:
                     success_count += 1
-                    logger.debug(f"Task {task_id} marked as verifying, linked to successful task {related_task_id}")
+                    logger.debug(
+                        f"Task {task_id} marked as pending_verification, "
+                        f"linked to successful task {related_task_id}"
+                    )
                 else:
                     failed_count += 1
                     logger.warning(f"Task {task_id} marking failed")
@@ -1495,9 +1672,16 @@ class TaskProcessor:
                 failed_count += 1
                 logger.error(f"Failed to mark task {task_info.get('id', 'unknown')}: {str(e)}")
 
-        logger.info(f"Batch marking verifying completed: success {success_count}, failed {failed_count}")
+        logger.info(
+            f"Batch marking pending_verification completed: success {success_count}, failed {failed_count}"
+        )
 
-    def _find_successful_task_by_signature(self, signature: str) -> Optional[Dict]:
+    @staticmethod
+    def _success_cache_key(signature: str, git_url: str) -> str:
+        """Build cache key with signature and repo identity."""
+        return f"{(git_url or '').strip()}||{signature}"
+
+    def _find_successful_task_by_signature(self, signature: str, git_url: str) -> Optional[Dict]:
         """
         Find successful task with same signature (with cache, only returns high-confidence tasks)
 
@@ -1510,6 +1694,11 @@ class TaskProcessor:
         try:
             current_time = int(time.time())
 
+            repo_key = (git_url or '').strip()
+            if not repo_key:
+                logger.debug(f"Skip successful task lookup due to missing git_url | signature: {signature}")
+                return None
+
             # Check if cache expired
             with self._success_cache_lock:
                 if current_time - self._success_cache_last_refresh > self._success_cache_ttl:
@@ -1517,23 +1706,23 @@ class TaskProcessor:
                     self._refresh_success_signature_cache()
 
                 # Look up from cache
-                if signature in self._success_signature_cache:
-                    cached_task = self._success_signature_cache[signature]
+                cache_key = self._success_cache_key(signature, repo_key)
+                if cache_key in self._success_signature_cache:
+                    cached_task = self._success_signature_cache[cache_key]
 
                     # Extract confidence info (for logging)
                     j_field = cached_task.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field) if j_field else {}
                     confidence = j_field.get('confidence', 'unknown')
 
                     logger.info(
-                        f"Found successful task from cache | signature: {signature} | "
+                        f"Found successful task from cache | signature: {signature} | repo: {repo_key[:80]} | "
                         f"task_id: {cached_task['id']} | confidence: {confidence}"
                     )
                     return cached_task
 
-            logger.debug(f"Successful task not found in cache | signature: {signature}")
+            logger.debug(f"Successful task not found in cache | signature: {signature} | repo: {repo_key[:80]}")
             return None
 
         except Exception as e:
@@ -1554,7 +1743,7 @@ class TaskProcessor:
 
             # Query recently successful build tasks (only build tasks use signature clustering)
             query = """
-                SELECT id, first_bad_commit, updated_at, j, error_id, category
+                SELECT id, first_bad_commit, updated_at, j, error_id, category, git_url
                 FROM bisect
                 WHERE bisect_status = 'success' AND category = 'build'
                 ORDER BY updated_at DESC
@@ -1582,7 +1771,6 @@ class TaskProcessor:
                     # Extract confidence
                     j_field = task.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field) if j_field else {}
 
                     confidence = j_field.get('confidence', '').lower()
@@ -1598,10 +1786,14 @@ class TaskProcessor:
                         continue
 
                     signature = errid_intel.extract_coarse_signature(error_id)
+                    git_url = (task.get('git_url') or '').strip()
+                    if not git_url:
+                        continue
+                    cache_key = self._success_cache_key(signature, git_url)
 
                     # If cache already has same signature, compare confidence, keep higher
-                    if signature in new_cache:
-                        cached_task = new_cache[signature]
+                    if cache_key in new_cache:
+                        cached_task = new_cache[cache_key]
                         cached_j = cached_task.get('j', {})
                         if isinstance(cached_j, str):
                             cached_j = json.loads(cached_j) if cached_j else {}
@@ -1613,9 +1805,9 @@ class TaskProcessor:
                             task_priority == cached_priority and
                             task.get('updated_at', 0) > cached_task.get('updated_at', 0)
                         ):
-                            new_cache[signature] = task
+                            new_cache[cache_key] = task
                     else:
-                        new_cache[signature] = task
+                        new_cache[cache_key] = task
 
                 except Exception as e:
                     logger.warning(f"Failed to extract signature | task_id: {task['id']} | error: {str(e)}")
@@ -1695,4 +1887,3 @@ class TaskProcessor:
 
 # Global instance for controllers
 bisect_task_instance = TaskProcessor()
-

@@ -2,16 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-SuccessTaskValidator - 成功任务验证服务
+Validator for successful/reused bisect tasks.
 
-这个模块实现了对已成功 bisect 任务的验证机制，通过边界验证确认
-first_bad_commit 的准确性，并计算该 commit 引入的 errid 列表。
-
-功能：
-1. 扫描 bisect_status='success' 且未验证的任务
-2. 进行边界验证（parent commit vs first_bad_commit）
-3. 计算 errid diff（introduced_errids）
-4. 保存验证结果到数据库
+It verifies boundary conditions (parent vs first_bad_commit) and computes
+introduced errids so reused outcomes can be trusted and tracked.
 """
 
 import os
@@ -32,10 +26,10 @@ sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
 from lkp_bisect.db.manticore import ManticoreClient
 from lkp_bisect.core.git_bisect import GitBisect
 
-# 导入父类 VerificationConsumer
+# Reuse shared verification logic
 from verification_consumer import VerificationConsumer
 
-# 导入 CommitTimeClient 用于获取父提交
+# Commit-time service client for parent-commit lookup
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/services/commit_time_service')
 from client import CommitTimeClient
 from bisect_utils import (
@@ -45,20 +39,38 @@ from bisect_utils import (
 from errid_intelligence import ErridIntelligence
 
 class SuccessTaskValidator(VerificationConsumer):
-    """
-    成功任务验证服务
+    """Validate success/reuse tasks and persist verification artifacts."""
+    _TERMINAL_VERIFICATION_JOB_HEALTH = {
+        'cancel',
+        'terminate',
+        'abort',
+        'abort_invalid',
+        'abort_wait',
+        'abort_provider',
+    }
 
-    继承 VerificationConsumer，复用边界验证逻辑，
-    专门用于验证 bisect_status='success' 的历史任务
-    """
+    @classmethod
+    def _is_terminal_failed_health(cls, health: Any) -> bool:
+        value = str(health or '').strip().lower()
+        if not value:
+            return False
+        if value.startswith('timeout_'):
+            return True
+        return value in cls._TERMINAL_VERIFICATION_JOB_HEALTH
 
     def __init__(self, client: ManticoreClient, config: Dict):
-        """初始化验证服务"""
+        """Initialize success-task validator."""
         super().__init__(client, config)
 
-        # 验证配置参数（统一使用 verification_batch_size）
-        self.validation_batch_size = config.get('verification_batch_size', 200)  # 修复：使用正确的键名和默认值
-        self.validation_interval = config.get('validation_interval', 3600)  # 默认1小时
+        # Validation settings
+        self.validation_batch_size = config.get('verification_batch_size', 200)
+        self.validation_interval = config.get('validation_interval', 3600)
+        self.max_verifying_tasks = int(config.get('max_verifying_tasks', 10) or 10)
+        self.verification_timeout_hours = int(config.get('verification_timeout_hours', 24) or 24)
+        self.verification_timeout_retry_max = int(config.get('verification_timeout_retry_max', 2) or 2)
+        self.verification_timeout_final_action = (
+            str(config.get('verification_timeout_final_action', 'rebisect') or 'rebisect').lower()
+        )
 
         # Initialize GitBisect instance for job submission
         self.bisect_instance = GitBisect(logger)
@@ -71,113 +83,161 @@ class SuccessTaskValidator(VerificationConsumer):
             f"SuccessTaskValidator initialized | "
             f"batch_size: {self.validation_batch_size} | "
             f"interval: {self.validation_interval}s | "
+            f"max_verifying: {self.max_verifying_tasks} | "
             f"commit_time_service: {commit_time_service_url}"
         )
 
     def scan_unverified_tasks(self, limit: int = None) -> List[Dict]:
         """
-        扫描未验证的任务（只扫描 verifying 和 pending_verification 状态）
+        Scan pending verification tasks that are eligible for submission.
 
-        代表任务（bisect_status='success' 且无 related_task_id）已经通过完整 bisect 验证，
-        不需要额外验证。只有复用结果的相似任务需要验证边界条件。
+        Representative success tasks from full bisect runs do not need this.
+        This scan focuses on reused tasks that still need boundary checks.
 
         Args:
-            limit: 返回的最大任务数，默认使用 validation_batch_size
+            limit: maximum tasks to return (default: validation_batch_size)
 
         Returns:
-            待验证的任务列表
+            list of tasks to validate
         """
         try:
             batch_size = limit or self.validation_batch_size
+            current_time = int(time.time())
 
-            # 简化查询：只查询 verifying 状态的任务
-            # 复杂的 JSON 字段过滤在 Python 中进行，避免 Manticore JSON 语法问题
+            # Query pending verification tasks. Submission is admission-controlled
+            # by the worker, so only tasks without in-flight jobs enter here.
+            # JSON filtering is done in Python to avoid Manticore JSON syntax limitations
             sql_query = f"""
                 SELECT id, bad_job_id, error_id, bisect_status, git_url,
-                       updated_at, submit_time, j
+                       updated_at, submit_time, priority_level, j
                 FROM bisect
-                WHERE bisect_status = 'verifying'
-                ORDER BY updated_at DESC
+                WHERE bisect_status = 'pending_verification'
+                ORDER BY priority_level DESC, submit_time DESC
                 LIMIT {batch_size}
             """
 
-            logger.info(f"扫描 verifying 任务 | batch_size: {batch_size}")
+            logger.info(f"scan pending verification tasks | batch_size: {batch_size}")
             results = self.client.sql_select(sql_query)
 
             if not results:
-                logger.info("未发现 verifying 任务")
+                logger.info("no pending verification tasks found")
                 return []
 
-            logger.info(f"SQL 查询返回 {len(results)} 个 verifying 任务")
+            logger.info(f"pending verification query returned {len(results)} tasks")
 
-            # Python 端过滤：只保留有 related_task_id 且未验证完成的任务
+            # Python :  related_task_id verifycompletedtask
             filtered_tasks = []
-            tasks_without_related_id = []  # 收集没有 related_task_id 的任务
+            tasks_without_related_id = []  #  related_task_id task
 
             for task in results:
                 task_id = task.get('id')
                 j_field = task.get('j', {})
 
-                # 解析 j 字段
+                #  j 
                 if isinstance(j_field, str):
                     try:
                         j_field = json.loads(j_field) if j_field else {}
                     except Exception:
                         j_field = {}
 
-                # 检查必要条件
+                # check conditions
                 related_task_id = j_field.get('related_task_id')
                 if not related_task_id:
-                    logger.warning(f"verifying 任务无 related_task_id，将重置为 wait | task_id: {task_id}")
+                    logger.warning(f"pending verification task missing related_task_id, reset wait | task_id: {task_id}")
                     tasks_without_related_id.append(task_id)
                     continue
 
-                # 跳过已验证完成的
+                # Skip tasks already verified.
                 verification_status = j_field.get('verification_status')
                 if verification_status == 'verified':
-                    logger.debug(f"跳过任务 {task_id}：已验证 (verification_status=verified)")
+                    logger.debug(f"skip task {task_id}: already verified (verification_status=verified)")
                     continue
 
-                # 跳过 py_bisect 已验证的
+                # skip already verified by py_bisect
                 if j_field.get('verified_by_py_bisect') is True:
-                    logger.debug(f"跳过任务 {task_id}：py_bisect 已验证")
+                    logger.debug(f"skip task {task_id}: already verified by py_bisect")
                     continue
 
-                # 跳过已提交验证作业且正在等待的
+                # skipsubmitverification job
                 verification_jobs = j_field.get('verification_jobs', {})
-                if verification_jobs and verification_jobs.get('status') == 'submitted':
-                    logger.debug(f"跳过任务 {task_id}：验证作业已提交")
-                    continue
-
+                if verification_jobs and verification_jobs.get('status') == 'retry_pending':
+                    next_retry_at = verification_jobs.get('next_retry_at') or j_field.get('verification_submit_next_retry_at')
+                    try:
+                        next_retry_at = int(next_retry_at) if next_retry_at is not None else None
+                    except (TypeError, ValueError):
+                        next_retry_at = None
+                    if next_retry_at and next_retry_at > current_time:
+                        logger.debug(
+                            f"skip task {task_id}: retry backoff | next_retry_in: {next_retry_at - current_time}s"
+                        )
+                        continue
                 filtered_tasks.append(task)
 
-            # 重置没有 related_task_id 的任务为 wait（它们不应该在 verifying 状态）
+            # reset related_task_id task wait
             if tasks_without_related_id:
                 self._reset_tasks_to_wait(tasks_without_related_id, "no_related_task_id")
 
             logger.info(
-                f"过滤后剩余 {len(filtered_tasks)} 个待处理任务 | "
-                f"原始: {len(results)} | 过滤掉: {len(results) - len(filtered_tasks)} | "
-                f"重置为wait: {len(tasks_without_related_id)}"
+                f"pending verification scan complete | eligible: {len(filtered_tasks)} | "
+                f"total: {len(results)} | skipped: {len(results) - len(filtered_tasks)} | "
+                f"reset_wait: {len(tasks_without_related_id)}"
             )
 
             return filtered_tasks
 
         except Exception as e:
-            logger.error(f"扫描未验证任务失败: {str(e)}")
+            logger.error(f"scan verification tasks failed: {str(e)}")
             logger.error(traceback.format_exc())
             return []
+
+    def count_active_verification_tasks(self, limit: int = 5000) -> int:
+        """Count verifying tasks that already hold submitted verification jobs."""
+        try:
+            query = f"""
+                SELECT id, j
+                FROM bisect
+                WHERE bisect_status = 'verifying'
+                LIMIT {limit}
+                OPTION max_matches={limit}
+            """
+            tasks = self.client.sql_select(query) or []
+            active_count = 0
+
+            for task in tasks:
+                j_field = task.get('j', {}) or {}
+                if isinstance(j_field, str):
+                    try:
+                        j_field = json.loads(j_field) if j_field else {}
+                    except Exception:
+                        j_field = {}
+
+                verification_jobs = j_field.get('verification_jobs', {})
+                if not isinstance(verification_jobs, dict):
+                    continue
+
+                job_status = str(verification_jobs.get('status') or '').strip().lower()
+                has_job_ids = bool(
+                    verification_jobs.get('parent_job_id') and verification_jobs.get('candidate_job_id')
+                )
+                if has_job_ids and job_status not in ('completed', 'failed', 'timeout', 'retry_pending'):
+                    active_count += 1
+
+            return active_count
+        except Exception as e:
+            logger.error(f"count active verification tasks failed: {str(e)}")
+            logger.error(traceback.format_exc())
+            return 0
 
 
     def group_tasks_by_repo(self, tasks: List[Dict]) -> Dict[str, List[Dict]]:
         """
-        按仓库分组任务
+        repotask
 
         Args:
-            tasks: 待验证任务列表
+            tasks: verification tasklist
 
         Returns:
-            按 git_url 分组的任务字典
+             git_url taskdict
         """
         tasks_by_repo = defaultdict(list)
 
@@ -186,7 +246,7 @@ class SuccessTaskValidator(VerificationConsumer):
             bisect_status = task.get('bisect_status')
             git_url = task.get('git_url')
 
-            # 如果任务没有 git_url，从关联任务获取
+            # task git_url, taskget
             if not git_url:
                 try:
                     j_field = task.get('j', {})
@@ -196,17 +256,17 @@ class SuccessTaskValidator(VerificationConsumer):
                     related_task_id = j_field.get('related_task_id')
 
                     if related_task_id:
-                        # 查询关联任务的 git_url
+                        # querytask git_url
                         related_task = self._get_related_task(str(related_task_id))
                         if related_task:
                             git_url = related_task.get('git_url')
 
                 except Exception as e:
-                    logger.warning(f"获取关联任务 git_url 失败 | task_id: {task_id} | error: {str(e)}")
+                    logger.warning(f"get task git_url failed | task_id: {task_id} | error: {str(e)}")
 
-            # 如果还是没有 git_url，跳过
+            #  git_url, skip
             if not git_url:
-                logger.warning(f"任务缺少 git_url，跳过 | task_id: {task_id} | status: {bisect_status}")
+                logger.warning(f"task git_url, skip | task_id: {task_id} | status: {bisect_status}")
                 continue
 
             tasks_by_repo[git_url].append(task)
@@ -217,25 +277,25 @@ class SuccessTaskValidator(VerificationConsumer):
         self, repo_tasks: List[Dict], git_url: str, repo_manager=None
     ) -> Dict[str, int]:
         """
-        批量提交验证作业
+        submitverification job
 
-        通过 CommitTimeService API 获取父提交，无需 clone 仓库。
+         CommitTimeService API getsubmit,  clone repo.
 
         Args:
-            repo_tasks: 该仓库的任务列表（只包含 verifying 状态）
-            git_url: 仓库 URL
-            repo_manager: 已废弃，保留以兼容旧调用
+            repo_tasks: task list for one repo (pending_verification only)
+            git_url: repo URL
+            repo_manager: , 
 
         Returns:
-            {'submitted': 提交成功数, 'failed': 失败数}
+            {'submitted': submitsuccess, 'failed': failed}
         """
         submitted_count = 0
         failed_count = 0
         skipped_count = 0
 
-        logger.info(f"开始批量提交验证作业 | repo: {git_url[:60]}... | tasks: {len(repo_tasks)}")
+        logger.info(f"start submit verification jobs | repo: {git_url[:60]}... | tasks: {len(repo_tasks)}")
 
-        # Step 1: 批量查询所有关联任务状态（避免 N+1 查询）
+        # Step 1: query task status( N+1 query)
         related_task_ids = set()
         for task in repo_tasks:
             j_field = task.get('j', {})
@@ -246,13 +306,13 @@ class SuccessTaskValidator(VerificationConsumer):
             if related_task_id:
                 related_task_ids.add(str(related_task_id))
 
-        # 批量查询
+        # query
         related_tasks_map = {}
         if related_task_ids:
             try:
                 ids_str = ','.join(related_task_ids)
                 batch_query = f"""
-                    SELECT id, bisect_status, first_bad_commit
+                    SELECT id, bisect_status, first_bad_commit, git_url
                     FROM bisect
                     WHERE id IN ({ids_str})
                 """
@@ -262,11 +322,11 @@ class SuccessTaskValidator(VerificationConsumer):
                     for result in batch_results:
                         related_tasks_map[str(result['id'])] = result
 
-                    logger.info(f"批量查询了 {len(related_task_ids)} 个关联任务 | 找到: {len(related_tasks_map)} 个")
+                    logger.info(f"query {len(related_task_ids)} task | : {len(related_tasks_map)} ")
             except Exception as e:
-                logger.error(f"批量查询关联任务失败: {str(e)}")
+                logger.error(f"query related tasks failed: {str(e)}")
 
-        # Step 2: 筛选可提交的任务
+        # Step 2: submit task
         tasks_to_submit = []
         first_bad_job_id = None
 
@@ -281,17 +341,17 @@ class SuccessTaskValidator(VerificationConsumer):
             if isinstance(j_field, str):
                 j_field = json.loads(j_field)
 
-            # 检查是否已经提交过
+            # checksubmit
             verification_jobs = j_field.get('verification_jobs', {})
             if verification_jobs and verification_jobs.get('status') in ['submitted', 'timeout']:
                 skipped_count += 1
-                logger.debug(f"验证作业已提交，跳过 | task_id: {task_id}")
+                logger.debug(f"verification job already submitted, skip | task_id: {task_id}")
                 continue
 
-            # 获取关联任务信息
+            # gettask
             related_task_id = j_field.get('related_task_id')
             if not related_task_id:
-                logger.warning(f"verifying 任务缺少 related_task_id | ID: {task_id}")
+                logger.warning(f"pending verification task missing related_task_id | ID: {task_id}")
                 failed_count += 1
                 continue
 
@@ -299,26 +359,42 @@ class SuccessTaskValidator(VerificationConsumer):
             if not related_task:
                 related_task = self._get_related_task(str(related_task_id))
                 if not related_task:
-                    logger.warning(f"关联任务不存在 | ID: {task_id} | related: {related_task_id}")
+                    logger.warning(f"tasknot found | ID: {task_id} | related: {related_task_id}")
                     failed_count += 1
                     continue
 
             related_status = related_task.get('bisect_status')
 
             if related_status == 'failed':
-                logger.warning(f"关联任务已失败，跳过 | ID: {task_id} | related: {related_task_id}")
+                logger.warning(f"taskfailed, skip | ID: {task_id} | related: {related_task_id}")
                 self._mark_task_failed(task_id, related_task_id, "related_task_failed")
                 failed_count += 1
                 continue
 
             if related_status != 'success':
-                logger.debug(f"关联任务未成功，跳过 | ID: {task_id} | related: {related_task_id} | status: {related_status}")
+                logger.debug(f"tasksuccess, skip | ID: {task_id} | related: {related_task_id} | status: {related_status}")
                 skipped_count += 1
+                continue
+
+            # Safety guard: verification task and related successful task must use the same repo.
+            related_git_url = (related_task.get('git_url') or '').strip()
+            current_git_url = (git_url or '').strip()
+            if related_git_url and current_git_url and related_git_url != current_git_url:
+                reason = (
+                    f"related_task_repo_mismatch: current={current_git_url[:80]} "
+                    f"related={related_git_url[:80]}"
+                )
+                logger.error(
+                    f"repo mismatch, skip verification submit | "
+                    f"task_id: {task_id} | related_task_id: {related_task_id} | {reason}"
+                )
+                self._mark_task_failed(task_id, related_task_id, reason)
+                failed_count += 1
                 continue
 
             first_bad_commit = related_task.get('first_bad_commit')
             if not first_bad_commit:
-                logger.warning(f"关联任务缺少 first_bad_commit | ID: {task_id} | related: {related_task_id}")
+                logger.warning(f"task first_bad_commit | ID: {task_id} | related: {related_task_id}")
                 failed_count += 1
                 continue
 
@@ -331,15 +407,15 @@ class SuccessTaskValidator(VerificationConsumer):
             })
 
         logger.info(
-            f"任务筛选完成 | 可提交: {len(tasks_to_submit)} | "
-            f"跳过: {skipped_count} | 失败: {failed_count}"
+            f"taskcompleted | submit: {len(tasks_to_submit)} | "
+            f"skip: {skipped_count} | failed: {failed_count}"
         )
 
         if not tasks_to_submit:
             return {'submitted': 0, 'failed': failed_count}
 
-        # Step 3: 循环提交所有任务（通过 API 获取父提交，无需 clone 仓库）
-        logger.info(f"开始循环提交 {len(tasks_to_submit)} 个任务（通过 CommitTimeService API 获取父提交）")
+        # Step 3: submit task( API getsubmit,  clone repo)
+        logger.info(f"startsubmit {len(tasks_to_submit)} task( CommitTimeService API getsubmit)")
 
         for task_info in tasks_to_submit:
             task_id = task_info['task_id']
@@ -349,39 +425,48 @@ class SuccessTaskValidator(VerificationConsumer):
             related_task_id = task_info.get('related_task_id', '')
 
             try:
-                # 提交验证作业（通过 API 获取父提交）
+                # submitverification job( API getsubmit)
                 result = self._submit_verification_jobs_with_shared_repo(
                     task_id=task_id,
                     bad_job_id=bad_job_id,
                     first_bad_commit=first_bad_commit,
                     git_url=git_url,
                     error_id=error_id,
-                    repo_dir=""  # 不再使用，保留参数以兼容接口
+                    repo_dir=""  # , 
                 )
 
-                if result.get('status') == 'success':
+                status = result.get('status')
+                if status == 'success':
                     submitted_count += 1
                     logger.info(
-                        f"✓ 验证作业已提交 | task_id: {task_id} | "
+                        f"[OK] verification job already submitted | task_id: {task_id} | "
                         f"parent_job: {result['parent_job_id']} | "
                         f"candidate_job: {result['candidate_job_id']}"
                     )
+                elif status == 'retry':
+                    skipped_count += 1
+                    error = result.get('error', '')
+                    logger.warning(
+                        f"[RETRY] defer verification submit | task_id: {task_id} | "
+                        f"reason: {error}"
+                    )
+                    self._schedule_verification_retry(task_id, related_task_id, error)
                 else:
                     failed_count += 1
                     error = result.get('error', '')
-                    logger.error(f"✗ 提交验证作业失败 | task_id: {task_id} | error: {error}")
-                    # 标记任务失败，避免重复尝试
+                    logger.error(f"[ERR] submitverification jobfailed | task_id: {task_id} | error: {error}")
+                    # taskfailed, duplicate
                     self._mark_task_failed(task_id, related_task_id, f"verification_submit_failed: {error}")
 
             except Exception as e:
                 failed_count += 1
-                logger.error(f"✗ 提交验证作业异常 | task_id: {task_id} | error: {str(e)}")
+                logger.error(f"[ERR] submitverification jobexception | task_id: {task_id} | error: {str(e)}")
                 logger.error(traceback.format_exc())
-                # 标记任务失败，避免重复尝试
+                # taskfailed, duplicate
                 self._mark_task_failed(task_id, related_task_id, f"verification_submit_exception: {str(e)}")
 
         logger.info(
-            f"批量提交完成 | repo: {git_url[:60]}... | "
+            f"submitcompleted | repo: {git_url[:60]}... | "
             f"submitted: {submitted_count} | failed: {failed_count} | skipped: {skipped_count}"
         )
 
@@ -392,15 +477,15 @@ class SuccessTaskValidator(VerificationConsumer):
         git_url: str, error_id: str, repo_dir: str
     ) -> Dict:
         """
-        使用共享仓库提交验证作业（不重复克隆）
+        Submit verification jobs using shared repo (no duplicate clone)
 
         Args:
-            task_id: 任务 ID
-            bad_job_id: 坏作业 ID
-            first_bad_commit: 候选 commit
-            git_url: 仓库 URL
-            error_id: 错误 ID
-            repo_dir: 共享仓库目录（保留参数以保持接口兼容，但不再使用）
+            task_id: task ID
+            bad_job_id: job ID
+            first_bad_commit:  commit
+            git_url: repo URL
+            error_id: error ID
+            repo_dir: repo(, )
 
         Returns:
             {'status': 'success', 'parent_job_id': xxx, 'candidate_job_id': xxx}
@@ -409,30 +494,30 @@ class SuccessTaskValidator(VerificationConsumer):
             current_time = int(time.time())
 
             logger.info(
-                f"提交验证作业 | task_id: {task_id} | "
+                f"submitverification job | task_id: {task_id} | "
                 f"candidate: {first_bad_commit[:12]} | git_url: {git_url[:60]}..."
             )
 
-            # 通过 CommitTimeService API 获取父提交（无需 clone 仓库）
+            #  CommitTimeService API getsubmit( clone repo)
             parent_commit = self.commit_time_client.get_parent_commit(git_url, first_bad_commit)
 
             if not parent_commit:
                 error_msg = f"failed_to_get_parent_commit_via_api: commit={first_bad_commit[:12]}"
-                logger.error(f"通过 API 获取父提交失败 | task_id: {task_id} | commit: {first_bad_commit[:12]}")
+                logger.error(f" API getsubmitfailed | task_id: {task_id} | commit: {first_bad_commit[:12]}")
                 return {
-                    'status': 'failed',
+                    'status': 'retry',
                     'task_id': task_id,
                     'error': error_msg
                 }
 
-            logger.debug(f"父提交获取成功（via API）| parent: {parent_commit[:12]}")
+            logger.debug(f"submitgetsuccess(via API)| parent: {parent_commit[:12]}")
 
-            # 使用 GitBisect 实例提交验证作业
-            # 1. 提交父提交验证作业
+            #  GitBisect instancesubmitverification job
+            # 1. submitsubmitverification job
             try:
                 job_config_parent = self.bisect_instance.init_job_content(bad_job_id)
 
-                # 替换commit为父提交
+                # commitsubmit
                 if 'ss' in job_config_parent and 'linux' in job_config_parent['ss']:
                     job_config_parent['ss']['linux']['commit'] = parent_commit
                 elif 'program' in job_config_parent and 'makepkg' in job_config_parent['program']:
@@ -441,17 +526,17 @@ class SuccessTaskValidator(VerificationConsumer):
                     return {'status': 'failed', 'error': 'unrecognized_job_structure'}
 
                 parent_job_id, parent_result_root, *_ = self.bisect_instance.submit_job(job_config_parent)
-                logger.debug(f"父提交作业已提交 | job_id: {parent_job_id} | commit: {parent_commit[:12]}")
+                logger.debug(f"job submitted | job_id: {parent_job_id} | commit: {parent_commit[:12]}")
 
             except Exception as e:
-                logger.error(f"提交父提交作业失败 | error: {str(e)}")
+                logger.error(f"submit job failed | error: {str(e)}")
                 return {'status': 'failed', 'error': f'submit_parent_failed: {str(e)}'}
 
-            # 2. 提交候选提交验证作业
+            # 2. submitsubmitverification job
             try:
                 job_config_candidate = self.bisect_instance.init_job_content(bad_job_id)
 
-                # 替换commit为候选提交
+                # commitsubmit
                 if 'ss' in job_config_candidate and 'linux' in job_config_candidate['ss']:
                     job_config_candidate['ss']['linux']['commit'] = first_bad_commit
                 elif 'program' in job_config_candidate and 'makepkg' in job_config_candidate['program']:
@@ -460,16 +545,30 @@ class SuccessTaskValidator(VerificationConsumer):
                     return {'status': 'failed', 'error': 'unrecognized_job_structure'}
 
                 candidate_job_id, candidate_result_root, *_ = self.bisect_instance.submit_job(job_config_candidate)
-                logger.debug(f"候选提交作业已提交 | job_id: {candidate_job_id} | commit: {first_bad_commit[:12]}")
+                logger.debug(f"job submitted | job_id: {candidate_job_id} | commit: {first_bad_commit[:12]}")
 
             except Exception as e:
-                logger.error(f"提交候选提交作业失败 | error: {str(e)}")
+                logger.error(f"submit job failed | error: {str(e)}")
                 return {'status': 'failed', 'error': f'submit_candidate_failed: {str(e)}'}
 
-            # 3. 保存作业信息到数据库
+            # 3. job
+            existing_j = {}
+            try:
+                task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                if task_row:
+                    existing_j = task_row[0].get('j', {}) or {}
+                    if isinstance(existing_j, str):
+                        existing_j = json.loads(existing_j) if existing_j else {}
+            except Exception:
+                pass
+
             update_doc = {
+                "bisect_status": "verifying",
                 "updated_at": current_time,
                 "j": {
+                    **existing_j,
+                    "verification_status": "submitted",
+                    "verification_submit_retry_count": existing_j.get('verification_submit_retry_count', 0),
                     "verification_jobs": {
                         "status": "submitted",
                         "parent_job_id": parent_job_id,
@@ -496,17 +595,17 @@ class SuccessTaskValidator(VerificationConsumer):
             }
 
         except Exception as e:
-            logger.error(f"提交验证作业异常 | task_id: {task_id} | error: {str(e)}")
+            logger.error(f"submitverification jobexception | task_id: {task_id} | error: {str(e)}")
             logger.error(traceback.format_exc())
             return {'status': 'failed', 'error': str(e)}
 
     def _reset_tasks_to_wait(self, task_ids: List[int], reason: str):
         """
-        批量将任务重置为 wait 状态
+        taskreset wait status
 
         Args:
-            task_ids: 任务ID列表
-            reason: 重置原因
+            task_ids: taskIDlist
+            reason: resetreason
         """
         if not task_ids:
             return
@@ -523,7 +622,6 @@ class SuccessTaskValidator(VerificationConsumer):
                     if task_row:
                         existing_j = task_row[0].get('j', {}) or {}
                         if isinstance(existing_j, str):
-                            import json
                             existing_j = json.loads(existing_j) if existing_j else {}
                 except Exception:
                     pass
@@ -539,12 +637,12 @@ class SuccessTaskValidator(VerificationConsumer):
                 self.client.update("bisect", task_id, reset_doc)
                 reset_count += 1
             except Exception as e:
-                logger.error(f"重置任务为 wait 失败 | task_id: {task_id} | error: {str(e)}")
+                logger.error(f"resettask wait failed | task_id: {task_id} | error: {str(e)}")
 
-        logger.info(f"已重置 {reset_count}/{len(task_ids)} 个任务为 wait | reason: {reason}")
+        logger.info(f"reset {reset_count}/{len(task_ids)} task wait | reason: {reason}")
 
     def _mark_task_failed(self, task_id: int, related_task_id: str, reason: str):
-        """标记任务失败（辅助方法）"""
+        """taskfailed()"""
         try:
             current_time = int(time.time())
             fail_doc = {
@@ -559,23 +657,74 @@ class SuccessTaskValidator(VerificationConsumer):
             }
             self.client.update("bisect", task_id, fail_doc)
         except Exception as e:
-            logger.error(f"标记任务失败异常 | task_id: {task_id} | error: {str(e)}")
+            logger.error(f"mark task failed exception | task_id: {task_id} | error: {str(e)}")
+
+    def _schedule_verification_retry(self, task_id: int, related_task_id: str, reason: str):
+        """Schedule verification submit retry with simple exponential backoff."""
+        try:
+            current_time = int(time.time())
+            existing_j = {}
+            try:
+                task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
+                if task_row:
+                    existing_j = task_row[0].get('j', {}) or {}
+                    if isinstance(existing_j, str):
+                        existing_j = json.loads(existing_j) if existing_j else {}
+            except Exception:
+                pass
+
+            retry_count = int(existing_j.get('verification_submit_retry_count', 0) or 0) + 1
+            # 5m, 10m, 20m ... cap at 1h
+            backoff_seconds = min(3600, 300 * (2 ** (retry_count - 1)))
+            next_retry_at = current_time + backoff_seconds
+
+            verification_jobs = existing_j.get('verification_jobs', {})
+            if not isinstance(verification_jobs, dict):
+                verification_jobs = {}
+            verification_jobs.update({
+                "status": "retry_pending",
+                "failure_reason": reason,
+                "retry_count": retry_count,
+                "last_retry_at": current_time,
+                "next_retry_at": next_retry_at
+            })
+
+            retry_doc = {
+                "bisect_status": "pending_verification",
+                "updated_at": current_time,
+                "j": {**existing_j,
+                    "related_task_id": str(related_task_id),
+                    "verification_status": "retry_pending",
+                    "verification_submit_last_error": reason,
+                    "verification_submit_retry_count": retry_count,
+                    "verification_submit_last_retry_at": current_time,
+                    "verification_submit_next_retry_at": next_retry_at,
+                    "verification_jobs": verification_jobs
+                }
+            }
+            self.client.update("bisect", task_id, retry_doc)
+            logger.info(
+                f"scheduled verification retry | task_id: {task_id} | "
+                f"retry_count: {retry_count} | next_retry_in: {backoff_seconds}s"
+            )
+        except Exception as e:
+            logger.error(f"schedule verification retry failed | task_id: {task_id} | error: {str(e)}")
 
     def check_verification_results_once(self, repo_manager=None, limit: int = 500, timeout_hours: int = 24):
         """
-        单次检查验证作业结果（无循环，适合在外部循环中调用）
+        checkverification job(, )
 
         Args:
-            repo_manager: SharedRepoManager 实例，用于文件路径关联性检查
-            limit: 每次检查的最大任务数
-            timeout_hours: 验证作业超时时间（小时），默认 24 小时
+            repo_manager: SharedRepoManager instance, filecheck
+            limit: checktask
+            timeout_hours: verification jobtimeout(), default 24 
 
         Returns:
-            dict: 处理统计 {'checked': N, 'completed': N, 'failed': N, 'timeout': N, 'waiting': N, 'skipped': N}
+            dict: stats {'checked': N, 'completed': N, 'failed': N, 'timeout': N, 'waiting': N, 'skipped': N}
         """
         errid_intelligence = ErridIntelligence()
         try:
-            # 查询所有待检查的验证作业（排除已完成和已失败的）
+            # query verification jobs (exclude completed/failed)
             query = f"""
                 SELECT id, j, bisect_status, updated_at
                 FROM bisect
@@ -591,10 +740,10 @@ class SuccessTaskValidator(VerificationConsumer):
             pending_jobs = self.client.sql_select(query)
 
             if not pending_jobs:
-                logger.debug("无待检查的验证作业")
+                logger.debug("checkverification job")
                 return {'checked': 0, 'completed': 0, 'failed': 0, 'timeout': 0, 'waiting': 0, 'skipped': 0}
 
-            logger.info(f"检查 {len(pending_jobs)} 个验证作业")
+            logger.info(f"check {len(pending_jobs)} verification job")
 
             current_time = int(time.time())
             timeout_seconds = timeout_hours * 3600
@@ -619,18 +768,18 @@ class SuccessTaskValidator(VerificationConsumer):
                         skipped_count += 1
                         continue
 
-                    # 检查是否超时（使用 submit_time，如果不存在则使用 updated_at 作为兜底）
+                    # checktimeout( submit_time, not found updated_at )
                     submitted_time = verification_jobs.get('submit_time')
                     if not submitted_time:
                         submitted_time = job.get('updated_at', 0)
 
                     if submitted_time and (current_time - submitted_time) > timeout_seconds:
-                        logger.warning(f"验证作业超时 | task_id: {task_id} | 已等待: {(current_time - submitted_time)/3600:.1f} 小时")
+                        logger.warning(f"verification jobtimeout | task_id: {task_id} | : {(current_time - submitted_time)/3600:.1f} ")
                         self.mark_verification_timeout(task_id, reason="timeout_exceeded")
                         timeout_count += 1
                         continue
 
-                    # 检查作业状态
+                    # Check verification job status.
                     parent_job_id = verification_jobs.get('parent_job_id')
                     candidate_job_id = verification_jobs.get('candidate_job_id')
                     parent_result_root = verification_jobs.get('parent_result_root')
@@ -638,7 +787,7 @@ class SuccessTaskValidator(VerificationConsumer):
                     error_id = verification_jobs.get('error_id', '')
 
                     if not parent_job_id or not candidate_job_id:
-                        logger.warning(f"验证作业缺少 job_id | task_id: {task_id} | 标记为 wait")
+                        logger.warning(f"verification job missing job_id | task_id: {task_id} | requeue pending_verification")
 
                         # Mark as wait, return to queue for reprocessing
                         # Preserve existing j field (commit info) while clearing verification state
@@ -648,7 +797,6 @@ class SuccessTaskValidator(VerificationConsumer):
                             if task_row:
                                 existing_j = task_row[0].get('j', {}) or {}
                                 if isinstance(existing_j, str):
-                                    import json
                                     existing_j = json.loads(existing_j) if existing_j else {}
                                 # Remove old verification keys but keep commit info
                                 for vk in ('verification_status', 'verification_jobs', 'verification_passed'):
@@ -656,16 +804,19 @@ class SuccessTaskValidator(VerificationConsumer):
                         except Exception:
                             pass
                         reset_doc = {
-                            "bisect_status": "wait",
+                            "bisect_status": "pending_verification",
                             "updated_at": current_time,
-                            "j": existing_j
+                            "j": {
+                                **existing_j,
+                                "verification_status": "pending",
+                            }
                         }
 
                         self.client.update("bisect", task_id, reset_doc)
                         failed_count += 1
                         continue
 
-                    # 使用 GitBisect 实例检查作业状态
+                    # Check status via GitBisect instance.
                     parent_stats, parent_health = self.bisect_instance._poll_job_stats(
                         parent_job_id, parent_result_root
                     )
@@ -679,123 +830,146 @@ class SuccessTaskValidator(VerificationConsumer):
                     parent_status = None
                     candidate_status = None
 
-                    # 两个作业都已完成，分析结果
+                    # jobcompleted, 
                     if (parent_completed and candidate_completed):
-                        logger.info(f"验证作业已完成 | task_id: {task_id} | 开始分析结果")
+                        logger.info(f"verification jobcompleted | task_id: {task_id} | start")
 
-                        # 检查父提交和候选提交的错误状态
+                        # checksubmitsubmiterrorstatus
                         parent_bad_job = self.bisect_instance.init_job_content(parent_job_id)
                         self.bisect_instance.is_build_task = self.bisect_instance._detect_build_task(parent_bad_job)
-                        # _check_error_id 返回 (status, certainty, reason) 元组
+                        # _check_error_id  (status, certainty, reason) 
                         parent_status, _, _ = self.bisect_instance._check_error_id(parent_stats, error_id, parent_health, parent_result_root)
                         candidate_status, _, _ = self.bisect_instance._check_error_id(candidate_stats, error_id, candidate_health, candidate_result_root)
 
                         verification_passed = (parent_status == 'good' and candidate_status == 'bad')
                         logger.info(
-                            f"验证结果 | task_id: {task_id} | "
+                            f"verify | task_id: {task_id} | "
                             f"parent: {parent_status} | candidate: {candidate_status} | "
                             f"passed: {verification_passed}"
                         )
                     elif not parent_completed or not candidate_completed:
-                        # 作业未完成，检查是否作业丢失（health 为 'job_not_found' 或 None 超过一定时间）
-                        # 如果已经超过 6 小时且作业仍未找到，认为作业丢失
+                        # jobcompleted, checkjob(health  'job_not_found'  None )
+                        #  6 job, job
                         job_lost = False
                         lost_reason = ""
+                        terminal_failure = False
+                        terminal_reason = ""
+
+                        parent_health_norm = str(parent_health or '').strip().lower()
+                        candidate_health_norm = str(candidate_health or '').strip().lower()
+
+                        # Batch verification should actively close terminal failed jobs
+                        # instead of waiting for the global timeout window.
+                        if (self._is_terminal_failed_health(parent_health_norm) or
+                                self._is_terminal_failed_health(candidate_health_norm)):
+                            terminal_failure = True
+                            terminal_reason = (
+                                f"terminal_job_health(parent={parent_health_norm or 'unknown'},"
+                                f"candidate={candidate_health_norm or 'unknown'})"
+                            )
 
                         if parent_health == 'job_not_found' or candidate_health == 'job_not_found':
-                            # 检查提交时间，如果超过 6 小时还是 job_not_found，认为丢失
+                            # checksubmit,  6  job_not_found, 
                             submit_time = verification_jobs.get('submit_time', 0)
                             if submit_time and (current_time - submit_time) > 6 * 3600:
                                 job_lost = True
                                 lost_reason = f"job_not_found_after_6h (parent: {parent_health}, candidate: {candidate_health})"
 
+                        if terminal_failure:
+                            logger.warning(
+                                f"verification job terminal failure | task_id: {task_id} | reason: {terminal_reason}"
+                            )
+                            self.mark_verification_timeout(task_id, reason=terminal_reason)
+                            timeout_count += 1
+                            continue
+
                         if job_lost:
-                            logger.warning(f"验证作业丢失 | task_id: {task_id} | reason: {lost_reason}")
+                            logger.warning(f"verification job | task_id: {task_id} | reason: {lost_reason}")
                             self.mark_verification_timeout(task_id, reason=lost_reason)
                             timeout_count += 1
                             continue
 
-                        # 正常等待
+                        # 
                         waiting_count += 1
                         logger.debug(
-                            f"验证作业未完成 | task_id: {task_id} | "
+                            f"verification jobcompleted | task_id: {task_id} | "
                             f"parent_completed: {parent_completed} | candidate_completed: {candidate_completed}"
                         )
                         continue
 
                     if verification_passed:
-                        # 验证成功：计算 errid diff 并标记为已验证
+                        # verification success:  errid diff verify
                         introduced_errids = self.calculate_errid_diff(
                             parent_job_id, candidate_job_id
                         )
 
                         logger.info(
-                            f"errid diff 计算完成 | task_id: {task_id} | "
+                            f"errid diff completed | task_id: {task_id} | "
                             f"introduced_errids: {len(introduced_errids)}"
                         )
 
-                        # 获取 first_bad_commit
+                        # get first_bad_commit
                         first_bad_commit = verification_jobs.get('candidate_commit', '')
                         parent_commit = verification_jobs.get('parent_commit', '')
 
-                        # 添加 git 验证检查（增强置信度）
+                        #  git verifycheck()
                         git_verification = None
                         if repo_manager and error_id and self.bisect_instance.is_build_task and introduced_errids:
-                            repo_dir = None  # 用于 finally 清理
+                            repo_dir = None  #  finally 
                             try:
-                                # 获取仓库目录（复用提交作业时的仓库）
+                                # Acquire repo workspace used by submission jobs.
                                 git_url = verification_jobs.get('git_url', '')
 
                                 if git_url and parent_commit and first_bad_commit:
-                                    # 获取共享仓库
+                                    # getrepo
                                     repo_dir, _ = repo_manager.get_repo_dir(
                                         f"verify_{task_id}",
                                         parent_job_id,
                                         git_url
                                     )
 
-                                    # 临时设置 work_dir 和 error_id 以使用 _verify_errids_with_git
+                                    #  work_dir  error_id  _verify_errids_with_git
                                     old_work_dir = self.bisect_instance.work_dir
                                     old_error_id = self.bisect_instance.error_id
                                     self.bisect_instance.work_dir = repo_dir
                                     self.bisect_instance.error_id = error_id
 
                                     try:
-                                        # 使用 git 验证错误 ID
+                                        #  git verifyerror ID
                                         git_verification = self.bisect_instance._verify_errids_with_git(
                                             parent_commit, first_bad_commit, introduced_errids
                                         )
 
                                         logger.info(
-                                            f"git 验证完成 | task_id: {task_id} | "
+                                            f"git verifycompleted | task_id: {task_id} | "
                                             f"verified: {git_verification['verified']} | "
                                             f"confidence: {git_verification['confidence']} | "
                                             f"need_human_judgment: {git_verification['need_human_judgment']} | "
                                             f"reason: {git_verification['reason']}"
                                         )
                                     finally:
-                                        # 恢复 work_dir 和 error_id
+                                        #  work_dir  error_id
                                         self.bisect_instance.work_dir = old_work_dir
                                         self.bisect_instance.error_id = old_error_id
                             except Exception as e:
-                                logger.warning(f"git 验证异常 | task_id: {task_id} | error: {str(e)}")
+                                logger.warning(f"git verifyexception | task_id: {task_id} | error: {str(e)}")
                             finally:
-                                # 清理仓库目录
+                                # repo
                                 if repo_dir and repo_manager:
                                     try:
                                         repo_manager.release_repo_dir(repo_dir)
-                                        logger.debug(f"已清理 git 验证仓库 | task_id: {task_id}")
+                                        logger.debug(f" git verifyrepo | task_id: {task_id}")
                                     except Exception as e:
-                                        logger.warning(f"清理 git 验证仓库失败 | task_id: {task_id} | error: {str(e)}")
+                                        logger.warning(f" Git verification repo cleanup failed | task_id: {task_id} | error: {str(e)}")
 
-                        # 标记为已验证
+                        # verify
                         update_doc = {
                             "updated_at": current_time,
                             "bisect_status": "success",
                             "first_bad_commit": first_bad_commit,
                             "first_bad_id": candidate_job_id,
                             "first_result_root": candidate_result_root,
-                            "last_error": "",  # 清空之前的错误信息
+                            "last_error": "",  # error
                             "j": {
                                 "verification_status": "verified",
                                 "verified_at": current_time,
@@ -803,9 +977,9 @@ class SuccessTaskValidator(VerificationConsumer):
                                 "parent_job_id": parent_job_id,
                                 "candidate_job_id": candidate_job_id,
                                 "verification_method": "batch_async_validation",
-                                "job_request_count": 2,  # 验证只用了2个job
-                                "is_result_reused": True, # 明确标记这是结果复用
-                                "job_reused_rate": 1.0,   # 标记为完全复用
+                                "job_request_count": 2,  # verify2job
+                                "is_result_reused": True, # 
+                                "job_reused_rate": 1.0,   # 
                                 "verification_jobs": {
                                     "status": "completed",
                                     "completed_at": current_time
@@ -813,7 +987,7 @@ class SuccessTaskValidator(VerificationConsumer):
                             }
                         }
 
-                        # 添加 git 验证结果（如果有）
+                        #  git verify()
                         if git_verification:
                             update_doc["j"]["git_verification"] = {
                                 "verified": git_verification.get("verified"),
@@ -825,9 +999,9 @@ class SuccessTaskValidator(VerificationConsumer):
                             }
 
                         self.client.update("bisect", task_id, update_doc)
-                        logger.info(f"任务已标记为已验证 | task_id: {task_id}")
+                        logger.info(f"task verification | task_id: {task_id}")
 
-                        # 写入 regression 表
+                        #  regression 
                         try:
                             task_query = f"SELECT * FROM bisect WHERE id = {task_id} LIMIT 1"
                             task_results = self.client.sql_select(task_query)
@@ -838,9 +1012,9 @@ class SuccessTaskValidator(VerificationConsumer):
                                     full_task['first_bad_commit'] = first_bad_commit
 
                                 write_regression_record(self.client, full_task, first_bad_commit)
-                                logger.info(f"Regression 记录已写入 | task_id: {task_id}")
+                                logger.info(f"Regression  | task_id: {task_id}")
 
-                                # 标记相似任务
+                                # task
                                 mark_similar_wait_tasks_for_verification(
                                     self.client,
                                     errid_intelligence,
@@ -851,12 +1025,12 @@ class SuccessTaskValidator(VerificationConsumer):
                                     full_task
                                 )
                         except Exception as e:
-                            logger.error(f"Regression 写入异常 | task_id: {task_id} | error: {str(e)}")
+                            logger.error(f"Regression exception | task_id: {task_id} | error: {str(e)}")
 
                         completed_count += 1
 
                     else:
-                        # 验证失败
+                        # verification failed
                         reason = f"boundary_check_failed_parent_{parent_status}_candidate_{candidate_status}"
 
                         # Merge verification failure into existing j (preserve commit info)
@@ -866,7 +1040,6 @@ class SuccessTaskValidator(VerificationConsumer):
                             if task_row:
                                 existing_j = task_row[0].get('j', {}) or {}
                                 if isinstance(existing_j, str):
-                                    import json
                                     existing_j = json.loads(existing_j) if existing_j else {}
                         except Exception:
                             pass
@@ -890,16 +1063,16 @@ class SuccessTaskValidator(VerificationConsumer):
                         }
 
                         self.client.update("bisect", task_id, update_doc)
-                        logger.info(f"任务已标记为验证失败 | task_id: {task_id} | reason: {reason}")
+                        logger.info(f"taskverification failed | task_id: {task_id} | reason: {reason}")
                         failed_count += 1
 
                 except Exception as e:
-                    logger.error(f"检查验证作业失败 | task_id: {task_id} | error: {str(e)}")
+                    logger.error(f"checkverification jobfailed | task_id: {task_id} | error: {str(e)}")
                     logger.error(traceback.format_exc())
                     skipped_count += 1
 
             logger.info(
-                f"验证作业检查完成 | total: {len(pending_jobs)} | "
+                f"verification jobcheckcompleted | total: {len(pending_jobs)} | "
                 f"completed: {completed_count} | failed: {failed_count} | "
                 f"timeout: {timeout_count} | waiting: {waiting_count} | skipped: {skipped_count}"
             )
@@ -914,69 +1087,120 @@ class SuccessTaskValidator(VerificationConsumer):
             }
 
         except Exception as e:
-            logger.error(f"检查验证结果失败: {str(e)}")
+            logger.error(f"checkverification failed: {str(e)}")
             logger.error(traceback.format_exc())
             return {'checked': 0, 'completed': 0, 'failed': 0, 'timeout': 0, 'waiting': 0, 'skipped': 0}
 
     def mark_verification_timeout(self, task_id: int, reason: str = "timeout"):
-        """标记验证作业超时，重置为 wait 状态重新走 bisect 流程
+        """Handle verification timeout with bounded retry before rebisect.
 
         Args:
-            task_id: 任务 ID
-            reason: 超时原因（默认 'timeout'，也可能是 'job_not_found_after_6h' 等）
+            task_id: task ID
+            reason: timeoutreason(default 'timeout',  'job_not_found_after_6h' )
         """
         try:
             current_time = int(time.time())
-
-            # 先查询当前的超时次数
-            current_timeout_count = 0
-            try:
-                query = f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1"
-                results = self.client.sql_select(query)
-                if results:
-                    j_field = results[0].get('j', {})
-                    if isinstance(j_field, str):
-                        j_field = json.loads(j_field)
-                    current_timeout_count = j_field.get('verification_timeout_count', 0)
-            except Exception as e:
-                logger.warning(f"查询超时次数失败 | task_id: {task_id} | error: {str(e)}")
-
-            new_timeout_count = current_timeout_count + 1
-
-            # Merge timeout metadata into existing j (preserve commit info)
             existing_j = {}
             try:
                 task_row = self.client.sql_select(f"SELECT j FROM bisect WHERE id = {task_id} LIMIT 1")
                 if task_row:
                     existing_j = task_row[0].get('j', {}) or {}
                     if isinstance(existing_j, str):
-                        import json
                         existing_j = json.loads(existing_j) if existing_j else {}
             except Exception:
                 pass
+
+            current_timeout_count = int(existing_j.get('verification_timeout_count', 0) or 0)
+            new_timeout_count = current_timeout_count + 1
+            max_retry = max(0, self.verification_timeout_retry_max)
+            timeout_final_action = self.verification_timeout_final_action
+
+            verification_jobs = existing_j.get('verification_jobs', {})
+            if not isinstance(verification_jobs, dict):
+                verification_jobs = {}
+
+            verification_jobs.update({
+                "status": "timeout",
+                "timeout_time": current_time,
+                "timeout_reason": reason,
+                "retry_count": new_timeout_count,
+            })
+
+            if new_timeout_count <= max_retry:
+                backoff_seconds = min(8 * 3600, 1800 * (2 ** (new_timeout_count - 1)))
+                next_retry_at = current_time + backoff_seconds
+                verification_jobs["status"] = "retry_pending"
+                verification_jobs["next_retry_at"] = next_retry_at
+
+                update_doc = {
+                    "bisect_status": "pending_verification",
+                    "updated_at": current_time,
+                    "j": {
+                        **existing_j,
+                        "verification_jobs": verification_jobs,
+                        "verification_status": "timeout_retry_pending",
+                        "verification_timeout_count": new_timeout_count,
+                        "verification_last_timeout_at": current_time,
+                        "verification_next_retry_at": next_retry_at,
+                        "last_timeout_reason": reason,
+                    }
+                }
+                self.client.update("bisect", task_id, update_doc)
+                logger.info(
+                    f"verification timeout, requeue pending_verification | task_id: {task_id} | "
+                    f"reason: {reason} | timeout_count: {new_timeout_count} | "
+                    f"next_retry_in: {backoff_seconds}s"
+                )
+                return
+
+            if timeout_final_action == 'success_unverified':
+                update_doc = {
+                    "bisect_status": "success",
+                    "updated_at": current_time,
+                    "j": {
+                        **existing_j,
+                        "verification_jobs": verification_jobs,
+                        "verification_status": "timeout_unverified",
+                        "verification_timeout_count": new_timeout_count,
+                        "verification_last_timeout_at": current_time,
+                        "last_timeout_reason": reason,
+                        "result_source": "reused_unverified",
+                        "reusable_as_verification_source": False,
+                    }
+                }
+                self.client.update("bisect", task_id, update_doc)
+                logger.warning(
+                    f"verification timeout finalized as success_unverified | task_id: {task_id} | "
+                    f"reason: {reason} | timeout_count: {new_timeout_count}"
+                )
+                return
+
             update_doc = {
                 "bisect_status": "wait",
                 "updated_at": current_time,
-                "j": {**existing_j,
-                    "verification_jobs": {
-                        "status": "timeout",
-                        "timeout_time": current_time,
-                        "timeout_reason": reason
-                    },
+                "j": {
+                    **existing_j,
+                    "verification_jobs": verification_jobs,
                     "verification_status": "timeout",
                     "verification_timeout_count": new_timeout_count,
-                    "last_timeout_reason": reason
+                    "verification_last_timeout_at": current_time,
+                    "last_timeout_reason": reason,
+                    "bisect_invalidated": True,
+                    "bisect_invalidation_reason": "verification_timeout_exhausted",
                 }
             }
 
             self.client.update("bisect", task_id, update_doc)
-            logger.info(f"验证作业超时，已重置为 wait | task_id: {task_id} | reason: {reason} | timeout_count: {new_timeout_count}")
+            logger.warning(
+                f"verification timeout exhausted, reset wait | task_id: {task_id} | "
+                f"reason: {reason} | timeout_count: {new_timeout_count}"
+            )
 
         except Exception as e:
-            logger.error(f"标记验证超时失败 | task_id: {task_id} | error: {str(e)}")
+            logger.error(f"verifytimeoutfailed | task_id: {task_id} | error: {str(e)}")
  
 def create_success_task_validator(config: Dict) -> SuccessTaskValidator:
-    """创建成功任务验证服务实例"""
+    """createsuccess taskverification serviceinstance"""
     client = ManticoreClient(
         host=config.get('manticore_host', 'localhost'),
         port=int(config.get('manticore_http_port', '9308'))
@@ -985,8 +1209,8 @@ def create_success_task_validator(config: Dict) -> SuccessTaskValidator:
 
 
 if __name__ == '__main__':
-    """测试验证服务"""
-    # 配置
+    """testverification service"""
+    # config
     config = {
         'manticore_host': os.environ.get('MANTICORE_HOST', 'localhost'),
         'manticore_http_port': os.environ.get('MANTICORE_HTTP_PORT', '9308'),
@@ -996,12 +1220,10 @@ if __name__ == '__main__':
         'parallel_verification_jobs': 2
     }
 
-    # 创建验证服务
+    # createverification service
     validator = create_success_task_validator(config)
 
-    # 运行一次验证周期
+    # run onceverify
     stats = validator.run_validation_cycle()
 
-    logger.info(f"验证完成 | 统计: {stats}")
-
-
+    logger.info(f"verifycompleted | stats: {stats}")

@@ -258,6 +258,13 @@ class TestServiceIsAncestorEndpoint(unittest.TestCase):
         self.assertEqual(result['status'], 'error')
         self.assertIn('git error', result['error'])
 
+    def test_check_ancestor_unknown_returns_structured_error(self):
+        self.service.query.is_ancestor.return_value = None
+        result = self.service.check_ancestor('http://repo', 'aaa', 'bbb')
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result.get('error_code'), 'unable_to_determine_ancestor')
+        self.assertTrue(result.get('retryable'))
+
 
 class TestServiceBatchIsAncestor(unittest.TestCase):
     """Tests for CommitTimeService.batch_check_ancestor"""

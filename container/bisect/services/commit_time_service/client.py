@@ -4,7 +4,7 @@
 """
 Commit Time Service Client
 
-用于 bisect_producer 等客户端的简单封装
+ bisect_producer 
 """
 
 import requests
@@ -12,29 +12,29 @@ from typing import Optional, Dict, Tuple, List, Set
 
 
 class CommitTimeClient:
-    """Commit 时间服务客户端"""
+    """Commit service"""
 
     def __init__(self, service_url: str = 'http://localhost:8765', timeout: int = 120):
         """
-        初始化客户端
+        initialize
 
         Args:
-            service_url: 服务地址
-            timeout: 请求超时时间（秒）
+            service_url: service
+            timeout: timeout（）
         """
         self.service_url = service_url.rstrip('/')
         self.timeout = timeout
 
     def get_commit_info(self, git_url: str, commit_hash: str) -> Optional[Dict]:
         """
-        获取 commit 详细信息
+        get commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
 
         Returns:
-            Commit 信息字典，查询失败返回 None
+            Commit dict，queryfailed None
         """
         try:
             response = requests.get(
@@ -51,23 +51,23 @@ class CommitTimeClient:
             return None
 
         except Exception as e:
-            # 静默失败，返回 None
+            # failed， None
             return None
 
     def check_commit_age(self, git_url: str, commit_hash: str,
                         max_age_days: int = 365) -> Tuple[Optional[bool], Optional[int]]:
         """
-        检查 commit 是否超过指定天数
+        check commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
-            max_age_days: 最大天数阈值
+            max_age_days: 
 
         Returns:
             (is_too_old, age_days)
-            - is_too_old: True 表示超过阈值，None 表示查询失败
-            - age_days: 实际天数，查询失败时为 None
+            - is_too_old: True ，None queryfailed
+            - age_days: ，queryfailed None
         """
         try:
             response = requests.get(
@@ -88,26 +88,26 @@ class CommitTimeClient:
             return (None, None)
 
         except Exception as e:
-            # 静默失败
+            # failed
             return (None, None)
 
     def is_commit_too_old(self, git_url: str, commit_hash: str,
                           max_age_days: int = 365) -> bool:
         """
-        简单检查：commit 是否过旧（用于 producer 过滤）
+        check：commit （ producer ）
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
-            max_age_days: 最大天数阈值
+            max_age_days: 
 
         Returns:
-            True: commit 太旧应该过滤
-            False: commit 可以使用或查询失败（降级策略）
+            True: commit 
+            False: commit queryfailed（）
         """
         is_old, age = self.check_commit_age(git_url, commit_hash, max_age_days)
 
-        # 降级策略：查询失败时不过滤
+        # ：queryfailed
         if is_old is None:
             return False
 
@@ -116,17 +116,17 @@ class CommitTimeClient:
     def batch_check_commits(self, items: List[Dict], max_age_days: int = 365,
                              min_kernel_version: str = None) -> Tuple[Set[str], Set[str]]:
         """
-        批量检查多个 commit 是否过旧或在旧版本分支上
+        check commit 
 
         Args:
-            items: 列表，每项为 {'job_id': ..., 'git_url': ..., 'commit': ...}
-            max_age_days: 最大天数阈值
-            min_kernel_version: 最小内核版本（如 "5.10"），为 None 时不检查版本
+            items: list， {'job_id': ..., 'git_url': ..., 'commit': ...}
+            max_age_days: 
+            min_kernel_version: （ "5.10"）， None check
 
         Returns:
-            (too_old_job_ids, valid_job_ids) 两个集合
-            - too_old_job_ids: 需要过滤的 job_id 集合（包括时间过旧和版本过旧）
-            - valid_job_ids: 有效的 job_id 集合
+            (too_old_job_ids, valid_job_ids) 
+            - too_old_job_ids:  job_id （）
+            - valid_job_ids:  job_id 
         """
         if not items:
             return set(), set()
@@ -142,7 +142,7 @@ class CommitTimeClient:
             response = requests.post(
                 f"{self.service_url}/api/v1/commit/batch_check",
                 json=request_body,
-                timeout=self.timeout * 2  # 批量请求给更长超时
+                timeout=self.timeout * 2  # timeout
             )
 
             if response.status_code == 200:
@@ -154,27 +154,27 @@ class CommitTimeClient:
                         set(data.get('valid_job_ids', []))
                     )
 
-            # 请求失败，降级策略：全部视为有效
+            # failed，：
             return set(), set(item['job_id'] for item in items if item.get('job_id'))
 
         except Exception as e:
-            # 异常时降级：全部视为有效
+            # exception：
             return set(), set(item['job_id'] for item in items if item.get('job_id'))
 
     def check_branch_version(self, git_url: str, commit_hash: str,
                               min_version: str = "5.10") -> Tuple[Optional[bool], Optional[str]]:
         """
-        检查 commit 是否在旧版本分支上
+        check commit 
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit_hash: Commit hash
-            min_version: 最小支持版本
+            min_version: support
 
         Returns:
             (is_old_branch, base_tag)
-            - is_old_branch: True 表示在旧版本分支，None 表示无法判断
-            - base_tag: 基础 tag 名称
+            - is_old_branch: True ，None 
+            - base_tag:  tag 
         """
         try:
             response = requests.get(
@@ -304,16 +304,16 @@ class CommitTimeClient:
 
     def get_parent_commit(self, git_url: str, commit: str) -> Optional[str]:
         """
-        获取 commit 的父提交 hash
+        get commit submit hash
 
         Args:
-            git_url: Git 仓库 URL
-            commit: Commit hash（完整或简短）
+            git_url: Git repo URL
+            commit: Commit hash（）
 
         Returns:
-            父提交 hash（40 字符）
-            - 如果是 root commit 返回 None
-            - 如果查询失败返回 None
+            submit hash（40 ）
+            -  root commit  None
+            - queryfailed None
         """
         try:
             response = requests.get(
@@ -326,10 +326,10 @@ class CommitTimeClient:
                 result = response.json()
                 if result.get('status') == 'success':
                     data = result['data']
-                    # 返回 parent hash（root commit 时为 None）
+                    #  parent hash（root commit  None）
                     return data.get('parent')
                 else:
-                    # 服务端返回了 error 状态
+                    # service error status
                     import logging
                     logger = logging.getLogger(__name__)
                     logger.warning(f"get_parent_commit API error | commit: {commit[:12]} | "
@@ -338,7 +338,7 @@ class CommitTimeClient:
             return None
 
         except Exception as e:
-            # 服务不可用时返回 None
+            # service None
             import logging
             logger = logging.getLogger(__name__)
             logger.warning(f"get_parent_commit request failed | commit: {commit[:12]} | error: {str(e)}")
@@ -346,21 +346,21 @@ class CommitTimeClient:
 
     def get_parent_commit_info(self, git_url: str, commit: str) -> Optional[Dict]:
         """
-        获取 commit 父提交的完整信息
+        get commit submit
 
         Args:
-            git_url: Git 仓库 URL
+            git_url: Git repo URL
             commit: Commit hash
 
         Returns:
-            完整的父提交信息字典：
+            submitdict：
             {
-                'commit': str,        # 原始 commit hash
-                'parent': str | None, # 父提交 hash
-                'parent_count': int,  # 父提交数量
-                'reason': str         # 仅在 root_commit 时返回
+                'commit': str,        #  commit hash
+                'parent': str | None, # submit hash
+                'parent_count': int,  # submitcount
+                'reason': str         #  root_commit 
             }
-            查询失败返回 None
+            queryfailed None
         """
         try:
             response = requests.get(
@@ -381,11 +381,11 @@ class CommitTimeClient:
 
     def ping(self) -> bool:
         """
-        检查服务是否可用
+        checkservice
 
         Returns:
-            True: 服务正常
-            False: 服务不可用
+            True: service
+            False: service
         """
         try:
             response = requests.get(
@@ -398,16 +398,16 @@ class CommitTimeClient:
 
 
 if __name__ == '__main__':
-    # 示例用法
+    # 
     client = CommitTimeClient('http://localhost:8765')
 
-    # 测试服务是否可用
+    # testservice
     if client.ping():
         print("Service is healthy")
     else:
         print("Service is not available")
 
-    # 获取 commit 信息
+    # get commit 
     info = client.get_commit_info(
         'https://gitee.com/openeuler/kernel.git',
         '5e5d40e65cb55e4699c9879674a004f246606a8d'
@@ -417,7 +417,7 @@ if __name__ == '__main__':
         print(f"Age: {info['age_days']} days")
         print(f"Author: {info['author']}")
 
-    # 检查是否过旧
+    # check
     is_old = client.is_commit_too_old(
         'https://gitee.com/openeuler/kernel.git',
         '5e5d40e65cb55e4699c9879674a004f246606a8d',

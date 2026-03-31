@@ -23,6 +23,7 @@ Usage:
 
 import os
 import sys
+import traceback
 import re
 import json
 import time
@@ -179,7 +180,7 @@ class FirstBadCommitMigrator:
             else:
                 change_point = sha
 
-            # Parse现有的 j 字段
+            # Parse j 
             j_field = task.get('j', {})
             if isinstance(j_field, str):
                 try:
@@ -330,7 +331,7 @@ Examples:
   # Check tasks needing migration (no data modification)
   python3 migrate_first_bad_commit.py --dry-run
 
-  # Execute migration（所有任务）
+  # Execute migration（task）
   python3 migrate_first_bad_commit.py
 
   # Migrate first 100 tasks
@@ -386,7 +387,6 @@ Examples:
         sys.exit(1)
     except Exception as e:
         logger.error(f"\nMigration process error: {str(e)}")
-        import traceback
         traceback.print_exc()
         migrator.print_stats()
         sys.exit(1)

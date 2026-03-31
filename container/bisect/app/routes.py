@@ -1,3 +1,5 @@
+"""HTTP route registration for bisect API endpoints."""
+
 from flask import Blueprint
 
 from .controllers import (
@@ -11,6 +13,7 @@ from .controllers import (
     reset_task_by_id,
     reset_tasks_by_condition,
     thread_pool_status,
+    get_verification_status,
     toggle_producer,
     get_producer_status,
     delete_tasks_by_condition,
@@ -27,10 +30,10 @@ from .controllers import (
 
 api_bp = Blueprint('api', __name__)
 
-# API路由定义
+# API
 api_bp.route('/new_bisect_task', methods=['POST'])(new_bisect_task)
 api_bp.route('/list_bisect_tasks', methods=['GET'])(list_bisect_tasks)
-api_bp.route('/reset_failed_tasks', methods=['DELETE'])(reset_failed_tasks)
+api_bp.route('/reset_failed_tasks', methods=['POST'])(reset_failed_tasks)
 api_bp.route('/reset_processing_tasks', methods=['POST'])(reset_processing_tasks)
 api_bp.route('/reset_verifying_tasks', methods=['POST'])(reset_verifying_tasks)
 api_bp.route('/reset_pending_verification_tasks', methods=['POST'])(reset_pending_verification_tasks)
@@ -38,6 +41,7 @@ api_bp.route('/cleanup_orphaned_verifying', methods=['POST'])(cleanup_orphaned_v
 api_bp.route('/reset_task', methods=['POST'])(reset_task_by_id)
 api_bp.route('/reset_tasks', methods=['POST'])(reset_tasks_by_condition)
 api_bp.route('/thread_pool_status', methods=['GET'])(thread_pool_status)
+api_bp.route('/verification_status', methods=['GET'])(get_verification_status)
 api_bp.route('/toggle_producer', methods=['POST'])(toggle_producer)
 api_bp.route('/producer_status', methods=['GET'])(get_producer_status)
 api_bp.route('/delete_tasks', methods=['DELETE'])(delete_tasks_by_condition)

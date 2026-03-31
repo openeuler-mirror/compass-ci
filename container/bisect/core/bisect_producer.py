@@ -591,13 +591,26 @@ class ErrorBisectProducer:
                             "submit_time": int(time.time()),
                             "updated_at": int(time.time()),
                             "first_bad_commit": "",
-                            "bisect_error": "",
+                            "last_error": "",
                         }
                         result = self.client.update("bisect", task_id, reset_doc)
                         if result:
                             reset_count += 1
+                            logger.info(f"Reset task {task_id} to wait | error_id: {error_id[:50]}")
                         else:
-                            logger.warning(f"Failed to reset task {task_id} for error_id {error_id[:50]}...")
+                            # update() may return False on some ManticoreSearch versions;
+                            # fall back to SQL UPDATE which is more reliable
+                            logger.warning(f"update() returned {result} for task {task_id}, trying SQL UPDATE...")
+                            sql = (f"UPDATE bisect SET bisect_status='wait', "
+                                   f"submit_time={int(time.time())}, updated_at={int(time.time())}, "
+                                   f"first_bad_commit='', last_error='' "
+                                   f"WHERE id={task_id}")
+                            sql_result = self.client.sql_raw(sql)
+                            if sql_result:
+                                reset_count += 1
+                                logger.info(f"SQL reset task {task_id} to wait | error_id: {error_id[:50]}")
+                            else:
+                                logger.warning(f"Failed to reset task {task_id} for error_id {error_id[:50]}...")
                     except Exception as e:
                         logger.error(f"Reset failed task error | task_id: {task_id} | error: {str(e)}")
                 logger.info(f"Reset completed: {reset_count}/{len(failed_task_map)} tasks reset to wait")
@@ -1016,7 +1029,6 @@ class PerformanceBisectProducer:
         try:
             j_field = item.get('j', {})
             if isinstance(j_field, str):
-                import json
                 j_field = json.loads(j_field)
 
             full_text_kv = item.get('full_text_kv', '')
@@ -1653,7 +1665,6 @@ class PerformanceBisectProducer:
                 for item in existing:
                     j_field = item.get('j', {})
                     if isinstance(j_field, str):
-                        import json
                         j_field = json.loads(j_field)
 
                     if (j_field.get('baseline_commit') == pair['baseline_commit'] and
@@ -1688,7 +1699,6 @@ class PerformanceBisectProducer:
             for item in existing:
                 j_field = item.get('j', {})
                 if isinstance(j_field, str):
-                    import json
                     j_field = json.loads(j_field)
 
                 if (j_field.get('baseline_commit') == pair['baseline_commit'] and
@@ -1700,7 +1710,7 @@ class PerformanceBisectProducer:
                             "submit_time": int(time.time()),
                             "updated_at": int(time.time()),
                             "first_bad_commit": "",
-                            "bisect_error": "",
+                            "last_error": "",
                         }
                         result = self.client.update("bisect", task_id, reset_doc)
                         if result:
@@ -1832,4 +1842,3 @@ class PerformanceBisectProducer:
             self.reporter.write_report(stats, duration)
         except Exception as e:
             logger.debug(f"Failed to save statistics report: {str(e)}")
-
