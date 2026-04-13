@@ -91,6 +91,22 @@ If you see `Error: Could not import 'app'`, check that `/c/compass-ci` inside th
 
 The service is configured via environment variables, which are set in the `container/bisect/start` script.
 
+### Configuration Reload Semantics
+
+Not every configuration change takes effect the same way. The current bisect service has three distinct behaviors:
+
+| Change type | Examples | When it takes effect |
+| :--- | :--- | :--- |
+| Runtime mutable | `BISECT_PRODUCER_ENABLED` via `/api/v1/toggle_producer` | Immediately, in memory only |
+| Reload on next producer cycle | `container/bisect/config/errid_filters.yaml`, contents of the file pointed to by `CI_CONFIG_PATH` | Next producer cycle |
+| Requires container recreate | Most environment variables in `container/bisect/lib/config.py`, `LOG_LEVEL`, `CCI_SRC`, `LKP_SRC`, `WORK_DIR`, Docker `-e/-v/-p`, `SUPERVISORD_CONF` | After recreating the container |
+
+Important operational note:
+
+- Editing `container/bisect/start` or changing Docker `-e` values does not take effect with `docker restart bisect`.
+- In the current deployment model, those changes require recreating the container by running `ruby container/bisect/start` again.
+- The detailed inventory and hot-reload candidates are tracked in `container/bisect/issues/config-reload-boundary.md`.
+
 ### Key Configuration Variables
 
 | Variable | Description | Default Value |
@@ -299,8 +315,8 @@ docker exec bisect ls -la /srv/git/
 # Edit container/bisect/start and set:
 export BISECT_THREADS=4
 
-# Restart container
-docker restart bisect
+# Recreate the container so new env values are applied
+ruby container/bisect/start
 ```
 
 #### Disk Space Issues

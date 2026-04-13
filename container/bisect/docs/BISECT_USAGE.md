@@ -1425,6 +1425,31 @@ HOST_RESULT_DIR='/srv/result'      # 主机结果目录
 BISECT_THREADS=64                  # 并发线程数（根据 CPU 核数调整）
 ```
 
+注意：
+
+- 这类通过 `container/bisect/start` 传入的环境变量，本质上是 Docker 容器创建参数。
+- 修改后需要重新执行 `ruby container/bisect/start` 重建容器，`docker restart bisect` 不会更新容器内的环境变量。
+
+#### 步骤 3 补充：配置生效边界（热更新 / 重启 / 重建容器）
+
+当前 bisect 服务的配置生效方式可以统一分成三类：
+
+| 类别 | 典型项 | 生效方式 |
+|------|--------|----------|
+| 运行时可改 | `BISECT_PRODUCER_ENABLED` | 通过 `/api/v1/toggle_producer` 立即修改内存态开关 |
+| 下一轮自动生效 | `container/bisect/config/errid_filters.yaml`、`CI_CONFIG_PATH` 指向文件的内容 | 下一轮 producer cycle 重新读取 |
+| 需要重建容器 | `container/bisect/lib/config.py` 里的大多数环境变量、`LOG_LEVEL`、`CCI_SRC`、`LKP_SRC`、`WORK_DIR`、Docker `-e/-v/-p`、`SUPERVISORD_CONF` | 重新创建容器后生效 |
+
+补充说明：
+
+- 当前已统计 `container/bisect/lib/config.py` 中有 **55 个唯一 env-backed key**，绝大多数属于“启动时快照”。
+- 当前真正支持运行时修改的只有 **1 类**：`BISECT_PRODUCER_ENABLED`。
+- 当前能在下一轮自动读到变更的文件配置有 **2 类**：
+  - `container/bisect/config/errid_filters.yaml`
+  - `CI_CONFIG_PATH` 指向文件的内容（注意是文件内容，不是路径本身）
+- 在当前 Docker 部署模型下，凡是修改容器启动参数（环境变量、端口、挂载、supervisord 配置映射），都应视为“需要重建容器”。
+- 这部分的完整清单和后续热更新改造候选项见 `container/bisect/issues/config-reload-boundary.md`。
+
 #### 步骤 3.1：容器服务切换运行账号时需要修改的项
 
 如果要把容器内运行用户从默认 `bisect` 改成其它账号，至少要同步修改以下位置（缺一可能导致启动失败或无权限写日志/结果）：
