@@ -46,6 +46,9 @@ PYTHONPATH=lib:services/commit_time_service:. \
 # Webhook notification delivery (unit level, no deployment needed)
 pytest -q container/bisect/core/tests/test_head_validator_webhook.py
 
+# HeadValidator main flow: scan/update/finalize/cycle behavior
+pytest -q container/bisect/core/tests/test_head_validator_flow.py
+
 # Verification timeout retry / admission control
 pytest -q container/bisect/core/tests/test_success_task_validator_retry.py
 
