@@ -115,6 +115,42 @@ def _get_verification_queue_snapshot(client=None) -> dict:
         }
     }
 
+def _get_task_status_overview(client=None) -> dict:
+    """Build exact per-status and per-category task counts for CLI status views."""
+    client = client or _get_manticore_client()
+    statuses = (
+        'success',
+        'failed',
+        'processing',
+        'verifying',
+        'wait',
+        'pending_verification',
+    )
+    categories = ('build', 'benchmark', 'function')
+
+    task_status_counts = {
+        status: _select_count(client, f"bisect_status = '{status}'")
+        for status in statuses
+    }
+
+    category_status_counts = {}
+    for category in categories:
+        counts = {
+            status: _select_count(
+                client, f"category = '{category}' AND bisect_status = '{status}'"
+            )
+            for status in statuses
+        }
+        category_status_counts[category] = counts
+
+    return {
+        "statuses": list(statuses),
+        "categories": list(categories),
+        "task_status_counts": task_status_counts,
+        "task_total": sum(task_status_counts.values()),
+        "category_status_counts": category_status_counts,
+    }
+
 def new_bisect_task():
     try:
         task_data = request.json
@@ -274,6 +310,14 @@ def get_verification_status():
         logger.error(f"Failed to get verification status: {str(e)}")
         return jsonify({"status": "error", "error": str(e)}), 500
 
+def get_status_overview():
+    """Return exact task counts used by the CLI status overview."""
+    try:
+        return jsonify(_get_task_status_overview()), 200
+    except Exception as e:
+        logger.error(f"Failed to get status overview: {str(e)}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 def toggle_producer():
     """status"""
     try:
@@ -316,6 +360,70 @@ def toggle_producer():
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+def toggle_consumer():
+    """Enable or disable BisectConsumer + SuccessTaskValidator at runtime."""
+    try:
+        state = request.args.get('state')
+        if state not in ['enable', 'disable']:
+            return jsonify({"error": "Invalid state. Use 'enable' or 'disable'"}), 400
+
+        old_state = Config.BISECT_CONSUMER_ENABLED
+        Config.BISECT_CONSUMER_ENABLED = (state == 'enable')
+        gate_state = bisect_task_instance.get_consumer_gate_state()
+
+        try:
+            bisect_task_instance.wake_consumer_control_workers()
+        except Exception as e:
+            logger.warning(f"Failed to wake consumer control workers after toggle: {e}")
+
+        logger.info(
+            f"Consumer state switched: "
+            f"{'enabled' if Config.BISECT_CONSUMER_ENABLED else 'disabled'}"
+        )
+        return jsonify({
+            "status": "success",
+            "consumer_enabled": Config.BISECT_CONSUMER_ENABLED,
+            "old_state": old_state,
+            "accepting_new_tasks": gate_state["accepting_new_tasks"],
+            "pause_reason": gate_state["pause_reason"],
+            "startup_delay_seconds": gate_state["startup_delay_seconds"],
+            "startup_delay_remaining_seconds": gate_state["startup_delay_remaining_seconds"],
+            "note": "In-flight tasks in the thread pool continue to completion. "
+                    "Only new wait-task submissions and new verification submissions are affected."
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def get_consumer_status():
+    """Report current consumer state and the two gated worker threads."""
+    try:
+        target_names = {"BisectConsumer", "SuccessTaskValidator"}
+        gate_state = bisect_task_instance.get_consumer_gate_state()
+        threads = []
+        for t in threading.enumerate():
+            if t.name in target_names:
+                threads.append({
+                    "name": t.name,
+                    "is_alive": t.is_alive(),
+                    "daemon": t.daemon,
+                })
+
+        return jsonify({
+            "consumer_enabled": Config.BISECT_CONSUMER_ENABLED,
+            "accepting_new_tasks": gate_state["accepting_new_tasks"],
+            "pause_reason": gate_state["pause_reason"],
+            "startup_delay_seconds": gate_state["startup_delay_seconds"],
+            "startup_delay_remaining_seconds": gate_state["startup_delay_remaining_seconds"],
+            "gated_workers": sorted(target_names),
+            "worker_threads": sorted(threads, key=lambda item: item["name"]),
+            "pending_tasks": bisect_task_instance.thread_pool._work_queue.qsize(),
+            "active_task_locks": len(bisect_task_instance.active_task_locks),
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 def get_producer_status():
     """getstatus"""

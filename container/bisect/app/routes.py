@@ -14,8 +14,11 @@ from .controllers import (
     reset_tasks_by_condition,
     thread_pool_status,
     get_verification_status,
+    get_status_overview,
     toggle_producer,
     get_producer_status,
+    toggle_consumer,
+    get_consumer_status,
     delete_tasks_by_condition,
     trigger_producer_run,
     set_tasks_to_verifying,
@@ -42,8 +45,11 @@ api_bp.route('/reset_task', methods=['POST'])(reset_task_by_id)
 api_bp.route('/reset_tasks', methods=['POST'])(reset_tasks_by_condition)
 api_bp.route('/thread_pool_status', methods=['GET'])(thread_pool_status)
 api_bp.route('/verification_status', methods=['GET'])(get_verification_status)
+api_bp.route('/status_overview', methods=['GET'])(get_status_overview)
 api_bp.route('/toggle_producer', methods=['POST'])(toggle_producer)
 api_bp.route('/producer_status', methods=['GET'])(get_producer_status)
+api_bp.route('/toggle_consumer', methods=['POST'])(toggle_consumer)
+api_bp.route('/consumer_status', methods=['GET'])(get_consumer_status)
 api_bp.route('/delete_tasks', methods=['DELETE'])(delete_tasks_by_condition)
 api_bp.route('/trigger_producer_run', methods=['POST'])(trigger_producer_run)
 api_bp.route('/set_tasks_to_verifying', methods=['POST'])(set_tasks_to_verifying)

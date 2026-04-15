@@ -4,6 +4,7 @@ import os
 import time
 import threading
 import re
+import math
 import subprocess
 import shutil
 import hashlib
@@ -59,16 +60,40 @@ from polling_worker import PollingWorker
 class _ValidatorWorker(PollingWorker):
     """PollingWorker that checks verification results and submits new verification jobs."""
 
-    def __init__(self, client, config, repo_manager, stop_event, base_interval=60):
+    def __init__(self, processor, stop_event, base_interval=60, wake_event=None):
         super().__init__("SuccessTaskValidator", stop_event,
-                         base_interval=base_interval, max_backoff=300)
-        self.client = client
-        self._config = config
-        self.repo_manager = repo_manager
+                         base_interval=base_interval, max_backoff=300,
+                         wake_event=wake_event)
+        self.processor = processor
+        self.client = processor.client
+        self._config = processor._config
+        self.repo_manager = processor.repo_manager
 
     def setup(self):
         self.validator = SuccessTaskValidator(self.client, self._config)
         logger.info("SuccessTaskValidator initialized successfully")
+
+    def _log_submission_gate_state(self, gate_state: dict):
+        """Log state transitions for verification job submission gating."""
+        pause_reason = gate_state.get("pause_reason")
+        last_reason = getattr(self, "_last_submission_pause_reason", None)
+        if pause_reason == last_reason:
+            return
+
+        if pause_reason == "disabled":
+            logger.info(
+                "SuccessTaskValidator new submissions paused: "
+                "BISECT_CONSUMER_ENABLED=false"
+            )
+        elif pause_reason == "startup_delay":
+            logger.info(
+                "SuccessTaskValidator new submissions waiting for startup delay | "
+                f"remaining_seconds: {gate_state.get('startup_delay_remaining_seconds', 0)}"
+            )
+        elif last_reason is not None:
+            logger.info("SuccessTaskValidator new submissions resumed")
+
+        self._last_submission_pause_reason = pause_reason
 
     def process_cycle(self) -> bool:
         did_work = False
@@ -90,6 +115,11 @@ class _ValidatorWorker(PollingWorker):
         except Exception as e:
             logger.error(f"Failed to check verification results: {str(e)}")
             logger.error(traceback.format_exc())
+
+        gate_state = self.processor.get_consumer_gate_state()
+        self._log_submission_gate_state(gate_state)
+        if not gate_state["accepting_new_tasks"]:
+            return did_work
 
         # Step 2: enforce admission control before submitting new verification jobs
         batch_size = int(self._config.get('verification_batch_size', 200) or 200)
@@ -121,6 +151,14 @@ class _ValidatorWorker(PollingWorker):
         for idx, (git_url, repo_tasks) in enumerate(tasks_by_repo.items()):
             if not self.running:
                 logger.info("SuccessTaskValidator received stop signal, exiting loop")
+                break
+            gate_state = self.processor.get_consumer_gate_state()
+            if not gate_state["accepting_new_tasks"]:
+                logger.info(
+                    "SuccessTaskValidator submission gate closed mid-cycle | "
+                    f"reason: {gate_state.get('pause_reason')}"
+                )
+                self._log_submission_gate_state(gate_state)
                 break
 
             logger.info(
@@ -202,8 +240,31 @@ class _ConsumerWorker(PollingWorker):
         self.processor._cleanup_stale_locks()
         self.last_lock_cleanup_time = time.time()
 
+    def _log_gate_state(self, gate_state: dict):
+        """Log state transitions for wait-task consumption gating."""
+        pause_reason = gate_state.get("pause_reason")
+        last_reason = getattr(self, "_last_pause_reason", None)
+        if pause_reason == last_reason:
+            return
+
+        if pause_reason == "disabled":
+            logger.info("BisectConsumer paused: BISECT_CONSUMER_ENABLED=false")
+        elif pause_reason == "startup_delay":
+            logger.info(
+                "BisectConsumer waiting for startup delay | "
+                f"remaining_seconds: {gate_state.get('startup_delay_remaining_seconds', 0)}"
+            )
+        elif last_reason is not None:
+            logger.info("BisectConsumer resumed: accepting new tasks")
+
+        self._last_pause_reason = pause_reason
+
     def process_cycle(self) -> bool:
         p = self.processor
+        gate_state = p.get_consumer_gate_state()
+        self._log_gate_state(gate_state)
+        if not gate_state["accepting_new_tasks"]:
+            return False
 
         # Periodically clean up stale locks
         now = time.time()
@@ -264,6 +325,14 @@ class _ConsumerWorker(PollingWorker):
         with p.active_task_locks_lock:
             logger.info(f"Preparing to submit tasks | locked: {len(p.active_task_locks)} | thread_pool: _max_workers={p.thread_pool._max_workers}, _threads={len(p.thread_pool._threads)}")
             for task in tasks_to_submit:
+                gate_state = p.get_consumer_gate_state()
+                if not gate_state["accepting_new_tasks"]:
+                    logger.info(
+                        "BisectConsumer submission gate closed mid-cycle before lock | "
+                        f"reason: {gate_state.get('pause_reason')}"
+                    )
+                    self._log_gate_state(gate_state)
+                    break
                 if not p.task_semaphore.acquire(blocking=False):
                     logger.warning("Task queue full (Backpressure engaged), stopping this round of submissions")
                     break
@@ -278,6 +347,18 @@ class _ConsumerWorker(PollingWorker):
                     skipped_count += 1
 
         for task_id, task in tasks_ready_to_submit:
+            gate_state = p.get_consumer_gate_state()
+            if not gate_state["accepting_new_tasks"]:
+                logger.info(
+                    "BisectConsumer submission gate closed mid-cycle before thread-pool submit | "
+                    f"task_id: {task_id} | reason: {gate_state.get('pause_reason')}"
+                )
+                with p.active_task_locks_lock:
+                    if task_id in p.active_task_locks:
+                        p.active_task_locks.remove(task_id)
+                p.task_semaphore.release()
+                self._log_gate_state(gate_state)
+                continue
             try:
                 future = p.thread_pool.submit(p._process_task_async, self.consumer, task)
                 logger.info(f"Task submitted to thread pool | task_id: {task_id} | future: {future}")
@@ -333,6 +414,67 @@ class TaskProcessor:
 
         # Safe exit
         logger.info("Cleanup completed, program will exit")
+
+    def get_consumer_gate_state(self, now: Optional[float] = None) -> Dict[str, object]:
+        """Return the effective consumer gate state, including startup grace period."""
+        now = time.time() if now is None else now
+        startup_delay_seconds = max(0, int(Config.BISECT_CONSUMER_STARTUP_DELAY_SECONDS or 0))
+        started_at = getattr(self, 'consumer_control_started_at', None)
+
+        if startup_delay_seconds > 0 and started_at is not None:
+            startup_delay_remaining_seconds = max(
+                0,
+                int(math.ceil((started_at + startup_delay_seconds) - now))
+            )
+        elif startup_delay_seconds > 0:
+            startup_delay_remaining_seconds = startup_delay_seconds
+        else:
+            startup_delay_remaining_seconds = 0
+
+        configured_enabled = bool(Config.BISECT_CONSUMER_ENABLED)
+        pause_reason = None
+        if not configured_enabled:
+            pause_reason = 'disabled'
+        elif startup_delay_remaining_seconds > 0:
+            pause_reason = 'startup_delay'
+
+        return {
+            "configured_enabled": configured_enabled,
+            "accepting_new_tasks": pause_reason is None,
+            "pause_reason": pause_reason,
+            "startup_delay_seconds": startup_delay_seconds,
+            "startup_delay_remaining_seconds": startup_delay_remaining_seconds,
+        }
+
+    def wake_consumer_control_workers(self):
+        """Wake wait-task and verification-submission workers to re-evaluate gates."""
+        for event_name in ('consumer_wake_event', 'validator_wake_event'):
+            event = getattr(self, event_name, None)
+            if event is not None:
+                event.set()
+
+    def _arm_consumer_startup_delay(self):
+        """Start the one-shot startup grace window for new task consumption."""
+        if getattr(self, 'consumer_control_started_at', None) is not None:
+            return
+
+        self.consumer_control_started_at = time.time()
+        gate_state = self.get_consumer_gate_state(now=self.consumer_control_started_at)
+        if gate_state["startup_delay_remaining_seconds"] <= 0:
+            return
+
+        logger.info(
+            "Consumer startup delay armed | "
+            f"seconds: {gate_state['startup_delay_remaining_seconds']}"
+        )
+        timer = threading.Timer(
+            gate_state["startup_delay_remaining_seconds"],
+            self.wake_consumer_control_workers
+        )
+        timer.daemon = True
+        timer.name = "ConsumerStartupDelayTimer"
+        timer.start()
+        self.consumer_startup_delay_timer = timer
 
     def _reset_stuck_tasks_on_startup(self):
         """
@@ -508,6 +650,8 @@ class TaskProcessor:
             "manticore_http_port": os.environ.get('MANTICORE_WRITE_PORT', '9308'),
             "notification_dir": Config.NOTIFICATION_DIR,
             "notification_webhook_url": Config.NOTIFICATION_WEBHOOK_URL,
+            "notification_feishu_webhook_url": Config.NOTIFICATION_FEISHU_WEBHOOK_URL,
+            "notification_feishu_secret": Config.NOTIFICATION_FEISHU_SECRET,
             "notification_email": Config.NOTIFICATION_EMAIL,
             # Verification configuration
             "parallel_verification_jobs": Config.PARALLEL_VERIFICATION_JOBS,
@@ -556,6 +700,9 @@ class TaskProcessor:
 
         # Wake event: producer sets this after creating tasks so consumer polls immediately
         self.consumer_wake_event = threading.Event()
+        self.validator_wake_event = threading.Event()
+        self.consumer_control_started_at = None
+        self.consumer_startup_delay_timer = None
         
         # Add execution lock for consumer tasks - task_id based lock
         self.active_task_locks = set()  # Store task_ids being processed
@@ -936,6 +1083,7 @@ class TaskProcessor:
     def _start_background_tasks(self):
         """Start background tasks - optimized version"""
         background_threads = []
+        self._arm_consumer_startup_delay()
 
         # 1. Always start consumer thread
         logger.info("Starting BisectConsumer thread...")
@@ -1080,8 +1228,8 @@ class TaskProcessor:
         set_log_component('consumer')
         validation_interval = self._config.get('validation_interval', 60)
         worker = _ValidatorWorker(
-            self.client, self._config, self.repo_manager,
-            self.stop_event, base_interval=validation_interval
+            self, self.stop_event, base_interval=validation_interval,
+            wake_event=self.validator_wake_event
         )
         worker.run()
 

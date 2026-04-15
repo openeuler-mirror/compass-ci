@@ -264,6 +264,15 @@ class BisectAPIClient:
         """Get producer status."""
         return self._make_request("GET", "/producer_status")
 
+    def toggle_consumer(self, enable: bool) -> Optional[Dict]:
+        """Enable or disable the consumer workers."""
+        state = "enable" if enable else "disable"
+        return self._make_request("POST", f"/toggle_consumer?state={state}")
+
+    def consumer_status(self) -> Optional[Dict]:
+        """Get consumer status."""
+        return self._make_request("GET", "/consumer_status")
+
     def trigger_producer_run(self, force: bool = False) -> Optional[Dict]:
         """Trigger a producer run manually."""
         params = {'force': 'true'} if force else {}
@@ -297,6 +306,255 @@ class BisectAPIClient:
         """Stop the pool monitor thread."""
         return self._make_request("POST", "/pool/monitor/stop")
 
+    def _make_silent_request(self, method: str, endpoint: str,
+                             params: Optional[Dict] = None,
+                             json_data: Optional[Dict] = None) -> Optional[Dict]:
+        """Send an HTTP request without printing request/response details."""
+        url = f"{self.base_url}{endpoint}"
+        try:
+            response = self.session.request(
+                method=method,
+                url=url,
+                params=params,
+                json=json_data,
+                timeout=10
+            )
+            if 200 <= response.status_code < 300:
+                if response.content:
+                    return response.json()
+                return {}
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _status_column_label(status: str) -> str:
+        """Keep the status table readable while preserving full status semantics."""
+        labels = {
+            'pending_verification': 'pending_ver',
+        }
+        return labels.get(status, status)
+
+    @staticmethod
+    def _count_section_entries(text: str, section_name: str) -> int:
+        """Count numeric entries in a @section.keys block from scheduler debug output."""
+        import re
+
+        pattern = rf'@{re.escape(section_name)}\.keys:\s*\['
+        match = re.search(pattern, text)
+        if not match:
+            return 0
+
+        start = match.end()
+        depth = 1
+        pos = start
+        while pos < len(text) and depth > 0:
+            if text[pos] == '[':
+                depth += 1
+            elif text[pos] == ']':
+                depth -= 1
+            pos += 1
+
+        block = text[start:pos]
+        return len(re.findall(r'\d{10,}', block))
+
+    @staticmethod
+    def _extract_keys(text: str, section_name: str) -> list:
+        """Extract quoted string keys from a @section.keys block."""
+        import re
+
+        pattern = rf'@{re.escape(section_name)}\.keys:\s*\[(.*?)\]'
+        match = re.search(pattern, text, re.DOTALL)
+        if not match:
+            return []
+        return re.findall(r'"([^"]+)"', match.group(1))
+
+    def _print_scheduler_status(self):
+        """Best-effort query of the scheduler dispatch endpoint."""
+        scheduler_host = os.environ.get('SCHEDULER_HOST', 'localhost')
+        scheduler_port = os.environ.get('SCHEDULER_PORT', '3000')
+        url = f"http://{scheduler_host}:{scheduler_port}/scheduler/v1/debug/dispatch"
+        try:
+            resp = self.session.get(url, timeout=5)
+            if resp.status_code != 200:
+                return
+            text = resp.text
+
+            submit_count = self._count_section_entries(text, 'jobs_cache_in_submit')
+            running_count = self._count_section_entries(text, 'jobs_cache')
+            providers = self._extract_keys(text, 'provider_sessions')
+            hw_machines = self._extract_keys(text, 'hw_machine_channels')
+
+            print()
+            print("Scheduler dispatch queue:")
+            print(f"  jobs waiting (submit): {submit_count}")
+            print(f"  jobs active (cached) : {running_count}")
+            print(f"  VM/container providers: {len(providers)}")
+            for provider in providers:
+                print(f"    - {provider}")
+            print(f"  HW machine channels  : {len(hw_machines)}")
+            for machine in hw_machines:
+                print(f"    - {machine}")
+        except Exception:
+            pass
+
+    def _print_job_completion_trend(self):
+        """Show a local best-effort recent completion trend from result directories."""
+        import subprocess
+        from datetime import datetime, timedelta
+
+        result_root = os.environ.get('RESULT_ROOT', '/result')
+        if not os.path.isdir(result_root):
+            return
+
+        print()
+        print("Recent job completion trend (last 7 days):")
+        print(f"  {'date':<12} {'total':>6} {'bisect':>7} {'machines'}")
+        print("  " + "-" * 56)
+
+        today = datetime.now()
+        for days_ago in range(6, -1, -1):
+            day = today - timedelta(days=days_ago)
+            day_str = day.strftime('%Y-%m-%d')
+
+            try:
+                cmd = [
+                    'find', '-L', result_root, '-maxdepth', '8',
+                    '-path', f'*/{day_str}/*/job.yaml', '-type', 'f'
+                ]
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                all_jobs = [path for path in proc.stdout.strip().split('\n') if path]
+                total = len(all_jobs)
+
+                if total == 0:
+                    print(f"  {day_str:<12} {0:>6} {0:>7}")
+                    continue
+
+                bisect_count = 0
+                machines = set()
+                for job_path in all_jobs:
+                    try:
+                        with open(job_path, 'r', errors='replace') as file_obj:
+                            content = file_obj.read(4096)
+                        if 'bad_job_id' in content:
+                            bisect_count += 1
+                        for line in content.split('\n'):
+                            if line.startswith('testbox:'):
+                                machines.add(line.split(':', 1)[1].strip())
+                                break
+                    except (OSError, IOError):
+                        continue
+
+                machines_str = ', '.join(sorted(machines)) if machines else '-'
+                if len(machines_str) > 40:
+                    machines_str = f"{len(machines)} machines"
+                print(f"  {day_str:<12} {total:>6} {bisect_count:>7}  {machines_str}")
+            except Exception:
+                print(f"  {day_str:<12}      ?       ?")
+
+    def status(self) -> Optional[Dict]:
+        """Print a one-screen overview of bisect system health."""
+        overview = self._make_silent_request("GET", "/status_overview")
+        if not overview:
+            self._print_colored(self.RED, "Error: unable to fetch task status overview")
+            return None
+
+        statuses = overview.get('statuses') or [
+            'success', 'failed', 'processing', 'verifying', 'wait', 'pending_verification'
+        ]
+        categories = overview.get('categories') or ['build', 'benchmark', 'function']
+        status_counts = overview.get('task_status_counts') or {}
+        category_counts = overview.get('category_status_counts') or {}
+
+        print("=" * 72)
+        print("  BISECT SYSTEM STATUS")
+        print("=" * 72)
+        print()
+        print("Task status overview:")
+        for status in statuses:
+            count = int(status_counts.get(status, 0) or 0)
+            bar = '#' * min(count // 10, 40)
+            print(f"  {status:<22} {count:>6}  {bar}")
+        print(f"  {'TOTAL':<22} {int(overview.get('task_total', 0) or 0):>6}")
+
+        print()
+        print("Breakdown by category:")
+        header = f"  {'category':<14}"
+        for status in statuses:
+            header += f" {self._status_column_label(status):>12}"
+        header += f" {'total':>8} {'done':>6} {'rate':>7}"
+        print(header)
+        print("  " + "-" * (len(header) - 2))
+        for category in categories:
+            counts = category_counts.get(category, {})
+            total = 0
+            row = f"  {category:<14}"
+            for status in statuses:
+                count = int(counts.get(status, 0) or 0)
+                total += count
+                row += f" {count:>12}"
+            done = int(counts.get('success', 0) or 0) + int(counts.get('failed', 0) or 0)
+            rate = f"{int(counts.get('success', 0) or 0) / done * 100:.0f}%" if done > 0 else "-"
+            row += f" {total:>8} {done:>6} {rate:>7}"
+            print(row)
+
+        verification = self._make_silent_request("GET", "/verification_status")
+        if verification:
+            print()
+            print("Verification queue:")
+            print(f"  verifying (active)   : {verification.get('verifying', '?')}")
+            print(f"  pending verification : {verification.get('pending_verification', '?')}")
+            print(
+                "  verified (total)     : "
+                f"{verification.get('verification_status_counts', {}).get('verified', '?')}"
+            )
+            config = verification.get('config', {})
+            if config:
+                print(f"  max_verifying_tasks  : {config.get('max_verifying_tasks', '?')}")
+                print(f"  timeout_hours        : {config.get('verification_timeout_hours', '?')}")
+
+        thread_pool = self._make_silent_request("GET", "/thread_pool_status")
+        if thread_pool:
+            print()
+            print("Thread pool:")
+            print(
+                f"  active / max         : "
+                f"{thread_pool.get('active_threads', '?')} / {thread_pool.get('max_workers', '?')}"
+            )
+            print(f"  pending in queue     : {thread_pool.get('pending_tasks', '?')}")
+
+        producer = self._make_silent_request("GET", "/producer_status")
+        if producer:
+            print()
+            alive = any(item.get('is_alive') for item in producer.get('producer_threads', []))
+            print(
+                f"Producer: {'enabled' if producer.get('producer_enabled') else 'disabled'}"
+                f"  |  {'alive' if alive else 'DEAD'}"
+            )
+
+        consumer = self._make_silent_request("GET", "/consumer_status")
+        if consumer:
+            print()
+            print(
+                f"Consumer: {'enabled' if consumer.get('consumer_enabled') else 'disabled'}"
+                f"  |  {'accepting' if consumer.get('accepting_new_tasks') else 'paused'}"
+            )
+            pause_reason = consumer.get('pause_reason')
+            if pause_reason:
+                print(f"  pause_reason         : {pause_reason}")
+            if 'startup_delay_remaining_seconds' in consumer:
+                print(
+                    "  startup_delay_left   : "
+                    f"{consumer.get('startup_delay_remaining_seconds', '?')}"
+                )
+
+        self._print_scheduler_status()
+        self._print_job_completion_trend()
+
+        print()
+        print("=" * 72)
+        return overview
+
 
 def add_common_filter_args(parser, include_limit=False):
     """Add common filter arguments to a parser."""
@@ -305,7 +563,7 @@ def add_common_filter_args(parser, include_limit=False):
     parser.add_argument('--bad_job_id', help='Bad job ID')
     parser.add_argument('--git_url', help='Git repository URL')
     parser.add_argument('--category', help='Task category (build/function/benchmark)')
-    parser.add_argument('--status', help='Task status (wait/processing/success/failed/verifying)')
+    parser.add_argument('--status', help='Task status (wait/processing/success/failed/verifying/pending_verification)')
     parser.add_argument('--commit', help='Filter by first_bad_commit (full or short SHA)')
 
     if include_limit:
@@ -384,6 +642,14 @@ Examples:
   %(prog)s disable_producer
   %(prog)s producer_status
   %(prog)s trigger_producer
+
+  # System overview
+  %(prog)s status
+
+  # Consumer control
+  %(prog)s enable_consumer
+  %(prog)s disable_consumer
+  %(prog)s consumer_status
 
   # Thread and verification queue status
   %(prog)s thread_status
@@ -588,6 +854,7 @@ Note: only failed or processing tasks can be reset
     add_common_filter_args(reset_tasks_parser)
     add_yes_arg(reset_tasks_parser)
 
+    subparsers.add_parser('status', help='Show a one-screen bisect system overview')
     subparsers.add_parser('thread_status', help='Show thread pool status')
     subparsers.add_parser('verification_status', help='Show verification queue status')
     subparsers.add_parser('enable_producer', help='Enable the background producer')
@@ -595,6 +862,10 @@ Note: only failed or processing tasks can be reset
     subparsers.add_parser('producer_status', help='Show producer status')
     trigger_parser = subparsers.add_parser('trigger_producer', help='Trigger a producer run manually')
     trigger_parser.add_argument('--force', action='store_true', help='Force a run even if one already ran today')
+
+    subparsers.add_parser('enable_consumer', help='Enable BisectConsumer + SuccessTaskValidator')
+    subparsers.add_parser('disable_consumer', help='Disable BisectConsumer + SuccessTaskValidator')
+    subparsers.add_parser('consumer_status', help='Show consumer status')
 
     # Pool monitoring commands
     subparsers.add_parser('pool_status', help='Show repository pool status')
@@ -683,6 +954,8 @@ Note: only failed or processing tasks can be reset
         # New plural form, using common filter conditions
         conditions = build_filter_conditions(args)
         client.reset_tasks(assume_yes=args.yes, **conditions)
+    elif args.command == 'status':
+        client.status()
     elif args.command == 'thread_status':
         client.thread_pool_status()
     elif args.command == 'verification_status':
@@ -695,6 +968,12 @@ Note: only failed or processing tasks can be reset
         client.producer_status()
     elif args.command == 'trigger_producer':
         client.trigger_producer_run(force=args.force)
+    elif args.command == 'enable_consumer':
+        client.toggle_consumer(True)
+    elif args.command == 'disable_consumer':
+        client.toggle_consumer(False)
+    elif args.command == 'consumer_status':
+        client.consumer_status()
 
     # Pool monitoring commands
     elif args.command == 'pool_status':

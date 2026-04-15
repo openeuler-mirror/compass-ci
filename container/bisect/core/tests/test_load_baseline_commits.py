@@ -11,7 +11,7 @@ import yaml
 for mod_name in [
     'lkp_bisect', 'lkp_bisect.db', 'lkp_bisect.db.manticore',
     'log_config', 'bisect_utils', 'producer_reporter', 'lru_cache',
-    'batch_inserter',
+    'batch_inserter', 'config',
 ]:
     if mod_name not in sys.modules:
         sys.modules[mod_name] = types.ModuleType(mod_name)
@@ -29,6 +29,7 @@ for attr in [
 sys.modules['producer_reporter'].ProducerReporter = MagicMock
 sys.modules['lru_cache'].LRUCache = MagicMock
 sys.modules['batch_inserter'].BatchInserter = MagicMock
+sys.modules['config'].Config = types.SimpleNamespace(CI_CONFIG_PATH='/tmp/ci_config.yaml')
 
 # Also stub CommitTimeClient
 sys.modules['client'] = types.ModuleType('client')
@@ -36,6 +37,8 @@ sys.modules['client'].CommitTimeClient = MagicMock
 
 import os
 os.environ.setdefault('CCI_SRC', '/tmp')
+
+sys.modules.pop('bisect_producer', None)
 
 from bisect_producer import PerformanceBisectProducer
 

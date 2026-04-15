@@ -32,6 +32,8 @@ class _DummyConfig:
     DEFAULT_QUERY_LIMIT = 20
     MAX_QUERY_LIMIT = 200
     BISECT_PRODUCER_ENABLED = True
+    BISECT_CONSUMER_ENABLED = True
+    BISECT_CONSUMER_STARTUP_DELAY_SECONDS = 300
 
 
 sys.modules['config'].Config = _DummyConfig()
@@ -52,6 +54,15 @@ sys.modules['task_processor'].bisect_task_instance = types.SimpleNamespace(
         _max_workers=4,
         _work_queue=types.SimpleNamespace(qsize=lambda: 1, _tasks_done=3),
     ),
+    active_task_locks=set(),
+    get_consumer_gate_state=MagicMock(return_value={
+        'configured_enabled': True,
+        'accepting_new_tasks': True,
+        'pause_reason': None,
+        'startup_delay_seconds': 300,
+        'startup_delay_remaining_seconds': 0,
+    }),
+    wake_consumer_control_workers=MagicMock(),
 )
 sys.modules['services.pool_monitor_service'].PoolMonitorService = MagicMock
 
@@ -65,6 +76,18 @@ import controllers
 
 
 class TestVerificationStatusApi(unittest.TestCase):
+
+    def setUp(self):
+        controllers.Config.BISECT_CONSUMER_ENABLED = True
+        controllers.bisect_task_instance.active_task_locks = set()
+        controllers.bisect_task_instance.get_consumer_gate_state = MagicMock(return_value={
+            'configured_enabled': True,
+            'accepting_new_tasks': True,
+            'pause_reason': None,
+            'startup_delay_seconds': 300,
+            'startup_delay_remaining_seconds': 0,
+        })
+        controllers.bisect_task_instance.wake_consumer_control_workers = MagicMock()
 
     def test_snapshot_counts_queue_pressure(self):
         client = MagicMock()
@@ -99,6 +122,112 @@ class TestVerificationStatusApi(unittest.TestCase):
 
         self.assertEqual(status_code, 200)
         self.assertEqual(response.get_json(), expected)
+
+    def test_task_status_overview_uses_pending_verification(self):
+        counts = {
+            "bisect_status = 'success'": 3,
+            "bisect_status = 'failed'": 1,
+            "bisect_status = 'processing'": 2,
+            "bisect_status = 'verifying'": 4,
+            "bisect_status = 'wait'": 5,
+            "bisect_status = 'pending_verification'": 6,
+            "category = 'build' AND bisect_status = 'success'": 1,
+            "category = 'build' AND bisect_status = 'failed'": 1,
+            "category = 'build' AND bisect_status = 'processing'": 0,
+            "category = 'build' AND bisect_status = 'verifying'": 0,
+            "category = 'build' AND bisect_status = 'wait'": 2,
+            "category = 'build' AND bisect_status = 'pending_verification'": 1,
+            "category = 'benchmark' AND bisect_status = 'success'": 1,
+            "category = 'benchmark' AND bisect_status = 'failed'": 0,
+            "category = 'benchmark' AND bisect_status = 'processing'": 1,
+            "category = 'benchmark' AND bisect_status = 'verifying'": 2,
+            "category = 'benchmark' AND bisect_status = 'wait'": 2,
+            "category = 'benchmark' AND bisect_status = 'pending_verification'": 3,
+            "category = 'function' AND bisect_status = 'success'": 1,
+            "category = 'function' AND bisect_status = 'failed'": 0,
+            "category = 'function' AND bisect_status = 'processing'": 1,
+            "category = 'function' AND bisect_status = 'verifying'": 2,
+            "category = 'function' AND bisect_status = 'wait'": 1,
+            "category = 'function' AND bisect_status = 'pending_verification'": 2,
+        }
+
+        with patch.object(controllers, '_select_count', side_effect=lambda _client, where: counts.get(where, 0)):
+            overview = controllers._get_task_status_overview(MagicMock())
+
+        self.assertEqual(
+            overview['statuses'],
+            ['success', 'failed', 'processing', 'verifying', 'wait', 'pending_verification']
+        )
+        self.assertEqual(overview['task_status_counts']['pending_verification'], 6)
+        self.assertEqual(overview['task_total'], 21)
+        self.assertEqual(overview['category_status_counts']['benchmark']['pending_verification'], 3)
+
+    def test_get_status_overview_returns_json(self):
+        app = Flask(__name__)
+        expected = {'task_status_counts': {'pending_verification': 6}, 'task_total': 21}
+
+        with app.app_context():
+            with patch.object(controllers, '_get_task_status_overview', return_value=expected):
+                response, status_code = controllers.get_status_overview()
+
+        self.assertEqual(status_code, 200)
+        self.assertEqual(response.get_json(), expected)
+
+    def test_toggle_consumer_returns_gate_snapshot(self):
+        app = Flask(__name__)
+        controllers.bisect_task_instance.get_consumer_gate_state = MagicMock(return_value={
+            'configured_enabled': False,
+            'accepting_new_tasks': False,
+            'pause_reason': 'disabled',
+            'startup_delay_seconds': 300,
+            'startup_delay_remaining_seconds': 12,
+        })
+
+        with app.test_request_context('/toggle_consumer?state=disable'):
+            response, status_code = controllers.toggle_consumer()
+
+        body = response.get_json()
+        self.assertEqual(status_code, 200)
+        self.assertFalse(body['consumer_enabled'])
+        self.assertFalse(body['accepting_new_tasks'])
+        self.assertEqual(body['pause_reason'], 'disabled')
+        self.assertEqual(body['startup_delay_remaining_seconds'], 12)
+        controllers.bisect_task_instance.wake_consumer_control_workers.assert_called_once_with()
+
+    def test_get_consumer_status_includes_startup_delay(self):
+        app = Flask(__name__)
+        controllers.bisect_task_instance.active_task_locks = {'11', '12'}
+        controllers.bisect_task_instance.get_consumer_gate_state = MagicMock(return_value={
+            'configured_enabled': True,
+            'accepting_new_tasks': False,
+            'pause_reason': 'startup_delay',
+            'startup_delay_seconds': 300,
+            'startup_delay_remaining_seconds': 45,
+        })
+
+        original_enumerate = controllers.threading.enumerate
+
+        def fake_enumerate():
+            extra_threads = [
+                types.SimpleNamespace(name='SuccessTaskValidator', is_alive=lambda: True, daemon=True),
+                types.SimpleNamespace(name='BisectConsumer', is_alive=lambda: True, daemon=True),
+            ]
+            return extra_threads + list(original_enumerate())
+
+        with app.app_context():
+            with patch.object(controllers.threading, 'enumerate', side_effect=fake_enumerate):
+                response, status_code = controllers.get_consumer_status()
+
+        body = response.get_json()
+        self.assertEqual(status_code, 200)
+        self.assertFalse(body['accepting_new_tasks'])
+        self.assertEqual(body['pause_reason'], 'startup_delay')
+        self.assertEqual(body['startup_delay_remaining_seconds'], 45)
+        self.assertEqual(body['active_task_locks'], 2)
+        self.assertEqual(
+            [item['name'] for item in body['worker_threads']],
+            ['BisectConsumer', 'SuccessTaskValidator']
+        )
 
 
 if __name__ == '__main__':

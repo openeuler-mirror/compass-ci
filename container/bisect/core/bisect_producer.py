@@ -920,7 +920,7 @@ class PerformanceBisectProducer:
         # Build query - directly get j.ss.linux.commit field
         # Uses CURRENT_QUERY_HOURS (14d) window to capture enough current jobs
         sql_query = f"""
-            SELECT id, suite, testbox, submit_time, full_text_kv, j, j.ss.linux.commit as linux_commit
+            SELECT id, suite, testbox, submit_time, full_text_kv, j, j.ss.linux.commit as linux_commit, pp_params_md5
             FROM jobs
             WHERE suite IN ('{suites_sql}')
             AND j.job_stage = 'finish'
@@ -985,7 +985,7 @@ class PerformanceBisectProducer:
         commits_sql = "', '".join(baseline_commit_list)
 
         sql_query = f"""
-            SELECT id, suite, testbox, submit_time, full_text_kv, j, j.ss.linux.commit as linux_commit
+            SELECT id, suite, testbox, submit_time, full_text_kv, j, j.ss.linux.commit as linux_commit, pp_params_md5
             FROM jobs
             WHERE suite IN ('{suites_sql}')
             AND j.job_stage = 'finish'
@@ -1063,6 +1063,7 @@ class PerformanceBisectProducer:
                 'stats': stats,
                 'submit_time': item.get('submit_time'),
                 'full_text_kv': full_text_kv,
+                'pp_params_md5': str(item.get('pp_params_md5') or ''),
                 'j': j_field
             }
 
@@ -1104,21 +1105,49 @@ class PerformanceBisectProducer:
 
         return None
 
+    @staticmethod
+    def _extract_pp_params_md5(job: Dict) -> str:
+        """Return the top-level pp_params_md5 for a performance job."""
+        return str(job.get('pp_params_md5') or '')
+
+    @staticmethod
+    def _extract_subtest(job: Dict) -> str:
+        """Extract a human-readable subtest label from the pp section."""
+        j_field = job.get('j', {})
+        if not isinstance(j_field, dict):
+            return ''
+
+        pp = j_field.get('pp', {})
+        if not isinstance(pp, dict):
+            return ''
+
+        suite = str(job.get('suite') or '')
+        suite_pp = pp.get(suite, {})
+        if not isinstance(suite_pp, dict):
+            return ''
+
+        return str(suite_pp.get('test', '') or suite_pp.get('stressor', '') or '')
+
     def _group_performance_jobs(self, jobs: List[Dict]) -> Dict[Tuple, List[Dict]]:
-        """Group by (repo, suite, testbox)
+        """Group by (repo, suite, testbox, pp_params_md5, subtest)
 
         Grouping strategy:
         - Keep repo to distinguish different kernel repos (openeuler-kernel vs linux vs linux-next)
         - Remove branch to avoid over-grouping from parse errors
         - Performance comparison is only meaningful on same hardware (testbox)
+        - Keep each pp variant isolated for multi-subtest suites like stress-ng
         """
         groups = defaultdict(list)
 
         for job in jobs:
+            pp_params_md5 = self._extract_pp_params_md5(job)
+            subtest = self._extract_subtest(job)
             group_key = (
                 job['repo_name'],
                 job['suite'],
-                job['testbox']
+                job['testbox'],
+                pp_params_md5,
+                subtest,
             )
             groups[group_key].append(job)
 
@@ -1126,8 +1155,8 @@ class PerformanceBisectProducer:
         if groups:
             # Count groups per suite
             suite_group_counts = defaultdict(int)
-            for (repo, suite, testbox), job_list in groups.items():
-                suite_group_counts[suite] += 1
+            for group_key, job_list in groups.items():
+                suite_group_counts[group_key[1]] += 1
             logger.info(f"Grouping stats | by_suite: {dict(suite_group_counts)}")
 
         return dict(groups)
@@ -1146,7 +1175,12 @@ class PerformanceBisectProducer:
         MIN_JOBS_REQUIRED = 3
 
         for group_key, jobs in grouped_jobs.items():
-            repo_name, suite, testbox = group_key
+            repo_name, suite, testbox, pp_params_md5, subtest = group_key
+            group_label = f"{repo_name}/{suite}/{testbox}"
+            if subtest:
+                group_label = f"{group_label}/{subtest}"
+            elif pp_params_md5:
+                group_label = f"{group_label}/pp:{pp_params_md5[:8]}"
 
             # Separate baseline and current jobs
             baseline_jobs = []
@@ -1162,26 +1196,26 @@ class PerformanceBisectProducer:
             if not baseline_jobs:
                 skip_reasons['no_baseline'] += 1
                 commits = list(set(j['commit'][:16] for j in jobs[:5]))
-                logger.info(f"Skipping group {repo_name}/{suite}/{testbox}: no baseline | commits: {commits}")
+                logger.info(f"Skipping group {group_label}: no baseline | commits: {commits}")
                 continue
 
             if not current_jobs:
                 skip_reasons['no_current'] += 1
                 commits = list(set(j['commit'][:16] for j in jobs[:5]))
-                logger.info(f"Skipping group {repo_name}/{suite}/{testbox}: no current | commits: {commits}")
+                logger.info(f"Skipping group {group_label}: no current | commits: {commits}")
                 continue
 
             # Check if enough baseline jobs
             if len(baseline_jobs) < MIN_JOBS_REQUIRED:
                 skip_reasons['insufficient_baseline'] += 1
-                logger.info(f"Skipping group {repo_name}/{suite}/{testbox}: insufficient baseline jobs "
+                logger.info(f"Skipping group {group_label}: insufficient baseline jobs "
                            f"({len(baseline_jobs)}<{MIN_JOBS_REQUIRED})")
                 continue
 
             # Check if enough current jobs
             if len(current_jobs) < MIN_JOBS_REQUIRED:
                 skip_reasons['insufficient_current'] += 1
-                logger.info(f"Skipping group {repo_name}/{suite}/{testbox}: insufficient current jobs "
+                logger.info(f"Skipping group {group_label}: insufficient current jobs "
                            f"({len(current_jobs)}<{MIN_JOBS_REQUIRED})")
                 continue
 
@@ -1205,7 +1239,7 @@ class PerformanceBisectProducer:
 
             if not valid_metrics:
                 skip_reasons['no_metrics'] += 1
-                logger.info(f"Group {repo_name}/{suite}/{testbox}: no common numeric metrics")
+                logger.info(f"Group {group_label}: no common numeric metrics")
                 continue
 
             # Create pair: include all baseline and current jobs
@@ -1220,10 +1254,12 @@ class PerformanceBisectProducer:
                 'current_jobs': current_jobs,
                 'git_url': baseline_jobs[0]['git_url'],
                 'baseline_commit': baseline_commit,
-                'current_commit': current_commit
+                'current_commit': current_commit,
+                'pp_params_md5': pp_params_md5,
+                'subtest': subtest,
             })
 
-            logger.info(f"Group {repo_name}/{suite}/{testbox}: pair created | "
+            logger.info(f"Group {group_label}: pair created | "
                        f"{len(valid_metrics)} metrics | "
                        f"baseline: {baseline_commit[:12]} ({len(baseline_jobs)} jobs) | "
                        f"current: {current_commit[:12]} ({len(current_jobs)} jobs)")
@@ -1353,6 +1389,7 @@ class PerformanceBisectProducer:
                 baseline_commit = pair['baseline_commit']
                 current_commit = pair['current_commit']
                 git_url = pair.get('git_url')
+                pair_pp_params_md5 = str(pair.get('pp_params_md5') or '')
 
                 # Ancestor validation: use pre-computed batch results
                 ancestor_key = (baseline_commit, current_commit)
@@ -1379,8 +1416,12 @@ class PerformanceBisectProducer:
                     suite_stats[suite]['kpi_metrics'] += 1
 
                     # Query all available samples from database (not just current cycle jobs)
-                    v1_samples = self._query_all_samples_from_db(baseline_commit, suite, testbox, metric)
-                    v2_samples = self._query_all_samples_from_db(current_commit, suite, testbox, metric)
+                    v1_samples = self._query_all_samples_from_db(
+                        baseline_commit, suite, testbox, metric, pair_pp_params_md5
+                    )
+                    v2_samples = self._query_all_samples_from_db(
+                        current_commit, suite, testbox, metric, pair_pp_params_md5
+                    )
 
                     # Verify sample count (need at least 3 samples for linear separability verification)
                     if len(v1_samples) < 3 or len(v2_samples) < 3:
@@ -1455,7 +1496,8 @@ class PerformanceBisectProducer:
 
     def _generate_pair_key(self, pair: Dict) -> str:
         """Generate unique identifier for pair"""
-        return f"{pair['baseline_commit']}_{pair['current_commit']}_{pair['suite']}"
+        variant = str(pair.get('pp_params_md5') or pair.get('subtest') or '')
+        return f"{pair['baseline_commit']}_{pair['current_commit']}_{pair['suite']}_{variant}"
 
     def _collect_samples(self, job: Dict, metric: str) -> List[float]:
         """Collect metric samples from a single job"""
@@ -1481,20 +1523,28 @@ class PerformanceBisectProducer:
 
         return samples
 
-    def _query_all_samples_from_db(self, commit: str, suite: str, testbox: str, metric: str) -> List[float]:
-        """Query all samples for specified commit/suite/testbox/metric from database
+    def _query_all_samples_from_db(self, commit: str, suite: str, testbox: str,
+                                   metric: str, pp_params_md5: str = '') -> List[float]:
+        """Query all samples for specified commit/suite/testbox/metric from database.
 
-        Use all available samples to calculate range, ensuring midpoint accuracy
+        When pp_params_md5 is set, restrict the sample pool to the same pp
+        variant so multi-subtest suites do not mix incomparable jobs.
         """
+        where = [
+            f"j.ss.linux.commit = '{commit}'",
+            f"suite = '{suite}'",
+            f"testbox = '{testbox}'",
+            "j.job_stage = 'finish'",
+            "j.job_health = 'success'",
+            "j.job_data_readiness = 'complete'",
+        ]
+        if pp_params_md5:
+            where.append(f"pp_params_md5 = '{pp_params_md5}'")
+
         sql = f"""
             SELECT j
             FROM jobs
-            WHERE j.ss.linux.commit = '{commit}'
-            AND suite = '{suite}'
-            AND testbox = '{testbox}'
-            AND j.job_stage = 'finish'
-            AND j.job_health = 'success'
-            AND j.job_data_readiness = 'complete'
+            WHERE {' AND '.join(where)}
             ORDER BY submit_time DESC
             LIMIT 100
         """
@@ -1668,7 +1718,8 @@ class PerformanceBisectProducer:
                         j_field = json.loads(j_field)
 
                     if (j_field.get('baseline_commit') == pair['baseline_commit'] and
-                        j_field.get('current_commit') == pair['current_commit']):
+                        j_field.get('current_commit') == pair['current_commit'] and
+                        self._task_matches_pair_variant(j_field, pair)):
                         return True
 
             return False
@@ -1702,7 +1753,8 @@ class PerformanceBisectProducer:
                     j_field = json.loads(j_field)
 
                 if (j_field.get('baseline_commit') == pair['baseline_commit'] and
-                    j_field.get('current_commit') == pair['current_commit']):
+                    j_field.get('current_commit') == pair['current_commit'] and
+                    self._task_matches_pair_variant(j_field, pair)):
                     task_id = item.get('id')
                     if task_id:
                         reset_doc = {
@@ -1721,6 +1773,28 @@ class PerformanceBisectProducer:
         except Exception as e:
             logger.debug(f"Failed to check/reset failed task: {str(e)}")
             return False
+
+    @staticmethod
+    def _task_matches_pair_variant(task_j: Dict, pair: Dict) -> bool:
+        """Match only tasks created for the same pp/subtest variant."""
+        pair_pp_params_md5 = str(pair.get('pp_params_md5') or '')
+        pair_subtest = str(pair.get('subtest') or '')
+        task_pp_params_md5 = str(task_j.get('pp_params_md5') or '')
+        task_subtest = str(task_j.get('subtest') or '')
+
+        if pair_pp_params_md5:
+            if task_pp_params_md5:
+                return task_pp_params_md5 == pair_pp_params_md5
+            if pair_subtest and task_subtest:
+                return task_subtest == pair_subtest
+            return False
+
+        if pair_subtest:
+            if task_subtest:
+                return task_subtest == pair_subtest
+            return False
+
+        return not task_pp_params_md5 and not task_subtest
 
     def _build_task_document(self, pair: Dict, metric_info: Dict) -> Dict:
         """Build bisect task document
@@ -1767,6 +1841,8 @@ class PerformanceBisectProducer:
                 'current_commit': pair['current_commit'],
                 'suite': pair['suite'],
                 'testbox': pair['group_key'][2],  # group_key = (repo_name, suite, testbox)
+                'subtest': pair.get('subtest', ''),
+                'pp_params_md5': pair.get('pp_params_md5', ''),
                 'source': 'performance_producer',
                 'created_at': int(time.time())
             }
