@@ -24,7 +24,17 @@ class Config:
     MAX_THREADS = 64  # Safety limit to prevent resource exhaustion
 
     # Producer switch configuration
+    # Master switch for all automatic producer components.
     BISECT_PRODUCER_ENABLED = os.environ.get('BISECT_PRODUCER_ENABLED', 'true').lower() == 'true'
+    BISECT_METRICS_PRODUCER_ENABLED = os.environ.get(
+        'BISECT_METRICS_PRODUCER_ENABLED', 'true'
+    ).lower() == 'true'
+    BISECT_ERROR_PRODUCER_ENABLED = os.environ.get(
+        'BISECT_ERROR_PRODUCER_ENABLED', 'true'
+    ).lower() == 'true'
+    BISECT_KERNEL_CI_PRODUCER_ENABLED = os.environ.get(
+        'BISECT_KERNEL_CI_PRODUCER_ENABLED', 'true'
+    ).lower() == 'true'
 
     # Consumer switch configuration
     # Gates new wait-task submission and new verification-job submission.

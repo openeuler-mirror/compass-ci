@@ -52,9 +52,42 @@ sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/validators')
 from success_task_validator import SuccessTaskValidator
 from head_validator import HeadValidator
 
-from bisect_producer import ErrorBisectProducer, PerformanceBisectProducer
+from bisect_producer import (
+    MetricsBisectProducer,
+    KernelCIBisectProducer,
+    ErrorBisectProducer,
+    PerformanceBisectProducer,
+)
 from bisect_consumer import BisectConsumer
 from polling_worker import PollingWorker
+
+
+PRODUCER_COMPONENTS = {
+    'metrics': {
+        'config_attr': 'BISECT_METRICS_PRODUCER_ENABLED',
+        'label': 'Metrics Producer',
+        'instance_attr': '_metrics_producer',
+        'factory': MetricsBisectProducer,
+    },
+    'kernel_ci': {
+        'config_attr': 'BISECT_KERNEL_CI_PRODUCER_ENABLED',
+        'label': 'Kernel CI Producer',
+        'instance_attr': '_kernel_ci_producer',
+        'factory': KernelCIBisectProducer,
+    },
+    'error': {
+        'config_attr': 'BISECT_ERROR_PRODUCER_ENABLED',
+        'label': 'Error Producer',
+        'instance_attr': None,
+        'factory': ErrorBisectProducer,
+    },
+    'performance': {
+        'config_attr': 'PERFORMANCE_PRODUCER_ENABLED',
+        'label': 'Performance Producer',
+        'instance_attr': None,
+        'factory': PerformanceBisectProducer,
+    },
+}
 
 
 class _ValidatorWorker(PollingWorker):
@@ -388,6 +421,10 @@ class TaskProcessor:
             self.stop_event.clear()
         else:
             self.stop_event.set()
+            for event_name in ('consumer_wake_event', 'validator_wake_event', 'producer_control_event'):
+                event = getattr(self, event_name, None)
+                if event is not None:
+                    event.set()
 
     def _register_signal_handlers(self):
         """Register signal handlers"""
@@ -414,6 +451,119 @@ class TaskProcessor:
 
         # Safe exit
         logger.info("Cleanup completed, program will exit")
+
+    def available_producer_targets(self) -> List[str]:
+        """Return supported producer target names in execution order."""
+        return list(PRODUCER_COMPONENTS.keys())
+
+    def normalize_producer_target(self, target: Optional[str]) -> str:
+        """Normalize and validate a producer target string."""
+        normalized = (target or 'all').strip().lower()
+        valid_targets = {'all', *self.available_producer_targets()}
+        if normalized not in valid_targets:
+            raise ValueError(
+                f"Invalid producer target '{target}'. "
+                f"Use one of: {', '.join(sorted(valid_targets))}"
+            )
+        return normalized
+
+    def set_producer_enabled(self, target: str, enabled: bool) -> bool:
+        """Set the global or per-component producer toggle and return the old state."""
+        normalized_target = self.normalize_producer_target(target)
+        if normalized_target == 'all':
+            old_state = bool(Config.BISECT_PRODUCER_ENABLED)
+            Config.BISECT_PRODUCER_ENABLED = enabled
+            return old_state
+
+        config_attr = PRODUCER_COMPONENTS[normalized_target]['config_attr']
+        old_state = bool(getattr(Config, config_attr))
+        setattr(Config, config_attr, enabled)
+        return old_state
+
+    def get_producer_gate_state(self) -> Dict[str, object]:
+        """Return the effective producer gate state for future automatic cycles."""
+        configured_enabled = bool(Config.BISECT_PRODUCER_ENABLED)
+        producer_states = {}
+        configured_producers = []
+        effective_producers = []
+
+        for name, spec in PRODUCER_COMPONENTS.items():
+            component_enabled = bool(getattr(Config, spec['config_attr']))
+            effective_enabled = configured_enabled and component_enabled
+            if component_enabled:
+                configured_producers.append(name)
+            if effective_enabled:
+                effective_producers.append(name)
+
+            producer_states[name] = {
+                "label": spec['label'],
+                "config_key": spec['config_attr'],
+                "configured_enabled": component_enabled,
+                "effective_enabled": effective_enabled,
+            }
+
+        pause_reason = None
+        if not configured_enabled:
+            pause_reason = 'disabled'
+        elif not effective_producers:
+            pause_reason = 'no_enabled_producers'
+
+        return {
+            "configured_enabled": configured_enabled,
+            "accepting_new_cycles": pause_reason is None,
+            "pause_reason": pause_reason,
+            "configured_producers": configured_producers,
+            "effective_producers": effective_producers,
+            "producers": producer_states,
+        }
+
+    def wake_producer_control_worker(self):
+        """Wake the producer loop so runtime enable/disable takes effect promptly."""
+        event = getattr(self, 'producer_control_event', None)
+        if event is not None:
+            event.set()
+
+    def _wait_for_producer_control(self, timeout_seconds: Optional[float] = None) -> bool:
+        """Wait for a timeout or a control-state wakeup, returning True on wakeup."""
+        event = getattr(self, 'producer_control_event', None)
+        if event is None:
+            self.stop_event.wait(timeout_seconds)
+            return False
+
+        woke_early = event.wait(timeout_seconds)
+        if woke_early:
+            event.clear()
+        return woke_early
+
+    def _log_producer_gate_state(self, gate_state: dict):
+        """Log state transitions for producer cycle gating."""
+        pause_reason = gate_state.get("pause_reason")
+        last_reason = getattr(self, "_last_producer_pause_reason", None)
+        if pause_reason == last_reason:
+            return
+
+        if pause_reason == "disabled":
+            logger.info("BisectProducer paused: BISECT_PRODUCER_ENABLED=false")
+        elif pause_reason == "no_enabled_producers":
+            logger.info("BisectProducer paused: all sub-producers are disabled")
+        elif last_reason is not None:
+            enabled_targets = ', '.join(gate_state.get("effective_producers", [])) or 'none'
+            logger.info(f"BisectProducer resumed: accepting new cycles | producers: {enabled_targets}")
+
+        self._last_producer_pause_reason = pause_reason
+
+    def _get_or_create_stateful_producer(self, target: str):
+        """Lazily create persistent producer helpers for script-style components."""
+        spec = PRODUCER_COMPONENTS[target]
+        instance_attr = spec['instance_attr']
+        if not instance_attr:
+            raise ValueError(f"Producer target '{target}' does not use a persistent instance")
+
+        producer = getattr(self, instance_attr, None)
+        if producer is None:
+            producer = spec['factory'](self.client, self._config)
+            setattr(self, instance_attr, producer)
+        return producer
 
     def get_consumer_gate_state(self, now: Optional[float] = None) -> Dict[str, object]:
         """Return the effective consumer gate state, including startup grace period."""
@@ -697,6 +847,9 @@ class TaskProcessor:
         
         # Add producer lock for concurrency control
         self.producer_lock = threading.Lock()
+        self.producer_control_event = threading.Event()
+        self._metrics_producer = None
+        self._kernel_ci_producer = None
 
         # Wake event: producer sets this after creating tasks so consumer polls immediately
         self.consumer_wake_event = threading.Event()
@@ -1002,59 +1155,108 @@ class TaskProcessor:
             logger.error(f"Stack trace:\n{traceback.format_exc()}")
             return {'status': 'error', 'message': f'Exception: {str(e)}'}
 
-    def _run_producer_once(self, force: bool = False):
-        """Execute a complete producer task discovery cycle (Error + Performance)"""
+    def _run_producer_once(
+        self,
+        force: bool = False,
+        producer_targets: Optional[List[str]] = None,
+    ):
+        """Execute one producer cycle for the selected producer components."""
         set_log_component('producer')
-        logger.info(f"========== BisectProducer cycle STARTED (force={force}) ==========")
+        targets = producer_targets or self.available_producer_targets()
+        logger.info(
+            f"========== BisectProducer cycle STARTED (force={force}) | "
+            f"targets: {', '.join(targets)} =========="
+        )
 
-        # 1. Execute error type producer
-        error_success_count = 0
-        try:
-            error_producer = ErrorBisectProducer(self.client, self._config)
-            error_producer.add_bisect_task_func = self.add_bisect_task
-            error_success_count = error_producer.execute_producer_cycle(force_run_scripts=force)
-            logger.info(f"[Error Producer] completed | new_tasks: {error_success_count}")
-        except Exception as e:
-            logger.error(f"[Error Producer] failed: {e}")
-            logger.error(traceback.format_exc())
+        component_task_counts = {name: 0 for name in targets}
 
-        # 2. Execute performance type producer
-        perf_success_count = 0
-        try:
-            perf_producer = PerformanceBisectProducer(self.client, self._config)
-            perf_success_count = perf_producer.execute_producer_cycle()
-            logger.info(f"[Performance Producer] completed | new_tasks: {perf_success_count}")
-        except Exception as e:
-            logger.error(f"[Performance Producer] failed: {e}")
-            logger.error(traceback.format_exc())
+        if 'metrics' in targets:
+            try:
+                metrics_producer = self._get_or_create_stateful_producer('metrics')
+                metrics_producer.execute_producer_cycle(force_run=force)
+                logger.info("[Metrics Producer] completed")
+            except Exception as e:
+                logger.error(f"[Metrics Producer] failed: {e}")
+                logger.error(traceback.format_exc())
 
-        # Clear cache
-        if len(self.processed_jobs_cache) > 5000:
-            logger.info(f"Cache size ({len(self.processed_jobs_cache)}) exceeds limit, cleaning...")
-            cache_list = list(self.processed_jobs_cache)
-            keep_size = min(2500, len(cache_list) // 2)
-            self.processed_jobs_cache = set(cache_list[-keep_size:])
-            logger.info(f"Cache cleaned, kept {len(self.processed_jobs_cache)} recent entries")
+        if 'kernel_ci' in targets:
+            try:
+                kernel_ci_producer = self._get_or_create_stateful_producer('kernel_ci')
+                kernel_ci_producer.execute_producer_cycle(force_run=force)
+                logger.info("[Kernel CI Producer] completed")
+            except Exception as e:
+                logger.error(f"[Kernel CI Producer] failed: {e}")
+                logger.error(traceback.format_exc())
 
-        total_tasks = error_success_count + perf_success_count
-        logger.info(f"========== BisectProducer cycle COMPLETED | total_tasks: {total_tasks} (Error: {error_success_count}, Perf: {perf_success_count}) ==========")
+        if 'error' in targets:
+            try:
+                error_producer = ErrorBisectProducer(self.client, self._config)
+                error_producer.add_bisect_task_func = self.add_bisect_task
+                component_task_counts['error'] = error_producer.execute_producer_cycle(
+                    force_run_scripts=force
+                )
+                logger.info(
+                    f"[Error Producer] completed | new_tasks: {component_task_counts['error']}"
+                )
+            except Exception as e:
+                logger.error(f"[Error Producer] failed: {e}")
+                logger.error(traceback.format_exc())
+
+        if 'performance' in targets:
+            try:
+                perf_producer = PerformanceBisectProducer(self.client, self._config)
+                component_task_counts['performance'] = perf_producer.execute_producer_cycle()
+                logger.info(
+                    "[Performance Producer] completed | "
+                    f"new_tasks: {component_task_counts['performance']}"
+                )
+            except Exception as e:
+                logger.error(f"[Performance Producer] failed: {e}")
+                logger.error(traceback.format_exc())
+
+        total_tasks = sum(component_task_counts.values())
+        logger.info(
+            f"========== BisectProducer cycle COMPLETED | total_tasks: {total_tasks} "
+            f"| task_counts: {component_task_counts} =========="
+        )
 
         # Wake consumer immediately if new tasks were created
         if total_tasks > 0:
             self.consumer_wake_event.set()
             logger.info(f"Producer created {total_tasks} tasks, waking consumer")
 
-    def trigger_producer_run(self, force: bool = False):
+    def trigger_producer_run(self, force: bool = False, producer: str = 'all'):
         """API endpoint to manually trigger a producer run."""
+        normalized_target = self.normalize_producer_target(producer)
+        if normalized_target == 'all':
+            producer_targets = self.get_producer_gate_state()["configured_producers"]
+            if not producer_targets:
+                logger.warning("Manual producer run requested, but no producer components are enabled.")
+                return {
+                    'status': 'error',
+                    'message': 'No producer components are enabled. '
+                               'Enable a producer target or pass --producer <name>.',
+                    'producer': normalized_target,
+                    'producer_targets': [],
+                }
+        else:
+            producer_targets = [normalized_target]
+
         # Try to acquire lock to ensure only one producer runs at a time
         if self.producer_lock.acquire(blocking=False):
             try:
-                logger.info(f"Producer run triggered manually via API (force={force}).")
+                logger.info(
+                    "Producer run triggered manually via API "
+                    f"(force={force}, target={normalized_target})."
+                )
                 
                 # Define a wrapper to release the lock after execution
-                def producer_wrapper(force_flag):
+                def producer_wrapper(force_flag, targets):
                     try:
-                        self._run_producer_once(force=force_flag)
+                        self._run_producer_once(
+                            force=force_flag,
+                            producer_targets=targets,
+                        )
                     finally:
                         if self.producer_lock.locked():
                             self.producer_lock.release()
@@ -1064,13 +1266,18 @@ class TaskProcessor:
                 # This prevents the producer from being blocked by a busy worker pool
                 producer_thread = threading.Thread(
                     target=producer_wrapper,
-                    args=(force,),
+                    args=(force, producer_targets),
                     name="ManualProducerRunner",
                     daemon=True
                 )
                 producer_thread.start()
                 
-                return {'status': 'success', 'message': 'Producer run started in the background.'}
+                return {
+                    'status': 'success',
+                    'message': 'Producer run started in the background.',
+                    'producer': normalized_target,
+                    'producer_targets': producer_targets,
+                }
             except Exception as e:
                 # If thread start fails, ensure lock is released
                 self.producer_lock.release()
@@ -1106,7 +1313,6 @@ class TaskProcessor:
         background_threads.append(("RepoCleanupWorker", repo_cleanup_thread))
 
         # 4. Producer thread (start based on config)
-        # Unified BisectProducer thread, includes both Error and Performance types
         if Config.BISECT_PRODUCER_ENABLED:
             producer_thread = threading.Thread(
                 target=self.bisect_producer,
@@ -1115,7 +1321,7 @@ class TaskProcessor:
             )
             producer_thread.start()
             background_threads.append(("BisectProducer", producer_thread))
-            logger.info("BisectProducer started (Error + Performance)")
+            logger.info("BisectProducer started")
         else:
             logger.info("Producer background tasks disabled (by config)")
 
@@ -1169,23 +1375,34 @@ class TaskProcessor:
 
 
     def bisect_producer(self):
-        """Unified Bisect task producer - includes both Error and Performance types"""
+        """Unified Bisect task producer loop for all automatic producer components."""
         set_log_component('producer')
-        if not Config.BISECT_PRODUCER_ENABLED:
-            logger.info("BisectProducer is disabled by config, exiting.")
-            return
+        logged_mode = None
 
-        if Config.BISECT_PRODUCER_SCHEDULED_ENABLED:
-            # Scheduled execution mode
-            try:
-                hour, minute = map(int, Config.BISECT_PRODUCER_SCHEDULED_TIME.split(':'))
-            except ValueError:
-                logger.error(f"Invalid BISECT_PRODUCER_SCHEDULED_TIME format '{Config.BISECT_PRODUCER_SCHEDULED_TIME}'. Use HH:MM. Disabling producer.")
-                return
+        while self.running:
+            gate_state = self.get_producer_gate_state()
+            self._log_producer_gate_state(gate_state)
+            if not gate_state["accepting_new_cycles"]:
+                self._wait_for_producer_control()
+                continue
 
-            logger.info(f"Producer is in scheduled mode. Will run daily at {hour:02d}:{minute:02d}.")
+            if Config.BISECT_PRODUCER_SCHEDULED_ENABLED:
+                try:
+                    hour, minute = map(int, Config.BISECT_PRODUCER_SCHEDULED_TIME.split(':'))
+                except ValueError:
+                    logger.error(
+                        f"Invalid BISECT_PRODUCER_SCHEDULED_TIME format "
+                        f"'{Config.BISECT_PRODUCER_SCHEDULED_TIME}'. Use HH:MM. "
+                        "Disabling producer."
+                    )
+                    return
 
-            while self.running:
+                if logged_mode != 'scheduled':
+                    logger.info(
+                        f"Producer is in scheduled mode. Will run daily at {hour:02d}:{minute:02d}."
+                    )
+                    logged_mode = 'scheduled'
+
                 now = datetime.now()
                 next_run_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
@@ -1194,27 +1411,45 @@ class TaskProcessor:
                     next_run_time += timedelta(days=1)
 
                 wait_seconds = (next_run_time - now).total_seconds()
-                logger.info(f"Producer will run next at {next_run_time}. Waiting for {wait_seconds / 3600:.2f} hours.")
+                logger.info(
+                    f"Producer will run next at {next_run_time}. "
+                    f"Waiting for {wait_seconds / 3600:.2f} hours."
+                )
 
-                # Wait until next run time (responds to stop signal immediately)
-                self.stop_event.wait(wait_seconds)
+                control_woke = self._wait_for_producer_control(wait_seconds)
+                if not self.running:
+                    break
+                if control_woke:
+                    continue
+
+                with self.producer_lock:
+                    self._run_producer_once(
+                        producer_targets=gate_state["effective_producers"]
+                    )
+            else:
+                if logged_mode != 'interval':
+                    logger.info(
+                        f"Producer is in interval mode. "
+                        f"Will run every {Config.BISECT_PRODUCER_CYCLE_HOURS} hours."
+                    )
+                    logged_mode = 'interval'
+
+                with self.producer_lock:
+                    self._run_producer_once(
+                        producer_targets=gate_state["effective_producers"]
+                    )
 
                 if not self.running:
                     break
 
-                # Execute producer logic
-                with self.producer_lock:
-                    self._run_producer_once()
-        else:
-            # Interval execution mode (original logic)
-            logger.info(f"Producer is in interval mode. Will run every {Config.BISECT_PRODUCER_CYCLE_HOURS} hours.")
-            while self.running:
-                with self.producer_lock:
-                    self._run_producer_once()
-
-                # Wait for configured interval (responds to stop signal immediately)
-                logger.info(f"Producer finished a cycle, sleeping for {self.producer_interval / 3600:.1f} hours.")
-                self.stop_event.wait(self.producer_interval)
+                logger.info(
+                    f"Producer finished a cycle, sleeping for {self.producer_interval / 3600:.1f} hours."
+                )
+                control_woke = self._wait_for_producer_control(self.producer_interval)
+                if not self.running:
+                    break
+                if control_woke:
+                    continue
 
     def bisect_consumer(self):
         """Launch BisectConsumer as a PollingWorker."""

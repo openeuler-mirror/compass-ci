@@ -32,6 +32,10 @@ class _DummyConfig:
     DEFAULT_QUERY_LIMIT = 20
     MAX_QUERY_LIMIT = 200
     BISECT_PRODUCER_ENABLED = True
+    BISECT_METRICS_PRODUCER_ENABLED = True
+    BISECT_ERROR_PRODUCER_ENABLED = True
+    BISECT_KERNEL_CI_PRODUCER_ENABLED = True
+    PERFORMANCE_PRODUCER_ENABLED = True
     BISECT_CONSUMER_ENABLED = True
     BISECT_CONSUMER_STARTUP_DELAY_SECONDS = 300
 
@@ -62,6 +66,22 @@ sys.modules['task_processor'].bisect_task_instance = types.SimpleNamespace(
         'startup_delay_seconds': 300,
         'startup_delay_remaining_seconds': 0,
     }),
+    get_producer_gate_state=MagicMock(return_value={
+        'configured_enabled': True,
+        'accepting_new_cycles': True,
+        'pause_reason': None,
+        'configured_producers': ['metrics', 'kernel_ci', 'error', 'performance'],
+        'effective_producers': ['metrics', 'kernel_ci', 'error', 'performance'],
+        'producers': {
+            'metrics': {'configured_enabled': True},
+            'kernel_ci': {'configured_enabled': True},
+            'error': {'configured_enabled': True},
+            'performance': {'configured_enabled': True},
+        },
+    }),
+    normalize_producer_target=MagicMock(side_effect=lambda target: (target or 'all')),
+    set_producer_enabled=MagicMock(return_value=True),
+    wake_producer_control_worker=MagicMock(),
     wake_consumer_control_workers=MagicMock(),
 )
 sys.modules['services.pool_monitor_service'].PoolMonitorService = MagicMock
@@ -87,6 +107,24 @@ class TestVerificationStatusApi(unittest.TestCase):
             'startup_delay_seconds': 300,
             'startup_delay_remaining_seconds': 0,
         })
+        controllers.bisect_task_instance.get_producer_gate_state = MagicMock(return_value={
+            'configured_enabled': True,
+            'accepting_new_cycles': True,
+            'pause_reason': None,
+            'configured_producers': ['metrics', 'kernel_ci', 'error', 'performance'],
+            'effective_producers': ['metrics', 'kernel_ci', 'error', 'performance'],
+            'producers': {
+                'metrics': {'configured_enabled': True},
+                'kernel_ci': {'configured_enabled': True},
+                'error': {'configured_enabled': True},
+                'performance': {'configured_enabled': True},
+            },
+        })
+        controllers.bisect_task_instance.normalize_producer_target = MagicMock(
+            side_effect=lambda target: (target or 'all')
+        )
+        controllers.bisect_task_instance.set_producer_enabled = MagicMock(return_value=True)
+        controllers.bisect_task_instance.wake_producer_control_worker = MagicMock()
         controllers.bisect_task_instance.wake_consumer_control_workers = MagicMock()
 
     def test_snapshot_counts_queue_pressure(self):
@@ -194,6 +232,37 @@ class TestVerificationStatusApi(unittest.TestCase):
         self.assertEqual(body['startup_delay_remaining_seconds'], 12)
         controllers.bisect_task_instance.wake_consumer_control_workers.assert_called_once_with()
 
+    def test_toggle_producer_returns_gate_snapshot(self):
+        app = Flask(__name__)
+        controllers.bisect_task_instance.set_producer_enabled = MagicMock(return_value=True)
+        controllers.bisect_task_instance.get_producer_gate_state = MagicMock(return_value={
+            'configured_enabled': True,
+            'accepting_new_cycles': True,
+            'pause_reason': None,
+            'configured_producers': ['metrics', 'error', 'performance'],
+            'effective_producers': ['metrics', 'error', 'performance'],
+            'producers': {
+                'metrics': {'configured_enabled': True},
+                'kernel_ci': {'configured_enabled': False},
+                'error': {'configured_enabled': True},
+                'performance': {'configured_enabled': True},
+            },
+        })
+
+        with app.test_request_context('/toggle_producer?state=disable&producer=kernel_ci'):
+            response, status_code = controllers.toggle_producer()
+
+        body = response.get_json()
+        self.assertEqual(status_code, 200)
+        self.assertEqual(body['target'], 'kernel_ci')
+        self.assertTrue(body['producer_enabled'])
+        self.assertTrue(body['accepting_new_cycles'])
+        self.assertIsNone(body['pause_reason'])
+        self.assertFalse(body['component_enabled'])
+        self.assertEqual(body['action'], 'configuration updated')
+        controllers.bisect_task_instance.set_producer_enabled.assert_called_once_with('kernel_ci', False)
+        controllers.bisect_task_instance.wake_producer_control_worker.assert_called_once_with()
+
     def test_get_consumer_status_includes_startup_delay(self):
         app = Flask(__name__)
         controllers.bisect_task_instance.active_task_locks = {'11', '12'}
@@ -228,6 +297,47 @@ class TestVerificationStatusApi(unittest.TestCase):
             [item['name'] for item in body['worker_threads']],
             ['BisectConsumer', 'SuccessTaskValidator']
         )
+
+    def test_get_producer_status_includes_pause_reason(self):
+        app = Flask(__name__)
+        controllers.bisect_task_instance.get_producer_gate_state = MagicMock(return_value={
+            'configured_enabled': False,
+            'accepting_new_cycles': False,
+            'pause_reason': 'disabled',
+            'configured_producers': ['metrics', 'error'],
+            'effective_producers': [],
+            'producers': {
+                'metrics': {'configured_enabled': True},
+                'kernel_ci': {'configured_enabled': False},
+                'error': {'configured_enabled': True},
+                'performance': {'configured_enabled': False},
+            },
+        })
+
+        original_enumerate = controllers.threading.enumerate
+
+        def fake_enumerate():
+            extra_threads = [
+                types.SimpleNamespace(
+                    name='BisectProducer',
+                    _target=types.SimpleNamespace(__name__='bisect_producer'),
+                    is_alive=lambda: True,
+                    daemon=True,
+                ),
+            ]
+            return extra_threads + list(original_enumerate())
+
+        with app.app_context():
+            with patch.object(controllers.threading, 'enumerate', side_effect=fake_enumerate):
+                response, status_code = controllers.get_producer_status()
+
+        body = response.get_json()
+        self.assertEqual(status_code, 200)
+        self.assertFalse(body['producer_enabled'])
+        self.assertFalse(body['accepting_new_cycles'])
+        self.assertEqual(body['pause_reason'], 'disabled')
+        self.assertEqual(body['effective_producers'], [])
+        self.assertEqual(body['active_producer_threads'], 1)
 
 
 if __name__ == '__main__':

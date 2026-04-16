@@ -48,6 +48,115 @@ except ImportError:
     logger.warning("Commit Time Service Client not available, commit age filtering disabled")
     COMMIT_TIME_CLIENT_AVAILABLE = False
 
+def _run_script_with_streaming_logs(script_path, args=None, description="script"):
+    """Run a maintenance script and stream combined stdout/stderr into producer logs."""
+    if not os.path.exists(script_path):
+        logger.warning(f"{description} not found at: {script_path}")
+        return False
+
+    logger.info(f"Running {description}: {script_path}")
+
+    if script_path.endswith('.py'):
+        cmd = [sys.executable, "-u", script_path]
+    elif script_path.endswith('.sh'):
+        cmd = ['bash', script_path]
+    else:
+        cmd = [script_path]
+
+    if args is not None:
+        cmd.extend(args)
+
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+
+        for line in process.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            if '- DEBUG -' in line:
+                logger.debug(f"[{description}] {line}")
+            else:
+                logger.info(f"[{description}] {line}")
+
+        process.wait(timeout=3600)
+
+        if process.returncode == 0:
+            logger.info(f"{description} successful.")
+            return True
+
+        logger.error(f"{description} failed (code {process.returncode})")
+        return False
+
+    except subprocess.TimeoutExpired:
+        process.kill()
+        logger.error(f"{description} timed out after 3600s")
+        return False
+    except Exception as e:
+        logger.error(f"Error running {description}: {str(e)}")
+        return False
+
+
+class MetricsBisectProducer:
+    """Producer component responsible for daily metrics collection scripts."""
+
+    def __init__(self, client: ManticoreClient, config: Dict):
+        self.client = client
+        self.config = config
+        self.last_metrics_date = None
+
+    def execute_producer_cycle(self, force_run=False) -> int:
+        """Run the metrics tracker at most once per day unless forced."""
+        current_date = time.strftime('%Y-%m-%d')
+        if not force_run and self.last_metrics_date == current_date:
+            logger.info("Metrics producer skipped | already ran today")
+            return 0
+
+        lkp_src = os.environ.get('LKP_SRC', '/lkp')
+        tracker_script = os.path.join(lkp_src, 'sbin/bisect/scripts/bisect_metrics_tracker.py')
+        if _run_script_with_streaming_logs(
+            tracker_script,
+            ['--collect', '--plot'],
+            "metrics collection"
+        ):
+            self.last_metrics_date = current_date
+
+        return 0
+
+
+class KernelCIBisectProducer:
+    """Producer component responsible for daily kernel-ci generation."""
+
+    def __init__(self, client: ManticoreClient, config: Dict):
+        self.client = client
+        self.config = config
+        self.last_kernel_test_date = None
+
+    def execute_producer_cycle(self, force_run=False) -> int:
+        """Run the kernel-ci producer at most once per day unless forced."""
+        current_date = time.strftime('%Y-%m-%d')
+        if not force_run and self.last_kernel_test_date == current_date:
+            logger.info("Kernel CI producer skipped | already ran today")
+            return 0
+
+        lkp_src = os.environ.get('LKP_SRC', '/lkp')
+        ci_runner_script = os.path.join(lkp_src, 'sbin/bisect/kernel_ci/ci_runner.py')
+        if _run_script_with_streaming_logs(
+            ci_runner_script,
+            None,
+            "daily kernel test (ci_runner)"
+        ):
+            self.last_kernel_test_date = current_date
+
+        return 0
+
+
 class ErrorBisectProducer:
     """Error type bisect task producer"""
 
@@ -56,10 +165,7 @@ class ErrorBisectProducer:
         self.config = config
         # Use LRU cache instead of simple Set
         self.processed_jobs_cache = LRUCache(max_size=5000)
-        self.processed_jobs_cache = LRUCache(max_size=5000)
         self.last_run_time = 0
-        self.last_metrics_date = None
-        self.last_kernel_test_date = None
 
         # Import intelligent filter
         from errid_intelligence import ErridIntelligence
@@ -101,68 +207,6 @@ class ErrorBisectProducer:
             self.min_kernel_version = None
             logger.warning("Commit filtering not enabled (service unavailable)")
 
-    def _run_script(self, script_path, args=None, description="script"):
-        """Generic script execution method - real-time streaming log output"""
-        if not os.path.exists(script_path):
-            logger.warning(f"{description} not found at: {script_path}")
-            return False
-            
-        logger.info(f"Running {description}: {script_path}")
-
-        # Build command based on script type
-        if script_path.endswith('.py'):
-            # Python script: use sys.executable
-            cmd = [sys.executable, "-u", script_path]  # -u for unbuffered output
-        elif script_path.endswith('.sh'):
-            # Shell script: use bash to avoid permission issues
-            cmd = ['bash', script_path]
-        else:
-            # Other types: try direct execution
-            cmd = [script_path]
-
-        # Add arguments
-        if args is not None:
-            cmd.extend(args)
-
-        try:
-            # Use Popen for real-time output
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,  # Merge stderr into stdout
-                text=True,
-                bufsize=1,  # Line buffered
-                universal_newlines=True
-            )
-            
-            # Read output in real-time, skip subprocess DEBUG lines
-            for line in process.stdout:
-                line = line.strip()
-                if not line:
-                    continue
-                if '- DEBUG -' in line:
-                    logger.debug(f"[{description}] {line}")
-                else:
-                    logger.info(f"[{description}] {line}")
-            
-            # Wait for process to finish
-            process.wait(timeout=3600)
-            
-            if process.returncode == 0:
-                logger.info(f"{description} successful.")
-                return True
-            else:
-                logger.error(f"{description} failed (code {process.returncode})")
-                return False
-                
-        except subprocess.TimeoutExpired:
-            process.kill()
-            logger.error(f"{description} timed out after 3600s")
-            return False
-        except Exception as e:
-            logger.error(f"Error running {description}: {str(e)}")
-            return False
-
     def execute_producer_cycle(self, force_run_scripts=False):
         """
         Optimized producer cycle - simplified version, mainly optimized queries
@@ -170,26 +214,6 @@ class ErrorBisectProducer:
         Args:
             force_run_scripts: whether to force run maintenance scripts (ignore daily limit)
         """
-        current_date = time.strftime('%Y-%m-%d')
-        lkp_src = os.environ.get('LKP_SRC', '/lkp')
-
-        # === 1. Metrics collection script ===
-        # Run once daily, or when forced
-        if force_run_scripts or self.last_metrics_date != current_date:
-            tracker_script = os.path.join(lkp_src, 'sbin/bisect/scripts/bisect_metrics_tracker.py')
-            if self._run_script(tracker_script, ['--collect', '--plot'], "metrics collection"):
-                # Only update date marker on successful run in non-force mode to prevent forced runs from affecting auto scheduling
-                # Or: update whenever successful? Typically forced run counts as today's run.
-                # Strategy: update date marker if run successfully
-                self.last_metrics_date = current_date
-
-        # === 2. Daily kernel test (ci_runner.py) ===
-        # Run once daily, or when forced
-        if force_run_scripts or self.last_kernel_test_date != current_date:
-            ci_runner_script = os.path.join(lkp_src, 'sbin/bisect/kernel_ci/ci_runner.py')
-            if self._run_script(ci_runner_script, None, "daily kernel test (ci_runner)"):
-                self.last_kernel_test_date = current_date
-
         start_time = time.time()
         cycle_timestamp = int(start_time)
 

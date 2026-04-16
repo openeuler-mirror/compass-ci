@@ -255,10 +255,13 @@ class BisectAPIClient:
         """Get verification queue status."""
         return self._make_request("GET", "/verification_status")
 
-    def toggle_producer(self, enable: bool) -> Optional[Dict]:
+    def toggle_producer(self, enable: bool, producer: str = 'all') -> Optional[Dict]:
         """Enable or disable the producer."""
         state = "enable" if enable else "disable"
-        return self._make_request("POST", f"/toggle_producer?state={state}")
+        path = f"/toggle_producer?state={state}"
+        if producer != 'all':
+            path += f"&producer={producer}"
+        return self._make_request("POST", path)
 
     def producer_status(self) -> Optional[Dict]:
         """Get producer status."""
@@ -273,9 +276,11 @@ class BisectAPIClient:
         """Get consumer status."""
         return self._make_request("GET", "/consumer_status")
 
-    def trigger_producer_run(self, force: bool = False) -> Optional[Dict]:
+    def trigger_producer_run(self, force: bool = False, producer: str = 'all') -> Optional[Dict]:
         """Trigger a producer run manually."""
         params = {'force': 'true'} if force else {}
+        if producer != 'all':
+            params['producer'] = producer
         return self._make_request("POST", "/trigger_producer_run", params=params)
 
     # Pool monitoring methods
@@ -527,10 +532,23 @@ class BisectAPIClient:
         if producer:
             print()
             alive = any(item.get('is_alive') for item in producer.get('producer_threads', []))
+            accepting_new_cycles = producer.get('accepting_new_cycles')
+            producer_runtime = 'paused' if accepting_new_cycles is False else ('alive' if alive else 'DEAD')
             print(
                 f"Producer: {'enabled' if producer.get('producer_enabled') else 'disabled'}"
-                f"  |  {'alive' if alive else 'DEAD'}"
+                f"  |  {producer_runtime}"
             )
+            pause_reason = producer.get('pause_reason')
+            if pause_reason:
+                print(f"  pause_reason         : {pause_reason}")
+            for name in ('metrics', 'kernel_ci', 'error', 'performance'):
+                component = producer.get('producers', {}).get(name)
+                if not component:
+                    continue
+                print(
+                    f"  {name:<20}: "
+                    f"{'enabled' if component.get('configured_enabled') else 'disabled'}"
+                )
 
         consumer = self._make_silent_request("GET", "/consumer_status")
         if consumer:
@@ -639,9 +657,9 @@ Examples:
 
   # Producer control
   %(prog)s enable_producer
-  %(prog)s disable_producer
+  %(prog)s disable_producer --producer kernel_ci
   %(prog)s producer_status
-  %(prog)s trigger_producer
+  %(prog)s trigger_producer --producer performance
 
   # System overview
   %(prog)s status
@@ -857,11 +875,21 @@ Note: only failed or processing tasks can be reset
     subparsers.add_parser('status', help='Show a one-screen bisect system overview')
     subparsers.add_parser('thread_status', help='Show thread pool status')
     subparsers.add_parser('verification_status', help='Show verification queue status')
-    subparsers.add_parser('enable_producer', help='Enable the background producer')
-    subparsers.add_parser('disable_producer', help='Disable the background producer')
+
+    producer_target_kwargs = {
+        'choices': ['all', 'metrics', 'kernel_ci', 'error', 'performance'],
+        'default': 'all',
+        'help': 'Select all producers or a specific producer component',
+    }
+
+    enable_producer_parser = subparsers.add_parser('enable_producer', help='Enable the background producer')
+    enable_producer_parser.add_argument('--producer', **producer_target_kwargs)
+    disable_producer_parser = subparsers.add_parser('disable_producer', help='Disable the background producer')
+    disable_producer_parser.add_argument('--producer', **producer_target_kwargs)
     subparsers.add_parser('producer_status', help='Show producer status')
     trigger_parser = subparsers.add_parser('trigger_producer', help='Trigger a producer run manually')
     trigger_parser.add_argument('--force', action='store_true', help='Force a run even if one already ran today')
+    trigger_parser.add_argument('--producer', **producer_target_kwargs)
 
     subparsers.add_parser('enable_consumer', help='Enable BisectConsumer + SuccessTaskValidator')
     subparsers.add_parser('disable_consumer', help='Disable BisectConsumer + SuccessTaskValidator')
@@ -961,13 +989,13 @@ Note: only failed or processing tasks can be reset
     elif args.command == 'verification_status':
         client.verification_status()
     elif args.command == 'enable_producer':
-        client.toggle_producer(True)
+        client.toggle_producer(True, producer=args.producer)
     elif args.command == 'disable_producer':
-        client.toggle_producer(False)
+        client.toggle_producer(False, producer=args.producer)
     elif args.command == 'producer_status':
         client.producer_status()
     elif args.command == 'trigger_producer':
-        client.trigger_producer_run(force=args.force)
+        client.trigger_producer_run(force=args.force, producer=args.producer)
     elif args.command == 'enable_consumer':
         client.toggle_consumer(True)
     elif args.command == 'disable_consumer':

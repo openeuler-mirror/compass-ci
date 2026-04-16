@@ -74,6 +74,8 @@ class _DummyGitBisect:
 sys.modules['lkp_bisect.core.git_bisect'].GitBisect = _DummyGitBisect
 sys.modules['success_task_validator'].SuccessTaskValidator = MagicMock
 sys.modules['head_validator'].HeadValidator = MagicMock
+sys.modules['bisect_producer'].MetricsBisectProducer = MagicMock
+sys.modules['bisect_producer'].KernelCIBisectProducer = MagicMock
 sys.modules['bisect_producer'].ErrorBisectProducer = MagicMock
 sys.modules['bisect_producer'].PerformanceBisectProducer = MagicMock
 sys.modules['bisect_consumer'].BisectConsumer = MagicMock
@@ -84,7 +86,9 @@ os.environ.setdefault('LKP_SRC', '/tmp')
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 sys.path.insert(0, os.path.join(REPO_ROOT, 'container', 'bisect', 'core'))
+sys.modules.pop('task_processor', None)
 
+import task_processor as task_processor_module
 from task_processor import TaskProcessor
 
 
@@ -120,13 +124,13 @@ class TestTaskProcessorRepoScope(unittest.TestCase):
             },
         ]
 
-        with patch('task_processor.ErridIntelligence') as mock_intel:
+        with patch.object(task_processor_module, 'ErridIntelligence') as mock_intel:
             mock_intel.return_value.extract_coarse_signature.return_value = 'same-signature'
             p._refresh_success_signature_cache()
 
         self.assertEqual(len(p._success_signature_cache), 2)
         p._success_cache_last_refresh = 10**9  # avoid refresh path in lookup
-        with patch('task_processor.time.time', return_value=10**9 + 1):
+        with patch.object(task_processor_module.time, 'time', return_value=10**9 + 1):
             self.assertEqual(
                 p._find_successful_task_by_signature('same-signature', 'git://repo/a.git')['id'],
                 1

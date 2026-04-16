@@ -97,7 +97,7 @@ Not every configuration change takes effect the same way. The current bisect ser
 
 | Change type | Examples | When it takes effect |
 | :--- | :--- | :--- |
-| Runtime mutable | `BISECT_PRODUCER_ENABLED` via `/api/v1/toggle_producer`; `BISECT_CONSUMER_ENABLED` via `/api/v1/toggle_consumer` | Immediately, in memory only |
+| Runtime mutable | `BISECT_PRODUCER_ENABLED`, `BISECT_METRICS_PRODUCER_ENABLED`, `BISECT_KERNEL_CI_PRODUCER_ENABLED`, `BISECT_ERROR_PRODUCER_ENABLED`, `PERFORMANCE_PRODUCER_ENABLED` via `/api/v1/toggle_producer`; `BISECT_CONSUMER_ENABLED` via `/api/v1/toggle_consumer` | Immediately, in memory only |
 | Reload on next producer cycle | `container/bisect/config/errid_filters.yaml`, contents of the file pointed to by `CI_CONFIG_PATH` | Next producer cycle |
 | Requires container recreate | Most environment variables in `container/bisect/lib/config.py`, `LOG_LEVEL`, `CCI_SRC`, `LKP_SRC`, `WORK_DIR`, Docker `-e/-v/-p`, `SUPERVISORD_CONF` | After recreating the container |
 
@@ -106,6 +106,9 @@ Important operational note:
 - Editing `container/bisect/start` or changing Docker `-e` values does not take effect with `docker restart bisect`.
 - In the current deployment model, those changes require recreating the container by running `ruby container/bisect/start` again.
 - The detailed inventory and hot-reload candidates are tracked in `container/bisect/issues/config-reload-boundary.md`.
+- `BISECT_PRODUCER_ENABLED=false` is the global master switch for all automatic producer components; a cycle already running is allowed to finish.
+- `BISECT_METRICS_PRODUCER_ENABLED`, `BISECT_KERNEL_CI_PRODUCER_ENABLED`, `BISECT_ERROR_PRODUCER_ENABLED`, and `PERFORMANCE_PRODUCER_ENABLED` can be toggled independently via `/api/v1/toggle_producer?producer=<name>`.
+- `BISECT_CONSUMER_ENABLED=false` pauses only new wait-task submissions and new verification submissions; in-flight work is not cancelled.
 
 ### Key Configuration Variables
 
@@ -113,7 +116,11 @@ Important operational note:
 | :--- | :--- | :--- |
 | `MANTICORE_HOST` | The hostname or IP address of the Manticore Search database. | `manticore` |
 | `MANTICORE_WRITE_PORT` | The HTTP port for the Manticore Search database. | `9308` |
-| `BISECT_PRODUCER_ENABLED` | Set to `true` to enable the automatic task producer. | `true` |
+| `BISECT_PRODUCER_ENABLED` | Global master switch for the automatic producer thread. Runtime toggles pause or resume future automatic cycles, but do not interrupt a cycle already running. | `true` |
+| `BISECT_METRICS_PRODUCER_ENABLED` | Enable the daily metrics-collection producer component. Runtime toggle target: `metrics`. | `true` |
+| `BISECT_KERNEL_CI_PRODUCER_ENABLED` | Enable the daily kernel-ci producer component. Runtime toggle target: `kernel_ci`. | `true` |
+| `BISECT_ERROR_PRODUCER_ENABLED` | Enable the error-task producer component. Runtime toggle target: `error`. | `true` |
+| `PERFORMANCE_PRODUCER_ENABLED` | Enable the performance-task producer component. Runtime toggle target: `performance`. | `true` |
 | `BISECT_CONSUMER_ENABLED` | Enable new wait-task submission and new verification-job submission. Runtime toggles do not cancel in-flight thread-pool work. | `true` |
 | `BISECT_CONSUMER_STARTUP_DELAY_SECONDS` | Startup grace period before new task consumption begins. The provided `container/bisect/start` script uses `300` so operators can pause consumption after restart if needed. | `0` (`300` via start script) |
 | `BISECT_NOTIFICATION_WEBHOOK_URL` | Generic JSON webhook for HEAD validator notifications. Existing webhook payload semantics stay unchanged. | empty |
@@ -182,6 +189,9 @@ Returns a JSON array of all tasks currently in the system.
 -   **Method**: `GET`
 
 Returns the current status of the automatic task producer (enabled or disabled).
+The response also reports whether new automatic cycles are currently allowed and
+whether the background producer thread is alive but paused, plus per-component
+states for `metrics`, `kernel_ci`, `error`, and `performance`.
 
 ### 4.4. Toggle Consumer
 

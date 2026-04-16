@@ -595,7 +595,11 @@ Producer 负责从失败任务中识别和创建有价值的 bisect 任务。
 
 ```bash
 # 环境变量
-BISECT_PRODUCER_ENABLED=true      # 启用/禁用 Producer
+BISECT_PRODUCER_ENABLED=true      # 全局 Producer 总开关
+BISECT_METRICS_PRODUCER_ENABLED=true   # metrics producer 子开关
+BISECT_KERNEL_CI_PRODUCER_ENABLED=true # kernel-ci producer 子开关
+BISECT_ERROR_PRODUCER_ENABLED=true     # error producer 子开关
+PERFORMANCE_PRODUCER_ENABLED=true      # performance producer 子开关
 BISECT_CONSUMER_ENABLED=true      # 启用/禁用新的任务消费与新的 verification 提交
 BISECT_CONSUMER_STARTUP_DELAY_SECONDS=300  # 启动后延迟 300 秒再开始新消费
 BISECT_PRODUCER_INTERVAL=86400    # 运行间隔（秒）
@@ -943,8 +947,11 @@ python3 sbin/bisect_api.py thread_status
 # 生产者控制
 python3 sbin/bisect_api.py enable_producer
 python3 sbin/bisect_api.py disable_producer
+python3 sbin/bisect_api.py disable_producer --producer kernel_ci
+python3 sbin/bisect_api.py enable_producer --producer performance
 python3 sbin/bisect_api.py producer_status
-python3 sbin/bisect_api.py trigger_producer          # 手动触发
+python3 sbin/bisect_api.py trigger_producer          # 手动触发当前已启用的 producer 子组件
+python3 sbin/bisect_api.py trigger_producer --producer kernel_ci
 python3 sbin/bisect_api.py trigger_producer --force  # 强制触发
 
 # 消费者控制（BisectConsumer + SuccessTaskValidator）
@@ -1446,14 +1453,19 @@ BISECT_THREADS=64                  # 并发线程数（根据 CPU 核数调整�
 
 | 类别 | 典型项 | 生效方式 |
 |------|--------|----------|
-| 运行时可改 | `BISECT_PRODUCER_ENABLED`；`BISECT_CONSUMER_ENABLED` | 分别通过 `/api/v1/toggle_producer`、`/api/v1/toggle_consumer` 立即修改内存态开关 |
+| 运行时可改 | `BISECT_PRODUCER_ENABLED`、`BISECT_METRICS_PRODUCER_ENABLED`、`BISECT_KERNEL_CI_PRODUCER_ENABLED`、`BISECT_ERROR_PRODUCER_ENABLED`、`PERFORMANCE_PRODUCER_ENABLED`、`BISECT_CONSUMER_ENABLED` | 通过 `/api/v1/toggle_producer?producer=...` 或 `/api/v1/toggle_consumer` 立即修改内存态开关 |
 | 下一轮自动生效 | `container/bisect/config/errid_filters.yaml`、`CI_CONFIG_PATH` 指向文件的内容 | 下一轮 producer cycle 重新读取 |
 | 需要重建容器 | `container/bisect/lib/config.py` 里的大多数环境变量、`LOG_LEVEL`、`CCI_SRC`、`LKP_SRC`、`WORK_DIR`、Docker `-e/-v/-p`、`SUPERVISORD_CONF` | 重新创建容器后生效 |
 
 补充说明：
 
-- 当前已统计 `container/bisect/lib/config.py` 中有 **57 个唯一 env-backed key**，绝大多数属于“启动时快照”。
-- 当前真正支持运行时修改的共 **2 类**：`BISECT_PRODUCER_ENABLED` 和 `BISECT_CONSUMER_ENABLED`。其中 `BISECT_CONSUMER_ENABLED` 只阻止新的 wait-task 投递和新的 verification 提交；thread pool 中已运行的任务不会被取消，已提交的 verification job 结果也仍会继续回收。
+- 当前已统计 `container/bisect/lib/config.py` 中有 **60 个唯一 env-backed key**，绝大多数属于“启动时快照”。
+- 当前真正支持运行时修改的有 **2 个家族**：
+  - Producer 家族：`BISECT_PRODUCER_ENABLED`（全局总开关）、`BISECT_METRICS_PRODUCER_ENABLED`、`BISECT_KERNEL_CI_PRODUCER_ENABLED`、`BISECT_ERROR_PRODUCER_ENABLED`、`PERFORMANCE_PRODUCER_ENABLED`
+  - Consumer 家族：`BISECT_CONSUMER_ENABLED`
+  - `BISECT_PRODUCER_ENABLED` 会阻止未来的自动 producer cycle；如果当前 cycle 已经在执行，会允许它自然跑完，不会中途打断。
+  - 单独关闭某个 producer 子开关时，只会阻止这个子 producer 参与后续自动 cycle，不影响其他已启用子 producer。
+  - `BISECT_CONSUMER_ENABLED` 只阻止新的 wait-task 投递和新的 verification 提交；thread pool 中已运行的任务不会被取消，已提交的 verification job 结果也仍会继续回收。
 - 当前能在下一轮自动读到变更的文件配置有 **2 类**：
   - `container/bisect/config/errid_filters.yaml`
   - `CI_CONFIG_PATH` 指向文件的内容（注意是文件内容，不是路径本身）
@@ -1534,7 +1546,11 @@ docker run
   --name bisect                    # 容器名称
   --restart=always                 # 自动重启策略
   -e MANTICORE_HOST=172.17.0.1     # 数据库地址
-  -e BISECT_PRODUCER_ENABLED=true  # 启用自动任务发现
+  -e BISECT_PRODUCER_ENABLED=true  # Producer 全局总开关
+  -e BISECT_METRICS_PRODUCER_ENABLED=true
+  -e BISECT_KERNEL_CI_PRODUCER_ENABLED=true
+  -e BISECT_ERROR_PRODUCER_ENABLED=true
+  -e PERFORMANCE_PRODUCER_ENABLED=true
   -e BISECT_CONSUMER_ENABLED=true  # 默认允许消费
   -e BISECT_CONSUMER_STARTUP_DELAY_SECONDS=300 # 启动后预留 300 秒人工观察窗口
   -e BISECT_THREADS=64             # 并发执行线程数
@@ -1719,7 +1735,11 @@ Bisect 任务数据存储在 Manticore 数据库中，升级容器不会影响�
 | `BISECT_API_HOST` | localhost:9999 | API 服务器地址 |
 | `BISECT_THREADS` | 32 | 并发执行线程数 |
 | `BISECT_MAX_CONCURRENT_CLONES` | 4 | 最大并发克隆数 |
-| `BISECT_PRODUCER_ENABLED` | true | 启用 Producer |
+| `BISECT_PRODUCER_ENABLED` | true | Producer 全局总开关。运行时可用 `enable_producer` / `disable_producer` 切换；关闭后只暂停未来的自动 producer cycle，不会打断当前已经在跑的 cycle |
+| `BISECT_METRICS_PRODUCER_ENABLED` | true | metrics producer 子开关。运行时可用 `enable_producer --producer metrics` / `disable_producer --producer metrics` 切换 |
+| `BISECT_KERNEL_CI_PRODUCER_ENABLED` | true | kernel-ci producer 子开关。运行时可用 `enable_producer --producer kernel_ci` / `disable_producer --producer kernel_ci` 切换 |
+| `BISECT_ERROR_PRODUCER_ENABLED` | true | error producer 子开关。运行时可用 `enable_producer --producer error` / `disable_producer --producer error` 切换 |
+| `PERFORMANCE_PRODUCER_ENABLED` | true | performance producer 子开关。运行时可用 `enable_producer --producer performance` / `disable_producer --producer performance` 切换 |
 | `BISECT_CONSUMER_ENABLED` | true | 启用新的 wait-task 消费与新的 verification 提交。运行时可用 `enable_consumer` / `disable_consumer` 切换；关闭后不取消 thread pool 在飞任务，也不停止已提交 verification job 的结果回收 |
 | `BISECT_CONSUMER_STARTUP_DELAY_SECONDS` | 300（start 脚本默认） | 容器启动后的观察窗口；在延迟结束前不会开始新的任务消费或新的 verification 提交，方便人工先决定是否 `disable_consumer` |
 | `BISECT_NOTIFICATION_WEBHOOK_URL` | 空 | HeadValidator 的通用 JSON webhook；现有 payload 语义保持不变 |
