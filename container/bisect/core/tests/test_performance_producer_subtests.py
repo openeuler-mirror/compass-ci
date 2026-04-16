@@ -132,6 +132,82 @@ class TestPerformanceProducerSubtests(unittest.TestCase):
         pair['subtest'] = 'cpu'
         self.assertTrue(producer._task_exists_for_metric(pair, 'stress-ng.RATE.ops_per_sec'))
 
+    def test_identify_comparison_pairs_keeps_rate_metric_when_legacy_baseline_jobs_are_mixed(self):
+        producer = self._make_producer()
+        producer._is_baseline_commit = lambda commit: commit == 'v6.17'
+
+        grouped_jobs = {
+            ('linux-next', 'unixbench', 'vm-2p8g', '', ''): [
+                {
+                    'commit': 'v6.17',
+                    'repo_name': 'linux-next',
+                    'suite': 'unixbench',
+                    'testbox': 'vm-2p8g',
+                    'git_url': 'git://example/linux-next.git',
+                    'stats': {
+                        'unixbench.RATE.Pipe_Throughput': 1039.6,
+                        'unixbench.Pipe_Throughput': 1039.6,
+                    },
+                },
+                {
+                    'commit': 'v6.17',
+                    'repo_name': 'linux-next',
+                    'suite': 'unixbench',
+                    'testbox': 'vm-2p8g',
+                    'git_url': 'git://example/linux-next.git',
+                    'stats': {
+                        'unixbench.Pipe_Throughput': 1042.0,
+                    },
+                },
+                {
+                    'commit': 'v6.17',
+                    'repo_name': 'linux-next',
+                    'suite': 'unixbench',
+                    'testbox': 'vm-2p8g',
+                    'git_url': 'git://example/linux-next.git',
+                    'stats': {
+                        'unixbench.RATE.Pipe_Throughput': 1045.0,
+                    },
+                },
+                {
+                    'commit': 'next-20260414',
+                    'repo_name': 'linux-next',
+                    'suite': 'unixbench',
+                    'testbox': 'vm-2p8g',
+                    'git_url': 'git://example/linux-next.git',
+                    'stats': {
+                        'unixbench.RATE.Pipe_Throughput': 822.9,
+                    },
+                },
+                {
+                    'commit': 'next-20260414',
+                    'repo_name': 'linux-next',
+                    'suite': 'unixbench',
+                    'testbox': 'vm-2p8g',
+                    'git_url': 'git://example/linux-next.git',
+                    'stats': {
+                        'unixbench.RATE.Pipe_Throughput': 830.0,
+                    },
+                },
+                {
+                    'commit': 'next-20260414',
+                    'repo_name': 'linux-next',
+                    'suite': 'unixbench',
+                    'testbox': 'vm-2p8g',
+                    'git_url': 'git://example/linux-next.git',
+                    'stats': {
+                        'unixbench.RATE.Pipe_Throughput': 836.4,
+                    },
+                },
+            ],
+        }
+
+        pairs = producer._identify_comparison_pairs(grouped_jobs)
+
+        self.assertEqual(len(pairs), 1)
+        self.assertIn('unixbench.RATE.Pipe_Throughput', pairs[0]['metrics'])
+        self.assertNotIn('unixbench.Pipe_Throughput', pairs[0]['metrics'])
+
 
 if __name__ == '__main__':
     unittest.main()

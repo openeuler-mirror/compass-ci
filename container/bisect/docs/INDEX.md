@@ -20,6 +20,7 @@ Quick reference to all documentation, code maps, and issue trackers.
 | [docs/API_DOCUMENTATION.md](API_DOCUMENTATION.md) | REST API endpoints, examples, verification queue status API |
 | [docs/DATA_BASE.md](DATA_BASE.md) | ManticoreSearch schema — bisect/jobs/regression indexes |
 | [docs/PERFORMANCE_BISECT_DESIGN.md](PERFORMANCE_BISECT_DESIGN.md) | Performance regression bisect specifics |
+| [docs/PERF_IMPROVEMENT_SUMMARY.md](PERF_IMPROVEMENT_SUMMARY.md) | Recent performance and producer correctness fixes, including metric-intersection handling |
 
 ## Database access boundary
 

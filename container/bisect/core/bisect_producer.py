@@ -1128,6 +1128,28 @@ class PerformanceBisectProducer:
 
         return str(suite_pp.get('test', '') or suite_pp.get('stressor', '') or '')
 
+    @staticmethod
+    def _collect_numeric_suite_metrics(jobs: List[Dict], suite: str) -> Set[str]:
+        """Collect numeric suite metrics present in at least one job."""
+        metrics = set()
+        suite_prefix = f"{suite}."
+
+        for job in jobs:
+            stats = job.get('stats', {})
+            if not isinstance(stats, dict):
+                continue
+
+            for metric, value in stats.items():
+                if not metric.startswith(suite_prefix):
+                    continue
+                try:
+                    float(value)
+                except (TypeError, ValueError):
+                    continue
+                metrics.add(metric)
+
+        return metrics
+
     def _group_performance_jobs(self, jobs: List[Dict]) -> Dict[Tuple, List[Dict]]:
         """Group by (repo, suite, testbox, pp_params_md5, subtest)
 
@@ -1219,23 +1241,12 @@ class PerformanceBisectProducer:
                            f"({len(current_jobs)}<{MIN_JOBS_REQUIRED})")
                 continue
 
-            # Find numeric metrics common to all jobs
-            all_jobs = baseline_jobs + current_jobs
-            common_metrics = set(all_jobs[0]['stats'].keys())
-            for job in all_jobs[1:]:
-                common_metrics &= set(job['stats'].keys())
-
-            # Filter to keep only numeric metrics starting with suite
-            valid_metrics = []
-            sample_stats = baseline_jobs[0]['stats']
-            for metric in common_metrics:
-                if not metric.startswith(f"{suite}."):
-                    continue
-                try:
-                    float(sample_stats[metric])
-                    valid_metrics.append(metric)
-                except (TypeError, ValueError):
-                    pass
+            # Keep metrics that have numeric samples on both sides.
+            # This avoids legacy/bad jobs without a key from masking valid
+            # metrics such as unixbench.RATE.* during pair construction.
+            baseline_metrics = self._collect_numeric_suite_metrics(baseline_jobs, suite)
+            current_metrics = self._collect_numeric_suite_metrics(current_jobs, suite)
+            valid_metrics = sorted(baseline_metrics & current_metrics)
 
             if not valid_metrics:
                 skip_reasons['no_metrics'] += 1
