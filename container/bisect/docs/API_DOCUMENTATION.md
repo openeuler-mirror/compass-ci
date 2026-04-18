@@ -38,9 +38,12 @@ python3 sbin/bisect_api.py list_tasks -h
 | `/api/v1/reset_processing_tasks` | POST | 重置 processing 任务 | `reset_processing` |
 | `/api/v1/thread_pool_status` | GET | 获取线程池状态 | `thread_status` |
 | `/api/v1/verification_status` | GET | 获取验证队列和超时恢复状态 | `verification_status` |
+| `/api/v1/status_overview` | GET | 获取精确任务状态统计（供 `status` 汇总视图使用） | `status` |
 | `/api/v1/toggle_producer` | POST | 切换生产者状态 | `enable_producer`/`disable_producer` |
 | `/api/v1/producer_status` | GET | 获取生产者状态 | `producer_status` |
 | `/api/v1/trigger_producer_run` | POST | 手动触发生产者 | `trigger_producer` |
+| `/api/v1/toggle_consumer` | POST | 切换消费者状态（BisectConsumer + SuccessTaskValidator） | `enable_consumer`/`disable_consumer` |
+| `/api/v1/consumer_status` | GET | 获取消费者状态 | `consumer_status` |
 | `/api/v1/pool/status` | GET | 获取仓库池状态 | `pool_status` |
 | `/api/v1/pool/cleanup` | POST | 触发仓库池清理 | `pool_cleanup` |
 | `/api/v1/pool/stats` | GET | 获取池监控统计 | `pool_stats` |
@@ -274,6 +277,49 @@ python3 sbin/bisect_api.py producer_status
 
 # 手动触发生产者运行
 python3 sbin/bisect_api.py trigger_producer
+```
+
+### 8. 系统总览
+
+**客户端命令**: `status`
+
+**功能说明**:
+- 使用 `/api/v1/status_overview` 返回的精确计数展示各任务状态总量
+- 同屏拼接 `verification_status`、`thread_pool_status`、`producer_status`、`consumer_status`
+- `pending_verification` 会按完整状态名展示，不再误写为 `pending`
+
+**使用示例**:
+```bash
+python3 sbin/bisect_api.py status
+```
+
+### 9. 消费者控制
+
+**客户端命令**: `enable_consumer`, `disable_consumer`, `consumer_status`
+
+**功能说明**:
+- `enable_consumer`: 启用 BisectConsumer + SuccessTaskValidator
+- `disable_consumer`: 禁用 BisectConsumer + SuccessTaskValidator
+- `consumer_status`: 获取消费者运行状态
+
+**语义**:
+- 关闭开关后 BisectConsumer 不再从 `wait` 队列捞新任务，SuccessTaskValidator 不再提交新的验证 job。
+- 已经在 thread pool 里运行的任务会正常跑完，不会被取消。
+- 已经提交出去的 verification job 仍会继续轮询和回收结果，不会因为关闭消费开关而卡死。
+- 再次启用时 BisectConsumer 和 SuccessTaskValidator 都会被立即唤醒，重新评估开关状态。
+- 如果配置了 `BISECT_CONSUMER_STARTUP_DELAY_SECONDS`，容器刚启动时会先进入延迟窗口；此时即使默认是 enabled，也会等延迟结束后才开始捞新任务 / 提交新验证 job。
+- HeadValidator 有自己的开关（`BISECT_HEAD_VALIDATOR_ENABLED`），不受这个开关影响。
+
+**使用示例**:
+```bash
+# 启用消费者
+python3 sbin/bisect_api.py enable_consumer
+
+# 禁用消费者
+python3 sbin/bisect_api.py disable_consumer
+
+# 查看消费者状态
+python3 sbin/bisect_api.py consumer_status
 ```
 
 ## 高级功能

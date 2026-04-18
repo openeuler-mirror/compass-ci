@@ -53,6 +53,22 @@ def _humanize_task_list(tasks):
         return tasks
     return [_humanize_timestamps(t) for t in tasks]
 
+
+def _is_background_producer_thread(thread):
+    """Return True only for the long-lived automatic producer thread."""
+    if getattr(thread, 'name', None) == 'BisectProducer':
+        return True
+
+    target = getattr(thread, '_target', None)
+    return getattr(target, '__name__', '') == 'bisect_producer'
+
+
+def _parse_producer_target():
+    """Parse and validate the producer target query parameter."""
+    return bisect_task_instance.normalize_producer_target(
+        request.args.get('producer', 'all')
+    )
+
 def _select_count(client, where_clause: str) -> int:
     """Run a small COUNT query and return zero on empty result."""
     query = f"""
@@ -113,6 +129,42 @@ def _get_verification_queue_snapshot(client=None) -> dict:
                 ) or ''
             ),
         }
+    }
+
+def _get_task_status_overview(client=None) -> dict:
+    """Build exact per-status and per-category task counts for CLI status views."""
+    client = client or _get_manticore_client()
+    statuses = (
+        'success',
+        'failed',
+        'processing',
+        'verifying',
+        'wait',
+        'pending_verification',
+    )
+    categories = ('build', 'benchmark', 'function')
+
+    task_status_counts = {
+        status: _select_count(client, f"bisect_status = '{status}'")
+        for status in statuses
+    }
+
+    category_status_counts = {}
+    for category in categories:
+        counts = {
+            status: _select_count(
+                client, f"category = '{category}' AND bisect_status = '{status}'"
+            )
+            for status in statuses
+        }
+        category_status_counts[category] = counts
+
+    return {
+        "statuses": list(statuses),
+        "categories": list(categories),
+        "task_status_counts": task_status_counts,
+        "task_total": sum(task_status_counts.values()),
+        "category_status_counts": category_status_counts,
     }
 
 def new_bisect_task():
@@ -274,82 +326,183 @@ def get_verification_status():
         logger.error(f"Failed to get verification status: {str(e)}")
         return jsonify({"status": "error", "error": str(e)}), 500
 
+def get_status_overview():
+    """Return exact task counts used by the CLI status overview."""
+    try:
+        return jsonify(_get_task_status_overview()), 200
+    except Exception as e:
+        logger.error(f"Failed to get status overview: {str(e)}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 def toggle_producer():
-    """status"""
+    """Enable or disable the global producer gate or a specific sub-producer."""
     try:
         state = request.args.get('state')
         if state not in ['enable', 'disable']:
             return jsonify({"error": "Invalid state. Use 'enable' or 'disable'"}), 400
-        
-        old_state = Config.BISECT_PRODUCER_ENABLED
-        Config.BISECT_PRODUCER_ENABLED = (state == 'enable')
-        
-        # , not found, 
-        if not old_state and Config.BISECT_PRODUCER_ENABLED:
-            # check
+
+        try:
+            producer_target = _parse_producer_target()
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+        old_state = bisect_task_instance.set_producer_enabled(
+            producer_target,
+            state == 'enable'
+        )
+        gate_state = bisect_task_instance.get_producer_gate_state()
+
+        try:
+            bisect_task_instance.wake_producer_control_worker()
+        except Exception as e:
+            logger.warning(f"Failed to wake producer control worker after toggle: {e}")
+
+        started_new_thread = False
+        component_state = (
+            gate_state["producers"].get(producer_target)
+            if producer_target != 'all'
+            else None
+        )
+        if (
+            not old_state
+            and gate_state["accepting_new_cycles"]
+            and (producer_target == 'all' or component_state.get("configured_enabled"))
+        ):
             producer_thread_exists = False
             for thread in threading.enumerate():
-                if hasattr(thread, '_target') and thread._target:
-                    if 'bisect_producer' in str(thread._target.__name__ if hasattr(thread._target, '__name__') else thread._target):
-                        producer_thread_exists = True
-                        break
-                elif hasattr(thread, 'name') and 'producer' in thread.name.lower():
+                if _is_background_producer_thread(thread):
                     producer_thread_exists = True
                     break
-                    
+
             if not producer_thread_exists:
-                # 
                 producer_thread = threading.Thread(
-                    target=bisect_task_instance.bisect_producer, 
+                    target=bisect_task_instance.bisect_producer,
                     daemon=True,
                     name="BisectProducer"
                 )
                 producer_thread.start()
+                started_new_thread = True
                 logger.info("A new producer thread was started via API")
-        
-        logger.info(f"Producer state switched: {'enabled' if Config.BISECT_PRODUCER_ENABLED else 'disabled'}")
+
+        response = {
+            "status": "success",
+            "target": producer_target,
+            "producer_enabled": gate_state["configured_enabled"],
+            "old_state": old_state,
+            "accepting_new_cycles": gate_state["accepting_new_cycles"],
+            "pause_reason": gate_state["pause_reason"],
+            "configured_producers": gate_state["configured_producers"],
+            "effective_producers": gate_state["effective_producers"],
+            "producers": gate_state["producers"],
+            "action": "started new thread" if started_new_thread else "configuration updated",
+            "note": "A producer cycle already in progress is allowed to finish. "
+                    "Disabling only blocks future automatic cycles."
+        }
+        if component_state is not None:
+            response["component_enabled"] = component_state["configured_enabled"]
+
+        logger.info(
+            f"Producer state switched | target: {producer_target} | "
+            f"state: {'enabled' if state == 'enable' else 'disabled'} | "
+            f"effective: {gate_state['effective_producers']}"
+        )
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def toggle_consumer():
+    """Enable or disable BisectConsumer + SuccessTaskValidator at runtime."""
+    try:
+        state = request.args.get('state')
+        if state not in ['enable', 'disable']:
+            return jsonify({"error": "Invalid state. Use 'enable' or 'disable'"}), 400
+
+        old_state = Config.BISECT_CONSUMER_ENABLED
+        Config.BISECT_CONSUMER_ENABLED = (state == 'enable')
+        gate_state = bisect_task_instance.get_consumer_gate_state()
+
+        try:
+            bisect_task_instance.wake_consumer_control_workers()
+        except Exception as e:
+            logger.warning(f"Failed to wake consumer control workers after toggle: {e}")
+
+        logger.info(
+            f"Consumer state switched: "
+            f"{'enabled' if Config.BISECT_CONSUMER_ENABLED else 'disabled'}"
+        )
         return jsonify({
             "status": "success",
-            "producer_enabled": Config.BISECT_PRODUCER_ENABLED,
+            "consumer_enabled": Config.BISECT_CONSUMER_ENABLED,
             "old_state": old_state,
-            "action": "started new thread" if (not old_state and Config.BISECT_PRODUCER_ENABLED) else "configuration updated"
+            "accepting_new_tasks": gate_state["accepting_new_tasks"],
+            "pause_reason": gate_state["pause_reason"],
+            "startup_delay_seconds": gate_state["startup_delay_seconds"],
+            "startup_delay_remaining_seconds": gate_state["startup_delay_remaining_seconds"],
+            "note": "In-flight tasks in the thread pool continue to completion. "
+                    "Only new wait-task submissions and new verification submissions are affected."
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def get_producer_status():
-    """getstatus"""
+
+def get_consumer_status():
+    """Report current consumer state and the two gated worker threads."""
     try:
-        # checkconfigstatus
-        config_enabled = Config.BISECT_PRODUCER_ENABLED
-        
-        # check
+        target_names = {"BisectConsumer", "SuccessTaskValidator"}
+        gate_state = bisect_task_instance.get_consumer_gate_state()
+        threads = []
+        for t in threading.enumerate():
+            if t.name in target_names:
+                threads.append({
+                    "name": t.name,
+                    "is_alive": t.is_alive(),
+                    "daemon": t.daemon,
+                })
+
+        return jsonify({
+            "consumer_enabled": Config.BISECT_CONSUMER_ENABLED,
+            "accepting_new_tasks": gate_state["accepting_new_tasks"],
+            "pause_reason": gate_state["pause_reason"],
+            "startup_delay_seconds": gate_state["startup_delay_seconds"],
+            "startup_delay_remaining_seconds": gate_state["startup_delay_remaining_seconds"],
+            "gated_workers": sorted(target_names),
+            "worker_threads": sorted(threads, key=lambda item: item["name"]),
+            "pending_tasks": bisect_task_instance.thread_pool._work_queue.qsize(),
+            "active_task_locks": len(bisect_task_instance.active_task_locks),
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def get_producer_status():
+    """Report the global producer gate and all per-producer toggle states."""
+    try:
+        gate_state = bisect_task_instance.get_producer_gate_state()
         producer_threads = []
         for thread in threading.enumerate():
-            is_producer = False
-            
-            # check
-            if hasattr(thread, '_target') and thread._target:
-                if 'bisect_producer' in str(thread._target.__name__ if hasattr(thread._target, '__name__') else thread._target):
-                    is_producer = True
-            
-            # check
-            if hasattr(thread, 'name') and 'producer' in thread.name.lower():
-                is_producer = True
-                
-            if is_producer:
+            if _is_background_producer_thread(thread):
                 producer_threads.append({
                     "name": thread.name,
                     "is_alive": thread.is_alive(),
                     "daemon": thread.daemon,
-                    "target": str(thread._target.__name__ if hasattr(thread, '_target') and hasattr(thread._target, '__name__') else 'unknown')
+                    "target": str(
+                        thread._target.__name__
+                        if hasattr(thread, '_target') and hasattr(thread._target, '__name__')
+                        else 'unknown'
+                    )
                 })
-        
+
         return jsonify({
-            "producer_enabled": config_enabled,
+            "producer_enabled": gate_state["configured_enabled"],
+            "accepting_new_cycles": gate_state["accepting_new_cycles"],
+            "pause_reason": gate_state["pause_reason"],
+            "configured_producers": gate_state["configured_producers"],
+            "effective_producers": gate_state["effective_producers"],
+            "producers": gate_state["producers"],
             "active_producer_threads": len(producer_threads),
             "producer_threads": producer_threads,
-            "total_threads": threading.active_count()
+            "total_threads": threading.active_count(),
+            "note": "A live producer thread may be idle while disabled, waiting for re-enable."
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -786,11 +939,21 @@ def trigger_producer_run():
     """Manually trigger a producer run"""
     try:
         force = request.args.get('force', 'false').lower() == 'true'
-        result = bisect_task_instance.trigger_producer_run(force=force)
+        try:
+            producer_target = _parse_producer_target()
+        except ValueError as e:
+            return jsonify({"status": "error", "error": str(e)}), 400
+
+        result = bisect_task_instance.trigger_producer_run(
+            force=force,
+            producer=producer_target,
+        )
         if result['status'] == 'success':
             return jsonify(result), 200
-        else: # busy
+        elif result['status'] == 'busy':
             return jsonify(result), 409 # Conflict
+        else:
+            return jsonify(result), 400
     except Exception as e:
         logger.error(f"Failed to trigger producer run: {str(e)}")
         return jsonify({"status": "error", "error": str(e)}), 500

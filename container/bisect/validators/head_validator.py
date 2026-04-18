@@ -24,6 +24,10 @@ from log_config import logger
 sys.path.append((os.environ['LKP_SRC']) + '/sbin/bisect/')
 from lkp_bisect.db.manticore import ManticoreClient
 from lkp_bisect.core.git_bisect import GitBisect
+try:
+    from lkp_bisect.notify.feishu import FeishuNotifier
+except ImportError:
+    FeishuNotifier = None
 
 # Shared runtime imports
 sys.path.append((os.environ['CCI_SRC']) + '/container/bisect/core')
@@ -44,7 +48,23 @@ class HeadValidator(VerificationConsumer):
         self.check_batch_size = config.get('head_check_batch_size', 10)
         self.check_interval = config.get('head_check_interval', 86400)  # default
         self.notification_webhook = config.get('notification_webhook_url', '')
+        self.notification_feishu_webhook = config.get('notification_feishu_webhook_url', '')
+        self.notification_feishu_secret = config.get('notification_feishu_secret', '')
         self.notification_email = config.get('notification_email', '')
+        self._feishu = None
+
+        if self.notification_feishu_webhook:
+            if FeishuNotifier is None:
+                logger.warning(
+                    "Feishu webhook configured but lkp_bisect.notify.feishu is unavailable; "
+                    "skipping Feishu notifications"
+                )
+            else:
+                self._feishu = FeishuNotifier(
+                    webhook_url=self.notification_feishu_webhook,
+                    secret=self.notification_feishu_secret or None,
+                    enabled=True,
+                )
 
         # initialize GitBisect instance
         self.bisect_instance = GitBisect(logger)
@@ -76,6 +96,10 @@ class HeadValidator(VerificationConsumer):
                 WHERE j.verification_status = 'verified'
                 AND j.introduced_errids IS NOT NULL
                 AND (j.head_check_completed IS NULL OR j.head_check_completed = 0)
+                AND (
+                    j.head_check_at IS NULL
+                    OR j.head_check_at < {check_threshold}
+                )
                 AND (j.head_check_status IS NULL OR (
                     j.head_check_status != 'failed'
                     AND j.head_check_status != 'regressed'
@@ -596,6 +620,8 @@ class HeadValidator(VerificationConsumer):
                 }
                 self._send_webhook_notification(webhook_payload)
 
+            self._send_feishu_notification(task, status, regressed_errids)
+
             if self.notification_email:
                 logger.info(f"TODO: send email notification to {self.notification_email}")
 
@@ -644,6 +670,56 @@ class HeadValidator(VerificationConsumer):
             logger.warning(
                 f"Webhook request failed | task_id: {payload.get('task_id')} | "
                 f"event: {payload.get('event')} | error: {str(e)}"
+            )
+            return False
+
+    def _send_feishu_notification(self, task: Dict[str, Any], status: str,
+                                  regressed_errids: List[str]) -> bool:
+        """Send a Feishu notification when a dedicated Feishu webhook is configured."""
+        notifier = getattr(self, '_feishu', None)
+        if not notifier or not getattr(notifier, 'enabled', False):
+            return False
+
+        task_id = task.get('id')
+        first_bad_commit = task.get('first_bad_commit', 'N/A')
+        git_url = task.get('git_url', 'N/A')
+        introduced_errids = task.get('j', {}).get('introduced_errids', [])
+
+        if status == 'regressed':
+            title = f"[HEAD Regression] {first_bad_commit[:12]}"
+            content = (
+                f"Task ID: {task_id}\n"
+                f"First Bad Commit: {first_bad_commit}\n"
+                f"Regressed Errids: {len(regressed_errids)}\n"
+                f"Sample: {regressed_errids[:3]}\n"
+                f"Git URL: {git_url}"
+            )
+        elif status == 'fixed':
+            title = f"[HEAD Fixed] {first_bad_commit[:12]}"
+            content = (
+                f"Task ID: {task_id}\n"
+                f"First Bad Commit: {first_bad_commit}\n"
+                f"Fixed Errids: {len(introduced_errids)}\n"
+                f"Git URL: {git_url}"
+            )
+        else:
+            return False
+
+        try:
+            ok = bool(notifier.send(title, content))
+            if ok:
+                logger.info(
+                    f"Feishu notification sent | task_id: {task_id} | status: {status}"
+                )
+            else:
+                logger.warning(
+                    f"Feishu notification failed | task_id: {task_id} | status: {status}"
+                )
+            return ok
+        except Exception as e:
+            logger.warning(
+                f"Feishu notification raised exception | task_id: {task_id} | "
+                f"status: {status} | error: {str(e)}"
             )
             return False
 

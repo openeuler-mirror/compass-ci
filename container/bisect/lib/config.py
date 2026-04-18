@@ -24,7 +24,27 @@ class Config:
     MAX_THREADS = 64  # Safety limit to prevent resource exhaustion
 
     # Producer switch configuration
+    # Master switch for all automatic producer components.
     BISECT_PRODUCER_ENABLED = os.environ.get('BISECT_PRODUCER_ENABLED', 'true').lower() == 'true'
+    BISECT_METRICS_PRODUCER_ENABLED = os.environ.get(
+        'BISECT_METRICS_PRODUCER_ENABLED', 'true'
+    ).lower() == 'true'
+    BISECT_ERROR_PRODUCER_ENABLED = os.environ.get(
+        'BISECT_ERROR_PRODUCER_ENABLED', 'true'
+    ).lower() == 'true'
+    BISECT_KERNEL_CI_PRODUCER_ENABLED = os.environ.get(
+        'BISECT_KERNEL_CI_PRODUCER_ENABLED', 'true'
+    ).lower() == 'true'
+
+    # Consumer switch configuration
+    # Gates new wait-task submission and new verification-job submission.
+    # In-flight thread-pool tasks are NOT cancelled.
+    BISECT_CONSUMER_ENABLED = os.environ.get('BISECT_CONSUMER_ENABLED', 'true').lower() == 'true'
+    # Startup grace window before consumers begin pulling new work.
+    # Useful for operator inspection after container restart.
+    BISECT_CONSUMER_STARTUP_DELAY_SECONDS = int(
+        os.environ.get('BISECT_CONSUMER_STARTUP_DELAY_SECONDS', 0)
+    )
 
     # Task deduplication configuration
     BISECT_DEDUPE_BY_ERRID = os.environ.get('BISECT_DEDUPE_BY_ERRID', 'true').lower() == 'true'
@@ -58,6 +78,8 @@ class Config:
     # Notification directory configuration
     NOTIFICATION_DIR = os.environ.get('BISECT_NOTIFICATION_DIR', '/result/bisect/notifications')
     NOTIFICATION_WEBHOOK_URL = os.environ.get('BISECT_NOTIFICATION_WEBHOOK_URL', '')
+    NOTIFICATION_FEISHU_WEBHOOK_URL = os.environ.get('BISECT_FEISHU_WEBHOOK_URL', '')
+    NOTIFICATION_FEISHU_SECRET = os.environ.get('BISECT_FEISHU_SECRET', '')
     NOTIFICATION_EMAIL = os.environ.get('BISECT_NOTIFICATION_EMAIL', '')
 
     # Verification configuration

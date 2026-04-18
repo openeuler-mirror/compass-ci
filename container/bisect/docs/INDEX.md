@@ -20,6 +20,7 @@ Quick reference to all documentation, code maps, and issue trackers.
 | [docs/API_DOCUMENTATION.md](API_DOCUMENTATION.md) | REST API endpoints, examples, verification queue status API |
 | [docs/DATA_BASE.md](DATA_BASE.md) | ManticoreSearch schema — bisect/jobs/regression indexes |
 | [docs/PERFORMANCE_BISECT_DESIGN.md](PERFORMANCE_BISECT_DESIGN.md) | Performance regression bisect specifics |
+| [docs/PERF_IMPROVEMENT_SUMMARY.md](PERF_IMPROVEMENT_SUMMARY.md) | Recent performance and producer correctness fixes, including metric-intersection handling |
 
 ## Database access boundary
 
@@ -48,6 +49,7 @@ The typical request path is:
 
 | Issue | Status |
 |-------|--------|
+| [issues/config-reload-boundary.md](../issues/config-reload-boundary.md) | IN PROGRESS — inventory complete, hot-reload follow-up pending |
 | [issues/bisect-api-cli-issues.md](../issues/bisect-api-cli-issues.md) | DONE — bisect_api.py CLI/API mismatches fixed and tests added |
 | [issues/chinese-to-english-translation.md](../issues/chinese-to-english-translation.md) | DONE — Chinese text scan reports 0 Python files |
 | [issues/missing-docstrings.md](../issues/missing-docstrings.md) | DONE — module docstring scan reports 0 missing |

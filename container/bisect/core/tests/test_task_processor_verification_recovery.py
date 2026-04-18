@@ -78,6 +78,8 @@ class _DummyGitBisect:
 sys.modules['lkp_bisect.core.git_bisect'].GitBisect = _DummyGitBisect
 sys.modules['success_task_validator'].SuccessTaskValidator = MagicMock
 sys.modules['head_validator'].HeadValidator = MagicMock
+sys.modules['bisect_producer'].MetricsBisectProducer = MagicMock
+sys.modules['bisect_producer'].KernelCIBisectProducer = MagicMock
 sys.modules['bisect_producer'].ErrorBisectProducer = MagicMock
 sys.modules['bisect_producer'].PerformanceBisectProducer = MagicMock
 sys.modules['bisect_consumer'].BisectConsumer = MagicMock
