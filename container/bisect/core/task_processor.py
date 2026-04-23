@@ -268,6 +268,7 @@ class _ConsumerWorker(PollingWorker):
     def setup(self):
         self.consumer = BisectConsumer(self.processor.client, self.processor._config)
         self.consumer.repo_manager = self.processor.repo_manager
+        self.consumer.task_deleted_checker = self.processor.is_task_deleted
         # Clean up stale locks immediately on startup
         logger.info("Performing initial stale lock cleanup...")
         self.processor._cleanup_stale_locks()
@@ -394,6 +395,7 @@ class _ConsumerWorker(PollingWorker):
                 continue
             try:
                 future = p.thread_pool.submit(p._process_task_async, self.consumer, task)
+                p._track_task_future(task_id, future)
                 logger.info(f"Task submitted to thread pool | task_id: {task_id} | future: {future}")
                 submitted_count += 1
             except Exception as e:
@@ -602,6 +604,83 @@ class TaskProcessor:
             event = getattr(self, event_name, None)
             if event is not None:
                 event.set()
+
+    def is_task_deleted(self, task_id) -> bool:
+        """Return True when a task was deleted after entering runtime state."""
+        if task_id is None:
+            return False
+        with self.deleted_task_ids_lock:
+            return str(task_id) in self.deleted_task_ids
+
+    def _track_task_future(self, task_id: str, future):
+        """Remember submitted Futures so delete_tasks can cancel queued work."""
+        task_id = str(task_id)
+        with self.task_futures_lock:
+            self.task_futures[task_id] = future
+
+        future.add_done_callback(
+            lambda done_future, tracked_task_id=task_id: self._on_task_future_done(
+                tracked_task_id, done_future
+            )
+        )
+
+        # Handle the race where delete_tasks marks a task after the lock is taken
+        # but before the Future is registered.
+        if self.is_task_deleted(task_id) and future.cancel():
+            logger.info(f"Cancelled task immediately after tracking deleted Future | task_id: {task_id}")
+
+    def _on_task_future_done(self, task_id: str, future):
+        """Forget finished Futures and clean cancelled queued-task state."""
+        task_id = str(task_id)
+        with self.task_futures_lock:
+            self.task_futures.pop(task_id, None)
+
+        if future.cancelled():
+            with self.active_task_locks_lock:
+                self.active_task_locks.discard(task_id)
+            try:
+                self.task_semaphore.release()
+            except Exception as e:
+                logger.error(
+                    f"Failed to release semaphore for cancelled task | task_id: {task_id} | error: {e}"
+                )
+            else:
+                logger.info(f"Cancelled queued task released | task_id: {task_id}")
+
+        with self.deleted_task_ids_lock:
+            self.deleted_task_ids.discard(task_id)
+
+    def handle_deleted_tasks(self, task_ids: List[object]) -> Dict[str, int]:
+        """Reconcile runtime consumer state after tasks are deleted from the DB."""
+        normalized_ids = {str(task_id) for task_id in task_ids if task_id is not None}
+        if not normalized_ids:
+            return {"runtime_marked": 0, "cancelled": 0}
+
+        with self.active_task_locks_lock:
+            active_ids = set(self.active_task_locks)
+        with self.task_futures_lock:
+            future_ids = set(self.task_futures.keys())
+
+        runtime_ids = normalized_ids & (active_ids | future_ids)
+        if not runtime_ids:
+            return {"runtime_marked": 0, "cancelled": 0}
+
+        with self.deleted_task_ids_lock:
+            self.deleted_task_ids.update(runtime_ids)
+
+        cancelled = 0
+        for task_id in runtime_ids:
+            with self.task_futures_lock:
+                future = self.task_futures.get(task_id)
+            if future is not None and future.cancel():
+                cancelled += 1
+                logger.info(f"Cancelled deleted queued task | task_id: {task_id}")
+
+        logger.info(
+            "Runtime delete reconciliation completed | "
+            f"marked: {len(runtime_ids)} | cancelled: {cancelled}"
+        )
+        return {"runtime_marked": len(runtime_ids), "cancelled": cancelled}
 
     def _arm_consumer_startup_delay(self):
         """Start the one-shot startup grace window for new task consumption."""
@@ -860,6 +939,10 @@ class TaskProcessor:
         # Add execution lock for consumer tasks - task_id based lock
         self.active_task_locks = set()  # Store task_ids being processed
         self.active_task_locks_lock = threading.Lock()
+        self.task_futures = {}
+        self.task_futures_lock = threading.Lock()
+        self.deleted_task_ids = set()
+        self.deleted_task_ids_lock = threading.Lock()
 
         # Initialize GitBisect instance for reuse (stateless utility methods only)
         self.bisect_instance = GitBisect(logger)
@@ -1499,6 +1582,8 @@ class TaskProcessor:
                 except Exception as e:
                     # Does not affect main flow, just log errors
                     logger.error(f"Failed to mark similar wait tasks: {str(e)}")
+            elif result.get('status') == 'skipped':
+                logger.info(f"Task skipped: {task_id} - {result.get('error', 'No reason')}")
             else:
                 error_msg = result.get('error', 'Unknown error')
                 logger.error(f"Task failed: {task_id} - {error_msg}")

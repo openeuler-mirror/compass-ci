@@ -7,6 +7,7 @@ import types
 import threading
 import time
 import unittest
+from concurrent.futures import Future
 from unittest.mock import MagicMock, patch
 
 
@@ -127,6 +128,13 @@ class TestTaskProcessorProducerControl(unittest.TestCase):
         processor.consumer_wake_event = MagicMock()
         processor._metrics_producer = None
         processor._kernel_ci_producer = None
+        processor.active_task_locks = set()
+        processor.active_task_locks_lock = threading.Lock()
+        processor.task_futures = {}
+        processor.task_futures_lock = threading.Lock()
+        processor.deleted_task_ids = set()
+        processor.deleted_task_ids_lock = threading.Lock()
+        processor.task_semaphore = MagicMock()
         return processor
 
     def test_get_producer_gate_state_tracks_global_and_component_switches(self):
@@ -239,6 +247,39 @@ class TestTaskProcessorProducerControl(unittest.TestCase):
         processor.running = False
         thread.join(1)
         self.assertFalse(thread.is_alive())
+
+    def test_handle_deleted_tasks_marks_runtime_tasks_and_cancels_queued_future(self):
+        processor = self._make_processor()
+        queued_future = Future()
+        running_future = MagicMock()
+        running_future.cancel.return_value = False
+
+        processor.active_task_locks = {'10', '11'}
+        processor.task_futures = {'10': queued_future, '11': running_future}
+
+        result = processor.handle_deleted_tasks([10, '11', 99])
+
+        self.assertEqual(result, {'runtime_marked': 2, 'cancelled': 1})
+        self.assertTrue(processor.is_task_deleted('10'))
+        self.assertTrue(processor.is_task_deleted('11'))
+        self.assertTrue(queued_future.cancelled())
+        running_future.cancel.assert_called_once_with()
+
+    def test_on_task_future_done_releases_cancelled_task_resources(self):
+        processor = self._make_processor()
+        future = Future()
+        future.cancel()
+
+        processor.active_task_locks = {'10'}
+        processor.task_futures = {'10': future}
+        processor.deleted_task_ids = {'10'}
+
+        processor._on_task_future_done('10', future)
+
+        self.assertNotIn('10', processor.task_futures)
+        self.assertNotIn('10', processor.active_task_locks)
+        self.assertNotIn('10', processor.deleted_task_ids)
+        processor.task_semaphore.release.assert_called_once_with()
 
 
 if __name__ == '__main__':

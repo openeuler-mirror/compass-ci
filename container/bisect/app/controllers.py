@@ -79,6 +79,41 @@ def _select_count(client, where_clause: str) -> int:
     result = client.sql_select(query)
     return int(result[0].get('count', 0) or 0) if result else 0
 
+
+def _raw_sql_error_message(raw_result) -> str:
+    """Return the backend error string from a raw SQL response."""
+    if not raw_result or not isinstance(raw_result, list):
+        return ''
+
+    first = raw_result[0]
+    if not isinstance(first, dict):
+        return ''
+
+    return str(first.get('error') or '').strip()
+
+
+def _raw_sql_affected_rows(raw_result) -> int:
+    """Extract affected row count from a raw SQL response."""
+    if _raw_sql_error_message(raw_result):
+        return 0
+    if not raw_result or not isinstance(raw_result, list):
+        return 0
+
+    first = raw_result[0]
+    if not isinstance(first, dict):
+        return 0
+
+    for key in ('total', 'affected_rows', 'affected', 'updated', 'rowcount'):
+        value = first.get(key)
+        if value is None:
+            continue
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            continue
+    return 0
+
+
 def _get_verification_queue_snapshot(client=None) -> dict:
     """Build a compact snapshot of verification queue pressure and outcomes."""
     client = client or _get_manticore_client()
@@ -1187,66 +1222,90 @@ def set_tasks_to_verifying():
         }), 500
 
 def delete_tasks_by_condition():
-    """
-    conditionsdeletetask
-
-    supportquery conditions:
-    - status: delete by task status
-    - error_id: errorIDdelete
-    - bad_job_id: bad_job_iddelete
-    - category: delete
-    - hours: deleteNtask
-    - git_url: repoURLdelete
-    - task_id: deletetask
-    - task_ids: delete multiple tasks (comma-separated)
-    - first_bad_commit: first_bad_commitdelete (supportSHA)
-
-    conditions
-    """
+    """Delete matching bisect tasks and reconcile in-memory runtime state."""
     try:
         client = _get_manticore_client()
 
-        # query
         where_clause, filters = build_task_query_conditions()
 
-        # conditions
         if not filters:
             return jsonify({
                 "status": "error",
                 "error": "deleteconditions (status, error_id, bad_job_id, category, hours, git_url, task_id, task_ids, first_bad_commit)"
             }), 400
 
-        # statsdeletecount
-        count_query = f"""
-            SELECT COUNT(*) as count
+        id_query = f"""
+            SELECT id
             FROM bisect
             WHERE {where_clause}
         """
-        count_result = client.sql_select(count_query)
-        count = count_result[0]['count'] if count_result else 0
+        id_rows = client.sql_select(id_query)
+        task_ids = []
+        for row in id_rows or []:
+            task_id = row.get('id') if isinstance(row, dict) else None
+            if task_id is None:
+                continue
+            try:
+                task_ids.append(int(task_id))
+            except (TypeError, ValueError):
+                logger.warning(f"Ignoring non-integer bisect task id during delete reconciliation: {task_id}")
 
-        if count == 0:
+        if not task_ids:
             return jsonify({
                 "status": "success",
                 "message": "No tasks to delete",
                 "deleted_count": 0,
+                "runtime_reconciled": {
+                    "runtime_marked": 0,
+                    "cancelled": 0
+                },
                 "filters": filters
             }), 200
 
-        # delete
         delete_query = f"DELETE FROM bisect WHERE {where_clause}"
 
         condition_summary = build_condition_summary(filters)
-        logger.info(f"API delete | count: {count} | conditions: {condition_summary}")
+        logger.info(f"API delete | count: {len(task_ids)} | conditions: {condition_summary}")
 
-        client.sql_raw(delete_query)
+        delete_result = client.sql_raw(delete_query)
+        delete_error = _raw_sql_error_message(delete_result)
+        if delete_error:
+            raise RuntimeError(f"Delete query failed: {delete_error}")
 
-        return jsonify({
+        runtime_reconciled = {
+            "runtime_marked": 0,
+            "cancelled": 0
+        }
+        runtime_warning = None
+        handler = getattr(bisect_task_instance, 'handle_deleted_tasks', None)
+        if callable(handler):
+            try:
+                cleanup_result = handler(task_ids)
+                if isinstance(cleanup_result, dict):
+                    runtime_reconciled = {
+                        "runtime_marked": int(cleanup_result.get('runtime_marked', 0) or 0),
+                        "cancelled": int(cleanup_result.get('cancelled', 0) or 0),
+                    }
+            except Exception as cleanup_error:
+                runtime_warning = f"runtime reconciliation failed: {cleanup_error}"
+                logger.error(
+                    f"Delete succeeded but runtime reconciliation failed | ids: {task_ids[:20]} | error: {cleanup_error}"
+                )
+
+        affected_rows = _raw_sql_affected_rows(delete_result)
+        deleted_count = affected_rows if affected_rows > 0 else len(task_ids)
+
+        response = {
             "status": "success",
-            "message": f"Successfully deleted {count} tasks",
-            "deleted_count": count,
+            "message": f"Successfully deleted {deleted_count} tasks",
+            "deleted_count": deleted_count,
+            "runtime_reconciled": runtime_reconciled,
             "filters": filters
-        }), 200
+        }
+        if runtime_warning:
+            response["warning"] = runtime_warning
+
+        return jsonify(response), 200
 
     except Exception as e:
         logger.error(f"Failed to delete tasks: {str(e)}")
