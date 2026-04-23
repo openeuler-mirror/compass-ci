@@ -605,6 +605,19 @@ BISECT_CONSUMER_STARTUP_DELAY_SECONDS=300  # 启动后延迟 300 秒再开始新
 BISECT_PRODUCER_INTERVAL=86400    # 运行间隔（秒）
 ```
 
+**Producer 子组件职责区分**：
+
+- `metrics` producer：运行每日指标收集/绘图脚本，用于刷新统计与趋势图；**不会直接创建 bisect task**。
+- `performance` producer：扫描性能测试结果并识别可 bisect 的性能回归；**会直接创建 `benchmark` 类 bisect task**。
+- `error` producer：从失败作业中提取经过过滤的 errid，创建错误类 bisect task。
+- `kernel_ci` producer：运行 kernel-ci 的日常任务生成流程。
+
+**状态接口字段解释**：
+
+- `configured_enabled`：该 producer 子开关本身是否打开。
+- `effective_enabled`：叠加全局总开关 `BISECT_PRODUCER_ENABLED` 之后，该 producer 当前是否真正会运行。
+- 例如：`configured_enabled=true` 但 `effective_enabled=false`，表示子开关是开的，但全局 producer 总开关当前阻止了它运行。
+
 ### 4.3 Bisect Consumer（任务执行）
 
 Consumer 是系统的核心执行引擎，负责执行实际的 git bisect 操作。
@@ -1736,10 +1749,10 @@ Bisect 任务数据存储在 Manticore 数据库中，升级容器不会影响�
 | `BISECT_THREADS` | 32 | 并发执行线程数 |
 | `BISECT_MAX_CONCURRENT_CLONES` | 4 | 最大并发克隆数 |
 | `BISECT_PRODUCER_ENABLED` | true | Producer 全局总开关。运行时可用 `enable_producer` / `disable_producer` 切换；关闭后只暂停未来的自动 producer cycle，不会打断当前已经在跑的 cycle |
-| `BISECT_METRICS_PRODUCER_ENABLED` | true | metrics producer 子开关。运行时可用 `enable_producer --producer metrics` / `disable_producer --producer metrics` 切换 |
+| `BISECT_METRICS_PRODUCER_ENABLED` | true | metrics producer 子开关。运行每日指标收集/绘图脚本，不直接创建 bisect task。运行时可用 `enable_producer --producer metrics` / `disable_producer --producer metrics` 切换 |
 | `BISECT_KERNEL_CI_PRODUCER_ENABLED` | true | kernel-ci producer 子开关。运行时可用 `enable_producer --producer kernel_ci` / `disable_producer --producer kernel_ci` 切换 |
 | `BISECT_ERROR_PRODUCER_ENABLED` | true | error producer 子开关。运行时可用 `enable_producer --producer error` / `disable_producer --producer error` 切换 |
-| `PERFORMANCE_PRODUCER_ENABLED` | true | performance producer 子开关。运行时可用 `enable_producer --producer performance` / `disable_producer --producer performance` 切换 |
+| `PERFORMANCE_PRODUCER_ENABLED` | true | performance producer 子开关。扫描性能结果并直接创建 `benchmark` 类 bisect task。运行时可用 `enable_producer --producer performance` / `disable_producer --producer performance` 切换 |
 | `BISECT_CONSUMER_ENABLED` | true | 启用新的 wait-task 消费与新的 verification 提交。运行时可用 `enable_consumer` / `disable_consumer` 切换；关闭后不取消 thread pool 在飞任务，也不停止已提交 verification job 的结果回收 |
 | `BISECT_CONSUMER_STARTUP_DELAY_SECONDS` | 300（start 脚本默认） | 容器启动后的观察窗口；在延迟结束前不会开始新的任务消费或新的 verification 提交，方便人工先决定是否 `disable_consumer` |
 | `BISECT_NOTIFICATION_WEBHOOK_URL` | 空 | HeadValidator 的通用 JSON webhook；现有 payload 语义保持不变 |

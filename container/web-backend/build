@@ -5,6 +5,8 @@
 
 docker_skip_rebuild "centos:web-backend"
 
+# TODO: cbs has been retired; keep this legacy repo list for now and clean it up
+# after the remaining container build inputs are audited.
 repos=("cbs" "lkp-tests")
 for repo in "${repos[@]}"
 do

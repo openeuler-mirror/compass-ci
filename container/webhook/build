@@ -8,6 +8,8 @@ load_cci_defaults
 
 docker_skip_rebuild "node:webhook"
 
+# TODO: cbs has been retired; keep this legacy checkout for now and clean it up
+# after the remaining container build inputs are audited.
 download_repo "cbs" "$git_branch_cbs"
 
 docker build --no-cache -t node:webhook .

@@ -24,8 +24,8 @@ env = docker_env(defaults)
 # 使用方式：BISECT_DEV_MODE=true ./start
 # 开发模式下代码通过 volume 映射，修改后只需 docker restart bisect
 DEV_MODE = ENV['BISECT_DEV_MODE'] == 'true'
-HOST_CCI_SRC = ENV['HOST_CCI_SRC'] || File.expand_path('~/git/gitee/compass-ci')
-HOST_LKP_SRC = ENV['HOST_LKP_SRC'] || File.expand_path('~/git/gitee/lkp-tests')
+HOST_CCI_SRC = ENV['HOST_CCI_SRC'] || File.expand_path('../..', __dir__)
+HOST_LKP_SRC = ENV['HOST_LKP_SRC'] || File.expand_path('../../../lkp-tests', __dir__)
 
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'

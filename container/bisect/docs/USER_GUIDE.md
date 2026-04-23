@@ -142,7 +142,7 @@ export MANTICORE_HOST=localhost
 export MANTICORE_WRITE_PORT=9308
 
 # 启动服务
-cd /home/shiptux/git/gitee/compass-ci/container/bisect
+cd $CCI_SRC/container/bisect
 python3 app/__init__.py
 ```
 
@@ -153,7 +153,7 @@ python3 app/__init__.py
 ### 4.1 重置脚本使用
 
 ```bash
-cd /home/shiptux/git/gitee/compass-ci/sbin
+cd $CCI_SRC/sbin
 
 # 1. 预览模式（不实际修改）
 python3 reset_verification_status.py --dry-run --limit 10
@@ -443,7 +443,7 @@ echo "清理完成"
 
 ```bash
 # 方法1: 快速测试（2-3分钟，使用小型测试仓库）
-cd /home/shiptux/git/gitee/compass-ci/container/bisect/scripts
+cd $CCI_SRC/container/bisect/scripts
 ./benchmark_clones_quick.py
 
 # 方法2: 准确测试（10-20分钟，使用真实仓库）
@@ -462,7 +462,7 @@ cd /home/shiptux/git/gitee/compass-ci/container/bisect/scripts
 export BISECT_MAX_CONCURRENT_CLONES=8
 
 # 或编辑配置文件
-vim /home/shiptux/git/gitee/compass-ci/container/bisect/lib/config.py
+vim $CCI_SRC/container/bisect/lib/config.py
 # 修改第53行: BISECT_MAX_CONCURRENT_CLONES = 8
 ```
 

@@ -23,7 +23,7 @@ class APITaskSubmitter:
     def __init__(self, api_base_url: str = None, task_file_path: str = None):
         """Initialize API task submitter."""
         self.api_base_url = api_base_url or "http://localhost:5000"
-        self.task_file_path = task_file_path or "/home/shiptux/git/gitee/compass-ci/new_bisect_tasks.txt"
+        self.task_file_path = task_file_path or os.environ['CCI_SRC'] + "/new_bisect_tasks.txt"
 
         # API endpoints
         self.submit_endpoint = f"{self.api_base_url}/bisect/task"
@@ -193,7 +193,7 @@ class APITaskSubmitter:
 
     def save_results(self):
         """Save submission results to files."""
-        output_dir = "/home/shiptux/git/gitee/compass-ci/container/bisect/logs"
+        output_dir = os.environ['CCI_SRC'] + "/container/bisect/logs"
         os.makedirs(output_dir, exist_ok=True)
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -223,7 +223,7 @@ def main():
     parser = argparse.ArgumentParser(description="Submit bisect tasks via API")
     parser.add_argument("--api-url", default="http://localhost:5000",
                         help="API base URL (default: http://localhost:5000)")
-    parser.add_argument("--task-file", default="/home/shiptux/git/gitee/compass-ci/new_bisect_tasks.txt",
+    parser.add_argument("--task-file", default=os.environ['CCI_SRC'] + "/new_bisect_tasks.txt",
                         help="Path to task input file")
     parser.add_argument("--dry-run", action="store_true",
                         help="Dry run mode (do not submit)")
