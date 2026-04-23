@@ -16,7 +16,7 @@ Clone the following git repos to your $HOME
 
 	git clone file:///c/todo.git
 	git clone https://gitee.com/compass-ci/lkp-tests.git
-	git clone https://gitee.com/openeuler/compass-ci.git
+	git clone https://atomgit.com/openeuler/compass-ci.git
 
 Then read through documents
 

@@ -1361,7 +1361,7 @@ mkdir -p ~/compass-ci && cd ~/compass-ci
 
 # 克隆必需的仓库
 git clone https://gitee.com/compass-ci/lkp-tests.git
-git clone https://gitee.com/openeuler/compass-ci.git
+git clone https://atomgit.com/openeuler/compass-ci.git
 ```
 
 #### 步骤 2：配置环境变量

@@ -29,7 +29,7 @@ class MailJobResult
     return nil unless context
 
     subject = "[Compass-CI] #{@job['commit_title'] || @job['id']} comparison"
-    signature = "Regards\nCompass-CI\nhttps://gitee.com/openeuler/compass-ci"
+    signature = "Regards\nCompass-CI\nhttps://atomgit.com/openeuler/compass-ci"
 
     <<~BODY
     To: #{@email_to}

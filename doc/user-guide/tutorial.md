@@ -276,7 +276,7 @@ job yaml 是测试描述和执行的基本单元，以[YAML](http://yaml.org/YAM
 
 
 
-### [本地搭建 compass-ci 服务器节点](https://gitee.com/openeuler/compass-ci/blob/master/sparrow/README.md)
+### [本地搭建 compass-ci 服务器节点](https://atomgit.com/openeuler/compass-ci/blob/master/sparrow/README.md)
 
 ## 呼吁合作
   - 增强 git bisect 能力

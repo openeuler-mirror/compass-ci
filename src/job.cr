@@ -1422,7 +1422,7 @@ class Job < JobHash
       if !@hash_plain[key]?
         error_msg = "Missing required job key: '#{key}'."
         if SENSITIVE_ACCOUNT_KEYS.includes?(key)
-          error_msg += "\nPlease refer to https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md"
+          error_msg += "\nPlease refer to https://atomgit.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md"
         end
         raise error_msg
       end
