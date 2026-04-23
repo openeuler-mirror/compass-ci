@@ -122,6 +122,26 @@ module EsDataApi
     return response.body
   end
 
+  def self.manticore_search_dsl(index, params)
+    request_body = JSON.parse(params)
+    query = request_body['query'] || {}
+    raise "#{index} is not opened for user query" unless OPEN_INDEX.include?(index)
+
+    search_query = query.dup
+    search_query['index'] = index
+
+    if REQUIRED_TOKEN_INDEX.include?(index)
+      my_account = check_my_account(request_body)
+      authorized_accounts = get_authorized_accounts(my_account)
+      search_query['query'] ||= {}
+      search_query['query']['terms'] ||= {}
+      search_query['query']['terms']['my_account'] = authorized_accounts
+    end
+
+    response = Manticore::Client.search(search_query)
+    return JSON.parse(response.body)
+  end
+
   def self.verify_user(my_account, my_token)
     raise 'missed my_account' unless my_account
     raise 'missed my_token' unless my_token
