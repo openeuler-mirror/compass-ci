@@ -95,7 +95,7 @@ class BisectConsumer:
             current_time = int(time.time())
             update_query = f"""
                 UPDATE bisect
-                SET bisect_status = 'processing', updated_at = {current_time}
+                SET bisect_status = 'processing', updated_at = {current_time}, start_time = {current_time}
                 WHERE id = {task_id} AND bisect_status = 'wait'
             """
 

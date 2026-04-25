@@ -34,7 +34,7 @@ def _get_manticore_client():
     )
 
 # Timestamp fields to add human-readable versions for
-_TIMESTAMP_FIELDS = ('submit_time', 'updated_at', 'created_at')
+_TIMESTAMP_FIELDS = ('submit_time', 'updated_at', 'created_at', 'start_time', 'end_time')
 
 def _humanize_timestamps(task: dict) -> dict:
     """Add '_human' suffix fields for unix timestamp fields (e.g. updated_at_human).
