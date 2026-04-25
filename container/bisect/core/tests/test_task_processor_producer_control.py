@@ -135,6 +135,8 @@ class TestTaskProcessorProducerControl(unittest.TestCase):
         processor.deleted_task_ids = set()
         processor.deleted_task_ids_lock = threading.Lock()
         processor.task_semaphore = MagicMock()
+        processor.repo_manager = MagicMock()
+        processor.repo_manager.cleanup_task_workspace = MagicMock(return_value=False)
         return processor
 
     def test_get_producer_gate_state_tracks_global_and_component_switches(self):
@@ -259,11 +261,33 @@ class TestTaskProcessorProducerControl(unittest.TestCase):
 
         result = processor.handle_deleted_tasks([10, '11', 99])
 
-        self.assertEqual(result, {'runtime_marked': 2, 'cancelled': 1})
+        self.assertEqual(
+            result,
+            {'runtime_marked': 2, 'cancelled': 1, 'workspace_cleaned': 0},
+        )
         self.assertTrue(processor.is_task_deleted('10'))
         self.assertTrue(processor.is_task_deleted('11'))
         self.assertTrue(queued_future.cancelled())
         running_future.cancel.assert_called_once_with()
+
+    def test_handle_deleted_tasks_cleans_workspace_directories(self):
+        processor = self._make_processor()
+        # Tasks not in runtime state (already finished/wait), but their workspace
+        # directories still linger on disk. Two have dirs to remove, one doesn't.
+        processor.repo_manager.cleanup_task_workspace = MagicMock(
+            side_effect=lambda task_id: task_id in ('10', '12')
+        )
+
+        result = processor.handle_deleted_tasks([10, 11, 12])
+
+        self.assertEqual(
+            result,
+            {'runtime_marked': 0, 'cancelled': 0, 'workspace_cleaned': 2},
+        )
+        called_ids = sorted(
+            call.args[0] for call in processor.repo_manager.cleanup_task_workspace.call_args_list
+        )
+        self.assertEqual(called_ids, ['10', '11', '12'])
 
     def test_on_task_future_done_releases_cancelled_task_resources(self):
         processor = self._make_processor()

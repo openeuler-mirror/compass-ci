@@ -1257,7 +1257,8 @@ def delete_tasks_by_condition():
                 "deleted_count": 0,
                 "runtime_reconciled": {
                     "runtime_marked": 0,
-                    "cancelled": 0
+                    "cancelled": 0,
+                    "workspace_cleaned": 0
                 },
                 "filters": filters
             }), 200
@@ -1274,7 +1275,8 @@ def delete_tasks_by_condition():
 
         runtime_reconciled = {
             "runtime_marked": 0,
-            "cancelled": 0
+            "cancelled": 0,
+            "workspace_cleaned": 0
         }
         runtime_warning = None
         handler = getattr(bisect_task_instance, 'handle_deleted_tasks', None)
@@ -1285,6 +1287,7 @@ def delete_tasks_by_condition():
                     runtime_reconciled = {
                         "runtime_marked": int(cleanup_result.get('runtime_marked', 0) or 0),
                         "cancelled": int(cleanup_result.get('cancelled', 0) or 0),
+                        "workspace_cleaned": int(cleanup_result.get('workspace_cleaned', 0) or 0),
                     }
             except Exception as cleanup_error:
                 runtime_warning = f"runtime reconciliation failed: {cleanup_error}"

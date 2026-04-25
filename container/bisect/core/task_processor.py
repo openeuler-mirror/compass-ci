@@ -651,10 +651,18 @@ class TaskProcessor:
             self.deleted_task_ids.discard(task_id)
 
     def handle_deleted_tasks(self, task_ids: List[object]) -> Dict[str, int]:
-        """Reconcile runtime consumer state after tasks are deleted from the DB."""
+        """Reconcile runtime consumer state and on-disk workspaces after tasks are deleted."""
         normalized_ids = {str(task_id) for task_id in task_ids if task_id is not None}
         if not normalized_ids:
-            return {"runtime_marked": 0, "cancelled": 0}
+            return {"runtime_marked": 0, "cancelled": 0, "workspace_cleaned": 0}
+
+        # Sweep filesystem workspaces for every deleted task. Done unconditionally so
+        # tasks already past runtime (success/failed/wait) also get their dirs removed,
+        # keeping pool_status in sync with the DB.
+        workspace_cleaned = 0
+        for task_id in normalized_ids:
+            if self.repo_manager.cleanup_task_workspace(task_id):
+                workspace_cleaned += 1
 
         with self.active_task_locks_lock:
             active_ids = set(self.active_task_locks)
@@ -663,7 +671,11 @@ class TaskProcessor:
 
         runtime_ids = normalized_ids & (active_ids | future_ids)
         if not runtime_ids:
-            return {"runtime_marked": 0, "cancelled": 0}
+            return {
+                "runtime_marked": 0,
+                "cancelled": 0,
+                "workspace_cleaned": workspace_cleaned,
+            }
 
         with self.deleted_task_ids_lock:
             self.deleted_task_ids.update(runtime_ids)
@@ -678,9 +690,14 @@ class TaskProcessor:
 
         logger.info(
             "Runtime delete reconciliation completed | "
-            f"marked: {len(runtime_ids)} | cancelled: {cancelled}"
+            f"marked: {len(runtime_ids)} | cancelled: {cancelled} | "
+            f"workspace_cleaned: {workspace_cleaned}"
         )
-        return {"runtime_marked": len(runtime_ids), "cancelled": cancelled}
+        return {
+            "runtime_marked": len(runtime_ids),
+            "cancelled": cancelled,
+            "workspace_cleaned": workspace_cleaned,
+        }
 
     def _arm_consumer_startup_delay(self):
         """Start the one-shot startup grace window for new task consumption."""

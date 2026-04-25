@@ -349,7 +349,7 @@ class TestVerificationStatusApi(unittest.TestCase):
         client.sql_select.return_value = [{'id': '11'}, {'id': 12}]
         client.sql_raw.return_value = [{'total': 2, 'error': ''}]
         controllers.bisect_task_instance.handle_deleted_tasks = MagicMock(
-            return_value={'runtime_marked': 2, 'cancelled': 1}
+            return_value={'runtime_marked': 2, 'cancelled': 1, 'workspace_cleaned': 2}
         )
 
         with app.test_request_context('/delete_tasks?status=wait', method='DELETE'):
@@ -361,7 +361,10 @@ class TestVerificationStatusApi(unittest.TestCase):
         body = response.get_json()
         self.assertEqual(status_code, 200)
         self.assertEqual(body['deleted_count'], 2)
-        self.assertEqual(body['runtime_reconciled'], {'runtime_marked': 2, 'cancelled': 1})
+        self.assertEqual(
+            body['runtime_reconciled'],
+            {'runtime_marked': 2, 'cancelled': 1, 'workspace_cleaned': 2},
+        )
         controllers.bisect_task_instance.handle_deleted_tasks.assert_called_once_with([11, 12])
         client.sql_raw.assert_called_once_with("DELETE FROM bisect WHERE bisect_status = 'wait'")
 
@@ -378,7 +381,10 @@ class TestVerificationStatusApi(unittest.TestCase):
         body = response.get_json()
         self.assertEqual(status_code, 200)
         self.assertEqual(body['deleted_count'], 0)
-        self.assertEqual(body['runtime_reconciled'], {'runtime_marked': 0, 'cancelled': 0})
+        self.assertEqual(
+            body['runtime_reconciled'],
+            {'runtime_marked': 0, 'cancelled': 0, 'workspace_cleaned': 0},
+        )
         controllers.bisect_task_instance.handle_deleted_tasks.assert_not_called()
         client.sql_raw.assert_not_called()
 
