@@ -82,7 +82,9 @@ class BisectConsumer:
             if self._is_task_deleted(task_id):
                 return self._deleted_task_result(task_id, 'startup')
 
-            task_result_root = self._generate_task_path(self.config, task)
+            # Prefer the result root that was allocated at submit time. Fall back to
+            # generating it here for tasks created before the submit-time allocator.
+            task_result_root = task.get('bisect_result_root') or self._generate_task_path(self.config, task)
 
             # Debug log for result_root
             logger.debug(f"Generated task_result_root: {task_result_root} | task_id: {task_id}")

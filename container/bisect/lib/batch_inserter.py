@@ -121,11 +121,11 @@ class BatchInserter:
         Raises:
             Exception: failedexception
         """
-        #  ID 
+        #  ID
         import sys
         import os
         sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
-        from bisect_utils import _generate_task_id
+        from bisect_utils import _generate_task_id, generate_task_path
 
         # dict
         documents = {}
@@ -147,11 +147,22 @@ class BatchInserter:
                 logger.warning("task error_id  bisect_metric，skip")
                 continue
 
-            # 🔧  ID 
+            # ID
             task_id = _generate_task_id(bad_job_id, task_identifier)
+
+            # Allocate result root and mkdir before INSERT, so a stable log path
+            # exists from submit time. mkdir is idempotent; failures are best-effort.
+            try:
+                bisect_result_root = generate_task_path({}, dict(task, id=task_id))
+            except Exception as path_err:
+                logger.warning(
+                    f"Failed to allocate result root | task_id: {task_id} | error: {path_err}"
+                )
+                continue
 
             # （ id ）
             doc = {k: v for k, v in task.items() if k != 'id'}
+            doc['bisect_result_root'] = bisect_result_root
             documents[task_id] = doc
 
         if not documents:
@@ -188,18 +199,20 @@ class BatchInserter:
             batch: task
 
         Returns:
-            (success, failed) 
+            (success, failed)
         """
-        #  ID 
+        #  ID
         import sys
         import os
+        import shutil
         sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
-        from bisect_utils import _generate_task_id
+        from bisect_utils import _generate_task_id, generate_task_path
 
         success_count = 0
         failed_count = 0
 
         for task in batch:
+            bisect_result_root = None
             try:
                 bad_job_id = task.get('bad_job_id', '')
                 error_id = task.get('error_id', '')
@@ -220,11 +233,15 @@ class BatchInserter:
                     failed_count += 1
                     continue
 
-                # 🔧  ID 
+                # 🔧  ID
                 task_id = _generate_task_id(bad_job_id, task_identifier)
+
+                # Allocate result root + mkdir (idempotent; safe under retry).
+                bisect_result_root = generate_task_path({}, dict(task, id=task_id))
 
                 # （ id ）
                 doc = {k: v for k, v in task.items() if k != 'id'}
+                doc['bisect_result_root'] = bisect_result_root
 
                 result = self.client.replace("bisect", task_id, doc)
 
@@ -236,10 +253,13 @@ class BatchInserter:
                     if insert_result:
                         success_count += 1
                     else:
+                        shutil.rmtree(bisect_result_root, ignore_errors=True)
                         failed_count += 1
 
             except Exception as e:
                 logger.debug(f"Single insert failed | error_id: {task.get('error_id', 'unknown')[:50]}... | error: {str(e)}")
+                if bisect_result_root:
+                    shutil.rmtree(bisect_result_root, ignore_errors=True)
                 failed_count += 1
 
         return success_count, failed_count

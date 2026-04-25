@@ -12,6 +12,11 @@ os.environ.setdefault('LKP_SRC', '/tmp')
 os.environ.setdefault('CCI_SRC', '/tmp')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'lib'))
 
+# Drop any mock module a prior test may have inserted (other test modules stub
+# bisect_utils / repo_manager); we want the real ones here.
+for stale in ('repo_manager', 'bisect_utils', 'log_config'):
+    sys.modules.pop(stale, None)
+
 from repo_manager import SharedRepoManager
 
 

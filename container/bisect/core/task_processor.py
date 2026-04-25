@@ -39,7 +39,8 @@ from bisect_utils import (
     get_bisect_statistics,
     cleanup_task_workspace,
     mark_similar_wait_tasks_for_verification,
-    mark_introduced_errid_tasks_for_verification
+    mark_introduced_errid_tasks_for_verification,
+    generate_task_path,
 )
 from repo_manager import SharedRepoManager
 from config import Config
@@ -1240,15 +1241,33 @@ class TaskProcessor:
                         task_doc[key] = ''
                     logger.debug(f"Cleaning null field during task creation: {key} = {task_doc[key]}")
         
+            # Allocate result root and create the directory before INSERT, so the
+            # caller (and subsequent consumers) sees a stable log/result path from
+            # the moment a task is accepted -- mirroring scheduler-style submit.
+            task_for_path = dict(task_doc)
+            task_for_path['id'] = task_id
+            bisect_result_root = generate_task_path(self._config or {}, task_for_path)
+            task_doc['bisect_result_root'] = bisect_result_root
+
             logger.debug(f"DEBUG - Preparing to insert task | ID: {task_id}, Document: {task_doc}")
-            
-            result = self.client.insert("bisect", task_id, task_doc)
-            
+
+            try:
+                result = self.client.insert("bisect", task_id, task_doc)
+            except Exception:
+                shutil.rmtree(bisect_result_root, ignore_errors=True)
+                raise
+
             logger.debug(f"DEBUG - insert result | ID: {task_id}, success: {result}")
 
             if result:
-                return {'status': 'created', 'message': 'Task created successfully', 'task_id': task_id}
+                return {
+                    'status': 'created',
+                    'message': 'Task created successfully',
+                    'task_id': task_id,
+                    'bisect_result_root': bisect_result_root,
+                }
             else:
+                shutil.rmtree(bisect_result_root, ignore_errors=True)
                 return {'status': 'failed', 'message': 'Failed to insert task'}
         except Exception as e:
             logger.error(f"Failed to add task: {str(e)}")

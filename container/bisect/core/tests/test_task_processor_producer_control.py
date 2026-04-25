@@ -50,6 +50,7 @@ for attr in [
     'cleanup_task_workspace',
     'mark_similar_wait_tasks_for_verification',
     'mark_introduced_errid_tasks_for_verification',
+    'generate_task_path',
 ]:
     setattr(sys.modules['bisect_utils'], attr, MagicMock())
 sys.modules['repo_manager'].SharedRepoManager = MagicMock
@@ -304,6 +305,96 @@ class TestTaskProcessorProducerControl(unittest.TestCase):
         self.assertNotIn('10', processor.active_task_locks)
         self.assertNotIn('10', processor.deleted_task_ids)
         processor.task_semaphore.release.assert_called_once_with()
+
+
+class TestAddBisectTaskResultRoot(unittest.TestCase):
+    """Cover the submit-time result-root allocation in add_bisect_task."""
+
+    def _make_processor(self):
+        processor = TaskProcessor.__new__(TaskProcessor)
+        processor.client = MagicMock()
+        processor._config = {}
+        return processor
+
+    def _patch_helpers(self, task_id, result_root):
+        """Patch task_processor module-level names directly (not sys.modules state),
+        so each test is isolated from cross-test mock pollution.
+        """
+        return [
+            patch(
+                'task_processor.validate_task_data',
+                return_value={
+                    'bad_job_id': 'job-1',
+                    'error_id': 'err-x',
+                    'git_url': 'https://example.com/foo.git',
+                },
+            ),
+            patch('task_processor._create_task_document', return_value={}),
+            patch('task_processor._generate_task_id', return_value=task_id),
+            patch('task_processor.categorize_bisect_task', return_value='error'),
+            patch('task_processor.extract_git_url_from_full_text_kv', return_value=''),
+            patch('task_processor.generate_task_path', return_value=result_root),
+        ]
+
+    def _enter_patches(self, patches):
+        return [p.start() for p in patches]
+
+    def _stop_patches(self, patches):
+        for p in patches:
+            p.stop()
+
+    def test_returns_result_root_on_success(self):
+        processor = self._make_processor()
+        processor.client.search.return_value = []
+        processor.client.sql_select.return_value = []
+        processor.client.insert.return_value = True
+
+        patches = self._patch_helpers('tid-success', '/tmp/rr-success')
+        self._enter_patches(patches)
+        try:
+            result = processor.add_bisect_task({'foo': 'bar'})
+        finally:
+            self._stop_patches(patches)
+
+        self.assertEqual(result['status'], 'created')
+        self.assertEqual(result['task_id'], 'tid-success')
+        self.assertEqual(result['bisect_result_root'], '/tmp/rr-success')
+
+    def test_rolls_back_dir_when_insert_returns_false(self):
+        processor = self._make_processor()
+        processor.client.search.return_value = []
+        processor.client.sql_select.return_value = []
+        processor.client.insert.return_value = False
+
+        patches = self._patch_helpers('tid-falsy', '/tmp/rr-falsy')
+        self._enter_patches(patches)
+        try:
+            with patch('task_processor.shutil.rmtree') as rmtree_mock:
+                result = processor.add_bisect_task({'foo': 'bar'})
+        finally:
+            self._stop_patches(patches)
+
+        self.assertEqual(result['status'], 'failed')
+        rmtree_mock.assert_called_once_with('/tmp/rr-falsy', ignore_errors=True)
+
+    def test_rolls_back_dir_when_insert_raises(self):
+        processor = self._make_processor()
+        processor.client.search.return_value = []
+        processor.client.sql_select.return_value = []
+        processor.client.insert.side_effect = RuntimeError('db down')
+
+        patches = self._patch_helpers('tid-raise', '/tmp/rr-raise')
+        self._enter_patches(patches)
+        try:
+            with patch('task_processor.shutil.rmtree') as rmtree_mock:
+                result = processor.add_bisect_task({'foo': 'bar'})
+        finally:
+            self._stop_patches(patches)
+
+        # add_bisect_task catches the exception and returns an 'error' status,
+        # but the except path inside still rolls back the result-root dir.
+        self.assertEqual(result['status'], 'error')
+        rmtree_mock.assert_called_once_with('/tmp/rr-raise', ignore_errors=True)
 
 
 if __name__ == '__main__':
