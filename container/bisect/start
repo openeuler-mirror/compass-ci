@@ -4,6 +4,7 @@
 # frozen_string_literal: true
 
 require 'set'
+require 'tempfile'
 require_relative '../defconfig.rb'
 
 names = Set.new %w[
@@ -18,8 +19,6 @@ defaults = relevant_defaults(names)
 service_authentication = relevant_service_authentication(names)
 defaults.merge!(service_authentication)
 
-env = docker_env(defaults)
-
 # 开发模式配置
 # 使用方式：BISECT_DEV_MODE=true ./start
 # 开发模式下代码通过 volume 映射，修改后只需 docker restart bisect
@@ -29,31 +28,17 @@ HOST_LKP_SRC = ENV['HOST_LKP_SRC'] || File.expand_path('../../../lkp-tests', __d
 
 DEFAULT_LKP = '/c/lkp-tests'
 DEFAULT_CCI = '/c/compass-ci'
-FLASK_APP = '/c/compass-ci/container/bisect/app/__init__.py'
 DEFAULT_CONFIG_DIR = '/etc/compass-ci/defaults'
-DEFAULT_USER_CONFIG_DIR = File.expand_path("~/.config/compass-ci/")
+DEFAULT_USER_CONFIG_DIR = File.expand_path('~/.config/compass-ci/')
 DEFAULT_BISECT_CONFIG_DIR = '/home/bisect/.config/compass-ci/'
 DEFAULT_CACHE = '/srv/cache'
-MANTICORE_HOST='172.17.0.1'
-BISECT_WORK_DIR='/c/bisect'
-HOST_WORK_DIR='/tmp/'
-BISECT_RESULT_DIR='/result/'
-HOST_RESULT_DIR='/srv/result'
-KERNEL_CI_DIR='/srv/log/kernel_ci'
-AUTO_TEST_REPOS_DIR='/srv/git/auto_test_repos'
+BISECT_WORK_DIR = '/c/bisect'
+HOST_WORK_DIR = '/tmp/'
+BISECT_RESULT_DIR = '/result/'
+HOST_RESULT_DIR = '/srv/result'
+KERNEL_CI_DIR = '/srv/log/kernel_ci'
+AUTO_TEST_REPOS_DIR = '/srv/git/auto_test_repos'
 SUPERVISORD_CONF = File.join(File.dirname(__FILE__), 'config/supervisord.conf')
-NOTIFICATION_WEBHOOK_URL = ENV['BISECT_NOTIFICATION_WEBHOOK_URL'] || ''
-NOTIFICATION_FEISHU_WEBHOOK_URL = ENV['BISECT_FEISHU_WEBHOOK_URL'] || ''
-NOTIFICATION_FEISHU_SECRET = ENV['BISECT_FEISHU_SECRET'] || ''
-NOTIFICATION_EMAIL = ENV['BISECT_NOTIFICATION_EMAIL'] || ''
-HEAD_VALIDATOR_ENABLED = ENV['BISECT_HEAD_VALIDATOR_ENABLED'] || 'true'
-PRODUCER_ENABLED = ENV['BISECT_PRODUCER_ENABLED'] || 'true'
-METRICS_PRODUCER_ENABLED = ENV['BISECT_METRICS_PRODUCER_ENABLED'] || 'true'
-ERROR_PRODUCER_ENABLED = ENV['BISECT_ERROR_PRODUCER_ENABLED'] || 'true'
-KERNEL_CI_PRODUCER_ENABLED = ENV['BISECT_KERNEL_CI_PRODUCER_ENABLED'] || 'true'
-PERFORMANCE_PRODUCER_ENABLED = ENV['PERFORMANCE_PRODUCER_ENABLED'] || 'true'
-CURRENT_QUERY_HOURS = ENV['CURRENT_QUERY_HOURS'] || '336'
-BASELINE_QUERY_HOURS = ENV['BASELINE_QUERY_HOURS'] || '720'
 
 # Ensure log directories exist before supervisord starts.
 # This is required because HOST_RESULT_DIR is bind-mounted and may be empty.
@@ -70,37 +55,47 @@ end
 
 docker_rm 'bisect'
 
-cmd = %w[
+# Collect every container-side env var into a single hash, then materialize
+# it as an envfile so the docker run command stays readable.
+env_hash = defaults.merge(
+  'LKP_SRC' => DEFAULT_LKP,
+  'CCI_SRC' => DEFAULT_CCI,
+  'MANTICORE_HOST' => '172.17.0.1',
+  'BISECT_PRODUCER_ENABLED' => ENV['BISECT_PRODUCER_ENABLED'] || 'true',
+  'BISECT_METRICS_PRODUCER_ENABLED' => ENV['BISECT_METRICS_PRODUCER_ENABLED'] || 'true',
+  'BISECT_ERROR_PRODUCER_ENABLED' => ENV['BISECT_ERROR_PRODUCER_ENABLED'] || 'true',
+  'BISECT_KERNEL_CI_PRODUCER_ENABLED' => ENV['BISECT_KERNEL_CI_PRODUCER_ENABLED'] || 'true',
+  'PERFORMANCE_PRODUCER_ENABLED' => ENV['PERFORMANCE_PRODUCER_ENABLED'] || 'true',
+  'BISECT_CONSUMER_ENABLED' => 'true',
+  'BISECT_CONSUMER_STARTUP_DELAY_SECONDS' => '300',
+  'FLASK_APP' => "#{DEFAULT_CCI}/container/bisect/app/__init__.py",
+  'LOG_LEVEL' => 'DEBUG',
+  'COMMIT_TIME_SERVICE_URL' => 'http://localhost:8765',
+  'BISECT_NOTIFICATION_WEBHOOK_URL' => ENV['BISECT_NOTIFICATION_WEBHOOK_URL'] || '',
+  'BISECT_FEISHU_WEBHOOK_URL' => ENV['BISECT_FEISHU_WEBHOOK_URL'] || '',
+  'BISECT_FEISHU_SECRET' => ENV['BISECT_FEISHU_SECRET'] || '',
+  'BISECT_NOTIFICATION_EMAIL' => ENV['BISECT_NOTIFICATION_EMAIL'] || '',
+  'BISECT_HEAD_VALIDATOR_ENABLED' => ENV['BISECT_HEAD_VALIDATOR_ENABLED'] || 'true',
+  'CURRENT_QUERY_HOURS' => ENV['CURRENT_QUERY_HOURS'] || '336',
+  'BASELINE_QUERY_HOURS' => ENV['BASELINE_QUERY_HOURS'] || '720',
+  'KERNEL_CI_CONFIG_DIR' => "#{BISECT_RESULT_DIR}bisect/kernel_ci_config",
+  'BISECT_MAX_COMMIT_AGE_DAYS' => '365',
+  'BISECT_THREADS' => '64',
+  'WORK_DIR' => BISECT_WORK_DIR,
+  'BISECT_COMMIT_QUERY_PRISTINE_BASE_DIR' => "#{BISECT_WORK_DIR}/bisect_repos/pristine_query"
+)
+
+envfile = Tempfile.new('bisect-env')
+File.chmod(0o600, envfile.path)
+env_hash.each { |k, v| envfile.puts "#{k}=#{v}" }
+envfile.close
+
+cmd = %W[
   docker run
   --name bisect
   --restart=always
   -itd
-] + env + %W[
-  -e LKP_SRC=#{DEFAULT_LKP}
-  -e CCI_SRC=#{DEFAULT_CCI}
-  -e MANTICORE_HOST=#{MANTICORE_HOST}
-  -e BISECT_PRODUCER_ENABLED=#{PRODUCER_ENABLED}
-  -e BISECT_METRICS_PRODUCER_ENABLED=#{METRICS_PRODUCER_ENABLED}
-  -e BISECT_ERROR_PRODUCER_ENABLED=#{ERROR_PRODUCER_ENABLED}
-  -e BISECT_KERNEL_CI_PRODUCER_ENABLED=#{KERNEL_CI_PRODUCER_ENABLED}
-  -e PERFORMANCE_PRODUCER_ENABLED=#{PERFORMANCE_PRODUCER_ENABLED}
-  -e BISECT_CONSUMER_ENABLED=true
-  -e BISECT_CONSUMER_STARTUP_DELAY_SECONDS=300
-  -e FLASK_APP=#{FLASK_APP}
-  -e LOG_LEVEL=DEBUG
-  -e COMMIT_TIME_SERVICE_URL=http://localhost:8765
-  -e BISECT_NOTIFICATION_WEBHOOK_URL=#{NOTIFICATION_WEBHOOK_URL}
-  -e BISECT_FEISHU_WEBHOOK_URL=#{NOTIFICATION_FEISHU_WEBHOOK_URL}
-  -e BISECT_FEISHU_SECRET=#{NOTIFICATION_FEISHU_SECRET}
-  -e BISECT_NOTIFICATION_EMAIL=#{NOTIFICATION_EMAIL}
-  -e BISECT_HEAD_VALIDATOR_ENABLED=#{HEAD_VALIDATOR_ENABLED}
-  -e CURRENT_QUERY_HOURS=#{CURRENT_QUERY_HOURS}
-  -e BASELINE_QUERY_HOURS=#{BASELINE_QUERY_HOURS}
-  -e KERNEL_CI_CONFIG_DIR=#{BISECT_RESULT_DIR}bisect/kernel_ci_config
-  -e BISECT_MAX_COMMIT_AGE_DAYS=365
-  -e BISECT_THREADS=64
-  -e WORK_DIR=#{BISECT_WORK_DIR}
-  -e BISECT_COMMIT_QUERY_PRISTINE_BASE_DIR=#{BISECT_WORK_DIR}/bisect_repos/pristine_query
+  --env-file #{envfile.path}
   -v #{HOST_WORK_DIR}:#{BISECT_WORK_DIR}
   -v #{HOST_RESULT_DIR}:#{BISECT_RESULT_DIR}
   -v #{HOST_RESULT_DIR}:#{HOST_RESULT_DIR}
@@ -131,4 +126,10 @@ end
 cmd += ['bisect']
 cmd += ['supervisord', '-c', '/etc/supervisor/supervisord.conf']
 
-system(*cmd)
+begin
+  system(*cmd)
+ensure
+  # Docker has already loaded the envfile contents into the container config;
+  # the file is no longer needed and may contain secrets.
+  envfile.unlink
+end
