@@ -66,6 +66,22 @@ post '/data_api/manticore/select' do
   manticore_select(request.body.read)
 end
 
+# POST
+# eg1:
+#   curl -X POST localhost:10005/data_api/manticore/jobs/_search -H 'Content-Type: application/json' -d '{
+#     "query": {"query": {"term": {"suite": "borrow"}}, "_source": ["id"]},
+#     "cci_credentials": {
+#       "my_token": "16132550-...",
+#       "my_account": "auto-submit"
+#     }
+#   }'
+# Response:
+#   - manticore_result : JSON
+post '/data_api/manticore/:index/_search' do
+  request.body.rewind # in case someone already read it
+  manticore_search(params['index'], request.body.read)
+end
+
 def check_xss(params)
   raise 'please input valid params' if params.match? /[^\w\"\'\+\{\}\[\]\.\_\,\ \:\/\-\;\%\=\<\>]/
 end
@@ -102,4 +118,15 @@ def manticore_select(params)
     return [200, headers.merge('Access-Control-Allow-Origin' => '*'), error_msg.to_json]
   end
   [200, headers.merge('Access-Control-Allow-Origin' => '*'), result]
+end
+
+def manticore_search(index, params)
+  begin
+    result = EsDataApi.manticore_search_dsl(index, params)
+  rescue StandardError => e
+    error_msg = { 'error_msg' => e.message }
+    log_error(error_msg)
+    return [200, headers.merge('Access-Control-Allow-Origin' => '*'), error_msg.to_json]
+  end
+  [200, headers.merge('Access-Control-Allow-Origin' => '*'), result.to_json]
 end
