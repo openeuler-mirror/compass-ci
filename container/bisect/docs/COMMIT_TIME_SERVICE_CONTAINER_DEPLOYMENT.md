@@ -315,14 +315,14 @@ system(*cmd)
 ### 1. 重新构建镜像
 
 ```bash
-cd /home/shiptux/git/gitee/compass-ci
+cd $CCI_SRC
 ./build bisect
 ```
 
 ### 2. 启动容器
 
 ```bash
-cd /home/shiptux/git/gitee/compass-ci/container/bisect
+cd $CCI_SRC/container/bisect
 ./start
 ```
 

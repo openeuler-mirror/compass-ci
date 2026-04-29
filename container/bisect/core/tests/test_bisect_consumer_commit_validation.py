@@ -26,6 +26,7 @@ sys.modules['notification_writer'].NotificationWriter = MagicMock
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 sys.path.insert(0, os.path.join(REPO_ROOT, 'container', 'bisect', 'core'))
+sys.modules.pop('bisect_consumer', None)
 
 from bisect_consumer import BisectConsumer
 
@@ -36,6 +37,8 @@ class TestBisectConsumerCommitValidation(unittest.TestCase):
         c = BisectConsumer.__new__(BisectConsumer)
         c.client = MagicMock()
         c.config = {}
+        c.task_deleted_checker = lambda _task_id: False
+        c._generate_task_path = MagicMock(return_value='/tmp/bisect-result')
         return c
 
     def test_rejects_placeholder_good_commit(self):
@@ -96,6 +99,34 @@ class TestBisectConsumerCommitValidation(unittest.TestCase):
         self.assertEqual(doc['bisect_status'], 'failed')
         self.assertEqual(doc['j']['good_commit'], 'abc123')
         self.assertEqual(doc['j']['bad_commit'], 'def456')
+
+    def test_process_single_task_skips_when_claim_affects_zero_rows(self):
+        consumer = self._make_consumer()
+        consumer.client.sql_raw.return_value = [{'total': 0, 'error': ''}]
+        task = {
+            'id': 9,
+            'bad_job_id': 'job9',
+            'git_url': 'https://example.com/repo.git',
+            'error_id': 'err-9',
+        }
+
+        out = consumer.process_single_task(task)
+
+        self.assertEqual(out['status'], 'skipped')
+        self.assertIn('deleted', out['error'])
+        consumer.client.sql_raw.assert_called_once()
+
+    def test_deleted_task_guard_skips_result_persistence(self):
+        consumer = self._make_consumer()
+        consumer.task_deleted_checker = lambda _task_id: True
+        task = {'id': 7, 'j': {}}
+        result = {'first_bad_commit': 'deadbeef'}
+
+        out = consumer._handle_bisect_result_no_release(result, task, 7)
+
+        self.assertEqual(out['status'], 'skipped')
+        self.assertIn('Task deleted during result handling', out['error'])
+        consumer.client.update.assert_not_called()
 
 
 if __name__ == '__main__':

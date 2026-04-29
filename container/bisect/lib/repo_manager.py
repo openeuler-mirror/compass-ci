@@ -749,6 +749,24 @@ class SharedRepoManager:
                 except Exception as e:
                     logger.error(f"Failed to release repository in context manager | error: {str(e)}")
 
+    def cleanup_task_workspace(self, task_id) -> bool:
+        """Remove the per-task workspace directory after a task is deleted.
+
+        Best-effort: returns True only if the directory existed and is fully gone afterwards.
+        Returns False if it didn't exist or if rmtree could not remove it cleanly.
+        """
+        task_workspace_dir = os.path.join(self.REPO_BASE_DIR, str(task_id))
+        if not os.path.isdir(task_workspace_dir):
+            return False
+        shutil.rmtree(task_workspace_dir, ignore_errors=True)
+        if os.path.exists(task_workspace_dir):
+            logger.warning(
+                f"Task workspace not fully removed | task_id: {task_id} | path: {task_workspace_dir}"
+            )
+            return False
+        logger.info(f"Removed task workspace | task_id: {task_id}")
+        return True
+
     def cleanup_old_workspaces(self, max_age_days=7):
         """
         repo

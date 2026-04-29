@@ -83,6 +83,7 @@ sys.modules['task_processor'].bisect_task_instance = types.SimpleNamespace(
     set_producer_enabled=MagicMock(return_value=True),
     wake_producer_control_worker=MagicMock(),
     wake_consumer_control_workers=MagicMock(),
+    handle_deleted_tasks=MagicMock(return_value={'runtime_marked': 0, 'cancelled': 0}),
 )
 sys.modules['services.pool_monitor_service'].PoolMonitorService = MagicMock
 
@@ -126,6 +127,9 @@ class TestVerificationStatusApi(unittest.TestCase):
         controllers.bisect_task_instance.set_producer_enabled = MagicMock(return_value=True)
         controllers.bisect_task_instance.wake_producer_control_worker = MagicMock()
         controllers.bisect_task_instance.wake_consumer_control_workers = MagicMock()
+        controllers.bisect_task_instance.handle_deleted_tasks = MagicMock(
+            return_value={'runtime_marked': 0, 'cancelled': 0}
+        )
 
     def test_snapshot_counts_queue_pressure(self):
         client = MagicMock()
@@ -338,6 +342,51 @@ class TestVerificationStatusApi(unittest.TestCase):
         self.assertEqual(body['pause_reason'], 'disabled')
         self.assertEqual(body['effective_producers'], [])
         self.assertEqual(body['active_producer_threads'], 1)
+
+    def test_delete_tasks_reconciles_runtime_state(self):
+        app = Flask(__name__)
+        client = MagicMock()
+        client.sql_select.return_value = [{'id': '11'}, {'id': 12}]
+        client.sql_raw.return_value = [{'total': 2, 'error': ''}]
+        controllers.bisect_task_instance.handle_deleted_tasks = MagicMock(
+            return_value={'runtime_marked': 2, 'cancelled': 1, 'workspace_cleaned': 2}
+        )
+
+        with app.test_request_context('/delete_tasks?status=wait', method='DELETE'):
+            with patch.object(controllers, '_get_manticore_client', return_value=client), \
+                 patch.object(controllers, 'build_task_query_conditions', return_value=("bisect_status = 'wait'", {'status': 'wait'})), \
+                 patch.object(controllers, 'build_condition_summary', return_value='status=wait'):
+                response, status_code = controllers.delete_tasks_by_condition()
+
+        body = response.get_json()
+        self.assertEqual(status_code, 200)
+        self.assertEqual(body['deleted_count'], 2)
+        self.assertEqual(
+            body['runtime_reconciled'],
+            {'runtime_marked': 2, 'cancelled': 1, 'workspace_cleaned': 2},
+        )
+        controllers.bisect_task_instance.handle_deleted_tasks.assert_called_once_with([11, 12])
+        client.sql_raw.assert_called_once_with("DELETE FROM bisect WHERE bisect_status = 'wait'")
+
+    def test_delete_tasks_without_matches_skips_runtime_reconciliation(self):
+        app = Flask(__name__)
+        client = MagicMock()
+        client.sql_select.return_value = []
+
+        with app.test_request_context('/delete_tasks?status=wait', method='DELETE'):
+            with patch.object(controllers, '_get_manticore_client', return_value=client), \
+                 patch.object(controllers, 'build_task_query_conditions', return_value=("bisect_status = 'wait'", {'status': 'wait'})):
+                response, status_code = controllers.delete_tasks_by_condition()
+
+        body = response.get_json()
+        self.assertEqual(status_code, 200)
+        self.assertEqual(body['deleted_count'], 0)
+        self.assertEqual(
+            body['runtime_reconciled'],
+            {'runtime_marked': 0, 'cancelled': 0, 'workspace_cleaned': 0},
+        )
+        controllers.bisect_task_instance.handle_deleted_tasks.assert_not_called()
+        client.sql_raw.assert_not_called()
 
 
 if __name__ == '__main__':

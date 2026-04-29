@@ -8,7 +8,7 @@ Prepare work:
   generate ssh keys
 
 Installation:
-  git clone https://gitee.com/openeuler/compass-ci.git
+  git clone https://atomgit.com/openeuler/compass-ci.git
 
     cd compass-ci/container/submit
     ./build

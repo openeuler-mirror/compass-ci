@@ -47,7 +47,7 @@ make install-depends
 source ~/.bashrc  # or source ~/.zshrc for zsh users
 
 # 2. Install compass-ci
-git clone https://gitee.com/openeuler/compass-ci
+git clone https://atomgit.com/openeuler/compass-ci
 cd compass-ci
 make install-depends
 ```

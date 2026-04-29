@@ -40,7 +40,7 @@ submit job.yaml nr_nic=2 nr_disk=4 disk_size=2G
 
 **2.2 qemu 创建和运行虚拟机**
 
-https://gitee.com/openeuler/compass-ci/blob/master/providers/qemu/kvm.sh
+https://atomgit.com/openeuler/compass-ci/blob/master/providers/qemu/kvm.sh
 
 添加网卡
 

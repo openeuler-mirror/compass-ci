@@ -130,6 +130,26 @@ Important operational note:
 | `SIMILARITY_THRESHOLD` | The score (0-100) above which two tasks are considered similar. | `70` |
 | `LOG_LEVEL` | The logging level for the application. | `INFO` |
 
+### Producer Component Roles
+
+The producer family contains several independent components. The two names that are
+easy to confuse are `metrics` and `performance`, but they serve different purposes:
+
+| Component | Runtime target | What it does | Does it create bisect tasks? |
+| :--- | :--- | :--- | :--- |
+| Metrics Producer | `metrics` | Runs the daily metrics tracker script (`bisect_metrics_tracker.py --collect --plot`) to refresh statistics and plots. | No |
+| Performance Producer | `performance` | Scans performance test results, identifies bisectable regressions, and creates `benchmark` bisect tasks. | Yes |
+| Error Producer | `error` | Scans failed jobs and creates error bisect tasks from filtered errids. | Yes |
+| Kernel CI Producer | `kernel_ci` | Runs the daily kernel-ci task generation flow. | Indirectly, via the kernel-ci producer script |
+
+Status API fields are interpreted as follows:
+
+- `configured_enabled`: the component's own switch value.
+- `effective_enabled`: the component switch after the global `BISECT_PRODUCER_ENABLED`
+  master switch is applied.
+- Example: `configured_enabled=true` and `effective_enabled=false` means the component
+  itself is enabled, but the global producer gate currently prevents it from running.
+
 ## 4. API Usage
 
 The service exposes a simple REST API for interaction.

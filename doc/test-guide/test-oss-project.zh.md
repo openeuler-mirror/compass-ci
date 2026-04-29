@@ -75,4 +75,4 @@
 
     详细配置方式请参考 https://gitee.com/compass-ci/upstream-repos/blob/master/README.md 。
 
-    命令参数意义及作用请参考 https://gitee.com/openeuler/compass-ci/tree/master/doc/job 。
+    命令参数意义及作用请参考 https://atomgit.com/openeuler/compass-ci/tree/master/doc/job 。

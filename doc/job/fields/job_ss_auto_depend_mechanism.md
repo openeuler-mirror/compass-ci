@@ -45,9 +45,9 @@ Scheduler pick_next_job from runqueue # src/lib/init_ready_queues.cr, InitReadyQ
 
 ## 相关代码
 相关commmit：
-https://gitee.com/openeuler/compass-ci/commit/400cdf850e19f
-https://gitee.com/openeuler/compass-ci/commit/b00e4111e007b
-https://gitee.com/openeuler/compass-ci/commit/2004ac0c46724
+https://atomgit.com/openeuler/compass-ci/commit/400cdf850e19f
+https://atomgit.com/openeuler/compass-ci/commit/b00e4111e007b
+https://atomgit.com/openeuler/compass-ci/commit/2004ac0c46724
 
 
 # 3.相关应用

@@ -19,7 +19,7 @@
 
     下载资源：
 
-        git clone https://gitee.com/openeuler/compass-ci.git
+        git clone https://atomgit.com/openeuler/compass-ci.git
         git clone https://gitee.com/compass-ci/lkp-tests.git
 
 ## 2. 添加环境变量
@@ -60,4 +60,4 @@
 
     submit命令：
 
-        了解更多submit命令的使用方法，请参考：[submit用户手册](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)
+        了解更多submit命令的使用方法，请参考：[submit用户手册](https://atomgit.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md)

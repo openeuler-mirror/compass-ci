@@ -66,7 +66,7 @@ def build_apply_account_email(my_info, account_info, assign_account_vm)
          source ~/.\${SHELL##*/}rc
 
     3) submit job
-       reference: https://gitee.com/openeuler/compass-ci/blob/master/doc/help/tutorial.md
+       reference: https://atomgit.com/openeuler/compass-ci/blob/master/doc/help/tutorial.md
 
        reference to 'how to write job yaml' section to write the job yaml
        you can also reference to files in lkp-tests/jobs as example.

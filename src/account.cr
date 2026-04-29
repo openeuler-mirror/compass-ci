@@ -76,7 +76,7 @@ class Accounts
   def verify_account(request : Hash(String, JSON::Any)) : Result
     error_msg = <<-MSG
       Failed to verify the account.
-      Please refer to https://gitee.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md
+      Please refer to https://atomgit.com/openeuler/compass-ci/blob/master/doc/user-guide/apply-account.md
     MSG
 
     # Check for required key "my_account"

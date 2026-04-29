@@ -138,7 +138,7 @@ cci-makepkg:
 $ submit cci-makepkg.yaml program.cci-makepkg.benchmark=netperf docker_image=openeuler/openeuler:20.03-LTS-SP1
 ```
 
-> 参考： [submit 命令详解]([doc/job/submit/submit-job.zh.md · Fengguang/compass-ci - 码云 - 开源中国 (gitee.com)](https://gitee.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md))
+> 参考： [submit 命令详解]([doc/job/submit/submit-job.zh.md · Fengguang/compass-ci - 码云 - 开源中国 (gitee.com)](https://atomgit.com/openeuler/compass-ci/blob/master/doc/job/submit/submit-job.zh.md))
 
 #### 查看输出
 

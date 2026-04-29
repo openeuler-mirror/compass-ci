@@ -16,7 +16,7 @@ if [ -d "./compass-ci-web" ]; then
 	rm -rf ./compass-ci-web
 fi
 
-git clone https://gitee.com/openeuler/compass-ci-web
+git clone https://atomgit.com/openeuler/compass-ci-web
 sed -i "s#export const BASEURLRESULT = 'https://api.compass-ci.openeuler.org';#export const BASEURLRESULT = '$BASE_RESULT_URL';#g" ./compass-ci-web/src/utils/baseUrl.js
 sed -i "s#const BASEURL = 'https://api.compass-ci.openeuler.org/web_backend';#export const BASEURL = '$BASE_WEB_BACKEND_URL';#g" ./compass-ci-web/src/utils/axios.utils.js
 sed -i "s#client_id: \"CLIENT_ID_HERE\"#client_id: \"$OAUTH_CLIENT_ID\"#g" ./compass-ci-web/src/views/user/login.vue

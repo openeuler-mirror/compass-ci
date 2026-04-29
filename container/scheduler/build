@@ -6,6 +6,8 @@
 require 'set'
 require_relative '../defconfig.rb'
 
+# TODO: cbs has been retired; keep the legacy config key and checkout entry for
+# now until the scheduler build inputs are fully audited.
 names = Set.new %w[
   SCHED_PORT
   git.cbs

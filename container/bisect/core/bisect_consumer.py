@@ -36,13 +36,55 @@ class BisectConsumer:
         self.notification_writer = NotificationWriter(
             notification_dir=config.get('notification_dir', '/result/bisect/notifications')
         )
+        self.task_deleted_checker = config.get('task_deleted_checker')
         logger.debug("BisectConsumer initialized with NotificationWriter")
+
+    def _is_task_deleted(self, task_id: Optional[int]) -> bool:
+        """Return True when the task was deleted after entering runtime state."""
+        checker = getattr(self, 'task_deleted_checker', None)
+        if task_id is None or checker is None:
+            return False
+        try:
+            return bool(checker(task_id))
+        except Exception as e:
+            logger.warning(f"task_deleted_checker failed | task_id: {task_id} | error: {e}")
+            return False
+
+    @staticmethod
+    def _raw_sql_affected_rows(raw_result: Any) -> int:
+        """Extract affected-row count from Manticore raw SQL responses."""
+        if not raw_result or not isinstance(raw_result, list):
+            return 0
+
+        first = raw_result[0]
+        if not isinstance(first, dict) or first.get('error'):
+            return 0
+
+        for key in ('total', 'affected_rows', 'affected', 'updated', 'rowcount'):
+            value = first.get(key)
+            if value is None:
+                continue
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                continue
+        return 0
+
+    def _deleted_task_result(self, task_id: int, phase: str) -> Dict:
+        """Return a consistent skip result when delete_tasks removed a live task."""
+        logger.info(f"Task deleted during processing, skipping {phase} | task_id: {task_id}")
+        return {'status': 'skipped', 'id': task_id, 'error': f'Task deleted during {phase}'}
 
     def process_single_task(self, task: Dict) -> Dict:
         """Process a single bisect task"""
         try:
             task_id = int(task['id'])
-            task_result_root = self._generate_task_path(self.config, task)
+            if self._is_task_deleted(task_id):
+                return self._deleted_task_result(task_id, 'startup')
+
+            # Prefer the result root that was allocated at submit time. Fall back to
+            # generating it here for tasks created before the submit-time allocator.
+            task_result_root = task.get('bisect_result_root') or self._generate_task_path(self.config, task)
 
             # Debug log for result_root
             logger.debug(f"Generated task_result_root: {task_result_root} | task_id: {task_id}")
@@ -55,17 +97,21 @@ class BisectConsumer:
             current_time = int(time.time())
             update_query = f"""
                 UPDATE bisect
-                SET bisect_status = 'processing', updated_at = {current_time}
+                SET bisect_status = 'processing', updated_at = {current_time}, start_time = {current_time}
                 WHERE id = {task_id} AND bisect_status = 'wait'
             """
 
             # Execute atomic update
             update_result = self.client.sql_raw(update_query)
+            affected_rows = self._raw_sql_affected_rows(update_result)
 
             # Check if update succeeded (returns affected rows)
-            if not update_result or update_result[0]['error'] != '':
-                logger.warning(f"Skipping task | ID: {task_id} | status changed or not exists")
-                return {'status': 'skipped', 'id': task_id, 'error': 'Task status changed or not exists'}
+            if affected_rows <= 0:
+                logger.warning(f"Skipping task | ID: {task_id} | status changed, deleted, or not exists")
+                return {'status': 'skipped', 'id': task_id, 'error': 'Task status changed, deleted, or not exists'}
+
+            if self._is_task_deleted(task_id):
+                return self._deleted_task_result(task_id, 'claim')
 
             logger.info(f"Start processing task | ID: {task_id}")
 
@@ -168,6 +214,8 @@ class BisectConsumer:
             # Update database status to failed
             task_id = task.get('id')
             if task_id:
+                if self._is_task_deleted(task_id):
+                    return self._deleted_task_result(int(task_id), 'exception handling')
                 try:
                     # Generate bisect_result_root, set even in exception cases
                     bisect_result_root = task.get('bisect_result_root')
@@ -344,6 +392,9 @@ class BisectConsumer:
 
     def _handle_bisect_result_no_release(self, result: Any, task: Dict, task_id: int) -> Dict:
         """Handle bisect result (no repo release, using context manager)"""
+        if self._is_task_deleted(task_id):
+            return self._deleted_task_result(task_id, 'result handling')
+
         if result and isinstance(result, dict) and result.get('first_bad_commit'):
             # Success handling logic
             # New flow: Git bisect includes verification, directly mark as verified
@@ -471,6 +522,8 @@ class BisectConsumer:
                         "updated_at": current_time,
                         "j": merged_j
                     }
+                    if self._is_task_deleted(task_id):
+                        return self._deleted_task_result(task_id, 'failed-result persistence')
                     self.client.update("bisect", task_id, failed_doc)
                     return {
                         'status': 'failed',
@@ -498,6 +551,8 @@ class BisectConsumer:
                         "updated_at": current_time,
                         "j": merged_j
                     }
+                    if self._is_task_deleted(task_id):
+                        return self._deleted_task_result(task_id, 'retry-result persistence')
                     self.client.update("bisect", task_id, wait_doc)
                     return {
                         'status': 'retry',
@@ -568,7 +623,12 @@ class BisectConsumer:
                 }
             }
 
+            if self._is_task_deleted(task_id):
+                return self._deleted_task_result(task_id, 'success persistence')
             self.client.update("bisect", task_id, success_doc)
+
+            if self._is_task_deleted(task_id):
+                return self._deleted_task_result(task_id, 'success side effects')
 
             # Generate notification and records
             try:
@@ -657,6 +717,8 @@ class BisectConsumer:
                 "updated_at": int(time.time())
             }
 
+            if self._is_task_deleted(task_id):
+                return self._deleted_task_result(task_id, 'failure persistence')
             self.client.update("bisect", task_id, fail_doc)
             logger.error(f"Task execution failed | ID: {task_id} | reason: {error_msg}")
             return {'status': 'failed', 'error': error_msg, 'id': task_id}
@@ -670,6 +732,9 @@ class BisectConsumer:
         - parent_commit_verification: parent commit sample verification
         - confidence: overall confidence
         """
+        if self._is_task_deleted(task_id):
+            return self._deleted_task_result(task_id, 'performance result handling')
+
         current_time = int(time.time())
 
         if result and isinstance(result, dict) and result.get('first_bad_commit'):
@@ -750,7 +815,12 @@ class BisectConsumer:
                 }
             }
 
+            if self._is_task_deleted(task_id):
+                return self._deleted_task_result(task_id, 'performance success persistence')
             self.client.update("bisect", task_id, success_doc)
+
+            if self._is_task_deleted(task_id):
+                return self._deleted_task_result(task_id, 'performance success side effects')
 
             # Generate notification and records
             try:
@@ -796,6 +866,8 @@ class BisectConsumer:
                 "updated_at": current_time
             }
 
+            if self._is_task_deleted(task_id):
+                return self._deleted_task_result(task_id, 'performance failure persistence')
             self.client.update("bisect", task_id, fail_doc)
             logger.error(f"Performance bisect failed | task_id: {task_id} | reason: {error_msg}")
             return {'status': 'failed', 'error': error_msg, 'id': task_id}

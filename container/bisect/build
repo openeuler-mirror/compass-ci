@@ -9,7 +9,7 @@ docker_skip_rebuild "bisect"
 load_cci_defaults
 
 if [ ! -d compass-ci ]; then
-	git clone https://gitee.com/openeuler/compass-ci.git
+	git clone https://atomgit.com/openeuler/compass-ci.git
 fi
 
 if [ ! -d lkp-tests ]; then

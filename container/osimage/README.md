@@ -2,7 +2,7 @@
 
 Usage:
 
-git clone https://gitee.com/openeuler/compass-ci.git
+git clone https://atomgit.com/openeuler/compass-ci.git
 cd compass-ci/rootfs/initramfs/${os_name}/${arch}/${os_version}/
 ./build
 

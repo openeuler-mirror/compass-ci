@@ -78,4 +78,4 @@ Perform the following steps to add the information of the code repository to be 
 
    For details about how to configure DEFAULTS files, see https://gitee.com/compass-ci/upstream-repos/blob/master/README.md.
 
-   For meaning and effect of parameters in the command, see https://gitee.com/openeuler/compass-ci/tree/master/doc/job.
+   For meaning and effect of parameters in the command, see https://atomgit.com/openeuler/compass-ci/tree/master/doc/job.
